@@ -46,7 +46,7 @@ for elem_pair in hetero_nuc_diatomics:
 
 
 # %%
-fig = pmv.ptable_scatter_plotly(
+fig = pmv.ptable_scatter(
     diatomic_curves,
     mode="lines",
     x_axis_kwargs=dict(range=x_range),

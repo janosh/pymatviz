@@ -38,7 +38,7 @@ df_carrier[[Key.spg_symbol, Key.spg_num]] = [
 
 
 # %%
-fig = pmv.ptable_heatmap_plotly(df_carrier.pretty_formula.dropna(), log=True)
+fig = pmv.ptable_heatmap(df_carrier.pretty_formula.dropna(), log=True)
 title = f"{data_name} elemental prevalence"
 fig.layout.title.update(text=title)
 fig.show()

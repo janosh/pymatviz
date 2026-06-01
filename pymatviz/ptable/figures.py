@@ -51,7 +51,7 @@ class ColorbarConfig(TypedDict, total=False):
     tickformat: str
 
 
-def ptable_heatmap_plotly(
+def ptable_heatmap(
     values: ElemValues,
     *,
     count_mode: ElemCountMode = ElemCountMode.composition,
@@ -438,7 +438,7 @@ def ptable_heatmap_plotly(
     return fig
 
 
-def ptable_hists_plotly(
+def ptable_hists(
     data: (
         pd.DataFrame
         | pd.Series
@@ -854,7 +854,7 @@ def _get_colorbar_settings(
     return cbar_settings
 
 
-def ptable_heatmap_splits_plotly(
+def ptable_heatmap_splits(
     data: (
         pd.DataFrame
         | pd.Series
@@ -976,7 +976,7 @@ def ptable_heatmap_splits_plotly(
         subplot_kwargs (dict): Additional keyword arguments for subplots.
             See https://plotly.com/python/subplots/ for more information.
 
-        For other args, see ptable_heatmap_plotly().
+        For other args, see ptable_heatmap().
 
     Returns:
         go.Figure: Plotly Figure object with the periodic table heatmap splits.
@@ -1016,7 +1016,7 @@ def ptable_heatmap_splits_plotly(
 
     # Calculate split ranges early if using multiple colorscales
     if not data:
-        raise ValueError(f"ptable_heatmap_splits_plotly: {data=} must not be empty")
+        raise ValueError(f"ptable_heatmap_splits: {data=} must not be empty")
     n_splits = len(next(iter(data.values())))
 
     if not split_labels:  # if not DataFrame or empty columns
@@ -1460,7 +1460,7 @@ def ptable_heatmap_splits_plotly(
             if isinstance(annotations, Callable):
                 # Pass the element's values to the callable
                 annotation_func = cast(
-                    "Callable[[Sequence[float]], str | dict[str, Any]]",
+                    "Callable[[Sequence[float] | np.ndarray], str | dict[str, Any]]",
                     annotations,
                 )
                 annotation = annotation_func(values)
@@ -1592,7 +1592,7 @@ LineData: TypeAlias = (
 )
 
 
-def ptable_scatter_plotly(
+def ptable_scatter(
     data: Mapping[str, ElemData],
     *,
     # Plot mode

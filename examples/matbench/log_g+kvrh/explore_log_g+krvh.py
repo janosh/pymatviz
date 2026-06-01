@@ -130,7 +130,7 @@ fig.show()
 # %%
 df_grvh[Key.formula] = df_grvh[Key.structure].map(lambda struct: struct.formula)
 
-fig = pmv.ptable_heatmap_plotly(pmv.count_elements(df_grvh[Key.formula]), log=True)
+fig = pmv.ptable_heatmap(pmv.count_elements(df_grvh[Key.formula]), log=True)
 title = "<b>Element counts in the Matbench<br>bulk/shear modulus datasets</b>"
 fig.layout.title.update(text=title)
 fig.show()

@@ -15,7 +15,7 @@ from pymatviz.typing import PTABLE_SPLIT_ORIENTATIONS, RgbColorType
 np_rng = np.random.default_rng(seed=0)
 
 
-# %% Examples of ptable_heatmap_splits_plotly with different numbers of splits
+# %% Examples of ptable_heatmap_splits with different numbers of splits
 for idx, (n_splits, orientation) in enumerate(
     itertools.product(range(2, 5), PTABLE_SPLIT_ORIENTATIONS)
 ):
@@ -29,7 +29,7 @@ for idx, (n_splits, orientation) in enumerate(
         elem.symbol: np_rng.integers(10, 20, size=n_splits).tolist() for elem in Element
     }
     cbar_title = f"Periodic Table Heatmap with {n_splits}-fold split"
-    fig = pmv.ptable_heatmap_splits_plotly(
+    fig = pmv.ptable_heatmap_splits(
         data=data_dict,
         orientation=orientation,
         colorscale="RdYlBu",  # Single colorscale will be used for all splits
@@ -42,7 +42,7 @@ for idx, (n_splits, orientation) in enumerate(
     colorbars = [
         dict(title=f"Metric {idx + 1}", orientation="v") for idx in range(n_splits)
     ]
-    fig = pmv.ptable_heatmap_splits_plotly(
+    fig = pmv.ptable_heatmap_splits(
         data=data_dict,
         orientation=orientation,
         colorscale=colorscales,
@@ -61,7 +61,7 @@ for idx, (n_splits, orientation) in enumerate(
     colorbars = [
         dict(title=f"Metric {idx + 1}", orientation="h") for idx in range(n_splits)
     ]
-    fig = pmv.ptable_heatmap_splits_plotly(
+    fig = pmv.ptable_heatmap_splits(
         data=data_dict,
         orientation=orientation,
         colorscale=sequential_colors,
@@ -94,7 +94,7 @@ palettes_3 = (
 )
 
 # Example with vertical colorbars
-fig = pmv.ptable_heatmap_splits_plotly(
+fig = pmv.ptable_heatmap_splits(
     # Use dummy values for all elements
     {str(elem): list(range(len(palettes_3))) for elem in Element},
     orientation="diagonal",  # could also use "grid"
@@ -119,7 +119,7 @@ fig.show()
 # %% Example 5: Two color schemes with horizontal colorbars
 palettes_2 = (pmv_colors.ELEM_COLORS_ALLOY, pmv_colors.ELEM_COLORS_VESTA)
 
-fig = pmv.ptable_heatmap_splits_plotly(
+fig = pmv.ptable_heatmap_splits(
     # Use dummy values for all elements
     {str(elem): list(range(len(palettes_2))) for elem in Element},
     orientation="vertical",
@@ -141,7 +141,7 @@ fig.show()
 data_dict = {el.symbol: np_rng.integers(0, 100, size=4).tolist() for el in Element}
 
 # Use grid orientation with 4 different colorscales and mixed colorbar orientations
-fig = pmv.ptable_heatmap_splits_plotly(
+fig = pmv.ptable_heatmap_splits(
     data=data_dict,
     orientation="grid",
     # Use colorscale names directly

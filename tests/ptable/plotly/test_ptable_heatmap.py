@@ -20,8 +20,8 @@ if TYPE_CHECKING:
     from typing import Any, Literal
 
 
-def test_ptable_heatmap_plotly(glass_formulas: list[str]) -> None:
-    fig = pmv.ptable_heatmap_plotly(glass_formulas)
+def test_ptable_heatmap(glass_formulas: list[str]) -> None:
+    fig = pmv.ptable_heatmap(glass_formulas)
     assert isinstance(fig, go.Figure)
     assert len(fig.layout.annotations) == 18 * 10, (
         "not all periodic table tiles have annotations"
@@ -31,33 +31,31 @@ def test_ptable_heatmap_plotly(glass_formulas: list[str]) -> None:
     )
 
     # test hover_props and show_values=False
-    pmv.ptable_heatmap_plotly(
+    pmv.ptable_heatmap(
         glass_formulas,
         hover_props=("atomic_mass", "atomic_number", "density"),
         show_values=False,
     )
-    pmv.ptable_heatmap_plotly(
+    pmv.ptable_heatmap(
         glass_formulas,
         hover_data="density = " + df_ptable[Key.density].astype(str) + " g/cm^3",
     )
     # test label_map as dict
-    fig = pmv.ptable_heatmap_plotly(
-        df_ptable[Key.density], fmt=".1f", label_map={"0": "zero"}
-    )
+    fig = pmv.ptable_heatmap(df_ptable[Key.density], fmt=".1f", label_map={"0": "zero"})
     # test label_map as callable
-    pmv.ptable_heatmap_plotly(
+    pmv.ptable_heatmap(
         df_ptable[Key.density],
         fmt=".1f",
         label_map=lambda x: "meaning of life" if x == 42 else x,
     )
 
-    pmv.ptable_heatmap_plotly(glass_formulas, heat_mode="percent")
+    pmv.ptable_heatmap(glass_formulas, heat_mode="percent")
 
     # test log color scale with -1, 0, 1 and random negative value
     for val in (-9.72, -1, 0, 1):
-        pmv.ptable_heatmap_plotly([f"H{val}", "O2"], log=True)
+        pmv.ptable_heatmap([f"H{val}", "O2"], log=True)
         df_ptable["tmp"] = val
-        fig = pmv.ptable_heatmap_plotly(df_ptable["tmp"], log=True)
+        fig = pmv.ptable_heatmap(df_ptable["tmp"], log=True)
         assert isinstance(fig, go.Figure)
         heatmap_trace = fig.data[-1]
         assert heatmap_trace.colorbar.title.text == "tmp"
@@ -70,14 +68,14 @@ def test_ptable_heatmap_plotly(glass_formulas: list[str]) -> None:
 
     with pytest.raises(TypeError, match="should be string, list of strings or list"):
         # test that bad colorscale raises ValueError
-        pmv.ptable_heatmap_plotly(glass_formulas, colorscale=lambda: "bad scale")  # ty: ignore[invalid-argument-type]
+        pmv.ptable_heatmap(glass_formulas, colorscale=lambda: "bad scale")  # ty: ignore[invalid-argument-type]
 
     # test that unknown builtin colorscale raises ValueError
     with pytest.raises(PlotlyError, match="Colorscale foobar is not a built-in scale"):
-        pmv.ptable_heatmap_plotly(glass_formulas, colorscale="foobar")
+        pmv.ptable_heatmap(glass_formulas, colorscale="foobar")
 
     with pytest.raises(ValueError, match="Combining log color scale and"):
-        pmv.ptable_heatmap_plotly(glass_formulas, log=True, heat_mode="percent")
+        pmv.ptable_heatmap(glass_formulas, log=True, heat_mode="percent")
 
 
 @pytest.mark.parametrize(
@@ -102,7 +100,7 @@ def test_ptable_heatmap_plotly(glass_formulas: list[str]) -> None:
         (["O"], "fraction", False, True, 12, ("black", "white"), 0.8),
     ],
 )
-def test_ptable_heatmap_plotly_kwarg_combos(
+def test_ptable_heatmap_kwarg_combos(
     glass_formulas: list[str],
     exclude_elements: Sequence[str],
     heat_mode: Literal["value", "fraction", "percent"],
@@ -114,7 +112,7 @@ def test_ptable_heatmap_plotly_kwarg_combos(
 ) -> None:
     if log and heat_mode != "value":
         pytest.skip("log scale only supported for heat_mode='value'")
-    fig = pmv.ptable_heatmap_plotly(
+    fig = pmv.ptable_heatmap(
         glass_formulas,
         exclude_elements=exclude_elements,
         heat_mode=heat_mode,
@@ -154,9 +152,9 @@ def test_ptable_heatmap_plotly_kwarg_combos(
 @pytest.mark.parametrize(
     "c_scale", ["Viridis", "Jet", ("blue", "red"), ((0, "blue"), (1, "red"))]
 )
-def test_ptable_heatmap_plotly_colorscale(c_scale: str) -> None:
+def test_ptable_heatmap_colorscale(c_scale: str) -> None:
     values = {"Fe": 2, "O": 3}
-    fig = pmv.ptable_heatmap_plotly(values, colorscale=c_scale)
+    fig = pmv.ptable_heatmap(values, colorscale=c_scale)
     clr_scale_start = fig.data[-1].colorscale[0]
     assert clr_scale_start == {
         "Viridis": (0, "#440154"),
@@ -169,10 +167,10 @@ def test_ptable_heatmap_plotly_colorscale(c_scale: str) -> None:
 @pytest.mark.parametrize(
     "colorbar", [{}, dict(orientation="v", len=0.8), dict(orientation="h", len=0.3)]
 )
-def test_ptable_heatmap_plotly_color_bar(
+def test_ptable_heatmap_color_bar(
     glass_formulas: list[str], colorbar: dict[str, Any]
 ) -> None:
-    fig = pmv.ptable_heatmap_plotly(glass_formulas, colorbar=colorbar)
+    fig = pmv.ptable_heatmap(glass_formulas, colorbar=colorbar)
     # check color bar has expected length
     assert fig.data[-1].colorbar.len == colorbar.get("len", 0.4)
     # check color bar has expected title side
@@ -184,10 +182,10 @@ def test_ptable_heatmap_plotly_color_bar(
 @pytest.mark.parametrize(
     "cscale_range", [(None, None), (None, 10), (2, None), (2, 87123)]
 )
-def test_ptable_heatmap_plotly_cscale_range(
+def test_ptable_heatmap_cscale_range(
     cscale_range: tuple[float | None, float | None],
 ) -> None:
-    fig = pmv.ptable_heatmap_plotly(df_ptable[Key.density], cscale_range=cscale_range)
+    fig = pmv.ptable_heatmap(df_ptable[Key.density], cscale_range=cscale_range)
     trace = fig.data[-1]
     assert "colorbar" in trace
     # check for correct color bar range
@@ -205,23 +203,23 @@ def test_ptable_heatmap_plotly_cscale_range(
         )
 
 
-def test_ptable_heatmap_plotly_cscale_range_raises() -> None:
+def test_ptable_heatmap_cscale_range_raises() -> None:
     cscale_range = (0, 10, 20)
     with pytest.raises(
         ValueError, match=re.escape(f"{cscale_range=} should have length 2")
     ):
-        pmv.ptable_heatmap_plotly(df_ptable[Key.density], cscale_range=cscale_range)  # ty: ignore[invalid-argument-type]
+        pmv.ptable_heatmap(df_ptable[Key.density], cscale_range=cscale_range)  # ty: ignore[invalid-argument-type]
 
 
 @pytest.mark.parametrize(
     "label_map",
     [None, False, {"1.0": "one", "2.0": "two", "3.0": "three", np.nan: "N/A"}],
 )
-def test_ptable_heatmap_plotly_label_map(
+def test_ptable_heatmap_label_map(
     label_map: dict[str, str] | Literal[False] | None,
 ) -> None:
     elem_vals = dict(Al=1.0, Cr=2.0, Fe=3.0, Ni=np.nan)
-    fig = pmv.ptable_heatmap_plotly(elem_vals, label_map=label_map)
+    fig = pmv.ptable_heatmap(elem_vals, label_map=label_map)
     assert isinstance(fig, go.Figure)
 
     # if label_map is not False, ensure mapped labels appear in figure annotations
@@ -240,11 +238,11 @@ def test_ptable_heatmap_plotly_label_map(
 
 
 @pytest.mark.parametrize("mode", ["value", "fraction", "percent"])
-def test_ptable_heatmap_plotly_heat_modes(
+def test_ptable_heatmap_heat_modes(
     mode: Literal["value", "fraction", "percent"],
 ) -> None:
     values = {"Fe": 2, "O": 3, "H": 1}
-    fig = pmv.ptable_heatmap_plotly(values, heat_mode=mode)
+    fig = pmv.ptable_heatmap(values, heat_mode=mode)
     assert fig.data[-1].zmax is not None
     if mode == "value":
         assert fig.data[-1].zmax == 3
@@ -254,9 +252,9 @@ def test_ptable_heatmap_plotly_heat_modes(
         assert fig.data[-1].zmax == pytest.approx(50)
 
 
-def test_ptable_heatmap_plotly_show_values() -> None:
+def test_ptable_heatmap_show_values() -> None:
     values = {"Fe": 2, "O": 3}
-    fig = pmv.ptable_heatmap_plotly(values, show_values=False)
+    fig = pmv.ptable_heatmap(values, show_values=False)
     for text in (
         "<span style='font-weight: bold; font-size: 18.0;'>O</span>",
         "<span style='font-weight: bold; font-size: 18.0;'>Fe</span>",
@@ -264,40 +262,40 @@ def test_ptable_heatmap_plotly_show_values() -> None:
         assert text in [anno.text for anno in fig.layout.annotations if anno.text]
 
 
-def test_ptable_heatmap_plotly_exclude_elements() -> None:
+def test_ptable_heatmap_exclude_elements() -> None:
     values = {"Fe": 2, "O": 3, "H": 1}
-    fig = pmv.ptable_heatmap_plotly(values, exclude_elements=["O"])
+    fig = pmv.ptable_heatmap(values, exclude_elements=["O"])
     assert "excl." in str(fig.layout.annotations)
 
 
-def test_ptable_heatmap_plotly_series_input() -> None:
+def test_ptable_heatmap_series_input() -> None:
     values = pd.Series({"Fe": 2, "O": 3, "H": 1})
-    fig = pmv.ptable_heatmap_plotly(values)
+    fig = pmv.ptable_heatmap(values)
     assert isinstance(fig, Figure)
 
 
-def test_ptable_heatmap_plotly_count_modes() -> None:
+def test_ptable_heatmap_count_modes() -> None:
     values = ("FeO", "Fe2O3", "H2O")
     for mode in ElemCountMode:
-        fig = pmv.ptable_heatmap_plotly(values, count_mode=mode)
+        fig = pmv.ptable_heatmap(values, count_mode=mode)
         assert isinstance(fig, Figure)
 
 
-def test_ptable_heatmap_plotly_hover_props() -> None:
+def test_ptable_heatmap_hover_props() -> None:
     values = {"Fe": 2, "O": 3}
     hover_props = ["atomic_number", "atomic_mass"]
-    fig = pmv.ptable_heatmap_plotly(values, hover_props=hover_props)
+    fig = pmv.ptable_heatmap(values, hover_props=hover_props)
     assert all(prop in str(fig.data[-1].text) for prop in hover_props)
 
 
-def test_ptable_heatmap_plotly_custom_label_map() -> None:
+def test_ptable_heatmap_custom_label_map() -> None:
     values = {"Fe": 2, "O": 3, "H": np.nan}
 
     def label_map(label: str) -> str:
         """Map numeric labels to custom display strings."""
         return {2.0: "High", 3.0: "Low"}.get(float(label), label)
 
-    fig = pmv.ptable_heatmap_plotly(values, label_map=label_map)
+    fig = pmv.ptable_heatmap(values, label_map=label_map)
     annos = [
         anno.text
         for anno in fig.layout.annotations
@@ -306,43 +304,43 @@ def test_ptable_heatmap_plotly_custom_label_map() -> None:
     assert len(annos) == 2
 
 
-def test_ptable_heatmap_plotly_error_cases() -> None:
+def test_ptable_heatmap_error_cases() -> None:
     with pytest.raises(
         ValueError, match=re.escape("cscale_range=(0,) should have length 2")
     ):
-        pmv.ptable_heatmap_plotly({"Fe": 2, "O": 3}, cscale_range=(0,))  # ty: ignore[invalid-argument-type]
+        pmv.ptable_heatmap({"Fe": 2, "O": 3}, cscale_range=(0,))  # ty: ignore[invalid-argument-type]
 
     hover_props = ("atomic_mass", bad_hover_prop := "invalid_prop")
     with pytest.raises(ValueError, match=f"Unsupported hover_props: {bad_hover_prop}"):
-        pmv.ptable_heatmap_plotly({"Fe": 2, "O": 3}, hover_props=hover_props)
+        pmv.ptable_heatmap({"Fe": 2, "O": 3}, hover_props=hover_props)
 
 
 @pytest.mark.parametrize("heat_mode", ["value", "fraction", "percent"])
-def test_ptable_heatmap_plotly_color_range(
+def test_ptable_heatmap_color_range(
     heat_mode: Literal["value", "fraction", "percent"],
 ) -> None:
     values = {"Fe": 1, "O": 50, "H": 100}
-    fig = pmv.ptable_heatmap_plotly(values, heat_mode=heat_mode)
+    fig = pmv.ptable_heatmap(values, heat_mode=heat_mode)
     heatmap_trace = fig.data[-1]
     non_nan_values = [v for v in heatmap_trace.z.flat if not np.isnan(v)]
     assert min(non_nan_values) == heatmap_trace.zmin
     assert max(non_nan_values) == heatmap_trace.zmax
 
 
-def test_ptable_heatmap_plotly_all_elements() -> None:
+def test_ptable_heatmap_all_elements() -> None:
     values = {elem: idx for idx, elem in enumerate(df_ptable.index)}
-    fig = pmv.ptable_heatmap_plotly(values)
+    fig = pmv.ptable_heatmap(values)
     heatmap_trace = fig.data[-1]
     assert not np.isnan(heatmap_trace.zmax)
     assert heatmap_trace.zmax == len(df_ptable) - 1
 
 
-def test_ptable_heatmap_plotly_hover_tooltips() -> None:
+def test_ptable_heatmap_hover_tooltips() -> None:
     # Test with non-integer values
     float_values = {"Fe": 0.2, "O": 0.3, "H": 0.5}
 
     # Test value mode
-    fig = pmv.ptable_heatmap_plotly(float_values, heat_mode="value")
+    fig = pmv.ptable_heatmap(float_values, heat_mode="value")
     hover_texts = fig.data[-1].text.flat
 
     for elem_symb, value in float_values.items():
@@ -352,7 +350,7 @@ def test_ptable_heatmap_plotly_hover_tooltips() -> None:
 
     # Test fraction and percent modes
     for heat_mode in ["fraction", "percent"]:
-        fig = pmv.ptable_heatmap_plotly(float_values, heat_mode=heat_mode)  # ty: ignore[invalid-argument-type]
+        fig = pmv.ptable_heatmap(float_values, heat_mode=heat_mode)  # ty: ignore[invalid-argument-type]
         hover_texts = fig.data[-1].text.flat
 
         for elem_symb, value in float_values.items():
@@ -369,7 +367,7 @@ def test_ptable_heatmap_plotly_hover_tooltips() -> None:
     int_values = {"Fe": 2, "O": 3, "H": 1}
 
     for heat_mode in ("value", "fraction", "percent"):
-        fig = pmv.ptable_heatmap_plotly(int_values, heat_mode=heat_mode)
+        fig = pmv.ptable_heatmap(int_values, heat_mode=heat_mode)
         hover_texts = fig.data[-1].text.flat
 
         for elem_symb, value in int_values.items():
@@ -387,15 +385,13 @@ def test_ptable_heatmap_plotly_hover_tooltips() -> None:
                 )
 
     # Test with excluded elements
-    fig = pmv.ptable_heatmap_plotly(int_values, exclude_elements=["O"])
+    fig = pmv.ptable_heatmap(int_values, exclude_elements=["O"])
     hover_texts = fig.data[-1].text.flat
     o_hover_text = next(text for text in hover_texts if text.startswith("Oxygen"))
     assert "Value:" not in o_hover_text
 
     # Test with hover_props
-    fig = pmv.ptable_heatmap_plotly(
-        int_values, hover_props=["atomic_number", "atomic_mass"]
-    )
+    fig = pmv.ptable_heatmap(int_values, hover_props=["atomic_number", "atomic_mass"])
     hover_texts = fig.data[-1].text.flat
     for hover_text in hover_texts:
         if not hover_text:
@@ -405,16 +401,16 @@ def test_ptable_heatmap_plotly_hover_tooltips() -> None:
 
     # Test with hover_data
     hover_data = {"Fe": "Custom Fe data", "O": "Custom O data"}
-    fig = pmv.ptable_heatmap_plotly(int_values, hover_data=hover_data)
+    fig = pmv.ptable_heatmap(int_values, hover_data=hover_data)
     hover_texts = fig.data[-1].text.flat
     fe_hover_text = next(text for text in hover_texts if text.startswith("Iron"))
     assert "Custom Fe data" in fe_hover_text
 
 
-def test_ptable_heatmap_plotly_element_symbol_map() -> None:
+def test_ptable_heatmap_element_symbol_map() -> None:
     values = {"Fe": 2, "O": 3, "H": 1}
     element_symbol_map = {"Fe": "Iron", "O": "Oxygen", "H": "Hydrogen"}
-    fig = pmv.ptable_heatmap_plotly(values, element_symbol_map=element_symbol_map)
+    fig = pmv.ptable_heatmap(values, element_symbol_map=element_symbol_map)
 
     # Check if custom symbols are used in tile texts
     tile_texts = [anno.text for anno in fig.layout.annotations if anno.text]
@@ -435,7 +431,7 @@ def test_ptable_heatmap_plotly_element_symbol_map() -> None:
 
     # Test with partial mapping
     partial_map = {"Fe": "This be Iron"}
-    fig = pmv.ptable_heatmap_plotly(values, element_symbol_map=partial_map)
+    fig = pmv.ptable_heatmap(values, element_symbol_map=partial_map)
     tile_texts = [anno.text for anno in fig.layout.annotations if anno.text]
     assert any("This be Iron" in text for text in tile_texts), (
         "Custom symbol not found in tile texts"
@@ -445,7 +441,7 @@ def test_ptable_heatmap_plotly_element_symbol_map() -> None:
     )
 
     # Test with None value
-    fig = pmv.ptable_heatmap_plotly(values, element_symbol_map=None)
+    fig = pmv.ptable_heatmap(values, element_symbol_map=None)
     tile_texts = [anno.text for anno in fig.layout.annotations if anno.text]
     for elem in values:
         assert any(f"{elem}</span>" in text for text in tile_texts), (
@@ -454,8 +450,8 @@ def test_ptable_heatmap_plotly_element_symbol_map() -> None:
         )
 
 
-def test_ptable_heatmap_plotly_colorbar() -> None:
-    """Test colorbar customization in ptable_heatmap_plotly."""
+def test_ptable_heatmap_colorbar() -> None:
+    """Test colorbar customization in ptable_heatmap."""
     data = {"Fe": 1.234, "O": 5.678}
 
     # Test colorbar title and formatting
@@ -463,7 +459,7 @@ def test_ptable_heatmap_plotly_colorbar() -> None:
         title="Test Title", tickformat=".2f", orientation="v", len=0.8, x=1.1
     )
 
-    fig = pmv.ptable_heatmap_plotly(data, colorbar=colorbar)
+    fig = pmv.ptable_heatmap(data, colorbar=colorbar)
 
     # Get the colorbar from the figure
     colorbar_trace = next(trace for trace in fig.data if hasattr(trace, "colorbar"))
@@ -479,7 +475,7 @@ def test_ptable_heatmap_plotly_colorbar() -> None:
     # Test horizontal colorbar title formatting
     h_colorbar = dict(title="Horizontal Title", orientation="h", y=0.8)
 
-    fig = pmv.ptable_heatmap_plotly(data, colorbar=h_colorbar)
+    fig = pmv.ptable_heatmap(data, colorbar=h_colorbar)
     h_colorbar_trace = next(trace for trace in fig.data if hasattr(trace, "colorbar"))
     actual_h_colorbar = h_colorbar_trace.colorbar
 
@@ -489,11 +485,11 @@ def test_ptable_heatmap_plotly_colorbar() -> None:
     assert actual_h_colorbar.y == 0.8
 
     # Test disabling colorbar
-    fig = pmv.ptable_heatmap_plotly(data, show_scale=False)
+    fig = pmv.ptable_heatmap(data, show_scale=False)
     assert not any(trace.showscale for trace in fig.data)
 
 
-def test_ptable_heatmap_plotly_colorbar_log_mode() -> None:
+def test_ptable_heatmap_colorbar_log_mode() -> None:
     """Regression tests for https://github.com/janosh/pymatviz/pull/334 fixing
     TypeError when passing tickvals via colorbar kwargs and duplicate tick labels.
     """
@@ -503,7 +499,7 @@ def test_ptable_heatmap_plotly_colorbar_log_mode() -> None:
         return next(tr for tr in fig.data if hasattr(tr, "colorbar")).colorbar
 
     # Default log behavior works
-    fig = pmv.ptable_heatmap_plotly(data, log=True)
+    fig = pmv.ptable_heatmap(data, log=True)
     cbar = get_colorbar(fig)
     assert cbar.tickvals is not None
     assert cbar.ticktext is not None
@@ -511,13 +507,11 @@ def test_ptable_heatmap_plotly_colorbar_log_mode() -> None:
 
     # Custom tickvals with log=True - previously raised TypeError
     custom_tickvals = [1.0, 2.0, 5.0, 10.0]
-    fig = pmv.ptable_heatmap_plotly(
-        data, colorbar={"tickvals": custom_tickvals}, log=True
-    )
+    fig = pmv.ptable_heatmap(data, colorbar={"tickvals": custom_tickvals}, log=True)
     assert np.allclose(get_colorbar(fig).tickvals, np.log10(custom_tickvals))
 
     # Custom tickvals + tickformat + other kwargs all preserved
-    fig = pmv.ptable_heatmap_plotly(
+    fig = pmv.ptable_heatmap(
         data,
         colorbar={"title": "Log Scale", "tickvals": [1, 5], "len": 0.6},
         log=True,
@@ -529,34 +523,30 @@ def test_ptable_heatmap_plotly_colorbar_log_mode() -> None:
 
     # Auto-dedupe: tick labels are unique even without custom tickformat
     data_narrow = {"Fe": 0.12, "O": 0.56, "Si": 9}
-    fig = pmv.ptable_heatmap_plotly(data_narrow, log=True)
+    fig = pmv.ptable_heatmap(data_narrow, log=True)
     tick_labels = get_colorbar(fig).ticktext
     assert len(tick_labels) == len(set(tick_labels)), f"Duplicate labels: {tick_labels}"
 
     # Custom ticktext bypasses auto-generation
     custom_labels = ["low", "mid", "high"]
-    fig = pmv.ptable_heatmap_plotly(
+    fig = pmv.ptable_heatmap(
         data, colorbar={"tickvals": [1, 5, 10], "ticktext": custom_labels}, log=True
     )
     assert list(get_colorbar(fig).ticktext) == custom_labels
 
     # Format type preserved during auto-dedupe (e.g. ".1g" stays general format)
-    fig = pmv.ptable_heatmap_plotly(
-        data_narrow, colorbar={"tickformat": ".1g"}, log=True
-    )
+    fig = pmv.ptable_heatmap(data_narrow, colorbar={"tickformat": ".1g"}, log=True)
     tick_labels = get_colorbar(fig).ticktext
     assert len(tick_labels) == len(set(tick_labels)), f"Duplicate labels: {tick_labels}"
 
     # Non-positive tickvals raise ValueError for log scale
     for invalid_tickvals in ([0, 1, 10], [-1, 1, 10]):
         with pytest.raises(ValueError, match="tickvals must be positive"):
-            pmv.ptable_heatmap_plotly(
-                data, colorbar={"tickvals": invalid_tickvals}, log=True
-            )
+            pmv.ptable_heatmap(data, colorbar={"tickvals": invalid_tickvals}, log=True)
 
 
-def test_ptable_heatmap_plotly_value_formatting() -> None:
-    """Test float formatting of value labels in ptable_heatmap_plotly."""
+def test_ptable_heatmap_value_formatting() -> None:
+    """Test float formatting of value labels in ptable_heatmap."""
     # Test cases: (values, heat_mode, fmt, expected_labels)
     test_cases = [
         # Default fmt with heat_mode="value" (si_fmt with ".1f")
@@ -605,7 +595,7 @@ def test_ptable_heatmap_plotly_value_formatting() -> None:
     ]
 
     for values, heat_mode, fmt, expected_labels in test_cases:
-        fig = pmv.ptable_heatmap_plotly(
+        fig = pmv.ptable_heatmap(
             values,
             heat_mode=heat_mode,  # ty: ignore[invalid-argument-type]
             fmt=fmt,

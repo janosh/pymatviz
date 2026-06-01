@@ -44,7 +44,7 @@ from pymatviz import (
 )
 from pymatviz.bar import spacegroup_bar
 from pymatviz.brillouin import brillouin_zone_3d
-from pymatviz.classify import precision_recall_curve_plotly, roc_curve_plotly
+from pymatviz.classify import precision_recall_curve, roc_curve
 from pymatviz.classify.confusion_matrix import confusion_matrix
 from pymatviz.cluster.composition import cluster_compositions
 from pymatviz.coordination import coordination_hist, coordination_vs_cutoff_line
@@ -61,10 +61,10 @@ from pymatviz.process_data import (
     sankey_flow_data,
 )
 from pymatviz.ptable import (
-    ptable_heatmap_plotly,
-    ptable_heatmap_splits_plotly,
-    ptable_hists_plotly,
-    ptable_scatter_plotly,
+    ptable_heatmap,
+    ptable_heatmap_splits,
+    ptable_hists,
+    ptable_scatter,
 )
 from pymatviz.rainclouds import rainclouds
 from pymatviz.rdf.figures import element_pair_rdfs, full_rdf

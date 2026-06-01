@@ -15,7 +15,7 @@ data_dict = {
 
 
 # %% Example 1: Basic histogram with colorbar
-fig = pmv.ptable_hists_plotly(
+fig = pmv.ptable_hists(
     data_dict,
     bins=30,
     colorbar=dict(title="Element Distributions"),
@@ -25,7 +25,7 @@ fig.show()
 
 
 # %% Example 2: horizontal colorbar and custom annotations
-fig = pmv.ptable_hists_plotly(
+fig = pmv.ptable_hists(
     data_dict,
     bins=30,
     colorbar=dict(title="Element Distributions", orientation="h"),

@@ -57,13 +57,13 @@ See the Jupyter notebooks under [`examples/`](examples) for how to use `pymatviz
 
 See [`pymatviz/ptable/figures.py`](pymatviz/ptable/figures.py). The module supports heatmaps, heatmap splits (multiple values per element), histograms, scatter plots and line plots. All visualizations are interactive through [Plotly](https://plotly.com) and support displaying additional data on hover.
 
-|                                        [`ptable_heatmap_plotly(atomic_masses)`](pymatviz/ptable/figures.py#L54)                                         | [`ptable_heatmap_plotly(compositions, log=True)`](pymatviz/ptable/figures.py#L54) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_plotly.py) |
-| :-----------------------------------------------------------------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------------------------------------------: |
-|                                                        ![ptable-heatmap-plotly-more-hover-data]                                                         |                                                          ![ptable-heatmap-plotly-log]                                                           |
-|               [`ptable_hists_plotly(data)`](pymatviz/ptable/figures.py#L441) [![fig-icon]](assets/scripts/ptable/ptable_hists_plotly.py)                | [`ptable_scatter_plotly(data, mode="markers")`](pymatviz/ptable/figures.py#L1595) [![fig-icon]](assets/scripts/ptable/ptable_scatter_plotly.py) |
-|                                                                 ![ptable-hists-plotly]                                                                  |                                                        ![ptable-scatter-plotly-markers]                                                         |
-| [`ptable_heatmap_splits_plotly(2_vals_per_elem)`](pymatviz/ptable/figures.py#L857) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_splits_plotly.py) |                               [`ptable_heatmap_splits_plotly(3_vals_per_elem)`](pymatviz/ptable/figures.py#L857)                                |
-|                                                            ![ptable-heatmap-splits-plotly-2]                                                            |                                                        ![ptable-heatmap-splits-plotly-3]                                                        |
+|                                     [`ptable_heatmap(atomic_masses)`](pymatviz/ptable/figures.py#L54)                                     | [`ptable_heatmap(compositions, log=True)`](pymatviz/ptable/figures.py#L54) [![fig-icon]](assets/scripts/ptable/ptable_heatmap.py) |
+| :---------------------------------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------------------: |
+|                                                 ![ptable-heatmap-plotly-more-hover-data]                                                  |                                                   ![ptable-heatmap-plotly-log]                                                    |
+|               [`ptable_hists(data)`](pymatviz/ptable/figures.py#L441) [![fig-icon]](assets/scripts/ptable/ptable_hists.py)                | [`ptable_scatter(data, mode="markers")`](pymatviz/ptable/figures.py#L1595) [![fig-icon]](assets/scripts/ptable/ptable_scatter.py) |
+|                                                          ![ptable-hists-plotly]                                                           |                                                 ![ptable-scatter-plotly-markers]                                                  |
+| [`ptable_heatmap_splits(2_vals_per_elem)`](pymatviz/ptable/figures.py#L857) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_splits.py) |                            [`ptable_heatmap_splits(3_vals_per_elem)`](pymatviz/ptable/figures.py#L857)                            |
+|                                                     ![ptable-heatmap-splits-plotly-2]                                                     |                                                 ![ptable-heatmap-splits-plotly-3]                                                 |
 
 [ptable-heatmap-plotly-log]: assets/svg/ptable-heatmap-plotly-log.svg
 [ptable-heatmap-plotly-more-hover-data]: assets/svg/ptable-heatmap-plotly-more-hover-data.svg
@@ -72,7 +72,7 @@ See [`pymatviz/ptable/figures.py`](pymatviz/ptable/figures.py). The module suppo
 [ptable-hists-plotly]: assets/svg/ptable-hists-plotly.svg
 [ptable-scatter-plotly-markers]: assets/svg/ptable-scatter-plotly-markers.svg
 
-### Dash app using `ptable_heatmap_plotly()`
+### Dash app using `ptable_heatmap()`
 
 See [`examples/mprester_ptable.ipynb`](examples/mprester_ptable.ipynb).
 
@@ -360,9 +360,9 @@ See [`pymatviz/classify/confusion_matrix.py`](pymatviz/classify/confusion_matrix
 
 See [`pymatviz/classify/curves.py`](pymatviz/classify/curves.py).
 
-| [`roc_curve_plotly(targets, probs_positive)`](pymatviz/classify/curves.py#L83) [![fig-icon]](assets/scripts/classify/roc_curve.py) | [`precision_recall_curve_plotly(targets, probs_positive)`](pymatviz/classify/curves.py#L183) [![fig-icon]](assets/scripts/classify/precision_recall_curve.py) |
-| :--------------------------------------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------------------------------------------------------------: |
-|                                                    ![roc-curve-plotly-multiple]                                                    |                                                           ![precision-recall-curve-plotly-multiple]                                                           |
+| [`roc_curve(targets, probs_positive)`](pymatviz/classify/curves.py#L83) [![fig-icon]](assets/scripts/classify/roc_curve.py) | [`precision_recall_curve(targets, probs_positive)`](pymatviz/classify/curves.py#L183) [![fig-icon]](assets/scripts/classify/precision_recall_curve.py) |
+| :-------------------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------------------------------: |
+|                                                ![roc-curve-plotly-multiple]                                                 |                                                       ![precision-recall-curve-plotly-multiple]                                                        |
 
 [roc-curve-plotly-multiple]: assets/svg/roc-curve-plotly-multiple.svg
 [precision-recall-curve-plotly-multiple]: assets/svg/precision-recall-curve-plotly-multiple.svg

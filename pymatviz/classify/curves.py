@@ -80,7 +80,7 @@ def _standardize_input(
     return targets, curves_dict
 
 
-def roc_curve_plotly(
+def roc_curve(
     targets: ArrayLike | str,
     probs_positive: Predictions,
     df: pd.DataFrame | None = None,
@@ -148,9 +148,7 @@ def roc_curve_plotly(
 
     # Add no-skill baseline line
     if no_skill is not False:
-        # Set up hover template for no-skill line
-        no_skill = no_skill or {}
-        no_skill.setdefault("hovertemplate", hover_template("No skill"))
+        no_skill = dict(no_skill or {})
 
         # default to 100 points so whole line is hoverable, not just end points
         xs = no_skill.pop("xs", np.linspace(0, 1, 100))
@@ -172,15 +170,17 @@ def roc_curve_plotly(
         fig.add_annotation(**anno, xref="x", yref="y")
 
     fig.layout.legend.update(yanchor="bottom", y=0, xanchor="right", x=0.99)
-    fig.layout.update(xaxis_range=[0, 1.05], yaxis_range=[0, 1.05])
     fig.layout.update(
-        xaxis_title="False Positive Rate", yaxis_title="True Positive Rate"
+        xaxis_range=[0, 1.05],
+        yaxis_range=[0, 1.05],
+        xaxis_title="False Positive Rate",
+        yaxis_title="True Positive Rate",
     )
 
     return fig
 
 
-def precision_recall_curve_plotly(
+def precision_recall_curve(
     targets: ArrayLike | str,
     probs_positive: Predictions,
     df: pd.DataFrame | None = None,
@@ -257,7 +257,7 @@ def precision_recall_curve_plotly(
 
     # Add no-skill baseline if not explicitly disabled
     if no_skill is not False:
-        no_skill = no_skill or {}
+        no_skill = dict(no_skill or {})
         no_skill_line = no_skill.pop("line", {})
         no_skill_anno = no_skill.pop("annotation", {})
         fig.add_hline(

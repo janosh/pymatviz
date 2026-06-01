@@ -1725,7 +1725,7 @@ def test_disordered_site_hover_text_formatting(fe3co4_disordered: Structure) -> 
         )
 
         # Look for traces with hover text containing species information
-        hover_texts = []
+        hover_texts: list[str] = []
         for trace in fig.data:
             if hasattr(trace, "hovertext") and trace.hovertext:
                 if isinstance(trace.hovertext, str):

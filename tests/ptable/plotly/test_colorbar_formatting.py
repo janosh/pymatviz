@@ -59,12 +59,12 @@ def get_scatter_colorbar_trace(fig: Figure) -> go.Scatter:
 
 
 def test_ptable_heatmap_colorbar_formatting() -> None:
-    """Test that ptable_heatmap_plotly uses SI suffixes for colorbar ticks."""
+    """Test that ptable_heatmap uses SI suffixes for colorbar ticks."""
     # Create test data with a wide range of values
     test_data = {"O": 10_000, "C": 100_000, "H": 1_000_000, "N": 10_000_000}
 
     # Test with default settings
-    fig = pmv.ptable_heatmap_plotly(test_data)
+    fig = pmv.ptable_heatmap(test_data)
 
     # Find the colorbar trace
     colorbar_trace = get_main_colorbar_trace(fig)
@@ -72,7 +72,7 @@ def test_ptable_heatmap_colorbar_formatting() -> None:
     assert colorbar_trace.colorbar.title.text is None
 
     # Test with log scale
-    fig_log = pmv.ptable_heatmap_plotly(test_data, log=True)
+    fig_log = pmv.ptable_heatmap(test_data, log=True)
 
     # Check that log scale colorbar has formatted tick labels
     colorbar_trace = get_main_colorbar_trace(fig_log)
@@ -85,13 +85,13 @@ def test_ptable_heatmap_colorbar_formatting() -> None:
 
 
 def test_ptable_heatmap_splits_colorbar_formatting() -> None:
-    """ptable_heatmap_splits_plotly should use SI suffixes for colorbar ticks."""
+    """ptable_heatmap_splits should use SI suffixes for colorbar ticks."""
     # Create test data with a wide range of values
     test_data = pd.DataFrame({"Dataset 1": {"Fe": 1_000, "O": 10_000, "C": 100_000}})
     test_data["Dataset 2"] = test_data["Dataset 1"] * 2
 
     # Test with default settings
-    fig = pmv.ptable_heatmap_splits_plotly(test_data)
+    fig = pmv.ptable_heatmap_splits(test_data)
 
     # Find traces with colorbars for each dataset
     dataset1_colorbars = get_colorbar_traces_by_title(fig, "Dataset 1")
@@ -110,7 +110,7 @@ def test_ptable_heatmap_splits_colorbar_formatting() -> None:
 
 
 def test_ptable_hists_colorbar_formatting() -> None:
-    """Test that ptable_hists_plotly uses SI suffixes for colorbar ticks."""
+    """Test that ptable_hists uses SI suffixes for colorbar ticks."""
     # Create test data with a wide range of values
     test_data = {
         "Fe": np.logspace(2, 6, 100),  # Values from 100 to 1,000,000
@@ -119,7 +119,7 @@ def test_ptable_hists_colorbar_formatting() -> None:
     }
 
     # Test with default settings and colorbar
-    fig = pmv.ptable_hists_plotly(test_data, colorbar={"title": "Test"})
+    fig = pmv.ptable_hists(test_data, colorbar={"title": "Test"})
 
     # Find the colorbar trace
     colorbar_trace = get_scatter_colorbar_trace(fig)
@@ -134,7 +134,7 @@ def test_ptable_hists_colorbar_formatting() -> None:
 
 
 def test_ptable_scatter_colorbar_si_formatting() -> None:
-    """Test that ptable_scatter_plotly uses SI suffixes for colorbar ticks."""
+    """Test that ptable_scatter uses SI suffixes for colorbar ticks."""
     # Create test data with a wide range of values for color
     test_data = {
         "Fe": ([1, 2, 3], [4, 5, 6], [100, 1_000, 10_000]),  # x, y, color
@@ -143,7 +143,7 @@ def test_ptable_scatter_colorbar_si_formatting() -> None:
     }
 
     # Test with SI suffixes for colorbar
-    fig = pmv.ptable_scatter_plotly(test_data, colorbar={"tickformat": ".1~s"})
+    fig = pmv.ptable_scatter(test_data, colorbar={"tickformat": ".1~s"})
 
     # Find the colorbar trace
     colorbar_trace = get_scatter_colorbar_trace(fig)
@@ -156,7 +156,7 @@ def test_si_prefix_formatting_integration() -> None:
     """Test that SI suffixes is correctly used in the colorbar settings."""
     # Create a heatmap with a range of values
     test_data = {"Fe": 1_000, "O": 10_000, "C": 100_000, "H": 1_000_000}
-    fig = pmv.ptable_heatmap_plotly(test_data)
+    fig = pmv.ptable_heatmap(test_data)
 
     # Get the main colorbar trace
     colorbar_trace = get_main_colorbar_trace(fig)
@@ -166,13 +166,13 @@ def test_si_prefix_formatting_integration() -> None:
 
 
 def test_ptable_heatmap_log_scale_formatting() -> None:
-    """Test that ptable_heatmap_plotly with log=True correctly formats tick labels with
+    """Test that ptable_heatmap with log=True correctly formats tick labels with
     SI suffixes.
     """
     # Test with a wide range of values spanning multiple orders of magnitude
     test_data = {"Fe": 100, "O": 1_000, "C": 10_000, "H": 100_000, "N": 1_000_000}
 
-    fig = pmv.ptable_heatmap_plotly(test_data, log=True)
+    fig = pmv.ptable_heatmap(test_data, log=True)
 
     # Check that the colorbar has formatted tick labels with SI suffixes
     colorbar_trace = get_main_colorbar_trace(fig)
@@ -199,7 +199,7 @@ def test_ptable_heatmap_log_scale_formatting() -> None:
 
 
 def test_ptable_heatmap_splits_colorbar_si_formatting() -> None:
-    """Test ptable_heatmap_splits_plotly uses SI suffixes for colorbar ticks."""
+    """Test ptable_heatmap_splits uses SI suffixes for colorbar ticks."""
     # Create test data with a wide range of values
     test_data = pd.DataFrame(
         {
@@ -209,7 +209,7 @@ def test_ptable_heatmap_splits_colorbar_si_formatting() -> None:
     )
 
     # Test with SI suffixes for colorbar
-    fig = pmv.ptable_heatmap_splits_plotly(test_data, colorbar={"tickformat": ".1~s"})
+    fig = pmv.ptable_heatmap_splits(test_data, colorbar={"tickformat": ".1~s"})
 
     # Find traces with colorbars for each dataset
     dataset1_colorbars = get_colorbar_traces_by_title(fig, "Dataset 1")
@@ -249,7 +249,7 @@ def count_si_formatted_axes(fig: Figure, axis_type: str = "xaxis") -> int:
 
 
 def test_ptable_hists_log_scale_formatting() -> None:
-    """Test that ptable_hists_plotly with log=True correctly formats tick labels."""
+    """Test that ptable_hists with log=True correctly formats tick labels."""
     # Create test data with a wide range of values
     test_data = {
         "Fe": np.logspace(2, 6, 100),  # Values from 100 to 1,000,000
@@ -258,7 +258,7 @@ def test_ptable_hists_log_scale_formatting() -> None:
     }
 
     # Test with log scale
-    fig = pmv.ptable_hists_plotly(test_data, log=True, colorbar={"title": "Test"})
+    fig = pmv.ptable_hists(test_data, log=True, colorbar={"title": "Test"})
 
     # Find the colorbar trace
     colorbar_trace = get_scatter_colorbar_trace(fig)
@@ -275,7 +275,7 @@ def test_ptable_hists_log_scale_formatting() -> None:
 
 
 def test_ptable_scatter_log_scale_formatting() -> None:
-    """Test that ptable_scatter_plotly uses SI suffixes for colorbar ticks."""
+    """Test that ptable_scatter uses SI suffixes for colorbar ticks."""
     # Create test data with a wide range of values for color
     test_data = {
         "Fe": ([1, 2, 3], [4, 5, 6], [100, 1_000, 10_000]),  # x, y, color
@@ -284,7 +284,7 @@ def test_ptable_scatter_log_scale_formatting() -> None:
     }
 
     # Test with SI suffixes for colorbar
-    fig = pmv.ptable_scatter_plotly(test_data, colorbar={"tickformat": ".1~s"})
+    fig = pmv.ptable_scatter(test_data, colorbar={"tickformat": ".1~s"})
 
     # Find the colorbar trace
     colorbar_trace = get_scatter_colorbar_trace(fig)

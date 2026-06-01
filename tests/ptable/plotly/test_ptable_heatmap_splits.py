@@ -15,8 +15,8 @@ if TYPE_CHECKING:
     from typing import Any, Literal
 
 
-def test_ptable_heatmap_splits_plotly_basic() -> None:
-    """Test basic functionality of ptable_heatmap_splits_plotly."""
+def test_ptable_heatmap_splits_basic() -> None:
+    """Test basic functionality of ptable_heatmap_splits."""
     data: dict[str, list[float]] = {
         "Fe": [1, 2],
         "O": [3, 4],
@@ -26,19 +26,19 @@ def test_ptable_heatmap_splits_plotly_basic() -> None:
 
     # Test each orientation
     for orientation in ("diagonal", "horizontal", "vertical"):
-        fig = pmv.ptable_heatmap_splits_plotly(data, orientation=orientation)
+        fig = pmv.ptable_heatmap_splits(data, orientation=orientation)
         assert isinstance(fig, go.Figure)
         # Each split should have its own subplot
         assert len(fig.data) == sum(len(v) for v in data.values()) + 1
 
     # Test grid orientation separately with 4 splits
     data_4_split = {"Fe": [1, 2, 3, 4]}
-    fig = pmv.ptable_heatmap_splits_plotly(data_4_split, orientation="grid")
+    fig = pmv.ptable_heatmap_splits(data_4_split, orientation="grid")
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == sum(len(v) for v in data_4_split.values()) + 1
 
 
-def test_ptable_heatmap_splits_plotly_f_block() -> None:
+def test_ptable_heatmap_splits_f_block() -> None:
     """Test that f-block elements are only hidden in 'auto' mode when there's no data
     for any f-block element.
     """
@@ -48,7 +48,7 @@ def test_ptable_heatmap_splits_plotly_f_block() -> None:
     rows_per_mode: dict[bool | Literal["auto"], int] = {True: 7, "auto": 7, False: 10}
 
     for hide_f_block, expected_n_rows in rows_per_mode.items():
-        fig = pmv.ptable_heatmap_splits_plotly(data_no_f, hide_f_block=hide_f_block)
+        fig = pmv.ptable_heatmap_splits(data_no_f, hide_f_block=hide_f_block)
         assert fig._grid_ref is not None
         n_rows = len(fig._grid_ref)
         assert n_rows == expected_n_rows, f"{n_rows=}, {hide_f_block=}"
@@ -58,14 +58,14 @@ def test_ptable_heatmap_splits_plotly_f_block() -> None:
 
     rows_per_mode["auto"] = 10
     for hide_f_block, expected_n_rows in rows_per_mode.items():
-        fig = pmv.ptable_heatmap_splits_plotly(data_with_f, hide_f_block=hide_f_block)
+        fig = pmv.ptable_heatmap_splits(data_with_f, hide_f_block=hide_f_block)
         assert fig._grid_ref is not None
         n_rows = len(fig._grid_ref)
         assert n_rows == expected_n_rows, f"{n_rows=}, {hide_f_block=}"
 
     # Check that f-block elements are shown when hide_f_block="auto" and data includes
     # f-block elements
-    fig_with_f = pmv.ptable_heatmap_splits_plotly(data_with_f, hide_f_block="auto")
+    fig_with_f = pmv.ptable_heatmap_splits(data_with_f, hide_f_block="auto")
     anno_texts = [
         anno.text
         for anno in fig_with_f.layout.annotations
@@ -89,7 +89,7 @@ def test_ptable_heatmap_splits_plotly_f_block() -> None:
         assert symbol in anno_texts
 
     # Check that f-block elements are hidden when hide_f_block=True
-    fig_with_f_hidden = pmv.ptable_heatmap_splits_plotly(data_with_f, hide_f_block=True)
+    fig_with_f_hidden = pmv.ptable_heatmap_splits(data_with_f, hide_f_block=True)
     anno_texts_hidden = [
         anno.text
         for anno in fig_with_f_hidden.layout.annotations
@@ -111,13 +111,13 @@ def test_ptable_heatmap_splits_plotly_f_block() -> None:
         ("diagonal", "Plasma", 10, 0.9),
     ],
 )
-def test_ptable_heatmap_splits_plotly_display_options(
+def test_ptable_heatmap_splits_display_options(
     orientation: Literal["diagonal", "horizontal", "vertical", "grid"],
     colorscale: str,
     font_size: int | None,
     scale: float,
 ) -> None:
-    """Test various display options for ptable_heatmap_splits_plotly."""
+    """Test various display options for ptable_heatmap_splits."""
     subplot_kwargs = {
         "horizontal_spacing": 0.05,
         "vertical_spacing": 0.05,
@@ -127,7 +127,7 @@ def test_ptable_heatmap_splits_plotly_display_options(
     element_symbol_map = {"Fe": "Iron", "O": "Oxygen"}
     symbol_kwargs = {"font": {"size": 14, "color": "red"}}
 
-    fig = pmv.ptable_heatmap_splits_plotly(
+    fig = pmv.ptable_heatmap_splits(
         {"Fe": [1, 2], "O": [3, 4], "H": [0.5, 1.5], "He": [1.5, 2.5]},
         orientation=orientation,
         colorscale=colorscale,
@@ -152,20 +152,20 @@ def test_ptable_heatmap_splits_plotly_display_options(
     "colorbar",
     [None, False, dict(orientation="v", len=0.8), dict(orientation="h", len=0.3)],
 )
-def test_ptable_heatmap_splits_plotly_colorbar(
+def test_ptable_heatmap_splits_colorbar(
     colorbar: dict[str, Any] | Literal[False] | None,
 ) -> None:
-    """Test colorbar customization in ptable_heatmap_splits_plotly."""
+    """Test colorbar customization in ptable_heatmap_splits."""
     data = {"Fe": [1, 2], "O": [3, 4], "H": [0.5, 1.5], "He": [1.5, 2.5]}
 
-    fig = pmv.ptable_heatmap_splits_plotly(data, colorbar=colorbar)
+    fig = pmv.ptable_heatmap_splits(data, colorbar=colorbar)
 
     hidden_scatter_trace = [trace for trace in fig.data if trace.x[0] is None]
     assert (len(hidden_scatter_trace) == 0) == (colorbar is False)
 
 
-def test_ptable_heatmap_splits_plotly_annotations() -> None:
-    """Test custom annotations in ptable_heatmap_splits_plotly."""
+def test_ptable_heatmap_splits_annotations() -> None:
+    """Test custom annotations in ptable_heatmap_splits."""
     data = {"Fe": [1, 2], "O": [3, 4], "H": [0.5, 1.5], "He": [1.5, 2.5]}
 
     # Test with dict annotations
@@ -174,7 +174,7 @@ def test_ptable_heatmap_splits_plotly_annotations() -> None:
         "O": {"text": "Oxygen", "font": {"size": 14, "color": "blue"}},
     }
 
-    fig = pmv.ptable_heatmap_splits_plotly(data, annotations=annotations)
+    fig = pmv.ptable_heatmap_splits(data, annotations=annotations)
     assert isinstance(fig, go.Figure)
 
     # Check for annotations with custom text
@@ -200,7 +200,7 @@ def test_ptable_heatmap_splits_plotly_annotations() -> None:
     def annotation_func(value: list[float] | np.ndarray) -> dict[str, Any]:
         return {"text": f"Value: {np.mean(value):.1f}"}
 
-    fig = pmv.ptable_heatmap_splits_plotly(data, annotations=annotation_func)
+    fig = pmv.ptable_heatmap_splits(data, annotations=annotation_func)
 
     # Check for annotations with the expected text format
     value_annotations = [
@@ -218,32 +218,32 @@ def test_ptable_heatmap_splits_plotly_annotations() -> None:
         assert any(value in anno.text for anno in value_annotations)
 
 
-def test_ptable_heatmap_splits_plotly_error_cases() -> None:
-    """Test error cases for ptable_heatmap_splits_plotly."""
+def test_ptable_heatmap_splits_error_cases() -> None:
+    """Test error cases for ptable_heatmap_splits."""
     data = {"Fe": [1, 2], "O": [3, 4]}
 
     # Test empty data
     with pytest.raises(
-        ValueError, match=r"ptable_heatmap_splits_plotly: data={} must not be empty"
+        ValueError, match=r"ptable_heatmap_splits: data={} must not be empty"
     ):
-        pmv.ptable_heatmap_splits_plotly({})
+        pmv.ptable_heatmap_splits({})
 
     # Test invalid n_splits
     with pytest.raises(ValueError, match="Number of splits 1 must be 2, 3, or 4"):
-        pmv.ptable_heatmap_splits_plotly({"Fe": [1]})
+        pmv.ptable_heatmap_splits({"Fe": [1]})
 
     # Test invalid orientation
     with pytest.raises(
         ValueError,
         match="orientation='grid' is only supported for n_splits=4, got n_splits=2",
     ):
-        pmv.ptable_heatmap_splits_plotly(data, orientation="grid")
+        pmv.ptable_heatmap_splits(data, orientation="grid")
 
     # Test invalid scale
     with pytest.raises(
         ValueError, match=r"received for the 'size' property of layout.annotation.font"
     ):
-        pmv.ptable_heatmap_splits_plotly(data, scale=-1.0)
+        pmv.ptable_heatmap_splits(data, scale=-1.0)
 
     # Test invalid colorscale
     with pytest.raises(
@@ -251,16 +251,16 @@ def test_ptable_heatmap_splits_plotly_error_cases() -> None:
         match=r"Invalid value of type 'builtins.str' received for the "
         "'colorscale' property of scatter.marker",
     ):
-        pmv.ptable_heatmap_splits_plotly(data, colorscale="invalid_colorscale")
+        pmv.ptable_heatmap_splits(data, colorscale="invalid_colorscale")
 
 
-def test_ptable_heatmap_splits_plotly_colorscales() -> None:
+def test_ptable_heatmap_splits_colorscales() -> None:
     """Test different colorscale configurations."""
     # Create test data with 2 values per element
     data = {str(elem): [1, 2] for elem in list(Element)[:5]}
 
     # Test single colorscale
-    fig = pmv.ptable_heatmap_splits_plotly(
+    fig = pmv.ptable_heatmap_splits(
         data=data,
         orientation="diagonal",
         colorscale="Viridis",
@@ -269,7 +269,7 @@ def test_ptable_heatmap_splits_plotly_colorscales() -> None:
     assert isinstance(fig, go.Figure)
 
     # Test multiple colorscales as list of strings
-    fig = pmv.ptable_heatmap_splits_plotly(
+    fig = pmv.ptable_heatmap_splits(
         data=data,
         orientation="diagonal",
         colorscale=["Viridis", "Plasma"],  # One colorscale per split
@@ -286,7 +286,7 @@ def test_ptable_heatmap_splits_plotly_colorscales() -> None:
         (0.5, "rgb(255,255,0)"),
         (1.0, "rgb(0,0,255)"),
     ]
-    fig = pmv.ptable_heatmap_splits_plotly(
+    fig = pmv.ptable_heatmap_splits(
         data=data,
         orientation="diagonal",
         colorscale=[custom_colorscale, custom_colorscale],  # One per split
@@ -295,27 +295,27 @@ def test_ptable_heatmap_splits_plotly_colorscales() -> None:
 
     # Test invalid number of splits
     with pytest.raises(ValueError, match="must be 2, 3, or 4"):
-        pmv.ptable_heatmap_splits_plotly(
+        pmv.ptable_heatmap_splits(
             data={str(elem): [1] * 5 for elem in list(Element)[:5]},  # 5 splits
             orientation="diagonal",
         )
 
     # Test mismatched colorscales and data splits
     with pytest.raises(ValueError, match=r"Number of colorscales .* must match"):
-        pmv.ptable_heatmap_splits_plotly(
+        pmv.ptable_heatmap_splits(
             data=data,  # 2 splits
             orientation="diagonal",
             colorscale=["Viridis", "Plasma", "Inferno"],  # 3 colorscales
         )
 
 
-def test_ptable_heatmap_splits_plotly_colorbars() -> None:
+def test_ptable_heatmap_splits_colorbars() -> None:
     """Test different colorbar configurations."""
     # Create test data with 2 values per element
     data = {str(elem): [1, 2] for elem in list(Element)[:5]}
 
     # Test single colorbar dict
-    fig = pmv.ptable_heatmap_splits_plotly(
+    fig = pmv.ptable_heatmap_splits(
         data=data,
         orientation="diagonal",
         colorbar=dict(title="Test"),
@@ -323,7 +323,7 @@ def test_ptable_heatmap_splits_plotly_colorbars() -> None:
     assert isinstance(fig, go.Figure)
 
     # Test multiple colorbars with custom positions
-    fig = pmv.ptable_heatmap_splits_plotly(
+    fig = pmv.ptable_heatmap_splits(
         data=data,
         orientation="diagonal",
         colorbar=[
@@ -345,7 +345,7 @@ def test_ptable_heatmap_splits_plotly_colorbars() -> None:
     assert (cbar2.x, cbar2.y) == (1.0, 0.7)
 
     # Test mixed orientations
-    fig = pmv.ptable_heatmap_splits_plotly(
+    fig = pmv.ptable_heatmap_splits(
         data=data,
         orientation="diagonal",
         colorbar=[
@@ -365,7 +365,7 @@ def test_ptable_heatmap_splits_plotly_colorbars() -> None:
 
     # Test mismatched colorbars and splits
     with pytest.raises(ValueError, match=r"Number of colorbars .* must match"):
-        pmv.ptable_heatmap_splits_plotly(
+        pmv.ptable_heatmap_splits(
             data=data,  # 2 splits
             orientation="diagonal",
             colorbar=[dict(title="1"), dict(title="2"), dict(title="3")],  # 3 colorbars
@@ -376,7 +376,7 @@ def test_ptable_heatmap_splits_plotly_colorbars() -> None:
     "orientation",
     ["horizontal", "vertical", "diagonal"],
 )
-def test_ptable_heatmap_splits_plotly_split_names(
+def test_ptable_heatmap_splits_split_names(
     orientation: Literal["diagonal", "horizontal", "vertical", "grid"],
 ) -> None:
     """Test split names in colorbar titles for different orientations."""
@@ -384,7 +384,7 @@ def test_ptable_heatmap_splits_plotly_split_names(
     data = {str(elem): [1.0, 2.0] for elem in list(Element)[:5]}
 
     # Test orientation split names
-    fig = pmv.ptable_heatmap_splits_plotly(
+    fig = pmv.ptable_heatmap_splits(
         data=data,
         orientation=orientation,
         colorscale=["Viridis", "Plasma"],
@@ -409,13 +409,13 @@ def test_ptable_heatmap_splits_plotly_split_names(
     assert titles in (["First", "Second"], ["Split 1", "Split 2"])
 
 
-def test_ptable_heatmap_splits_plotly_hover_tooltips() -> None:
+def test_ptable_heatmap_splits_hover_tooltips() -> None:
     """Test hover tooltip customization."""
     # Create test data with 2 values per element
     data = {str(elem): [1.0, 2.0] for elem in list(Element)[:5]}
 
     # Test default hover tooltip
-    fig = pmv.ptable_heatmap_splits_plotly(data=data, orientation="diagonal")
+    fig = pmv.ptable_heatmap_splits(data=data, orientation="diagonal")
     hover_texts = [
         anno.hovertext
         for anno in fig.layout.annotations
@@ -430,7 +430,7 @@ def test_ptable_heatmap_splits_plotly_hover_tooltips() -> None:
 
     # Test custom hover template with string formatter
     custom_template = "{name} ({symbol}) - {split_name}: {value}"
-    fig = pmv.ptable_heatmap_splits_plotly(
+    fig = pmv.ptable_heatmap_splits(
         data=data,
         orientation="diagonal",
         hover_template=custom_template,
@@ -450,7 +450,7 @@ def test_ptable_heatmap_splits_plotly_hover_tooltips() -> None:
 
     # Test with non-integer values and string formatter
     data = {str(elem): [1.23456, 2.34567] for elem in list(Element)[:5]}
-    fig = pmv.ptable_heatmap_splits_plotly(
+    fig = pmv.ptable_heatmap_splits(
         data=data,
         orientation="diagonal",
         hover_template=custom_template,
@@ -478,7 +478,7 @@ def test_ptable_heatmap_splits_plotly_hover_tooltips() -> None:
             return f"{val:.1f} (low)"
         return f"{val:.1f} (high)"
 
-    fig = pmv.ptable_heatmap_splits_plotly(
+    fig = pmv.ptable_heatmap_splits(
         data=data,
         orientation="diagonal",
         hover_template=custom_template,
@@ -503,7 +503,7 @@ def test_ptable_heatmap_splits_plotly_hover_tooltips() -> None:
     # Test hover tooltip with DataFrame input
     df_data = pd.DataFrame(data).T
     df_data.columns = ["First Value", "Second Value"]
-    fig = pmv.ptable_heatmap_splits_plotly(
+    fig = pmv.ptable_heatmap_splits(
         data=df_data,
         orientation="diagonal",
         hover_fmt=".2f",
@@ -522,7 +522,7 @@ def test_ptable_heatmap_splits_plotly_hover_tooltips() -> None:
 
     # Test hover tooltip with custom hover data
     hover_data = {str(elem): f"Custom data for {elem}" for elem in list(Element)[:5]}
-    fig = pmv.ptable_heatmap_splits_plotly(
+    fig = pmv.ptable_heatmap_splits(
         data=data,
         orientation="diagonal",
         hover_data=hover_data,
@@ -539,8 +539,8 @@ def test_ptable_heatmap_splits_plotly_hover_tooltips() -> None:
         assert "Custom data for" in text, "Custom hover data not in hover text"
 
 
-def test_ptable_heatmap_splits_plotly_dataframe_input() -> None:
-    """Test that ptable_heatmap_splits_plotly correctly handles DataFrame input."""
+def test_ptable_heatmap_splits_dataframe_input() -> None:
+    """Test that ptable_heatmap_splits correctly handles DataFrame input."""
     # Create test DataFrame with meaningful column names
     data = pd.DataFrame(
         {
@@ -551,7 +551,7 @@ def test_ptable_heatmap_splits_plotly_dataframe_input() -> None:
     )
 
     # Test default hover tooltip with DataFrame
-    fig = pmv.ptable_heatmap_splits_plotly(data=data, orientation="diagonal")
+    fig = pmv.ptable_heatmap_splits(data=data, orientation="diagonal")
     hover_texts = [
         anno.hovertext
         for anno in fig.layout.annotations
@@ -572,7 +572,7 @@ def test_ptable_heatmap_splits_plotly_dataframe_input() -> None:
 
     # Test custom hover template with DataFrame
     custom_template = "{name} ({symbol}): {split_name} = {value} eV"
-    fig = pmv.ptable_heatmap_splits_plotly(
+    fig = pmv.ptable_heatmap_splits(
         data=data,
         orientation="diagonal",
         hover_template=custom_template,
@@ -597,7 +597,7 @@ def test_ptable_heatmap_splits_plotly_dataframe_input() -> None:
     )
 
     # Test that colorbar titles include column names when using multiple colorbars
-    fig = pmv.ptable_heatmap_splits_plotly(
+    fig = pmv.ptable_heatmap_splits(
         data=data,
         orientation="diagonal",
         colorbar=[
@@ -620,15 +620,13 @@ def test_ptable_heatmap_splits_plotly_dataframe_input() -> None:
     # assert any("Band Gap" in title for title in titles), f"{titles=}"
 
 
-def test_ptable_heatmap_splits_plotly_special_colors() -> None:
+def test_ptable_heatmap_splits_special_colors() -> None:
     """Test nan_color and zero_color customization."""
     data = {"Fe": [1.0, np.nan], "O": [0.0, 2.0]}  # Test NaN and zero values
 
     # Test both custom and default colors
-    fig_default = pmv.ptable_heatmap_splits_plotly(data)
-    fig_custom = pmv.ptable_heatmap_splits_plotly(
-        data, nan_color="#f00", zero_color="#0f0"
-    )
+    fig_default = pmv.ptable_heatmap_splits(data)
+    fig_custom = pmv.ptable_heatmap_splits(data, nan_color="#f00", zero_color="#0f0")
 
     for fig, nan_color, zero_color in (
         (fig_default, "#eff", "#aaa"),
@@ -641,13 +639,13 @@ def test_ptable_heatmap_splits_plotly_special_colors() -> None:
         assert zero_color in fill_colors, f"{zero_color=} not found in figure"
 
 
-def test_ptable_heatmap_splits_plotly_auto_font_color() -> None:
+def test_ptable_heatmap_splits_auto_font_color() -> None:
     """Test auto-changing font color for element symbols based on background color."""
     # Test with a single element and a simple colorscale
     data = {"Fe": [0.5, 0.5]}  # Middle value
 
     # Create a figure with default settings
-    fig = pmv.ptable_heatmap_splits_plotly(data)
+    fig = pmv.ptable_heatmap_splits(data)
 
     # Find annotations with element symbols
     annotations = [
@@ -708,14 +706,14 @@ def test_luminance_calculation_for_font_color() -> None:
         assert ("black" if lum > threshold else "white") == "black"
 
 
-def test_ptable_heatmap_splits_plotly_custom_font_color_override() -> None:
+def test_ptable_heatmap_splits_custom_font_color_override() -> None:
     """Test that custom font color in symbol_kwargs overrides the auto font color."""
     data = {"Fe": [0.1, 0.2]}  # Low values should result in dark colors
 
     # Custom symbol_kwargs with explicit font color
     symbol_kwargs = {"font": {"color": "red", "size": 16}}
 
-    fig = pmv.ptable_heatmap_splits_plotly(  # Viridis has dark colors for low values
+    fig = pmv.ptable_heatmap_splits(  # Viridis has dark colors for low values
         data, colorscale="Viridis", symbol_kwargs=symbol_kwargs
     )
 
