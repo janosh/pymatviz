@@ -31,7 +31,7 @@ PRETTY_LABELS: Final[dict[str, str]] = {
     "R2_adj": "R<sup>2</sup><sub>adj</sub>",
 }
 
-PLOTLY_LINE_STYLES: Final = (
+PLOTLY_LINE_STYLES: Final[tuple[str, ...]] = (
     "solid",
     "dot",
     "dash",

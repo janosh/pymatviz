@@ -224,3 +224,18 @@ def test_dict_with_dataframe_raises_error(
         match="when passing a DataFrame, probs_positive must be a column name",
     ):
         curve_func("target", probs_dict, df=df_clf)
+
+
+@pytest.mark.parametrize("curve_func", [precision_recall_curve, roc_curve])
+def test_curve_does_not_mutate_input_dicts(
+    binary_classification_data: tuple[np.ndarray, np.ndarray],
+    curve_func: Callable[..., go.Figure],
+) -> None:
+    """dict-of-dicts predictions must not have probs_positive popped off the caller."""
+    targets, probs = binary_classification_data
+    model_kwargs = {"probs_positive": probs, "line": {"color": "red"}}
+
+    curve_func(targets, {"Model A": model_kwargs}, no_skill=False)
+
+    assert "probs_positive" in model_kwargs  # caller dict untouched
+    assert model_kwargs["line"] == {"color": "red"}

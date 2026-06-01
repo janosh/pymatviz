@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -13,7 +14,6 @@ from pymatviz.process_data import df_to_arrays
 
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
     from typing import Any
 
     from numpy.typing import ArrayLike
@@ -26,14 +26,17 @@ def _load_regression_data(
     df: pd.DataFrame | None,
 ) -> tuple[np.ndarray, np.ndarray, Any]:
     """Resolve y_true/y_pred/y_std into arrays, pulling columns from df when given."""
-    if isinstance(y_std, str | pd.Index):
-        arrays = df_to_arrays(df, y_true, y_pred, y_std)
-        y_true, y_pred, y_std = arrays[0], arrays[1], arrays[2]
+    # str/pd.Index or a sequence of column names -> resolve from df (multi-col -> dict)
+    if isinstance(y_std, str | pd.Index) or (
+        isinstance(y_std, Sequence) and not isinstance(y_std, str)
+    ):
+        arrays = df_to_arrays(df, y_true, y_pred, y_std)  # ty: ignore
+        true_vals, pred_vals, y_std = arrays[0], arrays[1], arrays[2]
     else:
         arrays = df_to_arrays(df, y_true, y_pred)
-        y_true, y_pred = arrays[0], arrays[1]
+        true_vals, pred_vals = arrays[0], arrays[1]
 
-    return np.asarray(y_true), np.asarray(y_pred), y_std
+    return np.asarray(true_vals), np.asarray(pred_vals), y_std  # ty: ignore
 
 
 def qq_gaussian(

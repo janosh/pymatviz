@@ -101,13 +101,17 @@ def _add_classifier_curve_traces(
         meta_key (str): Key in each trace's meta dict to sort traces by (descending).
         kwargs (dict): Extra keywords merged into every trace's add_scatter call.
     """
-    for idx, (name, trace_kwargs) in enumerate(curves_dict.items()):
+    for idx, (name, curve_cfg) in enumerate(curves_dict.items()):
+        trace_kwargs = dict(curve_cfg)  # don't mutate caller-supplied dicts
         curve_probs = np.asarray(trace_kwargs.pop("probs_positive"))
         no_nan = ~np.isnan(targets) & ~np.isnan(curve_probs)
         trace_defaults = build_trace(name, idx, targets[no_nan], curve_probs[no_nan])
         fig.add_scatter(**trace_defaults | kwargs | trace_kwargs)
 
-    fig.data = sorted(fig.data, key=lambda tr: tr.meta.get(meta_key), reverse=True)
+    # default to -inf so traces missing the metric sort last
+    fig.data = sorted(
+        fig.data, key=lambda tr: tr.meta.get(meta_key, float("-inf")), reverse=True
+    )
 
 
 def roc_curve(

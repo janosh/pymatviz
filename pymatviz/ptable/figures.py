@@ -446,8 +446,14 @@ def _row_7_is_empty(symbols: Collection[str]) -> bool:
 
 def _resolve_elem_type_colors(
     color_elem_strategy: ColorElemTypeStrategy,
+    elem_type_colors: dict[str, str] | None = None,
 ) -> dict[str, str]:
-    """Resolve the element-type color map from a `color_elem_strategy` value."""
+    """Resolve the element-type color map from a `color_elem_strategy` value.
+
+    A caller-provided ``elem_type_colors`` override takes precedence when given.
+    """
+    if elem_type_colors is not None:
+        return elem_type_colors
     if isinstance(color_elem_strategy, dict):
         return color_elem_strategy
     if color_elem_strategy in VALID_COLOR_ELEM_STRATEGIES:
@@ -547,7 +553,7 @@ def ptable_hists(
     elif isinstance(data, pd.Series):
         data = data.to_dict()
 
-    elem_type_colors = _resolve_elem_type_colors(color_elem_strategy)
+    elem_type_colors = _resolve_elem_type_colors(color_elem_strategy, elem_type_colors)
 
     # Initialize figure with subplots in periodic table layout
     n_rows, n_cols = 10, 18
@@ -1710,7 +1716,7 @@ def ptable_scatter(
     Returns:
         go.Figure: Plotly Figure object with line plots in a periodic table layout.
     """
-    elem_type_colors = _resolve_elem_type_colors(color_elem_strategy)
+    elem_type_colors = _resolve_elem_type_colors(color_elem_strategy, elem_type_colors)
 
     # Initialize figure with subplots
     n_rows, n_cols = 10, 18
