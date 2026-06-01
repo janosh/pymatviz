@@ -32,6 +32,20 @@ if TYPE_CHECKING:
     from pymatviz.typing import AnyStructure
 
 
+def _resolve_element_colors(
+    element_color_scheme: ElemColorScheme | dict[str, str],
+) -> dict[str, Any]:
+    """Resolve element colors from a scheme enum or custom dict (merged over Jmol)."""
+    if isinstance(element_color_scheme, dict):
+        return ELEM_COLORS_JMOL | element_color_scheme
+    if isinstance(element_color_scheme, ElemColorScheme):
+        return element_color_scheme.color_map
+    raise TypeError(
+        f"Invalid {element_color_scheme=}. Must be {', '.join(ElemColorScheme)} "
+        "or a custom dict."
+    )
+
+
 def coordination_hist(
     structures: AnyStructure | dict[str, AnyStructure] | Sequence[AnyStructure],
     *,
@@ -154,16 +168,7 @@ def coordination_hist(
     else:
         fig = go.Figure()
 
-    if isinstance(element_color_scheme, dict):
-        # Merge custom colors with default Jmol colors to get a complete color scheme
-        element_colors = ELEM_COLORS_JMOL | element_color_scheme
-    elif isinstance(element_color_scheme, ElemColorScheme):
-        element_colors = element_color_scheme.color_map
-    else:
-        raise TypeError(
-            f"Invalid {element_color_scheme=}. Must be {', '.join(ElemColorScheme)} "
-            f"or a custom dict."
-        )
+    element_colors = _resolve_element_colors(element_color_scheme)
 
     row, col = 1, 1
     is_single_structure = len(structures) == 1
@@ -433,15 +438,7 @@ def coordination_vs_cutoff_line(
 
     cutoffs = np.linspace(cutoff_range[0], cutoff_range[1], num_points)
 
-    if isinstance(element_color_scheme, dict):
-        element_colors = ELEM_COLORS_JMOL | element_color_scheme
-    elif isinstance(element_color_scheme, ElemColorScheme):
-        element_colors = element_color_scheme.color_map
-    else:
-        raise TypeError(
-            f"Invalid {element_color_scheme=}. Must be {', '.join(ElemColorScheme)} "
-            "or a custom dict."
-        )
+    element_colors = _resolve_element_colors(element_color_scheme)
 
     n_cols = min(3, len(struct_dict))
     n_rows = math.ceil(len(struct_dict) / n_cols)

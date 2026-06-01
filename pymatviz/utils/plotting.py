@@ -4,6 +4,7 @@ Available functions:
     - annotate: Annotate a plotly figure with text.
     - get_font_color: Get the font color used in a Plotly figure.
     - get_fig_xy_range: Get the x and y range of a plotly figure.
+    - is_faceted_figure: Whether a Plotly figure is faceted (has subplots).
     - luminance: Compute the luminance of a color.
     - pick_max_contrast_color: Choose black or white text color for contrast.
 """
@@ -29,6 +30,27 @@ PRETTY_LABELS: Final[dict[str, str]] = {
     "R2": "R<sup>2</sup>",
     "R2_adj": "R<sup>2</sup><sub>adj</sub>",
 }
+
+PLOTLY_LINE_STYLES: Final = (
+    "solid",
+    "dot",
+    "dash",
+    "longdash",
+    "dashdot",
+    "longdashdot",
+)
+
+
+def is_faceted_figure(fig: go.Figure) -> bool:
+    """Whether a Plotly figure is faceted (traces on non-primary subplot x-axes).
+
+    Args:
+        fig (go.Figure): The Plotly figure to inspect.
+
+    Returns:
+        bool: True if any trace is assigned to an x-axis other than the primary "x".
+    """
+    return any(getattr(trace, "xaxis", None) not in (None, "x") for trace in fig.data)
 
 
 def annotate(text: str | Sequence[str], fig: go.Figure, **kwargs: Any) -> go.Figure:
@@ -57,9 +79,7 @@ def annotate(text: str | Sequence[str], fig: go.Figure, **kwargs: Any) -> go.Fig
     )
 
     # Annotate all subplots or main plot if not faceted
-    if any(
-        getattr(trace, "xaxis", None) not in (None, "x") for trace in fig.data
-    ):  # Faceted plot
+    if is_faceted_figure(fig):  # Faceted plot
         for idx, trace in enumerate(fig.data):
             # if text is str, use it for all subplots though we might want to
             # warn since this will likely rarely be intended

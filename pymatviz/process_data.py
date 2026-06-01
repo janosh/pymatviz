@@ -376,11 +376,10 @@ def normalize_structures(
     if isinstance(systems, pd.Series):  # Keep original Series index as keys
         return {key: to_pmg_struct(val) for key, val in systems.items()}
 
-    if isinstance(systems, (Sequence, pd.Series)) and not isinstance(systems, str):
-        iterable_struct = list(systems) if isinstance(systems, pd.Series) else systems
+    if isinstance(systems, Sequence) and not isinstance(systems, str):
         return {
             f"{idx} {(struct := to_pmg_struct(item)).formula}": struct
-            for idx, item in enumerate(iterable_struct, start=1)
+            for idx, item in enumerate(systems, start=1)
         }
 
     raise TypeError(

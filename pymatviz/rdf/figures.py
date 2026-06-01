@@ -20,6 +20,7 @@ from plotly.subplots import make_subplots
 
 from pymatviz.process_data import normalize_structures
 from pymatviz.rdf.helpers import calculate_rdf
+from pymatviz.utils.plotting import PLOTLY_LINE_STYLES
 
 
 if TYPE_CHECKING:
@@ -155,14 +156,7 @@ def element_pair_rdfs(
 
     # Set default colors and line styles if not provided
     colors = colors or plotly.colors.qualitative.Plotly
-    line_styles = line_styles or (
-        "solid",
-        "dot",
-        "dash",
-        "longdash",
-        "dashdot",
-        "longdashdot",
-    )
+    line_styles = line_styles or PLOTLY_LINE_STYLES
     labels = list(struct_dict)
 
     # Add RDF traces to the figure
@@ -277,14 +271,7 @@ def full_rdf(
     fig = go.Figure()
 
     colors = colors or plotly.colors.qualitative.Plotly
-    line_styles = line_styles or (
-        "solid",
-        "dot",
-        "dash",
-        "longdash",
-        "dashdot",
-        "longdashdot",
-    )
+    line_styles = line_styles or PLOTLY_LINE_STYLES
 
     for idx, (label, (radii, rdf)) in enumerate(rdfs.items()):
         fig.add_scatter(

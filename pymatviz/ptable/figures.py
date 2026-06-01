@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import warnings
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal, TypeAlias, TypedDict, cast
 
 import numpy as np
@@ -438,6 +438,25 @@ def ptable_heatmap(
     return fig
 
 
+def _row_7_is_empty(symbols: Collection[str]) -> bool:
+    """Whether period-7 elements (Fr, Ra, Z 104-118) are all absent from the data."""
+    period_7 = {el.symbol for el in Element if el.Z in (87, 88, *range(104, 119))}
+    return not (set(symbols) & period_7)
+
+
+def _resolve_elem_type_colors(
+    color_elem_strategy: ColorElemTypeStrategy,
+) -> dict[str, str]:
+    """Resolve the element-type color map from a `color_elem_strategy` value."""
+    if isinstance(color_elem_strategy, dict):
+        return color_elem_strategy
+    if color_elem_strategy in VALID_COLOR_ELEM_STRATEGIES:
+        return ELEM_TYPE_COLORS
+    raise ValueError(
+        f"{color_elem_strategy=} must be one of {VALID_COLOR_ELEM_STRATEGIES}"
+    )
+
+
 def ptable_hists(
     data: (
         pd.DataFrame
@@ -528,14 +547,7 @@ def ptable_hists(
     elif isinstance(data, pd.Series):
         data = data.to_dict()
 
-    if isinstance(color_elem_strategy, dict):
-        elem_type_colors = color_elem_strategy
-    elif color_elem_strategy in VALID_COLOR_ELEM_STRATEGIES:
-        elem_type_colors = ELEM_TYPE_COLORS
-    else:
-        raise ValueError(
-            f"{color_elem_strategy=} must be one of {VALID_COLOR_ELEM_STRATEGIES}"
-        )
+    elem_type_colors = _resolve_elem_type_colors(color_elem_strategy)
 
     # Initialize figure with subplots in periodic table layout
     n_rows, n_cols = 10, 18
@@ -556,10 +568,8 @@ def ptable_hists(
     else:
         bins_range = x_range
 
-    # Check if row 7 is empty. If so, pull all rows below it up by one.
-    row_7_is_empty = not bool(
-        set(data) & {el.symbol for el in Element if el.Z in (87, 88, *range(104, 119))}
-    )
+    # If row 7 is empty, pull all rows below it up by one.
+    row_7_is_empty = _row_7_is_empty(data)
 
     # Create histograms for each element
     for symbol, period, group, *_ in df_ptable.itertuples():
@@ -1183,10 +1193,8 @@ def ptable_heatmap_splits(
             ([0, 1, mid, 0], [1, 1, mid, 1]),  # top
         ]
 
-    # Check if row 7 is empty. If so, pull all rows below it up by one.
-    row_7_is_empty = not bool(
-        set(data) & {el.symbol for el in Element if el.Z in (87, 88, *range(104, 119))}
-    )
+    # If row 7 is empty, pull all rows below it up by one.
+    row_7_is_empty = _row_7_is_empty(data)
 
     # Process data and create shapes for each element
     for symbol, period, group, _name, *_ in df_ptable.itertuples():
@@ -1702,14 +1710,7 @@ def ptable_scatter(
     Returns:
         go.Figure: Plotly Figure object with line plots in a periodic table layout.
     """
-    if isinstance(color_elem_strategy, dict):
-        elem_type_colors = color_elem_strategy
-    elif color_elem_strategy in VALID_COLOR_ELEM_STRATEGIES:
-        elem_type_colors = ELEM_TYPE_COLORS
-    else:
-        raise ValueError(
-            f"{color_elem_strategy=} must be one of {VALID_COLOR_ELEM_STRATEGIES}"
-        )
+    elem_type_colors = _resolve_elem_type_colors(color_elem_strategy)
 
     # Initialize figure with subplots
     n_rows, n_cols = 10, 18
@@ -1767,10 +1768,8 @@ def ptable_scatter(
 
     has_numeric_colors = cbar_min != float("inf")
 
-    # Check if row 7 is empty. If so, pull all rows below it up by one.
-    row_7_is_empty = not bool(
-        set(data) & {el.symbol for el in Element if el.Z in (87, 88, *range(104, 119))}
-    )
+    # If row 7 is empty, pull all rows below it up by one.
+    row_7_is_empty = _row_7_is_empty(data)
 
     # Track whether we're plotting multiple lines per element
     line_colors: dict[str, str] | None = None

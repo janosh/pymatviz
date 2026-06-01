@@ -19,6 +19,23 @@ if TYPE_CHECKING:
     from numpy.typing import ArrayLike
 
 
+def _load_regression_data(
+    y_true: ArrayLike | str,
+    y_pred: ArrayLike | str,
+    y_std: ArrayLike | dict[str, ArrayLike] | str | Sequence[str],
+    df: pd.DataFrame | None,
+) -> tuple[np.ndarray, np.ndarray, Any]:
+    """Resolve y_true/y_pred/y_std into arrays, pulling columns from df when given."""
+    if isinstance(y_std, str | pd.Index):
+        arrays = df_to_arrays(df, y_true, y_pred, y_std)
+        y_true, y_pred, y_std = arrays[0], arrays[1], arrays[2]
+    else:
+        arrays = df_to_arrays(df, y_true, y_pred)
+        y_true, y_pred = arrays[0], arrays[1]
+
+    return np.asarray(y_true), np.asarray(y_pred), y_std
+
+
 def qq_gaussian(
     y_true: ArrayLike | str,
     y_pred: ArrayLike | str,
@@ -41,14 +58,7 @@ def qq_gaussian(
     Returns:
         go.Figure: plotly Figure with Q-Q plot
     """
-    if isinstance(y_std, str | pd.Index):
-        arrays = df_to_arrays(df, y_true, y_pred, y_std)
-        y_true, y_pred, y_std = arrays[0], arrays[1], arrays[2]
-    else:
-        arrays = df_to_arrays(df, y_true, y_pred)
-        y_true, y_pred = arrays[0], arrays[1]
-
-    y_true, y_pred = np.asarray(y_true), np.asarray(y_pred)  # Type narrowing
+    y_true, y_pred, y_std = _load_regression_data(y_true, y_pred, y_std, df)
 
     fig = fig or go.Figure()
     if not isinstance(y_std, dict):
@@ -140,14 +150,7 @@ def error_decay_with_uncert(
     Returns:
         Plotly figure with error decay plot
     """
-    if isinstance(y_std, str | pd.Index):
-        arrays = df_to_arrays(df, y_true, y_pred, y_std)
-        y_true, y_pred, y_std = arrays[0], arrays[1], arrays[2]
-    else:
-        arrays = df_to_arrays(df, y_true, y_pred)
-        y_true, y_pred = arrays[0], arrays[1]
-
-    y_true, y_pred = np.asarray(y_true), np.asarray(y_pred)  # Type narrowing
+    y_true, y_pred, y_std = _load_regression_data(y_true, y_pred, y_std, df)
 
     fig = fig or go.Figure()
     if not isinstance(y_std, dict):

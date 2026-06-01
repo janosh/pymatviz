@@ -20,7 +20,7 @@ from pymatviz.enums import LabelEnum
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping, Sequence
+    from collections.abc import Callable, Iterable, Mapping, Sequence
 
     from sklearn.decomposition import KernelPCA
     from sklearn.manifold import TSNE, Isomap
@@ -360,6 +360,23 @@ def _generate_colorbar_ticks(
     return None, None
 
 
+def _composition_strings(
+    compositions: Iterable[Any], *, strict: bool = True
+) -> list[str]:
+    """Convert compositions to a list of formula strings."""
+    comp_strs: list[str] = []
+    for comp in compositions:
+        if isinstance(comp, str):
+            comp_strs.append(comp)
+        elif isinstance(comp, Composition):
+            comp_strs.append(comp.formula)
+        elif strict:
+            raise TypeError(f"Expected str or Composition, got {comp=}")
+        else:
+            comp_strs.append(str(comp))
+    return comp_strs
+
+
 def cluster_compositions(
     df_in: pd.DataFrame,
     composition_col: str = "composition",
@@ -565,14 +582,7 @@ def cluster_compositions(
         embeddings = None  # We don't need to calculate embeddings
 
         # For hover text, we still need composition strings
-        comp_strs = []
-        for comp in compositions:
-            if isinstance(comp, str):
-                comp_strs.append(comp)
-            elif isinstance(comp, Composition):
-                comp_strs.append(comp.formula)
-            else:  # Use string representation for unknown types
-                comp_strs.append(str(comp))
+        comp_strs = _composition_strings(compositions, strict=False)
     else:  # No pre-computed coordinates, follow normal embedding and projection flow
         # Handle embeddings based on the type of data in the composition column
         first_val = compositions.iloc[0]
@@ -583,27 +593,13 @@ def cluster_compositions(
             embeddings = np.array([np.array(val) for val in compositions])
         elif isinstance(embedding_method, str) and embedding_method in df_in:
             # Using a specified column for embeddings
-            comp_strs = []
-            for comp in compositions:
-                if isinstance(comp, str):
-                    comp_strs.append(comp)
-                elif isinstance(comp, Composition):
-                    comp_strs.append(comp.formula)
-                else:
-                    raise TypeError(f"Expected str or Composition, got {comp=}")
+            comp_strs = _composition_strings(compositions)
 
             # Get embeddings from the specified column
             embeddings = np.array([np.array(val) for val in df_in[embedding_method]])
         else:
             # Convert compositions to strings for consistent handling
-            comp_strs = []
-            for comp in compositions:
-                if isinstance(comp, str):
-                    comp_strs.append(comp)
-                elif isinstance(comp, Composition):
-                    comp_strs.append(comp.formula)
-                else:
-                    raise TypeError(f"Expected str or Composition, got {comp=}")
+            comp_strs = _composition_strings(compositions)
 
             # Create embeddings
             if callable(embedding_method):
