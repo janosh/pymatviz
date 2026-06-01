@@ -56,7 +56,7 @@ fig.show()
 
 
 # %%
-fig = pmv.ptable_heatmap_plotly(df_perov[Key.formula], log=True)
+fig = pmv.ptable_heatmap(df_perov[Key.formula], log=True)
 fig.layout.title.update(text="Elements in Matbench Perovskites dataset")
 fig.show()
 # pmv.save_fig(fig, "perovskites-ptable-heatmap.pdf")

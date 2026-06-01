@@ -103,7 +103,7 @@ r2scan_elem_counts = locals().get("r2scan_elem_counts")
 if r2scan_elem_counts is None:
     r2scan_elem_counts = pmv.count_elements(df_r2scan[Key.formula])
 
-fig = pmv.ptable_heatmap_plotly(r2scan_elem_counts)
+fig = pmv.ptable_heatmap(r2scan_elem_counts)
 fig.show()
 
 # pmv.save_fig(fig, "r2scan-element-counts-ptable.pdf")
@@ -113,7 +113,7 @@ fig.show()
 pbe_elem_counts = locals().get("pbe_elem_counts")
 if pbe_elem_counts is None:
     pbe_elem_counts = pmv.count_elements(df_pbe[Key.formula])
-fig = pmv.ptable_heatmap_plotly(pbe_elem_counts)
+fig = pmv.ptable_heatmap(pbe_elem_counts)
 fig.show()
 
 
@@ -149,7 +149,7 @@ per_elem_cohesive_energy = {
     key: list(dct.values()) for key, dct in df_per_elem.to_dict(orient="index").items()
 }
 
-fig = pmv.ptable_heatmap_splits_plotly(
+fig = pmv.ptable_heatmap_splits(
     per_elem_cohesive_energy,
     colorbar=dict(title=col_name.label, orientation="h"),
 )
@@ -157,7 +157,7 @@ fig.show()
 
 
 # %% which elements have a higher share of missing r2SCAN data
-fig = pmv.ptable_heatmap_plotly(
+fig = pmv.ptable_heatmap(
     (pbe_elem_counts - r2scan_elem_counts) / pbe_elem_counts,
     colorbar=dict(
         title="Fraction of missing PBE calcs missing r2SCAN", orientation="h"
@@ -175,7 +175,7 @@ df_per_elem_magmoms = pd.DataFrame(
     for struct in df_r2scan[Key.structure]
 ).mean()
 
-fig = pmv.ptable_heatmap_plotly(df_per_elem_magmoms)
+fig = pmv.ptable_heatmap(df_per_elem_magmoms)
 fig.layout.coloraxis.colorbar.title = r"Mean |magmom| ($\mu_B$)"
 fig.show()
 # pmv.save_fig(fig, "magmoms-ptable.pdf")
@@ -245,7 +245,7 @@ df_pbe_elem_forces = pd.DataFrame(
 
 
 # %%
-fig = pmv.ptable_heatmap_splits_plotly(
+fig = pmv.ptable_heatmap_splits(
     {
         elem: [df_r2scan_elem_forces[elem], df_pbe_elem_forces[elem]]
         for elem in df_r2scan_elem_forces.index

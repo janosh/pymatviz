@@ -42,7 +42,7 @@ fig.show()
 df_2d[Key.volume] = [x.volume for x in df_2d[Key.structure]]
 df_2d[Key.formula] = [x.formula for x in df_2d[Key.structure]]
 
-fig = pmv.ptable_heatmap_plotly(df_2d[Key.formula], log=True)
+fig = pmv.ptable_heatmap(df_2d[Key.formula], log=True)
 fig.layout.title.update(
     text="Elemental prevalence in the Matbench Jarvis DFT 2D dataset"
 )

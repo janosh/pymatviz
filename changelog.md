@@ -42,7 +42,7 @@
 ### 🐛 Bug Fixes
 
 - Dynamically link to function source line number from `readme.md` by @DanielYang59 in https://github.com/janosh/pymatviz/pull/333
-- Fix minor colorbar tick issues in ptable_heatmap_plotly when log=True by @chhyyi in https://github.com/janosh/pymatviz/pull/334
+- Fix minor colorbar tick issues in ptable_heatmap when log=True by @chhyyi in https://github.com/janosh/pymatviz/pull/334
 - fix: handle pymatgen Magmom objects in show_site_vectors by @lan496 in https://github.com/janosh/pymatviz/pull/337
 
 ### 💡 Refactoring
@@ -154,7 +154,7 @@
 - `brillouin_zone_3d` now supports multiple structures/atoms in customizable grid layouts [`#282`](https://github.com/janosh/pymatviz/pull/282)
 - Add `max_cells: int | None` keyword to `chem_sys_treemap` [`#281`](https://github.com/janosh/pymatviz/pull/281)
 - `structure_(2|3)d_plotly` enable gradient-colored bonds [`#280`](https://github.com/janosh/pymatviz/pull/280)
-- Auto font color for high contrast of element symbols in `ptable_heatmap_splits_plotly` [`#279`](https://github.com/janosh/pymatviz/pull/279)
+- Auto font color for high contrast of element symbols in `ptable_heatmap_splits` [`#279`](https://github.com/janosh/pymatviz/pull/279)
 - Update `luminance` calculation to use WCAG 2.0 standard coefficients [`#278`](https://github.com/janosh/pymatviz/pull/278)
 - Fix `structure_2d` `rotation` keyword not applying to unit cell [`#276`](https://github.com/janosh/pymatviz/pull/276)
 - `spglib` to `moyo` [`#275`](https://github.com/janosh/pymatviz/pull/275)
@@ -164,7 +164,7 @@
 - Remove `matplotlib`-based periodic table plotting functions [`#270`](https://github.com/janosh/pymatviz/pull/270)
 - Ward metallic glasses train/val/test splits [`#269`](https://github.com/janosh/pymatviz/pull/269)
 - Codecov [`#268`](https://github.com/janosh/pymatviz/pull/268)
-- Support per-split colorbars and colorscales in `ptable_heatmap_splits_plotly()` [`#267`](https://github.com/janosh/pymatviz/pull/267)
+- Support per-split colorbars and colorscales in `ptable_heatmap_splits()` [`#267`](https://github.com/janosh/pymatviz/pull/267)
 - add `enhance_parity_plot()` powerup [`#266`](https://github.com/janosh/pymatviz/pull/266)
 - add treemap.py with new chem_sys_treemap plot function [`#265`](https://github.com/janosh/pymatviz/pull/265)
 - add chem_sys_sunburst() to pymatviz/sunburst.py to visualize chemical system distributions [`#264`](https://github.com/janosh/pymatviz/pull/264)
@@ -181,7 +181,7 @@
 - `readme.md` add links to source and example code for each plot function [`65ccb7c`](https://github.com/janosh/pymatviz/commit/65ccb7cb5bda434321f939345b83bb4fbc4d81bd)
 - add assets/scripts/key_enum_table.py to visualize Key enum attributes with Plotly [`0598bb5`](https://github.com/janosh/pymatviz/commit/0598bb50b0a1ebb682a1b17f7e380877792c7072)
 - delete unused enums Model + ElemColorMode [`ee296bc`](https://github.com/janosh/pymatviz/commit/ee296bc7a588a481c39204db7db1f156cc749fd9)
-- fix ptable_heatmap_splits_plotly() incorrectly handling hide_f_block keyword resulting in missing tiles for Rf 104 through Og 118 [`b9ccbf0`](https://github.com/janosh/pymatviz/commit/b9ccbf0ee3017b066e16640e6749845aff7979c0)
+- fix ptable_heatmap_splits() incorrectly handling hide_f_block keyword resulting in missing tiles for Rf 104 through Og 118 [`b9ccbf0`](https://github.com/janosh/pymatviz/commit/b9ccbf0ee3017b066e16640e6749845aff7979c0)
 - force LabelEnums to have labels, gives .label type str causing less mypy headache [`a6825ff`](https://github.com/janosh/pymatviz/commit/a6825ff780416aec660510c295a1b958f68010eb)
 
 ## [v0.15.1](https://github.com/janosh/pymatviz/compare/v0.15.0...v0.15.1)
@@ -199,9 +199,9 @@
 
 > 21 December 2024
 
-- Multi-line `ptable_scatter_plotly` [`#260`](https://github.com/janosh/pymatviz/pull/260)
+- Multi-line `ptable_scatter` [`#260`](https://github.com/janosh/pymatviz/pull/260)
 - Hetero-nuclear diatomics example with MACE [`#259`](https://github.com/janosh/pymatviz/pull/259)
-- Add `ptable_scatter_plotly` [`#258`](https://github.com/janosh/pymatviz/pull/258)
+- Add `ptable_scatter` [`#258`](https://github.com/janosh/pymatviz/pull/258)
 - Remove `cumulative.py` and associated tests + assets [`#257`](https://github.com/janosh/pymatviz/pull/257)
 - Support `phonopy` `TotalDos` and `BandStructure` in `phonon_dos` and `phonon_bands` plots [`#256`](https://github.com/janosh/pymatviz/pull/256)
 - Add `brillouin_zone_3d` plot function [`#251`](https://github.com/janosh/pymatviz/pull/251)
@@ -222,13 +222,13 @@
 - [Breaking] Split `utils` into sub-modules, move `typing` from `utils` to root (`pmv.typing`) [`#248`](https://github.com/janosh/pymatviz/pull/248)
 - `phonon_bands` enable custom acoustic/optical bands [`#249`](https://github.com/janosh/pymatviz/pull/249)
 - Split `make_assets` scripts by plot functions [`#247`](https://github.com/janosh/pymatviz/pull/247)
-- `ptable_heatmap_splits_plotly` [`#246`](https://github.com/janosh/pymatviz/pull/246)
-- Better `ptable_hists_plotly` defaults [`#244`](https://github.com/janosh/pymatviz/pull/244)
-- Add `ptable_hists_plotly` [`#243`](https://github.com/janosh/pymatviz/pull/243)
+- `ptable_heatmap_splits` [`#246`](https://github.com/janosh/pymatviz/pull/246)
+- Better `ptable_hists` defaults [`#244`](https://github.com/janosh/pymatviz/pull/244)
+- Add `ptable_hists` [`#243`](https://github.com/janosh/pymatviz/pull/243)
 - Enhance warning message for default return type change of `ptable_heatmap` [`#240`](https://github.com/janosh/pymatviz/pull/240)
 - add @stylistic/eslint-plugin to fix eslint commit hook (closes https://github.com/janosh/pymatviz/issues/197) [`#197`](https://github.com/janosh/pymatviz/issues/197)
 - add coordination_nums_in_structure in pymatviz/coordination/helpers.py [`bd54679`](https://github.com/janosh/pymatviz/commit/bd54679c17c6c137949a162dce25770587ebe200)
-- ptable_hists_plotly add x_axis_kwargs: dict[str, Any] | None = None to tweak x ticks and allow annotations renamed to be callable [`6a6faad`](https://github.com/janosh/pymatviz/commit/6a6faadeb2b5d5a8be9d8e6f4383f122c7e5373d)
+- ptable_hists add x_axis_kwargs: dict[str, Any] | None = None to tweak x ticks and allow annotations renamed to be callable [`6a6faad`](https://github.com/janosh/pymatviz/commit/6a6faadeb2b5d5a8be9d8e6f4383f122c7e5373d)
 - sankey_from_2_df_cols add kwarg annotate_columns: bool | dict = True [`eed306a`](https://github.com/janosh/pymatviz/commit/eed306a621e32584064f62be37aa7a1cd2db50a4)
 - new/renamed Key attributes n_structs, n_materials, n_molecules, n_samples, n_configs [`786a666`](https://github.com/janosh/pymatviz/commit/786a6667585b40b583e816bae7b857294418a735)
 
@@ -324,7 +324,7 @@
 
 - Fix ptable scatter examples in homepage [`#180`](https://github.com/janosh/pymatviz/pull/180)
 - Add `pymatviz.io.df_to_svg` [`#179`](https://github.com/janosh/pymatviz/pull/179)
-- Better default `ptable_heatmap_plotly` tooltips [`#178`](https://github.com/janosh/pymatviz/pull/178)
+- Better default `ptable_heatmap` tooltips [`#178`](https://github.com/janosh/pymatviz/pull/178)
 - remove skip tag for tests [`#177`](https://github.com/janosh/pymatviz/pull/177)
 - Moving enums may have broken end users pickle's, reduce to str when pickling to be more backwards compatible going forward. [`#176`](https://github.com/janosh/pymatviz/pull/176)
 - Better `density_scatter` [`#175`](https://github.com/janosh/pymatviz/pull/175)
@@ -334,7 +334,7 @@
 
 > 7 July 2024
 
-- Fix `ptable_heatmap_plotly` for `log=True` [`#174`](https://github.com/janosh/pymatviz/pull/174)
+- Fix `ptable_heatmap` for `log=True` [`#174`](https://github.com/janosh/pymatviz/pull/174)
 - Fix missing keys `Te` + `Nd` in `ELEM_COLORS_VESTA` and support it in `plot_structure_2d` [`#173`](https://github.com/janosh/pymatviz/pull/173)
 - Fix `log_density` in `density_scatter` [`#172`](https://github.com/janosh/pymatviz/pull/172)
 
@@ -413,7 +413,7 @@
 - `add_ecdf_line()` utility for plotting empirical cumulative distribution functions [`#117`](https://github.com/janosh/pymatviz/pull/117)
 - Spacegroup hist plotly [`#116`](https://github.com/janosh/pymatviz/pull/116)
 - Add `plot_phonon_bands_and_dos()` [`#115`](https://github.com/janosh/pymatviz/pull/115)
-- Add `show_values: bool = True` to `ptable_heatmap_plotly()` and `last_peak_anno: str` to `plot_phonon_dos()` [`#114`](https://github.com/janosh/pymatviz/pull/114)
+- Add `show_values: bool = True` to `ptable_heatmap()` and `last_peak_anno: str` to `plot_phonon_dos()` [`#114`](https://github.com/janosh/pymatviz/pull/114)
 - Add `plot_phonon_dos()` for interactive plotly DOS plots [`#113`](https://github.com/janosh/pymatviz/pull/113)
 - _generate_assets.py add code for assets/(phonon-bands-and-dos-dft|phonon-bands-dft|phonon-dos-dft).svg [`93f72dc`](https://github.com/janosh/pymatviz/commit/93f72dcf46ab67a7713541b903f56d690e7791da)
 - ruff enable PD901+PLW2901 and fix violations [`36f4771`](https://github.com/janosh/pymatviz/commit/36f477103cfc82109bbb175a052f0fc22109f0d3)
@@ -433,7 +433,7 @@
 - Support matplotlib `Axes` and `Figure` in `add_identity_line` [`#109`](https://github.com/janosh/pymatviz/pull/109)
 - Tweaks [`#108`](https://github.com/janosh/pymatviz/pull/108)
 - Add function `ptable_hists` [`#100`](https://github.com/janosh/pymatviz/pull/100)
-- `ptable_heatmap_plotly` support 1s, 0s and negative values with `log=True` [`#107`](https://github.com/janosh/pymatviz/pull/107)
+- `ptable_heatmap` support 1s, 0s and negative values with `log=True` [`#107`](https://github.com/janosh/pymatviz/pull/107)
 - `ptable_heatmap` add keywords `cbar_range` and `cbar_kwargs` [`#105`](https://github.com/janosh/pymatviz/pull/105)
 - Add class `TqdmDownload` [`#104`](https://github.com/janosh/pymatviz/pull/104)
 - Breaking: rename `get_crystal_sys` to `crystal_sys_from_spg_num` [`#103`](https://github.com/janosh/pymatviz/pull/103)
@@ -488,7 +488,7 @@
 - Disable `save_fig()` in CI [`#78`](https://github.com/janosh/pymatviz/pull/78)
 - adhere to PEP 484 (no implicit optional) [`8e50218`](https://github.com/janosh/pymatviz/commit/8e5021876b65f13d10b34e65fc9738b16489bee4)
 - fix ruff TCH002,TCH003 [`d60276b`](https://github.com/janosh/pymatviz/commit/d60276bfc55d69d138c8784e1b29a0e658b32e5e)
-- add ptable_heatmap_plotly kwarg label_map: dict[str, str] | False | None = None [`ef40171`](https://github.com/janosh/pymatviz/commit/ef401718a2903bbc1f64364e686d15b9ae614988)
+- add ptable_heatmap kwarg label_map: dict[str, str] | False | None = None [`ef40171`](https://github.com/janosh/pymatviz/commit/ef401718a2903bbc1f64364e686d15b9ae614988)
 - migrate site to eslint-plugin-svelte [`91d7909`](https://github.com/janosh/pymatviz/commit/91d7909362dab8739d0b84579e6134766b205bce)
 
 ## [v0.6.2](https://github.com/janosh/pymatviz/compare/v0.6.1...v0.6.2)
@@ -565,14 +565,14 @@
 
 > 21 September 2022
 
-- Support log-scaled heat maps in `ptable_heatmap_plotly()` [`#53`](https://github.com/janosh/pymatviz/pull/53)
+- Support log-scaled heat maps in `ptable_heatmap()` [`#53`](https://github.com/janosh/pymatviz/pull/53)
 - Improve tests for `parity.py` and `relevance.py` [`#51`](https://github.com/janosh/pymatviz/pull/51)
 - Fix `plot_structure_2d()` `show_bonds` for disordered structures [`#50`](https://github.com/janosh/pymatviz/pull/50)
 - Dataset exploration [`#49`](https://github.com/janosh/pymatviz/pull/49)
 - Add `examples/mp_bimodal_e_form.ipynb` [`#47`](https://github.com/janosh/pymatviz/pull/47)
 - Add unary ptable heatmap plot to `examples/mprester_ptable.ipynb` [`#46`](https://github.com/janosh/pymatviz/pull/46)
 - fix: add .py to readme link [`#45`](https://github.com/janosh/pymatviz/pull/45)
-- add test_ptable_heatmap_plotly_kwarg_combos [`#44`](https://github.com/janosh/pymatviz/pull/44)
+- add test_ptable_heatmap_kwarg_combos [`#44`](https://github.com/janosh/pymatviz/pull/44)
 - Fix windows CI [`#43`](https://github.com/janosh/pymatviz/pull/43)
 - rm data/ex-ensemble-roost.csv, generate random regression data to plot example assets with numpy instead [`11a47d3`](https://github.com/janosh/pymatviz/commit/11a47d386cd2194e44cca58e668a108a2753bb14)
 - breaking: rename `{elements=>ptable}.py` [`1a87845`](https://github.com/janosh/pymatviz/commit/1a87845f4018848523895e9d997320ca8276a3a4)
@@ -613,7 +613,7 @@
 
 > 16 May 2022
 
-- Improve `ptable_heatmap_plotly()` `colorscale` kwarg [`#35`](https://github.com/janosh/pymatviz/pull/35)
+- Improve `ptable_heatmap()` `colorscale` kwarg [`#35`](https://github.com/janosh/pymatviz/pull/35)
 - [pre-commit.ci] pre-commit autoupdate [`#34`](https://github.com/janosh/pymatviz/pull/34)
 - Accept pmg structures as input for `spacegroup_(hist|sunburst)` [`#33`](https://github.com/janosh/pymatviz/pull/33)
 - Fix spacegroup_hist() crystal system counts [`#32`](https://github.com/janosh/pymatviz/pull/32)
@@ -670,10 +670,10 @@
 
 > 26 November 2021
 
-- add ptable_heatmap_plotly() (closes #16) [`#16`](https://github.com/janosh/pymatviz/issues/16)
+- add ptable_heatmap() (closes #16) [`#16`](https://github.com/janosh/pymatviz/issues/16)
 - delete metrics.py module + tests as they're better placed in CompRhys/aviary#13 [`6870f2d`](https://github.com/janosh/pymatviz/commit/6870f2d2a2f13a36e240589651627b3298ae2a02)
 - add new plotly fig spacegroup_sunburst [`871c42a`](https://github.com/janosh/pymatviz/commit/871c42a6a5217015288e01bcc9ce83b680a9370a)
-- some tweaks to ptable_heatmap_plotly, delete unused softmax + one_hot utils [`3e931f2`](https://github.com/janosh/pymatviz/commit/3e931f2a2a3ef64a0a9529e4a1484479f5efdc68)
+- some tweaks to ptable_heatmap, delete unused softmax + one_hot utils [`3e931f2`](https://github.com/janosh/pymatviz/commit/3e931f2a2a3ef64a0a9529e4a1484479f5efdc68)
 
 ## [v0.2.4](https://github.com/janosh/pymatviz/compare/v0.2.3...v0.2.4)
 

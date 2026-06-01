@@ -45,7 +45,7 @@ for symbol in homo_nuc_diatomics:
     diatomic_curves[elem_symbol] = {model_name: (distances, shifted_energies)}
 
 
-fig = pmv.ptable_scatter_plotly(
+fig = pmv.ptable_scatter(
     diatomic_curves,
     mode="lines",
     x_axis_kwargs=dict(range=[0, 6]),

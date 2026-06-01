@@ -148,8 +148,6 @@ def structure_2d(
 
     # Don't call helpers.get_elem_colors here if elem_colors is a dict mapping structure
     # keys to color schemes. Instead, handle per-structure color schemes in the loop
-    _atomic_radii = helpers.get_atomic_radii(atomic_radii)
-
     if isinstance(show_site_vectors, str):
         show_site_vectors = [show_site_vectors]
 
@@ -556,8 +554,6 @@ def structure_3d(
 
     # Don't call helpers.get_elem_colors here if elem_colors is a dict mapping structure
     # keys to color schemes. Instead, handle per-structure color schemes in the loop
-    _atomic_radii = helpers.get_atomic_radii(atomic_radii)
-
     if isinstance(show_site_vectors, str):
         show_site_vectors = [show_site_vectors]
 
@@ -787,21 +783,21 @@ def structure_3d(
                 anno["yanchor"] = "top"
             fig.layout.annotations[idx - 1].update(anno)
 
-        # Update 3D scene properties
-        no_axes_kwargs = dict(
-            showticklabels=False, showgrid=False, zeroline=False, visible=False
-        )
+    # Update 3D scene properties
+    no_axes_kwargs = dict(
+        showticklabels=False, showgrid=False, zeroline=False, visible=False
+    )
 
-        fig.update_scenes(
-            xaxis=no_axes_kwargs,
-            yaxis=no_axes_kwargs,
-            zaxis=no_axes_kwargs,
-            aspectmode="data",
-            bgcolor="rgba(80,80,80,0.01)",
-            camera=dict(
-                eye=dict(x=1.5, y=1.5, z=1.5),  # Camera position for better 3D view
-            ),
-        )
+    fig.update_scenes(
+        xaxis=no_axes_kwargs,
+        yaxis=no_axes_kwargs,
+        zaxis=no_axes_kwargs,
+        aspectmode="data",
+        bgcolor="rgba(80,80,80,0.01)",
+        camera=dict(
+            eye=dict(x=1.5, y=1.5, z=1.5),  # Camera position for better 3D view
+        ),
+    )
 
     # Calculate subplot positions with small gap
     gap = 0.01

@@ -26,7 +26,8 @@ jobs:
           node-version: 24
 
       - name: Install widget dependencies
-        run: npm install
+        # widgets use @janosh/vite-config (github: dep); npm can't resolve it, so use pnpm
+        run: corepack enable && pnpm install
         working-directory: pymatviz/widgets/web
 
       - name: Build web files

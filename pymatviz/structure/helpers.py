@@ -267,46 +267,6 @@ def get_image_sites(
     return np.array(coords_image_atoms)
 
 
-def cell_to_lines(
-    cell: np.ndarray,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Convert lattice vectors to plot lines.
-
-    Args:
-        cell (np.ndarray): Lattice vectors.
-
-    Returns:
-        tuple[np.ndarray, np.ndarray, np.ndarray]:
-        - Lines
-        - z-indices that sort plot elements into out-of-plane layers
-        - lines used to plot the cell
-    """
-    n_lines = n1 = 0
-    segments = []
-    for idx in range(3):
-        norm = math.sqrt(sum(cell[idx] ** 2))
-        segment = max(2, int(norm / 0.3))
-        segments += [segment]
-        n_lines += 4 * segment
-
-    lines = np.empty((n_lines, 3))
-    z_indices = np.empty(n_lines, dtype=int)
-    unit_cell_lines = np.zeros((3, 3))
-
-    for idx in range(3):
-        segment = segments[idx]
-        dd = cell[idx] / (4 * segment - 2)
-        unit_cell_lines[idx] = dd
-        point_array = np.arange(1, 4 * segment + 1, 4)[:, None] * dd
-        z_indices[n1:] = idx
-        for ii, jj in [(0, 0), (0, 1), (1, 0), (1, 1)]:
-            n2 = n1 + segment
-            lines[n1:n2] = point_array + ii * cell[idx - 2] + jj * cell[idx - 1]
-            n1 = n2
-
-    return lines, z_indices, unit_cell_lines
-
-
 def get_elem_colors(
     elem_colors: ElemColorScheme | Mapping[str, ColorType],
 ) -> dict[str, ColorType]:
@@ -981,7 +941,7 @@ def draw_disordered_site(
             if should_show_labels:
                 # Calculate the label position at the center of the slice
                 label_angle = current_angle + angular_width / 2  # Middle of the slice
-                label_offset = slice_radius * 0.3  # LABEL_OFFSET_2D_FACTOR
+                label_offset = slice_radius * LABEL_OFFSET_2D_FACTOR
                 label_radius = slice_radius + label_offset
 
                 # Calculate label position
@@ -1033,13 +993,10 @@ def draw_disordered_site(
 # Constants for disordered site rendering
 LABEL_OFFSET_3D_FACTOR = 0.3  # Factor for 3D label offset from sphere surface
 LABEL_OFFSET_2D_FACTOR = 0.3  # Factor for 2D label offset from pie slice
-PIE_SLICE_COORD_SCALE = 0.01  # Scaling factor for pie slice coordinate units
 MIN_3D_WEDGE_RESOLUTION_THETA = 8  # Minimum theta resolution for 3D wedges
 MIN_3D_WEDGE_RESOLUTION_PHI = 6  # Minimum phi resolution for 3D wedges
 MAX_3D_WEDGE_RESOLUTION_THETA = 16  # Base theta resolution for 3D wedges
 MAX_3D_WEDGE_RESOLUTION_PHI = 24  # Base phi resolution for 3D wedges
-MIN_PIE_SLICE_POINTS = 3  # Minimum points for 2D pie slices
-MAX_PIE_SLICE_POINTS = 20  # Base points for 2D pie slices
 
 
 def get_spherical_wedge_mesh(
@@ -1331,15 +1288,6 @@ def draw_cell(
     for idx, (frac_coord, cart_coord) in enumerate(
         zip(corners, cart_corners, strict=True)
     ):
-        adjacent_angles = []
-        for _ in range(3):
-            v1 = cart_corners[(idx + 1) % 8] - cart_coord
-            v2 = cart_corners[(idx + 2) % 8] - cart_coord
-            angle = np.degrees(
-                np.arccos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
-            )
-            adjacent_angles.append(angle)
-
         hover_text = (
             f"({', '.join(f'{c:.3g}' for c in cart_coord)}) "
             f"[{', '.join(f'{c:.3g}' for c in frac_coord)}]<br>"
@@ -1735,10 +1683,6 @@ def configure_subplot_legends(
             x_end = col / n_cols
             y_start = 1 - row / n_rows
             y_end = 1 - (row - 1) / n_rows
-
-            # Position legend much closer to bottom right of subplot
-            legend_x = x_start + 0.98 * (x_end - x_start)
-            legend_y = y_start + 0.02 * (y_end - y_start)
 
             # Position legend much closer to bottom right of subplot
             legend_x = x_start + 0.98 * (x_end - x_start)

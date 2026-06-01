@@ -18,13 +18,13 @@ df_in = pd.DataFrame({"target": y_binary, "probability": y_proba})
 
 
 # %% Plotly version - basic usage
-fig = pmv.roc_curve_plotly(y_binary, y_proba)
+fig = pmv.roc_curve(y_binary, y_proba)
 fig.show()
 # pmv.io.save_and_compress_svg(fig, "roc-curve-plotly")
 
 
 # %% Plotly version - with DataFrame
-fig = pmv.roc_curve_plotly("target", "probability", df=df_in)
+fig = pmv.roc_curve("target", "probability", df=df_in)
 fig.show()
 
 
@@ -44,6 +44,6 @@ classifiers = {
     ),
 }
 
-fig = pmv.roc_curve_plotly(targets=y_binary, probs_positive=classifiers)
+fig = pmv.roc_curve(targets=y_binary, probs_positive=classifiers)
 fig.show()
 pmv.io.save_and_compress_svg(fig, "roc-curve-plotly-multiple")

@@ -1,4 +1,4 @@
-"""Test ptable_scatter_plotly function."""
+"""Test ptable_scatter function."""
 
 import re
 from collections.abc import Callable, Sequence
@@ -38,7 +38,7 @@ def color_data() -> ColorData:
 
 def test_basic_scatter_plot(sample_data: SampleData) -> None:
     """Test basic scatter plot creation."""
-    fig = pmv.ptable_scatter_plotly(sample_data)
+    fig = pmv.ptable_scatter(sample_data)
 
     # Check basic figure properties
     assert isinstance(fig, go.Figure)
@@ -116,7 +116,7 @@ def test_plot_modes(
     if expected_width is not None:
         line_kwargs["width"] = expected_width
 
-    fig = pmv.ptable_scatter_plotly(sample_data, mode=mode, line_kwargs=line_kwargs)
+    fig = pmv.ptable_scatter(sample_data, mode=mode, line_kwargs=line_kwargs)
 
     scatter_traces = [trace for trace in fig.data if isinstance(trace, go.Scatter)]
     for trace in scatter_traces:
@@ -131,7 +131,7 @@ def test_axis_ranges(sample_data: SampleData) -> None:
     # Test setting both x and y ranges
     x_range = (0, 10)
     y_range = (-5, 5)
-    fig = pmv.ptable_scatter_plotly(sample_data, x_range=x_range, y_range=y_range)
+    fig = pmv.ptable_scatter(sample_data, x_range=x_range, y_range=y_range)
 
     # Check ranges were set correctly
     assert fig.layout.xaxis.range == x_range
@@ -158,7 +158,7 @@ def test_annotations(
     expected_count: int,
 ) -> None:
     """Test different types of annotations."""
-    fig = pmv.ptable_scatter_plotly(sample_data, annotations=annotations)  # ty: ignore[invalid-argument-type]
+    fig = pmv.ptable_scatter(sample_data, annotations=annotations)  # ty: ignore[invalid-argument-type]
 
     if callable(annotations):
         # For callable annotations, check format
@@ -188,7 +188,7 @@ def test_scaling(
     scale: float,
 ) -> None:
     """Test figure scaling with different values."""
-    fig = pmv.ptable_scatter_plotly(sample_data, scale=scale)
+    fig = pmv.ptable_scatter(sample_data, scale=scale)
 
     assert fig.layout.width == 850 * scale
     assert fig.layout.height == 500 * scale
@@ -199,12 +199,12 @@ def test_scaling(
     assert all(ann.font.size == 11 * scale for ann in symbol_annotations)
 
 
-def test_ptable_scatter_plotly_invalid_input() -> None:
+def test_ptable_scatter_invalid_input() -> None:
     """Test that invalid input raises appropriate errors."""
     # Invalid mode should raise ValueError
     err_msg = "Invalid value of type 'builtins.str' received for the 'mode' property"
     with pytest.raises(ValueError, match=re.escape(err_msg)):
-        pmv.ptable_scatter_plotly({"Fe": ([1], [1])}, mode="invalid")  # ty: ignore[invalid-argument-type]
+        pmv.ptable_scatter({"Fe": ([1], [1])}, mode="invalid")  # ty: ignore[invalid-argument-type]
 
 
 @pytest.mark.parametrize(
@@ -219,7 +219,7 @@ def test_axis_styling(
     axis_kwargs: dict[str, Any],
 ) -> None:
     """Test axis styling options."""
-    fig = pmv.ptable_scatter_plotly(
+    fig = pmv.ptable_scatter(
         sample_data, x_axis_kwargs=axis_kwargs, y_axis_kwargs=axis_kwargs
     )
 
@@ -237,7 +237,7 @@ def test_marker_styling(sample_data: SampleData) -> None:
     marker_kwargs = dict(size=10, symbol="diamond", line=dict(width=2, color="white"))
     line_kwargs = dict(width=3, dash="dot")
 
-    fig = pmv.ptable_scatter_plotly(
+    fig = pmv.ptable_scatter(
         sample_data,
         mode="lines+markers",
         marker_kwargs=marker_kwargs,
@@ -256,7 +256,7 @@ def test_marker_styling(sample_data: SampleData) -> None:
 
 def test_color_data_handling(color_data: ColorData) -> None:
     """Test handling of color data in the third sequence."""
-    fig = pmv.ptable_scatter_plotly(color_data)
+    fig = pmv.ptable_scatter(color_data)
 
     # Find traces with data and map them by their y-values
     data_traces = [trace for trace in fig.data if trace.x]
@@ -282,7 +282,7 @@ def test_color_precedence(color_data: ColorData) -> None:
     """Test color precedence: color_data > marker_kwargs > element_type_colors."""
     marker_kwargs = dict(color="yellow")
 
-    fig = pmv.ptable_scatter_plotly(
+    fig = pmv.ptable_scatter(
         color_data, marker_kwargs=marker_kwargs, color_elem_strategy="symbol"
     )
 
@@ -310,7 +310,7 @@ def test_colorbar_with_numeric_colors(color_data: ColorData) -> None:
     }
 
     # Test default colorbar
-    fig = pmv.ptable_scatter_plotly(numeric_data)
+    fig = pmv.ptable_scatter(numeric_data)
     colorbar_traces = [
         trace
         for trace in fig.data
@@ -323,7 +323,7 @@ def test_colorbar_with_numeric_colors(color_data: ColorData) -> None:
     assert cbar.cmax == 0.7  # max of all color values
 
     # Test custom colorbar settings
-    fig = pmv.ptable_scatter_plotly(
+    fig = pmv.ptable_scatter(
         numeric_data,
         colorscale="RdYlBu",
         colorbar=dict(
@@ -339,7 +339,7 @@ def test_colorbar_with_numeric_colors(color_data: ColorData) -> None:
     assert cbar.colorbar.orientation == "v"
 
     # Test colorbar can be hidden
-    fig = pmv.ptable_scatter_plotly(numeric_data, colorbar=False)
+    fig = pmv.ptable_scatter(numeric_data, colorbar=False)
     colorbar_traces = [
         trace
         for trace in fig.data
@@ -348,7 +348,7 @@ def test_colorbar_with_numeric_colors(color_data: ColorData) -> None:
     assert len(colorbar_traces) == 0
 
     # Test mixed numeric and string colors (should still show colorbar)
-    fig = pmv.ptable_scatter_plotly(color_data)
+    fig = pmv.ptable_scatter(color_data)
     colorbar_traces = [
         trace
         for trace in fig.data
@@ -357,7 +357,7 @@ def test_colorbar_with_numeric_colors(color_data: ColorData) -> None:
     assert len(colorbar_traces) == 1
 
 
-def test_ptable_scatter_plotly_multi_line() -> None:
+def test_ptable_scatter_multi_line() -> None:
     """Test plotting multiple lines per element with a legend."""
     # Create test data with 2 lines per element for a few elements
     data = {
@@ -365,7 +365,7 @@ def test_ptable_scatter_plotly_multi_line() -> None:
         "Co": {"line1": ([1, 2, 3], [5, 6, 7]), "line2": ([1, 2, 3], [8, 9, 10])},
     }
 
-    fig = pmv.ptable_scatter_plotly(data, mode="lines")
+    fig = pmv.ptable_scatter(data, mode="lines")
 
     # Check that legend is shown
     assert fig.layout.showlegend is True
@@ -399,11 +399,11 @@ def test_ptable_scatter_plotly_multi_line() -> None:
     assert line1_colors != line2_colors
 
 
-def test_ptable_scatter_plotly_hover_text() -> None:
+def test_ptable_scatter_hover_text() -> None:
     """Test that hover text is correctly formatted for multi-line plots."""
     data = {"Fe": {"line1": ([1], [4]), "line2": ([1], [7])}}
 
-    fig = pmv.ptable_scatter_plotly(data, mode="lines")
+    fig = pmv.ptable_scatter(data, mode="lines")
 
     # Check hover text format
     for trace in fig.data:
@@ -421,7 +421,7 @@ def test_mixed_length_lines() -> None:
             "long": ([1, 2, 3, 4], [5, 6, 7, 8]),
         }
     }
-    fig = pmv.ptable_scatter_plotly(data, mode="lines")
+    fig = pmv.ptable_scatter(data, mode="lines")
 
     # Check that both lines are plotted correctly
     assert len(fig.data) == 2
@@ -435,7 +435,7 @@ def test_empty_element_data() -> None:
         "Fe": {"line1": ([], [])},  # Empty sequences
         "Cu": {"line1": ([1, 2], [3, 4])},  # Normal data
     }
-    fig = pmv.ptable_scatter_plotly(data, mode="lines")
+    fig = pmv.ptable_scatter(data, mode="lines")
 
     # Check that empty element is skipped
     assert len(fig.data) == 2, "H should not have a trace"
@@ -451,7 +451,7 @@ def test_single_point_lines() -> None:
             "multi": ([1, 2, 3], [4, 5, 6]),
         }
     }
-    fig = pmv.ptable_scatter_plotly(data, mode="lines")
+    fig = pmv.ptable_scatter(data, mode="lines")
 
     # Both should be plotted even though one has a single point
     assert len(fig.data) == 2
@@ -463,7 +463,7 @@ def test_duplicate_line_names() -> None:
         "Fe": {"common": ([1, 2], [3, 4])},
         "Cu": {"common": ([1, 2], [5, 6])},
     }
-    fig = pmv.ptable_scatter_plotly(data, mode="lines")
+    fig = pmv.ptable_scatter(data, mode="lines")
 
     # Check that lines with same name have same color
     colors = {trace.line.color for trace in fig.data if trace.name == "common"}
@@ -479,7 +479,7 @@ def test_mixed_input_types() -> None:
             "tuple": ((1, 2), (3, 4)),  # Python tuples
         }
     }
-    fig = pmv.ptable_scatter_plotly(data, mode="lines")
+    fig = pmv.ptable_scatter(data, mode="lines")
 
     # All should be plotted correctly
     assert len(fig.data) == 3

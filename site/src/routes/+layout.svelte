@@ -7,6 +7,7 @@
   import { CmdPalette, GitHubCorner } from 'svelte-multiselect'
   import { heading_anchors } from 'svelte-multiselect/heading-anchors'
   import Toc from 'svelte-toc'
+  // oxlint-disable-next-line import/no-unassigned-import -- global app styles
   import '../app.css'
 
   let { children, data }: {
@@ -41,23 +42,16 @@
   {headingSelector}
   breakpoint={1500}
   bind:desktop={toc_desktop}
-  asideStyle={toc_desktop
-    ? `position: fixed; font-size: 0.6em; top: 5em; left: calc(50vw + var(--max-main-width) / 2 + 12em)`
-    : ``}
-  warnOnEmpty={false}
+  asideProps={{
+    style: toc_desktop
+      ? `position: fixed; font-size: 0.6em; top: 5em; left: calc(50vw + var(--max-main-width) / 2 + 15em)`
+      : ``,
+  }}
+  navProps={{ style: toc_desktop ? `` : `padding-left: 9pt` }}
   --toc-mobile-bg="#0d1a1d"
   --toc-mobile-shadow="0 0 1em 0 black"
-  --toc-title-padding="0 0 0 3pt"
-  --toc-li-padding="2pt 1ex"
-  --toc-mobile-btn-color="white"
-  --toc-mobile-btn-bg="teal"
-  --toc-mobile-btn-padding="1pt 2pt"
-  --toc-desktop-nav-margin="0 0 0 1em"
-  --toc-min-width="15em"
-  --toc-active-border="solid cornflowerblue"
+  --toc-active-border="solid var(--blue)"
   --toc-active-border-width="0 0 0 2pt"
-  --toc-active-bg="none"
-  --toc-active-border-radius="0"
 />
 
 {#if page.url.pathname !== `/`}

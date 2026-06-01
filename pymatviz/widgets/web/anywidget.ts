@@ -90,7 +90,7 @@ const cleanup_element = (element: HTMLElement): void => {
 
   const instance = instances.get(element)
   if (instance) {
-    unmount(instance)
+    void unmount(instance)
     instances.delete(element)
   }
 }
@@ -232,7 +232,7 @@ const render: Render = (props) => {
     el,
     on_theme_change((theme_type) => inject_app_css(theme_type, el)),
   )
-  renderer(props)
+  void renderer(props)
   return () => cleanup_element(el)
 }
 

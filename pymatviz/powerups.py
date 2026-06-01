@@ -13,7 +13,13 @@ import sklearn
 from sklearn.metrics import mean_absolute_percentage_error as mape
 from sklearn.metrics import r2_score
 
-from pymatviz.utils import annotate, get_fig_xy_range, get_font_color, luminance
+from pymatviz.utils import (
+    annotate,
+    get_fig_xy_range,
+    get_font_color,
+    is_faceted_figure,
+    luminance,
+)
 from pymatviz.utils.plotting import PRETTY_LABELS
 
 
@@ -109,9 +115,7 @@ def annotate_metrics(
         text += suffix
         return text
 
-    if isinstance(fig, go.Figure) and any(
-        getattr(trace, "xaxis", None) not in ("x", None) for trace in fig.data
-    ):
+    if isinstance(fig, go.Figure) and is_faceted_figure(fig):
         # Handle faceted Plotly figure
         texts = []
         for trace in fig.data:

@@ -13,7 +13,7 @@ export const load: PageServerLoad = ({ params }) => {
 
   const path = `../examples/${slug}.ipynb`
   const html = read_notebook_html(slug)
-  if (html === null) throw error(404, `No notebook found at path=${path}`)
+  if (html === null) error(404, `No notebook found at path=${path}`)
 
   // Get prev/next with wrap around
   const routes = notebook_routes(`.html`)

@@ -18,13 +18,13 @@ df_clf = pd.DataFrame({"target": y_binary, "probability": y_proba})
 
 
 # %% Plotly version - basic usage
-fig = pmv.precision_recall_curve_plotly(y_binary, y_proba)
+fig = pmv.precision_recall_curve(y_binary, y_proba)
 fig.show()
 # pmv.io.save_and_compress_svg(fig, "precision-recall-curve-plotly")
 
 
 # %% Plotly version - with DataFrame
-fig = pmv.precision_recall_curve_plotly("target", "probability", df=df_clf)
+fig = pmv.precision_recall_curve("target", "probability", df=df_clf)
 fig.show()
 
 
@@ -44,6 +44,6 @@ classifiers = {
     ),
 }
 
-fig = pmv.precision_recall_curve_plotly(targets=y_binary, probs_positive=classifiers)
+fig = pmv.precision_recall_curve(targets=y_binary, probs_positive=classifiers)
 fig.show()
 pmv.io.save_and_compress_svg(fig, "precision-recall-curve-plotly-multiple")

@@ -47,7 +47,7 @@ df_diel[Key.formula] = [x.formula for x in df_diel[Key.structure]]
 
 
 # %%
-fig = pmv.ptable_heatmap_plotly(df_diel[Key.formula], log=True, colorscale="viridis")
+fig = pmv.ptable_heatmap(df_diel[Key.formula], log=True, colorscale="viridis")
 title = "<b>Elements in Matbench Dielectric</b>"
 fig.layout.title = dict(text=title, x=0.4, y=0.94, font_size=20)
 fig.show()

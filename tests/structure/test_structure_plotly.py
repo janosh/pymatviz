@@ -16,11 +16,8 @@ from pymatviz.structure.helpers import (
     LABEL_OFFSET_3D_FACTOR,
     MAX_3D_WEDGE_RESOLUTION_PHI,
     MAX_3D_WEDGE_RESOLUTION_THETA,
-    MAX_PIE_SLICE_POINTS,
     MIN_3D_WEDGE_RESOLUTION_PHI,
     MIN_3D_WEDGE_RESOLUTION_THETA,
-    MIN_PIE_SLICE_POINTS,
-    PIE_SLICE_COORD_SCALE,
     get_disordered_site_legend_name,
     get_image_sites,
     get_site_symbol,
@@ -1629,13 +1626,10 @@ def test_disordered_site_constants() -> None:
     # Check that constants are reasonable
     assert 0 < LABEL_OFFSET_3D_FACTOR < 1
     assert 0 < LABEL_OFFSET_2D_FACTOR < 1
-    assert 0 < PIE_SLICE_COORD_SCALE < 1
     assert MIN_3D_WEDGE_RESOLUTION_THETA > 0
     assert MIN_3D_WEDGE_RESOLUTION_PHI > 0
     assert MAX_3D_WEDGE_RESOLUTION_THETA >= MIN_3D_WEDGE_RESOLUTION_THETA
     assert MAX_3D_WEDGE_RESOLUTION_PHI >= MIN_3D_WEDGE_RESOLUTION_PHI
-    assert MIN_PIE_SLICE_POINTS >= 3  # Need at least 3 points for a slice
-    assert MAX_PIE_SLICE_POINTS >= MIN_PIE_SLICE_POINTS
 
 
 def test_spherical_wedge_mesh_generation() -> None:
@@ -1725,7 +1719,7 @@ def test_disordered_site_hover_text_formatting(fe3co4_disordered: Structure) -> 
         )
 
         # Look for traces with hover text containing species information
-        hover_texts = []
+        hover_texts: list[str] = []
         for trace in fig.data:
             if hasattr(trace, "hovertext") and trace.hovertext:
                 if isinstance(trace.hovertext, str):

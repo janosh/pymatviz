@@ -35,7 +35,7 @@ fig.show()
 
 
 # %%
-fig = pmv.ptable_heatmap_plotly(df_gap[Key.formula], log=True)
+fig = pmv.ptable_heatmap(df_gap[Key.formula], log=True)
 fig.layout.title.update(text="Elemental prevalence in the Matbench MP band gap dataset")
 fig.show()
 # pmv.save_fig(fig, "mp_gap-ptable-heatmap.pdf")

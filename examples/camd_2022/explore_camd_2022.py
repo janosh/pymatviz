@@ -49,7 +49,7 @@ df_camd.hist(bins=50)
 df_camd[Key.structure] = df_camd[Key.structure].map(Structure.from_dict)
 df_camd[Key.formula] = [struct.reduced_formula for struct in df_camd[Key.structure]]
 elem_counts = pmv.count_elements(df_camd[Key.formula])
-fig = pmv.ptable_heatmap_plotly(elem_counts, log=True)
+fig = pmv.ptable_heatmap(elem_counts, log=True)
 fig.layout.title.update(text="<b>Elements in CAMD 2022 dataset</b>")
 fig.show()
 # pmv.save_fig(fig, "camd-2022-ptable-heatmap.pdf")

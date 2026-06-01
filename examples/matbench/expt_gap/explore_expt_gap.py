@@ -61,7 +61,7 @@ df_gap["mean_radius"] = [mean_atomic_prop(x, "atomic_radius") for x in df_gap.pm
 elem_counts = pmv.count_elements(
     df_gap.query("~composition.str.contains('Xe')")[Key.composition]
 )
-fig = pmv.ptable_heatmap_plotly(elem_counts, log=True)
+fig = pmv.ptable_heatmap(elem_counts, log=True)
 fig.layout.title.update(text="Elements in Matbench experimental band gap dataset")
 fig.show()
 # pmv.save_fig(fig, "expt-gap-ptable-heatmap.pdf")

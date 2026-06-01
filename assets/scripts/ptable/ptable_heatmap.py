@@ -23,7 +23,7 @@ module_dir = os.path.dirname(__file__)
 
 
 # %% Plotly interactive periodic table heatmap
-fig = pmv.ptable_heatmap_plotly(
+fig = pmv.ptable_heatmap(
     pmv.df_ptable[Key.atomic_mass],
     hover_props=[Key.atomic_mass, Key.atomic_number],
     hover_data="density = " + pmv.df_ptable[Key.density].astype(str) + " g/cm^3",
@@ -36,7 +36,7 @@ pmv.io.save_and_compress_svg(fig, "ptable-heatmap-plotly-more-hover-data")
 
 
 # %%
-fig = pmv.ptable_heatmap_plotly(df_expt_gap[Key.composition], heat_mode="percent")
+fig = pmv.ptable_heatmap(df_expt_gap[Key.composition], heat_mode="percent")
 title = "Elements in Matbench Experimental Bandgap"
 fig.layout.title = dict(text=f"<b>{title}</b>", x=0.4, y=0.94, font_size=20)
 fig.show()
@@ -44,9 +44,7 @@ pmv.io.save_and_compress_svg(fig, "ptable-heatmap-plotly-percent-labels")
 
 
 # %%
-fig = pmv.ptable_heatmap_plotly(
-    df_expt_gap[Key.composition], log=True, colorscale="viridis"
-)
+fig = pmv.ptable_heatmap(df_expt_gap[Key.composition], log=True, colorscale="viridis")
 title = "Elements in Matbench Experimental Bandgap (log scale)"
 fig.layout.title = dict(text=f"<b>{title}</b>", x=0.45, y=0.94, font_size=20)
 fig.show()
@@ -54,7 +52,7 @@ pmv.io.save_and_compress_svg(fig, "ptable-heatmap-plotly-log")
 
 
 # %% ex 1: Electronegativity Heatmap with Custom Hover Data
-fig = pmv.ptable_heatmap_plotly(
+fig = pmv.ptable_heatmap(
     pmv.df_ptable[Key.electronegativity],
     colorscale="Viridis",
     hover_props=["atomic_mass", "melting_point"],
@@ -69,7 +67,7 @@ fig.show()
 
 
 # %% ex 2: Log-scale Abundance with Excluded Elements
-fig = pmv.ptable_heatmap_plotly(
+fig = pmv.ptable_heatmap(
     pmv.df_ptable[Key.specific_heat_capacity].dropna(),
     # colorscale="YlOrRd",
     log=True,
@@ -94,7 +92,7 @@ custom_colorscale = [
     (1, "rgb(255,0,0)"),
 ]
 
-fig = pmv.ptable_heatmap_plotly(
+fig = pmv.ptable_heatmap(
     rand_data,
     colorscale=custom_colorscale,
     heat_mode="percent",
@@ -106,7 +104,7 @@ fig.show()
 
 
 # %% ex 4: Multi-element Compositions with Fraction Mode
-fig = pmv.ptable_heatmap_plotly(
+fig = pmv.ptable_heatmap(
     df_expt_gap[Key.composition][:30],
     count_mode=ElemCountMode.fractional_composition,
     heat_mode="fraction",
@@ -119,7 +117,7 @@ fig.show()
 
 
 # %% ex 5: Atomic Radius with Custom Hover and Label Mapping
-fig = pmv.ptable_heatmap_plotly(
+fig = pmv.ptable_heatmap(
     pmv.df_ptable[Key.atomic_radius],
     colorscale="RdYlBu",
     hover_data={
@@ -140,7 +138,7 @@ elem_to_n_val_elecs = {  # convert Potcar symbol to element symbol
     key.split("_")[0]: val for key, val in elem_to_n_val_elecs.items()
 }
 
-fig = pmv.ptable_heatmap_plotly(elem_to_n_val_elecs, fmt=".0f")
+fig = pmv.ptable_heatmap(elem_to_n_val_elecs, fmt=".0f")
 title = (
     "Number of valence electrons in VASP PBE 64 pseudo-potentials<br>"
     "(Materials Project input set)"
@@ -156,7 +154,7 @@ pmv.io.save_and_compress_svg(fig, "ptable-heatmap-plotly-vasp-psp-n-valence-elec
 gap_counts = pmv.count_elements(df_expt_gap[Key.composition]) / len(df_expt_gap)
 steel_counts = pmv.count_elements(df_steels[Key.composition]) / len(df_steels)
 
-fig = pmv.ptable_heatmap_plotly(
+fig = pmv.ptable_heatmap(
     gap_counts / steel_counts,
     log=True,  # ratios are better viewed on log scale
     fmt=".2g",  # 2 significant digits for values
@@ -182,7 +180,7 @@ try:
 except (HTTPError, URLError):
     prices = {elem: rng.lognormal(2, 1) * 1000 for elem in pmv.df_ptable.index}
 
-fig = pmv.ptable_heatmap_plotly(
+fig = pmv.ptable_heatmap(
     prices, log=True, colorbar=dict(title="Cost of element per kg")
 )
 fig.show()

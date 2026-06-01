@@ -7,10 +7,12 @@ from __future__ import annotations
 import os
 
 from pymatviz.utils.plotting import (
+    PLOTLY_LINE_STYLES,
     PRETTY_LABELS,
     annotate,
     get_fig_xy_range,
     get_font_color,
+    is_faceted_figure,
     luminance,
     pick_max_contrast_color,
 )

@@ -26,7 +26,7 @@ jobs:
       os: ${{ matrix.os }}
       python-version: '3.11'
       node-version: '24'
-      pre-install-cmd: (cd pymatviz/widgets/web && npm install && npm run build)
+      pre-install-cmd: (cd pymatviz/widgets/web && corepack enable && pnpm install && pnpm run build)
       install-cmd: |
         uv pip install -e '.[test,brillouin]'  --system
       # pytest-split distributes work load so parallel jobs finish in similar time
@@ -54,7 +54,7 @@ jobs:
           node-version: 24
 
       - name: Install and build widget assets
-        run: npm install && npm run build
+        run: corepack enable && pnpm install && pnpm run build
         working-directory: pymatviz/widgets/web
 
       - name: Run all widget demos

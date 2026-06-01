@@ -106,10 +106,6 @@ def xrd_pattern(  # noqa: D417
     # Convert single object to dict for uniform processing
     if not isinstance(patterns, dict):
         patterns = {"XRD Pattern": patterns}
-    elif not isinstance(patterns, dict):
-        raise TypeError(
-            f"{patterns=} should be a DiffractionPattern, Structure or a dict of them"
-        )
 
     # Determine show_angles based on number of patterns
     if show_angles is None:

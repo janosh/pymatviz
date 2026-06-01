@@ -176,24 +176,17 @@ def _analyze_py_file(file_path: str, package_name: str) -> dict[str, int]:
             source = file_handle.read()
         tree = ast.parse(source, filename=file_path)
 
-        in_type_checking_block = False
         for node in ast.walk(tree):
             if (
                 isinstance(node, ast.If)
                 and isinstance(node.test, ast.Name)
                 and node.test.id == "TYPE_CHECKING"
             ):
-                original_in_block = in_type_checking_block
-                in_type_checking_block = True
                 for sub_node in node.body:
                     if isinstance(sub_node, (ast.Import, ast.ImportFrom)):
                         counts["n_type_checking_imports"] += 1
                         continue
-                in_type_checking_block = original_in_block
                 continue
-
-            if in_type_checking_block:
-                pass
 
             if isinstance(node, ast.ClassDef):
                 counts["n_classes"] += 1

@@ -38,14 +38,14 @@ df_boltz.describe()
 
 
 # %%
-fig = pmv.ptable_heatmap_plotly(df_boltz[Key.formula], log=True)
+fig = pmv.ptable_heatmap(df_boltz[Key.formula], log=True)
 fig.layout.title.update(text="Elements in BoltzTraP MP dataset")
 fig.show()
 # pmv.save_fig(fig, "boltztrap_mp-ptable-heatmap.pdf")
 
 
 # %%
-fig = pmv.ptable_heatmap_plotly(
+fig = pmv.ptable_heatmap(
     pmv.count_elements(df_boltz.sort_values("pf_n").tail(100)[Key.formula]),
     colorbar=dict(tickformat=".1~s"),
 )
