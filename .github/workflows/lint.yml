@@ -19,11 +19,11 @@ jobs:
           node-version: 24
 
       - name: Install site dependencies
-        run: npm install
+        run: corepack enable && pnpm install
         working-directory: site
 
       - name: Install widget dependencies
-        run: npm install
+        run: corepack enable && pnpm install
         working-directory: pymatviz/widgets/web
 
       - name: Run prek

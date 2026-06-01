@@ -2,7 +2,7 @@ default_install_hook_types: [pre-commit, commit-msg]
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.13
+    rev: v0.15.15
     hooks:
       - id: ruff-check
         args: [--fix]
@@ -70,19 +70,19 @@ repos:
     hooks:
       - id: vp-fmt
         name: Format (oxfmt)
-        entry: bash -c 'for dir in site pymatviz/widgets/web; do (cd "$dir" && [ -d node_modules ] || npm install && node_modules/.bin/vp fmt --write); done'
+        entry: bash -c 'cd site && node_modules/.bin/vp fmt --write && cd ../pymatviz/widgets/web && node_modules/.bin/vp fmt --write'
         types_or: [ts, javascript, json, css, html, svelte]
         language: system
         pass_filenames: false
       - id: vp-lint
         name: Lint (oxlint)
-        entry: bash -c 'for dir in site pymatviz/widgets/web; do (cd "$dir" && [ -d node_modules ] || npm install && node_modules/.bin/vp lint --fix); done'
+        entry: bash -c 'cd site && node_modules/.bin/vp lint --fix && cd ../pymatviz/widgets/web && node_modules/.bin/vp lint --fix'
         types_or: [ts, javascript, json, css, html, svelte]
         language: system
         pass_filenames: false
       - id: svelte-check
         name: Svelte type check
-        entry: bash -c 'cd site && [ -d node_modules ] || npm install && node_modules/.bin/svelte-kit sync && node_modules/.bin/svelte-check-rs --threshold error'
+        entry: bash -c 'cd site && node_modules/.bin/svelte-kit sync && node_modules/.bin/svelte-check-rs --threshold error'
         language: system
         types_or: [ts, svelte]
         pass_filenames: false

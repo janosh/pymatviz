@@ -2,6 +2,7 @@
 
 import { luminance } from 'matterviz/colors'
 import { COLOR_THEMES, type ThemeType } from 'matterviz/theme'
+// oxlint-disable-next-line import/no-unassigned-import -- registers built-in themes
 import 'matterviz/theme/themes'
 
 // Extend globalThis with our custom properties
