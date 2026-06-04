@@ -22,9 +22,5 @@ jobs:
         run: corepack enable && pnpm install
         working-directory: site
 
-      - name: Install widget dependencies
-        run: corepack enable && pnpm install
-        working-directory: pymatviz/widgets/web
-
       - name: Run prek
         uses: j178/prek-action@v2

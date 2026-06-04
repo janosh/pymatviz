@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
-from pymatgen.core import Composition
+from pymatgen.core import Composition, Lattice, Structure
 
 from pymatviz.widgets.band_structure import BandStructureWidget
 from pymatviz.widgets.bands_and_dos import BandsAndDosWidget
@@ -514,8 +514,6 @@ def test_heatmap_matrix_scalar_string_axis_items() -> None:
 
 def test_rdf_plot_accepts_pymatgen_structure() -> None:
     """RdfPlotWidget normalizes pymatgen Structure to dict via _to_dict."""
-    from pymatgen.core import Lattice, Structure
-
     struct = Structure(Lattice.cubic(3), ["Si"], [[0, 0, 0]])
     widget = RdfPlotWidget(structures=struct)
     assert isinstance(widget.structures, dict)
@@ -836,18 +834,35 @@ def test_get_browser_import_error() -> None:
         headless_mod._browser = original
 
 
-def test_canvas_widget_types_frozenset() -> None:
-    """_CANVAS_WIDGET_TYPES contains the expected WebGL widget types."""
-    from pymatviz.widgets._headless import _CANVAS_WIDGET_TYPES
+def test_html_widget_types_frozenset() -> None:
+    """_HTML_WIDGET_TYPES holds the widgets that render plain HTML (no chart)."""
+    from pymatviz.widgets._headless import _HTML_WIDGET_TYPES
 
-    expected = {
-        "structure",
-        "trajectory",
-        "fermi_surface",
-        "brillouin_zone",
-        "scatter_plot_3d",
-    }
-    assert expected == _CANVAS_WIDGET_TYPES
+    expected = {"periodic_table", "heatmap_matrix"}
+    assert expected == _HTML_WIDGET_TYPES
+
+
+@pytest.mark.parametrize(
+    ("widget_type", "expect_html_fallback", "expect_worker_shim"),
+    [
+        ("periodic_table", True, False),
+        ("heatmap_matrix", True, False),
+        ("scatter_plot", False, False),
+        ("structure", False, False),
+        ("chem_pot_diagram", False, True),
+    ],
+)
+def test_build_html_render_gates(
+    widget_type: str, expect_html_fallback: bool, expect_worker_shim: bool
+) -> None:
+    """_build_html toggles HTML fallback and Worker shim per widget type."""
+    from pymatviz.widgets._headless import _build_html
+
+    html = _build_html({"widget_type": widget_type}, "// esm", "/* css */")
+    assert ("const allow_html_fallback = true" in html) is expect_html_fallback
+    assert ("globalThis.Worker = undefined" in html) is expect_worker_shim
+    # Spinner guard is always present so loading states are never captured
+    assert '.spinner[role="status"]' in html
 
 
 @pytest.mark.parametrize(
@@ -978,8 +993,6 @@ def test_headless_bar_plot_writes_file(
 @_skip_no_playwright
 def test_headless_structure_png() -> None:
     """StructureWidget (canvas/WebGL) produces a valid PNG."""
-    from pymatgen.core import Lattice, Structure
-
     struct = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5]])
     widget = StructureWidget(structure=struct, style="height: 400px;")
     png_bytes = widget.to_img(fmt="png", dpi=72)
@@ -990,8 +1003,6 @@ def test_headless_structure_png() -> None:
 @_skip_no_playwright
 def test_headless_structure_svg_raises() -> None:
     """StructureWidget (canvas) raises RuntimeError for SVG export."""
-    from pymatgen.core import Lattice, Structure
-
     struct = Structure(Lattice.cubic(3.0), ["Si"], [[0, 0, 0]])
     widget = StructureWidget(structure=struct, style="height: 300px;")
     with pytest.raises(RuntimeError, match="SVG export not supported"):
@@ -1016,3 +1027,181 @@ def test_headless_dpi_affects_png_dimensions() -> None:
     img_hi = Image.open(io.BytesIO(widget.to_img(fmt="png", dpi=216)))
     assert img_hi.width > img_lo.width * 2
     assert img_hi.height > img_lo.height * 2
+
+
+_CHEM_POT_ENTRIES = [
+    {"name": "Li", "energy": -1.9, "composition": {"Li": 1}},
+    {"name": "Fe", "energy": -8.3, "composition": {"Fe": 1}},
+    {"name": "O2", "energy": -4.9, "composition": {"O": 1}},
+    {"name": "Li2O", "energy": -14.3, "composition": {"Li": 2, "O": 1}},
+    {"name": "Fe2O3", "energy": -25.0, "composition": {"Fe": 2, "O": 3}},
+]
+
+
+@_skip_no_playwright
+@_skip_no_pillow
+@pytest.mark.parametrize(
+    ("widget_cls", "kwargs", "max_blank"),
+    [
+        # HTML-grid widgets (no canvas/svg) -- captured via the HTML fallback
+        (PeriodicTableWidget, {"heatmap_values": {"Fe": 42, "O": 100, "Li": 15}}, 0.95),
+        (
+            HeatmapMatrixWidget,
+            {
+                "x_items": ["A", "B"],
+                "y_items": ["A", "B"],
+                "values": [[1.0, 0.5], [0.5, 1.0]],
+            },
+            0.95,
+        ),
+        # ChemPotDiagram computes in a Worker; its sync fallback must finish so we
+        # capture the plot, not a stuck "Computing..." spinner (~0.99 blank).
+        (ChemPotDiagramWidget, {"entries": _CHEM_POT_ENTRIES}, 0.9),
+    ],
+    ids=["periodic_table", "heatmap_matrix", "chem_pot_diagram"],
+)
+def test_headless_widget_renders_nonblank_png(
+    widget_cls: type, kwargs: dict[str, Any], max_blank: float
+) -> None:
+    """Widgets without a simple SVG chart still export a non-blank PNG."""
+    from pymatviz.widgets._headless import png_blank_fraction
+
+    widget = widget_cls(style="height: 400px;", **kwargs)
+    png_bytes = widget.to_img(fmt="png", dpi=72)
+    assert png_bytes[:4] == b"\x89PNG"
+    blank_frac = png_blank_fraction(png_bytes)
+    assert blank_frac is not None
+    assert blank_frac < max_blank
+
+
+@_skip_no_playwright
+def test_headless_convex_hull_ternary_canvas_export() -> None:
+    """Ternary ConvexHull renders WebGL: PNG works, SVG raises, PDF is valid."""
+    widget = ConvexHullWidget(
+        entries=[
+            {"composition": {"Li": 1}, "energy": -1.9},
+            {"composition": {"Fe": 1}, "energy": -4.2},
+            {"composition": {"O": 1}, "energy": -3.0},
+            {"composition": {"Li": 2, "O": 1}, "energy": -15.8},
+        ],
+        style="height: 500px;",
+    )
+    assert widget.to_img(fmt="png", dpi=72)[:4] == b"\x89PNG"
+    assert widget.to_img(fmt="pdf", dpi=72)[:5] == b"%PDF-"
+    with pytest.raises(RuntimeError, match="WebGL"):
+        widget.to_img(fmt="svg")
+
+
+@_skip_no_playwright
+def test_headless_convex_hull_binary_svg() -> None:
+    """Binary ConvexHull renders SVG: vector export returns the chart, not an icon."""
+    widget = ConvexHullWidget(
+        entries=[
+            {"composition": {"Li": 1}, "energy": -1.9},
+            {"composition": {"O": 1}, "energy": -3.0},
+            {"composition": {"Li": 2, "O": 1}, "energy": -15.8},
+        ],
+        style="height: 400px;",
+    )
+    svg_text = widget.to_img(fmt="svg").decode("utf-8")
+    assert svg_text.startswith("<?xml")
+    # A real chart SVG is far larger than the ~400-byte toolbar icons
+    assert len(svg_text) > 2000, f"SVG too small ({len(svg_text)} chars)"
+
+
+@_skip_no_playwright
+def test_headless_repeated_exports_in_one_process() -> None:
+    """Repeated to_img() calls succeed (1st sync render flips later ones to async)."""
+    from pymatviz.widgets.scatter_plot import ScatterPlotWidget
+
+    bar = BarPlotWidget(series=[{"x": [0, 1], "y": [1.0, 2.0]}], style="height: 300px;")
+    scatter = ScatterPlotWidget(
+        series=[{"x": [0, 1], "y": [1.0, 2.0]}], style="height: 300px;"
+    )
+    for widget in (bar, scatter, bar):
+        assert widget.to_img(fmt="png", dpi=72)[:4] == b"\x89PNG"
+
+
+@_skip_no_playwright
+@pytest.mark.parametrize(
+    ("widget", "expect_warning", "expect_type"),
+    [
+        (
+            ScatterPlotWidget(
+                series=[{"x": [0, 1, 2], "y": [0, 1, 4], "label": "s"}],
+                style="height: 300px;",
+            ),
+            False,
+            "svg",
+        ),
+        (ScatterPlotWidget(), True, "svg"),  # empty: renders axes but warns on data
+        (
+            StructureWidget(
+                structure=Structure(Lattice.cubic(3.0), ["Si"], [[0, 0, 0]]),
+                style="height: 300px;",
+            ),
+            False,
+            "canvas",
+        ),
+    ],
+    ids=["scatter", "empty_scatter", "structure"],
+)
+def test_render_report(widget: Any, expect_warning: bool, expect_type: str) -> None:
+    """render_report classifies content, flags empty data, and never raises."""
+    report = widget.render_report(timeout=25, dpi=72)
+    assert report.ok is True
+    assert report.is_blank is False
+    assert report.content_type == expect_type
+    assert bool(report.warnings) is expect_warning
+    assert report.summary["widget_type"] == widget.widget_type
+
+
+def test_render_report_never_raises_on_asset_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """render_report honors its never-raises contract if asset resolution fails."""
+    widget = ScatterPlotWidget(series=[{"x": [0, 1], "y": [1, 2]}])
+
+    def _boom() -> tuple[str, str]:
+        raise FileNotFoundError("bundle unavailable offline")
+
+    monkeypatch.setattr(widget, "_resolve_assets", _boom)
+    report = widget.render_report(timeout=5, dpi=72)  # must not raise
+    assert report.ok is False
+    assert report.error is not None
+    assert "bundle unavailable offline" in report.error
+    # data-derived summary/warnings survive a render failure
+    assert report.summary["widget_type"] == "scatter_plot"
+
+
+@_skip_no_playwright
+@_skip_no_pillow
+def test_to_html_inline_renders_offline(tmp_path: Any) -> None:
+    """to_html(inline=True) produces a self-contained page that actually renders.
+
+    build_interactive_html has its own render path (controls on, no capture
+    machinery) that to_img/render_report don't exercise, so load the file and
+    confirm it paints a non-blank chart.
+    """
+    from pymatviz.widgets._headless import _get_browser, png_blank_fraction
+
+    widget = ScatterPlotWidget(
+        series=[{"x": [0, 1, 2], "y": [0, 1, 4], "label": "s"}],
+        style="width: 500px; height: 350px;",
+    )
+    out_path = tmp_path / "widget.html"
+    widget.to_html(str(out_path), inline=True)
+
+    page = _get_browser().new_page(viewport={"width": 600, "height": 420})
+    try:
+        page.goto(out_path.as_uri(), wait_until="domcontentloaded")
+        page.wait_for_selector("#widget-root svg", timeout=20000)
+        page.wait_for_timeout(500)
+        png_bytes = page.locator("#widget-root").screenshot(type="png")
+    finally:
+        page.close()
+
+    assert png_bytes[:4] == b"\x89PNG"
+    blank_frac = png_blank_fraction(png_bytes)
+    assert blank_frac is not None
+    assert blank_frac < 0.99  # real chart, not a blank frame

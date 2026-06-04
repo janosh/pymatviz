@@ -70,13 +70,13 @@ repos:
     hooks:
       - id: vp-fmt
         name: Format (oxfmt)
-        entry: bash -c 'set -e; for dir in site pymatviz/widgets/web; do (cd "$dir" && { [ -d node_modules ] || pnpm install; } && node_modules/.bin/vp fmt --write); done'
+        entry: bash -c 'cd site && { [ -d node_modules ] || pnpm install; } && node_modules/.bin/vp fmt --write'
         types_or: [ts, javascript, json, css, html, svelte]
         language: system
         pass_filenames: false
       - id: vp-lint
         name: Lint (oxlint)
-        entry: bash -c 'set -e; for dir in site pymatviz/widgets/web; do (cd "$dir" && { [ -d node_modules ] || pnpm install; } && node_modules/.bin/vp lint --fix); done'
+        entry: bash -c 'cd site && { [ -d node_modules ] || pnpm install; } && node_modules/.bin/vp lint --fix'
         types_or: [ts, javascript, json, css, html, svelte]
         language: system
         pass_filenames: false

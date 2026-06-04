@@ -61,7 +61,7 @@ build-backend = "uv_build"
 module-name = "pymatviz"
 module-root = ""
 source-include = ["pymatviz/**/*.csv", "pymatviz/**/*.yml"]
-source-exclude = [".venv", "web"]
+source-exclude = [".venv"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

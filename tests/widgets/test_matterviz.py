@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import builtins
+import io
 import os
-import re
-import urllib.error
-from email.message import Message
+import urllib.request
 from typing import TYPE_CHECKING, Any
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -56,13 +55,9 @@ def _mock_marimo_context(
     return mock_mod
 
 
-def _mock_urlretrieve_side_effect(url: str, path: str) -> None:
-    """Create a file on disk to simulate ``urllib.request.urlretrieve``."""
-    if "/download/v0.17.6/" in url:
-        raise urllib.error.HTTPError(url, 404, "Not Found", hdrs=Message(), fp=None)
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, mode="w") as file:
-        file.write("downloaded content")
+def _fake_urlopen(url: str, *args: Any, **kwargs: Any) -> io.BytesIO:  # noqa: ARG001
+    """Return a readable context-manager response simulating ``urlopen``."""
+    return io.BytesIO(b"downloaded content")
 
 
 @pytest.fixture
@@ -74,9 +69,11 @@ def _clean_asset_cache() -> Generator[None]:
         for attr in ("_esm", "_css")
     }
     saved_cache = cls._asset_cache.copy()
+    saved_export_url = cls._export_esm_url
     cls._asset_cache.clear()
     yield
     cls._asset_cache = saved_cache
+    cls._export_esm_url = saved_export_url
     for attr, (had, val) in saved.items():
         if had:
             assert val is not None
@@ -107,107 +104,120 @@ def test_clear_widget_cache_version_specific(
     version_override: str, tmp_path: Path
 ) -> None:
     """Version-specific clearing removes only the targeted version directory."""
-    build_dir = tmp_path / "build"
-    build_dir.mkdir()
+    base_dir = tmp_path / "matterviz-anywidget"
+    base_dir.mkdir()
     for ver in ("1.2.3", "2.0.0"):
-        (build_dir / ver).mkdir()
-        (build_dir / ver / "test.txt").write_text("test")
+        (base_dir / ver).mkdir()
+        (base_dir / ver / "test.txt").write_text("test")
 
     with patch(f"{DOTTED_PATH}.os.path.expanduser", return_value=str(tmp_path)):
         matterviz.clear_widget_cache(version_override)
 
-    assert not (build_dir / version_override).exists()
+    assert not (base_dir / version_override).exists()
     other_version = "2.0.0" if version_override == "1.2.3" else "1.2.3"
-    assert (build_dir / other_version).exists()
+    assert (base_dir / other_version).exists()
+
+
+# === default CDN URL + pinned version ===
+
+
+def test_default_cdn_url() -> None:
+    """Default CDN URL points at the pinned matterviz-anywidget npm version."""
+    assert matterviz._cdn_url(matterviz.MATTERVIZ_ANYWIDGET_VERSION) == (
+        "https://cdn.jsdelivr.net/npm/matterviz-anywidget@"
+        f"{matterviz.MATTERVIZ_ANYWIDGET_VERSION}/build/matterviz.js"
+    )
+
+
+def test_pinned_anywidget_version_resolves() -> None:
+    """The pinned matterviz-anywidget version is fetchable from jsDelivr.
+
+    Network-gated: skips (never fails) when offline or not yet published, so it
+    stays green pre-publish but flags a broken pin once the bundle is live.
+    """
+    url = matterviz._cdn_url(matterviz.MATTERVIZ_ANYWIDGET_VERSION)
+    try:
+        with urllib.request.urlopen(url, timeout=10) as response:  # noqa: S310
+            status = response.status
+    except Exception as exc:  # noqa: BLE001
+        pytest.skip(f"matterviz-anywidget bundle not reachable at {url}: {exc}")
+    assert status == 200
+
+
+@pytest.mark.parametrize("bad_version", ["not-a-version", "1.2", "v1.2.3", "1.2.x"])
+def test_fetch_widget_asset_rejects_bad_version(
+    bad_version: str,
+    cache_at_tmp: Path,  # noqa: ARG001  -- isolates env/cache so the regex is reached
+) -> None:
+    """fetch_widget_asset rejects malformed (non-semver) versions."""
+    with pytest.raises(ValueError, match="Invalid matterviz-anywidget version"):
+        matterviz.fetch_widget_asset("matterviz.js", version_override=bad_version)
 
 
 # === fetch_widget_asset ===
 
 
-def test_fetch_widget_asset_local_file(tmp_path: Path) -> None:
-    """Local dev build files take priority over cache and download."""
-    web_build_dir = tmp_path / "web" / "build"
-    web_build_dir.mkdir(parents=True)
-    (web_build_dir / "test.js").write_text("local content")
+def test_fetch_widget_asset_dev_dir(tmp_path: Path) -> None:
+    """MATTERVIZ_ANYWIDGET_DIR takes priority over cache and download."""
+    build_dir = tmp_path / "build"
+    build_dir.mkdir()
+    (build_dir / "matterviz.js").write_text("dev content")
 
-    with patch(f"{DOTTED_PATH}.os.path.dirname", return_value=str(tmp_path)):
-        assert matterviz.fetch_widget_asset("test.js") == "local content"
+    with patch.dict(os.environ, {"MATTERVIZ_ANYWIDGET_DIR": str(build_dir)}):
+        assert matterviz.fetch_widget_asset("matterviz.js") == "dev content"
 
 
-def test_fetch_widget_asset_cached_file(tmp_path: Path) -> None:
+@pytest.fixture
+def cache_at_tmp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Isolate fetch_widget_asset: no dev-dir override, cache rooted at tmp_path."""
+    monkeypatch.delenv("MATTERVIZ_ANYWIDGET_DIR", raising=False)
+    monkeypatch.setattr(matterviz.os.path, "expanduser", lambda _path: str(tmp_path))
+    return tmp_path
+
+
+def test_fetch_widget_asset_cached_file(cache_at_tmp: Path) -> None:
     """Cached files are returned without triggering a download."""
-    cache_file = tmp_path / "v1.0.0" / "test.js"
+    cache_file = (
+        cache_at_tmp
+        / "matterviz-anywidget"
+        / matterviz.MATTERVIZ_ANYWIDGET_VERSION
+        / "matterviz.js"
+    )
     cache_file.parent.mkdir(parents=True)
     cache_file.write_text("cached content")
 
-    with (
-        patch(f"{DOTTED_PATH}.os.path.dirname", return_value=str(tmp_path)),
-        patch(f"{DOTTED_PATH}.os.path.expanduser", return_value=str(tmp_path)),
-        patch(
-            f"{DOTTED_PATH}.os.path.isfile",
-            side_effect=lambda path: path == str(cache_file),
-        ),
-        patch(f"{PKG_NAME}.__version__", "1.0.0"),
-        patch(f"{DOTTED_PATH}.urllib.request.urlretrieve") as mock_dl,
-    ):
-        assert matterviz.fetch_widget_asset("test.js") == "cached content"
+    with patch(f"{DOTTED_PATH}.urllib.request.urlopen") as mock_dl:
+        assert matterviz.fetch_widget_asset("matterviz.js") == "cached content"
 
     mock_dl.assert_not_called()
 
 
-@pytest.mark.parametrize(
-    ("version", "expected_cache_version"),
-    [("v0.17.0", "v0.17.0"), ("v0.17.6", "latest")],
-)
-def test_fetch_widget_asset_downloads_and_caches(
-    tmp_path: Path,
-    version: str,
-    expected_cache_version: str,
-) -> None:
-    """Downloads exact release assets or falls back to latest when missing."""
-    with (
-        patch(f"{DOTTED_PATH}.os.path.dirname", return_value=str(tmp_path)),
-        patch(f"{DOTTED_PATH}.os.path.expanduser", return_value=str(tmp_path)),
-        patch(f"{DOTTED_PATH}.os.path.isfile", return_value=False),
-        patch(
-            f"{DOTTED_PATH}.urllib.request.urlretrieve",
-            side_effect=_mock_urlretrieve_side_effect,
-        ) as mock_dl,
-        patch(f"{PKG_NAME}.__version__", "1.0.0"),
-    ):
-        result = matterviz.fetch_widget_asset("matterviz.js", version_override=version)
+def test_fetch_widget_asset_downloads_and_caches(cache_at_tmp: Path) -> None:
+    """Missing assets are downloaded from the jsDelivr npm CDN and cached."""
+    expected_url = (
+        "https://cdn.jsdelivr.net/npm/matterviz-anywidget@0.3.9/build/matterviz.js"
+    )
+    with patch(
+        f"{DOTTED_PATH}.urllib.request.urlopen", side_effect=_fake_urlopen
+    ) as mock_dl:
+        result = matterviz.fetch_widget_asset("matterviz.js", version_override="0.3.9")
 
     assert result == "downloaded content"
-    expected_urls = [
-        f"https://github.com/janosh/pymatviz/releases/download/{version}/matterviz.js"
-    ]
-    if expected_cache_version == "latest":
-        expected_urls += [
-            "https://github.com/janosh/pymatviz/releases/latest/download/matterviz.js"
-        ]
-    assert [mock_call.args[0] for mock_call in mock_dl.call_args_list] == expected_urls
-    assert (
-        tmp_path / expected_cache_version / "matterviz.js"
-    ).read_text() == "downloaded content"
+    assert mock_dl.call_args.args[0] == expected_url
+    cached = cache_at_tmp / "matterviz-anywidget" / "0.3.9" / "matterviz.js"
+    assert cached.read_text() == "downloaded content"
 
 
-def test_fetch_widget_asset_download_error(tmp_path: Path) -> None:
-    """Network failures raise FileNotFoundError with version info."""
-    err_msg = re.escape(
-        "Could not load test.js from GitHub releases for version v1.0.0"
-    )
+def test_fetch_widget_asset_download_error(cache_at_tmp: Path) -> None:  # noqa: ARG001
+    """Network failures raise FileNotFoundError naming the package and version."""
     with (
-        patch(f"{DOTTED_PATH}.os.path.dirname", return_value=str(tmp_path)),
-        patch(f"{DOTTED_PATH}.os.path.expanduser", return_value=str(tmp_path)),
-        patch(f"{DOTTED_PATH}.os.path.isfile", return_value=False),
         patch(
-            f"{DOTTED_PATH}.urllib.request.urlretrieve",
+            f"{DOTTED_PATH}.urllib.request.urlopen",
             side_effect=Exception("Network error"),
         ),
-        patch(f"{PKG_NAME}.__version__", "1.0.0"),
-        pytest.raises(FileNotFoundError, match=err_msg),
+        pytest.raises(FileNotFoundError, match="for matterviz-anywidget@"),
     ):
-        matterviz.fetch_widget_asset("test.js")
+        matterviz.fetch_widget_asset("matterviz.js")
 
 
 # === _read_asset_source ===
@@ -243,7 +253,9 @@ def test_read_asset_source_http_url() -> None:
         result = _read_asset_source("https://cdn.example.com/matterviz.js")
 
     assert result == "export default {}"
-    mock_urlopen.assert_called_once_with("https://cdn.example.com/matterviz.js")
+    mock_urlopen.assert_called_once_with(
+        "https://cdn.example.com/matterviz.js", timeout=30
+    )
 
 
 # === configure_assets ===
@@ -251,7 +263,7 @@ def test_read_asset_source_http_url() -> None:
 
 @pytest.mark.usefixtures("_clean_asset_cache")
 def test_configure_assets_with_version() -> None:
-    """configure_assets(version=...) fetches from GitHub releases."""
+    """configure_assets(version=...) fetches from jsDelivr npm CDN."""
     with patch(f"{DOTTED_PATH}.fetch_widget_asset") as mock_fetch:
         mock_fetch.side_effect = lambda name, ver: f"{name}@{ver}"
         configure_assets(version="v0.19.0")
@@ -260,6 +272,26 @@ def test_configure_assets_with_version() -> None:
     assert cls._esm == "matterviz.js@v0.19.0"
     assert cls._css == "matterviz.css@v0.19.0"
     assert "default" in cls._asset_cache
+
+
+@pytest.mark.usefixtures("_clean_asset_cache")
+def test_to_html_references_configured_version() -> None:
+    """to_html(inline=False) points JS at the configured version's CDN URL.
+
+    Guards against pairing the pinned-default JS with custom-version CSS.
+    """
+    with patch(f"{DOTTED_PATH}.fetch_widget_asset") as mock_fetch:
+        mock_fetch.side_effect = lambda name, ver: (
+            "export default { render() {} }"
+            if name.endswith(".js")
+            else f".mv {{}} /* {name}@{ver} */"
+        )
+        configure_assets(version="0.3.6")
+        html = matterviz.MatterVizWidget().to_html(inline=False)
+
+    assert "matterviz-anywidget@0.3.6/build/matterviz.js" in html  # JS = configured
+    assert "@0.3.7/" not in html  # not the pinned default
+    assert "/* matterviz.css@0.3.6 */" in html  # configured CSS inlined -> matches JS
 
 
 @pytest.mark.usefixtures("_clean_asset_cache")
@@ -339,44 +371,6 @@ def test_configure_assets_applies_to_subsequent_widgets(tmp_path: Path) -> None:
     assert widget._css == "configured css"
 
 
-# === build_widget_assets ===
-
-
-@pytest.mark.parametrize(
-    ("has_node_modules", "expected_commands"),
-    [
-        (True, [["npm", "run", "build"]]),
-        (
-            False,
-            [
-                ["npm", "install"],
-                ["npm", "run", "build"],
-            ],
-        ),
-    ],
-)
-def test_build_widget_assets_installs_only_when_needed(
-    tmp_path: Path,
-    has_node_modules: bool,
-    expected_commands: list[list[str]],
-) -> None:
-    """Installs deps only when needed before building widget assets."""
-    web_dir = f"{tmp_path}/web"
-    os.makedirs(web_dir, exist_ok=True)
-    if has_node_modules:
-        os.makedirs(f"{web_dir}/node_modules", exist_ok=True)
-
-    with (
-        patch(f"{DOTTED_PATH}.os.path.dirname", return_value=str(tmp_path)),
-        patch(f"{DOTTED_PATH}.subprocess.run") as mock_run,
-    ):
-        matterviz.build_widget_assets()
-
-    assert mock_run.call_args_list == [
-        call(command, cwd=web_dir, check=True) for command in expected_commands
-    ]
-
-
 # === MatterVizWidget.__init__ ===
 
 
@@ -394,11 +388,11 @@ def test_lazy_matterviz_widget() -> None:
 def test_lazy_matterviz_widget_version_override() -> None:
     """Version override passes the version to fetch_widget_asset."""
     with patch(f"{DOTTED_PATH}.fetch_widget_asset", return_value="v2 content") as mock:
-        widget = matterviz.MatterVizWidget(version_override="v2.0.0")
+        widget = matterviz.MatterVizWidget(version_override="2.0.0")
 
-    assert {call.args for call in mock.call_args_list} == {
-        ("matterviz.js", "v2.0.0"),
-        ("matterviz.css", "v2.0.0"),
+    assert {mock_call.args for mock_call in mock.call_args_list} == {
+        ("matterviz.js", "2.0.0"),
+        ("matterviz.css", "2.0.0"),
     }
     assert widget._esm == "v2 content"
     assert widget._css == "v2 content"

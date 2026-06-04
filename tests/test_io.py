@@ -50,9 +50,11 @@ def test_save_fig(
         assert '"scrollZoom": true' in html
 
     if ext == "svelte":
-        assert html.startswith("<div {...$$props}>")
+        # plotly may add attrs to the div (e.g. style="..." since 6.8), so the
+        # injected {...$$props} is followed by ">" or " <attr>"
+        assert html.startswith("<div {...$$props}")
     else:
-        assert html.startswith("<div>")
+        assert html.startswith("<div")
 
 
 @patch.dict(os.environ, {"CI": "1"})
