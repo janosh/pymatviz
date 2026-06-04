@@ -25,8 +25,10 @@ jobs:
     with:
       os: ${{ matrix.os }}
       python-version: '3.11'
-      node-version: '24'
-      pre-install-cmd: (cd pymatviz/widgets/web && corepack enable && pnpm install && pnpm run build)
+      # widget assets are fetched from the matterviz-anywidget npm package via
+      # jsDelivr at runtime (no local Node build needed). Requires
+      # matterviz-anywidget@<MATTERVIZ_ANYWIDGET_VERSION> to be published to npm
+      # first -- widget tests can't fetch the bundle until then.
       install-cmd: |
         uv pip install -e '.[test,brillouin]'  --system
       # pytest-split distributes work load so parallel jobs finish in similar time
@@ -47,15 +49,6 @@ jobs:
 
       - name: Setup uv
         uses: astral-sh/setup-uv@v6
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-
-      - name: Install and build widget assets
-        run: corepack enable && pnpm install && pnpm run build
-        working-directory: pymatviz/widgets/web
 
       - name: Run all widget demos
         run: |

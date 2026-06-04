@@ -665,8 +665,10 @@ from pymatviz.widgets.matterviz import MatterVizWidget  # noqa: E402, I001
 EXPORT_DIR = f"{os.path.dirname(__file__)}/exports"
 os.makedirs(EXPORT_DIR, exist_ok=True)
 
-# Canvas-based (WebGL) widgets — PNG and PDF only (SVG not supported)
-canvas_widgets: dict[str, MatterVizWidget] = {
+# Raster-only widgets — PNG and PDF only (no extractable SVG chart).
+# Covers WebGL/Three.js scenes plus HTML-grid widgets (PeriodicTable,
+# HeatmapMatrix) and the WebGL ternary ConvexHull/ChemPotDiagram below.
+raster_widgets: dict[str, MatterVizWidget] = {
     "structure": structure_widget,
     "multi_vector": multi_vec_widget,
     "brillouin_zone": bz_widget,
@@ -676,11 +678,14 @@ canvas_widgets: dict[str, MatterVizWidget] = {
     "isosurface": iso_widget,
     "orbital": orbital_widget,
     "scatter_plot_3d": scatter_3d_widget,
+    "convex_hull": convex_hull_widget,  # ternary system -> WebGL
+    "chem_pot_diagram": chem_pot_widget,  # ternary system -> WebGL
+    "periodic_table": ptable_widget,  # HTML element grid
+    "heatmap_matrix": heatmap_widget,  # HTML tile grid
 }
 
 # SVG-based widgets — PNG, SVG, and PDF
 svg_widgets: dict[str, MatterVizWidget] = {
-    "convex_hull": convex_hull_widget,
     "xrd": xrd_widget,
     "scatter_plot": scatter_plot_widget,
     "bar_plot": bar_plot_widget,
@@ -688,16 +693,13 @@ svg_widgets: dict[str, MatterVizWidget] = {
     "band_structure": bands_widget,
     "dos": dos_widget,
     "bands_and_dos": bands_dos_widget,
-    "periodic_table": ptable_widget,
-    "heatmap_matrix": heatmap_widget,
     "spacegroup_bar": spacegroup_widget,
-    "chem_pot_diagram": chem_pot_widget,
     "rdf_plot": rdf_widget,
     "composition_pie": composition_pie_widget,
 }
 
 for widgets, fmts in [
-    (canvas_widgets, ("png", "pdf")),
+    (raster_widgets, ("png", "pdf")),
     (svg_widgets, ("png", "svg", "pdf")),
 ]:
     for name, widget in widgets.items():

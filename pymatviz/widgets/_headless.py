@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import atexit
 import base64
+import dataclasses
 import functools
 import html as html_mod
 import io
@@ -24,6 +25,8 @@ from typing import TYPE_CHECKING, Any
 
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from playwright.async_api import Browser as AsyncBrowser
     from playwright.async_api import Page as AsyncPage
     from playwright.sync_api import Browser, Page
@@ -177,54 +180,64 @@ def _prepare_render(
         widget_data, esm_content, css_content, timeout, width=width, height=height
     )
     timeout_ms = int(timeout * 1000)
-    needs_raster = fmt in ("png", "jpeg") or (
-        fmt == "pdf" and widget_data.get("widget_type") in _CANVAS_WIDGET_TYPES
-    )
+    # PDF capture rasterizes WebGL canvases (Chromium's vector page.pdf() can't
+    # see them), so scale every raster-capable format by DPI. The canvas-vs-SVG
+    # choice is made at capture time from the DOM. SVG stays 1x (pure vector).
+    needs_raster = fmt in ("png", "jpeg", "pdf")
     scale_factor = max(1, dpi / 72) if needs_raster else 1
     return _write_temp_html(html), timeout_ms, scale_factor
+
+
+_CAPTURE_FORMATS = ("png", "jpeg", "svg", "pdf")
+
+
+def _validate_capture_format(fmt: str) -> None:
+    """Raise ValueError if fmt is not a supported capture format."""
+    if fmt not in _CAPTURE_FORMATS:
+        raise ValueError(
+            f"Unsupported capture format {fmt!r}, expected one of {_CAPTURE_FORMATS}"
+        )
+
+
+def _vector_pdf_kwargs(bbox: Mapping[str, object] | None) -> dict[str, Any]:
+    """Page.pdf() options sizing a borderless PDF to the widget bounding box."""
+    if bbox is None:
+        raise RuntimeError("Widget root has no bounding box for PDF export")
+    return dict(
+        width=f"{bbox['width']}px",
+        height=f"{bbox['height']}px",
+        print_background=True,
+        margin={"top": "0", "bottom": "0", "left": "0", "right": "0"},
+    )
 
 
 async def _async_capture_page(
     page: AsyncPage,
     fmt: str,
-    widget_type: str | None,
     quality: int = 90,
     scale_factor: float = 1.0,
 ) -> bytes:
     """Async version of _capture_page."""
-    if fmt not in ("png", "jpeg", "svg", "pdf"):
-        raise ValueError(
-            f"Unsupported capture format {fmt!r}, "
-            "expected 'png', 'jpeg', 'svg', or 'pdf'"
-        )
+    _validate_capture_format(fmt)
 
     if fmt == "svg":
-        if widget_type in _CANVAS_WIDGET_TYPES:
-            raise RuntimeError("SVG export not supported for WebGL (canvas) widgets")
         svg_string = await page.evaluate(_SVG_EXTRACT_JS)
         if svg_string is None:
-            raise RuntimeError(
-                "No SVG element found in widget. This widget type may not "
-                "support SVG export. Use fmt='png' instead."
-            )
+            has_canvas = await page.evaluate(_HAS_CANVAS_JS)
+            raise RuntimeError(_no_svg_message(has_canvas=has_canvas))
         return svg_string.encode("utf-8")
 
     if fmt == "pdf":
-        if widget_type in _CANVAS_WIDGET_TYPES:
+        # WebGL canvas content is invisible to Chromium's print PDF pipeline,
+        # so rasterize canvas widgets; SVG/HTML widgets get a native vector PDF.
+        if await page.evaluate(_HAS_CANVAS_JS):
             return _png_to_pdf(
                 await page.locator("#widget-root").screenshot(type="png"),
                 scale=scale_factor,
             )
         await page.emulate_media(media="screen")
         bbox = await page.locator("#widget-root").bounding_box()
-        if bbox is None:
-            raise RuntimeError("Widget root has no bounding box for PDF export")
-        return await page.pdf(
-            width=f"{bbox['width']}px",
-            height=f"{bbox['height']}px",
-            print_background=True,
-            margin={"top": "0", "bottom": "0", "left": "0", "right": "0"},
-        )
+        return await page.pdf(**_vector_pdf_kwargs(bbox))
 
     root = page.locator("#widget-root")
     if fmt == "jpeg":
@@ -264,16 +277,17 @@ async def _render_widget_async(
         if render_error:
             raise RuntimeError(f"Widget render failed: {render_error}")  # noqa: TRY301
 
-        return await _async_capture_page(
-            page, fmt, widget_data.get("widget_type"), quality, scale_factor
-        )
+        return await _async_capture_page(page, fmt, quality, scale_factor)
     except Exception as exc:
+        timeout_types: tuple[type[BaseException], ...] = (TimeoutError,)
         try:
             from playwright.async_api import TimeoutError as PlaywrightTimeout
-        except ImportError:
-            PlaywrightTimeout = type(None)  # noqa: N806
 
-        if isinstance(exc, (PlaywrightTimeout, TimeoutError)):
+            timeout_types = (TimeoutError, PlaywrightTimeout)
+        except ImportError:
+            pass
+
+        if isinstance(exc, timeout_types):
             raise TimeoutError(
                 f"Widget did not finish rendering within {timeout}s"
             ) from exc
@@ -292,8 +306,53 @@ async def _render_widget_async(
 
 @functools.lru_cache(maxsize=1)
 def _get_esm_b64(esm_content: str) -> str:
-    """Return base64-encoded ESM bundle, cached to avoid re-encoding ~11 MB."""
+    """Return base64-encoded ESM bundle, cached to avoid re-encoding ~4.5 MB."""
     return base64.b64encode(esm_content.encode("utf-8")).decode("ascii")
+
+
+def _worker_shim(widget_type: str | None) -> str:
+    """JS that disables Web Workers when the embedded ESM can't load its worker.
+
+    ChemPotDiagram offloads its compute to a Web Worker whose URL is resolved
+    against ``import.meta.url``. When we embed the bundle (blob URL in headless,
+    CDN URL in ``to_html``) that resolution either throws or 404s, leaving the
+    widget stuck on a loading spinner. Disabling Worker triggers the component's
+    documented synchronous main-thread fallback. Scoped to chem_pot_diagram so
+    fflate's async gzip/zip workers keep working for other widgets (e.g.
+    ``.gz`` ``data_url`` loading).
+    """
+    if widget_type == "chem_pot_diagram":
+        return "globalThis.Worker = undefined;\n"
+    return ""
+
+
+def _esm_blob_loader_js(esm_content: str) -> str:
+    """JS that decodes the base64 ESM bundle into a ``blob:`` URL named ``esm_url``.
+
+    blob URLs work with dynamic ``import()``; ``data:`` module URLs are blocked by
+    browsers, hence the base64 + Blob dance.
+    """
+    esm_b64 = _get_esm_b64(esm_content)
+    return (
+        f'const esm_bytes = Uint8Array.from(atob("{esm_b64}"), c => c.charCodeAt(0));\n'
+        'const esm_blob = new Blob([esm_bytes], { type: "application/javascript" });\n'
+        "const esm_url = URL.createObjectURL(esm_blob);"
+    )
+
+
+# Anywidget model mock (only get() is needed to render) + mount. Assumes
+# ``esm_url`` and ``widget_data`` are already defined; defines ``el`` so callers
+# can reuse the mounted root. Plain single-brace JS (injected via substitution).
+_MOUNT_WIDGET_JS = """\
+const model = {
+  get: (key) => widget_data[key],
+  set: () => {}, on: () => {}, off: () => {}, save_changes: () => {}, send: () => {},
+};
+const mod = await import(esm_url);
+const render_fn = mod.default?.render ?? mod.render;
+if (!render_fn) throw new Error("ESM bundle has no render export");
+const el = document.getElementById("widget-root");
+render_fn({ model, el });"""
 
 
 def _build_html(
@@ -327,11 +386,7 @@ def _build_html(
     """
     # Escape </ sequences to prevent premature </script> closure
     data_json = json.dumps(widget_data, default=str).replace("</", r"<\/")
-
-    # Base64-encode the ESM bundle so we can load it as a blob URL.
-    # data: URLs with type=module are blocked by browsers for security,
-    # but blob: URLs work fine. The encoding is cached across calls.
-    esm_b64 = _get_esm_b64(esm_content)
+    esm_loader = _esm_blob_loader_js(esm_content)
 
     # Build container style: user style first, then explicit overrides
     # (later declarations win in inline style), then defaults for any
@@ -352,6 +407,15 @@ def _build_html(
         parts.append("height: 600px")
     widget_style = html_mod.escape("; ".join(parts), quote=True)
 
+    # Chart widgets render an <svg> or <canvas> we can wait for. HTML-only
+    # widgets (PeriodicTable/HeatmapMatrix render a grid of tiles) have neither,
+    # so only those enable the HTML-content fallback. Keeping it off for chart
+    # widgets prevents a half-laid-out plot or not-yet-painted WebGL canvas from
+    # being captured prematurely via stray HTML (labels, legends).
+    widget_type = widget_data.get("widget_type")
+    allow_html = "true" if widget_type in _HTML_WIDGET_TYPES else "false"
+    worker_shim = _worker_shim(widget_type)
+
     return f"""\
 <!DOCTYPE html>
 <html><head><meta charset="utf-8">
@@ -359,30 +423,12 @@ def _build_html(
 </head><body style="margin: 0; padding: 0;">
 <div id="widget-root" style="{widget_style}"></div>
 <script type="module">
-// Decode the base64-encoded ESM bundle and load it as a blob URL
-const esm_bytes = Uint8Array.from(atob("{esm_b64}"), c => c.charCodeAt(0));
-const esm_blob = new Blob([esm_bytes], {{ type: "application/javascript" }});
-const esm_url = URL.createObjectURL(esm_blob);
+{worker_shim}{esm_loader}
 
 const widget_data = {data_json};
 
-// Minimal anywidget model mock -- only get() is needed for rendering
-const model = {{
-  get: (key) => widget_data[key],
-  set: () => {{}},
-  on: () => {{}},
-  off: () => {{}},
-  save_changes: () => {{}},
-  send: () => {{}},
-}};
-
 try {{
-  const mod = await import(esm_url);
-  const render_fn = mod.default?.render ?? mod.render;
-  if (!render_fn) throw new Error("ESM bundle has no render export");
-
-  const el = document.getElementById("widget-root");
-  render_fn({{ model, el }});
+{_MOUNT_WIDGET_JS}
 
   // Svelte 5's bind:clientWidth/Height uses ResizeObserver internally.
   // When elements already have their final size at mount time, the
@@ -401,23 +447,42 @@ try {{
   // Double RAF to let Svelte process the reactive update
   await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
-  // Poll for visible content (canvas or SVG) up to the configured timeout.
+  // Poll for visible content (canvas, SVG, or rendered HTML) up to the timeout.
   const start = Date.now();
   const max_wait = {int(timeout * 1000)};
+  const allow_html_fallback = {allow_html};
   let found_content = false;
   while (Date.now() - start < max_wait) {{
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-    if (el.querySelector("canvas") || el.querySelector("svg")) {{
-      // Extra settle time for Three.js scenes to complete first paint
-      await new Promise(r => setTimeout(r, 500));
-      found_content = true;
-      break;
+    // Skip while a loading spinner is visible (e.g. async compute) so we never
+    // capture a transient "Computing..." state instead of the finished plot.
+    if (!el.querySelector('.spinner[role="status"]')) {{
+      if (el.querySelector("canvas") || el.querySelector("svg")) {{
+        // Extra settle time for Three.js scenes to complete first paint
+        await new Promise(r => setTimeout(r, 500));
+        found_content = true;
+        break;
+      }}
+      // Fallback for HTML-only widgets (e.g. PeriodicTableWidget) that render
+      // neither canvas nor svg: accept once the widget root has laid-out,
+      // sized, non-empty content.
+      if (allow_html_fallback) {{
+        const child = el.firstElementChild;
+        if (child && child.getBoundingClientRect().height > 20
+            && el.textContent.trim().length > 0) {{
+          await new Promise(r => setTimeout(r, 200));
+          found_content = true;
+          break;
+        }}
+      }}
     }}
     await new Promise(r => setTimeout(r, 100));
   }}
 
   if (!found_content) {{
-    window.__RENDER_ERROR = `No canvas or SVG element found after ${{max_wait}}ms`;
+    window.__RENDER_ERROR =
+      `No capturable content (canvas, SVG, or HTML) after ${{max_wait}}ms `
+      + `(widget may still be loading)`;
   }}
   window.__RENDER_DONE = true;
 }} catch (err) {{
@@ -428,21 +493,88 @@ try {{
 </body></html>"""
 
 
-# Widget types that render via WebGL <canvas> (not SVG).
-# Keep in sync with widget classes in pymatviz/widgets/ that use Three.js.
+def build_interactive_html(
+    widget_data: dict[str, Any],
+    css_content: str,
+    *,
+    esm_url: str | None = None,
+    esm_content: str | None = None,
+    title: str = "MatterViz widget",
+    description: str = "",
+) -> str:
+    """Build a standalone, interactive HTML page rendering one widget.
+
+    Unlike ``_build_html`` (which is tuned for headless capture), this keeps the
+    widget's controls and omits the render-done/capture machinery so the result
+    is a shareable, interactive page.
+
+    Exactly one ESM source must be given: ``esm_url`` (referenced via
+    ``import(url)`` -- the host must serve it with CORS and a JS MIME type) or
+    ``esm_content`` (inlined as a base64 ``blob:`` URL -- self-contained, opens
+    offline). CSS is always inlined.
+
+    Note: the no-op anywidget model mock means client-side interactions (3D
+    rotate/zoom, hover, control-pane local state) work, but controls that
+    round-trip through a Python kernel do not (there is no kernel).
+    """
+    if (esm_url is None) == (esm_content is None):
+        raise ValueError("provide exactly one of esm_url or esm_content")
+
+    data_json = json.dumps(widget_data, default=str).replace("</", r"<\/")
+    worker_shim = _worker_shim(widget_data.get("widget_type"))
+    if esm_content is not None:
+        esm_loader = _esm_blob_loader_js(esm_content)
+    else:
+        esm_loader = f"const esm_url = {json.dumps(esm_url)};"
+
+    style = html_mod.escape(
+        widget_data.get("style") or "width: 100%; height: 600px;", quote=True
+    )
+    title_esc = html_mod.escape(title, quote=True)
+    desc_esc = html_mod.escape(description, quote=True)
+
+    return f"""\
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{title_esc}</title>
+<meta name="description" content="{desc_esc}">
+<style>{css_content}</style>
+</head><body style="margin: 0; padding: 0;">
+<div id="widget-root" style="{style}"></div>
+<script type="module">
+{worker_shim}{esm_loader}
+
+const widget_data = {data_json};
+{_MOUNT_WIDGET_JS}
+
+// Nudge the ResizeObserver so bind:clientWidth/Height pick up the final size.
+const wrapper = el.firstElementChild;
+if (wrapper) {{
+  const orig_w = wrapper.style.width;
+  wrapper.style.width = (wrapper.clientWidth + 1) + "px";
+  requestAnimationFrame(() => {{ wrapper.style.width = orig_w; }});
+}}
+</script>
+</body></html>"""
+
+
+# Extract the largest chart-sized SVG from the widget for vector export.
+# Sub-threshold (< 20px) elements are toolbar/legend icons, never the chart,
+# so they are ignored and the function returns null when only icons exist.
+# Returning null (rather than an icon) lets the caller raise a clear error.
 _SVG_EXTRACT_JS = """\
 () => {
     const svgs = Array.from(document.querySelectorAll('#widget-root svg'));
     if (!svgs.length) return null;
-    let best = null, best_area = 0, fallback = null, fallback_area = 0;
+    let best = null, best_area = 0;
     for (const svg of svgs) {
         const rect = svg.getBoundingClientRect();
         const area = rect.width * rect.height;
-        if (rect.width >= 20 && rect.height >= 20) {
-            if (area > best_area) { best = svg; best_area = area; }
-        } else if (area > fallback_area) { fallback = svg; fallback_area = area; }
+        if (rect.width >= 20 && rect.height >= 20 && area > best_area) {
+            best = svg; best_area = area;
+        }
     }
-    best = best || fallback;
     if (!best) return null;
     const cloned = best.cloneNode(true);
     if (!cloned.hasAttribute('xmlns'))
@@ -456,15 +588,37 @@ _SVG_EXTRACT_JS = """\
 }
 """
 
-_CANVAS_WIDGET_TYPES = frozenset(
-    {
-        "structure",
-        "trajectory",
-        "fermi_surface",
-        "brillouin_zone",
-        "scatter_plot_3d",
+# Detect whether the widget painted a real WebGL <canvas> (vs decorative ones).
+# Capture decisions (SVG-vs-raster, vector-vs-rasterized PDF) are made from the
+# actual DOM rather than a static widget_type list, because some widgets render
+# SVG or canvas depending on their data (e.g. ConvexHull/ChemPotDiagram render
+# 2D SVG for binary systems but 3D WebGL for ternary+).
+_HAS_CANVAS_JS = """\
+() => {
+    const root = document.getElementById('widget-root');
+    if (!root) return false;
+    for (const canvas of root.querySelectorAll('canvas')) {
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width >= 50 && rect.height >= 50) return true;
     }
-)
+    return false;
+}
+"""
+
+# Widget types that render plain HTML (no <canvas>/<svg> chart) and so need the
+# HTML-content fallback in _build_html to detect render completion. All other
+# widgets render an <svg> or <canvas> we wait for instead.
+_HTML_WIDGET_TYPES = frozenset({"periodic_table", "heatmap_matrix"})
+
+
+def _no_svg_message(*, has_canvas: bool) -> str:
+    """Error message for failed SVG export, tailored to the widget content."""
+    if has_canvas:
+        return "SVG export not supported for WebGL (canvas) widgets"
+    return (
+        "No SVG element found in widget. This widget type may not "
+        "support SVG export. Use fmt='png' instead."
+    )
 
 
 def _png_to_pdf(png_bytes: bytes, scale: float = 1.0) -> bytes:
@@ -546,42 +700,35 @@ def _png_to_pdf(png_bytes: bytes, scale: float = 1.0) -> bytes:
 def _capture_page(
     page: Page,
     fmt: str,
-    widget_type: str | None,
     quality: int = 90,
     scale_factor: float = 1.0,
 ) -> bytes:
     """Capture the rendered widget from a Playwright page.
 
+    Canvas-vs-SVG is detected from the rendered DOM (not the widget type), so
+    widgets that switch between SVG and WebGL based on their data export
+    correctly in both modes.
+
     Args:
         page: Playwright page with the widget already rendered.
         fmt: ``"png"``, ``"jpeg"``, ``"svg"``, or ``"pdf"``.
-        widget_type: The widget_type string for canvas-vs-SVG detection.
         quality: JPEG compression quality (1-100). Ignored for other formats.
         scale_factor: Device scale factor for DPI-correct PDF page sizing.
 
     Returns:
         Raw image/document bytes.
     """
-    if fmt not in ("png", "jpeg", "svg", "pdf"):
-        raise ValueError(
-            f"Unsupported capture format {fmt!r}, "
-            "expected 'png', 'jpeg', 'svg', or 'pdf'"
-        )
+    _validate_capture_format(fmt)
 
     if fmt == "svg":
-        if widget_type in _CANVAS_WIDGET_TYPES:
-            raise RuntimeError("SVG export not supported for WebGL (canvas) widgets")
-
         svg_string = page.evaluate(_SVG_EXTRACT_JS)
         if svg_string is None:
-            raise RuntimeError(
-                "No SVG element found in widget. This widget type may not "
-                "support SVG export. Use fmt='png' instead."
-            )
+            has_canvas = page.evaluate(_HAS_CANVAS_JS)
+            raise RuntimeError(_no_svg_message(has_canvas=has_canvas))
         return svg_string.encode("utf-8")
 
     if fmt == "pdf":
-        if widget_type in _CANVAS_WIDGET_TYPES:
+        if page.evaluate(_HAS_CANVAS_JS):
             # WebGL canvas content is invisible to Chromium's print PDF
             # pipeline. Take a high-res screenshot and wrap it in a PDF.
             return _png_to_pdf(
@@ -589,17 +736,10 @@ def _capture_page(
                 scale=scale_factor,
             )
 
-        # SVG widgets: native vector PDF with selectable text
+        # SVG/HTML widgets: native vector PDF with selectable text
         page.emulate_media(media="screen")
         bbox = page.locator("#widget-root").bounding_box()
-        if bbox is None:
-            raise RuntimeError("Widget root has no bounding box for PDF export")
-        return page.pdf(
-            width=f"{bbox['width']}px",
-            height=f"{bbox['height']}px",
-            print_background=True,
-            margin={"top": "0", "bottom": "0", "left": "0", "right": "0"},
-        )
+        return page.pdf(**_vector_pdf_kwargs(bbox))
 
     # PNG/JPEG -- screenshot the widget container
     root = page.locator("#widget-root")
@@ -719,16 +859,17 @@ def render_widget_headless(
         if render_error:
             raise RuntimeError(f"Widget render failed: {render_error}")  # noqa: TRY301
 
-        return _capture_page(
-            page, fmt, widget_data.get("widget_type"), quality, scale_factor
-        )
+        return _capture_page(page, fmt, quality, scale_factor)
     except Exception as exc:
+        timeout_types: tuple[type[BaseException], ...] = (TimeoutError,)
         try:
             from playwright.sync_api import TimeoutError as PlaywrightTimeout
-        except ImportError:
-            PlaywrightTimeout = type(None)  # noqa: N806
 
-        if isinstance(exc, (PlaywrightTimeout, TimeoutError)):
+            timeout_types = (TimeoutError, PlaywrightTimeout)
+        except ImportError:
+            pass
+
+        if isinstance(exc, timeout_types):
             raise TimeoutError(
                 f"Widget did not finish rendering within {timeout}s"
             ) from exc
@@ -743,3 +884,219 @@ def render_widget_headless(
             os.unlink(tmp_path)
         except OSError:
             pass
+
+
+# === Render diagnostics (render_report) ===
+
+# DOM probe: classify content and measure root vs content/scroll size to detect
+# overflow (clipping). Mirrors the size thresholds used by _HAS_CANVAS_JS.
+_CONTENT_METRICS_JS = """\
+() => {
+    const root = document.getElementById('widget-root');
+    if (!root) return null;
+    const child = root.firstElementChild;
+    const has_canvas = [...root.querySelectorAll('canvas')].some(c => {
+        const r = c.getBoundingClientRect(); return r.width >= 50 && r.height >= 50;
+    });
+    const has_svg = [...root.querySelectorAll('svg')].some(s => {
+        const r = s.getBoundingClientRect(); return r.width >= 20 && r.height >= 20;
+    });
+    const text_len = (root.textContent || '').trim().length;
+    const rect = root.getBoundingClientRect();
+    return {
+        content_type: has_canvas ? 'canvas' : has_svg ? 'svg'
+            : text_len ? 'html' : 'empty',
+        root_w: Math.round(rect.width), root_h: Math.round(rect.height),
+        scroll_w: root.scrollWidth, scroll_h: root.scrollHeight,
+        text_len,
+    };
+}
+"""
+
+
+@dataclasses.dataclass(frozen=True)
+class RenderReport:
+    """Structured result of a headless render health check (see render_report).
+
+    Attributes:
+        ok: True if the widget rendered without error/timeout.
+        summary: ``describe_widget`` facts about the widget's data.
+        content_type: ``"canvas"``, ``"svg"``, ``"html"``, ``"empty"``, or None.
+        width/height: Rendered widget-root size in CSS pixels.
+        blank_fraction: Most-common-color fraction (1.0 == uniform), or None if
+            Pillow is unavailable.
+        is_blank: True if ``blank_fraction`` exceeds a conservative threshold.
+        clipped: Heuristic -- content overflows the widget root (may
+            false-positive on intentional scroll areas).
+        warnings: Cheap input warnings (empty/degenerate data).
+        error: Render error/timeout message, or None.
+    """
+
+    ok: bool
+    summary: dict[str, Any]
+    content_type: str | None = None
+    width: int | None = None
+    height: int | None = None
+    blank_fraction: float | None = None
+    is_blank: bool = False
+    clipped: bool = False
+    warnings: tuple[str, ...] = ()
+    error: str | None = None
+
+
+def png_blank_fraction(png_bytes: bytes) -> float | None:
+    """Return the most-common-color pixel fraction (1.0 == blank), or None.
+
+    Returns None when Pillow is not installed.
+    """
+    try:
+        from PIL import Image
+    except ImportError:
+        return None
+
+    import numpy as np
+
+    pixels = np.asarray(Image.open(io.BytesIO(png_bytes)).convert("RGB")).reshape(-1, 3)
+    _, counts = np.unique(pixels, axis=0, return_counts=True)
+    return float(counts.max() / len(pixels))
+
+
+def _assemble_diagnostics(
+    png_bytes: bytes | None, metrics: dict[str, Any] | None, render_error: str | None
+) -> dict[str, Any]:
+    """Combine an optional screenshot and DOM metrics into a diagnostics dict.
+
+    ``png_bytes``/``metrics`` are None when the render errored before capture;
+    the result then carries just ``ok=False`` and ``error``. This is the single
+    producer of the diagnostics dict, so its keys stay in sync with RenderReport.
+    """
+    frac = png_blank_fraction(png_bytes) if png_bytes is not None else None
+    info = metrics or {}
+    root_w, root_h = info.get("root_w"), info.get("root_h")
+    overflow_x = bool(root_w) and info.get("scroll_w", 0) > root_w + 4
+    overflow_y = bool(root_h) and info.get("scroll_h", 0) > root_h + 4
+    return {
+        "ok": render_error is None,
+        "error": render_error,
+        "content_type": info.get("content_type"),
+        "width": root_w,
+        "height": root_h,
+        "blank_fraction": frac,
+        "is_blank": frac is not None and frac > 0.99,
+        "clipped": overflow_x or overflow_y,
+    }
+
+
+def _diagnose_sync(
+    widget_data: dict[str, Any],
+    esm_content: str,
+    css_content: str,
+    timeout: float,
+    dpi: int,
+) -> dict[str, Any]:
+    """Sync headless render that returns visual + DOM diagnostics in one pass."""
+    tmp_path, timeout_ms, scale_factor = _prepare_render(
+        widget_data, esm_content, css_content, "png", dpi, timeout, None, None
+    )
+    browser = _get_browser()
+    page: Page | None = None
+    try:
+        page = browser.new_page(
+            viewport={"width": 1024, "height": 768}, device_scale_factor=scale_factor
+        )
+        page.goto(
+            Path(tmp_path).as_uri(), wait_until="domcontentloaded", timeout=timeout_ms
+        )
+        page.wait_for_function(
+            "() => window.__RENDER_DONE === true", timeout=timeout_ms
+        )
+        render_error = page.evaluate("() => window.__RENDER_ERROR")
+        metrics = page.evaluate(_CONTENT_METRICS_JS)
+        png_bytes = page.locator("#widget-root").screenshot(type="png")
+        return _assemble_diagnostics(png_bytes, metrics, render_error)
+    except Exception as exc:  # noqa: BLE001
+        return _assemble_diagnostics(None, None, f"render failed: {exc}")
+    finally:
+        if page is not None:
+            try:
+                page.close()
+            except (OSError, RuntimeError):
+                pass
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+
+
+async def _diagnose_async(
+    widget_data: dict[str, Any],
+    esm_content: str,
+    css_content: str,
+    timeout: float,  # noqa: ASYNC109
+    dpi: int,
+) -> dict[str, Any]:
+    """Async twin of _diagnose_sync for event-loop (Jupyter) contexts."""
+    tmp_path, timeout_ms, scale_factor = _prepare_render(
+        widget_data, esm_content, css_content, "png", dpi, timeout, None, None
+    )
+    browser = await _get_async_browser()
+    page: AsyncPage | None = None
+    try:
+        page = await browser.new_page(
+            viewport={"width": 1024, "height": 768}, device_scale_factor=scale_factor
+        )
+        await page.goto(
+            Path(tmp_path).as_uri(), wait_until="domcontentloaded", timeout=timeout_ms
+        )
+        await page.wait_for_function(
+            "() => window.__RENDER_DONE === true", timeout=timeout_ms
+        )
+        render_error = await page.evaluate("() => window.__RENDER_ERROR")
+        metrics = await page.evaluate(_CONTENT_METRICS_JS)
+        png_bytes = await page.locator("#widget-root").screenshot(type="png")
+        return _assemble_diagnostics(png_bytes, metrics, render_error)
+    except Exception as exc:  # noqa: BLE001
+        return _assemble_diagnostics(None, None, f"render failed: {exc}")
+    finally:
+        if page is not None:
+            try:
+                await page.close()
+            except (OSError, RuntimeError):
+                pass
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+
+
+def render_diagnostics(
+    widget_data: dict[str, Any],
+    esm_content: str,
+    css_content: str,
+    *,
+    timeout: float = 30.0,
+    dpi: int = 72,
+) -> dict[str, Any]:
+    """Render a widget headlessly once and return visual + DOM diagnostics.
+
+    Dispatches to the async path inside a running event loop (Jupyter), mirroring
+    ``render_widget_headless``. Never raises -- failures return
+    ``{"ok": False, "error": ...}``.
+    """
+    widget_data = {**widget_data, "show_controls": False}
+
+    if _has_running_event_loop():
+        loop = asyncio.get_running_loop()
+        try:
+            import nest_asyncio
+
+            nest_asyncio.apply(loop)
+        except ImportError:
+            return _assemble_diagnostics(
+                None, None, "nest_asyncio is required inside a running event loop"
+            )
+        return loop.run_until_complete(
+            _diagnose_async(widget_data, esm_content, css_content, timeout, dpi)
+        )
+
+    return _diagnose_sync(widget_data, esm_content, css_content, timeout, dpi)

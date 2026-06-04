@@ -1,31 +1,27 @@
 """Shared pytest configuration and fixtures for widget tests."""
 
-import os
-import subprocess
 from typing import Any
 from unittest.mock import patch
 
 import pytest
 from pymatgen.core import Structure
 
-from pymatviz import PKG_DIR
 from pymatviz.widgets.composition import CompositionWidget
-from pymatviz.widgets.matterviz import build_widget_assets
+from pymatviz.widgets.matterviz import fetch_widget_asset
 from pymatviz.widgets.structure import StructureWidget
 from pymatviz.widgets.trajectory import TrajectoryWidget
 
 
 @pytest.fixture(scope="session", autouse=True)
-def build_web_files() -> None:
-    """Build web files (if not yet exist) before any tests run."""
-    web_dir = f"{PKG_DIR}/widgets/web"
+def ensure_widget_assets() -> None:
+    """Warm the matterviz-anywidget asset cache before any tests run.
 
-    if not os.path.isfile(f"{web_dir}/build/matterviz.js"):
-        try:
-            build_widget_assets()
-        except subprocess.SubprocessError as exc:
-            exc.add_note("Failed to build web files")
-            raise
+    Widget construction needs the ESM/CSS bundle; fetch it once (from
+    MATTERVIZ_ANYWIDGET_DIR, the on-disk cache, or jsDelivr) so per-widget
+    construction is fast and works offline after the first fetch.
+    """
+    for filename in ("matterviz.js", "matterviz.css"):
+        fetch_widget_asset(filename)
 
 
 @pytest.fixture
@@ -59,8 +55,9 @@ def assert_widget_notebook_integration(
     widget: CompositionWidget | StructureWidget | TrajectoryWidget,
 ) -> None:
     """Validate that a widget renders correctly in notebook environments."""
-    # MIME bundle (accept dict or (data, metadata))
-    mime = widget._repr_mimebundle_()
+    # MIME bundle (accept dict or (data, metadata)). ty mis-resolves
+    # _repr_mimebundle_ over the widget-class union as unbound; bound at runtime.
+    mime = widget._repr_mimebundle_()  # ty: ignore[missing-argument]
     if isinstance(mime, tuple):
         assert len(mime) == 2
         mime_data, metadata = mime
@@ -77,7 +74,7 @@ def assert_widget_notebook_integration(
     assert isinstance(view.get("model_id"), str)
     assert bool(view["model_id"]) is True
     # Fresh model_id on a new repr call (new view)
-    mime2 = widget._repr_mimebundle_()
+    mime2 = widget._repr_mimebundle_()  # ty: ignore[missing-argument]
     if mime2 is not None:
         mime2 = mime2[0] if isinstance(mime2, tuple) else mime2
         view2 = mime2[view_key]

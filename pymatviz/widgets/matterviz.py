@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import shutil
-import subprocess
-import urllib.error
 import urllib.request
 from typing import TYPE_CHECKING, Any, ClassVar
 from urllib.parse import urljoin
@@ -17,6 +16,26 @@ from anywidget import AnyWidget
 
 if TYPE_CHECKING:
     from typing import Literal
+
+    from pymatviz.widgets._headless import RenderReport
+
+
+# npm version of the prebuilt ``matterviz-anywidget`` bundle (built from
+# matterviz/extensions/anywidget) that pymatviz renders. Only bump this to a
+# version already published to npm: the default to_html/to_img path fetches
+# ``matterviz-anywidget@<this>`` from jsDelivr at runtime, so an unpublished pin
+# breaks widget rendering for everyone.
+MATTERVIZ_ANYWIDGET_VERSION = "0.3.7"
+_ANYWIDGET_CDN = "https://cdn.jsdelivr.net/npm/matterviz-anywidget"
+
+
+def _default_cdn_url() -> str:
+    """Return the jsDelivr URL for the pinned ``matterviz-anywidget`` ESM bundle.
+
+    jsDelivr serves npm packages with CORS and a JavaScript MIME type (both
+    required for cross-origin ``import()``), so this URL works in ``to_html``.
+    """
+    return f"{_ANYWIDGET_CDN}@{MATTERVIZ_ANYWIDGET_VERSION}/build/matterviz.js"
 
 
 def _in_marimo_runtime() -> bool:
@@ -41,7 +60,7 @@ def _marimo_esm_url(esm_text: str) -> str | None:
     except ImportError:
         return None
 
-    # Virtual files required — without them js() creates ~14 MB data URLs
+    # Virtual files required — without them js() creates ~4.5 MB data URLs
     try:
         if not get_context().virtual_files_supported:
             return None
@@ -92,10 +111,10 @@ def configure_assets(
 ) -> None:
     """Configure matterviz widget assets globally for all subsequent widgets.
 
-    Call with no arguments to reset to default (auto-detect from installed version).
+    Call with no arguments to reset to default (the pinned bundle version).
 
     Args:
-        version: GitHub release version tag (e.g. ``"v0.17.6"``).
+        version: ``matterviz-anywidget`` npm version to fetch (e.g. ``"0.3.7"``).
             Mutually exclusive with ``esm_src``/``css_src``.
         esm_src: URL or local file path for the ESM JavaScript bundle.
         css_src: URL or local file path for the CSS stylesheet.
@@ -139,92 +158,75 @@ def configure_assets(
 
 
 def fetch_widget_asset(filename: str, version_override: str | None = None) -> str:
-    """Fetch a widget asset file, checking local build → cache → GitHub releases."""
-    from pymatviz import __version__
+    """Fetch a widget asset (``matterviz.js``/``matterviz.css``) as source text.
 
-    asset_version = version_override or f"v{__version__}"
-    local_path = f"{os.path.dirname(__file__)}/web/build/{filename}"
-    cache_root = f"{os.path.expanduser('~/.cache/pymatviz/build')}"
-    cache_dir = f"{cache_root}/{asset_version}"
-    os.makedirs(cache_dir, exist_ok=True)
-    cache_path = f"{cache_dir}/{filename}"
+    The bundle lives in the ``matterviz-anywidget`` npm package (built from
+    ``matterviz/extensions/anywidget``); this repo no longer builds it. Resolution
+    order:
+
+    1. ``MATTERVIZ_ANYWIDGET_DIR`` env var -- a local ``build/`` dir, for
+       developing against an unpublished bundle.
+    2. on-disk cache (``~/.cache/pymatviz/matterviz-anywidget/<version>/``).
+    3. download from jsDelivr (the ``matterviz-anywidget`` npm package), cached.
+
+    Args:
+        filename: ``"matterviz.js"`` or ``"matterviz.css"``.
+        version_override: ``matterviz-anywidget`` npm version to fetch instead of
+            the pinned ``MATTERVIZ_ANYWIDGET_VERSION``.
+    """
+    version = version_override or MATTERVIZ_ANYWIDGET_VERSION
 
     def read_file(path: str) -> str:
-        """Read a cached or local asset file."""
+        """Read a local/cached asset file."""
         with open(path, encoding="utf-8") as file:
             return file.read()
 
-    if os.path.isfile(local_path):
-        return read_file(local_path)
+    dev_dir = os.environ.get("MATTERVIZ_ANYWIDGET_DIR")
+    if dev_dir and os.path.isfile(dev_path := f"{dev_dir}/{filename}"):
+        return read_file(dev_path)
 
+    cache_root = os.path.expanduser("~/.cache/pymatviz/matterviz-anywidget")
+    cache_dir = f"{cache_root}/{version}"
+    cache_path = f"{cache_dir}/{filename}"
     if os.path.isfile(cache_path):
         return read_file(cache_path)
 
-    if not re.match(r"^v\d+\.\d+\.\d+$", asset_version):
-        raise ValueError(f"Invalid version format: {asset_version=}")
+    if not re.match(r"^\d+\.\d+\.\d+([-+].+)?$", version):  # semver, optional pre/build
+        raise ValueError(f"Invalid matterviz-anywidget version: {version=}")
 
-    def download_asset(github_url: str, output_path: str) -> str:
-        """Download release asset and return its content."""
-        urllib.request.urlretrieve(github_url, output_path)  # noqa: S310
-        return read_file(output_path)
-
-    github_url = f"https://github.com/janosh/pymatviz/releases/download/{asset_version}/{filename}"
+    os.makedirs(cache_dir, exist_ok=True)
+    cdn_url = f"{_ANYWIDGET_CDN}@{version}/build/{filename}"
+    # Download to a temp file and atomically rename so an interrupted download
+    # never leaves a partial file that later cache-hits and serves a broken bundle.
+    tmp_path = f"{cache_path}.{os.getpid()}.tmp"
     try:
-        return download_asset(github_url, cache_path)
-    except urllib.error.HTTPError as exc:
-        if exc.code != 404:
-            raise FileNotFoundError(
-                f"Could not load {filename} from GitHub releases for version "
-                f"{asset_version}. Please check your internet connection."
-            ) from exc
+        urllib.request.urlretrieve(cdn_url, tmp_path)  # noqa: S310
+        os.replace(tmp_path, cache_path)
     except Exception as exc:
+        if os.path.isfile(tmp_path):
+            os.unlink(tmp_path)
         raise FileNotFoundError(
-            f"Could not load {filename} from GitHub releases for version "
-            f"{asset_version}. Please check your internet connection."
+            f"Could not load {filename} for matterviz-anywidget@{version} from "
+            f"{cdn_url}. Ensure that version is published to npm, set "
+            "MATTERVIZ_ANYWIDGET_DIR to a local build dir, or check connectivity."
         ) from exc
-
-    latest_cache_dir = f"{cache_root}/latest"
-    os.makedirs(latest_cache_dir, exist_ok=True)
-    latest_cache_path = f"{latest_cache_dir}/{filename}"
-    if os.path.isfile(latest_cache_path):
-        return read_file(latest_cache_path)
-
-    latest_url = (
-        f"https://github.com/janosh/pymatviz/releases/latest/download/{filename}"
-    )
-    try:
-        return download_asset(latest_url, latest_cache_path)
-    except Exception as exc:
-        raise FileNotFoundError(
-            f"Could not load {filename} from GitHub releases for version "
-            f"{asset_version} or the latest release. Please check your internet "
-            "connection."
-        ) from exc
+    return read_file(cache_path)
 
 
 def clear_widget_cache(version_override: str | None = None) -> None:
-    """Clear the widget asset cache.
+    """Clear the downloaded widget-asset cache.
 
     Args:
-        version_override: Optional version to clear cache for specific version only
+        version_override: Only clear this ``matterviz-anywidget`` version's cache.
     """
     cache_dir = os.path.expanduser("~/.cache/pymatviz")
     if version_override:
-        # Clear cache for specific version
-        version_cache_dir = f"{cache_dir}/build/{version_override}"
+        version_cache_dir = f"{cache_dir}/matterviz-anywidget/{version_override}"
         if os.path.isdir(version_cache_dir):
             shutil.rmtree(version_cache_dir)
     # Clear entire cache
     elif os.path.isdir(cache_dir):
         shutil.rmtree(cache_dir)
-
-
-def build_widget_assets() -> None:
-    """Build widget assets locally for development."""
-    web_dir = f"{os.path.dirname(__file__)}/web"
-    if not os.path.isdir(f"{web_dir}/node_modules"):
-        subprocess.run(["npm", "install"], cwd=web_dir, check=True)  # noqa: S607
-    subprocess.run(["npm", "run", "build"], cwd=web_dir, check=True)  # noqa: S607
 
 
 class MatterVizWidget(AnyWidget):
@@ -281,7 +283,7 @@ class MatterVizWidget(AnyWidget):
         """Configure assets for marimo: ESM via virtual-file URL, CSS inline.
 
         In browser mode, ESM is served via marimo's virtual-file system to
-        avoid embedding ~10 MB of JS per widget.  In VS Code extension mode,
+        avoid embedding ~3.4 MB of JS per widget.  In VS Code extension mode,
         virtual files are unavailable — use ``marimo edit`` in a browser.
         """
         cls = type(self)
@@ -415,21 +417,7 @@ class MatterVizWidget(AnyWidget):
         if resolved_fmt is None:
             resolved_fmt = "png"
 
-        # We need actual ESM source code for headless rendering, not a
-        # marimo virtual-file URL. version_override sets both _esm and _css
-        # on the instance with real content; marimo only overrides _esm with
-        # a URL. Use instance attrs only when both are present in __dict__.
-        inst_esm = self.__dict__.get("_esm")
-        inst_css = self.__dict__.get("_css")
-        if isinstance(inst_esm, str) and isinstance(inst_css, str):
-            esm_content, css_content = inst_esm, inst_css
-        else:
-            cls = type(self)
-            cls._set_class_assets()
-            default_assets = cls._asset_cache["default"]
-            if not isinstance(default_assets, tuple):
-                raise TypeError("Default widget assets were not initialized correctly.")
-            esm_content, css_content = default_assets
+        esm_content, css_content = self._resolve_assets()
 
         img_bytes = render_widget_headless(
             widget_data=self.to_dict(),
@@ -449,3 +437,134 @@ class MatterVizWidget(AnyWidget):
                 fh.write(img_bytes)
 
         return img_bytes
+
+    def _resolve_assets(self) -> tuple[str, str]:
+        """Return ``(esm_content, css_content)`` as real source strings.
+
+        We need actual ESM/CSS source for headless rendering and HTML export,
+        not a marimo virtual-file URL. ``version_override`` sets both on the
+        instance with real content; marimo only overrides ``_esm`` with a URL.
+        Use instance attrs only when both are present in ``__dict__``.
+        """
+        inst_esm = self.__dict__.get("_esm")
+        inst_css = self.__dict__.get("_css")
+        if isinstance(inst_esm, str) and isinstance(inst_css, str):
+            return inst_esm, inst_css
+
+        cls = type(self)
+        cls._set_class_assets()
+        default_assets = cls._asset_cache["default"]
+        if not isinstance(default_assets, tuple):
+            raise TypeError("Default widget assets were not initialized correctly.")
+        return default_assets
+
+    def describe(self) -> dict[str, Any]:
+        """Return structured, machine-parseable facts about this widget's data.
+
+        Pure Python (no browser): derives counts, ranges, formula, chemical
+        system, etc. from the synced traitlets. Always includes ``widget_type``.
+        Useful for agents to reason about output and as image alt-text.
+
+        Examples:
+            >>> PeriodicTableWidget(heatmap_values={"Fe": 42}).describe()["n_elements"]
+            1
+        """
+        from pymatviz.widgets._describe import describe_widget
+
+        return describe_widget(self.to_dict())
+
+    def to_html(
+        self,
+        filename: str | None = None,
+        *,
+        inline: bool = False,
+        esm_url: str | None = None,
+    ) -> str:
+        """Export this widget as a standalone, interactive HTML page.
+
+        The page renders the live widget (pan/zoom/rotate/hover work) with no
+        notebook required. By default it references the MatterViz bundle from a
+        CDN, keeping the file small; pass ``inline=True`` for a self-contained
+        file that opens offline.
+
+        Args:
+            filename: Optional path to write the HTML to (parent dirs created).
+            inline: If True, embed the ~4.5 MB ESM bundle in the file (opens via
+                ``file://`` offline). If False (default), reference an external
+                URL (small file, requires internet + a CORS-enabled JS host;
+                will not load via ``file://``).
+            esm_url: Explicit URL to load the bundle from (a host serving it with
+                CORS and a JavaScript MIME type). Mutually exclusive with
+                ``inline``. When omitted and ``inline`` is False, defaults to the
+                jsDelivr URL for the pinned ``matterviz-anywidget`` version.
+
+        Returns:
+            The complete HTML document as a string.
+
+        Raises:
+            ValueError: If both ``inline=True`` and ``esm_url`` are given.
+
+        Note:
+            Controls that round-trip through a Python kernel do not function in
+            the exported page (there is no kernel); client-side interactions do.
+        """
+        from pymatviz.widgets._describe import short_summary
+        from pymatviz.widgets._headless import build_interactive_html
+
+        if inline and esm_url is not None:
+            raise ValueError("pass either inline=True or esm_url=..., not both")
+
+        esm_content, css_content = self._resolve_assets()
+        if inline:
+            esm_url = None
+        else:
+            esm_content = None
+            esm_url = esm_url or _default_cdn_url()
+
+        report = self.describe()
+        html = build_interactive_html(
+            self.to_dict(),
+            css_content,
+            esm_url=esm_url,
+            esm_content=esm_content,
+            title=short_summary(report),
+            description=json.dumps(report),
+        )
+
+        if filename:
+            os.makedirs(os.path.dirname(filename) or ".", exist_ok=True)
+            with open(filename, "w", encoding="utf-8") as fh:
+                fh.write(html)
+
+        return html
+
+    def render_report(self, *, timeout: float = 30.0, dpi: int = 72) -> RenderReport:
+        """Headlessly render this widget and report on its visual health.
+
+        Combines cheap input checks (empty/degenerate data) with a single
+        headless render that measures whether the output is blank, clipped, and
+        whether it is canvas/SVG/HTML. Intended for agents to self-verify a
+        render without "looking" at it. Never raises -- failures populate
+        ``RenderReport.error`` with ``ok=False``.
+
+        Args:
+            timeout: Seconds to wait for the headless render.
+            dpi: Capture resolution (affects the blank-fraction screenshot).
+
+        Returns:
+            A ``RenderReport`` (see its fields). Requires ``playwright``;
+            ``blank_fraction`` additionally requires ``Pillow`` (else None).
+        """
+        from pymatviz.widgets._describe import check_inputs, describe_widget
+        from pymatviz.widgets._headless import RenderReport, render_diagnostics
+
+        data = self.to_dict()
+        esm_content, css_content = self._resolve_assets()
+        diag = render_diagnostics(
+            data, esm_content, css_content, timeout=timeout, dpi=dpi
+        )
+        # diag's keys (ok, error, content_type, width, height, blank_fraction,
+        # is_blank, clipped) are exactly RenderReport's non-summary/warnings fields.
+        return RenderReport(
+            summary=describe_widget(data), warnings=tuple(check_inputs(data)), **diag
+        )
