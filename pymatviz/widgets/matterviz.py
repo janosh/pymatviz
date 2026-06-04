@@ -560,12 +560,16 @@ class MatterVizWidget(AnyWidget):
         from pymatviz.widgets._headless import RenderReport, render_diagnostics
 
         data = self.to_dict()
-        esm_content, css_content = self._resolve_assets()
-        diag = render_diagnostics(
-            data, esm_content, css_content, timeout=timeout, dpi=dpi
-        )
-        # diag's keys (ok, error, content_type, width, height, blank_fraction,
-        # is_blank, clipped) are exactly RenderReport's non-summary/warnings fields.
+        diag: dict[str, Any]  # keys match RenderReport's non-summary/warnings fields
+        try:  # asset resolution (cache miss + offline fetch) can fail before the
+            esm_content, css_content = self._resolve_assets()  # never-raising render
+            diag = render_diagnostics(
+                data, esm_content, css_content, timeout=timeout, dpi=dpi
+            )
+        except Exception as exc:  # noqa: BLE001 -- documented never-raises contract
+            diag = {"ok": False, "error": f"render_report failed: {exc}"}
         return RenderReport(
-            summary=describe_widget(data), warnings=tuple(check_inputs(data)), **diag
+            summary=describe_widget(data),
+            warnings=tuple(check_inputs(data)),
+            **diag,
         )

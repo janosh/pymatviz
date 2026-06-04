@@ -254,7 +254,7 @@ def test_read_asset_source_http_url() -> None:
 
 @pytest.mark.usefixtures("_clean_asset_cache")
 def test_configure_assets_with_version() -> None:
-    """configure_assets(version=...) fetches from GitHub releases."""
+    """configure_assets(version=...) fetches from jsDelivr npm CDN."""
     with patch(f"{DOTTED_PATH}.fetch_widget_asset") as mock_fetch:
         mock_fetch.side_effect = lambda name, ver: f"{name}@{ver}"
         configure_assets(version="v0.19.0")

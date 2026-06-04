@@ -514,8 +514,6 @@ def test_heatmap_matrix_scalar_string_axis_items() -> None:
 
 def test_rdf_plot_accepts_pymatgen_structure() -> None:
     """RdfPlotWidget normalizes pymatgen Structure to dict via _to_dict."""
-    from pymatgen.core import Lattice, Structure
-
     struct = Structure(Lattice.cubic(3), ["Si"], [[0, 0, 0]])
     widget = RdfPlotWidget(structures=struct)
     assert isinstance(widget.structures, dict)
@@ -995,8 +993,6 @@ def test_headless_bar_plot_writes_file(
 @_skip_no_playwright
 def test_headless_structure_png() -> None:
     """StructureWidget (canvas/WebGL) produces a valid PNG."""
-    from pymatgen.core import Lattice, Structure
-
     struct = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5]])
     widget = StructureWidget(structure=struct, style="height: 400px;")
     png_bytes = widget.to_img(fmt="png", dpi=72)
@@ -1007,8 +1003,6 @@ def test_headless_structure_png() -> None:
 @_skip_no_playwright
 def test_headless_structure_svg_raises() -> None:
     """StructureWidget (canvas) raises RuntimeError for SVG export."""
-    from pymatgen.core import Lattice, Structure
-
     struct = Structure(Lattice.cubic(3.0), ["Si"], [[0, 0, 0]])
     widget = StructureWidget(structure=struct, style="height: 300px;")
     with pytest.raises(RuntimeError, match="SVG export not supported"):
@@ -1167,6 +1161,24 @@ def test_render_report(widget: Any, expect_warning: bool, expect_type: str) -> N
     assert report.content_type == expect_type
     assert bool(report.warnings) is expect_warning
     assert report.summary["widget_type"] == widget.widget_type
+
+
+def test_render_report_never_raises_on_asset_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """render_report honors its never-raises contract if asset resolution fails."""
+    widget = ScatterPlotWidget(series=[{"x": [0, 1], "y": [1, 2]}])
+
+    def _boom() -> tuple[str, str]:
+        raise FileNotFoundError("bundle unavailable offline")
+
+    monkeypatch.setattr(widget, "_resolve_assets", _boom)
+    report = widget.render_report(timeout=5, dpi=72)  # must not raise
+    assert report.ok is False
+    assert report.error is not None
+    assert "bundle unavailable offline" in report.error
+    # data-derived summary/warnings survive a render failure
+    assert report.summary["widget_type"] == "scatter_plot"
 
 
 @_skip_no_playwright
