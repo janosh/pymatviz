@@ -8,6 +8,7 @@ cheap warnings about empty/degenerate data before a (slow) headless render.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping
 from typing import Any
 
@@ -21,7 +22,9 @@ def _numbers(values: Any) -> list[float]:
         if isinstance(item, bool):
             continue
         if isinstance(item, (int, float)):
-            out.append(float(item))
+            # drop NaN/inf so they can't poison _minmax
+            if math.isfinite(item):
+                out.append(float(item))
         elif isinstance(item, (list, tuple)):
             stack.extend(item)
         elif isinstance(item, Mapping):
@@ -337,8 +340,8 @@ def check_inputs(widget_data: Mapping[str, Any]) -> list[str]:
                 f"{widget_type}: all series have empty 'x'; nothing to plot"
             )
 
-    if widget_type == "rdf_plot" and (
-        widget_data.get("structures") is None and widget_data.get("patterns") is None
+    if widget_type == "rdf_plot" and not (
+        widget_data.get("structures") or widget_data.get("patterns")
     ):
         warnings.append("rdf_plot: neither 'structures' nor 'patterns' provided")
 

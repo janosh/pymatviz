@@ -358,9 +358,10 @@ class MatterVizWidget(AnyWidget):
             fmt: Image format -- ``"png"``, ``"jpeg"``, ``"svg"``, or
                 ``"pdf"``. Defaults to ``"png"`` if not specified and
                 cannot be inferred from ``filename``.
-            dpi: Resolution for PNG/JPEG output. Maps to the headless
-                browser's device scale factor (72 = 1x, 144 = 2x, etc.).
-                Defaults to 150 (~2x). Ignored for SVG and PDF.
+            dpi: Resolution for raster output. Maps to the headless browser's
+                device scale factor (72 = 1x, 144 = 2x, etc.). Defaults to 150
+                (~2x). Applies to PNG, JPEG, and PDFs that rasterize canvas/WebGL
+                content; ignored for SVG and for pure-vector (SVG-content) PDFs.
             timeout: Seconds to wait for headless rendering before
                 raising ``TimeoutError``. Defaults to 30.
             width: Override container width in pixels for this export.

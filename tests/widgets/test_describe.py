@@ -8,7 +8,12 @@ import pytest
 from pymatgen.core import Lattice, Structure
 
 import pymatviz as pmv
-from pymatviz.widgets._describe import check_inputs, describe_widget, short_summary
+from pymatviz.widgets._describe import (
+    _minmax,
+    check_inputs,
+    describe_widget,
+    short_summary,
+)
 
 
 _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5]])
@@ -117,8 +122,29 @@ def test_short_summary(report: dict[str, Any], expected: str) -> None:
         (pmv.ScatterPlotWidget(series=[{"x": [0, 1], "y": [1, 2]}]), False),
         (pmv.PeriodicTableWidget(), True),
         (pmv.PeriodicTableWidget(heatmap_values={"Fe": 1}), False),
+        # rdf_plot warns when neither source given, incl. empty (not just None)
+        (pmv.RdfPlotWidget(), True),
+        (pmv.RdfPlotWidget(structures=[]), True),
+        (pmv.RdfPlotWidget(patterns=[]), True),
+        (pmv.RdfPlotWidget(patterns=[{"label": "a", "x": [1.0], "y": [2.0]}]), False),
     ],
 )
 def test_check_inputs(widget: Any, expect_warning: bool) -> None:
     """check_inputs flags empty primary data, stays quiet for populated widgets."""
     assert bool(check_inputs(widget.to_dict())) is expect_warning
+
+
+@pytest.mark.parametrize(
+    ("values", "expected"),
+    [
+        ([1.0, 2.0, 3.0], [1.0, 3.0]),
+        ([float("nan"), 2.0, float("inf"), 1.0], [1.0, 2.0]),  # NaN/inf dropped
+        ([float("nan"), float("inf"), float("-inf")], None),  # all non-finite
+        ([[1, 2], {"a": 3}], [1.0, 3.0]),  # nested flattened
+        ([True, False, 5], [5.0, 5.0]),  # bools ignored
+        ([], None),
+    ],
+)
+def test_minmax_filters_non_finite(values: Any, expected: list[float] | None) -> None:
+    """_minmax flattens numbers, dropping NaN/inf and bools."""
+    assert _minmax(values) == expected
