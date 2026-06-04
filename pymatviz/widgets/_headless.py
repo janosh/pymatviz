@@ -203,12 +203,12 @@ def _vector_pdf_kwargs(bbox: Mapping[str, object] | None) -> dict[str, Any]:
     """Page.pdf() options sizing a borderless PDF to the widget bounding box."""
     if bbox is None:
         raise RuntimeError("Widget root has no bounding box for PDF export")
-    return dict(
-        width=f"{bbox['width']}px",
-        height=f"{bbox['height']}px",
-        print_background=True,
-        margin={"top": "0", "bottom": "0", "left": "0", "right": "0"},
-    )
+    return {
+        "width": f"{bbox['width']}px",
+        "height": f"{bbox['height']}px",
+        "print_background": True,
+        "margin": {"top": "0", "bottom": "0", "left": "0", "right": "0"},
+    }
 
 
 async def _async_capture_page(
@@ -384,7 +384,7 @@ def _build_html(
     Returns:
         Complete HTML document as a string.
     """
-    # Escape </ sequences to prevent premature </script> closure
+    # escape </ so the JSON can't prematurely close the <script> tag
     data_json = json.dumps(widget_data, default=str).replace("</", r"<\/")
     esm_loader = _esm_blob_loader_js(esm_content)
 
@@ -520,6 +520,7 @@ def build_interactive_html(
     if (esm_url is None) == (esm_content is None):
         raise ValueError("provide exactly one of esm_url or esm_content")
 
+    # escape </ so the JSON can't prematurely close the <script> tag
     data_json = json.dumps(widget_data, default=str).replace("</", r"<\/")
     worker_shim = _worker_shim(widget_data.get("widget_type"))
     if esm_content is not None:
@@ -796,7 +797,8 @@ def render_widget_headless(
         fmt: Output format — ``"png"``, ``"jpeg"``, ``"svg"``, or ``"pdf"``.
         dpi: Resolution for raster capture. Maps to ``device_scale_factor``
             in the headless browser (72 DPI = 1x, 144 = 2x, 216 = 3x).
-            Defaults to 150 (~2x). Ignored for SVG and PDF.
+            Defaults to 150 (~2x). Applies to PNG, JPEG, and canvas/WebGL PDFs;
+            ignored for SVG and pure-vector (SVG-content) PDFs.
         timeout: Max seconds to wait for the widget to render.
         quality: JPEG compression quality (1-100). Ignored for other formats.
         width: Override container width in pixels.

@@ -198,9 +198,14 @@ def fetch_widget_asset(filename: str, version_override: str | None = None) -> st
     cdn_url = f"{_ANYWIDGET_CDN}@{version}/build/{filename}"
     # Download to a temp file and atomically rename so an interrupted download
     # never leaves a partial file that later cache-hits and serves a broken bundle.
+    # urlopen(timeout=...) so a stalled connection fails fast instead of hanging.
     tmp_path = f"{cache_path}.{os.getpid()}.tmp"
     try:
-        urllib.request.urlretrieve(cdn_url, tmp_path)  # noqa: S310
+        with (
+            urllib.request.urlopen(cdn_url, timeout=30) as response,  # noqa: S310
+            open(tmp_path, "wb") as tmp_file,
+        ):
+            shutil.copyfileobj(response, tmp_file)
         os.replace(tmp_path, cache_path)
     except Exception as exc:
         if os.path.isfile(tmp_path):

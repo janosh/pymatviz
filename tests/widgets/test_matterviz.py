@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import builtins
+import io
 import os
 import urllib.request
 from typing import TYPE_CHECKING, Any
@@ -54,11 +55,9 @@ def _mock_marimo_context(
     return mock_mod
 
 
-def _fake_urlretrieve(url: str, path: str) -> None:  # noqa: ARG001
-    """Write a file on disk to simulate ``urllib.request.urlretrieve``."""
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, mode="w") as file:
-        file.write("downloaded content")
+def _fake_urlopen(url: str, *args: Any, **kwargs: Any) -> io.BytesIO:  # noqa: ARG001
+    """Return a readable context-manager response simulating ``urlopen``."""
+    return io.BytesIO(b"downloaded content")
 
 
 @pytest.fixture
@@ -180,7 +179,7 @@ def test_fetch_widget_asset_cached_file(cache_at_tmp: Path) -> None:
     cache_file.parent.mkdir(parents=True)
     cache_file.write_text("cached content")
 
-    with patch(f"{DOTTED_PATH}.urllib.request.urlretrieve") as mock_dl:
+    with patch(f"{DOTTED_PATH}.urllib.request.urlopen") as mock_dl:
         assert matterviz.fetch_widget_asset("matterviz.js") == "cached content"
 
     mock_dl.assert_not_called()
@@ -192,7 +191,7 @@ def test_fetch_widget_asset_downloads_and_caches(cache_at_tmp: Path) -> None:
         "https://cdn.jsdelivr.net/npm/matterviz-anywidget@0.3.9/build/matterviz.js"
     )
     with patch(
-        f"{DOTTED_PATH}.urllib.request.urlretrieve", side_effect=_fake_urlretrieve
+        f"{DOTTED_PATH}.urllib.request.urlopen", side_effect=_fake_urlopen
     ) as mock_dl:
         result = matterviz.fetch_widget_asset("matterviz.js", version_override="0.3.9")
 
@@ -205,7 +204,7 @@ def test_fetch_widget_asset_download_error(cache_at_tmp: Path) -> None:  # noqa:
     """Network failures raise FileNotFoundError naming the package and version."""
     with (
         patch(
-            f"{DOTTED_PATH}.urllib.request.urlretrieve",
+            f"{DOTTED_PATH}.urllib.request.urlopen",
             side_effect=Exception("Network error"),
         ),
         pytest.raises(FileNotFoundError, match="for matterviz-anywidget@"),

@@ -23,7 +23,10 @@ def _numbers(values: Any) -> list[float]:
             continue
         # numbers: keep finite floats only (drop NaN/inf so they can't poison _minmax)
         if isinstance(item, (int, float)) and math.isfinite(item):
-            out.append(float(item))
+            try:  # a huge int may overflow float(); skip rather than raise
+                out.append(float(item))
+            except OverflowError:
+                pass
         elif isinstance(item, (list, tuple)):
             stack.extend(item)
         elif isinstance(item, Mapping):
