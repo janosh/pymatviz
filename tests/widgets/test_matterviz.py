@@ -123,7 +123,7 @@ def test_clear_widget_cache_version_specific(
 
 def test_default_cdn_url() -> None:
     """Default CDN URL points at the pinned matterviz-anywidget npm version."""
-    assert matterviz._default_cdn_url() == (
+    assert matterviz._cdn_url(matterviz.MATTERVIZ_ANYWIDGET_VERSION) == (
         "https://cdn.jsdelivr.net/npm/matterviz-anywidget@"
         f"{matterviz.MATTERVIZ_ANYWIDGET_VERSION}/build/matterviz.js"
     )
@@ -135,7 +135,7 @@ def test_pinned_anywidget_version_resolves() -> None:
     Network-gated: skips (never fails) when offline or not yet published, so it
     stays green pre-publish but flags a broken pin once the bundle is live.
     """
-    url = matterviz._default_cdn_url()
+    url = matterviz._cdn_url(matterviz.MATTERVIZ_ANYWIDGET_VERSION)
     try:
         with urllib.request.urlopen(url, timeout=10) as response:  # noqa: S310
             status = response.status
@@ -177,7 +177,12 @@ def cache_at_tmp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 def test_fetch_widget_asset_cached_file(cache_at_tmp: Path) -> None:
     """Cached files are returned without triggering a download."""
-    cache_file = cache_at_tmp / matterviz.MATTERVIZ_ANYWIDGET_VERSION / "matterviz.js"
+    cache_file = (
+        cache_at_tmp
+        / "matterviz-anywidget"
+        / matterviz.MATTERVIZ_ANYWIDGET_VERSION
+        / "matterviz.js"
+    )
     cache_file.parent.mkdir(parents=True)
     cache_file.write_text("cached content")
 
@@ -199,7 +204,8 @@ def test_fetch_widget_asset_downloads_and_caches(cache_at_tmp: Path) -> None:
 
     assert result == "downloaded content"
     assert mock_dl.call_args.args[0] == expected_url
-    assert (cache_at_tmp / "0.3.9" / "matterviz.js").read_text() == "downloaded content"
+    cached = cache_at_tmp / "matterviz-anywidget" / "0.3.9" / "matterviz.js"
+    assert cached.read_text() == "downloaded content"
 
 
 def test_fetch_widget_asset_download_error(cache_at_tmp: Path) -> None:  # noqa: ARG001
@@ -247,7 +253,9 @@ def test_read_asset_source_http_url() -> None:
         result = _read_asset_source("https://cdn.example.com/matterviz.js")
 
     assert result == "export default {}"
-    mock_urlopen.assert_called_once_with("https://cdn.example.com/matterviz.js")
+    mock_urlopen.assert_called_once_with(
+        "https://cdn.example.com/matterviz.js", timeout=30
+    )
 
 
 # === configure_assets ===

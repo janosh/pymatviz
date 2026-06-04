@@ -8,6 +8,7 @@ cheap warnings about empty/degenerate data before a (slow) headless render.
 
 from __future__ import annotations
 
+import functools
 import math
 from collections.abc import Mapping
 from typing import Any
@@ -21,12 +22,13 @@ def _numbers(values: Any) -> list[float]:
         item = stack.pop()
         if isinstance(item, bool):
             continue
-        # numbers: keep finite floats only (drop NaN/inf so they can't poison _minmax)
-        if isinstance(item, (int, float)) and math.isfinite(item):
-            try:  # a huge int may overflow float(); skip rather than raise
-                out.append(float(item))
+        if isinstance(item, (int, float)):
+            try:  # a huge int overflows float(); skip rather than raise
+                num = float(item)
             except OverflowError:
-                pass
+                continue
+            if math.isfinite(num):  # drop NaN/inf so they can't poison _minmax
+                out.append(num)
         elif isinstance(item, (list, tuple)):
             stack.extend(item)
         elif isinstance(item, Mapping):
@@ -47,6 +49,11 @@ def _fmt_amount(amount: float) -> str:
     return "" if amount == 1 else str(amount)
 
 
+def _format_formula(amounts: Mapping[str, float]) -> str:
+    """Alphabetical formula string from element->amount counts (1s dropped)."""
+    return "".join(f"{el}{_fmt_amount(amt)}" for el, amt in sorted(amounts.items()))
+
+
 def _structure_facts(struct: Any) -> dict[str, Any]:
     """Element counts, formula, and site count from a serialized structure dict."""
     if not isinstance(struct, Mapping):
@@ -62,9 +69,7 @@ def _structure_facts(struct: Any) -> dict[str, Any]:
     facts: dict[str, Any] = {"n_sites": len(sites)}
     if counts:
         facts["elements"] = sorted(counts)
-        facts["formula"] = "".join(
-            f"{el}{count if count > 1 else ''}" for el, count in sorted(counts.items())
-        )
+        facts["formula"] = _format_formula(counts)
     return facts
 
 
@@ -107,16 +112,6 @@ def _source_flags(
 ) -> dict[str, Any]:
     """Report which optional data sources are populated (e.g. structures/patterns)."""
     return {f"has_{key}": widget_data.get(key) is not None for key in keys}
-
-
-def _describe_scatter_plot(data: Mapping[str, Any]) -> dict[str, Any]:
-    """Facts for 2D scatter/bar/histogram plots."""
-    return _xy_facts(data, ("x", "y"))
-
-
-def _describe_scatter_plot_3d(data: Mapping[str, Any]) -> dict[str, Any]:
-    """Facts for 3D scatter plots (adds a z-axis range)."""
-    return _xy_facts(data, ("x", "y", "z"))
 
 
 def _describe_structure(data: Mapping[str, Any]) -> dict[str, Any]:
@@ -167,12 +162,7 @@ def _describe_composition(data: Mapping[str, Any]) -> dict[str, Any]:
     }
     if not amounts:
         return {}
-    return {
-        "elements": sorted(amounts),
-        "formula": "".join(
-            f"{el}{_fmt_amount(amt)}" for el, amt in sorted(amounts.items())
-        ),
-    }
+    return {"elements": sorted(amounts), "formula": _format_formula(amounts)}
 
 
 def _describe_xrd(data: Mapping[str, Any]) -> dict[str, Any]:
@@ -217,16 +207,6 @@ def _describe_bands_and_dos(data: Mapping[str, Any]) -> dict[str, Any]:
     return {**_describe_band_structure(data), **_describe_dos(data)}
 
 
-def _describe_rdf_plot(data: Mapping[str, Any]) -> dict[str, Any]:
-    """Which RDF data source (structures vs precomputed patterns) is present."""
-    return _source_flags(data, ("structures", "patterns"))
-
-
-def _describe_fermi_surface(data: Mapping[str, Any]) -> dict[str, Any]:
-    """Which Fermi-surface data source is present."""
-    return _source_flags(data, ("fermi_data", "band_data"))
-
-
 def _describe_brillouin_zone(data: Mapping[str, Any]) -> dict[str, Any]:
     """Data source flags plus structure facts for a Brillouin zone."""
     return {
@@ -235,12 +215,16 @@ def _describe_brillouin_zone(data: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+# Facts for 2D scatter/bar/histogram plots (3D adds a z-axis range)
+_describe_xy = functools.partial(_xy_facts, axes=("x", "y"))
+_describe_xyz = functools.partial(_xy_facts, axes=("x", "y", "z"))
+
 # widget_type -> handler deriving structured facts from to_dict() output
 _HANDLERS: dict[str, Any] = {
-    "scatter_plot": _describe_scatter_plot,
-    "bar_plot": _describe_scatter_plot,
-    "histogram": _describe_scatter_plot,
-    "scatter_plot_3d": _describe_scatter_plot_3d,
+    "scatter_plot": _describe_xy,
+    "bar_plot": _describe_xy,
+    "histogram": _describe_xy,
+    "scatter_plot_3d": _describe_xyz,
     "structure": _describe_structure,
     "trajectory": _describe_trajectory,
     "periodic_table": _describe_periodic_table,
@@ -253,8 +237,9 @@ _HANDLERS: dict[str, Any] = {
     "dos": _describe_dos,
     "band_structure": _describe_band_structure,
     "bands_and_dos": _describe_bands_and_dos,
-    "rdf_plot": _describe_rdf_plot,
-    "fermi_surface": _describe_fermi_surface,
+    # which optional data source is populated (structures/patterns, fermi/band)
+    "rdf_plot": functools.partial(_source_flags, keys=("structures", "patterns")),
+    "fermi_surface": functools.partial(_source_flags, keys=("fermi_data", "band_data")),
     "brillouin_zone": _describe_brillouin_zone,
 }
 

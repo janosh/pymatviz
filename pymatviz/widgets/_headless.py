@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import atexit
 import base64
+import contextlib
 import dataclasses
 import functools
 import html as html_mod
@@ -25,7 +26,7 @@ from typing import TYPE_CHECKING, Any
 
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import AsyncIterator, Iterator, Mapping
 
     from playwright.async_api import Browser as AsyncBrowser
     from playwright.async_api import Page as AsyncPage
@@ -162,29 +163,39 @@ def _shutdown_async_browser() -> None:
     _async_pw = None
 
 
-def _prepare_render(
-    widget_data: dict[str, Any],
-    esm_content: str,
-    css_content: str,
-    fmt: str,
-    dpi: int,
-    timeout: float,
-    width: int | None,
-    height: int | None,
-) -> tuple[str, int, float]:
+@dataclasses.dataclass(frozen=True)
+class _RenderInputs:
+    """Inputs threaded through the headless render pipeline (one bundle, not 8 args)."""
+
+    widget_data: dict[str, Any]
+    esm_content: str
+    css_content: str
+    fmt: str = "png"
+    dpi: int = 150
+    timeout: float = 30.0
+    width: int | None = None
+    height: int | None = None
+
+
+def _prepare_render(inputs: _RenderInputs) -> tuple[str, int, float]:
     """Build HTML, compute scale factor, write temp file.
 
     Returns (tmp_path, timeout_ms, scale_factor).
     """
     html = _build_html(
-        widget_data, esm_content, css_content, timeout, width=width, height=height
+        inputs.widget_data,
+        inputs.esm_content,
+        inputs.css_content,
+        inputs.timeout,
+        width=inputs.width,
+        height=inputs.height,
     )
-    timeout_ms = int(timeout * 1000)
+    timeout_ms = int(inputs.timeout * 1000)
     # PDF capture rasterizes WebGL canvases (Chromium's vector page.pdf() can't
     # see them), so scale every raster-capable format by DPI. The canvas-vs-SVG
     # choice is made at capture time from the DOM. SVG stays 1x (pure vector).
-    needs_raster = fmt in ("png", "jpeg", "pdf")
-    scale_factor = max(1, dpi / 72) if needs_raster else 1
+    needs_raster = inputs.fmt in ("png", "jpeg", "pdf")
+    scale_factor = max(1, inputs.dpi / 72) if needs_raster else 1
     return _write_temp_html(html), timeout_ms, scale_factor
 
 
@@ -245,27 +256,67 @@ async def _async_capture_page(
     return await root.screenshot(type="png")
 
 
-async def _render_widget_async(
-    widget_data: dict[str, Any],
-    esm_content: str,
-    css_content: str,
-    fmt: str = "png",
-    dpi: int = 150,
-    timeout: float = 30.0,  # noqa: ASYNC109
-    quality: int = 90,
-    width: int | None = None,
-    height: int | None = None,
-) -> bytes:
-    """Async implementation of render_widget_headless for event-loop contexts."""
-    tmp_path, timeout_ms, scale_factor = _prepare_render(
-        widget_data, esm_content, css_content, fmt, dpi, timeout, width, height
-    )
-    browser = await _get_async_browser()
+def _raise_if_timeout(exc: BaseException, timeout: float) -> None:
+    """Re-raise Playwright/builtin timeouts as TimeoutError with a clear message."""
+    timeout_types: tuple[type[BaseException], ...] = (TimeoutError,)
+    try:  # sync_api and async_api re-export the same TimeoutError class
+        from playwright.sync_api import TimeoutError as PlaywrightTimeout
+
+        timeout_types = (TimeoutError, PlaywrightTimeout)
+    except ImportError:  # playwright absent (mocked browser in tests)
+        pass
+
+    if isinstance(exc, timeout_types):
+        raise TimeoutError(
+            f"Widget did not finish rendering within {timeout}s"
+        ) from exc
+
+
+@contextlib.contextmanager
+def _rendered_page(
+    browser: Browser, inputs: _RenderInputs
+) -> Iterator[tuple[Page, str | None, float]]:
+    """Yield ``(page, render_error, scale_factor)`` for a fully loaded widget page.
+
+    Builds the capture HTML, opens it in a new page, and waits for the JS side
+    to signal render completion. Closes the page and deletes the temp HTML
+    file on exit.
+    """
+    tmp_path, timeout_ms, scale_factor = _prepare_render(inputs)
+    page: Page | None = None
+    try:
+        page = browser.new_page(
+            viewport={"width": 1024, "height": 768}, device_scale_factor=scale_factor
+        )
+        page.goto(
+            Path(tmp_path).as_uri(), wait_until="domcontentloaded", timeout=timeout_ms
+        )
+        page.wait_for_function(
+            "() => window.__RENDER_DONE === true", timeout=timeout_ms
+        )
+        yield page, page.evaluate("() => window.__RENDER_ERROR"), scale_factor
+    finally:
+        if page is not None:
+            try:
+                page.close()
+            except (OSError, RuntimeError):
+                pass
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+
+
+@contextlib.asynccontextmanager
+async def _rendered_page_async(
+    browser: AsyncBrowser, inputs: _RenderInputs
+) -> AsyncIterator[tuple[AsyncPage, str | None, float]]:
+    """Async twin of ``_rendered_page`` for event-loop (Jupyter) contexts."""
+    tmp_path, timeout_ms, scale_factor = _prepare_render(inputs)
     page: AsyncPage | None = None
     try:
         page = await browser.new_page(
-            viewport={"width": 1024, "height": 768},
-            device_scale_factor=scale_factor,
+            viewport={"width": 1024, "height": 768}, device_scale_factor=scale_factor
         )
         await page.goto(
             Path(tmp_path).as_uri(), wait_until="domcontentloaded", timeout=timeout_ms
@@ -273,25 +324,7 @@ async def _render_widget_async(
         await page.wait_for_function(
             "() => window.__RENDER_DONE === true", timeout=timeout_ms
         )
-        render_error = await page.evaluate("() => window.__RENDER_ERROR")
-        if render_error:
-            raise RuntimeError(f"Widget render failed: {render_error}")  # noqa: TRY301
-
-        return await _async_capture_page(page, fmt, quality, scale_factor)
-    except Exception as exc:
-        timeout_types: tuple[type[BaseException], ...] = (TimeoutError,)
-        try:
-            from playwright.async_api import TimeoutError as PlaywrightTimeout
-
-            timeout_types = (TimeoutError, PlaywrightTimeout)
-        except ImportError:
-            pass
-
-        if isinstance(exc, timeout_types):
-            raise TimeoutError(
-                f"Widget did not finish rendering within {timeout}s"
-            ) from exc
-        raise
+        yield page, await page.evaluate("() => window.__RENDER_ERROR"), scale_factor
     finally:
         if page is not None:
             try:
@@ -302,6 +335,19 @@ async def _render_widget_async(
             os.unlink(tmp_path)
         except OSError:
             pass
+
+
+async def _render_widget_async(inputs: _RenderInputs, quality: int = 90) -> bytes:
+    """Async implementation of render_widget_headless for event-loop contexts."""
+    browser = await _get_async_browser()
+    try:
+        async with _rendered_page_async(browser, inputs) as (page, render_error, scale):
+            if render_error:
+                raise RuntimeError(f"Widget render failed: {render_error}")  # noqa: TRY301
+            return await _async_capture_page(page, inputs.fmt, quality, scale)
+    except Exception as exc:
+        _raise_if_timeout(exc, inputs.timeout)
+        raise
 
 
 @functools.lru_cache(maxsize=1)
@@ -324,6 +370,14 @@ def _worker_shim(widget_type: str | None) -> str:
     if widget_type == "chem_pot_diagram":
         return "globalThis.Worker = undefined;\n"
     return ""
+
+
+def _widget_data_json(widget_data: dict[str, Any]) -> str:
+    """Serialize widget data for embedding in a ``<script>`` tag.
+
+    Escapes ``</`` so the JSON can't prematurely close the script tag.
+    """
+    return json.dumps(widget_data, default=str).replace("</", r"<\/")
 
 
 def _esm_blob_loader_js(esm_content: str) -> str:
@@ -384,8 +438,7 @@ def _build_html(
     Returns:
         Complete HTML document as a string.
     """
-    # escape </ so the JSON can't prematurely close the <script> tag
-    data_json = json.dumps(widget_data, default=str).replace("</", r"<\/")
+    data_json = _widget_data_json(widget_data)
     esm_loader = _esm_blob_loader_js(esm_content)
 
     # Build container style: user style first, then explicit overrides
@@ -520,8 +573,7 @@ def build_interactive_html(
     if (esm_url is None) == (esm_content is None):
         raise ValueError("provide exactly one of esm_url or esm_content")
 
-    # escape </ so the JSON can't prematurely close the <script> tag
-    data_json = json.dumps(widget_data, default=str).replace("</", r"<\/")
+    data_json = _widget_data_json(widget_data)
     worker_shim = _worker_shim(widget_data.get("widget_type"))
     if esm_content is not None:
         esm_loader = _esm_blob_loader_js(esm_content)
@@ -560,9 +612,15 @@ if (wrapper) {{
 </body></html>"""
 
 
+# DOM size thresholds shared by the capture and diagnostics probes: canvases
+# below _MIN_CANVAS_PX are decorative (not the chart), SVGs below _MIN_SVG_PX
+# are toolbar/legend icons.
+_MIN_CANVAS_PX = 50
+_MIN_SVG_PX = 20
+
 # Extract the largest chart-sized SVG from the widget for vector export.
-# Sub-threshold (< 20px) elements are toolbar/legend icons, never the chart,
-# so they are ignored and the function returns null when only icons exist.
+# Sub-threshold elements are toolbar/legend icons, never the chart, so they
+# are ignored and the function returns null when only icons exist.
 # Returning null (rather than an icon) lets the caller raise a clear error.
 _SVG_EXTRACT_JS = """\
 () => {
@@ -572,7 +630,8 @@ _SVG_EXTRACT_JS = """\
     for (const svg of svgs) {
         const rect = svg.getBoundingClientRect();
         const area = rect.width * rect.height;
-        if (rect.width >= 20 && rect.height >= 20 && area > best_area) {
+        if (rect.width >= %(svg_px)d && rect.height >= %(svg_px)d
+            && area > best_area) {
             best = svg; best_area = area;
         }
     }
@@ -587,7 +646,7 @@ _SVG_EXTRACT_JS = """\
     return '<?xml version="1.0" encoding="UTF-8"?>\\n'
         + new XMLSerializer().serializeToString(cloned);
 }
-"""
+""" % {"svg_px": _MIN_SVG_PX}  # noqa: UP031  -- %-format keeps JS braces literal
 
 # Detect whether the widget painted a real WebGL <canvas> (vs decorative ones).
 # Capture decisions (SVG-vs-raster, vector-vs-rasterized PDF) are made from the
@@ -600,11 +659,11 @@ _HAS_CANVAS_JS = """\
     if (!root) return false;
     for (const canvas of root.querySelectorAll('canvas')) {
         const rect = canvas.getBoundingClientRect();
-        if (rect.width >= 50 && rect.height >= 50) return true;
+        if (rect.width >= %(canvas_px)d && rect.height >= %(canvas_px)d) return true;
     }
     return false;
 }
-"""
+""" % {"canvas_px": _MIN_CANVAS_PX}  # noqa: UP031  -- %-format keeps JS braces literal
 
 # Widget types that render plain HTML (no <canvas>/<svg> chart) and so need the
 # HTML-content fallback in _build_html to detect render completion. All other
@@ -768,6 +827,20 @@ def _has_running_event_loop() -> bool:
     return True
 
 
+def _apply_nest_asyncio(loop: asyncio.AbstractEventLoop) -> bool:
+    """Patch the running loop for re-entrant ``run_until_complete``.
+
+    Returns False when nest_asyncio is not installed (callers decide whether
+    that is a hard error or a soft diagnostic).
+    """
+    try:
+        import nest_asyncio
+    except ImportError:
+        return False
+    nest_asyncio.apply(loop)
+    return True
+
+
 def render_widget_headless(
     widget_data: dict[str, Any],
     esm_content: str,
@@ -813,95 +886,47 @@ def render_widget_headless(
         TimeoutError: If the widget does not finish rendering in time.
     """
     widget_data = {**widget_data, "show_controls": False}
+    inputs = _RenderInputs(
+        widget_data, esm_content, css_content, fmt, dpi, timeout, width, height
+    )
 
     if _has_running_event_loop():
         loop = asyncio.get_running_loop()
-        try:
-            import nest_asyncio
-
-            nest_asyncio.apply(loop)
-        except ImportError:
+        if not _apply_nest_asyncio(loop):
             raise RuntimeError(
                 "nest_asyncio is required for headless widget export inside "
                 "Jupyter/IPython event loops.\n"
                 "Install it with:  uv pip install nest-asyncio"
-            ) from None
-        return loop.run_until_complete(
-            _render_widget_async(
-                widget_data,
-                esm_content,
-                css_content,
-                fmt,
-                dpi,
-                timeout,
-                quality,
-                width,
-                height,
             )
-        )
+        return loop.run_until_complete(_render_widget_async(inputs, quality))
 
-    tmp_path, timeout_ms, scale_factor = _prepare_render(
-        widget_data, esm_content, css_content, fmt, dpi, timeout, width, height
-    )
     browser = _get_browser()
-    page: Page | None = None
     try:
-        page = browser.new_page(
-            viewport={"width": 1024, "height": 768},
-            device_scale_factor=scale_factor,
-        )
-        page.goto(
-            Path(tmp_path).as_uri(), wait_until="domcontentloaded", timeout=timeout_ms
-        )
-        page.wait_for_function(
-            "() => window.__RENDER_DONE === true", timeout=timeout_ms
-        )
-
-        render_error = page.evaluate("() => window.__RENDER_ERROR")
-        if render_error:
-            raise RuntimeError(f"Widget render failed: {render_error}")  # noqa: TRY301
-
-        return _capture_page(page, fmt, quality, scale_factor)
+        with _rendered_page(browser, inputs) as (page, render_error, scale):
+            if render_error:
+                raise RuntimeError(f"Widget render failed: {render_error}")  # noqa: TRY301
+            return _capture_page(page, inputs.fmt, quality, scale)
     except Exception as exc:
-        timeout_types: tuple[type[BaseException], ...] = (TimeoutError,)
-        try:
-            from playwright.sync_api import TimeoutError as PlaywrightTimeout
-
-            timeout_types = (TimeoutError, PlaywrightTimeout)
-        except ImportError:
-            pass
-
-        if isinstance(exc, timeout_types):
-            raise TimeoutError(
-                f"Widget did not finish rendering within {timeout}s"
-            ) from exc
+        _raise_if_timeout(exc, inputs.timeout)
         raise
-    finally:
-        if page is not None:
-            try:
-                page.close()
-            except (OSError, RuntimeError):
-                pass
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
 
 
 # === Render diagnostics (render_report) ===
 
 # DOM probe: classify content and measure root vs content/scroll size to detect
-# overflow (clipping). Mirrors the size thresholds used by _HAS_CANVAS_JS.
+# overflow (clipping). Shares size thresholds with _HAS_CANVAS_JS/_SVG_EXTRACT_JS
+# so content_type classification always agrees with capture decisions.
 _CONTENT_METRICS_JS = """\
 () => {
     const root = document.getElementById('widget-root');
     if (!root) return null;
-    const child = root.firstElementChild;
     const has_canvas = [...root.querySelectorAll('canvas')].some(c => {
-        const r = c.getBoundingClientRect(); return r.width >= 50 && r.height >= 50;
+        const r = c.getBoundingClientRect();
+        return r.width >= %(canvas_px)d && r.height >= %(canvas_px)d;
     });
     const has_svg = [...root.querySelectorAll('svg')].some(s => {
-        const r = s.getBoundingClientRect(); return r.width >= 20 && r.height >= 20;
+        const r = s.getBoundingClientRect();
+        return r.width >= %(svg_px)d && r.height >= %(svg_px)d;
     });
     const text_len = (root.textContent || '').trim().length;
     const rect = root.getBoundingClientRect();
@@ -913,7 +938,7 @@ _CONTENT_METRICS_JS = """\
         text_len,
     };
 }
-"""
+""" % {"canvas_px": _MIN_CANVAS_PX, "svg_px": _MIN_SVG_PX}  # noqa: UP031
 
 
 @dataclasses.dataclass(frozen=True)
@@ -935,7 +960,7 @@ class RenderReport:
     """
 
     ok: bool
-    summary: dict[str, Any]
+    summary: dict[str, Any] = dataclasses.field(default_factory=dict)
     content_type: str | None = None
     width: int | None = None
     height: int | None = None
@@ -959,116 +984,68 @@ def png_blank_fraction(png_bytes: bytes) -> float | None:
     import numpy as np
 
     pixels = np.asarray(Image.open(io.BytesIO(png_bytes)).convert("RGB")).reshape(-1, 3)
-    _, counts = np.unique(pixels, axis=0, return_counts=True)
-    return float(counts.max() / len(pixels))
+    # pack RGB into one int per pixel: orders of magnitude faster to unique
+    # than np.unique(pixels, axis=0), which sorts rows via a void-dtype view
+    packed = (
+        (pixels[:, 0].astype(np.uint32) << 16)
+        | (pixels[:, 1].astype(np.uint32) << 8)
+        | pixels[:, 2]
+    )
+    _, counts = np.unique(packed, return_counts=True)
+    return float(counts.max() / len(packed))
 
 
 def _assemble_diagnostics(
     png_bytes: bytes | None, metrics: dict[str, Any] | None, render_error: str | None
-) -> dict[str, Any]:
-    """Combine an optional screenshot and DOM metrics into a diagnostics dict.
+) -> RenderReport:
+    """Combine an optional screenshot and DOM metrics into a RenderReport.
 
     ``png_bytes``/``metrics`` are None when the render errored before capture;
-    the result then carries just ``ok=False`` and ``error``. This is the single
-    producer of the diagnostics dict, so its keys stay in sync with RenderReport.
+    the report then carries just ``ok=False`` and ``error``. ``summary`` and
+    ``warnings`` are left empty for the caller to fill in.
     """
     frac = png_blank_fraction(png_bytes) if png_bytes is not None else None
     info = metrics or {}
     root_w, root_h = info.get("root_w"), info.get("root_h")
     overflow_x = bool(root_w) and info.get("scroll_w", 0) > root_w + 4
     overflow_y = bool(root_h) and info.get("scroll_h", 0) > root_h + 4
-    return {
-        "ok": render_error is None,
-        "error": render_error,
-        "content_type": info.get("content_type"),
-        "width": root_w,
-        "height": root_h,
-        "blank_fraction": frac,
-        "is_blank": frac is not None and frac > 0.99,
-        "clipped": overflow_x or overflow_y,
-    }
+    return RenderReport(
+        ok=render_error is None,
+        error=render_error,
+        content_type=info.get("content_type"),
+        width=root_w,
+        height=root_h,
+        blank_fraction=frac,
+        is_blank=frac is not None and frac > 0.99,
+        clipped=overflow_x or overflow_y,
+    )
 
 
-def _diagnose_sync(
-    widget_data: dict[str, Any],
-    esm_content: str,
-    css_content: str,
-    timeout: float,
-    dpi: int,
-) -> dict[str, Any]:
+def _diagnose_sync(inputs: _RenderInputs) -> RenderReport:
     """Sync headless render that returns visual + DOM diagnostics in one pass."""
-    tmp_path, timeout_ms, scale_factor = _prepare_render(
-        widget_data, esm_content, css_content, "png", dpi, timeout, None, None
-    )
-    browser = _get_browser()
-    page: Page | None = None
     try:
-        page = browser.new_page(
-            viewport={"width": 1024, "height": 768}, device_scale_factor=scale_factor
-        )
-        page.goto(
-            Path(tmp_path).as_uri(), wait_until="domcontentloaded", timeout=timeout_ms
-        )
-        page.wait_for_function(
-            "() => window.__RENDER_DONE === true", timeout=timeout_ms
-        )
-        render_error = page.evaluate("() => window.__RENDER_ERROR")
-        metrics = page.evaluate(_CONTENT_METRICS_JS)
-        png_bytes = page.locator("#widget-root").screenshot(type="png")
-        return _assemble_diagnostics(png_bytes, metrics, render_error)
+        with _rendered_page(_get_browser(), inputs) as (page, render_error, _scale):
+            metrics = page.evaluate(_CONTENT_METRICS_JS)
+            png_bytes = page.locator("#widget-root").screenshot(type="png")
+            return _assemble_diagnostics(png_bytes, metrics, render_error)
     except Exception as exc:  # noqa: BLE001
         return _assemble_diagnostics(None, None, f"render failed: {exc}")
-    finally:
-        if page is not None:
-            try:
-                page.close()
-            except (OSError, RuntimeError):
-                pass
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
 
 
-async def _diagnose_async(
-    widget_data: dict[str, Any],
-    esm_content: str,
-    css_content: str,
-    timeout: float,  # noqa: ASYNC109
-    dpi: int,
-) -> dict[str, Any]:
+async def _diagnose_async(inputs: _RenderInputs) -> RenderReport:
     """Async twin of _diagnose_sync for event-loop (Jupyter) contexts."""
-    tmp_path, timeout_ms, scale_factor = _prepare_render(
-        widget_data, esm_content, css_content, "png", dpi, timeout, None, None
-    )
     browser = await _get_async_browser()
-    page: AsyncPage | None = None
     try:
-        page = await browser.new_page(
-            viewport={"width": 1024, "height": 768}, device_scale_factor=scale_factor
-        )
-        await page.goto(
-            Path(tmp_path).as_uri(), wait_until="domcontentloaded", timeout=timeout_ms
-        )
-        await page.wait_for_function(
-            "() => window.__RENDER_DONE === true", timeout=timeout_ms
-        )
-        render_error = await page.evaluate("() => window.__RENDER_ERROR")
-        metrics = await page.evaluate(_CONTENT_METRICS_JS)
-        png_bytes = await page.locator("#widget-root").screenshot(type="png")
-        return _assemble_diagnostics(png_bytes, metrics, render_error)
+        async with _rendered_page_async(browser, inputs) as (
+            page,
+            render_error,
+            _scale,
+        ):
+            metrics = await page.evaluate(_CONTENT_METRICS_JS)
+            png_bytes = await page.locator("#widget-root").screenshot(type="png")
+            return _assemble_diagnostics(png_bytes, metrics, render_error)
     except Exception as exc:  # noqa: BLE001
         return _assemble_diagnostics(None, None, f"render failed: {exc}")
-    finally:
-        if page is not None:
-            try:
-                await page.close()
-            except (OSError, RuntimeError):
-                pass
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
 
 
 def render_diagnostics(
@@ -1078,27 +1055,24 @@ def render_diagnostics(
     *,
     timeout: float = 30.0,
     dpi: int = 72,
-) -> dict[str, Any]:
+) -> RenderReport:
     """Render a widget headlessly once and return visual + DOM diagnostics.
 
     Dispatches to the async path inside a running event loop (Jupyter), mirroring
-    ``render_widget_headless``. Never raises -- failures return
-    ``{"ok": False, "error": ...}``.
+    ``render_widget_headless``. Never raises -- failures return a report with
+    ``ok=False`` and ``error`` set (``summary``/``warnings`` left empty).
     """
     widget_data = {**widget_data, "show_controls": False}
+    inputs = _RenderInputs(
+        widget_data, esm_content, css_content, dpi=dpi, timeout=timeout
+    )
 
     if _has_running_event_loop():
         loop = asyncio.get_running_loop()
-        try:
-            import nest_asyncio
-
-            nest_asyncio.apply(loop)
-        except ImportError:
+        if not _apply_nest_asyncio(loop):
             return _assemble_diagnostics(
                 None, None, "nest_asyncio is required inside a running event loop"
             )
-        return loop.run_until_complete(
-            _diagnose_async(widget_data, esm_content, css_content, timeout, dpi)
-        )
+        return loop.run_until_complete(_diagnose_async(inputs))
 
-    return _diagnose_sync(widget_data, esm_content, css_content, timeout, dpi)
+    return _diagnose_sync(inputs)

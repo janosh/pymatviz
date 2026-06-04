@@ -21,6 +21,7 @@ from pymatviz.widgets._headless import (
     _has_running_event_loop,
     _prepare_render,
     _render_widget_async,
+    _RenderInputs,
     build_interactive_html,
     png_blank_fraction,
     render_widget_headless,
@@ -102,9 +103,9 @@ def test_render_widget_headless_dispatches_async_in_event_loop() -> None:
 
     assert result == fake_png
     mock_async.assert_called_once()
-    call_args = mock_async.call_args[0]
-    assert call_args[0] == {**DUMMY_WIDGET_DATA, "show_controls": False}
-    assert call_args[3] == "png"
+    inputs = mock_async.call_args[0][0]
+    assert inputs.widget_data == {**DUMMY_WIDGET_DATA, "show_controls": False}
+    assert inputs.fmt == "png"
 
 
 def test_render_widget_headless_uses_sync_path_without_event_loop() -> None:
@@ -157,10 +158,9 @@ def test_render_widget_async_calls_playwright_async_api() -> None:
     mock_browser.is_connected.return_value = True
 
     async def run() -> bytes:
+        inputs = _RenderInputs(DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS, fmt="png")
         with patch(f"{HEADLESS_PATH}._get_async_browser", return_value=mock_browser):
-            return await _render_widget_async(
-                DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS, fmt="png"
-            )
+            return await _render_widget_async(inputs)
 
     result = asyncio.run(run())
 
@@ -184,10 +184,9 @@ def test_render_widget_async_propagates_render_error() -> None:
     mock_browser.is_connected.return_value = True
 
     async def run() -> None:
+        inputs = _RenderInputs(DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS, fmt="png")
         with patch(f"{HEADLESS_PATH}._get_async_browser", return_value=mock_browser):
-            await _render_widget_async(
-                DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS, fmt="png"
-            )
+            await _render_widget_async(inputs)
 
     with pytest.raises(RuntimeError, match="render failed"):
         asyncio.run(run())
@@ -247,9 +246,8 @@ def test_prepare_render_scale_factor(fmt: str, dpi: int, expected_scale: float) 
     """Raster formats (png/jpeg/pdf) scale by DPI; SVG stays 1x (pure vector)."""
     import os
 
-    tmp_path, _ms, scale = _prepare_render(
-        {"widget_type": "bar_plot"}, "// esm", "/* css */", fmt, dpi, 30.0, None, None
-    )
+    inputs = _RenderInputs({"widget_type": "bar_plot"}, "// esm", "/* css */", fmt, dpi)
+    tmp_path, _ms, scale = _prepare_render(inputs)
     try:
         assert scale == expected_scale
     finally:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import os
 import re
@@ -27,20 +28,22 @@ if TYPE_CHECKING:
 # breaks widget rendering for everyone.
 MATTERVIZ_ANYWIDGET_VERSION = "0.3.7"
 _ANYWIDGET_CDN = "https://cdn.jsdelivr.net/npm/matterviz-anywidget"
+# expanded at call time (not import time) so tests can patch os.path.expanduser
+_CACHE_ROOT = "~/.cache/pymatviz"
 
 
-def _cdn_url(version: str) -> str:
-    """Return the jsDelivr URL for a ``matterviz-anywidget`` ESM bundle version.
+def _cdn_url(version: str, filename: str = "matterviz.js") -> str:
+    """Return the jsDelivr URL for a ``matterviz-anywidget`` bundle file.
 
     jsDelivr serves npm packages with CORS and a JavaScript MIME type (both
-    required for cross-origin ``import()``), so this URL works in ``to_html``.
+    required for cross-origin ``import()``), so these URLs work in ``to_html``.
     """
-    return f"{_ANYWIDGET_CDN}@{version}/build/matterviz.js"
+    return f"{_ANYWIDGET_CDN}@{version}/build/{filename}"
 
 
-def _default_cdn_url() -> str:
-    """Return the jsDelivr URL for the pinned ``matterviz-anywidget`` bundle."""
-    return _cdn_url(MATTERVIZ_ANYWIDGET_VERSION)
+def _cache_dir(version: str) -> str:
+    """On-disk cache dir for one downloaded ``matterviz-anywidget`` version."""
+    return f"{os.path.expanduser(_CACHE_ROOT)}/matterviz-anywidget/{version}"
 
 
 def _in_marimo_runtime() -> bool:
@@ -99,7 +102,8 @@ def _marimo_esm_url(esm_text: str) -> str | None:
 def _read_asset_source(src: str) -> str:
     """Read asset content from an HTTP(S) URL, ``file://`` URI, or local path."""
     if src.startswith(("http://", "https://")):
-        with urllib.request.urlopen(src) as response:  # noqa: S310
+        # timeout so a stalled connection fails fast instead of hanging
+        with urllib.request.urlopen(src, timeout=30) as response:  # noqa: S310
             return response.read().decode("utf-8")
     src = src.removeprefix("file://")
     if not os.path.isfile(src):
@@ -193,8 +197,7 @@ def fetch_widget_asset(filename: str, version_override: str | None = None) -> st
     if dev_dir and os.path.isfile(dev_path := f"{dev_dir}/{filename}"):
         return read_file(dev_path)
 
-    cache_root = os.path.expanduser("~/.cache/pymatviz/matterviz-anywidget")
-    cache_dir = f"{cache_root}/{version}"
+    cache_dir = _cache_dir(version)
     cache_path = f"{cache_dir}/{filename}"
     if os.path.isfile(cache_path):
         return read_file(cache_path)
@@ -202,28 +205,29 @@ def fetch_widget_asset(filename: str, version_override: str | None = None) -> st
     if not re.match(r"^\d+\.\d+\.\d+([-+].+)?$", version):  # semver, optional pre/build
         raise ValueError(f"Invalid matterviz-anywidget version: {version=}")
 
-    os.makedirs(cache_dir, exist_ok=True)
-    cdn_url = f"{_ANYWIDGET_CDN}@{version}/build/{filename}"
-    # Download to a temp file and atomically rename so an interrupted download
-    # never leaves a partial file that later cache-hits and serves a broken bundle.
-    # urlopen(timeout=...) so a stalled connection fails fast instead of hanging.
-    tmp_path = f"{cache_path}.{os.getpid()}.tmp"
+    cdn_url = _cdn_url(version, filename)
     try:
-        with (
-            urllib.request.urlopen(cdn_url, timeout=30) as response,  # noqa: S310
-            open(tmp_path, "wb") as tmp_file,
-        ):
-            shutil.copyfileobj(response, tmp_file)
-        os.replace(tmp_path, cache_path)
+        content = _read_asset_source(cdn_url)
     except Exception as exc:
-        if os.path.isfile(tmp_path):
-            os.unlink(tmp_path)
         raise FileNotFoundError(
             f"Could not load {filename} for matterviz-anywidget@{version} from "
             f"{cdn_url}. Ensure that version is published to npm, set "
             "MATTERVIZ_ANYWIDGET_DIR to a local build dir, or check connectivity."
         ) from exc
-    return read_file(cache_path)
+
+    # Write to a temp file and atomically rename so an interrupted write never
+    # leaves a partial file that later cache-hits and serves a broken bundle.
+    os.makedirs(cache_dir, exist_ok=True)
+    tmp_path = f"{cache_path}.{os.getpid()}.tmp"
+    try:
+        with open(tmp_path, "w", encoding="utf-8") as tmp_file:
+            tmp_file.write(content)
+        os.replace(tmp_path, cache_path)
+    except Exception:
+        if os.path.isfile(tmp_path):
+            os.unlink(tmp_path)
+        raise
+    return content
 
 
 def clear_widget_cache(version_override: str | None = None) -> None:
@@ -232,14 +236,13 @@ def clear_widget_cache(version_override: str | None = None) -> None:
     Args:
         version_override: Only clear this ``matterviz-anywidget`` version's cache.
     """
-    cache_dir = os.path.expanduser("~/.cache/pymatviz")
     if version_override:
-        version_cache_dir = f"{cache_dir}/matterviz-anywidget/{version_override}"
+        version_cache_dir = _cache_dir(version_override)
         if os.path.isdir(version_cache_dir):
             shutil.rmtree(version_cache_dir)
     # Clear entire cache
-    elif os.path.isdir(cache_dir):
-        shutil.rmtree(cache_dir)
+    elif os.path.isdir(cache_root := os.path.expanduser(_CACHE_ROOT)):
+        shutil.rmtree(cache_root)
 
 
 class MatterVizWidget(AnyWidget):
@@ -401,7 +404,7 @@ class MatterVizWidget(AnyWidget):
                 requested for a canvas-based widget.
             ImportError: If ``playwright`` is not installed.
         """
-        from pymatviz.widgets._headless import render_widget_headless
+        from pymatviz.widgets._headless import _CAPTURE_FORMATS, render_widget_headless
 
         if dpi <= 0:
             raise ValueError(f"dpi must be positive, got {dpi}")
@@ -414,10 +417,9 @@ class MatterVizWidget(AnyWidget):
         if height is not None and height <= 0:
             raise ValueError(f"height must be positive, got {height}")
 
-        valid_fmts = ("png", "jpeg", "svg", "pdf")
-        if fmt is not None and fmt not in valid_fmts:
+        if fmt is not None and fmt not in _CAPTURE_FORMATS:
             raise ValueError(
-                f"Unsupported format {fmt!r}, expected one of {valid_fmts}"
+                f"Unsupported format {fmt!r}, expected one of {_CAPTURE_FORMATS}"
             )
         resolved_fmt = fmt
         if resolved_fmt is None and filename:
@@ -428,10 +430,10 @@ class MatterVizWidget(AnyWidget):
                     "(no extension). Pass fmt= explicitly."
                 )
             resolved_fmt = {"jpg": "jpeg"}.get(ext, ext)
-            if resolved_fmt not in valid_fmts:
+            if resolved_fmt not in _CAPTURE_FORMATS:
                 raise ValueError(
                     f"Unsupported file extension '.{ext}'; "
-                    f"supported: {sorted(valid_fmts)}"
+                    f"supported: {sorted(_CAPTURE_FORMATS)}"
                 )
         if resolved_fmt is None:
             resolved_fmt = "png"
@@ -540,9 +542,9 @@ class MatterVizWidget(AnyWidget):
             # reference the bundle matching the active CSS (avoid a JS/CSS version
             # mismatch); a local source has no public URL, so leave esm_url None
             # to inline the resolved bundle instead.
-            src = self.__dict__.get("_export_esm_url") or type(self)._export_esm_url
+            src = self._export_esm_url
             if src is None:
-                esm_url = _default_cdn_url()
+                esm_url = _cdn_url(MATTERVIZ_ANYWIDGET_VERSION)
             elif src.startswith(("http://", "https://")):
                 esm_url = src
         # build_interactive_html takes exactly one of esm_url / esm_content
@@ -586,16 +588,13 @@ class MatterVizWidget(AnyWidget):
         from pymatviz.widgets._headless import RenderReport, render_diagnostics
 
         data = self.to_dict()
-        diag: dict[str, Any]  # keys match RenderReport's non-summary/warnings fields
         try:  # asset resolution (cache miss + offline fetch) can fail before the
             esm_content, css_content = self._resolve_assets()  # never-raising render
             diag = render_diagnostics(
                 data, esm_content, css_content, timeout=timeout, dpi=dpi
             )
         except Exception as exc:  # noqa: BLE001 -- documented never-raises contract
-            diag = {"ok": False, "error": f"render_report failed: {exc}"}
-        return RenderReport(
-            summary=describe_widget(data),
-            warnings=tuple(check_inputs(data)),
-            **diag,
+            diag = RenderReport(ok=False, error=f"render_report failed: {exc}")
+        return dataclasses.replace(
+            diag, summary=describe_widget(data), warnings=tuple(check_inputs(data))
         )

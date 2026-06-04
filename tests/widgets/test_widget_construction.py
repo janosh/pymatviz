@@ -1029,17 +1029,6 @@ def test_headless_dpi_affects_png_dimensions() -> None:
     assert img_hi.height > img_lo.height * 2
 
 
-def _png_blank_fraction(png_bytes: bytes) -> float:
-    """Fraction of the most common pixel color (1.0 == uniform/blank image)."""
-    import io
-
-    from PIL import Image
-
-    arr = np.asarray(Image.open(io.BytesIO(png_bytes)).convert("RGB")).reshape(-1, 3)
-    _, counts = np.unique(arr, axis=0, return_counts=True)
-    return float(counts.max() / len(arr))
-
-
 _CHEM_POT_ENTRIES = [
     {"name": "Li", "energy": -1.9, "composition": {"Li": 1}},
     {"name": "Fe", "energy": -8.3, "composition": {"Fe": 1}},
@@ -1075,10 +1064,14 @@ def test_headless_widget_renders_nonblank_png(
     widget_cls: type, kwargs: dict[str, Any], max_blank: float
 ) -> None:
     """Widgets without a simple SVG chart still export a non-blank PNG."""
+    from pymatviz.widgets._headless import png_blank_fraction
+
     widget = widget_cls(style="height: 400px;", **kwargs)
     png_bytes = widget.to_img(fmt="png", dpi=72)
     assert png_bytes[:4] == b"\x89PNG"
-    assert _png_blank_fraction(png_bytes) < max_blank
+    blank_frac = png_blank_fraction(png_bytes)
+    assert blank_frac is not None
+    assert blank_frac < max_blank
 
 
 @_skip_no_playwright
