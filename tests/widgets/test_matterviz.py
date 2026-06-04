@@ -69,9 +69,11 @@ def _clean_asset_cache() -> Generator[None]:
         for attr in ("_esm", "_css")
     }
     saved_cache = cls._asset_cache.copy()
+    saved_export_url = cls._export_esm_url
     cls._asset_cache.clear()
     yield
     cls._asset_cache = saved_cache
+    cls._export_esm_url = saved_export_url
     for attr, (had, val) in saved.items():
         if had:
             assert val is not None
@@ -262,6 +264,26 @@ def test_configure_assets_with_version() -> None:
     assert cls._esm == "matterviz.js@v0.19.0"
     assert cls._css == "matterviz.css@v0.19.0"
     assert "default" in cls._asset_cache
+
+
+@pytest.mark.usefixtures("_clean_asset_cache")
+def test_to_html_references_configured_version() -> None:
+    """to_html(inline=False) points JS at the configured version's CDN URL.
+
+    Guards against pairing the pinned-default JS with custom-version CSS.
+    """
+    with patch(f"{DOTTED_PATH}.fetch_widget_asset") as mock_fetch:
+        mock_fetch.side_effect = lambda name, ver: (
+            "export default { render() {} }"
+            if name.endswith(".js")
+            else f".mv {{}} /* {name}@{ver} */"
+        )
+        configure_assets(version="0.3.6")
+        html = matterviz.MatterVizWidget().to_html(inline=False)
+
+    assert "matterviz-anywidget@0.3.6/build/matterviz.js" in html  # JS = configured
+    assert "@0.3.7/" not in html  # not the pinned default
+    assert "/* matterviz.css@0.3.6 */" in html  # configured CSS inlined -> matches JS
 
 
 @pytest.mark.usefixtures("_clean_asset_cache")

@@ -29,13 +29,18 @@ MATTERVIZ_ANYWIDGET_VERSION = "0.3.7"
 _ANYWIDGET_CDN = "https://cdn.jsdelivr.net/npm/matterviz-anywidget"
 
 
-def _default_cdn_url() -> str:
-    """Return the jsDelivr URL for the pinned ``matterviz-anywidget`` ESM bundle.
+def _cdn_url(version: str) -> str:
+    """Return the jsDelivr URL for a ``matterviz-anywidget`` ESM bundle version.
 
     jsDelivr serves npm packages with CORS and a JavaScript MIME type (both
     required for cross-origin ``import()``), so this URL works in ``to_html``.
     """
-    return f"{_ANYWIDGET_CDN}@{MATTERVIZ_ANYWIDGET_VERSION}/build/matterviz.js"
+    return f"{_ANYWIDGET_CDN}@{version}/build/matterviz.js"
+
+
+def _default_cdn_url() -> str:
+    """Return the jsDelivr URL for the pinned ``matterviz-anywidget`` bundle."""
+    return _cdn_url(MATTERVIZ_ANYWIDGET_VERSION)
 
 
 def _in_marimo_runtime() -> bool:
@@ -137,11 +142,13 @@ def configure_assets(
         for attr in ("_esm", "_css"):
             if attr in cls.__dict__:
                 delattr(cls, attr)
+        cls._export_esm_url = None
         return
 
     if version:
         esm_content = fetch_widget_asset("matterviz.js", version)
         css_content = fetch_widget_asset("matterviz.css", version)
+        cls._export_esm_url = _cdn_url(version)
     else:
         if esm_src is None:
             raise ValueError(
@@ -151,6 +158,7 @@ def configure_assets(
             css_src = re.sub(r"\.m?js$", ".css", esm_src)
         esm_content = _read_asset_source(esm_src)
         css_content = _read_asset_source(css_src)
+        cls._export_esm_url = esm_src
 
     cls._asset_cache["default"] = (esm_content, css_content)
     cls._esm = esm_content
@@ -250,6 +258,10 @@ class MatterVizWidget(AnyWidget):
     _esm: str
     _css: str
     _asset_cache: ClassVar[dict[str, tuple[str, str] | str | None]] = {}
+    # ESM URL serving the configured bundle, for to_html(inline=False): None ->
+    # pinned-default CDN; a local path -> to_html inlines so JS/CSS stay one build.
+    # Set on the class by configure_assets, on the instance by version_override.
+    _export_esm_url: str | None = None
     widget_type = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
     style = tl.Unicode(allow_none=True).tag(sync=True)
     show_controls = tl.Bool(default_value=True).tag(sync=True)
@@ -275,6 +287,7 @@ class MatterVizWidget(AnyWidget):
         if version_override is not None:
             self._esm = fetch_widget_asset("matterviz.js", version_override)
             self._css = fetch_widget_asset("matterviz.css", version_override)
+            self._export_esm_url = _cdn_url(version_override)
         elif _in_marimo_runtime():
             self._init_marimo_assets()
         else:
@@ -501,8 +514,10 @@ class MatterVizWidget(AnyWidget):
                 will not load via ``file://``).
             esm_url: Explicit URL to load the bundle from (a host serving it with
                 CORS and a JavaScript MIME type). Mutually exclusive with
-                ``inline``. When omitted and ``inline`` is False, defaults to the
-                jsDelivr URL for the pinned ``matterviz-anywidget`` version.
+                ``inline``. When omitted and ``inline`` is False, references the
+                bundle matching the widget's active assets (the pinned jsDelivr
+                version by default, or the version/URL from configure_assets /
+                version_override); local custom assets are inlined instead.
 
         Returns:
             The complete HTML document as a string.
@@ -521,11 +536,17 @@ class MatterVizWidget(AnyWidget):
             raise ValueError("pass either inline=True or esm_url=..., not both")
 
         esm_content, css_content = self._resolve_assets()
-        if inline:
-            esm_url = None
-        else:
-            esm_content = None
-            esm_url = esm_url or _default_cdn_url()
+        if not inline and esm_url is None:
+            # reference the bundle matching the active CSS (avoid a JS/CSS version
+            # mismatch); a local source has no public URL, so leave esm_url None
+            # to inline the resolved bundle instead.
+            src = self.__dict__.get("_export_esm_url") or type(self)._export_esm_url
+            if src is None:
+                esm_url = _default_cdn_url()
+            elif src.startswith(("http://", "https://")):
+                esm_url = src
+        # build_interactive_html takes exactly one of esm_url / esm_content
+        esm_content = None if esm_url is not None else esm_content
 
         report = self.describe()
         html = build_interactive_html(
