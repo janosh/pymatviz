@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import os
+import re
 import subprocess
 import warnings
 from shutil import which
@@ -146,7 +147,9 @@ def save_fig(
             # insert {...$$props} into top-level div to be able to post-process and
             # style plotly figures from within Svelte files
             with open(path, encoding="utf-8") as file:
-                text = file.read().replace("<div>", "<div {...$$props}>", 1)
+                # inject after the opening <div tag (plotly may add attributes to
+                # it, e.g. style="..." since plotly 6.8), so match <div, not <div>
+                text = re.sub(r"<div\b", "<div {...$$props}", file.read(), count=1)
             with open(path, mode="w", encoding="utf-8") as file:
                 # add trailing newline for pre-commit end-of-file commit hook
                 file.write(text + "\n")
@@ -154,7 +157,7 @@ def save_fig(
             with open(path, encoding="utf-8") as file:
                 text = file.read()
             with open(path, mode="w", encoding="utf-8") as file:
-                file.write(text.replace("<div ", f"<div {style=} ", 1))
+                file.write(re.sub(r"<div\b", f"<div {style=}", text, count=1))
     else:
         orig_template = fig.layout.template
         hidden_traces = []
