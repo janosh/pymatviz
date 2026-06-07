@@ -119,6 +119,7 @@ def test_normalize_convex_hull_entries_passthrough() -> None:
 
 def test_normalize_convex_hull_entries_from_phase_diagram() -> None:
     """Test conversion from pymatgen PhaseDiagram extracts correct fields."""
+    pytest.importorskip("pymatgen.analysis.phase_diagram")
     from pymatgen.analysis.phase_diagram import PDEntry, PhaseDiagram
 
     phase_diag = PhaseDiagram(

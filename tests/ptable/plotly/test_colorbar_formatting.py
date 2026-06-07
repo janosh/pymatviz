@@ -43,8 +43,7 @@ def get_colorbar_traces_by_title(
             hasattr(trace, "marker")
             and hasattr(trace.marker, "colorbar")
             and hasattr(trace.marker.colorbar, "title")
-            and hasattr(trace.marker.colorbar.title, "text")
-            and dataset_name in trace.marker.colorbar.title.text
+            and dataset_name in (trace.marker.colorbar.title.text or "")
         )
     ]
 

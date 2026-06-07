@@ -63,6 +63,7 @@ class CompositionWidget(MatterVizWidget):
             comp_dict = None
         else:
             comp_kwargs = dict(strict=True, allow_negative=True)
-            comp_kwargs |= kwargs.pop("pymatgen_kwargs", {})
+            # use get (not pop) so pymatgen_kwargs still reaches the traitlet
+            comp_kwargs |= kwargs.get("pymatgen_kwargs") or {}
             comp_dict = Composition(composition, **comp_kwargs).as_dict()
         super().__init__(widget_type="composition", composition=comp_dict, **kwargs)

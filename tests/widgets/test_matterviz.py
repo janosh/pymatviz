@@ -290,7 +290,7 @@ def test_to_html_references_configured_version() -> None:
         html = matterviz.MatterVizWidget().to_html(inline=False)
 
     assert "matterviz-anywidget@0.3.6/build/matterviz.js" in html  # JS = configured
-    assert "@0.3.7/" not in html  # not the pinned default
+    assert "@0.4.0/" not in html  # not the pinned default
     assert "/* matterviz.css@0.3.6 */" in html  # configured CSS inlined -> matches JS
 
 

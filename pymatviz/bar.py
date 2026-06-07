@@ -77,7 +77,6 @@ def spacegroup_bar(
             df_data = df_data.query(f"{count_col} > 0")
         df_data[Key.crystal_system] = [spg_to_crystal_sys(x) for x in df_data.index]
 
-        x_range = (df_data.index.min() - 0.5, df_data.index.max() + 0.5)
         x_label = "International Spacegroup Number"
 
     else:  # assume index is space group symbols
@@ -108,10 +107,14 @@ def spacegroup_bar(
     crys_sys_counts = crys_sys_counts.loc[
         [x for x in crystal_sys_colors if x in crys_sys_counts.index]
     ]
-    x_range = (0, len(df_data) - 1)
 
     fig_title = f"{count_col} per crystal system" if show_counts else None
     df_plot = df_data if show_empty_bins else df_data.reset_index()
+    if show_empty_bins and df_data.index.inferred_type == "integer":
+        # numeric x-axis showing actual spacegroup numbers
+        x_range = (df_data.index.min() - 0.5, df_data.index.max() + 0.5)
+    else:  # positional x-axis (reset_index) or categorical symbol axis
+        x_range = (0, len(df_data) - 1)
 
     fig = px.bar(
         df_plot,

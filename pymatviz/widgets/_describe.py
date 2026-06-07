@@ -244,7 +244,7 @@ _HANDLERS: dict[str, Any] = {
 }
 
 # widget_type -> the primary data traitlet whose emptiness implies a blank render
-_PRIMARY_DATA: dict[str, str] = {
+_PRIMARY_DATA: dict[str, str | tuple[str, ...]] = {
     "scatter_plot": "series",
     "bar_plot": "series",
     "histogram": "series",
@@ -260,7 +260,8 @@ _PRIMARY_DATA: dict[str, str] = {
     "spacegroup_bar": "data",
     "dos": "dos",
     "band_structure": "band_structure",
-    "bands_and_dos": "dos",
+    # can render with either input, so only warn when both are missing
+    "bands_and_dos": ("dos", "band_structure"),
 }
 
 
@@ -312,10 +313,15 @@ def check_inputs(widget_data: Mapping[str, Any]) -> list[str]:
 
     key = _PRIMARY_DATA.get(widget_type) if isinstance(widget_type, str) else None
     if key is not None:
-        value = widget_data.get(key)
-        if value is None or (hasattr(value, "__len__") and len(value) == 0):
+        keys = key if isinstance(key, tuple) else (key,)
+
+        def is_empty(value: Any) -> bool:
+            return value is None or (hasattr(value, "__len__") and len(value) == 0)
+
+        if all(is_empty(widget_data.get(k)) for k in keys):
+            label = "/".join(f"'{k}'" for k in keys)
             warnings.append(
-                f"{widget_type}: '{key}' is empty or None; widget may render blank"
+                f"{widget_type}: {label} is empty or None; widget may render blank"
             )
 
     if widget_type in ("scatter_plot", "bar_plot", "histogram", "scatter_plot_3d"):

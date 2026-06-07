@@ -88,9 +88,11 @@ def test_phonon_bands(
 
     # test line styling
     if isinstance(line_kwargs, dict) and "acoustic" in line_kwargs:
-        # check that acoustic and optical modes have different styles
+        # check that acoustic and optical modes have different styles. All traces
+        # must carry their mode's custom name (regression: pop() used to consume
+        # the custom name after the first band, leaving later bands unnamed)
         trace_names = {trace.name for trace in fig.data}
-        assert trace_names == {"", "Acoustic modes", "Optical modes"}
+        assert trace_names == {"Acoustic modes", "Optical modes"}
 
         acoustic_traces = [
             trace for trace in fig.data if trace.name == "Acoustic modes"
@@ -101,6 +103,10 @@ def test_phonon_bands(
         assert all(t.line.dash == "solid" for t in acoustic_traces)
         assert all(t.line.width == 1 for t in optical_traces)
         assert all(t.line.dash == "dash" for t in optical_traces)
+
+        # only one legend entry per mode
+        legend_names = [trace.name for trace in fig.data if trace.showlegend]
+        assert sorted(legend_names) == ["Acoustic modes", "Optical modes"]
     elif callable(line_kwargs):
         # check that line width increases with band index
         traces_by_width = sorted(fig.data, key=lambda t: t.line.width)
@@ -120,7 +126,16 @@ def test_phonon_bands(
         line_kwargs=line_kwargs,
     )
     assert isinstance(fig, go.Figure)
-    assert {trace.name for trace in fig.data} == {"DFT", "MACE"}
+    if isinstance(line_kwargs, dict) and "acoustic" in line_kwargs:
+        # custom mode names apply to this call too (regression: the first call
+        # above used to pop the names out of the caller's line_kwargs, so dict
+        # input silently fell back to model-key trace names)
+        assert {trace.name for trace in fig.data} == {
+            "Acoustic modes",
+            "Optical modes",
+        }
+    else:
+        assert {trace.name for trace in fig.data} == {"DFT", "MACE"}
     assert fig.layout.xaxis.ticktext == expected_x_labels
     # verify default shading is present
     assert any(

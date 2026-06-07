@@ -33,9 +33,23 @@ def test_ptable_heatmap_splits_basic() -> None:
 
     # Test grid orientation separately with 4 splits
     data_4_split = {"Fe": [1, 2, 3, 4]}
-    fig = pmv.ptable_heatmap_splits(data_4_split, orientation="grid")
+    fig = pmv.ptable_heatmap_splits(
+        data_4_split, orientation="grid", split_value_fmt=".0f"
+    )
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == sum(len(v) for v in data_4_split.values()) + 1
+
+    # grid sections are in reading order and each value annotation sits inside
+    # its own section (regression: sections were placed bottom-row first,
+    # putting every annotation in the vertically-opposite quadrant)
+    sections = [trace for trace in fig.data if trace.fill == "toself"]
+    anno_xy = {a.text: (a.x, a.y) for a in fig.layout.annotations if a.text.isdigit()}
+    for idx, trace in enumerate(sections):
+        anno_x, anno_y = anno_xy[str(idx + 1)]
+        assert min(trace.x) <= anno_x <= max(trace.x), f"split {idx} x mismatch"
+        assert min(trace.y) <= anno_y <= max(trace.y), f"split {idx} y mismatch"
+    # first two splits are the top row (y in upper half), last two the bottom
+    assert [min(trc.y) for trc in sections] == [0.5, 0.5, 0, 0]
 
 
 def test_ptable_heatmap_splits_f_block() -> None:

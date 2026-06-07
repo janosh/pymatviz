@@ -317,6 +317,7 @@ def test_widget_custom_and_default_traitlets(
 
 def test_convex_hull_widget_from_phase_diagram() -> None:
     """ConvexHullWidget accepts a pymatgen PhaseDiagram directly."""
+    pytest.importorskip("pymatgen.analysis.phase_diagram")
     from pymatgen.analysis.phase_diagram import PDEntry, PhaseDiagram
 
     widget = ConvexHullWidget(

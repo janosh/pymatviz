@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import TYPE_CHECKING, Literal, get_args
 
 import pandas as pd
 
 from pymatviz.enums import Key
+from pymatviz.typing import ShowCounts
+
+
+if TYPE_CHECKING:
+    import plotly.graph_objects as go
 
 
 def _limit_slices(
@@ -76,3 +81,55 @@ def _limit_slices(
             other_row[col] = ""
 
     return pd.concat([top_slices, pd.DataFrame([other_row])], ignore_index=True)
+
+
+def _limit_slices_per_group(
+    df_grouped: pd.DataFrame,
+    group_col: str,
+    count_col: str,
+    max_slices: int | None,
+    max_slices_mode: Literal["other", "drop"],
+    *,
+    other_label: str = "Other",
+    child_col_for_other_label: str | None = None,
+) -> pd.DataFrame:
+    """Apply _limit_slices independently within each group of group_col.
+
+    Unlike _limit_slices (which takes the global top-N rows), this keeps the top
+    max_slices rows per group, so no group is dropped entirely.
+    """
+    if max_slices_mode not in ("other", "drop"):
+        raise ValueError(f"Invalid {max_slices_mode=}, must be 'other' or 'drop'")
+
+    if not max_slices or max_slices <= 0:
+        return df_grouped
+
+    sub_dfs = [
+        _limit_slices(
+            df_sub,
+            group_col=group_col,
+            count_col=count_col,
+            max_slices=max_slices,
+            max_slices_mode=max_slices_mode,
+            other_label=other_label,
+            child_col_for_other_label=child_col_for_other_label,
+        )
+        for _, df_sub in df_grouped.groupby(group_col, sort=False)
+    ]
+    return pd.concat(sub_dfs, ignore_index=True)
+
+
+def _apply_sunburst_show_counts(fig: go.Figure, show_counts: ShowCounts) -> None:
+    """Set sunburst trace text info/template according to show_counts."""
+    if show_counts == "percent":
+        fig.data[0].textinfo = "label+percent entry"
+    elif show_counts == "value":
+        fig.data[0].textinfo = "label+value"
+        fig.data[0].texttemplate = "%{label}<br>N=%{value:.2f}"
+    elif show_counts == "value+percent":
+        fig.data[0].textinfo = "label+value+percent entry"
+        fig.data[0].texttemplate = "%{label}<br>N=%{value:.2f}<br>%{percentEntry}"
+    elif show_counts is not False:
+        raise ValueError(
+            f"Invalid {show_counts=}, must be one of {get_args(ShowCounts)}"
+        )

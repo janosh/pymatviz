@@ -171,7 +171,8 @@ def coordination_hist(
     element_colors = _resolve_element_colors(element_color_scheme)
 
     row, col = 1, 1
-    is_single_structure = len(structures) == 1
+    # use the normalized dict: len() on a raw Structure input counts sites
+    is_single_structure = len(coord_data) == 1
     if annotate_bars is True:
         annotate_bars = {}
 

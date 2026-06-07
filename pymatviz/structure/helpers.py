@@ -39,6 +39,83 @@ if TYPE_CHECKING:
     from pymatviz.typing import AnyStructure, ColorType, Xyz
 
 
+def resolve_per_struct_params(
+    raw_struct: AnyStructure,
+    struct_key: Hashable,
+    elem_colors: Any,
+    cell_boundary_tol: float | dict[str, float],
+    atomic_radii: float | dict[str, float] | None,
+    atom_size: float | dict[str, float],
+    scale: float | dict[str, float],
+) -> tuple[dict[str, ColorType], float, dict[str, float], Any, Any]:
+    """Resolve per-structure display params (struct properties > function args,
+    dict args keyed by struct_key). Uses `is None` checks (not truthiness) so
+    legitimate falsy values like 0.0 are respected. Returns a tuple of
+    (elem_colors, cell_boundary_tol, atomic_radii, atom_size, scale).
+    """
+    # Handle per-structure elem_colors settings if it's a dict
+    struct_elem_colors = elem_colors
+    if isinstance(elem_colors, dict):
+        # If any key is not a valid element symbol, treat as structure-key mapping
+        is_struct_key_mapping = any(
+            key not in Element.__members__ for key in elem_colors
+        )
+        if is_struct_key_mapping:  # is map of structure keys to color schemes
+            struct_elem_colors = elem_colors.get(struct_key, ElemColorScheme.jmol)
+    elem_colors_i = get_elem_colors(struct_elem_colors)
+
+    cell_boundary_tol_i = get_struct_prop(
+        raw_struct, struct_key, "cell_boundary_tol", cell_boundary_tol
+    )
+    if cell_boundary_tol_i is None:
+        cell_boundary_tol_i = 0.0
+
+    atomic_radii_i = get_struct_prop(
+        raw_struct, struct_key, "atomic_radii", atomic_radii
+    )
+    if atomic_radii_i is None:
+        atomic_radii_i = atomic_radii
+
+    atom_size_i = get_struct_prop(raw_struct, struct_key, "atom_size", atom_size)
+    if atom_size_i is None:
+        atom_size_i = atom_size
+
+    scale_i = get_struct_prop(raw_struct, struct_key, "scale", scale)
+    if scale_i is None:
+        scale_i = scale
+
+    return (
+        elem_colors_i,
+        cell_boundary_tol_i,
+        get_atomic_radii(atomic_radii_i),
+        atom_size_i,
+        scale_i,
+    )
+
+
+def resolve_nn_obj(
+    show_bonds: bool | NearNeighbors | dict[Any, Any],  # noqa: FBT001
+    struct_key: Hashable,
+) -> NearNeighbors | None:
+    """Resolve show_bonds (True -> CrystalNN(), NearNeighbors -> itself, dict ->
+    lookup by struct_key) to the NearNeighbors algorithm for bond drawing, or
+    None if bonds should not be drawn for this structure.
+    """
+    from pymatgen.analysis.local_env import CrystalNN, NearNeighbors
+
+    struct_show_bonds = (
+        show_bonds.get(struct_key, False)
+        if isinstance(show_bonds, dict)
+        else show_bonds
+    )
+    if not struct_show_bonds:
+        return None
+    nn_obj = CrystalNN() if struct_show_bonds is True else struct_show_bonds
+    if not isinstance(nn_obj, NearNeighbors):
+        raise TypeError(f"Expected NearNeighbors, got {type(nn_obj)}")
+    return nn_obj
+
+
 def _coerce_vector(value: Any) -> np.ndarray:
     """Convert a site property value to a numpy array vector.
 
@@ -319,10 +396,11 @@ def generate_site_label(
     label_text = ""
     symbol = get_site_symbol(site)  # Majority element symbol of site
 
-    if isinstance(site_labels, dict) and not isinstance(site_labels, Sequence):
+    if isinstance(site_labels, dict):
         # Use provided label for symbol, else symbol itself, or empty if not found &
         # not True-like
-        label_text = site_labels.get(symbol, symbol if site_labels else "")
+        label_dict = cast("dict[str, str]", site_labels)
+        label_text = label_dict.get(symbol, symbol if site_labels else "")
     elif isinstance(site_labels, Sequence) and not isinstance(
         site_labels, (str, bytes, Mapping)
     ):
@@ -394,8 +472,9 @@ def get_site_hover_text(
             return float_formatter(coord_val)
         # Convert to float to handle int coordinates properly
         formatted = f"{float(coord_val):{float_fmt}}"
-        # For ints, remove unnecessary decimal places
-        if coord_val == int(coord_val):
+        # For ints, remove unnecessary decimal places (guard NaN/inf which can't
+        # be converted to int)
+        if math.isfinite(coord_val) and coord_val == int(coord_val):
             return str(int(coord_val))
         return formatted
 
@@ -632,14 +711,10 @@ def get_disordered_site_legend_name(
                 "9": "₉",
                 ".": ".",
             }
-            try:
-                subscript_occupancy = "".join(
-                    subscript_map.get(c, c) for c in occupancy_str
-                )
-                species_parts.append(f"{elem_symbol}{subscript_occupancy}")
-            except KeyError:
-                # Fallback to prefix notation if subscript fails
-                species_parts.append(f"{occupancy_str}{elem_symbol}")
+            subscript_occupancy = "".join(
+                subscript_map.get(c, c) for c in occupancy_str
+            )
+            species_parts.append(f"{elem_symbol}{subscript_occupancy}")
 
     legend_name = "".join(species_parts)
 
@@ -1193,7 +1268,8 @@ def draw_vector(
                 symbol="arrow",
                 size=10,
                 color=arrow_kwargs["color"],
-                angle=np.arctan2(scaled_vector[1], scaled_vector[0]),
+                # angleref="previous" aligns the arrow with the path direction.
+                # Don't set angle: it adds extra rotation in degrees on top.
                 angleref="previous",
             ),
             line=dict(color=arrow_kwargs["color"], width=arrow_kwargs["width"]),
@@ -1450,15 +1526,15 @@ def draw_bonds(
             sites that are actually plotted. If provided, bonds will only be drawn if
             both end points are in this set. Coordinates are expected to be rounded.
     """
-    default_bond_color: ColorType | tuple[ColorType, ColorType] | bool = True
-    if bond_kwargs and bond_kwargs.get("color") is False:
-        default_bond_color = "darkgray"
-
-    default_bond_kwargs = dict(color=default_bond_color, width=4)
+    default_bond_kwargs: dict[str, Any] = dict(color=True, width=4)
     # User-provided bond_kwargs override defaults
     effective_bond_kwargs = default_bond_kwargs.copy()
     if bond_kwargs:
         effective_bond_kwargs.update(bond_kwargs)
+    if effective_bond_kwargs.get("color") is False:
+        # color=False means "no element-color gradient", use solid darkgray
+        # (as rgb string since plotly color validation rejects CSS color names)
+        effective_bond_kwargs["color"] = "rgb(169,169,169)"
 
     _elem_colors = elem_colors or get_elem_colors(ElemColorScheme.jmol)
     lattice = structure.lattice

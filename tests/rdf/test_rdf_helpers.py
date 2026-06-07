@@ -158,8 +158,8 @@ def test_calculate_rdf_pbc_consistency() -> None:
     assert np.sum(rdf_no_pbc > 0) < np.sum(rdf_full_pbc > 0), (
         "No PBC should have no non-zero values"
     )
-    assert np.sum(rdf_no_pbc) == pytest.approx(30.55075158)
-    assert np.sum(rdf_full_pbc) == pytest.approx(139.1986917)
+    assert np.sum(rdf_no_pbc) == pytest.approx(29.0232140)
+    assert np.sum(rdf_full_pbc) == pytest.approx(136.9473409)
 
 
 def test_calculate_rdf_different_species() -> None:
@@ -190,8 +190,15 @@ def test_calculate_rdf_different_species() -> None:
         n_bins=n_bins,
     )
 
-    assert np.all(rdf_si_si == 0), "Si-Si RDF should be all zeros"
-    assert np.all(rdf_ge_ge == 0), "Ge-Ge RDF should be all zeros"
+    # Same-species RDFs must count periodic images of the single atom
+    # (regression: they were incorrectly all-zero before)
+    lattice_peak_index = int(5.0 / cutoff * n_bins)
+    assert rdf_si_si[lattice_peak_index] > 0, (
+        "Expected Si-Si peak at the lattice constant from periodic images"
+    )
+    assert np.allclose(rdf_si_si, rdf_ge_ge), (
+        "Si-Si and Ge-Ge RDFs should be identical by symmetry"
+    )
     assert np.any(rdf_si_ge > 0), "Si-Ge RDF should have non-zero values"
 
     peak_index = int(4.33 / cutoff * n_bins)
@@ -239,8 +246,8 @@ def test_calculate_rdf_disordered_structure(fe3co4_disordered: Structure) -> Non
     # Check RDF shape properties
     peak_idx = 43
     assert np.argmax(rdf) == peak_idx
-    assert rdf[peak_idx] == pytest.approx(41.10406)
-    assert np.std(rdf) == pytest.approx(5.322650)
+    assert rdf[peak_idx] == pytest.approx(20.552033)
+    assert np.std(rdf) == pytest.approx(3.12714)
 
     # Test high-entropy alloy structure
     hea_structure = Structure(
@@ -259,10 +266,10 @@ def test_calculate_rdf_disordered_structure(fe3co4_disordered: Structure) -> Non
     # Check for expected FCC nearest neighbor peak
     fcc_nn_dist = a_len / np.sqrt(2)  # a/√2 ≈ 2.54Å
     fcc_nn_idx = int(fcc_nn_dist / cutoff * n_bins)
-    peak_idx, peak_height = 25, 21.786465
+    peak_idx, peak_height = 25, 16.339849
     assert rdf[fcc_nn_idx] == pytest.approx(peak_height)
     assert np.argmax(rdf) == peak_idx
-    assert np.std(rdf) == pytest.approx(3.305442597)
+    assert np.std(rdf) == pytest.approx(2.547041905)
 
 
 @pytest.mark.parametrize(
@@ -411,3 +418,33 @@ def test_calculate_rdf_invalid_structure_type() -> None:
         TypeError, match="Input must be a pymatgen Structure, IStructure, Molecule"
     ):
         calculate_rdf(42, cutoff=10, n_bins=10)  # ty: ignore[invalid-argument-type]
+
+
+@pytest.mark.parametrize(
+    ("species", "frac_coords", "a_len", "first_shell_max", "expected_cn"),
+    [
+        # FCC: 12 nearest neighbors at a/sqrt(2)
+        ("Ag", [[0, 0, 0], [0.5, 0.5, 0], [0.5, 0, 0.5], [0, 0.5, 0.5]], 4.08, 3.4, 12),
+        # BCC: 8 nearest neighbors at sqrt(3)/2 a
+        ("Fe", [[0, 0, 0], [0.5, 0.5, 0.5]], 2.87, 2.7, 8),
+        # simple cubic (single-atom cell): 6 nearest neighbors at a
+        ("Po", [[0, 0, 0]], 3.35, 4.0, 6),
+    ],
+)
+def test_calculate_rdf_coordination_numbers(
+    species: str,
+    frac_coords: list[list[float]],
+    a_len: float,
+    first_shell_max: float,
+    expected_cn: int,
+) -> None:
+    """Integrating g(r) over the first shell gives the textbook coordination
+    number (regression: same-species RDFs dropped periodic images of the center
+    atom, e.g. zeroing single-atom-cell RDFs entirely).
+    """
+    struct = Structure(Lattice.cubic(a_len), [species] * len(frac_coords), frac_coords)
+    radii, rdf = calculate_rdf(struct, species, species, cutoff=6, n_bins=600)
+    rho, bin_width = len(struct) / struct.volume, radii[1] - radii[0]
+    mask = radii < first_shell_max  # integrate g(r) over the first shell
+    coord_num = np.sum(rdf[mask] * rho * 4 * np.pi * radii[mask] ** 2 * bin_width)
+    assert coord_num == pytest.approx(expected_cn, rel=1e-6)

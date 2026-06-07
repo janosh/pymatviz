@@ -35,7 +35,7 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
         ),
         (pmv.BarPlotWidget(series=[{"x": [0, 1], "y": [2, 3]}]), {"n_series": 1}),
         (
-            pmv.ScatterPlot3DWidget(series=[{"x": [1], "y": [2], "z": [3, 4]}]),
+            pmv.ScatterPlot3DWidget(series=[{"x": [1, 2], "y": [2, 3], "z": [3, 4]}]),
             {"n_series": 1, "z_range": [3.0, 4.0]},
         ),
         (

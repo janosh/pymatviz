@@ -66,6 +66,12 @@ class ScatterPlot3DWidget(MatterVizWidget):
                         f"required key(s): {sorted(missing)}. "
                         f"Got keys: {sorted(entry)}."
                     )
+                lengths = {axis: len(entry[axis]) for axis in ("x", "y", "z")}
+                if len(set(lengths.values())) > 1:
+                    raise ValueError(
+                        f"ScatterPlot3D series entry at index {idx} has "
+                        f"mismatched x/y/z lengths: {lengths}."
+                    )
 
         super().__init__(
             widget_type="scatter_plot_3d",

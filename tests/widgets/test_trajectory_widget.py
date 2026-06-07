@@ -686,3 +686,30 @@ def test_trajectory_widget_vector_configs_trait() -> None:
     assert widget.vector_configs == configs
     assert widget.vector_scale == 0.5
     assert TrajectoryWidget().vector_configs is None
+
+
+def test_trajectory_widget_normalization_regressions(
+    fe3co4_disordered: Structure,
+) -> None:
+    """Numpy metadata serializes as numeric lists (not stringified reprs), the
+    layout trait survives to_dict(), and inputs are not mutated (regressions).
+    """
+    forces = np.array([[1.0, 0.0, 0.0], [0.0, 2.0, 0.0]])
+    frames = [{"structure": fe3co4_disordered, "forces": forces, "energy": -1.5}]
+    widget = TrajectoryWidget(trajectory=frames, layout="horizontal")
+
+    metadata = widget.trajectory["frames"][0]["metadata"]
+    assert metadata["forces"] == [[1.0, 0.0, 0.0], [0.0, 2.0, 0.0]]
+    assert metadata["energy"] == -1.5
+    json.dumps(widget.trajectory)  # round-trips as standard JSON
+    # layout used to be filtered from to_dict() by _EXCLUDED_TRAITS, so headless
+    # to_img/to_html exports silently ignored it
+    assert widget.to_dict().get("layout") == "horizontal"
+
+    # normalization must not mutate the caller's structure dicts (a shallow
+    # lattice copy used to leak setdefault/assignments into the input)
+    struct_dict = fe3co4_disordered.as_dict()
+    struct_dict["lattice"].pop("pbc", None)
+    lattice_before = {**struct_dict["lattice"]}
+    TrajectoryWidget(trajectory={"frames": [{"structure": struct_dict}]})
+    assert struct_dict["lattice"] == lattice_before

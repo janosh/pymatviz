@@ -8,10 +8,11 @@ from typing import Any
 import traitlets as tl
 
 from pymatviz.structure.helpers import add_vacuum_if_needed
+from pymatviz.widgets._traits import StructureVizTraits
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
-class TrajectoryWidget(MatterVizWidget):
+class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
     """MatterViz widget for visualizing molecular dynamics and geometry optimization
     trajectories in Python notebooks.
 
@@ -58,8 +59,9 @@ class TrajectoryWidget(MatterVizWidget):
         >>> widget = TrajectoryWidget(data_url="path/to/trajectory.h5")
     """
 
+    # display options shared with StructureWidget live in StructureVizTraits
+
     trajectory = tl.Dict(allow_none=True).tag(sync=True)
-    data_url = tl.Unicode(allow_none=True).tag(sync=True)
     current_step_idx = tl.Int(0).tag(sync=True)
 
     # Layout
@@ -76,47 +78,9 @@ class TrajectoryWidget(MatterVizWidget):
         ],
         default_value="structure+scatter",
     ).tag(sync=True)
-    fullscreen_toggle = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
-    show_gizmo = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     auto_play = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
 
-    # Structure visualization
-    atom_radius = tl.Float(allow_none=True, default_value=None).tag(sync=True)
-    show_atoms = tl.Bool(default_value=True).tag(sync=True)
-    show_bonds = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
-    show_site_labels = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
-    show_site_indices = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     show_image_atoms = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
-    same_size_atoms = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
-    auto_rotate = tl.Float(allow_none=True, default_value=None).tag(sync=True)
-    color_scheme = tl.Unicode("Vesta").tag(sync=True)
-
-    # Site vectors (force, magmom, spin, etc.) -- per-key configuration
-    vector_configs = tl.Dict(allow_none=True, default_value=None).tag(sync=True)
-    vector_scale = tl.Float(allow_none=True, default_value=None).tag(sync=True)
-    vector_color = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
-    vector_normalize = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
-    vector_uniform_thickness = tl.Bool(allow_none=True, default_value=None).tag(
-        sync=True
-    )
-    vector_origin_gap = tl.Float(allow_none=True, default_value=None).tag(sync=True)
-
-    # Bonds
-    bond_thickness = tl.Float(allow_none=True, default_value=None).tag(sync=True)
-    bond_color = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
-    bonding_strategy = tl.Unicode("nearest_neighbor").tag(sync=True)
-
-    # Cell
-    cell_edge_opacity = tl.Float(0.1).tag(sync=True)
-    cell_surface_opacity = tl.Float(0.05).tag(sync=True)
-    cell_edge_color = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
-    cell_surface_color = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
-    cell_edge_width = tl.Float(1.5).tag(sync=True)
-    show_cell_vectors = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
-
-    # Appearance
-    background_color = tl.Unicode(allow_none=True).tag(sync=True)
-    background_opacity = tl.Float(allow_none=True, default_value=None).tag(sync=True)
 
     # Plot
     step_labels = tl.Union(
@@ -187,7 +151,8 @@ class TrajectoryWidget(MatterVizWidget):
         from pymatgen.core.lattice import Lattice
 
         completed_structure = dict(structure_data)
-        lattice_data = completed_structure["lattice"]
+        # copy so setdefault/assignments below don't mutate the caller's dict
+        lattice_data = dict(completed_structure["lattice"])
 
         has_lattice_matrix = "matrix" in lattice_data
         has_cell_params = all(
@@ -404,6 +369,8 @@ class TrajectoryWidget(MatterVizWidget):
             self._validate_trajectory_dict(trajectory)
             return self._complete_trajectory_dict(trajectory)
 
+        from pymatviz.widgets._normalize import normalize_plot_json
+
         if isinstance(trajectory, (list, tuple)):
             frames: list[dict[str, Any]] = []
             for step_idx, item in enumerate(trajectory):
@@ -417,12 +384,13 @@ class TrajectoryWidget(MatterVizWidget):
                 structure_dict, metadata_source = self._to_structure_dict(structure)
                 frame: dict[str, Any] = {"structure": structure_dict, "step": step_idx}
 
-                if properties:
-                    frame["metadata"] = properties
-                else:
-                    metadata = self._extract_object_metadata(metadata_source)
-                    if metadata:
-                        frame["metadata"] = metadata
+                metadata = properties or self._extract_object_metadata(metadata_source)
+                if metadata:
+                    # convert numpy arrays/scalars to JSON-safe primitives so the
+                    # frontend receives numeric arrays, not stringified reprs
+                    frame["metadata"] = normalize_plot_json(
+                        metadata, "trajectory.frame.metadata"
+                    )
 
                 frames.append(frame)
 
@@ -435,7 +403,9 @@ class TrajectoryWidget(MatterVizWidget):
             frame: dict[str, Any] = {"structure": structure_dict, "step": 0}
             metadata = self._extract_object_metadata(metadata_source)
             if metadata:
-                frame["metadata"] = metadata
+                frame["metadata"] = normalize_plot_json(
+                    metadata, "trajectory.frame.metadata"
+                )
             return {"frames": [frame], "metadata": {}}
 
         raise TypeError(

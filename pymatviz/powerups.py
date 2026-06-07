@@ -78,7 +78,12 @@ def annotate_metrics(
         "MSE": lambda x, y: ((x - y) ** 2).mean(),
         "MAPE": mape,
         "R2": r2_score,
-        "R2_adj": lambda x, y: 1 - (1 - r2_score(x, y)) * (len(x) - 1) / (len(x) - 2),
+        # adjusted R2 is undefined for n <= 2 samples (zero/negative denominator)
+        "R2_adj": lambda x, y: (
+            1 - (1 - r2_score(x, y)) * (len(x) - 1) / (len(x) - 2)
+            if len(x) > 2
+            else float("nan")
+        ),
     }
     if isinstance(metrics, Mapping):
         metric_keys = {

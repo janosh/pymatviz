@@ -310,25 +310,6 @@ def is_phonopy_atoms(obj: Any) -> bool:
     return cls_name == "phonopy.structure.atoms.PhonopyAtoms"
 
 
-def is_trajectory_like(obj: Any) -> bool:
-    """Check if object is trajectory-like."""
-    return (
-        isinstance(obj, (list, tuple))
-        and len(obj) > 0
-        and all(is_structure_like(item) or isinstance(item, dict) for item in obj)
-    )
-
-
-def is_composition_like(obj: Any) -> bool:
-    """Check if object is composition-like."""
-    try:
-        from pymatgen.core import Composition
-
-        return isinstance(obj, Composition)
-    except ImportError:
-        return False
-
-
 def normalize_structures(
     systems: AnyStructure
     | Sequence[AnyStructure]
@@ -568,7 +549,9 @@ def bin_df_cols(
 
         xy_binned = df_bin[bin_by_cols].T
         density = gaussian_kde(xy_binned.astype(float))
-        df_bin[density_col] = density / density.sum() * len(values)
+        # scale density to sum to the number of data points (values is transposed,
+        # so its columns are the data points)
+        df_bin[density_col] = density / density.sum() * values.shape[1]
 
     # Set the index back to the original index name
     return df_bin.set_index(orig_index_name)
@@ -725,11 +708,20 @@ def sankey_flow_data(
 
     if labels_with_counts:
         as_percent = labels_with_counts == "percent"
-        source_counts = df[cols[0]].value_counts(normalize=as_percent).to_dict()
-        target_counts = df[cols[1]].value_counts(normalize=as_percent).to_dict()
-        all_counts = {**source_counts, **target_counts}
+        source_counts = df[cols[0]].value_counts().to_dict()
+        target_counts = df[cols[1]].value_counts().to_dict()
+        # sum occurrences across both columns (a node may appear in both as
+        # source and target; merging the dicts would drop its source count)
+        all_counts = {
+            val: source_counts.get(val, 0) + target_counts.get(val, 0)
+            for val in unique_vals
+        }
         fmt = ".1%" if as_percent else "d"
-        labels = [f"{val}: {all_counts[val]:{fmt}}" for val in unique_vals]
+        labels = [
+            f"{val}: "
+            f"{all_counts[val] / len(df) if as_percent else all_counts[val]:{fmt}}"
+            for val in unique_vals
+        ]
     else:
         labels = unique_vals
 
