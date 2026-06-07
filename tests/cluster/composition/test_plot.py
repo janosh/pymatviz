@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any, cast, get_args
 import numpy as np
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import pytest
 from pymatgen.core import Composition
 from sklearn.decomposition import PCA, KernelPCA
@@ -3036,12 +3037,29 @@ def test_whole_number_formatting_in_tick_labels(color_scale: ColorScale) -> None
 
 
 @pytest.mark.parametrize("n_components", [2, 3])
-def test_annotate_points_basic(sample_df: pd.DataFrame, n_components: int) -> None:
-    """Test basic annotation functionality."""
+def test_annotate_points_basic(
+    sample_df: pd.DataFrame, n_components: int, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test point annotations have correct content and are batch-assigned.
+
+    Calling fig.add_annotation() per point is O(n^2) (plotly re-validates the whole
+    annotations array on each call), so both the 2D and 3D branches must collect dicts
+    and assign fig.layout.annotations / scene_annotations once, not one at a time.
+    """
 
     def annotate_func(row: pd.Series) -> str:
         """Simple annotation function returning composition."""
         return f"Comp: {row['composition']}"
+
+    # spy on per-point add_annotation to guard against O(n^2) reintroduction
+    n_calls = {"count": 0}
+    orig_add_annotation = go.Figure.add_annotation
+
+    def spy(self: go.Figure, *args: object, **kwargs: object) -> object:
+        n_calls["count"] += 1
+        return orig_add_annotation(self, *args, **kwargs)
+
+    monkeypatch.setattr(go.Figure, "add_annotation", spy)
 
     fig = pmv.cluster_compositions(
         df_in=sample_df,
@@ -3063,6 +3081,11 @@ def test_annotate_points_basic(sample_df: pd.DataFrame, n_components: int) -> No
     for idx, annotation in enumerate(point_annotations):
         expected_text = f"Comp: {sample_df['composition'].iloc[idx]}"
         assert annotation.text == expected_text
+
+    # annotations were batch-assigned, not added via per-point add_annotation calls
+    assert n_calls["count"] == 0, (
+        f"per-point fig.add_annotation called {n_calls['count']}x (should be batched)"
+    )
 
 
 @pytest.mark.parametrize("n_components", [2, 3])

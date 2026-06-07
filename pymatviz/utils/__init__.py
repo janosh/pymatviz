@@ -12,7 +12,6 @@ from pymatviz.utils.plotting import (
     annotate,
     get_fig_xy_range,
     get_font_color,
-    is_faceted_figure,
     luminance,
     pick_max_contrast_color,
 )

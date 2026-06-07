@@ -12,6 +12,7 @@ import pymatviz as pmv
 
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from typing import Any, Literal
 
 
@@ -743,3 +744,52 @@ def test_ptable_heatmap_splits_custom_font_color_override() -> None:
     # Check that the custom font color is used instead of the auto font color
     for anno in annotations:
         assert anno.font.color == "red"
+
+
+@pytest.mark.parametrize(
+    "build_fig",
+    [
+        lambda syms: pmv.ptable_heatmap_splits(
+            {sym: [1, 2] for sym in syms}, annotations=dict.fromkeys(syms, "x")
+        ),
+        lambda syms: pmv.ptable_hists(
+            {sym: [1.0, 2.0, 3.0] for sym in syms}, color_elem_strategy="background"
+        ),
+        lambda syms: pmv.ptable_scatter(
+            {sym: ([1, 2, 3], [4, 5, 6]) for sym in syms},
+            color_elem_strategy="background",
+        ),
+    ],
+    ids=["heatmap_splits", "hists", "scatter"],
+)
+def test_ptable_builders_batch_layout_items(
+    build_fig: Callable[[list[str]], go.Figure], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Per-tile annotations/shapes are batch-assigned, never added one at a time.
+
+    Adding them via fig.add_annotation()/fig.add_shape() inside the element loop is
+    O(n^2) (plotly re-validates the whole layout array on each call, a full periodic
+    table took ~10 min in CI), so builders must collect dicts and assign
+    fig.layout.{annotations,shapes} in a single update.
+    """
+    counts = {"add_annotation": 0, "add_shape": 0}
+
+    def make_spy(method: str) -> Callable[..., object]:
+        orig = getattr(go.Figure, method)
+
+        def spy(self: go.Figure, *args: object, **kwargs: object) -> object:
+            counts[method] += 1
+            return orig(self, *args, **kwargs)
+
+        return spy
+
+    for method in counts:
+        monkeypatch.setattr(go.Figure, method, make_spy(method))
+
+    symbols = [elem.symbol for elem in Element][:40]
+    fig = build_fig(symbols)
+
+    # builders must use batched fig.layout.{annotations,shapes}, never per-tile calls
+    assert counts == {"add_annotation": 0, "add_shape": 0}
+    # batching kept content: at least one layout annotation per rendered tile
+    assert len(fig.layout.annotations) >= len(symbols)

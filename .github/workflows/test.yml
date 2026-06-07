@@ -50,7 +50,7 @@ jobs:
           python-version: '3.11'
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v8.2.0
 
       - name: Run all widget demos
         run: |
@@ -90,7 +90,7 @@ jobs:
           python-version: 3.11
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v8.2.0
 
       - name: Run script
         run: uv run --with-editable .[make-assets] ${{ matrix.example_script }}

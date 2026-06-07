@@ -1099,6 +1099,9 @@ def cluster_compositions(
                     annotations_3d.append(go.layout.scene.Annotation(annotation))
             fig.update_layout(scene_annotations=annotations_3d)
         else:  # Handle 2D annotations
+            # batch-collect and assign in one go: fig.add_annotation() per point is
+            # O(n^2) as plotly re-validates the whole array on each call
+            annotations_2d = []
             for _, row in df_plot.iterrows():
                 row_annotation = annotate_points(row)
                 if isinstance(row_annotation, str):
@@ -1112,7 +1115,8 @@ def cluster_compositions(
                         "font": {"size": 10},
                         **row_annotation,
                     }
-                    fig.add_annotation(annotation)
+                    annotations_2d.append(annotation)
+            fig.layout.annotations = list(fig.layout.annotations) + annotations_2d
 
     # Convert to ClusterFigure and attach metadata
     cluster_fig = ClusterFigure(fig)
