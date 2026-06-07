@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 # version already published to npm: the default to_html/to_img path fetches
 # ``matterviz-anywidget@<this>`` from jsDelivr at runtime, so an unpublished pin
 # breaks widget rendering for everyone.
-MATTERVIZ_ANYWIDGET_VERSION = "0.3.7"
+MATTERVIZ_ANYWIDGET_VERSION = "0.4.0"
 _ANYWIDGET_CDN = "https://cdn.jsdelivr.net/npm/matterviz-anywidget"
 # expanded at call time (not import time) so tests can patch os.path.expanduser
 _CACHE_ROOT = "~/.cache/pymatviz"
@@ -123,7 +123,7 @@ def configure_assets(
     Call with no arguments to reset to default (the pinned bundle version).
 
     Args:
-        version: ``matterviz-anywidget`` npm version to fetch (e.g. ``"0.3.7"``).
+        version: ``matterviz-anywidget`` npm version to fetch (e.g. ``"0.4.0"``).
             Mutually exclusive with ``esm_src``/``css_src``.
         esm_src: URL or local file path for the ESM JavaScript bundle.
         css_src: URL or local file path for the CSS stylesheet.
