@@ -174,6 +174,17 @@ trajectory2 = [{"structure": struct1, "energy": 1.0}, {"structure": struct2, "en
 traj_widget2 = TrajectoryWidget(trajectory=trajectory2)
 ```
 
+All widgets support export and inspection APIs that work in plain Python scripts, CI, and agent workflows — no notebook frontend required:
+
+```py
+widget.to_html("structure.html")  # standalone interactive HTML page (pan/zoom/rotate work)
+widget.to_img("structure.png", dpi=150)  # PNG/JPEG/SVG/PDF via headless Chromium
+widget.describe()  # machine-readable facts: counts, ranges, formula, chemical system
+widget.render_report()  # headless render health check: blank fraction, warnings
+```
+
+`to_img` and `render_report` require [Playwright](https://playwright.dev/python): `pip install pymatviz[export] && playwright install chromium`. Set the `PYMATVIZ_STATIC` env var to make `widget.show()` render static PNGs instead of live widgets (useful for CI notebook execution).
+
 **Examples:**
 
 - [Jupyter notebook demo](examples/widgets/jupyter_demo.ipynb)
