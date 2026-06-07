@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 # version already published to npm: the default to_html/to_img path fetches
 # ``matterviz-anywidget@<this>`` from jsDelivr at runtime, so an unpublished pin
 # breaks widget rendering for everyone.
-MATTERVIZ_ANYWIDGET_VERSION = "0.3.7"
+MATTERVIZ_ANYWIDGET_VERSION = "0.4.0"
 _ANYWIDGET_CDN = "https://cdn.jsdelivr.net/npm/matterviz-anywidget"
 # expanded at call time (not import time) so tests can patch os.path.expanduser
 _CACHE_ROOT = "~/.cache/pymatviz"
@@ -123,7 +123,7 @@ def configure_assets(
     Call with no arguments to reset to default (the pinned bundle version).
 
     Args:
-        version: ``matterviz-anywidget`` npm version to fetch (e.g. ``"0.3.7"``).
+        version: ``matterviz-anywidget`` npm version to fetch (e.g. ``"0.4.0"``).
             Mutually exclusive with ``esm_src``/``css_src``.
         esm_src: URL or local file path for the ESM JavaScript bundle.
         css_src: URL or local file path for the CSS stylesheet.
@@ -141,6 +141,20 @@ def configure_assets(
 
     cls = MatterVizWidget
     cls._asset_cache.clear()
+
+    def _all_subclasses(klass: type) -> list[type]:
+        subclasses = klass.__subclasses__()
+        return subclasses + [
+            sub for direct in subclasses for sub in _all_subclasses(direct)
+        ]
+
+    # _set_class_assets stores assets on the concrete subclass whose instance
+    # triggered it, shadowing anything set here on MatterVizWidget. Clear those
+    # subclass attrs so stale bundles don't survive a reset or reconfigure.
+    for klass in _all_subclasses(cls):
+        for attr in ("_esm", "_css"):
+            if attr in klass.__dict__:
+                delattr(klass, attr)
 
     if not version and not esm_src:
         for attr in ("_esm", "_css"):
@@ -339,12 +353,26 @@ class MatterVizWidget(AnyWidget):
 
         ipython_display(self)
 
+    @classmethod
+    def _is_own_trait(cls, name: str) -> bool:
+        """Whether a MatterViz widget (sub)class itself declares this trait. Keeps
+        subclass traits that shadow DOMWidget machinery (e.g. TrajectoryWidget
+        .layout) in to_dict() while still excluding inherited DOMWidget traits.
+        """
+        for klass in cls.__mro__:
+            if klass is MatterVizWidget:
+                return False
+            if isinstance(vars(klass).get(name), tl.TraitType):
+                return True
+        return False
+
     def to_dict(self) -> dict[str, Any]:
         """Return all public synced traitlet values as a plain dict."""
         return {
             name: getattr(self, name)
             for name in self.traits(sync=True)
-            if not name.startswith("_") and name not in self._EXCLUDED_TRAITS
+            if not name.startswith("_")
+            and (name not in self._EXCLUDED_TRAITS or self._is_own_trait(name))
         }
 
     def to_img(

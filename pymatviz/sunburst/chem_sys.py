@@ -1,7 +1,7 @@
 """Sunburst plot of chemical systems."""
 
 from collections.abc import Sequence
-from typing import Any, Literal, get_args
+from typing import Any, Literal
 
 import plotly.express as px
 import plotly.graph_objects as go
@@ -9,7 +9,10 @@ from pymatgen.core import Composition, Structure
 
 from pymatviz.enums import Key
 from pymatviz.process_data import count_formulas
-from pymatviz.sunburst.helpers import _limit_slices
+from pymatviz.sunburst.helpers import (
+    _apply_sunburst_show_counts,
+    _limit_slices_per_group,
+)
 from pymatviz.typing import FormulaGroupBy, ShowCounts
 
 
@@ -70,7 +73,7 @@ def chem_sys_sunburst(
     df_counts = count_formulas(data, group_by=group_by)
 
     # Limit the number of systems per arity if requested
-    df_counts = _limit_slices(
+    df_counts = _limit_slices_per_group(
         df_counts,
         group_col="arity_name",
         count_col=Key.count,
@@ -91,18 +94,7 @@ def chem_sys_sunburst(
         df_counts, path=path, values=Key.count, **sunburst_defaults | kwargs
     )
 
-    if show_counts == "percent":
-        fig.data[0].textinfo = "label+percent entry"
-    elif show_counts == "value":
-        fig.data[0].textinfo = "label+value"
-        fig.data[0].texttemplate = "%{label}<br>N=%{value:.2f}"
-    elif show_counts == "value+percent":
-        fig.data[0].textinfo = "label+value+percent entry"
-        fig.data[0].texttemplate = "%{label}<br>N=%{value:.2f}<br>%{percentEntry}"
-    elif show_counts is not False:
-        raise ValueError(
-            f"Invalid {show_counts=}, must be one of {get_args(ShowCounts)}"
-        )
+    _apply_sunburst_show_counts(fig, show_counts)
 
     fig.layout.margin = dict(l=10, r=10, b=10, pad=10)
     fig.layout.paper_bgcolor = "rgba(0, 0, 0, 0)"

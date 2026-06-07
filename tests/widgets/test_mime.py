@@ -41,6 +41,7 @@ def test_create_widget(
 
 def test_create_widget_phase_diagram_to_convex_hull() -> None:
     """create_widget maps PhaseDiagram -> ConvexHullWidget."""
+    pytest.importorskip("pymatgen.analysis.phase_diagram")
     from pymatgen.analysis.phase_diagram import PDEntry, PhaseDiagram
 
     from pymatviz.widgets.mime import create_widget
@@ -99,6 +100,9 @@ def test_auto_display_registry(
 ) -> None:
     """_AUTO_DISPLAY maps pymatgen classes to correct widgets."""
     from pymatviz.widgets.mime import _AUTO_DISPLAY
+
+    if class_name == "PhaseDiagram":  # registration silently skips missing modules
+        pytest.importorskip("pymatgen.analysis.phase_diagram")
 
     registered = {
         cls.__name__: (widget, param) for cls, (widget, param) in _AUTO_DISPLAY.items()

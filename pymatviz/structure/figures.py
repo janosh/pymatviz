@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from plotly.subplots import make_subplots
-from pymatgen.analysis.local_env import CrystalNN, NearNeighbors
-from pymatgen.core import Element
 
 from pymatviz.enums import ElemColorScheme, SiteCoords
 from pymatviz.process_data import normalize_structures
@@ -19,6 +17,7 @@ if TYPE_CHECKING:
     from typing import Literal
 
     import plotly.graph_objects as go
+    from pymatgen.analysis.local_env import NearNeighbors
     from pymatgen.core import PeriodicSite
 
     from pymatviz.typing import AnyStructure, ColorType
@@ -167,18 +166,18 @@ def structure_2d(
         row = (idx - 1) // n_cols + 1
         col = (idx - 1) % n_cols + 1
 
-        # Handle per-structure elem_colors settings if it's a dict
-        struct_elem_colors: ElemColorScheme | dict[str, ColorType] = elem_colors
-        if isinstance(elem_colors, dict):
-            # If any key is not a valid element symbol, treat as structure-key mapping
-            is_struct_key_mapping = any(
-                key not in Element.__members__ for key in elem_colors
+        # Resolve per-structure display params (struct properties take precedence)
+        (_elem_colors, cell_boundary_tol_i, _atomic_radii, atom_size_i, scale_i) = (
+            helpers.resolve_per_struct_params(
+                raw_struct_i,
+                struct_key,
+                elem_colors,
+                cell_boundary_tol,
+                atomic_radii,
+                atom_size,
+                scale,
             )
-
-            if is_struct_key_mapping:  # is map of structure keys to color schemes
-                struct_elem_colors = elem_colors.get(struct_key, ElemColorScheme.jmol)  # ty: ignore[no-matching-overload]
-
-        _elem_colors = helpers.get_elem_colors(struct_elem_colors)
+        )
 
         # Initialize seen elements for this subplot
         seen_elements_per_subplot[idx] = set()
@@ -186,36 +185,6 @@ def structure_2d(
         struct_i = helpers._standardize_struct(
             raw_struct_i, standardize_struct=standardize_struct
         )
-
-        # Handle cell_boundary_tol with precedence:
-        # 1. structure.properties["cell_boundary_tol"] or
-        #    atoms.info["cell_boundary_tol"]
-        # 2. function arg cell_boundary_tol (dict or float)
-        cell_boundary_tol_i = (
-            helpers.get_struct_prop(
-                raw_struct_i, struct_key, "cell_boundary_tol", cell_boundary_tol
-            )
-            or 0.0
-        )
-
-        # Handle other parameters with precedence
-        atomic_radii_i = helpers.get_struct_prop(
-            raw_struct_i, struct_key, "atomic_radii", atomic_radii
-        )
-        if atomic_radii_i is None:
-            atomic_radii_i = atomic_radii
-
-        atom_size_i = (
-            helpers.get_struct_prop(raw_struct_i, struct_key, "atom_size", atom_size)
-            or atom_size
-        )
-
-        scale_i = (
-            helpers.get_struct_prop(raw_struct_i, struct_key, "scale", scale) or scale
-        )
-
-        # Process atomic_radii with per-structure precedence
-        _atomic_radii = helpers.get_atomic_radii(atomic_radii_i)
 
         rotation_matrix = helpers._angles_to_rotation_matrix(rotation)
         rotated_coords_all_sites = np.dot(struct_i.cart_coords, rotation_matrix)
@@ -353,37 +322,19 @@ def structure_2d(
             plotted_sites_coords = set()
 
         # Draw bonds after sites are processed to ensure proper filtering
-        if show_bonds:
-            # Handle per-structure show_bonds settings if it's a dict
-            struct_show_bonds: bool | NearNeighbors
-            if isinstance(show_bonds, dict):
-                struct_show_bonds = show_bonds.get(struct_key, False)  # ty: ignore[no-matching-overload]
-            else:
-                struct_show_bonds = show_bonds
-
-            if struct_show_bonds:
-                # Determine the NearNeighbors object to use
-                if struct_show_bonds is True:
-                    nn_obj = cast("NearNeighbors", CrystalNN())
-                else:
-                    nn_obj = struct_show_bonds
-
-                # Ensure nn_obj is a NearNeighbors object
-                if not isinstance(nn_obj, NearNeighbors):
-                    raise TypeError(f"Expected NearNeighbors, got {type(nn_obj)}")
-
-                helpers.draw_bonds(
-                    fig=fig,
-                    structure=augmented_structure,
-                    nn=nn_obj,
-                    is_3d=False,
-                    bond_kwargs=bond_kwargs,
-                    row=row,
-                    col=col,
-                    rotation_matrix=rotation_matrix,
-                    elem_colors=_elem_colors,
-                    plotted_sites_coords=plotted_sites_coords,
-                )
+        if show_bonds and (nn_obj := helpers.resolve_nn_obj(show_bonds, struct_key)):
+            helpers.draw_bonds(
+                fig=fig,
+                structure=augmented_structure,
+                nn=nn_obj,
+                is_3d=False,
+                bond_kwargs=bond_kwargs,
+                row=row,
+                col=col,
+                rotation_matrix=rotation_matrix,
+                elem_colors=_elem_colors,
+                plotted_sites_coords=plotted_sites_coords,
+            )
 
         if show_cell:
             helpers.draw_cell(
@@ -574,51 +525,22 @@ def structure_3d(
             raw_struct_i, standardize_struct=standardize_struct
         )
 
-        # Handle per-structure elem_colors settings if it's a dict
-        struct_elem_colors: ElemColorScheme | dict[str, ColorType] = elem_colors
-        if isinstance(elem_colors, dict):
-            # If any key is not a valid element symbol, treat as structure-key mapping
-            is_struct_key_mapping = any(
-                key not in Element.__members__ for key in elem_colors
+        # Resolve per-structure display params (struct properties take precedence)
+        (_elem_colors, cell_boundary_tol_i, _atomic_radii, atom_size_i, scale_i) = (
+            helpers.resolve_per_struct_params(
+                raw_struct_i,
+                struct_key,
+                elem_colors,
+                cell_boundary_tol,
+                atomic_radii,
+                atom_size,
+                scale,
             )
-
-            if is_struct_key_mapping:  # is map of structure keys to color schemes
-                struct_elem_colors = elem_colors.get(struct_key, ElemColorScheme.jmol)  # ty: ignore[no-matching-overload]
-
-        _elem_colors = helpers.get_elem_colors(struct_elem_colors)
+        )
 
         # Initialize seen elements for this subplot
         seen_elements_per_subplot[idx] = set()
         scene_name = "scene" if idx == 1 else f"scene{idx}"
-
-        # Handle cell_boundary_tol with precedence:
-        # 1. structure.properties["cell_boundary_tol"] (highest precedence)
-        # 2. function parameter cell_boundary_tol (dict or float)
-        cell_boundary_tol_i = (
-            helpers.get_struct_prop(
-                raw_struct_i, struct_key, "cell_boundary_tol", cell_boundary_tol
-            )
-            or 0.0
-        )
-
-        # Handle other parameters with precedence
-        atomic_radii_i = helpers.get_struct_prop(
-            raw_struct_i, struct_key, "atomic_radii", atomic_radii
-        )
-        if atomic_radii_i is None:
-            atomic_radii_i = atomic_radii
-
-        atom_size_i = (
-            helpers.get_struct_prop(raw_struct_i, struct_key, "atom_size", atom_size)
-            or atom_size
-        )
-
-        scale_i = (
-            helpers.get_struct_prop(raw_struct_i, struct_key, "scale", scale) or scale
-        )
-
-        # Process atomic_radii with per-structure precedence
-        _atomic_radii = helpers.get_atomic_radii(atomic_radii_i)
 
         # Prepare augmented structure: original + image sites for consistent processing
         # This augmented_structure is used for collecting all site data for the single
@@ -722,45 +644,27 @@ def structure_3d(
                             )
 
         # Draw bonds using the augmented structure after sites are processed
-        if show_bonds:
-            # Handle per-structure show_bonds settings if it's a dict
-            struct_show_bonds: bool | NearNeighbors
-            if isinstance(show_bonds, dict):
-                struct_show_bonds = show_bonds.get(struct_key, False)  # ty: ignore[no-matching-overload]
+        if show_bonds and (nn_obj := helpers.resolve_nn_obj(show_bonds, struct_key)):
+            plotted_sites_coords: set[tuple[float, float, float]]
+            if show_sites:  # Only consider plotted sites for bonds
+                # Get all plotted site coordinates from the augmented structure
+                plotted_sites_coords = {
+                    tuple(np.round(site.coords, 5)) for site in augmented_structure
+                }
             else:
-                struct_show_bonds = show_bonds
+                # If no sites are rendered, set empty set to filter out all bonds
+                plotted_sites_coords = set()
 
-            if struct_show_bonds:
-                plotted_sites_coords: set[tuple[float, float, float]] | None = None
-                if show_sites:  # Only consider plotted sites for bonds
-                    # Get all plotted site coordinates from the augmented structure
-                    plotted_sites_coords = {
-                        tuple(np.round(site.coords, 5)) for site in augmented_structure
-                    }
-                else:
-                    # If no sites are rendered, set empty set to filter out all bonds
-                    plotted_sites_coords = set()
-
-                # Determine the NearNeighbors object to use
-                if struct_show_bonds is True:
-                    nn_obj = cast("NearNeighbors", CrystalNN())
-                else:
-                    nn_obj = struct_show_bonds
-
-                # Ensure nn_obj is a NearNeighbors object
-                if not isinstance(nn_obj, NearNeighbors):
-                    raise TypeError(f"Expected NearNeighbors, got {type(nn_obj)}")
-
-                helpers.draw_bonds(
-                    fig=fig,
-                    structure=augmented_structure,  # Pass the augmented structure
-                    nn=nn_obj,
-                    is_3d=True,
-                    bond_kwargs=bond_kwargs,
-                    scene=scene_name,
-                    elem_colors=_elem_colors,
-                    plotted_sites_coords=plotted_sites_coords,
-                )
+            helpers.draw_bonds(
+                fig=fig,
+                structure=augmented_structure,  # Pass the augmented structure
+                nn=nn_obj,
+                is_3d=True,
+                bond_kwargs=bond_kwargs,
+                scene=scene_name,
+                elem_colors=_elem_colors,
+                plotted_sites_coords=plotted_sites_coords,
+            )
 
         if show_cell:
             helpers.draw_cell(

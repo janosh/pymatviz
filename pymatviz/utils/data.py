@@ -131,13 +131,13 @@ def html_tag(text: str, tag: str = "span", style: str = "", title: str = "") -> 
 def patch_dict(
     dct: dict[Any, Any], *args: Any, **kwargs: Any
 ) -> Generator[dict[Any, Any], None, None]:
-    """Context manager to temporarily patch the specified keys in a dictionary and
-    restore it to its original state on context exit.
+    """Context manager that yields a patched copy of a dictionary; the original
+    dict is never modified.
 
-    Useful e.g. for temporary plotly fig.layout mutations:
-
-        with patch_dict(fig.layout, showlegend=False):
-            fig.write_image("plot.pdf")
+    Example:
+        config = {"showlegend": True, "width": 500}
+        with patch_dict(config, showlegend=False) as patched:
+            render(patched)  # config itself is unchanged
 
     Args:
         dct (dict): The dictionary to be patched.

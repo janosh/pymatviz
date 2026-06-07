@@ -412,3 +412,11 @@ def test_add_ecdf_line_annotation_positioning() -> None:
     assert fig.data[5].name == "Cumulative"
     assert fig.data[5].legendgroup == "4"
     assert fig.data[5].text == "Annotation 3"
+
+
+def test_annotate_metrics_r2_adj_two_points() -> None:
+    """R2_adj is undefined for n <= 2 samples, must not raise ZeroDivisionError."""
+    fig = powerups.annotate_metrics(
+        np.array([1.0, 2.0]), np.array([1.1, 2.2]), fig=go.Figure(), metrics=["R2_adj"]
+    )
+    assert fig.layout.annotations[-1].text == "R<sup>2</sup><sub>adj</sub> = nan<br>"

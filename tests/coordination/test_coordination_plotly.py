@@ -257,12 +257,15 @@ def test_coordination_hist_hover_text_formatting(
     # Add test property
     structures[0].add_site_property("test_prop", list(range(len(structures[0]))))
 
-    # Test with single structure
+    # Test with single structure: must not show Formula in hover (regression:
+    # len() on the raw Structure counted sites, so any multi-site structure was
+    # treated as multiple structures)
     fig = coordination_hist(structures[0], hover_data=["test_prop"])
     hover_text = fig.data[0].hovertext[0]
     assert "Element:" in hover_text
     assert "Coordination number:" in hover_text
     assert "test_prop:" in hover_text
+    assert "Formula:" not in hover_text
 
     # Test with multiple structures
     struct_dict = {"struct1": structures[0], "struct2": structures[1]}

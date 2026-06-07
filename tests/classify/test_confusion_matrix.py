@@ -359,8 +359,10 @@ def test_confusion_matrix_edge_cases() -> None:
     y_pred = ["Negative"] * 6  # predict all negative
     fig = confusion_matrix(y_true=y_true, y_pred=y_pred, normalize=True)
     z_values = fig.data[0].z
-    # After rotation, TN = 3/6, FN = 3/6, others 0
-    assert z_values.tolist() == [[0.0, 0.0], [0.5, 0.5]]
+    # x-axis = predicted: all mass must sit in the predicted-Negative column
+    # (regression: the matrix used to render transposed, putting true classes
+    # on the x-axis)
+    assert z_values.tolist() == [[0.5, 0.0], [0.5, 0.0]]
 
     # Test case 4: Single example per class
     y_true = ["Negative", "Positive"]
@@ -497,3 +499,28 @@ def test_confusion_matrix_callable_annotations_multiclass(
             "Col: 80.0%",  # 40/(40+4+6)
         ]
     )
+
+
+def test_confusion_matrix_orientation() -> None:
+    """Predicted classes render on the x-axis, true classes on y (regression:
+    np.rot90 transposed the matrix, contradicting docstring and hover text).
+    """
+    # 4 TN, 5 FP, 0 FN, 1 TP -- asymmetric so orientation is unambiguous
+    y_true, y_pred = ["Neg"] * 9 + ["Pos"], ["Neg"] * 4 + ["Pos"] * 6
+    fig = confusion_matrix(y_true=y_true, y_pred=y_pred, normalize=False)
+
+    heatmap = fig.data[0]
+    assert fig.layout.xaxis.title.text == "Predicted"
+    assert fig.layout.yaxis.title.text == "Actual"
+
+    x_idx = {label: idx for idx, label in enumerate(heatmap.x)}
+    y_idx = {label: idx for idx, label in enumerate(heatmap.y)}
+    z_vals = np.array(heatmap.z)  # cell (true=y, pred=x): TN=4 FP=5 FN=0 TP=1
+    assert z_vals[y_idx["Neg"], x_idx["Neg"]] == 4
+    assert z_vals[y_idx["Neg"], x_idx["Pos"]] == 5
+    assert z_vals[y_idx["Pos"], x_idx["Neg"]] == 0
+    assert z_vals[y_idx["Pos"], x_idx["Pos"]] == 1
+
+    # hover text must agree with cell position
+    fp_hover = np.array(heatmap.text)[y_idx["Neg"], x_idx["Pos"]]
+    assert all(s in fp_hover for s in ("True: Neg", "Pred: Pos", "Count: 5"))

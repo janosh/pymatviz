@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Literal, ParamSpec, TypeVar, Union, get_args
+from typing import TYPE_CHECKING, Literal, TypeVar, Union, get_args
 
 import pandas as pd
-import plotly.graph_objects as go
 from pymatgen.core import Composition, IMolecule, IStructure, Molecule, Structure
 from pymatgen.io.ase import MSONAtoms
 from pymatgen.phonon.dos import PhononDos
@@ -53,17 +52,9 @@ ElemValues: TypeAlias = (
 )
 
 T = TypeVar("T")  # generic type for input validation
-P = ParamSpec("P")  # generic type for return value
-R = TypeVar("R")  # generic type for return value
 
 SetMode: TypeAlias = Literal["union", "intersection", "strict"]
 SET_MODE = SET_UNION, SET_INTERSECTION, SET_STRICT = get_args(SetMode)
-
-
-VALID_FIG_TYPES = (go.Figure,)
-VALID_FIG_NAMES: str = " | ".join(
-    f"{t.__module__}.{t.__qualname__}" for t in VALID_FIG_TYPES
-)
 
 
 Rgb256ColorType: TypeAlias = tuple[int, int, int]  # 8-bit RGB

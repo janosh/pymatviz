@@ -34,7 +34,9 @@ jobs:
       # pytest-split distributes work load so parallel jobs finish in similar time
       # update durations file with `pytest --store-durations --durations-path tests/files/.pytest-split-durations`
       test-cmd: pytest --durations 20 --cov-branch --cov-report=xml --cov pymatviz --splits 4 --group ${{ matrix.split }} --splitting-algorithm least_duration
-      upload-coverage: strict
+      # 'yes' uploads coverage but keeps CI green if Codecov errors (its GPG key
+      # import from keybase flakes intermittently); 'strict' would fail the job
+      upload-coverage: 'yes'
 
   run-widget-demos:
     runs-on: ubuntu-latest

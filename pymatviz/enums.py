@@ -54,7 +54,8 @@ SUBSCRIPT_MAP: Final[dict[str, str]] = {
     "₈": "8",
     "₉": "9",
     "₋": "-",
-    "½": "1/2",
+    # "½" intentionally absent: it lives in SUPERSCRIPT_MAP which is checked
+    # first in Key.unit, e.g. fracture toughness unit MPa·m½ -> MPa·m<sup>1/2</sup>
 }
 
 

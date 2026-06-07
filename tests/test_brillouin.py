@@ -348,10 +348,14 @@ def test_brillouin_zone_3d_axes_vectors(structures: list[Structure]) -> None:
     # Test with custom axes vector styling
     custom_axes: dict[Literal["shaft", "cone"], dict[str, Any]] = {
         "shaft": {"color": "purple", "width": 8},
-        "cone": {"sizeref": 0.4},  # Match the default value
+        "cone": {"sizeref": 0.99},
     }
     fig = brillouin_zone_3d(structures[0], axes_vectors=custom_axes)
     assert isinstance(fig, go.Figure)
+    # axes_vectors must not be mutated (pop() used to empty the cone dict, so
+    # repeated calls with the same dict silently fell back to defaults)
+    assert custom_axes["cone"] == {"sizeref": 0.99}
+    fig = brillouin_zone_3d(structures[0], axes_vectors=custom_axes)
 
     # Check shaft traces
     shaft_traces = [
@@ -370,7 +374,7 @@ def test_brillouin_zone_3d_axes_vectors(structures: list[Structure]) -> None:
     cone_traces = [trace for trace in fig.data if trace.type == "cone"]
     assert len(cone_traces) == 3  # one for each axis
     for trace in cone_traces:
-        assert trace.sizeref == 0.4
+        assert trace.sizeref == 0.99
 
     # Test disabling axes vectors
     fig = brillouin_zone_3d(structures[0], axes_vectors=False)

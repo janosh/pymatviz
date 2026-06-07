@@ -148,8 +148,16 @@ def brillouin_zone_3d(
             ):
                 raise KeyError("axes_vectors must contain 'shaft' and 'cone'")
 
-            shaft_kwargs = {} if axes_vectors is None else axes_vectors.get("shaft", {})
-            cone_kwargs = {} if axes_vectors is None else axes_vectors.get("cone", {})
+            # copy sub-dicts to avoid mutating the caller's axes_vectors via pop()
+            shaft_kwargs = dict(
+                {} if axes_vectors is None else axes_vectors.get("shaft", {})
+            )
+            cone_kwargs = dict(
+                {} if axes_vectors is None else axes_vectors.get("cone", {})
+            )
+            # Pop parameters that we handle directly to avoid conflicts
+            sizeref = cone_kwargs.pop("sizeref", 0.4)
+            custom_colorscale = cone_kwargs.pop("colorscale", None)
 
             for vec_idx, vec in enumerate(k_space_cell):
                 start, end = np.zeros(3), vec  # Vector points
@@ -168,9 +176,7 @@ def brillouin_zone_3d(
 
                 # Add arrow head as cone at vector end (same direction but shorter)
                 arrow_dir = 0.25 * (end - start)
-                # Pop parameters that we handle directly to avoid conflicts
-                sizeref = cone_kwargs.pop("sizeref", 0.4)
-                colorscale = cone_kwargs.pop("colorscale", [[0, color], [1, color]])
+                colorscale = custom_colorscale or [[0, color], [1, color]]
                 fig.add_cone(  # arrow head
                     x=[end[0]],
                     y=[end[1]],

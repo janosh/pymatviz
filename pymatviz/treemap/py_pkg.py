@@ -176,6 +176,11 @@ def _analyze_py_file(file_path: str, package_name: str) -> dict[str, int]:
             source = file_handle.read()
         tree = ast.parse(source, filename=file_path)
 
+        # Pre-collect nodes needing special treatment since ast.walk is a flat
+        # iterator that would otherwise double-count them: imports inside
+        # `if TYPE_CHECKING:` blocks and function defs in class bodies (methods)
+        type_checking_imports: set[int] = set()
+        method_nodes: set[int] = set()
         for node in ast.walk(tree):
             if (
                 isinstance(node, ast.If)
@@ -184,25 +189,30 @@ def _analyze_py_file(file_path: str, package_name: str) -> dict[str, int]:
             ):
                 for sub_node in node.body:
                     if isinstance(sub_node, (ast.Import, ast.ImportFrom)):
-                        counts["n_type_checking_imports"] += 1
-                        continue
-                continue
-
-            if isinstance(node, ast.ClassDef):
-                counts["n_classes"] += 1
+                        type_checking_imports.add(id(sub_node))
+            elif isinstance(node, ast.ClassDef):
                 for item in node.body:
                     if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                        counts["n_methods"] += 1
+                        method_nodes.add(id(item))
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef):
+                counts["n_classes"] += 1
             elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                counts["n_functions"] += 1
-            elif isinstance(node, ast.Import):
-                for alias in node.names:
-                    if alias.name.split(".")[0] == package_name:
-                        counts["n_internal_imports"] += 1
-                    else:
-                        counts["n_external_imports"] += 1
-            elif isinstance(node, ast.ImportFrom):
-                if node.level > 0:
+                if id(node) in method_nodes:
+                    counts["n_methods"] += 1
+                else:
+                    counts["n_functions"] += 1
+            elif isinstance(node, (ast.Import, ast.ImportFrom)):
+                if id(node) in type_checking_imports:
+                    counts["n_type_checking_imports"] += 1
+                elif isinstance(node, ast.Import):
+                    for alias in node.names:
+                        if alias.name.split(".")[0] == package_name:
+                            counts["n_internal_imports"] += 1
+                        else:
+                            counts["n_external_imports"] += 1
+                elif node.level > 0:  # relative import
                     counts["n_internal_imports"] += 1
                 elif node.module:
                     if node.module.split(".")[0] == package_name:

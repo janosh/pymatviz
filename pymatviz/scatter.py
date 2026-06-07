@@ -17,6 +17,7 @@ from pymatviz.process_data import bin_df_cols, df_to_arrays
 
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from typing import Any, Literal
 
     from numpy.typing import ArrayLike
@@ -536,6 +537,54 @@ def density_hexbin(
     return fig
 
 
+def _with_marginal_hist(
+    x: ArrayLike | str,
+    y: ArrayLike | str,
+    *,
+    df: pd.DataFrame | None,
+    bins: int,
+    main_fig_func: Callable[..., go.Figure],
+    **kwargs: Any,
+) -> go.Figure:
+    """Wrap a density plot function with marginal histograms along each dimension.
+
+    main_fig_func is called as main_fig_func(x, y, df=df, xlabel=..., ylabel=...,
+    **kwargs) and its traces are placed in a subplot grid with bins-binned
+    marginal x/y histograms.
+    """
+    arrays = df_to_arrays(df, x, y)
+    xs, ys = arrays[0], arrays[1]
+    # Ensure we have numpy arrays
+    if isinstance(xs, dict):
+        xs = next(iter(xs.values()))
+    if isinstance(ys, dict):
+        ys = next(iter(ys.values()))
+    # Convert to numpy arrays
+    xs = np.asarray(xs)
+    ys = np.asarray(ys)
+    xlabel, ylabel = _get_axis_labels(x, y, df)
+
+    # Create the main plot
+    main_kwargs = {
+        k: v for k, v in kwargs.items() if k not in ["marginal_x", "marginal_y"]
+    }
+    fig = main_fig_func(x, y, df=df, xlabel=xlabel, ylabel=ylabel, **main_kwargs)
+
+    # Create subplot with marginals
+    subplot_fig = _create_marginal_subplots()
+
+    # Add main plot and marginals
+    for trace in fig.data:
+        subplot_fig.add_trace(trace, row=2, col=1)
+    _add_marginal_histograms(subplot_fig, xs, ys, bins, xlabel, ylabel)
+
+    # Copy colorbar settings
+    if hasattr(fig.layout, "coloraxis"):
+        subplot_fig.layout.coloraxis = fig.layout.coloraxis
+
+    return subplot_fig
+
+
 def density_scatter_with_hist(
     x: ArrayLike | str,
     y: ArrayLike | str,
@@ -562,47 +611,17 @@ def density_scatter_with_hist(
     Returns:
         go.Figure: Plotly Figure with marginal histograms.
     """
-    arrays = df_to_arrays(df, x, y)
-    xs, ys = arrays[0], arrays[1]
-    # Ensure we have numpy arrays
-    if isinstance(xs, dict):
-        xs = next(iter(xs.values()))
-    if isinstance(ys, dict):
-        ys = next(iter(ys.values()))
-    # Convert to numpy arrays
-    xs = np.asarray(xs)
-    ys = np.asarray(ys)
-    xlabel, ylabel = _get_axis_labels(x, y, df)
-
-    # Create the main density scatter plot
-    scatter_kwargs = {
-        k: v for k, v in kwargs.items() if k not in ["marginal_x", "marginal_y"]
-    }
-    fig = density_scatter(
+    return _with_marginal_hist(
         x,
         y,
         df=df,
+        bins=bins,
+        main_fig_func=density_scatter,
         density=density,
         log_density=log_density,
         n_bins=n_bins,
-        xlabel=xlabel,
-        ylabel=ylabel,
-        **scatter_kwargs,
+        **kwargs,
     )
-
-    # Create subplot with marginals
-    subplot_fig = _create_marginal_subplots()
-
-    # Add main plot and marginals
-    for trace in fig.data:
-        subplot_fig.add_trace(trace, row=2, col=1)
-    _add_marginal_histograms(subplot_fig, xs, ys, bins, xlabel, ylabel)
-
-    # Copy colorbar settings
-    if hasattr(fig.layout, "coloraxis"):
-        subplot_fig.layout.coloraxis = fig.layout.coloraxis
-
-    return subplot_fig
 
 
 def density_hexbin_with_hist(
@@ -629,36 +648,12 @@ def density_hexbin_with_hist(
     Returns:
         go.Figure: Plotly Figure with marginal histograms.
     """
-    arrays = df_to_arrays(df, x, y)
-    xs, ys = arrays[0], arrays[1]
-    # Ensure we have numpy arrays
-    if isinstance(xs, dict):
-        xs = next(iter(xs.values()))
-    if isinstance(ys, dict):
-        ys = next(iter(ys.values()))
-    # Convert to numpy arrays
-    xs = np.asarray(xs)
-    ys = np.asarray(ys)
-    xlabel, ylabel = _get_axis_labels(x, y, df)
-
-    # Create the main hexbin plot
-    hex_kwargs = {
-        k: v for k, v in kwargs.items() if k not in ["marginal_x", "marginal_y"]
-    }
-    fig = density_hexbin(
-        x, y, df=df, gridsize=gridsize, xlabel=xlabel, ylabel=ylabel, **hex_kwargs
+    return _with_marginal_hist(
+        x,
+        y,
+        df=df,
+        bins=bins,
+        main_fig_func=density_hexbin,
+        gridsize=gridsize,
+        **kwargs,
     )
-
-    # Create subplot with marginals
-    subplot_fig = _create_marginal_subplots()
-
-    # Add main plot and marginals
-    for trace in fig.data:
-        subplot_fig.add_trace(trace, row=2, col=1)
-    _add_marginal_histograms(subplot_fig, xs, ys, bins, xlabel, ylabel)
-
-    # Copy colorbar settings
-    if hasattr(fig.layout, "coloraxis"):
-        subplot_fig.layout.coloraxis = fig.layout.coloraxis
-
-    return subplot_fig

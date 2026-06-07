@@ -215,7 +215,7 @@ def xrd_pattern(  # noqa: D417
                     format_hkl(h["hkl"], hkl_format)
                     for h in plotted_patterns[trace_idx].hkls[idx]
                 )
-                annotation_text = f"{hkl_formatted}"
+                annotation_text = hkl_formatted
                 if show_angles:
                     annotation_text += f"<br>{x_pos:.2f}°"
             elif show_angles:

@@ -89,6 +89,29 @@ ShowChemSys = Literal["color", "shape", "color+shape"]
 ColorScale = Literal["linear", "log", "arcsinh"]
 
 
+def _format_tick_label(val: float) -> str:
+    """Format a colorbar tick value: scientific notation for very large/small
+    magnitudes, integer/decimal notation otherwise.
+    """
+    if val == 0:
+        return "0"
+    abs_val = abs(val)
+    sign = "-" if val < 0 else ""
+    if abs_val >= 1e4 or abs_val <= 1e-3:
+        exp = math.floor(math.log10(abs_val))
+        mantissa = abs_val / 10**exp
+        if math.isclose(mantissa, 1, rel_tol=1e-10):
+            return f"{sign}10^{exp}"
+        return f"{sign}{mantissa:.1f}x10^{exp}"
+    if math.isclose(val, round(val), rel_tol=1e-10, abs_tol=1e-10):
+        return f"{round(val)}"
+    if abs_val >= 100:
+        return f"{val:.0f}"
+    if abs_val >= 10:
+        return f"{val:.1f}"
+    return f"{val:.2f}"
+
+
 def _generate_colorbar_ticks(
     color_scale: ColorScale | dict[str, Any], df_plot: pd.DataFrame
 ) -> tuple[list[float] | None, list[str] | None]:
@@ -186,34 +209,7 @@ def _generate_colorbar_ticks(
         # Create tick values and labels
         for val in preferred_ticks:
             tick_vals.append(math.log10(val))
-
-            # Format tick text nicely
-            if val >= 1e4 or val <= 1e-3:
-                # Use scientific notation for very large/small numbers
-                exp = math.floor(math.log10(val))
-                mantissa = val / 10**exp
-                if mantissa == 1:
-                    tick_text.append(f"10^{exp}")
-                else:
-                    tick_text.append(f"{mantissa:.1f}x10^{exp}")
-            # Use decimal notation for typical values
-            elif val >= 100:
-                # For whole numbers, use integer formatting
-                if math.isclose(val, round(val), rel_tol=1e-10, abs_tol=1e-10):
-                    tick_text.append(f"{round(val)}")
-                else:
-                    tick_text.append(f"{val:.0f}")
-            elif val >= 10:
-                # For whole numbers, use integer formatting
-                if math.isclose(val, round(val), rel_tol=1e-10, abs_tol=1e-10):
-                    tick_text.append(f"{round(val)}")
-                else:
-                    tick_text.append(f"{val:.1f}")
-            # For whole numbers, use integer formatting
-            elif math.isclose(val, round(val), rel_tol=1e-10, abs_tol=1e-10):
-                tick_text.append(f"{round(val)}")
-            else:
-                tick_text.append(f"{val:.2f}")
+            tick_text.append(_format_tick_label(val))
 
         return tick_vals, tick_text
 
@@ -324,35 +320,7 @@ def _generate_colorbar_ticks(
         # Transform ticks and format labels
         for val in all_ticks:
             tick_vals.append(transform_func(val))
-
-            # Format tick text nicely
-            if val == 0:
-                tick_text.append("0")
-            elif abs(val) >= 1e4 or abs(val) <= 1e-3:
-                # Use scientific notation for very large/small numbers
-                sign = "-" if val < 0 else ""
-                abs_val = abs(val)
-                exp = math.floor(math.log10(abs_val))
-                mantissa = abs_val / 10**exp
-                tick_text.append(f"{sign}10^{exp}")
-            # Use decimal notation for typical values
-            elif abs(val) >= 100:
-                # For whole numbers, use integer formatting
-                if math.isclose(val, round(val), rel_tol=1e-10, abs_tol=1e-10):
-                    tick_text.append(f"{round(val)}")
-                else:
-                    tick_text.append(f"{val:.0f}")
-            elif abs(val) >= 10:
-                # For whole numbers, use integer formatting
-                if math.isclose(val, round(val), rel_tol=1e-10, abs_tol=1e-10):
-                    tick_text.append(f"{round(val)}")
-                else:
-                    tick_text.append(f"{val:.1f}")
-            # For whole numbers, use integer formatting
-            elif math.isclose(val, round(val), rel_tol=1e-10, abs_tol=1e-10):
-                tick_text.append(f"{round(val)}")
-            else:
-                tick_text.append(f"{val:.2f}")
+            tick_text.append(_format_tick_label(val))
 
         if tick_vals:
             return tick_vals, tick_text
@@ -848,15 +816,15 @@ def cluster_compositions(
         if method_label in ("<lambda>", "lambda", "", " ", None):
             method_label = "Component"
 
+    # Format string for projected coordinates and property values in hover text
+    coord_fmt = (
+        f"{{:.{hover_format[1:]}}}" if hover_format.startswith(".") else hover_format
+    )
+
     for idx, comp in enumerate(comp_strs):
         hover_text = f"Composition: {comp}<br>"
 
         # Add projected coordinates
-        coord_fmt = (
-            f"{{:.{hover_format[1:]}}}"
-            if hover_format.startswith(".")
-            else hover_format
-        )
         hover_text += f"{method_label} 1: {coord_fmt.format(projected[idx, 0])}<br>"
         hover_text += f"{method_label} 2: {coord_fmt.format(projected[idx, 1])}<br>"
         if n_components == 3:
@@ -864,11 +832,7 @@ def cluster_compositions(
 
         # Add property or chemical system
         if prop_values is not None:
-            prop_fmt = (
-                f"{{:.{hover_format[1:]}}}"
-                if hover_format.startswith(".")
-                else hover_format
-            )
+            prop_fmt = coord_fmt
 
             try:  # Show the property value
                 if color_scale != "linear" and "original_property" in df_plot:

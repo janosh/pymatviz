@@ -9,7 +9,10 @@ import plotly.graph_objects as go
 
 import pymatviz as pmv
 from pymatviz.enums import Key
-from pymatviz.sunburst.helpers import _limit_slices
+from pymatviz.sunburst.helpers import (
+    _apply_sunburst_show_counts,
+    _limit_slices_per_group,
+)
 from pymatviz.typing import ShowCounts
 
 
@@ -76,7 +79,7 @@ def spacegroup_sunburst(
         )
 
     # Limit the number of space groups per crystal system if requested
-    df_spg_counts = _limit_slices(
+    df_spg_counts = _limit_slices_per_group(
         df_spg_counts,
         group_col=Key.crystal_system,
         count_col="count",
@@ -95,19 +98,7 @@ def spacegroup_sunburst(
         **sunburst_defaults | kwargs,
     )
 
-    if show_counts == "percent":
-        fig.data[0].textinfo = "label+percent entry"
-    elif show_counts == "value":
-        fig.data[0].textinfo = "label+value"
-        fig.data[0].texttemplate = "%{label}<br>N=%{value:.2f}"
-    elif show_counts == "value+percent":
-        fig.data[0].textinfo = "label+value+percent entry"
-        fig.data[0].texttemplate = "%{label}<br>N=%{value:.2f}<br>%{percentEntry}"
-    elif show_counts is not False:
-        raise ValueError(
-            f"Invalid {show_counts=}, must be 'value', 'percent', 'value+percent', "
-            "or False"
-        )
+    _apply_sunburst_show_counts(fig, show_counts)
 
     fig.layout.margin = dict(l=10, r=10, b=10, pad=10)
     fig.layout.paper_bgcolor = "rgba(0, 0, 0, 0)"

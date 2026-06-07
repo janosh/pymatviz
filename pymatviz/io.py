@@ -94,9 +94,9 @@ def save_fig(
             https://github.com/plotly/plotly.py/issues/3469. Defaults to 0.6.
         style (str, optional): CSS style string to be inserted into the HTML file.
             Defaults to "". Only used if path ends with .svelte or .html.
-        prec (int, optional): Number of significant digits to keep for any float
-            in the exported file. Defaults to None (no rounding). Sensible values are
-            usually 4, 5, 6.
+        prec (int, optional): Number of decimal places to round trace x/y floats
+            to in the exported file. Defaults to None (no rounding). Sensible
+            values are usually 4, 5, 6.
         template (str, optional): Temporary plotly to apply to the figure before
             saving. Will be reset to the original after. Defaults to "pymatviz_white" if
             path ends with .pdf or .pdfa, else None. Set to None to disable.

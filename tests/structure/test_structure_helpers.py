@@ -569,6 +569,10 @@ def test_get_site_hover_text(
 
 def test_get_site_hover_text_float_formatting() -> None:
     """Test float formatting in hover text generation."""
+    # non-finite coords must not crash (int(nan) used to raise ValueError)
+    nan_site = PeriodicSite("Si", (float("nan"), 0, 0), Lattice.cubic(3.0))
+    assert "nan" in get_site_hover_text(nan_site, SiteCoords.cartesian, Element("Si"))
+
     lattice = Lattice.cubic(1.0)
     # Create a site with coordinates that would show scientific notation with .3g
     site = PeriodicSite("Si", [1.23456789, 1e-17, 2.3456], lattice)
@@ -964,6 +968,16 @@ def test_get_struct_prop(fe3co4_disordered: Structure) -> None:
     result = get_struct_prop(struct, "key1", "test_prop", {"key1": "dict_value"})
     assert result == "struct_value"
 
+    # Test 6: falsy struct properties like 0.0 take precedence in
+    # resolve_per_struct_params (regression: `or` fallbacks discarded them)
+    from pymatviz.structure.helpers import resolve_per_struct_params
+
+    struct.properties["cell_boundary_tol"] = 0.0
+    _, cell_boundary_tol, *_ = resolve_per_struct_params(
+        struct, "key", ElemColorScheme.jmol, 0.5, None, 30, 1.0
+    )
+    assert cell_boundary_tol == 0.0
+
 
 def test_draw_disordered_site_legend_functionality() -> None:
     """Test the draw_disordered_site function with legend mode functionality."""
@@ -1231,3 +1245,19 @@ def test_get_first_matching_site_prop_with_3d_filter(
         filter_callback=lambda _prop, val: _is_3d_vector(val),
     )
     assert result == prop_key
+
+
+def test_draw_bonds_color_false(bond_test_structure: Structure) -> None:
+    """color=False disables the element-color gradient and falls back to solid
+    gray (regression: False leaked into plotly color validation -> TypeError).
+    """
+    fig = go.Figure()
+    draw_bonds(
+        fig=fig,
+        structure=bond_test_structure,
+        nn=CrystalNN(),
+        is_3d=True,
+        bond_kwargs={"color": False},
+    )
+    assert len(fig.data) > 0
+    assert all(trace.line.color == "rgb(169, 169, 169)" for trace in fig.data)

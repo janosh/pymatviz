@@ -113,23 +113,9 @@ def rainclouds(
         if isinstance(data_frame, pd.DataFrame) and isinstance(column, str):
             df_i, col = data_frame, column
             values = df_i[col]
-            if hover_data is None:
-                hover_data = [col]
-            elif isinstance(hover_data, list) and col not in hover_data:
-                hover_data = [col, *hover_data]
-            elif isinstance(hover_data, Mapping):
-                hover_map = cast(
-                    "Mapping[str, Sequence[str] | Mapping[str, Sequence[object]]]",
-                    hover_data,
-                )
-                existing = hover_map.get(label)
-                if (
-                    isinstance(existing, Sequence)
-                    and not isinstance(existing, (str, bytes))
-                    and col not in existing
-                ):
-                    # avoid mutating caller's dict by creating a new one
-                    hover_data = {**hover_map, label: [col, *existing]}
+            # NOTE: don't inject col into hover_data here. The primary column
+            # value is always added to hover_text below; injecting it would
+            # duplicate it and accumulate columns across loop iterations.
         else:
             values = data_itm
 
@@ -232,7 +218,8 @@ def rainclouds(
                     and not isinstance(cols_to_show, str)
                 ):
                     for hover_col in cols_to_show:
-                        if hover_col in df_i:
+                        # skip the primary column, its value is already shown
+                        if hover_col in df_i and hover_col != col:
                             for val_idx, val in enumerate(df_i[hover_col]):
                                 hover_text[val_idx] += f"<br>{hover_col}: {val}"
 

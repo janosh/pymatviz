@@ -62,23 +62,23 @@ def project_vectors(
     if data.shape[0] < n_components:
         raise ValueError("Not enough samples")
 
-    if scale_data:
-        # Handle missing values in standardization
-        mean = np.nanmean(data, axis=0)
-        std = np.nanstd(data, axis=0)
+    def standardize(arr: np.ndarray) -> np.ndarray:
+        """Standardize columns to zero mean and unit variance, guarding std=0."""
+        mean = np.nanmean(arr, axis=0)
+        std = np.nanstd(arr, axis=0)
         # Replace 0s with 1s before division to avoid division by zero
         std = np.where(std == 0, 1, std)
-        data = (data - mean) / std
-        # Replace any remaining NaN values with 0
-        data = np.nan_to_num(data, nan=0.0)
+        return (arr - mean) / std
+
+    if scale_data:
+        # Handle missing values in standardization, replace remaining NaNs with 0
+        data = np.nan_to_num(standardize(data), nan=0.0)
 
     if method == "pca":
         pca = PCA(n_components=n_components, random_state=random_state)
         projected_data = pca.fit_transform(data)
         if scale_data:
-            projected_data = (
-                projected_data - np.mean(projected_data, axis=0)
-            ) / np.std(projected_data, axis=0)
+            projected_data = standardize(projected_data)
         return projected_data, pca
 
     if method == "tsne":
@@ -97,9 +97,7 @@ def project_vectors(
         tsne = TSNE(**tsne_kwargs)
         projected_data = tsne.fit_transform(data)
         if scale_data:
-            projected_data = (
-                projected_data - np.mean(projected_data, axis=0)
-            ) / np.std(projected_data, axis=0)
+            projected_data = standardize(projected_data)
         return projected_data, tsne
 
     if method == "umap":
@@ -118,9 +116,7 @@ def project_vectors(
         )
         projected_data = umap_reducer.fit_transform(data)
         if scale_data:
-            projected_data = (
-                projected_data - np.mean(projected_data, axis=0)
-            ) / np.std(projected_data, axis=0)
+            projected_data = standardize(projected_data)
         return projected_data, umap_reducer
 
     if method == "isomap":
@@ -137,9 +133,7 @@ def project_vectors(
         )
         projected_data = isomap.fit_transform(data)
         if scale_data:
-            projected_data = (
-                projected_data - np.mean(projected_data, axis=0)
-            ) / np.std(projected_data, axis=0)
+            projected_data = standardize(projected_data)
         return projected_data, isomap
 
     if method == "kernel_pca":
@@ -153,9 +147,7 @@ def project_vectors(
         )
         projected_data = kpca.fit_transform(data)
         if scale_data:
-            projected_data = (
-                projected_data - np.mean(projected_data, axis=0)
-            ) / np.std(projected_data, axis=0)
+            projected_data = standardize(projected_data)
         return projected_data, kpca
 
     raise ValueError(f"Unknown projection {method=}")
