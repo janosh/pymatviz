@@ -585,9 +585,10 @@ def test_bin_df_cols(
     assert bin_counts_col in df_binned
     assert df_binned[bin_counts_col].dtype in [int, "int64"]
 
-    # If density column is specified, check if it exists
+    # If density column is specified, it must exist and be scaled to the number
+    # of data points (regression: was scaled by the number of binned columns)
     if density_col:
-        assert density_col in df_binned
+        assert df_binned[density_col].sum() == pytest.approx(len(df_float))
     else:
         assert density_col not in df_binned
 
@@ -708,3 +709,13 @@ def test_sankey_flow_data_deduplicates_nodes() -> None:
         result["target"], result["target_indices"], strict=True
     ):
         assert val_to_idx[tgt_val] == tgt_idx
+
+
+def test_sankey_flow_data_shared_node_counts() -> None:
+    """Nodes appearing as both source and target show their total occurrence
+    count (regression: target counts silently overwrote source counts).
+    """
+    df_flows = pd.DataFrame({"src": ["A", "A", "A", "B"], "tgt": ["C", "C", "A", "C"]})
+    flow_data = pmv.process_data.sankey_flow_data(df_flows, ["src", "tgt"])
+    labels = dict(label.split(": ") for label in flow_data["labels"])
+    assert labels == {"A": "4", "B": "1", "C": "3"}  # A: 3 source + 1 target

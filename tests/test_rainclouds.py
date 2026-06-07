@@ -216,3 +216,13 @@ def test_rainclouds_trace_visibility(
         show_points=show_points,
     )
     assert len(fig.data) == len(sample_data) * n_expected_traces
+
+
+def test_rainclouds_hover_no_duplicate_primary_value() -> None:
+    """Primary column value appears exactly once in hover text (regression: it
+    was appended twice and hover columns leaked between groups).
+    """
+    df1, df2 = pd.DataFrame({"v1": [1.0, 2.0]}), pd.DataFrame({"v2": [4.0, 5.0]})
+    fig = pmv.rainclouds({"G1": (df1, "v1"), "G2": (df2, "v2")})
+    points = [trc for trc in fig.data if getattr(trc, "mode", "") == "markers"]
+    assert [trc.hovertext[0] for trc in points] == ["G1<br>v1: 1", "G2<br>v2: 4"]
