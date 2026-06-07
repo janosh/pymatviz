@@ -41,9 +41,10 @@ def confusion_matrix(
         y_labels (tuple[str, ...] | None): Labels for y-axis (true). If None, same as
             x_labels
         annotations (Sequence[Sequence[str]] | Callable | None): Custom cell
-            annotations or a callable that takes (count, total, pct, row_pct, col_pct)
-            and returns a string. If None, will use pretty-formatted values in conf_mat.
-            The callable receives:
+            annotations (indexed like the confusion matrix: rows = true classes,
+            columns = predicted) or a callable that takes
+            (count, total, row_pct, col_pct) and returns a string. If None, will
+            use pretty-formatted values in conf_mat. The callable receives:
             - count: Raw count for this cell
             - total: Total count across all cells
             - row_pct: Row percentage (count/row_sum)
@@ -101,13 +102,16 @@ def confusion_matrix(
         for jj, val in enumerate(row):
             count = int(sample_counts[ii, jj])
             pct = val if normalize else val / sample_counts.sum()
+            row_sum, col_sum = row.sum(), conf_mat_arr[:, jj].sum()
+            row_pct = val / row_sum if row_sum > 0 else 0
+            col_pct = val / col_sum if col_sum > 0 else 0
             hover_row += [
                 f"True: {y_labels[ii]}<br>"
                 f"Pred: {x_labels[jj]}<br>"
                 f"Count: {count:,}<br>"
                 f"Percent: {pct:.1%}<br>"
-                f"Row %: {val / row.sum():.1%}<br>"
-                f"Col %: {val / conf_mat_arr[:, jj].sum():.1%}"
+                f"Row %: {row_pct:.1%}<br>"
+                f"Col %: {col_pct:.1%}"
             ]
         hover_text += [hover_row]
 
@@ -126,7 +130,7 @@ def confusion_matrix(
 
     fmt_tile_vals = np.array(
         [[f"{val:{float_fmt}}" for val in row] for row in conf_mat_arr]
-    ).T
+    )
 
     # Process annotations into a numpy array for the heatmap
     processed_annotations: NDArray[np.str_]
@@ -140,7 +144,6 @@ def confusion_matrix(
             row = []
             for jj in range(len(conf_mat_arr[ii])):
                 count = int(sample_counts[ii, jj])
-                pct = conf_mat_arr[ii, jj]
                 row_pct = (
                     conf_mat_arr[ii, jj] / conf_mat_arr[ii].sum()
                     if conf_mat_arr[ii].sum() > 0
@@ -153,31 +156,34 @@ def confusion_matrix(
                 )
                 row += [annotation_func(count, total, row_pct, col_pct)]
             anno_matrix += [row]
-        processed_annotations = np.array(anno_matrix).T
+        processed_annotations = np.array(anno_matrix)
     else:  # When custom annotations provided, append percentage values
         anno_arr = np.asarray(annotations)
         if anno_arr.shape != fmt_tile_vals.shape:
             raise ValueError(
                 f"Custom annotations shape {anno_arr.shape} does not match confusion "
-                f"matrix shape {fmt_tile_vals.shape}. Note: annotations should be "
-                f"provided in transposed form (columns, rows) to match the heatmap."
+                f"matrix shape {fmt_tile_vals.shape}. Annotations are indexed like "
+                f"the confusion matrix: rows = true classes, columns = predicted."
             )
         processed_annotations = np.char.add(anno_arr, "<br>")
         processed_annotations = np.char.add(processed_annotations, fmt_tile_vals)
 
-    # rot90 rotates data to match Plotly's bottom-left origin convention
-    # processed_annotations.T undoes earlier transpose (line 125/151) before rotation
+    # flipud flips rows (true classes) to match Plotly's bottom-left origin so
+    # that x-axis = predicted class and y-axis = true class (the standard
+    # confusion matrix orientation; regression: rot90 used to transpose the
+    # matrix, rendering true on x and predicted on y, contradicting the
+    # docstring, hover text, and axis titles)
     heatmap_defaults = dict(
-        z=np.rot90(conf_mat_arr),
+        z=np.flipud(conf_mat_arr),
         x=formatted_labels["x"],
         y=formatted_labels["y"],
-        annotation_text=np.rot90(processed_annotations.T),
+        annotation_text=np.flipud(processed_annotations),
         colorscale=colorscale,
         xgap=7,
         ygap=7,
         hoverongaps=False,
         hoverinfo="text",
-        text=np.rot90(hover_text),
+        text=np.flipud(hover_text),
     )
     fig = ff.create_annotated_heatmap(**heatmap_defaults | (heatmap_kwargs or {}))
 
@@ -266,10 +272,10 @@ def confusion_matrix(
     fig.layout.font.size = 18
     fig.layout.paper_bgcolor = "rgba(0,0,0,0)"
     fig.layout.plot_bgcolor = "rgba(0,0,0,0)"
-    fig.layout.xaxis.update(dict(title="Actual") | axes_kwargs)
+    fig.layout.xaxis.update(dict(title="Predicted") | axes_kwargs)
     fig.layout.yaxis.update(
         dict(
-            title="Predicted",
+            title="Actual",
             scaleanchor="x",  # ensure square tiles by forcing same scale as x-axis
             tickangle=-90,  # Rotate labels 90 degrees
         )
