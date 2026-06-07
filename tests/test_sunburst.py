@@ -88,14 +88,20 @@ def test_spacegroup_sunburst_other_types(
         (0, "other", 7, None),  # treated as None
         (-1, "other", 7, None),  # negative treated as None
         (10, "other", 7, None),  # greater than number of systems
-        # Normal cases with "other" mode - Updated expectations
-        (1, "other", 2, [("Other (6 more not shown)", 6)]),  # 1 + other = 2 total
-        (2, "other", 3, [("Other (5 more not shown)", 5)]),  # 2 + other = 3 total
-        (3, "other", 4, [("Other (4 more not shown)", 4)]),  # 3 + other = 4 total
-        # Cases with "drop" mode - Updated expectations
-        (1, "drop", 1, None),  # only top 1
-        (2, "drop", 2, None),  # only top 2
-        (3, "drop", 3, None),  # only top 3
+        # Normal cases with "other" mode. max_slices applies per crystal system:
+        # spg 1-2 are triclinic (2 entries), spg 3-7 monoclinic (5 entries)
+        (
+            1,
+            "other",
+            4,
+            [("Other (1 more not shown)", 1), ("Other (4 more not shown)", 4)],
+        ),
+        (2, "other", 5, [("Other (3 more not shown)", 3)]),  # triclinic fits fully
+        (3, "other", 6, [("Other (2 more not shown)", 2)]),
+        # Cases with "drop" mode (per crystal system)
+        (1, "drop", 2, None),  # top 1 per crystal system
+        (2, "drop", 4, None),  # top 2 per crystal system
+        (3, "drop", 5, None),  # top 3 monoclinic + both triclinic
     ],
 )
 def test_spacegroup_sunburst_max_slices(
@@ -104,7 +110,11 @@ def test_spacegroup_sunburst_max_slices(
     expected_systems: int,
     expected_others: list[tuple[str, int]] | None,
 ) -> None:
-    """Test spacegroup_sunburst with max_slices functionality and edge cases."""
+    """Test spacegroup_sunburst with max_slices functionality and edge cases.
+
+    max_slices limits space groups shown *per crystal system* (regression: the
+    limit used to be applied globally, silently dropping entire crystal systems).
+    """
     # Create a dataset with multiple space groups per crystal system
     spg_numbers = (1, 2, 3, 4, 5, 6, 7)
 
@@ -922,3 +932,21 @@ def test_sunburst_text_wrapping_functionality() -> None:
     labels = fig.data[0].labels
     assert any("<br>" in str(label) for label in labels)
     assert any("short" in str(label) and "<br>" not in str(label) for label in labels)
+
+
+def test_chem_sys_sunburst_max_slices_per_arity() -> None:
+    """max_slices limits each arity independently (regression: a global limit
+    lumped whole arity levels into 'Other' under the wrong parent).
+    """
+    systems = ["Fe2O3", "Li2O", "Na2O", "K2O", "CaO", "LiFeO2", "NaFeO2", "KFeO2"]
+    fig = pmv.chem_sys_sunburst(systems, max_slices=2, max_slices_mode="other")
+    trace = fig.data[0]
+    by_parent: dict[str, dict[str, float]] = {}  # trace["values"] avoids PD011
+    for label, parent, val in zip(
+        trace.labels, trace.parents, trace["values"], strict=True
+    ):
+        by_parent.setdefault(parent, {})[label] = val
+    # both arities survive: 2 shown + 1 "Other" slice aggregating its own arity
+    assert by_parent["binary"]["Other (3 more not shown)"] == 3
+    assert by_parent["ternary"]["Other (1 more not shown)"] == 1
+    assert len(by_parent["binary"]) == len(by_parent["ternary"]) == 3

@@ -164,22 +164,15 @@ def test_find_package_path_fallbacks(dummy_pkg_path: Path) -> None:
     target_pkg = "my_pkg"
     expected_abs_path = str(dummy_pkg_path / target_pkg).replace("\\", "/")
 
-    # Test fallback to importlib.util when importlib.resources fails
-    for origin in ("__init__.py", "module1.py"):
-        with (
-            patch("importlib.resources.files", side_effect=ImportError, create=True),
-            patch("importlib.util.find_spec") as mock_find_spec,
-        ):
-            mock_find_spec.return_value = MagicMock(
-                origin=str(dummy_pkg_path / target_pkg / origin)
-            )
-            found_path = pmv.treemap.py_pkg.find_package_path(target_pkg)
-            assert found_path.replace("\\", "/") == expected_abs_path
+    # When importlib.resources fails, fall back to scanning sys.path
+    # (dummy_pkg_path was prepended to sys.path by the fixture)
+    with patch("importlib.resources.files", side_effect=ImportError, create=True):
+        found_path = pmv.treemap.py_pkg.find_package_path(target_pkg)
+        assert found_path.replace("\\", "/") == expected_abs_path
 
     # Test fallback to site-packages check
     with (
         patch("importlib.resources.files", side_effect=ImportError, create=True),
-        patch("importlib.util.find_spec", return_value=None),
         patch("site.getsitepackages", return_value=[str(dummy_pkg_path.parent)]),
         patch("os.path.isdir") as mock_isdir,
     ):
@@ -1552,3 +1545,26 @@ class TestAdaptivePruning:
         """Negative depth/pruning parameters raise ValueError."""
         with pytest.raises(ValueError, match="must be non-negative"):
             pmv.py_pkg_treemap("deep_pkg", **kwargs)  # ty: ignore[invalid-argument-type]
+
+
+def test_analyze_py_file_no_double_counting(tmp_path: Path) -> None:
+    """Methods must not also count as functions, nor TYPE_CHECKING imports as
+    external imports (regression: ast.walk visited those nodes twice).
+    """
+    code = (
+        "from typing import TYPE_CHECKING\n"
+        "if TYPE_CHECKING:\n    import pandas as pd\n    import numpy as np\n"
+        "import sys\n"
+        "class MyClass:\n    def method1(self): pass\n"
+        "    async def method2(self): pass\n"
+        "def standalone(): pass\n"
+    )
+    (py_file := tmp_path / "mod.py").write_text(code)
+    assert pmv.treemap.py_pkg._analyze_py_file(str(py_file), "pkg") == {
+        "n_classes": 1,
+        "n_functions": 1,
+        "n_methods": 2,
+        "n_internal_imports": 0,
+        "n_external_imports": 2,  # typing + sys, NOT the TYPE_CHECKING ones
+        "n_type_checking_imports": 2,
+    }

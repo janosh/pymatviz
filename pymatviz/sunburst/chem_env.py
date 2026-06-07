@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import textwrap
-import warnings
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Literal, get_args
 
@@ -69,173 +68,20 @@ def chem_env_sunburst(
     Raises:
         ValueError: For invalid inputs
     """
+    structs = normalize_structures(structures).values()
+
+    if show_counts not in get_args(ShowCounts):
+        raise ValueError(f"Invalid {show_counts=}")
+
     if chem_env_settings == "crystal_nn":
-        return _chem_env_sunburst_crystal_nn(
-            structures=structures,
-            max_slices_cn=max_slices_cn,
-            max_slices_ce=max_slices_ce,
-            max_slices_mode=max_slices_mode,
-            show_counts=show_counts,
-            normalize=normalize,
+        chem_env_data = chem_env.collect_coord_envs_crystal_nn(
+            structs, normalize=normalize
         )
-    # Handle legacy case and explicit "chemenv"
-    if chem_env_settings == "chemenv":
-        chem_env_settings = {}
-
-    # Original ChemEnv implementation
-    return _chem_env_sunburst_chem_env(
-        structures=structures,
-        chem_env_settings=chem_env_settings,
-        max_slices_cn=max_slices_cn,
-        max_slices_ce=max_slices_ce,
-        max_slices_mode=max_slices_mode,
-        show_counts=show_counts,
-        normalize=normalize,
-    )
-
-
-def _chem_env_sunburst_chem_env(
-    structures: AnyStructure | Sequence[AnyStructure],
-    *,
-    chem_env_settings: dict[str, Any],
-    max_slices_cn: int | None = None,
-    max_slices_ce: int | None = None,
-    max_slices_mode: Literal["other", "drop"] = "other",
-    show_counts: ShowCounts = "value",
-    normalize: bool = False,
-) -> go.Figure:
-    """ChemEnv-based implementation of chem_env_sunburst."""
-    import pymatgen.analysis.chemenv.coordination_environments.coordination_geometries as coord_geoms  # noqa: E501
-    import pymatgen.analysis.chemenv.coordination_environments.coordination_geometry_finder as coord_finder  # noqa: E501
-    import pymatgen.analysis.chemenv.coordination_environments.structure_environments as struct_envs  # noqa: E501
-    from pymatgen.analysis.chemenv.coordination_environments import chemenv_strategies
-
-    structs = normalize_structures(structures).values()
-
-    if show_counts not in get_args(ShowCounts):
-        raise ValueError(f"Invalid {show_counts=}")
-
-    settings = chem_env_settings or {}
-    chem_env_data: list[dict[str, Any]] = []
-
-    try:
-        lgf = coord_finder.LocalGeometryFinder()
-        lgf.setup_parameters(**settings)
-        strategy = chemenv_strategies.SimplestChemenvStrategy()
-        all_coord_geoms = coord_geoms.AllCoordinationGeometries()
-        symbol_cn_mapping = all_coord_geoms.get_symbol_cn_mapping()
-
-        for structure in structs:
-            try:
-                lgf.setup_structure(structure=structure)
-                structure_environments = lgf.compute_structure_environments()
-                lse = (
-                    struct_envs.LightStructureEnvironments.from_structure_environments(
-                        strategy, structure_environments
-                    )
-                )
-
-                coord_envs_dict: dict[tuple[int, str], float] = {}
-
-                for env_list in lse.coordination_environments or []:
-                    for coord_env in env_list or []:
-                        ce_symbol = coord_env["ce_symbol"]
-                        cn_val = chem_env.get_cn_from_symbol(
-                            ce_symbol, symbol_cn_mapping
-                        )
-                        key = (cn_val, ce_symbol)
-                        coord_envs_dict[key] = coord_envs_dict.get(key, 0) + 1
-
-                for (cn_val, ce_symbol), env_count in coord_envs_dict.items():
-                    final_count = env_count
-                    if normalize:
-                        total = sum(coord_envs_dict.values())
-                        if total > 0:
-                            final_count = env_count / total
-
-                    chem_env_dict = dict(
-                        coord_num=cn_val, chem_env_symbol=ce_symbol, count=final_count
-                    )
-                    chem_env_data.append(chem_env_dict)
-
-            except (ImportError, RuntimeError, KeyError) as exc:
-                warnings.warn(
-                    f"ChemEnv analysis failed for structure: {exc}",
-                    UserWarning,
-                    stacklevel=2,
-                )
-                continue
-
-    except (ImportError, RuntimeError) as exc:
-        warnings.warn(f"ChemEnv setup failed: {exc}", UserWarning, stacklevel=2)
-
-    return _process_chem_env_data_sunburst(
-        chem_env_data=chem_env_data,
-        max_slices_cn=max_slices_cn,
-        max_slices_ce=max_slices_ce,
-        max_slices_mode=max_slices_mode,
-        show_counts=show_counts,
-    )
-
-
-def _chem_env_sunburst_crystal_nn(
-    structures: AnyStructure | Sequence[AnyStructure],
-    *,
-    max_slices_cn: int | None = None,
-    max_slices_ce: int | None = None,
-    max_slices_mode: Literal["other", "drop"] = "other",
-    show_counts: ShowCounts = "value",
-    normalize: bool = False,
-) -> go.Figure:
-    """CrystalNN-based implementation of chem_env_sunburst (faster but may be less
-    accurate, not benchmarked so unclear).
-    """
-    from pymatgen.analysis.local_env import CrystalNN
-
-    structs = normalize_structures(structures).values()
-
-    if show_counts not in get_args(ShowCounts):
-        raise ValueError(f"Invalid {show_counts=}")
-
-    chem_env_data: list[dict[str, Any]] = []
-    crystal_nn = CrystalNN()
-
-    try:
-        for structure in structs:
-            try:
-                # Get coordination info for each site
-                for site_idx in range(len(structure)):
-                    # Get coordination number
-                    nn_info = crystal_nn.get_nn_info(structure, site_idx)
-                    cn_val = len(nn_info)
-
-                    # Get best matching coordination environment using order parameters
-                    ce_symbol = chem_env.classify_local_env_with_order_params(
-                        structure,
-                        site_idx,
-                        cn_val,
-                    )
-
-                    # Add to data
-                    final_count = 1.0
-                    if normalize:
-                        final_count = 1.0 / len(structure)  # Normalize per structure
-
-                    chem_env_dict = dict(
-                        coord_num=cn_val, chem_env_symbol=ce_symbol, count=final_count
-                    )
-                    chem_env_data.append(chem_env_dict)
-
-            except (ImportError, RuntimeError, ValueError) as exc:
-                warnings.warn(
-                    f"CrystalNN analysis failed for structure: {exc}",
-                    UserWarning,
-                    stacklevel=2,
-                )
-                continue
-
-    except (ImportError, RuntimeError) as exc:
-        warnings.warn(f"CrystalNN setup failed: {exc}", UserWarning, stacklevel=2)
+    else:  # "chemenv" (legacy default) or custom ChemEnv settings dict
+        settings = {} if chem_env_settings == "chemenv" else chem_env_settings
+        chem_env_data = chem_env.collect_coord_envs_chemenv(
+            structs, chem_env_settings=settings, normalize=normalize
+        )
 
     return _process_chem_env_data_sunburst(
         chem_env_data=chem_env_data,

@@ -368,6 +368,15 @@ def test_chem_env_treemap_show_counts(
     assert "values" in fig.data[0]
     assert "labels" in fig.data[0]
 
+    # show_counts must control the cell text template (regression: it used to
+    # have no effect on cell text at all)
+    assert fig.data[0].texttemplate == {
+        "value": "%{label}: %{value:.2f}",
+        "percent": "%{label}: %{percentParent:.1%}",
+        "value+percent": "%{label}: %{value:.2f} (%{percentParent:.1%})",
+        False: "%{label}",
+    }.get(show_counts)
+
     # Specific test for show_counts=False: ensure CN labels don't contain counts
     if show_counts is False:
         labels = fig.data[0].labels
