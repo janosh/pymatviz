@@ -281,13 +281,12 @@ def phonon_bands(
                     # check for custom line styles for one or both modes
                     if {"acoustic", "optical"} <= set(line_kwargs):
                         # mode_type guaranteed to be "acoustic" or "optical"
-                        mode_styles = line_kwargs[mode_type]
+                        # (copy since pop below must not mutate the caller's dict)
+                        mode_styles = dict(line_kwargs[mode_type])
                         # use custom trace name if provided (needs to be popped before
                         # passed to line kwargs)
                         if mode_name := mode_styles.pop("name", None):
                             trace_name = mode_name
-                            # don't show default trace name in legend if got custom name
-                            existing_names.add(trace_name)
 
                         # Use mode-specific styles
                         line_defaults |= mode_styles
@@ -653,8 +652,8 @@ def phonon_bands_and_dos(
     )
     fig = make_subplots(rows=1, cols=2, **subplot_defaults | (subplot_kwargs or {}))
 
-    # plot band structure
-    bands_kwargs = bands_kwargs or {}
+    # plot band structure (copy bands_kwargs to avoid mutating the caller's dict)
+    bands_kwargs = dict(bands_kwargs or {})
     shaded_ys = bands_kwargs.pop("shaded_ys", None)
     # disable shaded_ys for bands, would cause double shading due to _shaded_range below
     bands_kwargs["shaded_ys"] = False

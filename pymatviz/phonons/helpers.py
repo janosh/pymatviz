@@ -14,7 +14,6 @@ from pymatgen.util.string import htmlify
 
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
     from typing import Any, Self, TypeAlias
 
     import plotly.graph_objects as go
@@ -77,49 +76,6 @@ def pretty_sym_point(symbol: str) -> str:
         .replace("DELTA", "Δ")
         .replace("SIGMA", "Σ")
     )
-
-
-def get_band_xaxis_ticks(
-    band_struct: PhononBands, branches: Sequence[str] | set[str] = ()
-) -> tuple[list[float], list[str]]:
-    """Get all ticks and labels for a band structure plot.
-
-    Returns:
-        tuple[list[float], list[str]]: Ticks and labels for the x-axis of a band
-            structure plot.
-        branches (Sequence[str]): Branches to plot. Defaults to empty tuple, meaning all
-            branches are plotted.
-    """
-    ticks_x_pos: list[float] = []
-    tick_labels: list[str] = []
-    prev_label = band_struct.qpoints[0].label
-    prev_branch = band_struct.branches[0]["name"]
-
-    for idx, point in enumerate(band_struct.qpoints):
-        if point.label is None:
-            continue
-
-        branch_names = (
-            branch["name"]
-            for branch in band_struct.branches
-            if branch["start_index"] <= idx <= branch["end_index"]
-        )
-        this_branch = next(branch_names, None)
-
-        if point.label != prev_label and prev_branch != this_branch:
-            tick_labels.pop()
-            ticks_x_pos.pop()
-            tick_labels += [f"{prev_label or ''}|{point.label}"]
-            ticks_x_pos += [band_struct.distance[idx]]
-        elif this_branch in branches:
-            tick_labels += [point.label]
-            ticks_x_pos += [band_struct.distance[idx]]
-
-        prev_label = point.label
-        prev_branch = this_branch
-
-    tick_labels = list(map(pretty_sym_point, tick_labels))
-    return ticks_x_pos, tick_labels
 
 
 def _shaded_range(

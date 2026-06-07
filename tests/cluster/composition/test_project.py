@@ -347,3 +347,11 @@ def test_project_vectors_small_dataset() -> None:
     assert not np.any(np.isnan(result_umap))
     assert not np.any(np.isinf(result_umap))
     assert np.std(result_umap) == pytest.approx(1.0, rel=0.5)
+
+
+def test_project_vectors_zero_variance_no_nan() -> None:
+    """Degenerate data must not yield NaN coords (regression: post-projection
+    standardization divided by a zero std).
+    """
+    projected, _ = project_vectors(np.array([[1.0, 2.0, 3.0]] * 4), n_components=2)
+    assert not np.isnan(projected).any()
