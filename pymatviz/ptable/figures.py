@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Callable, Collection, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Literal, TypeAlias, TypedDict, cast
+from typing import Any, Literal, TypeAlias, cast
 
 import numpy as np
 import pandas as pd
@@ -27,28 +27,9 @@ from pymatviz.utils.data import si_fmt
 from pymatviz.utils.plotting import luminance
 
 
-if TYPE_CHECKING:
-    from typing import Literal
-
-
 ColorScale: TypeAlias = (
     str | Sequence[str] | Sequence[tuple[float, str]] | Callable[[str, float, int], str]
 )
-
-
-class ColorbarConfig(TypedDict, total=False):
-    """Colorbar config. tickvals/ticktext/tickformat are special when log=True."""
-
-    title: str
-    title_side: Literal["top", "bottom", "right", "left"]
-    orientation: Literal["v", "h"]
-    len: float
-    thickness: float
-    x: float
-    y: float
-    tickvals: Sequence[float]
-    ticktext: Sequence[str]
-    tickformat: str
 
 
 def ptable_heatmap(
@@ -102,7 +83,7 @@ def ptable_heatmap(
             "fraction" and "percent" can be used to make the colors in different
             periodic table heatmap plots comparable.
         fmt (str | Callable[[float], str] | None): f-string format option for heat
-            labels. Defaults to ".1%" if heat_mode="percent" else ".3g".
+            labels. Defaults to ".1%" if heat_mode="percent" else ".1f".
         hover_props (list[str] | dict[str, str]): Elemental properties to display in the
             hover tooltip. Can be a list of property names to display only the values
             themselves or a dict mapping names to what they should display as. E.g.
@@ -127,7 +108,7 @@ def ptable_heatmap(
             allowed. Defaults to automatic font size based on plot size. Element symbols
             will be bold and 1.5x this size.
         bg_color (str): Plot background color. Defaults to "rgba(0, 0, 0, 0)".
-        colorbar (ColorbarConfig | dict[str, Any]): Plotly colorbar properties
+        colorbar (dict[str, Any]): Plotly colorbar properties
             documented at https://plotly.com/python/reference#heatmap-colorbar.
             Defaults to dict(orientation="h"). Commonly used keys are:
             - title: colorbar title
@@ -185,7 +166,7 @@ def ptable_heatmap(
             "tuples(float, str)"
         )
 
-    colorbar = colorbar or {}
+    colorbar = dict(colorbar or {})  # copy to avoid mutating caller's dict
     colorbar.setdefault("orientation", "h")
     # if values is a series with a name, use it as the colorbar title
     if isinstance(values, pd.Series) and values.name:
@@ -211,7 +192,9 @@ def ptable_heatmap(
         # for <br> in tile_text to work so all element symbols are vertically aligned
         label_map = dict.fromkeys([np.nan, None, "nan", "nan%"], "-")  # ty: ignore[invalid-assignment]
 
-    all_ints = all(isinstance(val, int) for val in values)
+    # count_elements returns float64, so detect integer-valued data by remainder.
+    # inf % 1 is NaN, so inf values correctly fail this check.
+    all_ints = bool((values.dropna() % 1 == 0).all())
     counts_total = values.sum()
     for symbol, period, group, name, *_ in df_ptable.itertuples():
         # build table from bottom up so that period 1 becomes top row
@@ -220,9 +203,11 @@ def ptable_heatmap(
 
         label = ""  # label (if not None) is placed below the element symbol
         if show_values:
+            # NaN flows through to label_map below (default maps "nan" to "-") and
+            # zero must not be dropped, so only skip absent elements here
             if symbol in exclude_elements:
                 label = "excl."
-            elif heat_val := heat_value_element_map.get(symbol):
+            elif (heat_val := heat_value_element_map.get(symbol)) is not None:
                 if isinstance(fmt, Callable):
                     format_func = cast("Callable[[float], str]", fmt)
                     label = format_func(heat_val)
@@ -249,16 +234,17 @@ def ptable_heatmap(
 
         hover_text = f"{name} ({symbol})"
 
-        if heat_val := heat_value_element_map.get(symbol):
-            if all_ints:
+        heat_val = heat_value_element_map.get(symbol)
+        if heat_val is not None and not pd.isna(heat_val):  # hide absent/NaN elements
+            if heat_mode == "value" and all_ints:
                 # if all values are integers, values are likely element
                 # counts, so makes sense to show count and percentage
                 percentage = heat_val / counts_total
-                hover_text += f"<br>Value: {heat_val} ({percentage:.2%})"
+                hover_text += f"<br>Value: {heat_val:.0f} ({percentage:.2%})"
             elif heat_mode == "value":
                 hover_text += f"<br>Value: {heat_val:.3g}"
-            elif heat_mode in ("fraction", "percent") and (orig_val := values[symbol]):
-                hover_text += f"<br>Percentage: {heat_val:.2%} ({orig_val:.3g})"
+            else:  # heat_mode in ("fraction", "percent")
+                hover_text += f"<br>Percentage: {heat_val:.2%} ({values[symbol]:.3g})"
 
         if hover_data is not None and symbol in hover_data:
             hover_text += f"<br>{hover_data[symbol]}"
@@ -301,13 +287,18 @@ def ptable_heatmap(
 
     non_nan_values = [val for val in heatmap_values.flat if not np.isnan(val)]
 
-    zmin = min(non_nan_values) if cscale_range[0] is None else cscale_range[0]
-    zmax = max(non_nan_values) if cscale_range[1] is None else cscale_range[1]
+    cscale_min, cscale_max = cscale_range
+    if log:  # heatmap_values are log10-transformed, so cscale_range must be too
+        if any(bound is not None and bound <= 0 for bound in cscale_range):
+            raise ValueError(f"{cscale_range=} bounds must be positive when log=True")
+        cscale_min = None if cscale_min is None else np.log10(cscale_min)
+        cscale_max = None if cscale_max is None else np.log10(cscale_max)
+
+    zmin = min(non_nan_values) if cscale_min is None else cscale_min
+    zmax = max(non_nan_values) if cscale_max is None else cscale_max
     car_multiplier = 100 if heat_mode == "percent" else 1
 
     import plotly.figure_factory as ff  # slow import
-
-    cbar_settings = _get_colorbar_settings(colorbar, font_size=font_size, scale=scale)
 
     fig = ff.create_annotated_heatmap(
         car_multiplier * heatmap_values,
@@ -322,13 +313,12 @@ def ptable_heatmap(
         zauto=False,  # Disable auto-scaling
         zmin=zmin * car_multiplier,
         zmax=zmax * car_multiplier,
-        colorbar=cbar_settings,
         **kwargs,
     )
 
     # Add border heatmap
     if border is not False:
-        border = border or {}
+        border = dict(border or {})  # copy to avoid mutating caller's dict
         border_color = border.pop("color", "darkgray")
         border_width = border.pop("width", 0.5)
 
@@ -573,6 +563,9 @@ def ptable_hists(
         bins_range = (min(all_values), max(all_values)) if all_values else (0, 1)
     else:
         bins_range = x_range
+    # user-provided x_range may contain None bounds, default those to (0, 1)
+    bin_start = 0 if bins_range[0] is None else bins_range[0]
+    bin_end = 1 if bins_range[1] is None else bins_range[1]
 
     # If row 7 is empty, pull all rows below it up by one.
     row_7_is_empty = _row_7_is_empty(data)
@@ -593,20 +586,15 @@ def ptable_hists(
 
         # Add element type background
         elem_type = df_ptable.loc[symbol].get("type", None)
-        if elem_type in elem_type_colors and color_elem_strategy in {
-            "background",
-            "both",
-        }:
-            rect_pos = dict(x0=0, y0=0, x1=1, y1=1, row=row + 1, col=col + 1)
-            fig.add_shape(
-                type="rect",
-                **rect_pos,
-                fillcolor=elem_type_colors[elem_type],
-                line_width=0,
-                layer="below",
-                **xy_ref,
-                opacity=0.05,
-            )
+        _add_elem_type_background(
+            fig,
+            elem_type,
+            elem_type_colors,
+            color_elem_strategy,
+            row=row,
+            col=col,
+            xy_ref=xy_ref,
+        )
 
         # Skip if no data for this element
         if data.get(symbol) is None:
@@ -626,13 +614,9 @@ def ptable_hists(
             else f"<b>{display_symbol}</b> ({symbol})"
         ) + "<br>Range: %{x}<br>Count: %{y}<extra></extra>"
 
-        start, end = 0, 1
-        if bins_range and len(bins_range) == 2:
-            start, end = bins_range[0] or 0, bins_range[1] or 1
-
         fig.add_histogram(
             x=values,
-            xbins=dict(start=start, end=end, size=(end - start) / bins),
+            xbins=dict(start=bin_start, end=bin_end, size=(bin_end - bin_start) / bins),
             marker_color=px.colors.sample_colorscale(colorscale, bins),
             showlegend=False,
             hovertemplate=hover_template,
@@ -661,46 +645,25 @@ def ptable_hists(
             **symbol_style,
         )
 
-        if annotations is not None:
-            if isinstance(annotations, Callable):
-                # Pass the element's values to the callable
-                annotation_func = cast(
-                    "Callable[[Sequence[int | float]], str | dict[str, Any] | list[dict[str, Any]]]",  # noqa: E501
-                    annotations,
-                )
-                annotation = annotation_func(values)
-            elif isinstance(annotations, dict):
-                # Use dictionary lookup
-                annotation = annotations.get(symbol, "")
-            else:
-                annotation = ""
-
-            if annotation and (anno_list := _normalize_annotation(annotation)):
-                for anno in anno_list:
-                    # Convert string annotations to dict format
-                    anno_dict = anno if isinstance(anno, dict) else {"text": anno}
-                    anno_defaults = {
-                        "font_size": (font_size or 8) * scale,
-                        "x": 0.95,
-                        "y": 0.95,
-                        "showarrow": False,
-                        "xanchor": "right",
-                        "yanchor": "top",
-                    }
-                    fig.add_annotation(**anno_defaults | xy_ref | anno_dict)
+        _add_custom_annotations(
+            fig,
+            annotations,
+            symbol=symbol,
+            elem_values=values,
+            xy_ref=xy_ref,
+            font_size=font_size,
+            scale=scale,
+        )
 
     if colorbar is not False:
         cbar_settings = _get_colorbar_settings(
             colorbar, font_size=font_size, scale=scale
         )
-        cmin, cmax = 0, 1
-        if bins_range and len(bins_range) == 2:
-            cmin, cmax = bins_range[0] or 0, bins_range[1] or 1
         _add_colorbar_trace(
             fig,
             colorscale,
-            cmin=cmin,
-            cmax=cmax,
+            cmin=bin_start,
+            cmax=bin_end,
             colorbar=cbar_settings,
             row=n_rows,
             col=n_cols,
@@ -759,6 +722,73 @@ def ptable_hists(
             fig.update_xaxes(tickformat=".4s")
 
     return fig
+
+
+def _add_elem_type_background(
+    fig: go.Figure,
+    elem_type: str | None,
+    elem_type_colors: dict[str, str],
+    color_elem_strategy: ColorElemTypeStrategy,
+    *,
+    row: int,
+    col: int,
+    xy_ref: dict[str, str],
+) -> None:
+    """Add a translucent element-type background rect to a ptable subplot tile."""
+    if elem_type in elem_type_colors and color_elem_strategy in {"background", "both"}:
+        fig.add_shape(
+            type="rect",
+            x0=0,
+            y0=0,
+            x1=1,
+            y1=1,
+            row=row + 1,
+            col=col + 1,
+            fillcolor=elem_type_colors[elem_type],
+            line_width=0,
+            layer="below",
+            **xy_ref,
+            opacity=0.05,
+        )
+
+
+def _add_custom_annotations(
+    fig: go.Figure,
+    annotations: dict[str, Any] | Callable[[Any], Any] | None,
+    *,
+    symbol: str,
+    elem_values: Any,
+    xy_ref: dict[str, str],
+    font_size: int | None,
+    scale: float,
+    extra_defaults: dict[str, Any] | None = None,
+) -> None:
+    """Add user-provided per-element annotations to a ptable subplot tile.
+
+    annotations can be a dict keyed by element symbol or a callable receiving
+    that element's values and returning str | dict | list thereof.
+    """
+    if annotations is None:
+        return
+    if isinstance(annotations, dict):
+        annotation = cast("dict[str, Any]", annotations).get(symbol, "")
+    elif callable(annotations):
+        annotation = annotations(elem_values)
+    else:
+        annotation = ""
+
+    anno_list = _normalize_annotation(annotation) if annotation else None
+    for anno in anno_list or ():
+        anno_dict = anno if isinstance(anno, dict) else {"text": anno}
+        anno_defaults: dict[str, Any] = {
+            "font_size": (font_size or 8) * scale,
+            "x": 0.95,
+            "y": 0.95,
+            "showarrow": False,
+            "xanchor": "right",
+            "yanchor": "top",
+        } | (extra_defaults or {})
+        fig.add_annotation(**anno_defaults | xy_ref | anno_dict)
 
 
 def _normalize_annotation(
@@ -1012,9 +1042,10 @@ def ptable_heatmap_splits(
         split_labels = list(data.columns)
         # Propagate column names to colorbar titles if not explicitly set
         if isinstance(colorbar, dict):
-            colorbar = colorbar.copy()  # ty: ignore[invalid-assignment]
-            if "title" not in colorbar:  # ty: ignore[unsupported-operator]
-                colorbar["title"] = split_labels[0] if len(split_labels) == 1 else None  # ty: ignore[invalid-assignment, possibly-missing-implicit-call]
+            # expand single colorbar config into one per split (DataFrame columns
+            # are independent data series, each warranting its own colorbar).
+            # A user-provided title overrides the column-label default.
+            colorbar = [dict(title=label) | colorbar for label in split_labels]
         elif isinstance(colorbar, Sequence):
             colorbar = list(colorbar)  # Convert to list to allow modification
             for idx, (cbar, label) in enumerate(
@@ -1149,11 +1180,11 @@ def ptable_heatmap_splits(
                 raise ValueError(
                     f"{orientation=} is only supported for n_splits=4, got {n_splits=}"
                 )
-            return [  # Split into 2x2 grid of squares
-                ([0, 0.5, 0.5, 0], [0, 0, 0.5, 0.5]),  # top-left
-                ([0.5, 1, 1, 0.5], [0, 0, 0.5, 0.5]),  # top-right
-                ([0, 0.5, 0.5, 0], [0.5, 0.5, 1, 1]),  # bottom-left
-                ([0.5, 1, 1, 0.5], [0.5, 0.5, 1, 1]),  # bottom-right
+            return [  # Split into 2x2 grid of squares (y=1 is the tile top)
+                ([0, 0.5, 0.5, 0], [0.5, 0.5, 1, 1]),  # top-left
+                ([0.5, 1, 1, 0.5], [0.5, 0.5, 1, 1]),  # top-right
+                ([0, 0.5, 0.5, 0], [0, 0, 0.5, 0.5]),  # bottom-left
+                ([0.5, 1, 1, 0.5], [0, 0, 0.5, 0.5]),  # bottom-right
             ]
 
         if orientation == "horizontal":
@@ -1470,37 +1501,18 @@ def ptable_heatmap_splits(
             hovertext=hover_text,
             **xy_ref,
         )
-        if annotations is not None:
-            if isinstance(annotations, Callable):
-                # Pass the element's values to the callable
-                annotation_func = cast(
-                    "Callable[[Sequence[float] | np.ndarray], str | dict[str, Any]]",
-                    annotations,
-                )
-                annotation = annotation_func(values)
-            elif isinstance(annotations, dict):
-                # Use dictionary lookup
-                annotation = annotations.get(symbol, "")
-            else:
-                annotation = ""
-
-            if annotation and (anno_list := _normalize_annotation(annotation)):
-                for anno in anno_list:
-                    # Convert string annotations to dict format
-                    anno_dict = anno if isinstance(anno, dict) else {"text": anno}
-                    anno_defaults = {
-                        "font_size": (font_size or 8) * scale,
-                        "x": 0.95,
-                        "y": 0.95,
-                        "showarrow": False,
-                        "xanchor": "right",
-                        "yanchor": "top",
-                        "font": dict(
-                            color=high_contrast_text_color,
-                            size=(font_size or 8) * scale,
-                        ),
-                    }
-                    fig.add_annotation(**anno_defaults | xy_ref | anno_dict)
+        _add_custom_annotations(
+            fig,
+            annotations,
+            symbol=symbol,
+            elem_values=values,
+            xy_ref=xy_ref,
+            font_size=font_size,
+            scale=scale,
+            extra_defaults=dict(
+                font=dict(color=high_contrast_text_color, size=(font_size or 8) * scale)
+            ),
+        )
 
     # Update layout
     fig.layout.showlegend = False
@@ -1530,29 +1542,7 @@ def ptable_heatmap_splits(
 
     # Add colorbar
     if colorbar is not False:
-        split_names = {
-            "diagonal": {
-                2: ["bottom-left", "top-right"],
-                3: ["bottom", "top-left", "top-right"],
-                4: ["bottom", "left", "right", "top"],
-            },
-            "horizontal": {
-                2: ["bottom", "top"],
-                3: ["bottom", "middle", "top"],
-                4: ["bottom", "lower-middle", "upper-middle", "top"],
-            },
-            "vertical": {
-                2: ["left", "right"],
-                3: ["left", "middle", "right"],
-                4: ["left", "left-middle", "right-middle", "right"],
-            },
-            "grid": {4: ["top-left", "top-right", "bottom-left", "bottom-right"]},
-        }[orientation][len(colorscales)]
-
-        # Calculate positions for vertical and horizontal colorbars
-        for split_idx, (cscale, split_name) in enumerate(
-            zip(colorscales, split_names, strict=True)
-        ):
+        for split_idx, cscale in enumerate(colorscales):
             if not use_multiple_cbar and split_idx > 0:
                 continue  # Skip if not using multiple colorbars and not first split
 
@@ -1564,33 +1554,11 @@ def ptable_heatmap_splits(
                 cbar,
                 split_idx=split_idx,
                 n_splits=n_splits if use_multiple_cbar else 1,
-                split_name=split_name if use_multiple_cbar else None,
+                split_name=split_labels[split_idx] if use_multiple_cbar else None,
                 font_size=font_size,
                 scale=scale,
             )
             _add_colorbar_trace(fig, cscale, cmin, cmax, cbar_settings)
-
-    # Apply SI suffixes to all colorbars
-    if colorbar is not False:
-        for idx, trace in enumerate(fig.data):
-            if hasattr(trace, "marker") and hasattr(trace.marker, "colorbar"):
-                # Get the appropriate colorbar settings for this split
-                split_idx = idx % n_splits
-                split_name = split_labels[split_idx] if split_labels else None
-                cbar = (
-                    colorbars[split_idx]
-                    if isinstance(colorbar, Sequence)
-                    else colorbars[0]
-                )
-                cbar_settings = _get_colorbar_settings(
-                    cbar,
-                    split_idx=split_idx,
-                    n_splits=n_splits,
-                    split_name=split_name,
-                    font_size=font_size,
-                    scale=scale,
-                )
-                trace.marker.colorbar = cbar_settings
 
     return fig
 
@@ -1813,20 +1781,15 @@ def ptable_scatter(
 
         # Add element type background
         elem_type = df_ptable.loc[symbol].get("type", None)
-        if elem_type in elem_type_colors and color_elem_strategy in {
-            "background",
-            "both",
-        }:
-            rect_pos = dict(x0=0, y0=0, x1=1, y1=1, row=row + 1, col=col + 1)
-            fig.add_shape(
-                type="rect",
-                **rect_pos,
-                fillcolor=elem_type_colors[elem_type],
-                line_width=0,
-                layer="below",
-                **xy_ref,
-                opacity=0.05,
-            )
+        _add_elem_type_background(
+            fig,
+            elem_type,
+            elem_type_colors,
+            color_elem_strategy,
+            row=row,
+            col=col,
+            xy_ref=xy_ref,
+        )
 
         symbol_data = data[symbol]
         # Add line plot if data exists for this element
@@ -1928,33 +1891,15 @@ def ptable_scatter(
             text=display_symbol, **symbol_defaults | xy_ref | (symbol_kwargs or {})
         )
 
-        # Add custom annotations if provided
-        if annotations is not None:
-            if isinstance(annotations, Callable):
-                # Pass the element's values to the callable
-                annotation_func = cast(
-                    "Callable[[Any], str | dict[str, Any] | list[dict[str, Any]]]",
-                    annotations,
-                )
-                annotation = annotation_func(symbol_data)
-            elif isinstance(annotations, dict):
-                annotation = annotations.get(symbol, "")
-            else:
-                annotation = ""
-
-            if annotation and (anno_list := _normalize_annotation(annotation)):
-                for anno in anno_list:
-                    # Convert string annotations to dict format
-                    anno_dict = anno if isinstance(anno, dict) else {"text": anno}
-                    anno_defaults = {
-                        "font_size": (font_size or 8) * scale,
-                        "x": 0.95,
-                        "y": 0.95,
-                        "showarrow": False,
-                        "xanchor": "right",
-                        "yanchor": "top",
-                    }
-                    fig.add_annotation(**anno_defaults | xy_ref | anno_dict)
+        _add_custom_annotations(
+            fig,
+            annotations,
+            symbol=symbol,
+            elem_values=symbol_data,
+            xy_ref=xy_ref,
+            font_size=font_size,
+            scale=scale,
+        )
 
     # Update layout
     fig.layout.showlegend = False

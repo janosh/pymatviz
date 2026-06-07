@@ -210,6 +210,15 @@ def test_ptable_heatmap_cscale_range_raises() -> None:
     ):
         pmv.ptable_heatmap(df_ptable[Key.density], cscale_range=cscale_range)  # ty: ignore[invalid-argument-type]
 
+    with pytest.raises(ValueError, match="must be positive when log=True"):
+        pmv.ptable_heatmap({"Fe": 10}, log=True, cscale_range=(-1, 50))
+
+    # bounds are log10-transformed when log=True (regression: linear bounds in
+    # log space inverted the colorscale)
+    fig = pmv.ptable_heatmap({"Fe": 10, "O": 100}, log=True, cscale_range=(5, 50))
+    trace = next(trc for trc in fig.data if getattr(trc, "zmin", None) is not None)
+    assert (trace.zmin, trace.zmax) == pytest.approx(np.log10([5, 50]))
+
 
 @pytest.mark.parametrize(
     "label_map",
@@ -627,3 +636,27 @@ def test_ptable_heatmap_value_formatting() -> None:
                 f"Mismatch for {elem} with {values=}, {heat_mode=}, {fmt=}: "
                 f"expected '{expected_label}', got '{found_labels.get(elem)}'"
             )
+
+
+def test_ptable_heatmap_value_edge_cases() -> None:
+    """Zero values get labels+hover, NaN hidden from hover, integer counts show
+    percentages, caller kwarg dicts not mutated (regressions).
+    """
+    border, colorbar = {"color": "blue", "width": 3}, {"len": 0.5}
+    fig = pmv.ptable_heatmap({"Fe": 0, "O": 3}, border=border, colorbar=colorbar)
+    assert any(">Fe</span><br>0" in anno.text for anno in fig.layout.annotations)
+    hover_texts = [text for row in fig.data[-1].text for text in row if text]
+    assert "Value: 0" in next(text for text in hover_texts if "Iron" in text)
+    assert not any("nan" in text for text in hover_texts)  # no NaN hover leakage
+    # pop()/setdefault() used to empty caller dicts, changing repeated calls
+    assert border == {"color": "blue", "width": 3}
+    assert colorbar == {"len": 0.5}
+
+    def fe_hover(values: dict[str, float]) -> str:
+        fig = pmv.ptable_heatmap(values)
+        texts = [text for row in fig.data[-1].text for text in row]
+        return next(text for text in texts if "Iron" in text)
+
+    # integer counts show percentage in hover, non-integer data plain values
+    assert fe_hover({"Fe": 2, "O": 3}) == "Iron (Fe)<br>Value: 2 (40.00%)"
+    assert fe_hover({"Fe": 2.5, "O": 3}) == "Iron (Fe)<br>Value: 2.5"
