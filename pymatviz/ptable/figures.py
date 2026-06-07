@@ -570,6 +570,10 @@ def ptable_hists(
     # If row 7 is empty, pull all rows below it up by one.
     row_7_is_empty = _row_7_is_empty(data)
 
+    # collect annotations/shapes and batch-assign after the loop (_extend_layout_items)
+    tile_annotations: list[dict[str, Any]] = []
+    tile_shapes: list[dict[str, Any]] = []
+
     # Create histograms for each element
     for symbol, period, group, *_ in df_ptable.itertuples():
         row, col = period - 1, group - 1  # row, col are 0-indexed
@@ -586,15 +590,10 @@ def ptable_hists(
 
         # Add element type background
         elem_type = df_ptable.loc[symbol].get("type", None)
-        _add_elem_type_background(
-            fig,
-            elem_type,
-            elem_type_colors,
-            color_elem_strategy,
-            row=row,
-            col=col,
-            xy_ref=xy_ref,
-        )
+        if bg_shape := _make_elem_type_background(
+            elem_type, elem_type_colors, color_elem_strategy, xy_ref=xy_ref
+        ):
+            tile_shapes.append(bg_shape)
 
         # Skip if no data for this element
         if data.get(symbol) is None:
@@ -638,15 +637,16 @@ def ptable_hists(
             "y": 1,
         } | (symbol_kwargs or {})
 
-        fig.add_annotation(
-            text=display_symbol,
-            **xy_ref,
-            showarrow=False,
-            **symbol_style,
+        tile_annotations.append(
+            dict(
+                text=display_symbol,
+                **xy_ref,
+                showarrow=False,
+                **symbol_style,
+            )
         )
 
-        _add_custom_annotations(
-            fig,
+        tile_annotations += _make_custom_annotations(
             annotations,
             symbol=symbol,
             elem_values=values,
@@ -654,6 +654,8 @@ def ptable_hists(
             font_size=font_size,
             scale=scale,
         )
+
+    _extend_layout_items(fig, annotations=tile_annotations, shapes=tile_shapes)
 
     if colorbar is not False:
         cbar_settings = _get_colorbar_settings(
@@ -724,36 +726,37 @@ def ptable_hists(
     return fig
 
 
-def _add_elem_type_background(
-    fig: go.Figure,
+def _make_elem_type_background(
     elem_type: str | None,
     elem_type_colors: dict[str, str],
     color_elem_strategy: ColorElemTypeStrategy,
     *,
-    row: int,
-    col: int,
     xy_ref: dict[str, str],
-) -> None:
-    """Add a translucent element-type background rect to a ptable subplot tile."""
+) -> dict[str, Any] | None:
+    """Build a translucent element-type background rect dict for a ptable subplot tile.
+
+    Returns a shape dict (or None) so callers can batch-assign via fig.layout.shapes
+    in one update (fig.add_shape() per tile is O(n^2) since plotly re-validates the
+    whole shapes array on each call). The xref/yref in xy_ref (domain refs) fully
+    determine placement, so no row/col is needed.
+    """
     if elem_type in elem_type_colors and color_elem_strategy in {"background", "both"}:
-        fig.add_shape(
+        return dict(
             type="rect",
             x0=0,
             y0=0,
             x1=1,
             y1=1,
-            row=row + 1,
-            col=col + 1,
             fillcolor=elem_type_colors[elem_type],
             line_width=0,
             layer="below",
             **xy_ref,
             opacity=0.05,
         )
+    return None
 
 
-def _add_custom_annotations(
-    fig: go.Figure,
+def _make_custom_annotations(
     annotations: dict[str, Any] | Callable[[Any], Any] | None,
     *,
     symbol: str,
@@ -762,14 +765,17 @@ def _add_custom_annotations(
     font_size: int | None,
     scale: float,
     extra_defaults: dict[str, Any] | None = None,
-) -> None:
-    """Add user-provided per-element annotations to a ptable subplot tile.
+) -> list[dict[str, Any]]:
+    """Build user-provided per-element annotation dicts for a ptable subplot tile.
 
     annotations can be a dict keyed by element symbol or a callable receiving
-    that element's values and returning str | dict | list thereof.
+    that element's values and returning str | dict | list thereof. Returns a list
+    of annotation dicts so callers can batch-assign them in a single
+    fig.layout.annotations update (adding one at a time via fig.add_annotation is
+    O(n^2) since plotly re-validates the whole array on each call).
     """
     if annotations is None:
-        return
+        return []
     if isinstance(annotations, dict):
         annotation = cast("dict[str, Any]", annotations).get(symbol, "")
     elif callable(annotations):
@@ -778,6 +784,7 @@ def _add_custom_annotations(
         annotation = ""
 
     anno_list = _normalize_annotation(annotation) if annotation else None
+    result: list[dict[str, Any]] = []
     for anno in anno_list or ():
         anno_dict = anno if isinstance(anno, dict) else {"text": anno}
         anno_defaults: dict[str, Any] = {
@@ -788,7 +795,8 @@ def _add_custom_annotations(
             "xanchor": "right",
             "yanchor": "top",
         } | (extra_defaults or {})
-        fig.add_annotation(**anno_defaults | xy_ref | anno_dict)
+        result.append(anno_defaults | xy_ref | anno_dict)
+    return result
 
 
 def _normalize_annotation(
@@ -812,6 +820,22 @@ def _normalize_annotation(
             return None
         return annotation
     return None
+
+
+def _extend_layout_items(
+    fig: go.Figure,
+    *,
+    annotations: list[dict[str, Any]] | None = None,
+    shapes: list[dict[str, Any]] | None = None,
+) -> None:
+    """Append annotations/shapes in one assignment each, preserving existing items.
+
+    Avoids the O(n^2) cost of calling fig.add_annotation()/fig.add_shape() per tile.
+    """
+    if annotations:
+        fig.layout.annotations = list(fig.layout.annotations) + annotations
+    if shapes:
+        fig.layout.shapes = list(fig.layout.shapes) + shapes
 
 
 def _add_colorbar_trace(
@@ -1233,6 +1257,9 @@ def ptable_heatmap_splits(
     # If row 7 is empty, pull all rows below it up by one.
     row_7_is_empty = _row_7_is_empty(data)
 
+    # collect annotations and batch-assign after the loop (_extend_layout_items)
+    tile_annotations: list[dict[str, Any]] = []
+
     # Process data and create shapes for each element
     for symbol, period, group, _name, *_ in df_ptable.itertuples():
         row, col = period - 1, group - 1  # row, col are 0-indexed
@@ -1421,12 +1448,14 @@ def ptable_heatmap_splits(
                 anno_font_color = "black" if section_luminance > 0.55 else "white"
                 anno_font_size = (font_size or 8) * scale
 
-                fig.add_annotation(
-                    text=anno_text,
-                    font=dict(color=anno_font_color, size=anno_font_size),
-                    showarrow=False,
-                    **pos_config,  # Contains x, y, xanchor, yanchor
-                    **xy_ref,
+                tile_annotations.append(
+                    dict(
+                        text=anno_text,
+                        font=dict(color=anno_font_color, size=anno_font_size),
+                        showarrow=False,
+                        **pos_config,  # Contains x, y, xanchor, yanchor
+                        **xy_ref,
+                    )
                 )
 
         if element_symbol_map is not None:
@@ -1444,12 +1473,14 @@ def ptable_heatmap_splits(
         font_defaults = dict(
             size=(font_size or 14) * scale, color=high_contrast_text_color
         )
-        fig.add_annotation(
-            text=display_symbol,
-            **symbol_defaults
-            | xy_ref
-            | symbol_kwargs
-            | dict(font=font_defaults | symbol_kwargs.get("font", {})),
+        tile_annotations.append(
+            dict(
+                text=display_symbol,
+                **symbol_defaults
+                | xy_ref
+                | symbol_kwargs
+                | dict(font=font_defaults | symbol_kwargs.get("font", {})),
+            )
         )
 
         # Add hover data
@@ -1492,17 +1523,18 @@ def ptable_heatmap_splits(
             if hover_data and symbol in hover_data:
                 hover_text += f"<br>{hover_data[symbol]}"
 
-        fig.add_annotation(
-            x=0.5,
-            y=0.5,
-            text=hover_text,
-            showarrow=False,
-            opacity=0,
-            hovertext=hover_text,
-            **xy_ref,
+        tile_annotations.append(
+            dict(
+                x=0.5,
+                y=0.5,
+                text=hover_text,
+                showarrow=False,
+                opacity=0,
+                hovertext=hover_text,
+                **xy_ref,
+            )
         )
-        _add_custom_annotations(
-            fig,
+        tile_annotations += _make_custom_annotations(
             annotations,
             symbol=symbol,
             elem_values=values,
@@ -1513,6 +1545,8 @@ def ptable_heatmap_splits(
                 font=dict(color=high_contrast_text_color, size=(font_size or 8) * scale)
             ),
         )
+
+    _extend_layout_items(fig, annotations=tile_annotations)
 
     # Update layout
     fig.layout.showlegend = False
@@ -1766,6 +1800,10 @@ def ptable_scatter(
             for idx, name in enumerate(sorted(line_names))
         }
 
+    # collect annotations/shapes and batch-assign after the loop (_extend_layout_items)
+    tile_annotations: list[dict[str, Any]] = []
+    tile_shapes: list[dict[str, Any]] = []
+
     for symbol, period, group, elem_name, *_ in df_ptable.itertuples():
         if symbol not in data:
             continue
@@ -1781,15 +1819,10 @@ def ptable_scatter(
 
         # Add element type background
         elem_type = df_ptable.loc[symbol].get("type", None)
-        _add_elem_type_background(
-            fig,
-            elem_type,
-            elem_type_colors,
-            color_elem_strategy,
-            row=row,
-            col=col,
-            xy_ref=xy_ref,
-        )
+        if bg_shape := _make_elem_type_background(
+            elem_type, elem_type_colors, color_elem_strategy, xy_ref=xy_ref
+        ):
+            tile_shapes.append(bg_shape)
 
         symbol_data = data[symbol]
         # Add line plot if data exists for this element
@@ -1874,25 +1907,22 @@ def ptable_scatter(
         else:
             display_symbol = symbol
 
+        font = dict(
+            color=elem_type_colors.get(elem_type, template_line_color)
+            if color_elem_strategy in {"symbol", "both"}
+            else template_line_color,
+            size=(font_size or 11) * scale,
+        )
         symbol_defaults = dict(
-            x=1,
-            y=1,
-            xanchor="right",
-            yanchor="top",
-            showarrow=False,
-            font=dict(
-                color=elem_type_colors.get(elem_type, template_line_color)
-                if color_elem_strategy in {"symbol", "both"}
-                else template_line_color,
-                size=(font_size or 11) * scale,
-            ),
+            x=1, y=1, xanchor="right", yanchor="top", showarrow=False, font=font
         )
-        fig.add_annotation(
-            text=display_symbol, **symbol_defaults | xy_ref | (symbol_kwargs or {})
+        tile_anno = dict(
+            text=display_symbol,
+            **symbol_defaults | xy_ref | (symbol_kwargs or {}),
         )
+        tile_annotations.append(tile_anno)
 
-        _add_custom_annotations(
-            fig,
+        tile_annotations += _make_custom_annotations(
             annotations,
             symbol=symbol,
             elem_values=symbol_data,
@@ -1900,6 +1930,8 @@ def ptable_scatter(
             font_size=font_size,
             scale=scale,
         )
+
+    _extend_layout_items(fig, annotations=tile_annotations, shapes=tile_shapes)
 
     # Update layout
     fig.layout.showlegend = False

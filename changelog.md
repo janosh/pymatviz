@@ -1,5 +1,26 @@
 # Changelog
 
+## [v0.18.0](https://github.com/janosh/pymatviz/compare/v0.17.6...v0.18.0)
+
+> 7 June 2026
+
+### 💥 Breaking Changes
+
+- Drop redundant `_plotly` suffix from plot functions lacking matplotlib counterparts by @janosh in https://github.com/janosh/pymatviz/pull/350
+- Fix 30+ bugs from whole-repo cold review, delete dead code, dedupe logic by @janosh in https://github.com/janosh/pymatviz/pull/352
+
+### 🎉 New Features
+
+- Migrate widget bundle to matterviz-anywidget npm package; add export/describe APIs by @janosh in https://github.com/janosh/pymatviz/pull/351
+
+### 🛠 Enhancements
+
+- Improve widget and plot data input handling by @janosh in https://github.com/janosh/pymatviz/pull/348
+
+### 🐛 Bug Fixes
+
+- Tighten data validation and simplify tests by @janosh in https://github.com/janosh/pymatviz/pull/349
+
 ## [v0.17.6](https://github.com/janosh/pymatviz/compare/v0.17.5...v0.17.6)
 
 > 2 May 2026
