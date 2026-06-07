@@ -142,6 +142,20 @@ def configure_assets(
     cls = MatterVizWidget
     cls._asset_cache.clear()
 
+    def _all_subclasses(klass: type) -> list[type]:
+        subclasses = klass.__subclasses__()
+        return subclasses + [
+            sub for direct in subclasses for sub in _all_subclasses(direct)
+        ]
+
+    # _set_class_assets stores assets on the concrete subclass whose instance
+    # triggered it, shadowing anything set here on MatterVizWidget. Clear those
+    # subclass attrs so stale bundles don't survive a reset or reconfigure.
+    for klass in _all_subclasses(cls):
+        for attr in ("_esm", "_css"):
+            if attr in klass.__dict__:
+                delattr(klass, attr)
+
     if not version and not esm_src:
         for attr in ("_esm", "_css"):
             if attr in cls.__dict__:
@@ -339,12 +353,26 @@ class MatterVizWidget(AnyWidget):
 
         ipython_display(self)
 
+    @classmethod
+    def _is_own_trait(cls, name: str) -> bool:
+        """Whether a MatterViz widget (sub)class itself declares this trait. Keeps
+        subclass traits that shadow DOMWidget machinery (e.g. TrajectoryWidget
+        .layout) in to_dict() while still excluding inherited DOMWidget traits.
+        """
+        for klass in cls.__mro__:
+            if klass is MatterVizWidget:
+                return False
+            if isinstance(vars(klass).get(name), tl.TraitType):
+                return True
+        return False
+
     def to_dict(self) -> dict[str, Any]:
         """Return all public synced traitlet values as a plain dict."""
         return {
             name: getattr(self, name)
             for name in self.traits(sync=True)
-            if not name.startswith("_") and name not in self._EXCLUDED_TRAITS
+            if not name.startswith("_")
+            and (name not in self._EXCLUDED_TRAITS or self._is_own_trait(name))
         }
 
     def to_img(
