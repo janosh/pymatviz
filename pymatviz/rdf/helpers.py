@@ -98,23 +98,23 @@ def calculate_rdf(
         lattice=struct.lattice.matrix,
     )
 
-    # Filter distances for the specific neighbor species and bin them
+    # Filter distances for the specific neighbor species and bin them. Only the
+    # true self-pair (dist ~ 0) is excluded; periodic images of the center atom
+    # are real neighbors and must be counted (regression: same-species RDFs used
+    # to drop all images of the center atom, zeroing e.g. monatomic RDFs).
     neighbor_set = set(neighbor_indices)
-    for idx1, idx2, _, dist in zip(*center_neighbors, strict=True):
-        if idx2 in neighbor_set and center_indices[idx1] != idx2 and 0 < dist < cutoff:
+    for _idx1, idx2, _, dist in zip(*center_neighbors, strict=True):
+        if idx2 in neighbor_set and 1e-10 < dist < cutoff:
             bin_index = min(int(dist / bin_size), n_bins - 1)
             rdf[bin_index] += 1
 
-    # Normalize RDF by the number of center-neighbor pairs and shell volumes
+    # Normalize RDF by the number of center-neighbor pairs and shell volumes.
+    # The neighbor density is N_neighbor/V with no -1 self-correction: in a
+    # periodic crystal each center sees images of every atom incl. itself and
+    # only the r=0 self-pair is excluded, so g(r) -> 1 at large r.
     n_center = len(center_indices)
     n_neighbor = len(neighbor_indices)
-    if center_species == neighbor_species:
-        normalization = n_center * (n_neighbor - 1)  # Exclude self-interactions
-    else:
-        normalization = n_center * n_neighbor
-
-    if normalization == 0:  # Avoid division by zero
-        return radii, np.zeros_like(radii)
+    normalization = n_center * n_neighbor
 
     # Spherical shell volume = surface area (4πr²) times thickness (bin_size)
     rdf /= normalization
