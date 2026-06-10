@@ -5,9 +5,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
-from pymatgen.optimization.neighbors import find_points_in_spheres
 
-from pymatviz.process_data import normalize_structures
+# compiled cython module, has no type stubs
+from pymatgen.optimization.neighbors import (  # ty: ignore[unresolved-import]
+    find_points_in_spheres,
+)
+
+from pymatviz.process_data import normalize_periodic_structures
 
 
 if TYPE_CHECKING:
@@ -49,7 +53,7 @@ def calculate_rdf(
         ValueError: If cutoff or n_bins are not positive values.
         TypeError: If structure is not a supported type.
     """
-    struct = next(iter(normalize_structures(structure).values()))
+    struct = next(iter(normalize_periodic_structures(structure).values()))
 
     # Handle empty structure
     if len(struct) == 0:

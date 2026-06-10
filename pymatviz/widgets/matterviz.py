@@ -49,7 +49,10 @@ def _cache_dir(version: str) -> str:
 def _in_marimo_runtime() -> bool:
     """Return whether execution is inside a live marimo runtime context."""
     try:
-        from marimo._runtime.context import ContextNotInitializedError, get_context
+        from marimo._runtime.context import (  # ty: ignore[unresolved-import]
+            ContextNotInitializedError,
+            get_context,
+        )
     except ImportError:
         return False
     try:
@@ -63,8 +66,8 @@ def _in_marimo_runtime() -> bool:
 def _marimo_esm_url(esm_text: str) -> str | None:
     """Resolve ESM text to a marimo virtual-file URL, or None if unsupported."""
     try:
-        from marimo._output.data.data import js
-        from marimo._runtime.context import get_context
+        from marimo._output.data.data import js  # ty: ignore[unresolved-import]
+        from marimo._runtime.context import get_context  # ty: ignore[unresolved-import]
     except ImportError:
         return None
 

@@ -1,7 +1,7 @@
 """Plotly-based classification metrics visualization."""
 
-from collections.abc import Callable
-from typing import Any, Literal, TypeAlias
+from collections.abc import Callable, Mapping
+from typing import Any, Literal, TypeAlias, cast
 
 import numpy as np
 import pandas as pd
@@ -13,7 +13,7 @@ from pymatviz.process_data import df_to_arrays
 from pymatviz.utils.plotting import PLOTLY_LINE_STYLES
 
 
-Predictions: TypeAlias = ArrayLike | str | dict[str, ArrayLike | dict[str, Any]]
+Predictions: TypeAlias = ArrayLike | str | Mapping[str, ArrayLike | dict[str, Any]]
 
 
 def _standardize_input(
@@ -45,7 +45,7 @@ def _standardize_input(
                 f"when passing a DataFrame, targets must be a column name, got "
                 f"{type(targets).__name__}"
             )
-        if isinstance(probs_positive, dict):
+        if isinstance(probs_positive, Mapping):
             raise TypeError(
                 f"when passing a DataFrame, probs_positive must be a column name "
                 f"(str) or array, not dict. Got {type(probs_positive).__name__}. "
@@ -53,11 +53,19 @@ def _standardize_input(
             )
         targets, probs_positive = df_to_arrays(df, targets, probs_positive)
 
+    curves_dict: dict[str, dict[str, Any]]
     if isinstance(probs_positive, dict):
+        # cast since ty can't infer dict[str, ...] from the isinstance check (ArrayLike
+        # protocol members intersected with dict degrade the key type to object)
+        probs_dict = cast("Mapping[str, ArrayLike | dict[str, Any]]", probs_positive)
         # Convert array values to dicts if needed
         curves_dict = {
-            name: (probs if isinstance(probs, dict) else {"probs_positive": probs})
-            for name, probs in probs_positive.items()
+            name: (
+                cast("dict[str, Any]", probs)
+                if isinstance(probs, dict)
+                else {"probs_positive": probs}
+            )
+            for name, probs in probs_dict.items()
         }
         for name, trace_dict in curves_dict.items():
             if "probs_positive" not in trace_dict:

@@ -14,6 +14,7 @@ from pymatviz.process_data import is_ase_atoms
 
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from typing import TypeAlias
 
 
@@ -44,7 +45,7 @@ def format_hkl(hkl: tuple[int, int, int], format_type: HklFormat) -> str:
 
 def xrd_pattern(  # noqa: D417
     patterns: PatternOrStruct
-    | dict[str, PatternOrStruct | tuple[PatternOrStruct, dict[str, Any]]],
+    | Mapping[str, PatternOrStruct | tuple[PatternOrStruct, dict[str, Any]]],
     *,
     peak_width: float = 0.5,
     annotate_peaks: float = 5,
@@ -104,7 +105,7 @@ def xrd_pattern(  # noqa: D417
         )
 
     # Convert single object to dict for uniform processing
-    if not isinstance(patterns, dict):
+    if isinstance(patterns, (DiffractionPattern, Structure)):
         patterns = {"XRD Pattern": patterns}
 
     # Determine show_angles based on number of patterns

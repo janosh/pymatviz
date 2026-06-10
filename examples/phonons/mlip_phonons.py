@@ -16,6 +16,7 @@ import os
 import warnings
 from collections import defaultdict
 from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
 import torch
@@ -68,7 +69,7 @@ results: dict[str, dict[str, Phonopy]] = defaultdict(
 q_pts: Sequence[np.ndarray] = ()
 connections: Sequence[bool] | None = None
 labels: Sequence[str] | None = None
-systems = (
+systems: tuple[dict[str, Any], ...] = (
     dict(name="Si", crystalstructure="diamond", a=5.431),
     dict(name="Al", crystalstructure="fcc", a=4.11),
 )
@@ -146,8 +147,12 @@ for cubic, bulk_kwargs, (model_name, calc) in itertools.product(
 os.makedirs(fig_dir := f"{module_dir}/tmp/phonons", exist_ok=True)
 
 for bulk_str, model_results in results.items():
-    bands = {key: ph.band_structure for key, ph in model_results.items()}
-    doses = {key: ph.total_dos for key, ph in model_results.items()}
+    bands, doses = {}, {}
+    for key, ph in model_results.items():
+        band_structure, ph_total_dos = ph.band_structure, ph.total_dos
+        if band_structure is None or ph_total_dos is None:
+            raise RuntimeError(f"missing band structure or total DOS for {key}")
+        bands[key], doses[key] = band_structure, ph_total_dos
     fig = pmv.phonon_bands_and_dos(bands, doses)
     fig.layout.title.update(text=f"{bulk_str}")
     fig.layout.margin.t = 60

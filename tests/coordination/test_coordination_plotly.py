@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from pymatgen.analysis.local_env import CrystalNN, NearNeighbors, VoronoiNN
@@ -74,13 +74,14 @@ def test_coordination_hist_custom_strategy(
     """Test coordination_hist with a custom strategy."""
     fig = coordination_hist(structures[1], strategy=strategy)
     assert len(fig.data) == 3
-    expected_max_x = {
+    strategy_to_max_x: dict[Any, int] = {
         3.0: 9,
         6: 47,
         VoronoiNN(): 19,
         CrystalNN: 10,
         CrystalNN(distance_cutoffs=(0.5, 2)): 10,
-    }[strategy]
+    }
+    expected_max_x = strategy_to_max_x[strategy]
     actual_max_x = max(max(trace.x) for trace in fig.data)
     assert actual_max_x == expected_max_x, f"{actual_max_x=} for {strategy=}"
 
@@ -144,7 +145,7 @@ def test_coordination_hist_bar_kwargs(structures: Sequence[Structure]) -> None:
 def test_coordination_hist_invalid_input() -> None:
     """Test coordination_hist with invalid input."""
     with pytest.raises(TypeError):
-        coordination_hist("invalid input")
+        coordination_hist("invalid input")  # ty: ignore[invalid-argument-type]
 
 
 def test_coordination_hist_empty() -> None:
@@ -231,7 +232,7 @@ def test_coordination_vs_cutoff_line_invalid_input() -> None:
     # Test empty sequences
     for inputs in ([], ()):
         with pytest.raises(ValueError, match="Cannot plot empty set of structures"):
-            coordination_vs_cutoff_line(inputs)
+            coordination_vs_cutoff_line(inputs)  # ty: ignore[invalid-argument-type]
 
     # Test invalid types
     for inputs in ("invalid input", None):
@@ -240,14 +241,14 @@ def test_coordination_vs_cutoff_line_invalid_input() -> None:
             match="Input must be a pymatgen Structure, IStructure, Molecule, "
             "IMolecule, ASE Atoms, or PhonopyAtoms object",
         ):
-            coordination_vs_cutoff_line(inputs)
+            coordination_vs_cutoff_line(inputs)  # ty: ignore[invalid-argument-type]
 
 
 def test_coordination_vs_cutoff_line_invalid_strategy() -> None:
     """Test coordination_vs_cutoff_line with invalid strategy."""
     structure = Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]])
     with pytest.raises(TypeError, match="Invalid strategy="):
-        coordination_vs_cutoff_line(structure, strategy="invalid")
+        coordination_vs_cutoff_line(structure, strategy="invalid")  # ty: ignore[invalid-argument-type]
 
 
 def test_coordination_hist_hover_text_formatting(

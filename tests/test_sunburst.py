@@ -252,7 +252,7 @@ def test_chem_sys_sunburst_input_types(structures: list[Structure]) -> None:
 
     # Test with invalid input type
     with pytest.raises(TypeError, match="Expected str, Composition or Structure"):
-        pmv.chem_sys_sunburst([1])
+        pmv.chem_sys_sunburst([1])  # ty: ignore[invalid-argument-type]
 
 
 def test_chem_sys_sunburst_high_arity() -> None:

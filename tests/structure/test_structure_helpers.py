@@ -40,7 +40,7 @@ from pymatviz.structure.helpers import (
     get_struct_prop,
     get_subplot_title,
 )
-from pymatviz.typing import RgbColorType, Xyz
+from pymatviz.typing import AnyStructure, RgbColorType, Xyz
 
 
 @pytest.fixture
@@ -340,7 +340,7 @@ def test_draw_site(
 def test_get_subplot_title(
     structures: list[Structure],
     struct_key: Any,
-    subplot_title: Callable[[Structure, Hashable], str | dict[str, Any]] | None,
+    subplot_title: Callable[[AnyStructure, Hashable], str | dict[str, Any]] | None,
     expected_text: str,
 ) -> None:
     structure = structures[0]
@@ -391,11 +391,11 @@ def test_draw_vector(
 ) -> None:
     """Test vector drawing with various settings."""
     fig = go.Figure()
-    start, vector = np.array(start), np.array(vector)
+    start_arr, vector_arr = np.array(start), np.array(vector)
 
     # Draw vector and check trace count
     initial_trace_count = len(fig.data)
-    draw_vector(fig, start, vector, is_3d=is_3d, arrow_kwargs=arrow_kwargs)
+    draw_vector(fig, start_arr, vector_arr, is_3d=is_3d, arrow_kwargs=arrow_kwargs)
     assert len(fig.data) - initial_trace_count == expected_traces
 
     # Check trace properties based on dimensionality
@@ -418,7 +418,7 @@ def test_draw_vector(
 
     # Check scaling
     scale = arrow_kwargs.get("scale", 1.0)
-    end_point = start + vector * scale
+    end_point = start_arr + vector_arr * scale
     if is_3d:
         assert_allclose(fig.data[-2].x[1], end_point[0])
         assert_allclose(fig.data[-2].y[1], end_point[1])
@@ -923,6 +923,7 @@ def test_draw_bonds_advanced(
 
     elif test_case == "rotation_with_image":
         # Check bonds are rotated and only go to visible image atoms
+        assert rotation_matrix is not None
         rotated_coords = tuple(np.dot(np.array(image_coords), rotation_matrix))
         for trace in fig.data:
             if max(trace.x) > 3.0 or max(trace.y) > 3.0:

@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Hashable
     from typing import Any
 
-    from pymatgen.core import PeriodicSite, Structure
+    from pymatgen.core import IMolecule, IStructure, PeriodicSite, Structure
 
 
 class CnSplitMode(LabelEnum):
@@ -54,7 +54,7 @@ def create_hover_text(
 
 def normalize_get_neighbors(
     strategy: float | NearNeighbors | type[NearNeighbors],
-) -> Callable[[PeriodicSite, Structure], list[dict[str, Any]]]:
+) -> Callable[[PeriodicSite, Any], list[Any]]:
     """Normalize get_neighbors function."""
     # Prepare the neighbor-finding strategy
     if isinstance(strategy, int | float):
@@ -77,16 +77,16 @@ def normalize_get_neighbors(
 
 
 def calculate_average_cn(
-    structure: Structure,
+    structure: IStructure | IMolecule,
     element: str,
-    get_neighbors: Callable[[PeriodicSite, Structure], list[dict[str, Any]]],
+    get_neighbors: Callable[[PeriodicSite, Any], list[Any]],
 ) -> float:
     """Calculate the average coordination number for a given element in a structure.
 
     Args:
-        structure (Structure): A pymatgen Structure object.
+        structure (IStructure | IMolecule): A pymatgen structure-like object.
         element (str): Element symbol to calculate average CN for.
-        get_neighbors (Callable[[PeriodicSite, Structure], list[dict[str, Any]]]):
+        get_neighbors (Callable[[PeriodicSite, Any], list[Any]]):
             Function to get neighbors for a site.
 
     Returns:

@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 import json
 from glob import glob
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, TypedDict, cast
 
 import numpy as np
 import pandas as pd
@@ -13,7 +13,7 @@ import pytest
 from monty.io import zopen
 from monty.json import MontyDecoder
 from plotly.subplots import make_subplots
-from pymatgen.core import Lattice, Structure
+from pymatgen.core import IStructure, Lattice, Structure
 from pymatgen.io.ase import AseAtomsAdaptor
 
 from pymatviz.utils.testing import TEST_FILES, load_phonopy_nacl
@@ -77,7 +77,10 @@ si2_ru2_pr2_struct = Structure(
     ],
 )
 SI_STRUCTS = (SI2_STRUCT, si2_ru2_pr2_struct)
-SI_ATOMS = tuple(map(AseAtomsAdaptor.get_atoms, SI_STRUCTS))
+# cast since AseAtomsAdaptor.get_atoms returns MSONAtoms | pymatgen.io.ase.Atoms
+SI_ATOMS = cast(
+    "tuple[ase.Atoms, ase.Atoms]", tuple(map(AseAtomsAdaptor.get_atoms, SI_STRUCTS))
+)
 
 
 @pytest.fixture
@@ -88,7 +91,8 @@ def structures() -> tuple[Structure, Structure]:
 
 @pytest.fixture
 def ase_atoms() -> tuple[ase.Atoms, ase.Atoms]:
-    return tuple(copy.copy(atoms) for atoms in SI_ATOMS)
+    atoms1, atoms2 = SI_ATOMS
+    return copy.copy(atoms1), copy.copy(atoms2)
 
 
 @pytest.fixture
@@ -135,7 +139,7 @@ def glass_formulas() -> list[str]:
 @pytest.fixture
 def df_float() -> pd.DataFrame:
     np_rng = np.random.default_rng(seed=0)
-    return pd.DataFrame(np_rng.random(size=(30, 5)), columns=[*"ABCDE"])
+    return pd.DataFrame(np_rng.random(size=(30, 5)), columns=pd.Index([*"ABCDE"]))
 
 
 @pytest.fixture
@@ -153,7 +157,7 @@ def phonopy_nacl() -> Phonopy:
 
 
 @pytest.fixture
-def fe3co4_disordered() -> Structure:
+def fe3co4_disordered() -> IStructure:
     """Disordered Fe3C-O2 structure without site properties. This structure has
     disordered sites with Fe:C ratio of 3:1.
     """

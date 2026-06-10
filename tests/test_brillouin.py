@@ -9,6 +9,7 @@ import pytest
 from pymatgen.core import Structure
 
 from pymatviz.brillouin import brillouin_zone_3d
+from pymatviz.process_data import is_ase_atoms
 from pymatviz.utils.testing import TEST_FILES
 from tests.conftest import SI_ATOMS, SI_STRUCTS
 
@@ -249,6 +250,7 @@ def test_brillouin_zone_3d_subplot_grid(structures: list[Structure]) -> None:
 
     # Test custom subplot titles
     def subplot_title(struct: AnyStructure, key: Hashable) -> str:
+        assert not is_ase_atoms(struct)  # narrow out ase Atoms for ty
         formula = struct.formula
         return f"Custom {key} - {formula}"
 

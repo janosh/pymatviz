@@ -18,22 +18,26 @@ import plotly
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from pymatviz.process_data import normalize_structures
+from pymatviz.process_data import normalize_periodic_structures
 from pymatviz.rdf.helpers import calculate_rdf
 from pymatviz.utils.plotting import PLOTLY_LINE_STYLES
 
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Mapping, Sequence
     from typing import Any
 
     import numpy as np
+    import pandas as pd
 
     from pymatviz.typing import AnyStructure
 
 
 def element_pair_rdfs(
-    structures: AnyStructure | Sequence[AnyStructure] | dict[str, AnyStructure],
+    structures: AnyStructure
+    | Sequence[AnyStructure]
+    | Mapping[str, AnyStructure]
+    | pd.Series,
     cutoff: float | None = None,
     n_bins: int = 75,
     bin_size: float | None = None,
@@ -84,7 +88,7 @@ def element_pair_rdfs(
             specified.
         TypeError: If input structures are not pymatgen Structures or ASE Atoms.
     """
-    struct_dict = normalize_structures(structures)
+    struct_dict = normalize_periodic_structures(structures)
 
     for key, struct in struct_dict.items():
         if len(struct) == 0:
@@ -210,7 +214,10 @@ def element_pair_rdfs(
 
 
 def full_rdf(
-    structures: AnyStructure | Sequence[AnyStructure] | dict[str, AnyStructure],
+    structures: AnyStructure
+    | Sequence[AnyStructure]
+    | Mapping[str, AnyStructure]
+    | pd.Series,
     cutoff: float = 15,
     n_bins: int = 75,
     bin_size: float | None = None,
@@ -246,7 +253,7 @@ def full_rdf(
         ValueError: If no structures are provided, if structures have no sites,
             or if both n_bins and bin_size are specified.
     """
-    struct_dict = normalize_structures(structures)
+    struct_dict = normalize_periodic_structures(structures)
 
     for key, struct in struct_dict.items():
         if len(struct) == 0:

@@ -1,11 +1,12 @@
 """Sunburst plot of crystal systems."""
 
 from collections.abc import Sequence
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from pymatgen.core import Structure
 
 import pymatviz as pmv
 from pymatviz.enums import Key
@@ -17,7 +18,7 @@ from pymatviz.typing import ShowCounts
 
 
 def spacegroup_sunburst(
-    data: Sequence[int | str] | pd.Series,
+    data: Sequence[int | str | Structure] | pd.Series,
     *,
     show_counts: ShowCounts = "value",
     max_slices: int | None = None,
@@ -59,8 +60,9 @@ def spacegroup_sunburst(
         from moyopy import MoyoDataset
         from moyopy.interface import MoyoAdapter
 
+        structs = cast("Sequence[Structure]", data)  # narrowed by qualname check above
         series = pd.Series(
-            MoyoDataset(MoyoAdapter.from_py_obj(struct)).number for struct in data
+            MoyoDataset(MoyoAdapter.from_py_obj(struct)).number for struct in structs
         )
     else:
         series = pd.Series(data)

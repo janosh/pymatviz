@@ -104,7 +104,7 @@ def resolve_nn_obj(
     from pymatgen.analysis.local_env import CrystalNN, NearNeighbors
 
     struct_show_bonds = (
-        show_bonds.get(struct_key, False)
+        show_bonds.get(struct_key, False)  # ty: ignore[no-matching-overload]
         if isinstance(show_bonds, dict)
         else show_bonds
     )
@@ -138,7 +138,7 @@ def _is_3d_vector(value: Any) -> bool:
 
 def _get_site_vector(
     site: PeriodicSite,
-    struct: AnyStructure,
+    struct: IStructure | IMolecule,
     site_idx: int,
     vector_prop: str,
 ) -> np.ndarray | None:
@@ -238,7 +238,7 @@ def get_site_symbol(site: PeriodicSite) -> str:
     if isinstance(species, Composition):
         el_amt_dict = species.get_el_amt_dict()
         if el_amt_dict:
-            return max(el_amt_dict, key=el_amt_dict.get)
+            return max(el_amt_dict, key=el_amt_dict.__getitem__)
         if species.elements:
             return species.elements[0].symbol
         return "X"
@@ -430,11 +430,17 @@ def get_subplot_title(
             )
 
     if not title_dict.get("text"):
-        if isinstance(struct_key, int):
+        if isinstance(struct_key, int) and isinstance(struct_i, IStructure):
             from moyopy import MoyoDataset
             from moyopy.interface import MoyoAdapter
 
-            spg_num = MoyoDataset(MoyoAdapter.from_py_obj(struct_i)).number
+            # moyopy only accepts mutable Structure objects, not IStructure
+            struct_for_spg = (
+                struct_i
+                if isinstance(struct_i, Structure)
+                else Structure.from_sites(list(struct_i))
+            )
+            spg_num = MoyoDataset(MoyoAdapter.from_py_obj(struct_for_spg)).number
             title_dict["text"] = f"{idx}. {struct_i.formula} (spg={spg_num})"
         else:  # For str or any other Hashable type, convert to string
             title_dict["text"] = str(struct_key)
@@ -445,7 +451,7 @@ def get_subplot_title(
 def get_site_hover_text(
     site: PeriodicSite,
     hover_text: SiteCoords | Callable[[PeriodicSite], str],
-    majority_species: Species | Element,
+    majority_species: Species | Element | Composition,
     float_fmt: str | Callable[[float], str] = ".4",
 ) -> str:
     """Generate hover text for a site based on the hover template.
@@ -454,7 +460,8 @@ def get_site_hover_text(
         site (PeriodicSite): The periodic site.
         hover_text (SiteCoords | Callable[[PeriodicSite], str]): The hover text template
             or a custom callable.
-        majority_species (Species | Element): The majority species at the site.
+        majority_species (Species | Element | Composition): The majority species at
+            the site.
         float_fmt (str | Callable[[float], str]): Float formatting for coordinates. Can
             be an f-string format like ".4" (default) or a callable that takes a float
             and returns a string.
@@ -520,9 +527,7 @@ def normalize_elem_color(raw_color_from_map: ColorType) -> str:
         and len(raw_color_from_map) == 3
         and all(isinstance(c, (float, int)) for c in raw_color_from_map)
     ):
-        red, green, blue = cast(
-            "tuple[int | float, int | float, int | float]", raw_color_from_map
-        )
+        red, green, blue = raw_color_from_map
         rgb = [
             int(channel * 255)
             if isinstance(channel, float) and 0 <= channel <= 1
@@ -620,7 +625,9 @@ def draw_site(
 
     # Handle ordered sites (single species)
     majority_species = (
-        max(species, key=species.get) if isinstance(species, Composition) else species
+        max(species, key=species.__getitem__)
+        if isinstance(species, Composition)
+        else species
     )
     if not isinstance(majority_species, Species):
         majority_species = Species(str(majority_species))
@@ -676,7 +683,9 @@ def draw_site(
 
 
 def get_disordered_site_legend_name(
-    sorted_species: list[tuple[Species | Element, float]], *, is_image: bool = False
+    sorted_species: Sequence[tuple[Species | Element, float]],
+    *,
+    is_image: bool = False,
 ) -> str:
     """Create a legend name for a disordered site showing all elements with occupancies.
 
@@ -1280,7 +1289,7 @@ def draw_vector(
 
 def draw_cell(
     fig: go.Figure,
-    structure: Structure | IStructure | IMolecule,
+    structure: Structure | IStructure,
     cell_kwargs: dict[str, Any],
     *,
     is_3d: bool = True,
@@ -1492,7 +1501,7 @@ def get_first_matching_site_prop(
 
 def draw_bonds(
     fig: go.Figure,
-    structure: Structure | IStructure | IMolecule,
+    structure: Structure,
     nn: NearNeighbors,
     *,
     is_3d: bool = True,
@@ -1671,12 +1680,12 @@ def draw_bonds(
 
 
 def _standardize_struct(
-    struct_i: Structure | IStructure | IMolecule, *, standardize_struct: bool | None
-) -> Structure | IStructure | IMolecule:
+    struct_i: Structure | IStructure, *, standardize_struct: bool | None
+) -> Structure | IStructure:
     """Standardize the structure if needed."""
     if standardize_struct is None:
         standardize_struct = any(any(site.frac_coords < 0) for site in struct_i)
-    if standardize_struct and isinstance(struct_i, (Structure, IStructure)):
+    if standardize_struct:
         try:
             spg_analyzer = SpacegroupAnalyzer(struct_i)
             return spg_analyzer.get_conventional_standard_structure()
@@ -1686,7 +1695,7 @@ def _standardize_struct(
 
 
 def _prep_augmented_structure_for_bonding(
-    struct_i: Structure | IStructure | IMolecule,
+    struct_i: Structure | IStructure,
     *,
     show_image_sites: bool | dict[str, Any],
     cell_boundary_tol: float = 0,
