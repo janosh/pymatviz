@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from collections import OrderedDict
 from typing import TYPE_CHECKING, Literal
 
 import plotly.graph_objects as go
@@ -33,6 +34,9 @@ BI2_ZR2_O7_STRUCT = Structure.from_file(
     f"{TEST_FILES}/xrd/Bi2Zr2O7-Fm3m-experimental-sqs.cif"
 )
 BI2_ZR2_O7_XRD = XRDCalculator().get_pattern(BI2_ZR2_O7_STRUCT)
+ORDERED_XRD_INPUT = OrderedDict(
+    [("Structure", BI2_ZR2_O7_STRUCT), ("Pattern", MOCK_DIFFRACTION_PATTERN)]
+)
 
 
 @pytest.mark.parametrize(
@@ -42,6 +46,7 @@ BI2_ZR2_O7_XRD = XRDCalculator().get_pattern(BI2_ZR2_O7_STRUCT)
         (BI2_ZR2_O7_XRD, 1),
         (BI2_ZR2_O7_STRUCT, 1),
         ({"Structure": BI2_ZR2_O7_STRUCT, "Pattern": MOCK_DIFFRACTION_PATTERN}, 2),
+        (ORDERED_XRD_INPUT, 2),
     ],
 )
 def test_xrd_pattern_input_types(input_data: Any, expected_traces: int) -> None:

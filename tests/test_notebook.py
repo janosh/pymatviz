@@ -65,8 +65,8 @@ def test_notebook_mode_toggle(enable: bool) -> None:
     assert hasattr(Structure, "_repr_mimebundle_") == enable
 
     if enable:
-        assert callable(Structure._ipython_display_)
-        assert callable(Structure._repr_mimebundle_)
+        assert callable(Structure._ipython_display_)  # ty: ignore[unresolved-attribute]
+        assert callable(Structure._repr_mimebundle_)  # ty: ignore[unresolved-attribute]
 
     # Check optional classes
     for module_name, class_name in [
@@ -177,11 +177,11 @@ def test_fallback_without_pymatviz(
 
     pmv.notebook_mode(on=True)
     try:
-        structures[0]._ipython_display_()
+        structures[0]._ipython_display_()  # ty: ignore[unresolved-attribute]
         assert len(published_data) == 1
         assert "text/plain" in published_data[0]
 
-        mime = structures[0]._repr_mimebundle_()
+        mime = structures[0]._repr_mimebundle_()  # ty: ignore[unresolved-attribute]
         assert "text/plain" in mime
     finally:
         pmv.notebook_mode(on=False)
@@ -236,7 +236,7 @@ def test_phonopy_dos_integration(monkeypatch: pytest.MonkeyPatch) -> None:
         from phonopy.phonon.dos import TotalDos
 
         assert hasattr(TotalDos, "_ipython_display_")
-        phonopy_nacl.total_dos._ipython_display_()
+        phonopy_nacl.total_dos._ipython_display_()  # ty: ignore[unresolved-attribute]
         assert len(published_data) == 1
         assert "text/plain" in published_data[0]
     finally:

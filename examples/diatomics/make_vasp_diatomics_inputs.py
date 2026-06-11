@@ -18,7 +18,7 @@ warnings.filterwarnings("ignore", message="No Pauling electronegativity for")
 
 
 def create_diatomic_inputs(
-    distances: Sequence[float] = (1, 10, 40),
+    distances: Sequence[float] | np.ndarray = (1, 10, 40),
     box_size: Xyz = (10, 10, 20),
     elements: Sequence[str] | set[str] = (),
     base_dir: str = "diatomic-calcs",
@@ -43,7 +43,7 @@ def create_diatomic_inputs(
         and isinstance(distances[-1], int)
     ):
         min_dist, max_dist, n_points = distances
-        distances = np.logspace(np.log10(min_dist), np.log10(max_dist), n_points)
+        distances = np.logspace(np.log10(min_dist), np.log10(max_dist), int(n_points))
     a, b, c = box_size
     box = Lattice.orthorhombic(a, b, c)
 
@@ -83,7 +83,7 @@ def create_diatomic_inputs(
 
                 # Generate VASP input files
                 vasp_input_set = MPStaticSet(
-                    dimer,
+                    dimer,  # ty: ignore[invalid-argument-type]
                     user_kpoints_settings={},  # sample a single k-point at Gamma
                     # disable symmetry since spglib in VASP sometimes detects false
                     # symmetries in dimers and fails (used to be Kpoints() before {})

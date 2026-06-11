@@ -391,7 +391,7 @@ def test_calculate_rdf_with_no_atoms_of_requested_species(
 )
 def test_calculate_rdf_input_validation(
     test_input: dict[str, str | float],
-    expected_err_cls: type | tuple[type, ...],
+    expected_err_cls: type[Exception] | tuple[type[Exception], ...],
     error_msg: str | None,
 ) -> None:
     """Test input validation in calculate_rdf function."""

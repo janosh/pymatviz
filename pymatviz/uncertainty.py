@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 def _load_regression_data(
     y_true: ArrayLike | str,
     y_pred: ArrayLike | str,
-    y_std: ArrayLike | dict[str, ArrayLike] | str | Sequence[str],
+    y_std: ArrayLike | Mapping[str, ArrayLike] | str | Sequence[str],
     df: pd.DataFrame | None,
 ) -> tuple[np.ndarray, np.ndarray, Any]:
     """Resolve y_true/y_pred/y_std into arrays, pulling columns from df when given."""
@@ -42,7 +42,7 @@ def _load_regression_data(
 def qq_gaussian(
     y_true: ArrayLike | str,
     y_pred: ArrayLike | str,
-    y_std: ArrayLike | dict[str, ArrayLike] | str | Sequence[str],
+    y_std: ArrayLike | Mapping[str, ArrayLike] | str | Sequence[str],
     *,
     df: pd.DataFrame | None = None,
     fig: go.Figure | None = None,
@@ -64,7 +64,7 @@ def qq_gaussian(
     y_true, y_pred, y_std = _load_regression_data(y_true, y_pred, y_std, df)
 
     fig = fig or go.Figure()
-    if not isinstance(y_std, dict):
+    if not isinstance(y_std, Mapping):
         y_std = {"std": y_std}
 
     # Calculate Q-Q data
@@ -132,7 +132,7 @@ def qq_gaussian(
 def error_decay_with_uncert(
     y_true: ArrayLike | str,
     y_pred: ArrayLike | str,
-    y_std: ArrayLike | dict[str, ArrayLike] | str | Sequence[str],
+    y_std: ArrayLike | Mapping[str, ArrayLike] | str | Sequence[str],
     *,
     df: pd.DataFrame | None = None,
     n_rand: int = 100,
@@ -156,7 +156,7 @@ def error_decay_with_uncert(
     y_true, y_pred, y_std = _load_regression_data(y_true, y_pred, y_std, df)
 
     fig = fig or go.Figure()
-    if not isinstance(y_std, dict):
+    if not isinstance(y_std, Mapping):
         y_std = {"std": y_std}
 
     # Calculate error decay curves

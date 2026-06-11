@@ -29,11 +29,11 @@ def _get_axis_labels(
     """Extract axis labels from data or column names."""
     if df is not None:
         # x, y are column names (str) when df is provided
-        xlabel: str = getattr(df[x], "name", x)
-        ylabel: str = getattr(df[y], "name", y)
+        xlabel: str = str(getattr(df[x], "name", x))
+        ylabel: str = str(getattr(df[y], "name", y))
     else:
-        xlabel = getattr(x, "name", x if isinstance(x, str) else "Actual")
-        ylabel = getattr(y, "name", y if isinstance(y, str) else "Predicted")
+        xlabel = str(getattr(x, "name", x if isinstance(x, str) else "Actual"))
+        ylabel = str(getattr(y, "name", y if isinstance(y, str) else "Predicted"))
     return xlabel, ylabel
 
 
@@ -469,10 +469,13 @@ def density_hexbin(
         raise TypeError(f"stats must be bool or dict, got {type(stats)} instead.")
 
     xs, ys = df_to_arrays(df, x, y)
-    xlabel, ylabel = _get_axis_labels(x, y, df)
+    auto_xlabel, auto_ylabel = _get_axis_labels(x, y, df)
+    xlabel = xlabel or auto_xlabel
+    ylabel = ylabel or auto_ylabel
 
     # Use numpy's histogram2d for initial binning, then convert to hex coordinates
-    hist, x_edges, y_edges = np.histogram2d(xs, ys, bins=gridsize, weights=weights)
+    weights_arr = None if weights is None else np.asarray(weights)
+    hist, x_edges, y_edges = np.histogram2d(xs, ys, bins=gridsize, weights=weights_arr)
 
     # Create hexagonal grid from rectangular bins
     x_centers = (x_edges[:-1] + x_edges[1:]) / 2

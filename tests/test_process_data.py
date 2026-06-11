@@ -418,19 +418,21 @@ class DummyClass:
 
 @pytest.mark.parametrize("cls", [Structure, DummyClass, Lattice])
 def test_normalize_to_dict(cls: type[Structure | DummyClass | Lattice]) -> None:
-    single_instance = {
+    instance_map: dict[type, Any] = {
         Structure: Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]]),
         DummyClass: DummyClass("dummy"),
         Lattice: Lattice.cubic(5),
-    }[cls]
+    }
+    single_instance = instance_map[cls]
     result = pmv_pd.normalize_to_dict(single_instance, cls=cls)
     assert isinstance(result, dict)
     assert len(result) == 1
-    expected_key = {
+    key_map: dict[type, str] = {
         Structure: "Si1",
         DummyClass: "dummy",
         Lattice: "Lattice",
-    }[cls]
+    }
+    expected_key = key_map[cls]
     assert set(result) == {expected_key}
     assert isinstance(result[expected_key], cls)
 
@@ -439,11 +441,12 @@ def test_normalize_to_dict(cls: type[Structure | DummyClass | Lattice]) -> None:
     assert isinstance(result, dict)
     assert len(result) == 3
     assert all(isinstance(s, cls) for s in result.values())
-    expected_keys = {
+    keys_map: dict[type, set[str]] = {
         Structure: {"Si1", "Si1 1", "Si1 2"},
         DummyClass: {"dummy", "dummy 1", "dummy 2"},
         Lattice: {"Lattice", "Lattice 1", "Lattice 2"},
-    }[cls]
+    }
+    expected_keys = keys_map[cls]
     assert set(result) == expected_keys
 
     instance_dict = {"item1": single_instance, "item2": single_instance}
@@ -470,7 +473,7 @@ def test_normalize_to_dict(cls: type[Structure | DummyClass | Lattice]) -> None:
 def test_normalize_to_dict_mixed_classes(
     cls1: type[Structure | DummyClass], cls2: type[Structure | DummyClass]
 ) -> None:
-    obj_map = {
+    obj_map: dict[type, Any] = {
         Structure: Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]]),
         DummyClass: DummyClass("dummy1"),
         Lattice: Lattice.cubic(5),
@@ -497,7 +500,7 @@ def test_df_to_arrays() -> None:
     assert y1 == pytest.approx(y_pred)
 
     with pytest.raises(TypeError, match="df should be pandas DataFrame or None"):
-        pmv_pd.df_to_arrays("foo", y_true, y_pred)
+        pmv_pd.df_to_arrays("foo", y_true, y_pred)  # ty: ignore[invalid-argument-type]
 
     bad_col_name = "not-real-col-name"
     with pytest.raises(KeyError) as exc:
@@ -507,11 +510,11 @@ def test_df_to_arrays() -> None:
 
 
 def test_df_to_arrays_strict() -> None:
-    args = pmv_pd.df_to_arrays(42, "foo", "bar", strict=False)
+    args = pmv_pd.df_to_arrays(42, "foo", "bar", strict=False)  # ty: ignore[invalid-argument-type]
     assert args == ["foo", "bar"]
 
     with pytest.raises(TypeError, match="df should be pandas DataFrame or None"):
-        pmv_pd.df_to_arrays(42, "foo", "bar", strict=True)
+        pmv_pd.df_to_arrays(42, "foo", "bar", strict=True)  # ty: ignore[invalid-argument-type]
 
 
 @pytest.mark.parametrize(

@@ -25,7 +25,7 @@ df_carrier.index.name = "mp_id"
 
 # %%
 with MPRester() as mpr:
-    structs = mpr.query(
+    structs = mpr.query(  # ty: ignore[call-non-callable]
         {task_ids_key: {"$in": df_carrier.index.to_list()}},
         [task_ids_key, Key.structure],
     )

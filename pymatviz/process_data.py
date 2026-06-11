@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import itertools
-from collections.abc import Hashable, Sequence
+from collections.abc import Hashable, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Final, cast
 
 import numpy as np
@@ -20,9 +20,12 @@ from pymatviz.utils import df_ptable
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from ase.atoms import Atoms
     from numpy.typing import ArrayLike
+    from phonopy.structure.atoms import PhonopyAtoms
     from pymatgen.core import IMolecule, Molecule
     from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine
+    from typing_extensions import TypeIs
 
     from pymatviz.typing import AnyStructure, ElemValues, FormulaGroupBy, T
 
@@ -298,13 +301,13 @@ def is_structure_like(obj: Any) -> bool:
     return False
 
 
-def is_ase_atoms(struct: Any) -> bool:
+def is_ase_atoms(struct: Any) -> TypeIs[Atoms]:
     """Check if the input is an ASE Atoms object without importing ase."""
     cls_name = f"{type(struct).__module__}.{type(struct).__qualname__}"
     return cls_name in ("ase.atoms.Atoms", "pymatgen.io.ase.MSONAtoms")
 
 
-def is_phonopy_atoms(obj: Any) -> bool:
+def is_phonopy_atoms(obj: Any) -> TypeIs[PhonopyAtoms]:
     """Check if object is PhonopyAtoms."""
     cls_name = f"{type(obj).__module__}.{type(obj).__qualname__}"
     return cls_name == "phonopy.structure.atoms.PhonopyAtoms"
@@ -314,7 +317,7 @@ def normalize_structures(
     systems: AnyStructure
     | Sequence[AnyStructure]
     | pd.Series
-    | dict[Hashable, AnyStructure],
+    | Mapping[Any, AnyStructure],
 ) -> dict[Hashable, Structure | IStructure | Molecule | IMolecule]:
     """Convert pymatgen Structures/IStructures, ASE Atoms, or PhonopyAtoms or
     sequences/dicts of them to a dictionary mapping hashable keys to pymatgen
@@ -351,10 +354,7 @@ def normalize_structures(
     if hasattr(systems, "__len__") and len(systems) == 0:
         raise ValueError("Cannot plot empty set of structures")
 
-    if isinstance(systems, dict):  # Process dict values, keep original keys
-        return {key: to_pmg_struct(val) for key, val in systems.items()}
-
-    if isinstance(systems, pd.Series):  # Keep original Series index as keys
+    if isinstance(systems, (pd.Series, Mapping)):  # keep original keys/index
         return {key: to_pmg_struct(val) for key, val in systems.items()}
 
     if isinstance(systems, Sequence) and not isinstance(systems, str):
@@ -366,8 +366,30 @@ def normalize_structures(
     raise TypeError(
         "Input must be a pymatgen Structure, IStructure, Molecule, IMolecule, "
         "ASE Atoms, or PhonopyAtoms object, a sequence (list, tuple, pd.Series), "
-        f"or a dict. Got {type(systems)=}"
+        f"or a mapping. Got {type(systems)=}"
     )
+
+
+def normalize_periodic_structures(
+    systems: AnyStructure
+    | Sequence[AnyStructure]
+    | pd.Series
+    | Mapping[Any, AnyStructure],
+) -> dict[Hashable, IStructure]:
+    """Like normalize_structures but requires all inputs to be periodic.
+
+    Raises:
+        TypeError: If any of the normalized structures is a (non-periodic) molecule.
+    """
+    struct_dict: dict[Hashable, IStructure] = {}
+    for key, struct in normalize_structures(systems).items():
+        if not isinstance(struct, IStructure):
+            raise TypeError(
+                f"Expected periodic structure for key={key!r}, got "
+                f"{type(struct).__name__}"
+            )
+        struct_dict[key] = struct
+    return struct_dict
 
 
 def normalize_to_dict(
@@ -429,7 +451,7 @@ def df_to_arrays(
     df: pd.DataFrame | None,
     *args: str | ArrayLike,
     strict: bool = True,
-) -> list[str | ArrayLike | dict[str, ArrayLike]]:
+) -> list[Any]:
     """If df is None, this is a no-op: args are returned as-is. If df is a
     dataframe, all following args are used as column names and the column data
     returned as arrays (after dropping rows with NaNs in any column).
@@ -445,9 +467,9 @@ def df_to_arrays(
         TypeError: If df is not pd.DataFrame and not None.
 
     Returns:
-        list[str | ArrayLike | dict[str, ArrayLike]]: Array data for each column name,
-            dictionary of column names and array data, or original string args when
-            strict=False and df is not a DataFrame.
+        list[Any]: Array data for each column name, dictionary of column names and
+            array data, or original string args when strict=False and df is not a
+            DataFrame.
     """
     if df is None:
         if cols := [arg for arg in args if isinstance(arg, str)]:
@@ -474,7 +496,7 @@ def df_to_arrays(
             flat_args.extend(col_name)  # ty: ignore[invalid-argument-type]
 
     df_no_nan = df.dropna(subset=flat_args)
-    out_args: list[str | ArrayLike | dict[str, ArrayLike]] = []
+    out_args: list[Any] = []
     for col_name in args:
         if isinstance(col_name, str | int):
             out_args.append(df_no_nan[col_name].to_numpy())

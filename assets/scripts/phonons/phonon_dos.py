@@ -82,20 +82,23 @@ phonopy_nacl_pdos = load_phonopy_nacl()
 phonopy_nacl_pdos.run_mesh([10, 10, 10], with_eigenvectors=True, is_mesh_symmetry=False)
 phonopy_nacl_pdos.run_projected_dos()
 phonopy_nacl_pdos.run_total_dos()
-if phonopy_nacl_pdos.total_dos is None:
+nacl_total_dos = phonopy_nacl_pdos.total_dos
+nacl_projected_dos = phonopy_nacl_pdos.projected_dos
+if nacl_total_dos is None:
     raise PhonopyTotalDosMissingError
-if phonopy_nacl_pdos.projected_dos is None:
+if nacl_projected_dos is None:
+    raise PhonopyProjectedDosMissingError
+
+nacl_dos_values = nacl_total_dos.dos
+nacl_projected_dos_values = nacl_projected_dos.projected_dos
+if nacl_dos_values is None:
+    raise PhonopyTotalDosMissingError
+if nacl_projected_dos_values is None:
     raise PhonopyProjectedDosMissingError
 
 struct = get_pmg_structure(phonopy_nacl_pdos.primitive)
-total_dos = PhononDos(
-    phonopy_nacl_pdos.total_dos.frequency_points,
-    phonopy_nacl_pdos.total_dos.dos,
-)
-site_dos = {
-    site: phonopy_nacl_pdos.projected_dos.projected_dos[idx]
-    for idx, site in enumerate(struct)
-}
+total_dos = PhononDos(nacl_total_dos.frequency_points, nacl_dos_values)
+site_dos = {site: nacl_projected_dos_values[idx] for idx, site in enumerate(struct)}
 complete_dos = CompletePhononDos(struct, total_dos, site_dos)
 
 
