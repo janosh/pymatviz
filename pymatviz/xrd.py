@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Literal, cast, get_args
 
 import numpy as np
@@ -14,7 +15,6 @@ from pymatviz.process_data import is_ase_atoms
 
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
     from typing import TypeAlias
 
 
@@ -107,6 +107,11 @@ def xrd_pattern(  # noqa: D417
     # Convert single object to dict for uniform processing
     if isinstance(patterns, (DiffractionPattern, Structure)):
         patterns = {"XRD Pattern": patterns}
+    elif not isinstance(patterns, Mapping):
+        raise TypeError(
+            "patterns must be a DiffractionPattern, Structure, or mapping of labels "
+            f"to patterns/structures, got {type(patterns).__name__}"
+        )
 
     # Determine show_angles based on number of patterns
     if show_angles is None:
