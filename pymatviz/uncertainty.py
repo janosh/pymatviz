@@ -64,7 +64,7 @@ def qq_gaussian(
     y_true, y_pred, y_std = _load_regression_data(y_true, y_pred, y_std, df)
 
     fig = fig or go.Figure()
-    if not isinstance(y_std, dict):
+    if not isinstance(y_std, Mapping):
         y_std = {"std": y_std}
 
     # Calculate Q-Q data
@@ -156,7 +156,7 @@ def error_decay_with_uncert(
     y_true, y_pred, y_std = _load_regression_data(y_true, y_pred, y_std, df)
 
     fig = fig or go.Figure()
-    if not isinstance(y_std, dict):
+    if not isinstance(y_std, Mapping):
         y_std = {"std": y_std}
 
     # Calculate error decay curves

@@ -48,6 +48,7 @@ def spacegroup_subplot_title(struct: pmv.typing.AnyStructure, key: Hashable) -> 
         _mat_id, formula, system = key
     else:
         raise TypeError(f"Invalid {type(key)=}")
+    # get_symmetry_dataset needs pymatgen Structure, not ASE Atoms etc.
     if not isinstance(struct, Structure):
         raise TypeError(f"expected Structure, got {type(struct).__name__}")
     sym_data = struct.get_symmetry_dataset(backend="moyopy", return_raw_dataset=True)

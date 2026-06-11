@@ -167,7 +167,7 @@ def fe3co4_disordered() -> IStructure:
 
 
 @pytest.fixture
-def fe3co4_disordered_with_props(fe3co4_disordered: Structure) -> Structure:
+def fe3co4_disordered_with_props(fe3co4_disordered: IStructure) -> IStructure:
     """Disordered Fe3C-O2 structure with magnetic moment and force site properties."""
     site_props = {
         "magmom": [[0, 0, 1], [0, 0, -1]],

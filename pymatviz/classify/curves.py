@@ -54,11 +54,10 @@ def _standardize_input(
         targets, probs_positive = df_to_arrays(df, targets, probs_positive)
 
     curves_dict: dict[str, dict[str, Any]]
-    if isinstance(probs_positive, dict):
-        # cast since ty can't infer dict[str, ...] from the isinstance check (ArrayLike
-        # protocol members intersected with dict degrade the key type to object)
+    if isinstance(probs_positive, Mapping):
+        # convert array values to dicts if needed. both casts needed since ty keeps
+        # ArrayLike & Mapping/dict intersections from the isinstance checks
         probs_dict = cast("Mapping[str, ArrayLike | dict[str, Any]]", probs_positive)
-        # Convert array values to dicts if needed
         curves_dict = {
             name: (
                 cast("dict[str, Any]", probs)

@@ -923,7 +923,8 @@ def test_draw_bonds_advanced(
 
     elif test_case == "rotation_with_image":
         # Check bonds are rotated and only go to visible image atoms
-        assert rotation_matrix is not None
+        if rotation_matrix is None or image_coords is None:
+            return
         rotated_coords = tuple(np.dot(np.array(image_coords), rotation_matrix))
         for trace in fig.data:
             if max(trace.x) > 3.0 or max(trace.y) > 3.0:

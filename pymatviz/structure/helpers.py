@@ -94,18 +94,18 @@ def resolve_per_struct_params(
 
 
 def resolve_nn_obj(
-    show_bonds: bool | NearNeighbors | dict[Any, Any],  # noqa: FBT001
+    show_bonds: bool | NearNeighbors | Mapping[Any, Any],  # noqa: FBT001
     struct_key: Hashable,
 ) -> NearNeighbors | None:
-    """Resolve show_bonds (True -> CrystalNN(), NearNeighbors -> itself, dict ->
+    """Resolve show_bonds (True -> CrystalNN(), NearNeighbors -> itself, mapping ->
     lookup by struct_key) to the NearNeighbors algorithm for bond drawing, or
     None if bonds should not be drawn for this structure.
     """
     from pymatgen.analysis.local_env import CrystalNN, NearNeighbors
 
     struct_show_bonds = (
-        show_bonds.get(struct_key, False)  # ty: ignore[no-matching-overload]
-        if isinstance(show_bonds, dict)
+        show_bonds.get(struct_key, False)
+        if isinstance(show_bonds, Mapping)
         else show_bonds
     )
     if not struct_show_bonds:

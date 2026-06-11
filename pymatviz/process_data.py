@@ -354,10 +354,7 @@ def normalize_structures(
     if hasattr(systems, "__len__") and len(systems) == 0:
         raise ValueError("Cannot plot empty set of structures")
 
-    if isinstance(systems, dict):  # Process dict values, keep original keys
-        return {key: to_pmg_struct(val) for key, val in systems.items()}
-
-    if isinstance(systems, pd.Series):  # Keep original Series index as keys
+    if isinstance(systems, (pd.Series, Mapping)):  # keep original keys/index
         return {key: to_pmg_struct(val) for key, val in systems.items()}
 
     if isinstance(systems, Sequence) and not isinstance(systems, str):
@@ -369,7 +366,7 @@ def normalize_structures(
     raise TypeError(
         "Input must be a pymatgen Structure, IStructure, Molecule, IMolecule, "
         "ASE Atoms, or PhonopyAtoms object, a sequence (list, tuple, pd.Series), "
-        f"or a dict. Got {type(systems)=}"
+        f"or a mapping. Got {type(systems)=}"
     )
 
 
