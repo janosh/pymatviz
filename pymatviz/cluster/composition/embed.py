@@ -32,7 +32,7 @@ def try_composition(composition: str | Composition) -> Composition:
 
 
 def matminer_featurize(
-    compositions: Sequence[str] | Sequence[Composition] | pd.Series,
+    compositions: Sequence[str | Composition] | pd.Series,
     preset: MatminerElementPropertyPreset = "magpie",
     *,
     normalize: bool = True,
@@ -106,7 +106,7 @@ def matminer_featurize(
 
 
 def one_hot_encode(
-    compositions: Sequence[str] | Sequence[Composition] | pd.Series,
+    compositions: Sequence[str | Composition] | pd.Series,
     *,
     normalize: bool = True,
     elements: Sequence[str] | None = None,

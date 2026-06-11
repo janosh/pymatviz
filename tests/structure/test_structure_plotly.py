@@ -6,7 +6,14 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import pytest
-from pymatgen.core import Composition, Lattice, Species, Structure
+from pymatgen.core import (
+    Composition,
+    IMolecule,
+    IStructure,
+    Lattice,
+    Species,
+    Structure,
+)
 
 import pymatviz as pmv
 from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
@@ -29,7 +36,7 @@ from pymatviz.structure.helpers import (
 if TYPE_CHECKING:
     from collections.abc import Callable, Hashable
 
-    from pymatviz.typing import Xyz
+    from pymatviz.typing import AnyStructure, Xyz
 
 COORDS: Final[tuple[Xyz, Xyz]] = ((0, 0, 0), (0.5, 0.5, 0.5))
 lattice_cubic = 5 * np.eye(3)  # 5 Å cubic lattice
@@ -72,7 +79,9 @@ def _get_all_rendered_site_info(
     for site_primary in structure:
         if hasattr(site_primary.species, "elements"):  # Disordered
             el_amt_dict = site_primary.species.get_el_amt_dict()
-            symbol = max(el_amt_dict, key=el_amt_dict.get) if el_amt_dict else "X"
+            symbol = (
+                max(el_amt_dict, key=el_amt_dict.__getitem__) if el_amt_dict else "X"
+            )
         elif hasattr(site_primary.species, "symbol"):  # Element
             symbol = site_primary.species.symbol
         elif hasattr(site_primary.species, "element"):  # Specie
@@ -687,7 +696,7 @@ def test_structure_2d_invalid_input() -> None:
     """Test that structure_2d raises errors for invalid inputs."""
     expected_err_msg = "Input must be a pymatgen Structure, IStructure, Molecule"
     with pytest.raises(TypeError, match=expected_err_msg):
-        pmv.structure_2d("invalid input")
+        pmv.structure_2d("invalid input")  # ty: ignore[invalid-argument-type]
 
     with pytest.raises(ValueError, match="Cannot plot empty set of structures"):
         pmv.structure_2d([])
@@ -949,11 +958,10 @@ def test_structure_3d(
         assert len(site_traces) > 0, "No site traces found when show_sites is True"
 
         # Get the first structure for validation
-        test_structure = (
-            structures_input
-            if not isinstance(structures_input, dict)
-            else next(iter(structures_input.values()))
-        )
+        if isinstance(structures_input, IStructure):
+            test_structure = structures_input
+        else:
+            test_structure = next(iter(structures_input.values()))
 
         # Count ordered vs disordered sites
         ordered_sites = [
@@ -1123,7 +1131,8 @@ def test_structure_3d_multiple() -> None:
     assert len(fig.layout.annotations) == expected_n_subplot_titles
 
     # Test subplot_title and its interaction with legend annotations
-    def custom_subplot_title_func(struct: Structure, key: Hashable) -> str:
+    def custom_subplot_title_func(struct: AnyStructure, key: Hashable) -> str:
+        assert isinstance(struct, (IStructure, IMolecule))  # narrow for ty
         return f"{key} - {struct.formula}"
 
     fig = pmv.structure_3d(struct_series, subplot_title=custom_subplot_title_func)
@@ -1203,7 +1212,9 @@ def test_structure_3d_subplot_title_coverage() -> None:
     struct2 = Structure(lattice, ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]])
 
     # Test with custom subplot_title function that returns dict with y and yanchor
-    def custom_title_with_position(_struct: Structure, k: Hashable) -> dict[str, Any]:
+    def custom_title_with_position(
+        _struct: AnyStructure, k: Hashable
+    ) -> dict[str, Any]:
         return {"text": f"Structure {k}", "x": 0.5, "y": 0.95, "yanchor": "top"}
 
     fig = pmv.structure_3d(

@@ -123,7 +123,7 @@ def test_marimo_display_registered() -> None:
         assert callable(display_method), f"{cls.__name__} missing callable _display_"
 
     composition_obj = Composition("Fe2O3")
-    widget = composition_obj._display_()
+    widget = composition_obj._display_()  # ty: ignore[unresolved-attribute]
     expected_widget = create_widget(composition_obj)
     assert widget.widget_type == expected_widget.widget_type
     assert widget.composition == expected_widget.composition

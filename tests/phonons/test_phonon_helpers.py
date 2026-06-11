@@ -166,7 +166,7 @@ def test_phonon_bands_raises(
         match=f"Only {PhononBands.__name__}, phonopy BandStructure or dict supported, "
         "got str",
     ):
-        pmv.phonon_bands("invalid input")
+        pmv.phonon_bands("invalid input")  # ty: ignore[invalid-argument-type]
 
     # issues warning when requesting some available and some unavailable branches
     pmv.phonon_bands(

@@ -2,7 +2,7 @@
 
 import re
 import warnings
-from collections.abc import Callable, Hashable, Sequence
+from collections.abc import Callable, Hashable, Mapping, Sequence
 from typing import Any, Literal
 
 import numpy as np
@@ -14,7 +14,7 @@ from pymatviz.typing import AnyStructure
 
 
 def brillouin_zone_3d(
-    struct: AnyStructure | Sequence[AnyStructure] | dict[Hashable, AnyStructure],
+    struct: AnyStructure | Sequence[AnyStructure] | Mapping[Any, AnyStructure],
     *,
     # Surface styling
     surface_kwargs: dict[str, Any] | None = None,
@@ -64,10 +64,10 @@ def brillouin_zone_3d(
     import scipy.spatial as sps
     import seekpath
 
-    from pymatviz.process_data import normalize_structures
+    from pymatviz.process_data import normalize_periodic_structures
     from pymatviz.structure.helpers import get_subplot_title
 
-    structures = normalize_structures(struct)
+    structures = normalize_periodic_structures(struct)
 
     n_structs = len(structures)
     n_cols = min(n_cols, n_structs)

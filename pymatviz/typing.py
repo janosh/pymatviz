@@ -47,8 +47,7 @@ ElemValues: TypeAlias = (
     Mapping[str, int | float]
     | Mapping[int, int | float]
     | pd.Series
-    | Sequence[str]
-    | Sequence["Composition"]
+    | Sequence["str | Composition"]
 )
 
 T = TypeVar("T")  # generic type for input validation

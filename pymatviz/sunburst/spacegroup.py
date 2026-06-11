@@ -6,9 +6,11 @@ from typing import Any, Literal
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from pymatgen.core import Structure
 
 import pymatviz as pmv
 from pymatviz.enums import Key
+from pymatviz.process_data import is_structure_like
 from pymatviz.sunburst.helpers import (
     _apply_sunburst_show_counts,
     _limit_slices_per_group,
@@ -17,7 +19,7 @@ from pymatviz.typing import ShowCounts
 
 
 def spacegroup_sunburst(
-    data: Sequence[int | str] | pd.Series,
+    data: Sequence[int | str | Structure] | pd.Series,
     *,
     show_counts: ShowCounts = "value",
     max_slices: int | None = None,
@@ -54,16 +56,31 @@ def spacegroup_sunburst(
     if len(data) == 0:
         raise ValueError("spacegroup_sunburst requires non-empty data")
 
-    if type(data[0]).__qualname__ in ("Structure", "Atoms"):
-        # if 1st sequence item is pymatgen structure or ASE Atoms, assume all are
-        from moyopy import MoyoDataset
-        from moyopy.interface import MoyoAdapter
+    # materialize as list[Any] for Series-safe positional access and untyped iteration
+    values: list[Any] = data.tolist() if isinstance(data, pd.Series) else list(data)
+    if is_structure_like(values[0]):  # if 1st item is structure-like, assume all are
+        try:
+            from moyopy import MoyoDataset
+            from moyopy.interface import MoyoAdapter
+        except ImportError as exc:
+            raise RuntimeError(
+                "moyopy is required to pass Structure objects to "
+                "spacegroup_sunburst. Install it with `pip install moyopy`."
+            ) from exc
 
-        series = pd.Series(
-            MoyoDataset(MoyoAdapter.from_py_obj(struct)).number for struct in data
-        )
+        spg_nums: list[int] = []
+        for idx, struct in enumerate(values):
+            try:
+                spg_nums.append(MoyoDataset(MoyoAdapter.from_py_obj(struct)).number)
+            except (TypeError, ValueError, RuntimeError) as exc:
+                raise TypeError(
+                    "Could not determine space group for structure at index "
+                    f"{idx} ({type(struct).__name__}). Pass periodic pymatgen "
+                    "Structure objects or ASE Atoms supported by moyopy."
+                ) from exc
+        series = pd.Series(spg_nums)
     else:
-        series = pd.Series(data)
+        series = pd.Series(values)
 
     df_spg_counts = pd.DataFrame(series.value_counts().reset_index())
     df_spg_counts.columns = [Key.spg_num, "count"]

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sys
+import types
 from typing import TYPE_CHECKING, Any, Literal, get_args
 
 import pandas as pd
@@ -78,6 +80,39 @@ def test_spacegroup_sunburst_other_types(
     # test with pymatgen structures
     fig = spacegroup_sunburst(structures)
     assert isinstance(fig, go.Figure)
+
+
+def test_spacegroup_sunburst_requires_moyopy(
+    structures: list[Structure], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Raise a helpful error when moyopy is missing for Structure input."""
+    monkeypatch.setitem(sys.modules, "moyopy", None)
+    with pytest.raises(RuntimeError, match=r"moyopy is required.*pip install moyopy"):
+        spacegroup_sunburst(structures)
+
+
+def test_spacegroup_sunburst_reports_moyopy_conversion_failure(
+    structures: list[Structure], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Report index and type when moyopy cannot convert a structure."""
+
+    class MockMoyoAdapter:
+        """Mock adapter that rejects all structures."""
+
+        @staticmethod
+        def from_py_obj(_struct: Any) -> None:
+            """Raise the same broad kind of error as unsupported moyopy input."""
+            raise TypeError("unsupported structure")
+
+    mock_interface = types.ModuleType("moyopy.interface")
+    mock_moyopy = types.ModuleType("moyopy")
+    mock_moyopy.__dict__["MoyoDataset"] = lambda _cell: None
+    mock_interface.__dict__["MoyoAdapter"] = MockMoyoAdapter
+    monkeypatch.setitem(sys.modules, "moyopy", mock_moyopy)
+    monkeypatch.setitem(sys.modules, "moyopy.interface", mock_interface)
+
+    with pytest.raises(TypeError, match="structure at index 0 \\(Structure\\)"):
+        spacegroup_sunburst(structures)
 
 
 @pytest.mark.parametrize(
@@ -252,7 +287,7 @@ def test_chem_sys_sunburst_input_types(structures: list[Structure]) -> None:
 
     # Test with invalid input type
     with pytest.raises(TypeError, match="Expected str, Composition or Structure"):
-        pmv.chem_sys_sunburst([1])
+        pmv.chem_sys_sunburst([1])  # ty: ignore[invalid-argument-type]
 
 
 def test_chem_sys_sunburst_high_arity() -> None:

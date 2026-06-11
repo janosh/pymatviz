@@ -227,7 +227,7 @@ def calc_liu_features(
     formulas: Sequence[str | Composition],
     include: Sequence[str] = (),
     binary_liquidus_data: dict[str, interp1d] | None = None,
-) -> dict[str, dict[str, float | None]]:
+) -> dict[str, dict[str | Composition, float | None]]:
     """Calculate Liu et al.'s (2023) compositional features for metallic glasses.
 
     Args:
@@ -319,7 +319,7 @@ def one_hot_encode(df_in: pd.DataFrame) -> pd.DataFrame:
     """
     comp_dicts = df_in[Key.composition].map(lambda comp: Composition(comp).as_dict())
     all_elements = sorted({el for comp in comp_dicts for el in comp})
-    comp_features = pd.DataFrame(0.0, index=df_in.index, columns=all_elements)
+    comp_features = pd.DataFrame(0.0, index=df_in.index, columns=pd.Index(all_elements))
     for idx, comp in comp_dicts.items():
         for el, wt in comp.items():
             comp_features.loc[idx, el] = wt

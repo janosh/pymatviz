@@ -42,7 +42,7 @@ def ptable_heatmap(
     heat_mode: Literal["value", "fraction", "percent"] = "value",
     fmt: str | Callable[[float], str] | None = None,
     hover_props: Sequence[str] | dict[str, str] | None = None,
-    hover_data: dict[str, str | int | float] | pd.Series | None = None,
+    hover_data: Mapping[str, str | int | float] | pd.Series | None = None,
     font_colors: Sequence[str] = (),
     gap: float = 5,
     font_size: int | None = None,
@@ -457,7 +457,7 @@ def ptable_hists(
     data: (
         pd.DataFrame
         | pd.Series
-        | dict[str, Sequence[int | float] | np.ndarray[Any, Any]]
+        | Mapping[str, Sequence[int | float] | np.ndarray[Any, Any]]
     ),
     *,
     # Histogram-specific
@@ -928,7 +928,7 @@ def ptable_heatmap_splits(
     data: (
         pd.DataFrame
         | pd.Series
-        | dict[str, Sequence[int | float] | np.ndarray[Any, Any]]
+        | Mapping[str, Sequence[int | float] | np.ndarray[Any, Any]]
     ),
     *,
     # Split
@@ -955,7 +955,7 @@ def ptable_heatmap_splits(
     # Additional options
     nan_color: str = "#eff",
     zero_color: str = "#aaa",
-    hover_data: dict[str, str | int | float] | pd.Series | None = None,
+    hover_data: Mapping[str, str | int | float] | pd.Series | None = None,
     subplot_kwargs: dict[str, Any] | None = None,
 ) -> go.Figure:
     """Create a Plotly figure with an interactive heatmap of the periodic table,
@@ -1597,14 +1597,15 @@ def ptable_heatmap_splits(
     return fig
 
 
+XYArray: TypeAlias = Sequence[float] | np.ndarray[Any, Any]
 ElemData: TypeAlias = (
-    tuple[Sequence[float], Sequence[float]]
-    | tuple[Sequence[float], Sequence[float], Sequence[float | str]]
-    | Mapping[str, tuple[Sequence[float], Sequence[float]]]
+    tuple[XYArray, XYArray]
+    | tuple[XYArray, XYArray, Sequence[float | str] | np.ndarray[Any, Any]]
+    | Mapping[str, tuple[XYArray, XYArray]]
 )
 LineData: TypeAlias = (
-    tuple[Sequence[float], Sequence[float]]
-    | tuple[Sequence[float], Sequence[float], Sequence[float | str]]
+    tuple[XYArray, XYArray]
+    | tuple[XYArray, XYArray, Sequence[float | str] | np.ndarray[Any, Any]]
 )
 
 

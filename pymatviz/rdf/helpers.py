@@ -5,9 +5,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
-from pymatgen.optimization.neighbors import find_points_in_spheres
 
-from pymatviz.process_data import normalize_structures
+# compiled cython module, has no type stubs
+from pymatgen.optimization.neighbors import (  # ty: ignore[unresolved-import]
+    find_points_in_spheres,
+)
+
+from pymatviz.process_data import normalize_periodic_structures
 
 
 if TYPE_CHECKING:
@@ -30,8 +34,8 @@ def calculate_rdf(
     for the specified element pair. Otherwise, calculates the full RDF.
 
     Args:
-        structure (AnyStructure): A pymatgen Structure/IStructure object or ASE Atoms
-            object.
+        structure (AnyStructure): A periodic pymatgen Structure/IStructure, ASE Atoms,
+            or PhonopyAtoms object (or mapping/sequence thereof).
         center_species (str, optional): Symbol of the central species. If None, all
             species are considered.
         neighbor_species (str, optional): Symbol of the neighbor species. If None, all
@@ -47,9 +51,9 @@ def calculate_rdf(
 
     Raises:
         ValueError: If cutoff or n_bins are not positive values.
-        TypeError: If structure is not a supported type.
+        TypeError: If structure is unsupported or not periodic (e.g. a Molecule).
     """
-    struct = next(iter(normalize_structures(structure).values()))
+    struct = next(iter(normalize_periodic_structures(structure).values()))
 
     # Handle empty structure
     if len(struct) == 0:

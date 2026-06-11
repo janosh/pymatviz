@@ -42,12 +42,15 @@ def volume_subplot_title(struct: Structure, key: tuple[str, str, str]) -> str:
     )
 
 
-def spacegroup_subplot_title(struct: Structure, key: Hashable) -> str:
+def spacegroup_subplot_title(struct: pmv.typing.AnyStructure, key: Hashable) -> str:
     """Custom subplot title function showing spacegroup information."""
     if isinstance(key, tuple):
         _mat_id, formula, system = key
     else:
         raise TypeError(f"Invalid {type(key)=}")
+    # get_symmetry_dataset needs pymatgen Structure, not ASE Atoms etc.
+    if not isinstance(struct, Structure):
+        raise TypeError(f"expected Structure, got {type(struct).__name__}")
     sym_data = struct.get_symmetry_dataset(backend="moyopy", return_raw_dataset=True)
     spg_num = getattr(sym_data, "number", "N/A")
     return f"{formula} {str(system).title()}<br>Space group: {spg_num}"

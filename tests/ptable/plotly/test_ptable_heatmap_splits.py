@@ -562,7 +562,7 @@ def test_ptable_heatmap_splits_dataframe_input() -> None:
             "Formation Energy": [1.23, 3.45, 5.67],
             "Band Gap": [2.34, 4.56, 6.78],
         },
-        index=["Fe", "O", "H"],
+        index=pd.Index(["Fe", "O", "H"]),
     )
 
     # Test default hover tooltip with DataFrame

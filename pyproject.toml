@@ -131,4 +131,9 @@ dev = ["prek>=0.3.11", "ty>=0.0.34"]
 
 [tool.ty.rules]
 unused-ignore-comment = "ignore"
-unresolved-import = "ignore"
+
+[[tool.ty.overrides]]
+# examples and asset scripts import heavy optional deps (torch, mace, mp_api, dash,
+# marimo, matbench-discovery, ...) that aren't part of any pymatviz extra
+include = ["examples/**", "assets/scripts/**"]
+rules = { unresolved-import = "ignore" }

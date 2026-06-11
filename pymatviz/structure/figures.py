@@ -8,14 +8,15 @@ import numpy as np
 from plotly.subplots import make_subplots
 
 from pymatviz.enums import ElemColorScheme, SiteCoords
-from pymatviz.process_data import normalize_structures
+from pymatviz.process_data import normalize_periodic_structures
 from pymatviz.structure import helpers
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Hashable, Sequence
+    from collections.abc import Callable, Hashable, Mapping, Sequence
     from typing import Literal
 
+    import pandas as pd
     import plotly.graph_objects as go
     from pymatgen.analysis.local_env import NearNeighbors
     from pymatgen.core import PeriodicSite
@@ -24,7 +25,10 @@ if TYPE_CHECKING:
 
 
 def structure_2d(
-    struct: AnyStructure | dict[str, AnyStructure] | Sequence[AnyStructure],
+    struct: AnyStructure
+    | Mapping[str, AnyStructure]
+    | Sequence[AnyStructure]
+    | pd.Series,
     *,
     rotation: str = "10x,8y,3z",
     atomic_radii: float | dict[str, float] | None = None,
@@ -130,7 +134,7 @@ def structure_2d(
     Returns:
         go.Figure: Plotly figure showing the 2D structure(s).
     """
-    structures = normalize_structures(struct)
+    structures = normalize_periodic_structures(struct)
 
     n_structs = len(structures)
     n_cols = min(n_cols, n_structs)
@@ -386,7 +390,10 @@ def structure_2d(
 
 
 def structure_3d(
-    struct: AnyStructure | dict[str, AnyStructure] | Sequence[AnyStructure],
+    struct: AnyStructure
+    | Mapping[str, AnyStructure]
+    | Sequence[AnyStructure]
+    | pd.Series,
     *,
     atomic_radii: float | dict[str, float] | None = None,
     atom_size: float = 20,
@@ -489,7 +496,7 @@ def structure_3d(
     Returns:
         go.Figure: Plotly figure showing the 3D structure(s).
     """
-    structures = normalize_structures(struct)
+    structures = normalize_periodic_structures(struct)
 
     n_structs = len(structures)
     n_cols = min(n_cols, n_structs)

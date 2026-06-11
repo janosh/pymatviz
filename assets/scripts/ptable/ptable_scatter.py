@@ -10,7 +10,7 @@ import pymatviz as pmv
 np_rng = np.random.default_rng(seed=0)
 
 # Generate some example data - sinusoidal waves with different frequencies and noise
-rand_sine_data: dict[str, tuple[list[float], list[float]]] = {}
+rand_sine_data: dict[str, tuple[np.ndarray, np.ndarray]] = {}
 xs = np.linspace(0, 10, 20)
 for elem in Element:
     freq = np_rng.uniform(0.5, 2.0)

@@ -10,15 +10,17 @@ repos:
       - id: ruff-format
         types_or: [python, jupyter]
 
-  - repo: local
+  - repo: https://github.com/astral-sh/ty-pre-commit
+    rev: v0.0.48
     hooks:
       - id: ty
-        name: ty check
-        entry: ty check --ignore unused-ignore-comment
-        language: python
-        types: [python]
-        pass_filenames: false
-        additional_dependencies: [ty]
+        # --isolated: don't create/update uv.lock or the local .venv
+        # --all-extras: make optional deps (pytest, phonopy, ...) resolvable by ty
+        args: [--isolated, --all-extras]
+        env: { UV_FROZEN: "0" } # prek hook: override global UV_FROZEN=1 which would require a uv.lock
+
+  - repo: local
+    hooks:
       - id: check-readme-src-links
         name: Check README source links
         entry: python .github/scripts/check_readme_src_links.py

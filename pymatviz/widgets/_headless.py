@@ -834,7 +834,7 @@ def _apply_nest_asyncio(loop: asyncio.AbstractEventLoop) -> bool:
     that is a hard error or a soft diagnostic).
     """
     try:
-        import nest_asyncio
+        import nest_asyncio  # ty: ignore[unresolved-import]
     except ImportError:
         return False
     nest_asyncio.apply(loop)

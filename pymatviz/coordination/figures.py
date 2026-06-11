@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import math
 from collections import Counter
-from collections.abc import Hashable, Sequence
+from collections.abc import Hashable, Mapping, Sequence
 from inspect import isclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import plotly.graph_objects as go
@@ -29,6 +29,8 @@ from pymatviz.structure.helpers import get_site_elements, get_site_symbol
 if TYPE_CHECKING:
     from typing import Any, Literal
 
+    import pandas as pd
+
     from pymatviz.typing import AnyStructure
 
 
@@ -47,7 +49,10 @@ def _resolve_element_colors(
 
 
 def coordination_hist(
-    structures: AnyStructure | dict[str, AnyStructure] | Sequence[AnyStructure],
+    structures: AnyStructure
+    | Mapping[str, AnyStructure]
+    | Sequence[AnyStructure]
+    | pd.Series,
     *,
     strategy: float | NearNeighbors | type[NearNeighbors] = 3.0,
     split_mode: CnSplitMode | str = CnSplitMode.by_element,
@@ -370,7 +375,10 @@ def coordination_hist(
 
 
 def coordination_vs_cutoff_line(
-    structures: AnyStructure | dict[str, AnyStructure] | Sequence[AnyStructure],
+    structures: AnyStructure
+    | Mapping[str, AnyStructure]
+    | Sequence[AnyStructure]
+    | pd.Series,
     *,
     strategy: tuple[float, float] | NearNeighbors | type[NearNeighbors] = (1, 5),
     num_points: int = 50,
@@ -406,7 +414,8 @@ def coordination_vs_cutoff_line(
         and len(strategy) == 2
         and {*map(type, strategy)} <= {int, float}
     ):
-        cutoff_range = strategy
+        # runtime-checked numeric 2-tuple, ty can't narrow the set comparison above
+        cutoff_range = cast("tuple[float, float]", strategy)
 
     elif isinstance(strategy, NearNeighbors) or (
         isclass(strategy) and issubclass(strategy, NearNeighbors)
@@ -429,7 +438,8 @@ def coordination_vs_cutoff_line(
                 )
         else:
             raise AttributeError(f"Could not determine cutoff for {nn_instance=}")
-        cutoff_range = (0, max_cutoff)
+        # cast since hasattr narrowing types the cutoff attributes as plain object
+        cutoff_range = (0.0, cast("float", max_cutoff))
 
     else:
         raise TypeError(

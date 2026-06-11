@@ -1332,6 +1332,7 @@ def test_precomputed_embeddings_attributes(sample_df: pd.DataFrame) -> None:
     assert isinstance(fig, ClusterFigure)
 
     # Check that embeddings match the original embeddings
+    assert fig.embeddings is not None
     assert np.allclose(fig.embeddings, original_embeddings)
 
     # Check that projector is the correct type
