@@ -18,7 +18,7 @@ from typing import Final
 
 import numpy as np
 from ase.build import bulk, molecule
-from ipywidgets import GridBox, Layout
+from ipywidgets import GridBox, HBox, Layout
 from monty.io import zopen
 from monty.json import MontyDecoder
 from phonopy.structure.atoms import PhonopyAtoms
@@ -225,6 +225,37 @@ trajectory_widget = pmv.TrajectoryWidget(
     style="height: 600px;",
 )
 trajectory_widget.show()
+
+
+# %% [markdown]
+# ### Linked Scatter + Structure (Python-side reactivity)
+# Compose independent widgets and link them with `pmv.link_selection`: clicking a
+# point in the scatter plot shows the matching frame in the structure viewer, with
+# the link expressed in Python (no JS bundling). The reverse also holds -- driving
+# the scatter highlight from Python is reactive. See
+# https://github.com/janosh/pymatviz/issues/354.
+
+
+# %% Linked views — energy scatter drives a structure viewer
+linked_frames = [step["structure"] for step in trajectory]
+linked_energies = [step["energy"] for step in trajectory]
+
+linked_scatter = pmv.ScatterPlotWidget(
+    series=[
+        {"x": list(range(len(linked_frames))), "y": linked_energies, "label": "energy"}
+    ],
+    x_axis={"label": "step"},
+    y_axis={"label": "energy (eV)"},
+    style="height: 400px; width: 100%;",
+)
+linked_structure = pmv.StructureWidget(
+    structure=linked_frames[0], show_bonds=True, style="height: 400px; width: 100%;"
+)
+# clicking a scatter point now updates linked_structure (and vice versa)
+selection_link = pmv.link_selection(
+    linked_scatter, linked_structure, structures=linked_frames
+)
+HBox([linked_scatter, linked_structure], layout=Layout(width="100%"))
 
 
 # === Plot Widgets ===
