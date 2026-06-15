@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 # version already published to npm: the default to_html/to_img path fetches
 # ``matterviz-anywidget@<this>`` from jsDelivr at runtime, so an unpublished pin
 # breaks widget rendering for everyone.
-MATTERVIZ_ANYWIDGET_VERSION = "0.4.0"
+MATTERVIZ_ANYWIDGET_VERSION = "0.4.1"
 _ANYWIDGET_CDN = "https://cdn.jsdelivr.net/npm/matterviz-anywidget"
 # expanded at call time (not import time) so tests can patch os.path.expanduser
 _CACHE_ROOT = "~/.cache/pymatviz"
