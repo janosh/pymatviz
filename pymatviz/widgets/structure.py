@@ -10,6 +10,20 @@ from pymatviz.widgets._traits import StructureVizTraits
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
+def structure_to_dict(structure: Any) -> dict[str, Any] | None:
+    """Convert a structure-like object (or dict, or None) to a widget structure dict.
+
+    Passes dicts and ``None`` through unchanged; converts pymatgen ``Structure`` /
+    ASE ``Atoms`` (and other ``normalize_structures`` inputs) via ``.as_dict()``.
+    """
+    if structure is None or isinstance(structure, dict):
+        return structure
+
+    from pymatviz.process_data import normalize_structures
+
+    return next(iter(normalize_structures(structure).values())).as_dict()
+
+
 class StructureWidget(StructureVizTraits, MatterVizWidget):
     """MatterViz widget for visualizing structures in Python notebooks.
 
@@ -64,6 +78,15 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
     enable_info_pane = tl.Bool(default_value=True).tag(sync=True)
     png_dpi = tl.Int(allow_none=True, default_value=None).tag(sync=True)
 
+    # Interaction state (two-way synced with the frontend for ipywidgets linking).
+    # selected_sites (clicked atoms) and hovered_site_idx (hovered atom) are
+    # populated on user interaction (observe them to drive other widgets) and can
+    # also be set from Python. highlighted_sites is a Python-driven highlight
+    # input (e.g. from a linked plot).
+    selected_sites = tl.List(tl.Int(), default_value=[]).tag(sync=True)
+    highlighted_sites = tl.List(tl.Int(), default_value=[]).tag(sync=True)
+    hovered_site_idx = tl.Int(allow_none=True, default_value=None).tag(sync=True)
+
     def __init__(
         self, structure: dict[str, Any] | Any | None = None, **kwargs: Any
     ) -> None:
@@ -77,13 +100,6 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
             **kwargs: Additional widget properties (e.g.
                 ``structure_string``, ``atom_radius``, ``show_bonds``).
         """
-        from pymatviz.process_data import normalize_structures
-
-        if isinstance(structure, dict):
-            struct_dict = structure
-        elif structure is not None:
-            struct_dict = next(iter(normalize_structures(structure).values())).as_dict()
-        else:
-            struct_dict = None
-
-        super().__init__(widget_type="structure", structure=struct_dict, **kwargs)
+        super().__init__(
+            widget_type="structure", structure=structure_to_dict(structure), **kwargs
+        )

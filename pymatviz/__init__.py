@@ -105,8 +105,10 @@ from pymatviz.widgets import (
     SpacegroupBarPlotWidget,
     StructureWidget,
     TrajectoryWidget,
+    WidgetLink,
     XrdWidget,
     configure_assets,
+    link_selection,
 )
 from pymatviz.xrd import xrd_pattern
 

@@ -17,6 +17,7 @@ from pymatviz.widgets.dos import DosWidget
 from pymatviz.widgets.fermi_surface import FermiSurfaceWidget
 from pymatviz.widgets.heatmap_matrix import HeatmapMatrixWidget
 from pymatviz.widgets.histogram import HistogramWidget
+from pymatviz.widgets.link import WidgetLink, link_selection
 from pymatviz.widgets.matterviz import configure_assets
 from pymatviz.widgets.mime import register_matterviz_widgets
 from pymatviz.widgets.periodic_table import PeriodicTableWidget
