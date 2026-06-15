@@ -251,7 +251,7 @@ linked_scatter = pmv.ScatterPlotWidget(
 linked_structure = pmv.StructureWidget(
     structure=linked_frames[0], show_bonds=True, style="height: 400px; width: 100%;"
 )
-# clicking a scatter point now updates linked_structure (and vice versa)
+# clicking a scatter point now updates linked_structure
 selection_link = pmv.link_selection(
     linked_scatter, linked_structure, structures=linked_frames
 )

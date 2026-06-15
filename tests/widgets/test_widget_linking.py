@@ -256,7 +256,7 @@ def test_link_out_of_range_index_warns_and_keeps_structure() -> None:
     scatter = ScatterPlotWidget(series=[{"x": list(range(5)), "y": list(range(5))}])
 
     link_selection(scatter, structure, structures=frames)
-    with pytest.warns(UserWarning, match="index 4 is out of range"):
+    with pytest.warns(UserWarning, match=r"index=\d+ out of range for \d+ structures"):
         scatter.active_point = {"series_idx": 0, "point_idx": 4}  # beyond len(frames)
     assert structure.structure == frames[0].as_dict()  # unchanged, no exception
 

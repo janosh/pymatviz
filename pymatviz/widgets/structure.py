@@ -10,7 +10,7 @@ from pymatviz.widgets._traits import StructureVizTraits
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
-def structure_to_dict(structure: dict[str, Any] | Any | None) -> dict[str, Any] | None:
+def structure_to_dict(structure: Any) -> dict[str, Any] | None:
     """Convert a structure-like object (or dict, or None) to a widget structure dict.
 
     Passes dicts and ``None`` through unchanged; converts pymatgen ``Structure`` /
