@@ -87,7 +87,6 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
         [tl.Int(), tl.List()], allow_none=True, default_value=None
     ).tag(sync=True)
     property_labels = tl.Dict(allow_none=True).tag(sync=True)
-    units = tl.Dict(allow_none=True).tag(sync=True)
 
     def __init__(
         self, trajectory: dict[str, Any] | list[Any] | Any | None = None, **kwargs: Any
