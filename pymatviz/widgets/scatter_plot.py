@@ -44,6 +44,19 @@ class ScatterPlotWidget(MatterVizWidget):
     line_tween = tl.Dict(allow_none=True).tag(sync=True)
     point_events = tl.Unicode(allow_none=True).tag(sync=True)
 
+    # Interaction state (two-way synced with the frontend for ipywidgets linking).
+    # selected_point drives a highlight from Python and takes
+    # {"series_idx", "point_idx"}. active_point/hovered_point are
+    # populated on user click/hover (observe them to drive other widgets).
+    # hovered_point is {"series_idx", "point_idx", "x", "y"} or None.
+    # active_point is the last clicked point or None; it adds an
+    # event_id (monotonically increasing per widget instance) so re-clicking
+    # the same point is still observed as a distinct event:
+    # {"series_idx", "point_idx", "x", "y", "event_id"}.
+    selected_point = tl.Dict(allow_none=True, default_value=None).tag(sync=True)
+    active_point = tl.Dict(allow_none=True, default_value=None).tag(sync=True)
+    hovered_point = tl.Dict(allow_none=True, default_value=None).tag(sync=True)
+
     def __init__(
         self,
         series: list[dict[str, Any]] | tuple[dict[str, Any], ...] | None = None,
@@ -74,6 +87,7 @@ class ScatterPlotWidget(MatterVizWidget):
         point_tween: dict[str, Any] | None = None,
         line_tween: dict[str, Any] | None = None,
         point_events: str | None = None,
+        selected_point: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize a scatter plot widget.
@@ -108,6 +122,9 @@ class ScatterPlotWidget(MatterVizWidget):
             point_tween: Point animation configuration.
             line_tween: Line animation configuration.
             point_events: CSS ``pointer-events`` value for data points.
+            selected_point: Point to highlight from Python, as
+                ``{"series_idx", "point_idx"}``. Use ``observe("active_point")``
+                to react to clicks and link this widget to others.
             **kwargs: Additional base widget keyword arguments.
         """
         super().__init__(
@@ -141,5 +158,6 @@ class ScatterPlotWidget(MatterVizWidget):
             point_tween=normalize_plot_json(point_tween, "ScatterPlot.point_tween"),
             line_tween=normalize_plot_json(line_tween, "ScatterPlot.line_tween"),
             point_events=point_events,
+            selected_point=selected_point,
             **kwargs,
         )

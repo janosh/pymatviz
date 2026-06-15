@@ -68,7 +68,6 @@ testpaths = ["tests"]
 addopts = "-p no:warnings"
 
 [tool.ruff]
-target-version = "py311"
 output-format = "concise"
 
 [tool.ruff.lint]
