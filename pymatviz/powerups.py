@@ -114,7 +114,7 @@ def annotate_metrics(
         text += suffix
         return text
 
-    is_faceted = isinstance(fig, go.Figure) and any(
+    is_faceted = any(
         getattr(trace, "xaxis", None) not in (None, "x") for trace in fig.data
     )
     if is_faceted:
@@ -552,7 +552,7 @@ def enhance_parity_plot(
     # Early return if no stats or best-fit line needed and manual data not provided
     if (
         not stats
-        and best_fit_line is not True
+        and best_fit_line in (False, None)
         and len(xs_arr) == 0
         and len(ys_arr) == 0
     ):
@@ -607,7 +607,7 @@ def enhance_parity_plot(
             add_best_fit_line(fig, xs=all_xs, ys=all_ys, **combined_best_fit_kwargs)
 
         # Add combined stats annotation if requested
-        if stats and annotation_mode != "none":
+        if stats:
             combined_stats_kwargs = {} if isinstance(stats, bool) else stats
             annotate_metrics(all_xs, all_ys, fig=fig, **combined_stats_kwargs)
 

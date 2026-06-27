@@ -2,14 +2,13 @@ from __future__ import annotations
 
 import os
 import pickle
-import sys
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import pytest
 import requests
 
-from pymatviz.enums import Files, Key, LabelEnum, StrEnum
+from pymatviz.enums import Files, Key, LabelEnum
 
 
 if TYPE_CHECKING:
@@ -20,23 +19,10 @@ if TYPE_CHECKING:
 
 
 class DummyEnum(LabelEnum):
+    """Test enum with label and description metadata."""
+
     TEST1 = "test1", "Test Label 1", "Test Description 1"
     TEST2 = "test2", "Test Label 2"
-
-
-def test_str_enum() -> None:
-    # ensure all pymatviz Enums classes are subclasses of StrEnum
-    # either the standard library StrEnum if 3.11+ or our own StrEnum
-    assert issubclass(StrEnum, str)
-    from enum import StrEnum as StdLibStrEnum
-
-    assert StrEnum is StdLibStrEnum
-
-
-def test_key_enum() -> None:
-    # access any attribute to trigger @unique decorator check
-    assert Key.energy_per_atom == "energy_per_atom"
-    assert Key.volume == "volume"
 
 
 def test_pickle_enum() -> None:
@@ -59,15 +45,20 @@ def test_label_enum_new() -> None:
     assert DummyEnum.TEST1.label == "Test Label 1"
     assert DummyEnum.TEST1.description == "Test Description 1"
 
-    # check label and description are not settable
-    assert DummyEnum.TEST1.label == "Test Label 1"
-    with pytest.raises(AttributeError):
-        # ignore mypy error from label attribute being read-only
-        DummyEnum.TEST1.label = "New Label"
 
-    assert DummyEnum.TEST1.description == "Test Description 1"
+@pytest.mark.parametrize(
+    ("attr_name", "old_value", "new_value"),
+    [
+        ("label", "Test Label 1", "New Label"),
+        ("description", "Test Description 1", "New Description"),
+    ],
+)
+def test_label_enum_attributes_read_only(
+    attr_name: str, old_value: str, new_value: str
+) -> None:
+    assert getattr(DummyEnum.TEST1, attr_name) == old_value
     with pytest.raises(AttributeError):
-        DummyEnum.TEST1.description = "New Description"
+        setattr(DummyEnum.TEST1, attr_name, new_value)
 
 
 def test_label_enum_repr() -> None:
@@ -494,48 +485,6 @@ def test_data_files_enum(tmp_path: Path) -> None:
     assert TestDataFiles.wbm_summary.url == "https://figshare.com/files/789012"
 
 
-# Define a local enum for URL testing to avoid dependency on global Files state
-class LocalTestFilesForUrls(Files):
-    file1_figshare_url = (
-        "path1/file1.txt",
-        "https://figshare.com/files/789012",
-        "File 1 Figshare",
-    )
-    file2_empty_url = ("path2/file2.txt", "", "File 2 Empty URL")
-    # Removed file2_bad_url as this test expects all parametrized cases to pass
-    # or handle gracefully. Testing for assertion failures with bad URLs
-    # would typically be a separate test case using pytest.raises.
-
-
-@pytest.mark.parametrize("data_file", LocalTestFilesForUrls)
-def test_data_files_enum_urls(
-    data_file: Files, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Test that each URL in data-files.yml is a valid Figshare download URL."""
-    name, url = data_file.name, data_file.url
-
-    if not url:  # If no URL is defined, it passes this specific Figshare check.
-        return
-
-    # check that URL is a figshare download
-    assert "figshare.com/files/" in url, (
-        f"URL for {name} is not a Figshare download URL: {url}"
-    )
-
-    # Mock requests.head to avoid actual network calls
-    class MockResponse:
-        status_code = 200
-
-    def mock_head(*_args: str, **_kwargs: dict[str, str]) -> MockResponse:
-        return MockResponse()
-
-    monkeypatch.setattr(requests, "head", mock_head)
-
-    # check that the URL is valid by sending a head request
-    response = requests.head(url, allow_redirects=True, timeout=5)
-    assert response.status_code in {200, 403}, f"Invalid URL for {name}: {url}"
-
-
 def test_files_enum_auto_download(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
 ) -> None:
@@ -578,13 +527,6 @@ def test_files_enum_auto_download(
 
         def raise_for_status(self) -> None:
             raise requests.HTTPError(f"HTTP Error: {self.status_code}")
-
-    # Mock stdin (though not used by current Files enum)
-    class MockStdin:
-        def isatty(self) -> bool:
-            return False
-
-    monkeypatch.setattr(sys, "stdin", MockStdin())
 
     # Test 1: Auto-download enabled, file does NOT exist. Download should happen.
     if os.path.isfile(expected_abs_path):

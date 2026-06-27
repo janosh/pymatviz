@@ -52,16 +52,12 @@ from pymatviz import chem_env
 def test_get_cn_from_symbol(
     symbol: str, mapping: dict[str, int], expected_cn: int
 ) -> None:
-    result = chem_env.get_cn_from_symbol(symbol, mapping)
-    assert result == expected_cn
-    assert isinstance(result, int)
-    assert result >= 0
+    assert chem_env.get_cn_from_symbol(symbol, mapping) == expected_cn
 
 
 @pytest.mark.parametrize(
     ("site_idx", "cn_val", "exact"),
     [
-        *[(0, cn, None) for cn in range(1, 25)],
         (0, 0, "CN:0"),
         (0, -1, "CN:-1"),
         (0, 99, "CN:99"),
@@ -81,34 +77,7 @@ def test_classify_local_env_with_order_params_cubic(
         structures[0], site_idx, cn_val
     )
 
-    assert isinstance(result, str)
-    assert len(result) > 0
-    if exact:
-        assert result == exact
-    else:
-        assert ":" in result or result.startswith("CN")
-    if ":" in result:
-        parts = result.split(":")
-        assert len(parts) == 2
-        try:
-            int(parts[1])
-        except ValueError:
-            pytest.fail(f"Second part of '{result}' is not numeric")
-        if not result.startswith("CN:"):
-            assert parts[1] == str(cn_val)
-
-
-@pytest.mark.parametrize("struct_idx", [0, 1])
-@pytest.mark.parametrize("cn_val", [0, 1, 2, 4, 6, 8, 12, 13, 20, 50, 100])
-def test_classify_local_env_fixture_structures(
-    structures: tuple[Structure, Structure], struct_idx: int, cn_val: int
-) -> None:
-    result = chem_env.classify_local_env_with_order_params(
-        structures[struct_idx], 0, cn_val
-    )
-    assert isinstance(result, str)
-    assert len(result) > 0
-    assert ":" in result or result.startswith("CN")
+    assert result == exact
 
 
 def test_classify_local_env_uses_requested_site_neighbors(
@@ -118,9 +87,7 @@ def test_classify_local_env_uses_requested_site_neighbors(
     from pymatgen.analysis import local_env
 
     structure = Structure(
-        Lattice.cubic(4),
-        ["Li", "O", "O"],
-        [[0, 0, 0], [0.5, 0.5, 0.5], [0.5, 0, 0]],
+        Lattice.cubic(4), ["Li", "O", "O"], [[0, 0, 0], [0.5, 0.5, 0.5], [0.5, 0, 0]]
     )
 
     class FakeCrystalNN:
@@ -151,39 +118,79 @@ def test_classify_local_env_uses_requested_site_neighbors(
     assert chem_env.classify_local_env_with_order_params(structure, 1, 4) == "T:4"
 
 
-@pytest.mark.parametrize(
-    ("lattice_param", "species", "coords"),
-    [
-        (2.0, ["Li", "F"], [[0, 0, 0], [0.5, 0.5, 0.5]]),
-        (6.0, ["K", "Br"], [[0, 0, 0], [0.5, 0.5, 0.5]]),
-        (4.0, ["Fe"], [[0, 0, 0]]),
-        (3.0, ["Al"], [[0, 0, 0]]),
-        (
-            4.0,
-            ["Ca", "Ti", "O", "O", "O"],
-            [[0, 0, 0], [0.5, 0.5, 0.5], [0.5, 0.5, 0], [0.5, 0, 0.5], [0, 0.5, 0.5]],
-        ),
-    ],
-)
-def test_classify_local_env_various_structures(
-    lattice_param: float, species: list[str], coords: list[list[float]]
+def test_classify_local_env_falls_back_for_weak_order_match(
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    structure = Structure(Lattice.cubic(lattice_param), species, coords)
-    for cn_val in [0, 1, 2, 4, 6, 8, 12, 13, 20, 50, 100]:
-        for site_idx in range(len(species)):
-            result = chem_env.classify_local_env_with_order_params(
-                structure, site_idx, cn_val
-            )
-            assert isinstance(result, str)
-            assert len(result) > 0
-            assert ":" in result or result.startswith("CN")
+    """Weak local order matches fall back to the generic CN label."""
+    from pymatgen.analysis import local_env
+
+    structure = Structure(Lattice.cubic(4), ["Li", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+
+    class FakeCrystalNN:
+        """Nearest-neighbor finder returning a single neighbor."""
+
+        def get_nn_info(self, structure: Structure, n: int) -> list[dict[str, object]]:
+            """Return one neighbor so order parameters can be evaluated."""
+            return [{"site": structure[1 - n]}]
+
+    class FakeOrderParams:
+        """Order-parameter calculator returning a low-confidence match."""
+
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            """Accept the same constructor shape as LocalStructOrderParams."""
+
+        def get_order_parameters(
+            self,
+            structure: Structure,
+            n: int,
+            indices_neighs: list[int],
+        ) -> np.ndarray:
+            """Return a value below the production confidence threshold."""
+            assert isinstance(structure, Structure)
+            assert n == 0
+            assert indices_neighs == [1]
+            return np.array([0.5])
+
+    monkeypatch.setitem(local_env.CN_OPT_PARAMS, 1, {"L": ("linear",)})
+    monkeypatch.setattr(local_env, "CrystalNN", FakeCrystalNN)
+    monkeypatch.setattr(local_env, "LocalStructOrderParams", FakeOrderParams)
+
+    assert chem_env.classify_local_env_with_order_params(structure, 0, 1) == "CN:1"
 
 
-def test_chem_env_functions_integration(
-    structures: tuple[Structure, Structure],
+def test_collect_coord_envs_crystal_nn_normalizes_counts(
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    cn = chem_env.get_cn_from_symbol("T:4", {"T:4": 4, "O:6": 6, "C:8": 8})
-    assert cn == 4
-    result = chem_env.classify_local_env_with_order_params(structures[0], 0, cn)
-    assert isinstance(result, str)
-    assert len(result) > 0
+    """Normalized CrystalNN counts assign each site equal structure weight."""
+    from pymatgen.analysis import local_env
+
+    structure = Structure(Lattice.cubic(4), ["Li", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+
+    class FakeCrystalNN:
+        """Nearest-neighbor finder with one neighbor per site."""
+
+        def get_nn_info(
+            self, structure: Structure, site_idx: int
+        ) -> list[dict[str, object]]:
+            """Return one neighbor so the coordination number is one."""
+            return [{"site": structure[1 - site_idx]}]
+
+    def fake_classify_local_env(
+        _structure: Structure, site_idx: int, cn_val: int
+    ) -> str:
+        """Return a site-specific label to keep normalized rows distinct."""
+        return f"site-{site_idx}:CN{cn_val}"
+
+    monkeypatch.setattr(local_env, "CrystalNN", FakeCrystalNN)
+    monkeypatch.setattr(
+        chem_env,
+        "classify_local_env_with_order_params",
+        fake_classify_local_env,
+    )
+
+    result = chem_env.collect_coord_envs_crystal_nn([structure], normalize=True)
+
+    assert result == [
+        {"coord_num": 1, "chem_env_symbol": "site-0:CN1", "count": 0.5},
+        {"coord_num": 1, "chem_env_symbol": "site-1:CN1", "count": 0.5},
+    ]

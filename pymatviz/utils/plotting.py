@@ -316,7 +316,7 @@ def get_fig_xy_range(
         elif isinstance(traces, slice):
             indices = list(range(*traces.indices(len(fig.data))))
             trace_index = indices[0] if indices else 0
-        elif isinstance(traces, list):
+        elif isinstance(traces, (list, tuple)):
             trace_index = traces[0] if traces else 0
         elif isinstance(traces, Callable):
             trace_predicate = cast("Callable[[Any], bool]", traces)

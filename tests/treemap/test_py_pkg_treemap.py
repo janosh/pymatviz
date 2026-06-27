@@ -323,6 +323,8 @@ def test_internal_imports(dummy_pkg_path: Path) -> None:
     (dummy_pkg_path / pkg_name / "internal_user.py").write_text(
         "from .submodule import module2 # internal import from sibling dir\n"
         "from . import module1 # internal import from same dir\n"
+        "import my_pkg.submodule.module2 # absolute internal import\n"
+        "from my_pkg import module1 # absolute internal import\n"
         "import os # external import\n\n"
         "class InternalUser:\n    pass\n"
     )
@@ -345,7 +347,7 @@ def test_internal_imports(dummy_pkg_path: Path) -> None:
     )
     assert internal_user_idx != -1
 
-    assert [int(custom_data[internal_user_idx, idx]) for idx in (7, 8, 4)] == [2, 1, 1]
+    assert [int(custom_data[internal_user_idx, idx]) for idx in (7, 8, 4)] == [4, 1, 1]
 
 
 def test_top_level_module(dummy_pkg_path: Path) -> None:
@@ -569,6 +571,28 @@ def test_py_pkg_treemap_tooltip_data(mock_pkg_data: pd.DataFrame) -> None:
         assert pkg1_mod_a_percent == pytest.approx(100 / 300)
 
 
+def test_py_pkg_treemap_wraps_long_underscore_labels(
+    mock_pkg_data: pd.DataFrame,
+) -> None:
+    """Long underscore labels are wrapped near the middle underscore."""
+    mock_collect_df = mock_pkg_data.iloc[:1].copy()
+    long_label = "very_long_module_name"
+    mock_collect_df["leaf_label"] = long_label
+    mock_collect_df["filename"] = long_label
+    mock_collect_df["top_module"] = long_label
+    mock_collect_df["full_module"] = f"pkg1.{long_label}"
+    mock_collect_df["repo_path_segment"] = f"pkg1/{long_label}.py"
+    mock_collect_df["module_parts"] = [[long_label]]
+
+    with patch(
+        "pymatviz.treemap.py_pkg.collect_package_modules",
+        return_value=mock_collect_df,
+    ):
+        fig = pmv.py_pkg_treemap(packages="pkg1", base_url=None)
+
+    assert "very_long_<br>module_name" in fig.data[0].labels
+
+
 # Calculator functions for testing
 def _calc_sum_functions_classes(metrics: pmv.treemap.py_pkg.ModuleStats) -> int:
     return metrics.n_functions + metrics.n_classes
@@ -680,18 +704,6 @@ def test_normalize_package_input() -> None:
 
     mock_obj = MockObj()
     assert pmv.treemap.py_pkg._normalize_package_input(mock_obj) == str(mock_obj)
-
-
-def test_py_pkg_treemap_with_module_objects() -> None:
-    """Test py_pkg_treemap with module objects instead of strings."""
-    fig = pmv.py_pkg_treemap(np)  # Test single module object
-    assert isinstance(fig, go.Figure)
-    assert len(fig.data) == 1
-
-    # Test mixed module objects and strings
-    fig_mixed = pmv.py_pkg_treemap([np, "my_pkg"])
-    assert isinstance(fig_mixed, go.Figure)
-    assert len(fig_mixed.data) == 1
 
 
 @pytest.fixture

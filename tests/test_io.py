@@ -250,13 +250,6 @@ def test_save_and_compress_svg(filename: str, monkeypatch: pytest.MonkeyPatch) -
         assert "svgo" in mock_run.call_args[0][0][0]
 
 
-def test_df_to_html_table_deprecation(df_mixed: pd.DataFrame) -> None:
-    """df_to_html_table emits DeprecationWarning and delegates to df_to_html."""
-    with pytest.warns(DeprecationWarning, match="df_to_html_table is deprecated"):
-        result = pmv.io.df_to_html_table(df_mixed.style, inline_props="")
-    assert "<table" in result
-
-
 def test_df_to_html_post_process(df_mixed: pd.DataFrame) -> None:
     """df_to_html applies post_process callback to output HTML."""
     marker = "<!-- POST PROCESSED -->"

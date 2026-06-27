@@ -3,7 +3,7 @@ import { redirect } from '@sveltejs/kit'
 import type { LayoutServerLoad } from './$types'
 
 export const load: LayoutServerLoad = ({ url }) => {
-  if (/^\/(examples|pymatviz|citation)/u.test(url.pathname)) {
+  if (/^\/(?:examples|pymatviz|citation)/u.test(url.pathname)) {
     const gh_file_url = `https://github.com/janosh/pymatviz/blob/-${url.pathname}`
     redirect(307, gh_file_url)
   }

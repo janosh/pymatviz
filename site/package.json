@@ -8,39 +8,30 @@
   "repository": "https://github.com/janosh/pymatviz",
   "type": "module",
   "scripts": {
-    "dev": "vp dev",
-    "build": "vite build",
-    "preview": "vp preview",
-    "serve": "vite build && vp preview",
-    "changelog": "npx auto-changelog --package --output ../changelog.md --hide-credit --commit-limit false",
-    "test": "vp test --run",
-    "check": "vp check",
-    "lint": "vp lint",
-    "fmt": "vp fmt --write"
+    "build": "vite build"
   },
   "devDependencies": {
-    "@iconify/svelte": "^5.2.1",
+    "@iconify/svelte": "^5.2.2",
     "@janosh/vite-config": "github:janosh/dotfiles",
     "@sveltejs/adapter-static": "^3.0.10",
-    "@sveltejs/kit": "^2.63.0",
+    "@sveltejs/kit": "^2.68.0",
     "@sveltejs/vite-plugin-svelte": "^7.1.2",
-    "@types/node": "^25.9.2",
-    "@typescript/native-preview": "7.0.0-dev.20260605.1",
+    "@typescript/native-preview": "7.0.0-dev.20260627.2",
     "highlight.js": "^11.11.1",
     "mdsvex": "^0.12.7",
     "rehype-starry-night": "^2.2.0",
     "rehype-stringify": "^10.0.1",
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.1.2",
-    "svelte": "^5.56.2",
-    "svelte-check-rs": "^0.10.0",
-    "svelte-multiselect": "11.7.1",
+    "svelte": "^5.56.4",
+    "svelte-check-rs": "^0.10.1",
+    "svelte-multiselect": "^11.7.2",
     "svelte-toc": "^0.7.0",
     "tslib": "^2.8.1",
     "typescript": "^6.0.3",
     "unified": "^11.0.5",
-    "vite": "^8.0.16",
-    "vite-plus": "^0.1.24"
+    "vite": "^8.1.0",
+    "vite-plus": "^0.2.1"
   },
-  "packageManager": "pnpm@11.5.0"
+  "packageManager": "pnpm@11.9.0"
 }

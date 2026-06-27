@@ -283,8 +283,9 @@ def test_xrd_pattern_stack_and_kwargs(
     subplot_kwargs: dict[str, Any] | None,
     subtitle_kwargs: dict[str, Any] | None,
 ) -> None:
+    trace_kwargs = {"marker_color": "red"}
     patterns = {
-        "Pattern 1": MOCK_DIFFRACTION_PATTERN,
+        "Pattern 1": (MOCK_DIFFRACTION_PATTERN, trace_kwargs),
         "Pattern 2": MOCK_DIFFRACTION_PATTERN,
     }
     fig = pmv.xrd_pattern(
@@ -296,6 +297,7 @@ def test_xrd_pattern_stack_and_kwargs(
 
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == 2
+    assert trace_kwargs == {"marker_color": "red"}
 
     if stack:
         assert fig._grid_ref is not None

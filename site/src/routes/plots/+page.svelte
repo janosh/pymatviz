@@ -15,7 +15,7 @@
       <span>{idx + 1}</span>
       <h3>{filename?.replaceAll(`-`, ` `)}</h3>
       {#if src.endsWith(`.svelte`)}
-        {#await import(src) then {default: Component}}
+        {#await import(src) then { default: Component }}
           <Component />
         {/await}
       {:else if src.endsWith(`.pdf`)}

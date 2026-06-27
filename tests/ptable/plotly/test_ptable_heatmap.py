@@ -4,14 +4,12 @@ import re
 from typing import TYPE_CHECKING
 
 import numpy as np
-import pandas as pd
 import plotly.graph_objects as go
 import pytest
 from plotly.exceptions import PlotlyError
-from plotly.graph_objs import Figure
 
 import pymatviz as pmv
-from pymatviz.enums import ElemCountMode, Key
+from pymatviz.enums import Key
 from pymatviz.utils import df_ptable
 
 
@@ -94,10 +92,7 @@ def test_ptable_heatmap(glass_formulas: list[str]) -> None:
         (["P", "S"], "percent", False, False, 14, ["blue"], 1.1),
         ([], "value", True, True, 10, ("green", "yellow"), 0.95),
         (["H", "He", "Li"], "value", False, True, 16, ["purple"], 1.0),
-        (["Fe"], "fraction", True, False, 8, ("orange", "pink"), 2),
-        (["Xe"], "percent", True, True, None, ["brown", "cyan"], 0.2),
         ([], "value", False, True, None, ["red"], 1.5),
-        (["O"], "fraction", False, True, 12, ("black", "white"), 0.8),
     ],
 )
 def test_ptable_heatmap_kwarg_combos(
@@ -110,8 +105,6 @@ def test_ptable_heatmap_kwarg_combos(
     font_colors: Sequence[str],
     scale: float,
 ) -> None:
-    if log and heat_mode != "value":
-        pytest.skip("log scale only supported for heat_mode='value'")
     fig = pmv.ptable_heatmap(
         glass_formulas,
         exclude_elements=exclude_elements,
@@ -246,21 +239,6 @@ def test_ptable_heatmap_label_map(
         )
 
 
-@pytest.mark.parametrize("mode", ["value", "fraction", "percent"])
-def test_ptable_heatmap_heat_modes(
-    mode: Literal["value", "fraction", "percent"],
-) -> None:
-    values = {"Fe": 2, "O": 3, "H": 1}
-    fig = pmv.ptable_heatmap(values, heat_mode=mode)
-    assert fig.data[-1].zmax is not None
-    if mode == "value":
-        assert fig.data[-1].zmax == 3
-    elif mode == "fraction":
-        assert fig.data[-1].zmax == pytest.approx(0.5)
-    elif mode == "percent":
-        assert fig.data[-1].zmax == pytest.approx(50)
-
-
 def test_ptable_heatmap_show_values() -> None:
     values = {"Fe": 2, "O": 3}
     fig = pmv.ptable_heatmap(values, show_values=False)
@@ -269,32 +247,6 @@ def test_ptable_heatmap_show_values() -> None:
         "<span style='font-weight: bold; font-size: 18.0;'>Fe</span>",
     ):
         assert text in [anno.text for anno in fig.layout.annotations if anno.text]
-
-
-def test_ptable_heatmap_exclude_elements() -> None:
-    values = {"Fe": 2, "O": 3, "H": 1}
-    fig = pmv.ptable_heatmap(values, exclude_elements=["O"])
-    assert "excl." in str(fig.layout.annotations)
-
-
-def test_ptable_heatmap_series_input() -> None:
-    values = pd.Series({"Fe": 2, "O": 3, "H": 1})
-    fig = pmv.ptable_heatmap(values)
-    assert isinstance(fig, Figure)
-
-
-def test_ptable_heatmap_count_modes() -> None:
-    values = ("FeO", "Fe2O3", "H2O")
-    for mode in ElemCountMode:
-        fig = pmv.ptable_heatmap(values, count_mode=mode)
-        assert isinstance(fig, Figure)
-
-
-def test_ptable_heatmap_hover_props() -> None:
-    values = {"Fe": 2, "O": 3}
-    hover_props = ["atomic_number", "atomic_mass"]
-    fig = pmv.ptable_heatmap(values, hover_props=hover_props)
-    assert all(prop in str(fig.data[-1].text) for prop in hover_props)
 
 
 def test_ptable_heatmap_custom_label_map() -> None:

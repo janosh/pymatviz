@@ -2116,12 +2116,6 @@ def test_color_scale_options(
     df_test = sample_df.copy()
     df_test["property"] = [0.1, 10, 1000]  # Values spanning several orders of magnitude
 
-    # For log scale, ensure no negative values
-    if color_scale == "log" or (
-        isinstance(color_scale, dict) and color_scale.get("type") == "log"
-    ):
-        pass  # Our test data is already positive
-
     fig = pmv.cluster_compositions(
         df_in=df_test,
         composition_col="composition",
@@ -2231,12 +2225,6 @@ def test_colorbar_tick_count(
             "property": [0.01, 0.1, 1.0, 10.0, 100.0, 1000.0],
         }
     )
-
-    # For log scale, ensure no negative values
-    if color_scale == "log" or (
-        isinstance(color_scale, dict) and color_scale.get("type") == "log"
-    ):
-        pass  # Our test data already has only positive values
 
     fig = pmv.cluster_compositions(
         df_in=df_test,

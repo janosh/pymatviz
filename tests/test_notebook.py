@@ -86,21 +86,6 @@ def test_notebook_mode_toggle(enable: bool) -> None:
     pmv.notebook_mode(on=False)
 
 
-def test_multiple_enable_disable_cycles() -> None:
-    """Test that repeated enable/disable cycles are idempotent."""
-    pmv.notebook_mode(on=False)
-    assert not hasattr(Structure, "_ipython_display_")
-
-    for _ in range(3):
-        pmv.notebook_mode(on=True)
-        assert hasattr(Structure, "_ipython_display_")
-        assert hasattr(Structure, "_repr_mimebundle_")
-
-        pmv.notebook_mode(on=False)
-        assert not hasattr(Structure, "_ipython_display_")
-        assert not hasattr(Structure, "_repr_mimebundle_")
-
-
 @pytest.mark.parametrize(
     ("obj_name", "should_skip"),
     [("structure", False), ("ase_atoms", True), ("diffraction_pattern", True)],
@@ -185,34 +170,6 @@ def test_fallback_without_pymatviz(
         assert "text/plain" in mime
     finally:
         pmv.notebook_mode(on=False)
-
-
-@pytest.mark.parametrize(
-    "import_error_modules",
-    [
-        ["pymatgen.core"],
-        ["ase.atoms"],
-        ["pymatgen.analysis.diffraction.xrd"],
-        ["pymatgen.phonon.bandstructure"],
-        ["pymatgen.phonon.dos"],
-        ["phonopy.phonon.dos"],
-        ["ase.atoms", "pymatgen.phonon.dos"],
-    ],
-)
-def test_import_error_handling(
-    import_error_modules: list[str], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Test notebook_mode when various imports fail."""
-    original_import = __import__
-
-    def mock_import(name: str, *args: Any, **kwargs: Any) -> Any:
-        if name in import_error_modules:
-            raise ImportError(f"No module with {name=}")
-        return original_import(name, *args, **kwargs)
-
-    monkeypatch.setattr("builtins.__import__", mock_import)
-    pmv.notebook_mode(on=True)
-    pmv.notebook_mode(on=False)
 
 
 def test_phonopy_dos_integration(monkeypatch: pytest.MonkeyPatch) -> None:

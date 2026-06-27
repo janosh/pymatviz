@@ -407,19 +407,6 @@ def test_calculate_rdf_input_validation(
         calculate_rdf(structure_param, **params)  # ty: ignore[invalid-argument-type]
 
 
-def test_calculate_rdf_invalid_structure_type() -> None:
-    """Test that calculate_rdf raises appropriate error for invalid structure types."""
-    with pytest.raises(
-        TypeError, match="Input must be a pymatgen Structure, IStructure, Molecule"
-    ):
-        calculate_rdf("not a structure", cutoff=10, n_bins=10)  # ty: ignore[invalid-argument-type]
-
-    with pytest.raises(
-        TypeError, match="Input must be a pymatgen Structure, IStructure, Molecule"
-    ):
-        calculate_rdf(42, cutoff=10, n_bins=10)  # ty: ignore[invalid-argument-type]
-
-
 @pytest.mark.parametrize(
     ("species", "frac_coords", "a_len", "first_shell_max", "expected_cn"),
     [

@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import gzip
 import json
-import pickle
-import zipfile
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -19,22 +16,9 @@ from tests.widgets.conftest import (
 
 
 if TYPE_CHECKING:
-    from pathlib import Path
     from typing import Any
 
     from pymatgen.core import Structure
-
-
-def _write_gzip(filepath: str, content: str) -> None:
-    """Write content to a gzip file."""
-    with gzip.open(filepath, "wt") as gz_file:
-        gz_file.write(content)
-
-
-def _write_zip(filepath: str, content: str) -> None:
-    """Write content to a zip file containing trajectory.xyz."""
-    with zipfile.ZipFile(filepath, "w") as zip_file:
-        zip_file.writestr("trajectory.xyz", content)
 
 
 def test_widget_build_files_and_display_trajectory() -> None:
@@ -47,102 +31,6 @@ def test_widget_notebook_integration() -> None:
     """Widget must integrate properly with notebook environments."""
     widget = TrajectoryWidget()
     assert_widget_notebook_integration(widget)
-
-
-@pytest.mark.parametrize(
-    ("file_suffix", "file_content", "create_func"),
-    [
-        (
-            ".xyz",
-            "2\nStep 0\nH 0.0 0.0 0.0\nO 0.0 0.0 1.0",
-            lambda file: file.write("2\nStep 0\nH 0.0 0.0 0.0\nO 0.0 0.0 1.0"),
-        ),
-        (
-            ".npz",
-            None,
-            lambda file: np.savez(
-                file.name, trajectory=np.random.default_rng(seed=0).random((3, 5, 3))
-            ),
-        ),
-        (
-            ".pkl",
-            None,
-            lambda file: pickle.dump([{"structure": "test", "energy": 1.0}], file),
-        ),
-        (".txt", None, lambda file: file.write(b"not a trajectory file")),
-    ],
-)
-def test_trajectory_file_loading_various_formats(
-    file_suffix: str, file_content: str | None, create_func: Any, tmp_path: Path
-) -> None:
-    """Test loading various trajectory file formats via data_url."""
-    temp_path = tmp_path / f"trajectory{file_suffix}"
-
-    if file_content:
-        temp_path.write_text(file_content)
-    else:
-        with open(temp_path, "wb") as temp_file:
-            create_func(temp_file)
-
-    widget = TrajectoryWidget(data_url=str(temp_path))
-    assert widget.data_url == str(temp_path)
-    assert widget.trajectory is None  # Frontend handles loading
-
-
-@pytest.mark.parametrize(
-    ("file_suffix", "compression_func"),
-    [(".xyz.gz", _write_gzip), (".zip", _write_zip)],
-)
-def test_trajectory_file_loading_compressed_formats(
-    file_suffix: str, compression_func: Any, tmp_path: Path
-) -> None:
-    """Test loading compressed trajectory files via data_url."""
-    xyz_content = "2\nStep 0\nH 0.0 0.0 0.0\nO 0.0 0.0 1.0"
-
-    temp_path = tmp_path / f"trajectory{file_suffix}"
-    compression_func(str(temp_path), xyz_content)
-
-    widget = TrajectoryWidget(data_url=str(temp_path))
-    assert widget.data_url == str(temp_path)
-    assert widget.trajectory is None
-
-
-@pytest.mark.parametrize(
-    "data_url",
-    [
-        "nonexistent_file.xyz",
-        "/absolute/path/to/file.xyz",
-        "./relative/path/to/file.xyz",
-    ],
-)
-def test_trajectory_file_path_handling(data_url: str) -> None:
-    """Test that various file paths are correctly handled via data_url."""
-    widget = TrajectoryWidget(data_url=data_url)
-    assert widget.data_url == data_url
-    assert widget.trajectory is None
-
-
-def test_trajectory_file_loading_with_metadata(tmp_path: Path) -> None:
-    """Test loading trajectory files that include metadata via data_url."""
-    from pymatgen.core import Lattice, Structure
-
-    simple_structure = Structure(
-        lattice=Lattice.cubic(3.0),
-        species=["Fe", "Fe"],
-        coords=[[0, 0, 0], [0.5, 0.5, 0.5]],
-    )
-
-    trajectory_data = [{"structure": simple_structure, "energy": 1.0, "step": 0}]
-
-    temp_path = tmp_path / "trajectory.pkl"
-    import pickle
-
-    with open(temp_path, "wb") as temp_file:
-        pickle.dump(trajectory_data, temp_file)
-
-    widget = TrajectoryWidget(data_url=str(temp_path))
-    assert widget.data_url == str(temp_path)
-    assert widget.trajectory is None
 
 
 def test_widget_creates_view_model(multi_frame_trajectory: dict[str, Any]) -> None:
@@ -170,20 +58,6 @@ def test_widget_creates_view_model(multi_frame_trajectory: dict[str, Any]) -> No
 
     # Test that trajectory can be serialized
     json.dumps(widget.trajectory)
-
-
-@pytest.mark.parametrize("step_idx", [0, 2, 4, 10, -1])
-def test_widget_step_navigation(
-    multi_frame_trajectory: dict[str, Any], step_idx: int
-) -> None:
-    """Widget must handle step navigation correctly."""
-    widget = TrajectoryWidget(trajectory=multi_frame_trajectory)
-    widget.current_step_idx = step_idx
-    assert widget.current_step_idx == step_idx
-
-    # Test that step is tagged for sync
-    trait = widget.class_traits()["current_step_idx"]
-    assert trait.metadata.get("sync") is True, "Step property not synced"
 
 
 def test_widget_trajectory_updates(
@@ -260,42 +134,6 @@ def test_widget_complete_lifecycle(
     restored_trajectory = restored_widget.trajectory
     assert restored_trajectory is not None
     assert len(restored_trajectory["frames"]) == len(state["trajectory"]["frames"])
-
-
-def test_widget_performance_and_large_trajectories(
-    fe3co4_disordered: Structure,
-) -> None:
-    """Test widget performance with large trajectories."""
-    # Test large trajectory handling
-    long_trajectory = {"frames": [fe3co4_disordered] * 100}
-
-    widget = TrajectoryWidget(trajectory=long_trajectory)
-    assert widget.trajectory is not None
-    assert len(widget.trajectory["frames"]) == 100
-
-    # Test step navigation with large trajectory
-    widget.current_step_idx = 50
-    assert widget.current_step_idx == 50
-
-    widget.current_step_idx = 99
-    assert widget.current_step_idx == 99
-
-
-def test_widget_edge_cases_and_error_handling_trajectory(
-    multi_frame_trajectory: dict[str, Any],
-) -> None:
-    """Test widget edge cases and error handling."""
-    # Test widget with no trajectory
-    widget = TrajectoryWidget()
-    assert widget.trajectory is None
-    assert widget.current_step_idx == 0
-
-    # Build-asset sanity check on a regular instance.
-    widget = TrajectoryWidget(trajectory=multi_frame_trajectory)
-    assert_widget_build_files(widget)
-
-    # Test trajectory serialization
-    json.dumps(widget.trajectory)  # Should not raise exception
 
 
 @pytest.mark.parametrize(

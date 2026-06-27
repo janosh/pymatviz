@@ -141,6 +141,13 @@ def configure_assets(
         raise ValueError(
             "configure_assets() requires 'esm_src' when 'css_src' is provided."
         )
+    if not version and esm_src and css_src is None:
+        if not re.search(r"\.m?js$", esm_src):
+            raise ValueError(
+                "configure_assets() can derive 'css_src' only when 'esm_src' "
+                "ends with .js or .mjs."
+            )
+        css_src = re.sub(r"\.m?js$", ".css", esm_src)
 
     cls = MatterVizWidget
     cls._asset_cache.clear()
@@ -176,7 +183,7 @@ def configure_assets(
                 "configure_assets() requires 'esm_src' when no version is provided."
             )
         if css_src is None:
-            css_src = re.sub(r"\.m?js$", ".css", esm_src)
+            raise ValueError("configure_assets() requires or derives 'css_src'.")
         esm_content = _read_asset_source(esm_src)
         css_content = _read_asset_source(css_src)
         cls._export_esm_url = esm_src
@@ -294,7 +301,10 @@ class MatterVizWidget(AnyWidget):
                 fetch_widget_asset("matterviz.js"),
                 fetch_widget_asset("matterviz.css"),
             )
-        cls._esm, cls._css = cls._asset_cache["default"]
+        default_assets = cls._asset_cache["default"]
+        if not isinstance(default_assets, tuple):
+            raise TypeError("Default widget assets were not initialized correctly.")
+        cls._esm, cls._css = default_assets
 
     def __init__(self, version_override: str | None = None, **kwargs: Any) -> None:
         """Initialize with lazy-loaded widget assets.

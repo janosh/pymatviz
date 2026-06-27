@@ -1,12 +1,12 @@
 <script lang="ts">
   import { CopyButton } from 'svelte-multiselect'
 
-  let { title, file, code, highlighted }: {
-    title: string
-    file: string
-    code: string
-    highlighted: string
-  } = $props()
+  let {
+    title,
+    file,
+    code,
+    highlighted,
+  }: { title: string; file: string; code: string; highlighted: string } = $props()
 </script>
 
 <h2>{title}</h2>

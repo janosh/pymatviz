@@ -39,9 +39,6 @@ def get_cn_from_symbol(ce_symbol: str, symbol_cn_mapping: dict[str, int]) -> int
             return 0
         return max(0, cn_val)
 
-    if ce_symbol in ("NULL", "UNKNOWN"):
-        return 0
-
     return 0
 
 

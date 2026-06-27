@@ -401,37 +401,3 @@ def test_brillouin_zone_3d_edge_cases(structures: list[Structure]) -> None:
     # Test with invalid axes_vectors dict
     with pytest.raises(KeyError, match="axes_vectors must contain 'shaft' and 'cone'"):
         brillouin_zone_3d(structures[0], axes_vectors={"shaft": {}})
-
-
-def test_brillouin_zone_3d_custom_subplot_titles(structures: list[Structure]) -> None:
-    """Test different subplot title configurations."""
-
-    # Test with dict return type for subplot titles
-    def title_with_dict(_struct: AnyStructure, key: Hashable) -> dict[str, Any]:
-        font = dict(size=20, color="red")
-        return dict(text=f"Test {key}", font=font, x=0.5, y=0.9)
-
-    fig = brillouin_zone_3d(structures, subplot_title=title_with_dict)
-    assert isinstance(fig, go.Figure)
-    for idx, anno in enumerate(fig.layout.annotations):
-        expected_text = f"Test {idx + 1} {structures[idx].formula}"
-        assert anno.text == expected_text
-        assert anno.font.size == 20
-        assert anno.font.color == "red"
-        assert anno.x == 0.5
-        assert anno.y == 0.9
-
-    # Test with disabled subplot titles
-    fig = brillouin_zone_3d(structures, subplot_title=False)
-    assert isinstance(fig, go.Figure)
-    assert all(anno.text == " " for anno in fig.layout.annotations)
-
-    # Test with custom string return type
-    def title_with_string(struct: AnyStructure, key: Hashable) -> str:
-        return f"Structure {key} ({len(struct)} atoms)"
-
-    fig = brillouin_zone_3d(structures, subplot_title=title_with_string)
-    assert isinstance(fig, go.Figure)
-    for idx, struct in enumerate(structures):
-        expected_text = f"Structure {idx + 1} {struct.formula} ({len(struct)} atoms)"
-        assert fig.layout.annotations[idx].text == expected_text

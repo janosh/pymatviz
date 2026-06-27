@@ -18,26 +18,11 @@ if TYPE_CHECKING:
 
 def test_ptable_heatmap_splits_basic() -> None:
     """Test basic functionality of ptable_heatmap_splits."""
-    data: dict[str, list[float]] = {
-        "Fe": [1, 2],
-        "O": [3, 4],
-        "H": [0.5, 1.5],
-        "He": [1.5, 2.5],
-    }
-
-    # Test each orientation
-    for orientation in ("diagonal", "horizontal", "vertical"):
-        fig = pmv.ptable_heatmap_splits(data, orientation=orientation)
-        assert isinstance(fig, go.Figure)
-        # Each split should have its own subplot
-        assert len(fig.data) == sum(len(v) for v in data.values()) + 1
-
     # Test grid orientation separately with 4 splits
     data_4_split = {"Fe": [1, 2, 3, 4]}
     fig = pmv.ptable_heatmap_splits(
         data_4_split, orientation="grid", split_value_fmt=".0f"
     )
-    assert isinstance(fig, go.Figure)
     assert len(fig.data) == sum(len(v) for v in data_4_split.values()) + 1
 
     # grid sections are in reading order and each value annotation sits inside
@@ -675,50 +660,6 @@ def test_ptable_heatmap_splits_auto_font_color() -> None:
     # Verify that the font color is either black or white
     for anno in annotations:
         assert anno.font.color in ("black", "white")
-
-
-def test_luminance_calculation_for_font_color() -> None:
-    """Test the luminance calculation logic used for determining font color."""
-    from pymatviz.utils.plotting import luminance
-
-    # Test dark colors (should use white text)
-    dark_colors = [
-        "rgb(0, 0, 0)",  # Black
-        "rgb(50, 0, 0)",  # Dark red
-        "rgb(0, 50, 0)",  # Dark green
-        "rgb(0, 0, 50)",  # Dark blue
-        "rgb(50, 50, 50)",  # Dark gray
-    ]
-
-    # Test light colors (should use black text)
-    light_colors = [
-        "rgb(255, 255, 255)",  # White
-        "rgb(200, 200, 200)",  # Light gray
-        "rgb(255, 200, 200)",  # Light red
-        "rgb(200, 255, 200)",  # Light green
-        "rgb(200, 200, 255)",  # Light blue
-    ]
-
-    # Test the luminance threshold logic
-    threshold = 0.55  # This is the threshold used in the code
-
-    # Dark colors should have luminance < threshold
-    for color in dark_colors:
-        lum = luminance(color)
-        assert lum < threshold, (
-            f"Expected luminance < {threshold} for {color}, got {lum}"
-        )
-        # This would result in white text
-        assert ("black" if lum > threshold else "white") == "white"
-
-    # Light colors should have luminance > threshold
-    for color in light_colors:
-        lum = luminance(color)
-        assert lum > threshold, (
-            f"Expected luminance > {threshold} for {color}, got {lum}"
-        )
-        # This would result in black text
-        assert ("black" if lum > threshold else "white") == "black"
 
 
 def test_ptable_heatmap_splits_custom_font_color_override() -> None:

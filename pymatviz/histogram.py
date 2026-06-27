@@ -112,7 +112,7 @@ def histogram(
     histogram on the fly to render the figure).
     Speedup example:
 
-        gaussian = np.random.normal(0, 1, 1_000_000_000)
+        gaussian = np.random.default_rng(seed=0).normal(0, 1, 1_000_000_000)
         histogram(gaussian)  # takes 17s
         px.histogram(gaussian)  # ran for 3m45s before crashing the Jupyter kernel
 

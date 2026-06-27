@@ -246,8 +246,6 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
             )
             completed_frames.append(frame_dict)
         completed_trajectory["frames"] = completed_frames
-        if "metadata" in trajectory_data:
-            completed_trajectory["metadata"] = trajectory_data["metadata"]
         return completed_trajectory
 
     def _validate_trajectory_dict(self, trajectory_data: dict[str, Any]) -> None:

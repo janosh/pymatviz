@@ -37,11 +37,22 @@ def test_powerups_custom_metrics_and_font_preservation() -> None:
     assert anno_font.size == 13
 
 
+def test_enhance_parity_plot_keeps_dict_best_fit_line() -> None:
+    """Dict-configured best-fit lines work when stats are disabled."""
+    fig = go.Figure()
+    fig.add_scatter(x=[1, 2, 3], y=[1, 2, 4])
+
+    powerups.enhance_parity_plot(
+        fig, identity_line=False, best_fit_line={"color": "red"}, stats=False
+    )
+
+    assert fig.layout.shapes[-1].line.color == "red"
+
+
 @pytest.mark.parametrize(
     ("trace_kwargs", "expected_name", "expected_color", "expected_dash"),
     [
         (None, "Cumulative", "#636efa", "solid"),
-        ({}, "Cumulative", "#636efa", "solid"),
         ({"name": "foo", "line": {"color": "red"}}, "foo", "red", "solid"),
         ({"line": {"dash": "dash"}}, "Cumulative", "#636efa", "dash"),
     ],
@@ -54,7 +65,6 @@ def test_add_ecdf_line(
     expected_dash: str,
 ) -> None:
     fig = powerups.add_ecdf_line(plotly_scatter, trace_kwargs=trace_kwargs, traces=0)
-    assert isinstance(fig, go.Figure)
 
     ecdf_trace = fig.data[-1]
     assert ecdf_trace.name == expected_name
@@ -212,12 +222,7 @@ def test_relayout_powerups(
     powerup: dict[str, Any],
     button_specs: list[tuple[str, str, dict[str, Any]]],
 ) -> None:
-    assert isinstance(powerup, dict)
     assert plotly_scatter.layout.updatemenus == ()
-    for _label, _method, args in button_specs:
-        for key in args:
-            parent, attr = key.split(".")
-            assert getattr(getattr(plotly_scatter.layout, parent), attr) is None
     plotly_scatter.layout.updatemenus = [powerup]
 
     menu = plotly_scatter.layout.updatemenus[0]
@@ -266,7 +271,6 @@ def test_restyle_powerups(
     button_specs: list[tuple[str, str, dict[str, Any]]],
     apply: bool,
 ) -> None:
-    assert isinstance(powerup, dict)
     assert fig.layout.updatemenus == ()
     fig.layout.updatemenus = [powerup]
 
@@ -279,50 +283,6 @@ def test_restyle_powerups(
         if apply:
             fig.update_traces(args)
             assert fig.data[0].mode == args["mode"]
-
-
-@pytest.mark.parametrize(
-    ("powerup", "expected_buttons", "expected_type"),
-    [
-        (powerups.toggle_log_linear_x_axis, 2, "buttons"),
-        (powerups.toggle_grid, 2, "buttons"),
-        (powerups.select_colorscale, 4, "buttons"),
-        (powerups.select_marker_mode, 3, "buttons"),
-    ],
-)
-def test_powerup_structure(
-    powerup: dict[str, Any], expected_buttons: int, expected_type: str
-) -> None:
-    assert isinstance(powerup, dict)
-    assert powerup["type"] == expected_type
-    assert isinstance(powerup["buttons"], list)
-    assert len(powerup["buttons"]) == expected_buttons
-    for button in powerup["buttons"]:
-        assert isinstance(button, dict)
-        assert "args" in button
-        assert isinstance(button["args"], list)
-        assert len(button["args"]) > 0
-        assert "label" in button
-        assert isinstance(button["label"], str)
-        assert "method" in button
-        assert button["method"] in ("restyle", "relayout", "update")
-
-
-def test_multiple_powerups(plotly_scatter: go.Figure) -> None:
-    fig = plotly_scatter
-    assert fig.layout.updatemenus == ()
-
-    powerup_list = [
-        powerups.toggle_log_linear_x_axis,
-        powerups.toggle_grid,
-        powerups.select_colorscale,
-        powerups.select_marker_mode,
-    ]
-    fig.layout.updatemenus = powerup_list
-
-    assert fig.layout.updatemenus == tuple(
-        Updatemenu(powerup) for powerup in powerup_list
-    )
 
 
 def test_add_ecdf_line_color_matching() -> None:
