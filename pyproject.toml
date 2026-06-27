@@ -6,33 +6,33 @@ authors = [{ name = "Janosh Riebesell", email = "janosh.riebesell@gmail.com" }]
 readme = "readme.md"
 license = { file = "license" }
 keywords = [
-    "chemistry",
-    "crystallography",
-    "data analysis",
-    "data visualization",
-    "materials informatics",
-    "plotly",
+  "chemistry",
+  "crystallography",
+  "data analysis",
+  "data visualization",
+  "materials informatics",
+  "plotly",
 ]
 classifiers = [
-    "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
 ]
 urls = { Homepage = "https://github.com/janosh/pymatviz" }
 requires-python = ">=3.11"
 dependencies = [
-    "anywidget>=0.9.18",
-    "moyopy[interface]>=0.8",
-    "numpy>=2",
-    "pandas[output-formatting,xml]>=2.2", # output-formatting needed for pandas Stylers,
-    # see https://github.com/pandas-dev/pandas/blob/-/pyproject.toml
-    "plotly>=6.4",
-    "pymatgen>=2025.10.7",
-    "pyyaml>=6",
-    "scikit-learn>=1.5",
-    "scipy>=1.14",
+  "anywidget>=0.9.18",
+  "moyopy[interface]>=0.8",
+  "numpy>=2",
+  "pandas[output-formatting,xml]>=2.2", # output-formatting needed for pandas Stylers,
+  # see https://github.com/pandas-dev/pandas/blob/-/pyproject.toml
+  "plotly>=6.4",
+  "pymatgen>=2025.10.7",
+  "pyyaml>=6",
+  "scikit-learn>=1.5",
+  "scipy>=1.14",
 ]
 
 [project.optional-dependencies]
@@ -40,18 +40,19 @@ make-assets = ["matminer>=0.9"]
 gh-pages = ["jupyter>=1.1", "lazydocs>=0.4", "nbconvert>=7.16"]
 phonons = ["phonopy>=2.31"] # only needed if user passes in phonopy objects
 test = [
-    "kaleido>=1.2.0",
-    "pymatviz[cluster, phonons]",
-    "pytest-cov>=6",
-    "pytest-split>=0.9",
-    "pytest>=8",
+  "kaleido>=1.2.0",
+  "pymatviz[clustering, phonons]",
+  "pytest-cov>=6",
+  "pytest-split>=0.9",
+  "pytest>=8",
 ]
 export = ["kaleido>=1.2.0", "playwright>=1.40"]
 brillouin = ["seekpath>=2.1"]
-cluster = ["matminer>=0.9"]
-# umap-learn not included in cluster because its numba dep clashes with other packages
-# <3.13 pin pending new llvmlite wheels https://github.com/lmcinnes/umap/issues/1163
-umap = ["umap-learn>=0.5; python_version < '3.13'"]
+clustering = [
+  "matminer>=0.9",
+  "umap-learn>=0.5.12",
+  "pynndescent>=0.6", # keeps numba/llvmlite on Python 3.12+ compatible releases
+]
 
 [build-system]
 requires = ["uv_build>=0.11.8"]
@@ -73,28 +74,28 @@ output-format = "concise"
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
-    "ANN401",  # Any-type
-    "C408",    # unnecessary-collection-call
-    "C901",    # complex-structure
-    "COM812",  # trailing comma missing
-    "D205",    # 1 blank line required between summary line and description
-    "E731",    # do not assign a lambda expression, use a def
-    "EM101",   # raw-string-in-exception
-    "EM102",   # f-string-in-exception
-    "ERA001",  # dead code
-    "FIX002",  # line-contains-todo
-    "PLC0415", # import should be at top-level
-    "PLR0911", # too-many-return-statements
-    "PLR0912", # too-many-branches
-    "PLR0913", # function-with-too-many-arguments
-    "PLR0915", # too-many-statements
-    "PLR2004", # magic-number-comparison
-    "PTH",     # prefer pathlib over os.path
-    "S108",    # Probable insecure usage of temporary file or directory
-    "SIM105",  # Use contextlib.suppress instead of try-except-pass
-    "SLF001",  # Access private class members
-    "TD",      # TODO related
-    "TRY003",  # Avoid specifying long messages outside exception class
+  "ANN401", # Any-type
+  "C408", # unnecessary-collection-call
+  "C901", # complex-structure
+  "COM812", # trailing comma missing
+  "D205", # 1 blank line required between summary line and description
+  "E731", # do not assign a lambda expression, use a def
+  "EM101", # raw-string-in-exception
+  "EM102", # f-string-in-exception
+  "ERA001", # dead code
+  "FIX002", # line-contains-todo
+  "PLC0415", # import should be at top-level
+  "PLR0911", # too-many-return-statements
+  "PLR0912", # too-many-branches
+  "PLR0913", # function-with-too-many-arguments
+  "PLR0915", # too-many-statements
+  "PLR2004", # magic-number-comparison
+  "PTH", # prefer pathlib over os.path
+  "S108", # Probable insecure usage of temporary file or directory
+  "SIM105", # Use contextlib.suppress instead of try-except-pass
+  "SLF001", # Access private class members
+  "TD", # TODO related
+  "TRY003", # Avoid specifying long messages outside exception class
 ]
 pydocstyle.convention = "google"
 isort.lines-after-imports = 2
@@ -107,22 +108,21 @@ docstring-code-format = true
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"] # unused-import
 "**/tests/*" = [
-    "D100",    # missing-module-docstring
-    "D101",    # missing-class-docstring
-    "D103",    # missing-function-docstring
-    "D107",    # missing-init-docstring
-    "FBT001",  # boolean-type-hint-positional-argument
-    "INP001",  # implicit-namespace-package
-    "PLR2004", # magic-value-comparison
-    "S101",    # use of assert
+  "D100", # missing-module-docstring
+  "D103", # missing-function-docstring
+  "D107", # missing-init-docstring
+  "FBT001", # boolean-type-hint-positional-argument
+  "INP001", # implicit-namespace-package
+  "PLR2004", # magic-value-comparison
+  "S101", # use of assert
 ]
 "examples/*" = [
-    "INP001", # implicit-namespace-package
-    "T201",   # print found
+  "INP001", # implicit-namespace-package
+  "T201", # print found
 ]
 "assets/scripts/*" = [
-    "INP001", # implicit-namespace-package
-    "T201",   # print found
+  "INP001", # implicit-namespace-package
+  "T201", # print found
 ]
 
 [dependency-groups]

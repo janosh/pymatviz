@@ -7,21 +7,10 @@ from pymatgen.analysis.local_env import CrystalNN, NearNeighbors, VoronoiNN
 from pymatgen.core import Lattice, Structure
 
 from pymatviz.coordination.helpers import (
-    CnSplitMode,
     calculate_average_cn,
     coordination_nums_in_structure,
     normalize_get_neighbors,
 )
-from pymatviz.enums import LabelEnum
-
-
-def test_cn_split_mode_values() -> None:
-    """Test that CnSplitMode enum has the expected values."""
-    assert issubclass(CnSplitMode, LabelEnum)
-    assert CnSplitMode.none.value == "none"
-    assert CnSplitMode.by_element.value == "by element"
-    assert CnSplitMode.by_structure.value == "by structure"
-    assert CnSplitMode.by_structure_and_element.value == "by structure and element"
 
 
 def test_normalize_get_neighbors_with_float() -> None:

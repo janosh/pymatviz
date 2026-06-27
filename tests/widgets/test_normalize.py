@@ -98,23 +98,24 @@ def test_normalize_entry_compositions_parses_strings() -> None:
     assert result[1] is entries[1]
 
 
-def test_normalize_entry_compositions_empty() -> None:
-    """Empty list passes through."""
-    assert _normalize_entry_compositions([]) == []
-
-
 # === normalize_convex_hull_entries ===
 
 
 def test_normalize_convex_hull_entries_passthrough() -> None:
-    """Test None and list passthrough."""
+    """Test None, list passthrough, and tuple formula parsing."""
     assert normalize_convex_hull_entries(None) is None
     entries = [{"composition": {"Li": 1}, "energy": -1.5}]
     assert normalize_convex_hull_entries(entries) == entries
-    tuple_entries = tuple(entries)
+    tuple_entries = (
+        {"composition": "Li2O", "energy": -14.3},
+        {"composition": "Fe", "energy": -8.3},
+    )
     normalized_entries = normalize_convex_hull_entries(tuple_entries)
     assert isinstance(normalized_entries, list)
-    assert normalized_entries == entries
+    assert normalized_entries == [
+        {"composition": {"Li": 2.0, "O": 1.0}, "energy": -14.3},
+        {"composition": {"Fe": 1.0}, "energy": -8.3},
+    ]
 
 
 def test_normalize_convex_hull_entries_from_phase_diagram() -> None:
@@ -144,19 +145,6 @@ def test_normalize_convex_hull_entries_from_phase_diagram() -> None:
         assert isinstance(entry["composition"], dict)
         assert isinstance(entry["is_stable"], bool)
     assert any(entry["is_stable"] for entry in result)
-
-
-def test_normalize_convex_hull_entries_string_compositions() -> None:
-    """String compositions in entry dicts are parsed to element-count dicts."""
-    entries = [
-        {"composition": "Li2O", "energy": -14.3},
-        {"composition": "Fe", "energy": -8.3},
-    ]
-    result = normalize_convex_hull_entries(entries)
-    assert result is not None
-    assert result[0]["composition"] == {"Li": 2.0, "O": 1.0}
-    assert result[1]["composition"] == {"Fe": 1.0}
-    assert result[0]["energy"] == -14.3
 
 
 def test_normalize_convex_hull_entries_unsupported_type() -> None:

@@ -10,9 +10,12 @@
   // oxlint-disable-next-line import/no-unassigned-import -- global app styles
   import '../app.css'
 
-  let { children, data }: {
-    children?: Snippet;
-    data: { notebook_routes: string[] };
+  let {
+    children,
+    data,
+  }: {
+    children?: Snippet
+    data: { notebook_routes: string[] }
   } = $props()
   let toc_desktop = $state(true)
 
@@ -24,16 +27,14 @@
 
   const file_routes = Object.keys(import.meta.glob(`./**/+page.{svx,svelte,md}`))
     .filter((key) => !key.includes(`/[`))
-    .map((filename) =>
-      filename.replace(/^\./u, ``).replace(/\/\+page\.\w+$/u, ``) || `/`
-    )
+    .map((filename) => filename.replace(/^\./u, ``).replace(/\/\+page\.\w+$/u, ``) || `/`)
 
-  let actions = $derived([...new Set([...file_routes, ...data.notebook_routes])].map(
-    (name) => ({
+  let actions = $derived(
+    [...new Set([...file_routes, ...data.notebook_routes])].map((name) => ({
       label: name,
       action: () => goto(name),
-    }),
-  ))
+    })),
+  )
 </script>
 
 <CmdPalette {actions} placeholder="Go to..." />

@@ -887,9 +887,9 @@ class ElemColorScheme(LabelEnum):
     """
 
     # key, label, color
-    # from https://wikipedia.org/wiki/Jmol"
+    # from https://en.wikipedia.org/wiki/Jmol
     jmol = "jmol", "Jmol", "Java-based molecular visualization"
-    # from https://jp-minerals.org/vesta
+    # from https://www.jp-minerals.org/vesta/en/
     vesta = "vesta", "VESTA", "Visualization for Electronic Structural Analysis"
     # custom made for pymatviz
     alloy = "alloy", "Alloy", "High-contrast color scheme optimized for metal alloys"

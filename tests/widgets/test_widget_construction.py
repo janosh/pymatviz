@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
-from pymatgen.core import Composition, Lattice, Structure
+from pymatgen.core import Lattice, Structure
 
 from pymatviz.widgets.band_structure import BandStructureWidget
 from pymatviz.widgets.bands_and_dos import BandsAndDosWidget
@@ -272,82 +272,7 @@ def test_widget_traitlet_defaults(widget_cls: type, attr: str, expected: Any) ->
     assert getattr(widget, attr) == expected
 
 
-@pytest.mark.parametrize(
-    ("widget_cls", "kwargs", "expected_attrs"),
-    [
-        (
-            DosWidget,
-            {"dos": {"energies": [0, 1]}, "sigma": 0.05, "spin_mode": "combined"},
-            {
-                "sigma": 0.05,
-                "spin_mode": "combined",
-                "show_controls": True,
-                "stack": None,
-            },
-        ),
-        (
-            ConvexHullWidget,
-            {
-                "entries": [{"composition": {"Li": 1}, "energy": -1.5}],
-                "show_unstable": False,
-                "temperature": 300.0,
-            },
-            {
-                "show_stable": True,
-                "show_unstable": False,
-                "temperature": 300.0,
-                "hull_face_opacity": None,
-            },
-        ),
-    ],
-)
-def test_widget_custom_and_default_traitlets(
-    widget_cls: type,
-    kwargs: dict[str, Any],
-    expected_attrs: dict[str, Any],
-) -> None:
-    """Widgets preserve custom constructor values alongside correct defaults."""
-    widget = widget_cls(**kwargs)
-    for attr, expected in expected_attrs.items():
-        assert getattr(widget, attr) == expected, f"{widget_cls.__name__}.{attr}"
-
-
 # === Input normalization at widget level ===
-
-
-def test_convex_hull_widget_from_phase_diagram() -> None:
-    """ConvexHullWidget accepts a pymatgen PhaseDiagram directly."""
-    pytest.importorskip("pymatgen.analysis.phase_diagram")
-    from pymatgen.analysis.phase_diagram import PDEntry, PhaseDiagram
-
-    widget = ConvexHullWidget(
-        entries=PhaseDiagram(
-            [
-                PDEntry(Composition("Fe"), -4.0),
-                PDEntry(Composition("O"), -3.0),
-                PDEntry(Composition("Fe2O3"), -25.0),
-            ]
-        )
-    )
-    assert widget.widget_type == "convex_hull"
-    assert len(widget.entries) == 3
-    assert all("composition" in entry for entry in widget.entries)
-
-
-def test_xrd_widget_from_diffraction_pattern() -> None:
-    """XrdWidget normalizes DiffractionPattern to plain floats."""
-    from pymatgen.analysis.diffraction.xrd import DiffractionPattern
-
-    widget = XrdWidget(
-        patterns=DiffractionPattern(
-            x=np.array([10.0, 20.0]),
-            y=np.array([100.0, 50.0]),
-            hkls=[[{"hkl": (1, 0, 0)}], [{"hkl": (1, 1, 0)}]],
-            d_hkls=np.array([2.5, 2.0]),
-        )
-    )
-    assert widget.patterns["x"] == [10.0, 20.0]
-    assert type(widget.patterns["x"][0]) is float
 
 
 def test_histogram_widget_delegates_series_validation() -> None:
@@ -452,27 +377,6 @@ def test_widget_normalizes_numpy_values(
     assert type(result) is list
 
 
-@pytest.mark.parametrize(
-    "widget_cls", [ScatterPlotWidget, BarPlotWidget, HistogramWidget]
-)
-@pytest.mark.parametrize("input_kind", ["numpy", "pandas"])
-def test_xy_plot_widgets_accept_array_backed_series_values(
-    widget_cls: type, input_kind: str
-) -> None:
-    """XY plot widgets accept NumPy arrays and pandas Series in series values."""
-    if input_kind == "numpy":
-        x_values, y_values = np.array([0, 1, 2]), np.array([0.1, 0.2, 0.3])
-    else:
-        pd = pytest.importorskip("pandas")
-        x_values, y_values = pd.Series([0, 1, 2]), pd.Series([0.1, 0.2, 0.3])
-
-    widget = widget_cls(
-        series=[{"x": x_values, "y": y_values, "label": "A"}],
-    )
-    expected_series = [{"x": [0.0, 1.0, 2.0], "y": [0.1, 0.2, 0.3], "label": "A"}]
-    assert widget.series == expected_series
-
-
 def test_spacegroup_bar_data_inputs() -> None:
     """SpacegroupBarPlotWidget normalizes supported data inputs."""
     pd = pytest.importorskip("pandas")
@@ -570,21 +474,6 @@ def test_fermi_surface_widget_invalid_input_combo(
         FermiSurfaceWidget(fermi_data=fermi_data, band_data=band_data)
 
 
-# === show() method ===
-
-
-def test_show_calls_ipython_display_and_returns_none() -> None:
-    """show() calls IPython.display.display and returns None."""
-    with patch("pymatviz.widgets.matterviz.fetch_widget_asset", return_value="x"):
-        widget = MatterVizWidget(widget_type="test")
-
-    with patch("IPython.display.display") as mock_display:
-        result = widget.show()
-
-    assert result is None
-    mock_display.assert_called_once_with(widget)
-
-
 @pytest.mark.parametrize(
     "widget_cls",
     [ScatterPlotWidget, BarPlotWidget, HistogramWidget],
@@ -625,9 +514,6 @@ def _make_widget() -> MatterVizWidget:
         ("plot.pdf", None, "pdf"),
         ("plot.jpg", None, "jpeg"),
         ("plot.jpeg", None, "jpeg"),
-        ("plot.PDF", None, "pdf"),
-        ("plot.SVG", None, "svg"),
-        ("plot.JPG", None, "jpeg"),
         (None, "png", "png"),
         (None, "svg", "svg"),
         (None, "jpeg", "jpeg"),

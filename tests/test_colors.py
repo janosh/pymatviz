@@ -1,39 +1,53 @@
-"""Test color schemes defined in pymatviz.colors."""
+"""Test public color palette invariants."""
 
 from __future__ import annotations
 
-import numpy as np
 import pytest
 
 import pymatviz.colors as pmv_colors
 
 
+COLOR_PALETTE_PAIRS = {
+    "jmol": (pmv_colors.ELEM_COLORS_JMOL_256, pmv_colors.ELEM_COLORS_JMOL),
+    "vesta": (pmv_colors.ELEM_COLORS_VESTA_256, pmv_colors.ELEM_COLORS_VESTA),
+    "alloy": (pmv_colors.ELEM_COLORS_ALLOY_256, pmv_colors.ELEM_COLORS_ALLOY),
+    "pastel": (pmv_colors.ELEM_COLORS_PASTEL_256, pmv_colors.ELEM_COLORS_PASTEL),
+}
+
+
+def test_complete_color_palettes_cover_same_elements() -> None:
+    """Complete public RGB palettes expose the same element symbols."""
+    complete_palettes = ("jmol", "vesta", "alloy")
+    key_sets = {
+        palette_name: set(COLOR_PALETTE_PAIRS[palette_name][0])
+        for palette_name in complete_palettes
+    }
+
+    assert key_sets["jmol"] == key_sets["vesta"] == key_sets["alloy"]
+    assert len(key_sets["jmol"]) == 109
+    assert {"H", "C", "Fe", "U", "Mt"} <= key_sets["jmol"]
+
+
 @pytest.mark.parametrize(
-    ("color_scheme", "expected_type", "value_range"),
-    [
-        (pmv_colors.ELEM_TYPE_COLORS, str, None),  # String color names
-        (pmv_colors.ELEM_COLORS_JMOL_256, tuple, (0, 255)),  # 8-bit RGB
-        (pmv_colors.ELEM_COLORS_VESTA_256, tuple, (0, 255)),
-        (pmv_colors.ELEM_COLORS_ALLOY_256, tuple, (0, 255)),
-        (pmv_colors.ELEM_COLORS_PASTEL, tuple, (0, 1)),  # Normalized RGB
-        (pmv_colors.ELEM_COLORS_JMOL, tuple, (0, 1)),  # Normalized RGB
-        (pmv_colors.ELEM_COLORS_VESTA, tuple, (0, 1)),
-        (pmv_colors.ELEM_COLORS_ALLOY, tuple, (0, 1)),
-    ],
+    ("palette_name", "colors_256", "colors_normalized"),
+    [(name, *palettes) for name, palettes in COLOR_PALETTE_PAIRS.items()],
 )
-def test_color_schemes(
-    color_scheme: dict[str, str | tuple[float | int, ...]],
-    expected_type: type,
-    value_range: tuple[int | float, int | float] | None,
+def test_normalized_color_palettes_match_256_sources(
+    palette_name: str,
+    colors_256: dict[str, tuple[int, int, int]],
+    colors_normalized: dict[str, tuple[float, float, float]],
 ) -> None:
-    """Test color scheme types and value ranges."""
-    assert isinstance(color_scheme, dict)
-    for key, rgb_color in color_scheme.items():
-        assert isinstance(key, str)
-        assert isinstance(rgb_color, expected_type)
-        if value_range:
-            assert isinstance(rgb_color, tuple)
-            assert len(rgb_color) == 3  # RGB tuple
-            assert all(isinstance(val, int | float) for val in rgb_color)
-            assert all(value_range[0] <= val <= value_range[1] for val in rgb_color)
-            assert sum(np.isnan(val) for val in rgb_color) == 0
+    """Normalized RGB palettes are derived from their 256-channel sources."""
+    assert set(colors_normalized) == set(colors_256), palette_name
+
+    for element_symbol, rgb_256 in colors_256.items():
+        assert len(rgb_256) == 3
+        assert all(isinstance(channel, int) for channel in rgb_256)
+        assert all(0 <= channel <= 255 for channel in rgb_256)
+
+        rgb_normalized = colors_normalized[element_symbol]
+        assert len(rgb_normalized) == 3
+        assert all(0 <= channel <= 1 for channel in rgb_normalized)
+        assert rgb_normalized == pytest.approx(
+            tuple(channel / 255 for channel in rgb_256)
+        )

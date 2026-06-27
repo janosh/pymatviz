@@ -6,7 +6,6 @@ import copy
 import os
 import re
 import subprocess
-import warnings
 from shutil import which
 from time import sleep
 from typing import TYPE_CHECKING
@@ -106,6 +105,12 @@ def save_fig(
     if template is None and is_pdf:
         template = "pymatviz_white"
 
+    if any(var in os.environ for var in env_disable):
+        return
+
+    if not isinstance(fig, go.Figure):
+        raise TypeError(f"Unsupported figure type {type(fig)}, expected plotly Figure")
+
     if prec is not None:
         # create a copy of figure and round all floats in fig.data to round significant
         # figures
@@ -120,11 +125,7 @@ def save_fig(
                 trace.y = [
                     round(y, prec) if isinstance(y, float) else y for y in trace.y
                 ]
-    if any(var in os.environ for var in env_disable):
-        return
 
-    if not isinstance(fig, go.Figure):
-        raise TypeError(f"Unsupported figure type {type(fig)}, expected plotly Figure")
     if path.lower().endswith((".svelte", ".html")):
         config = dict(
             showTips=False,
@@ -182,10 +183,7 @@ def save_fig(
                 trace.visible = "legendonly"
 
 
-def save_and_compress_svg(
-    fig: go.Figure,
-    filename: str,
-) -> None:
+def save_and_compress_svg(fig: go.Figure, filename: str) -> None:
     """Save Plotly figure as SVG and HTML to assets/ folder.
     Compresses SVG file with svgo CLI if available in PATH.
 
@@ -231,12 +229,6 @@ table {
 table::-webkit-scrollbar {
     display: none;  /* Safari and Chrome */
 }"""
-
-
-def df_to_html_table(*args: Any, **kwargs: Any) -> str:  # noqa: D103
-    msg = "df_to_html_table is deprecated. Use df_to_html instead."
-    warnings.warn(msg, DeprecationWarning, stacklevel=2)
-    return df_to_html(*args, **kwargs)
 
 
 def df_to_html(

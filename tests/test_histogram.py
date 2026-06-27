@@ -16,26 +16,58 @@ if TYPE_CHECKING:
     import numpy as np
 
 
-def test_hist_elemental_prevalence(glass_formulas: list[str]) -> None:
-    """Test elements histogram with various parameters."""
-    fig = elements_hist(glass_formulas)
-    assert isinstance(fig, go.Figure)
+@pytest.mark.parametrize(
+    ("kwargs", "expected_x", "expected_y", "expected_text", "expected_yaxis"),
+    [
+        (
+            {},
+            ["O", "Fe", "Li", "P"],
+            [7, 3, 1, 1],
+            ("58%", "25%", "8%", "8%"),
+            "linear",
+        ),
+        (
+            {"log_y": True},
+            ["O", "Fe", "Li", "P"],
+            [7, 3, 1, 1],
+            ("58%", "25%", "8%", "8%"),
+            "log",
+        ),
+        ({"keep_top": 2}, ["O", "Fe"], [7, 3], ("70%", "30%"), "linear"),
+        (
+            {"show_values": "count"},
+            ["O", "Fe", "Li", "P"],
+            [7, 3, 1, 1],
+            ("7", "3", "1", "1"),
+            "linear",
+        ),
+        ({"show_values": None}, ["O", "Fe", "Li", "P"], [7, 3, 1, 1], None, "linear"),
+    ],
+)
+def test_hist_elemental_prevalence(
+    kwargs: dict[str, Any],
+    expected_x: list[str],
+    expected_y: list[int],
+    expected_text: tuple[str, ...] | None,
+    expected_yaxis: str,
+) -> None:
+    """Test elements histogram counts, labels, and y-axis options."""
+    fig = elements_hist(["Fe2O3", "LiFePO4"], **kwargs)
+    trace = fig.data[0]
 
-    fig = elements_hist(glass_formulas, log_y=True)
-    assert isinstance(fig, go.Figure)
+    assert list(trace.x) == expected_x
+    assert list(trace.y) == expected_y
+    assert trace.text == expected_text
+    assert fig.layout.yaxis.type == expected_yaxis
 
-    fig = elements_hist(glass_formulas, keep_top=10)
-    assert isinstance(fig, go.Figure)
 
-    fig = elements_hist(glass_formulas, keep_top=10, show_values="count")
-    assert isinstance(fig, go.Figure)
+def test_hist_elemental_prevalence_style_options() -> None:
+    """Test elements histogram forwards bar style options."""
+    fig = elements_hist(["Fe2O3", "LiFePO4"], bar_width=0.5, opacity=0.9)
+    trace = fig.data[0]
 
-    fig = elements_hist(glass_formulas, show_values=None)
-    assert isinstance(fig, go.Figure)
-
-    # Test with custom parameters
-    fig = elements_hist(glass_formulas, bar_width=0.5, opacity=0.9)
-    assert isinstance(fig, go.Figure)
+    assert trace.width == 0.5
+    assert trace.opacity == 0.9
 
 
 @pytest.mark.parametrize("log_y", [True, False])

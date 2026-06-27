@@ -6,7 +6,11 @@ from __future__ import annotations
 
 import math
 import re
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
+
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 def _normalize_ferrox_hkls(hkls_data: Any) -> Any:
@@ -278,7 +282,7 @@ def _parse_formula_to_dict(formula: str) -> dict[str, float]:
 
 
 def _normalize_entry_compositions(
-    entries: list[dict[str, Any]],
+    entries: Sequence[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     """Ensure entry compositions are dicts, parsing formula strings as needed.
 
@@ -306,9 +310,7 @@ def normalize_convex_hull_entries(obj: Any) -> list[dict[str, Any]] | None:
     if obj is None:
         return None
     if isinstance(obj, (list, tuple)):
-        entries = cast(
-            "list[dict[str, Any]]", obj if isinstance(obj, list) else list(obj)
-        )
+        entries = cast("Sequence[dict[str, Any]]", obj)
         return _normalize_entry_compositions(entries)
 
     try:

@@ -144,7 +144,7 @@ def element_pair_rdfs(
 
     # Determine subplot layout
     n_pairs = len(element_pairs)
-    subplot_kwargs = subplot_kwargs or {}
+    subplot_kwargs = dict(subplot_kwargs or {})
     actual_cols = min(subplot_kwargs.pop("cols", 3), n_pairs)
     n_rows = (n_pairs + actual_cols - 1) // actual_cols
 

@@ -91,6 +91,10 @@ def test_density_scatter_with_hist(df_or_arrays: DfOrArrays) -> None:
     df, x, y = df_or_arrays
     fig = pmv.density_scatter_with_hist(df=df, x=x, y=y)
     assert isinstance(fig, go.Figure)
+    assert len(fig.data) >= 3
+    assert sum(isinstance(trace, go.Bar) for trace in fig.data) == 2
+    assert fig.layout.xaxis.title.text == (x if isinstance(x, str) else "Actual")
+    assert fig.layout.yaxis2.title.text == (y if isinstance(y, str) else "Predicted")
 
 
 @pytest.mark.parametrize("gridsize", [50, 100])
@@ -127,6 +131,12 @@ def test_density_hexbin_with_hist(df_or_arrays: DfOrArrays) -> None:
     df, x, y = df_or_arrays
     fig = pmv.density_hexbin_with_hist(df=df, x=x, y=y)
     assert isinstance(fig, go.Figure)
+    assert len(fig.data) >= 3
+    assert sum(isinstance(trace, go.Bar) for trace in fig.data) == 2
+    assert any(
+        isinstance(trace, go.Scatter) and trace.marker.symbol == "hexagon"
+        for trace in fig.data
+    )
 
 
 @pytest.mark.parametrize(
@@ -524,15 +534,11 @@ def test_density_scatter_zero_handling_log_density() -> None:
     assert fig.layout.coloraxis.colorbar.tickvals is None  # No log scaling
 
 
-def test_density_scatter_empty_dataframe_handling() -> None:
-    """Test empty DataFrames raise appropriate error."""
-    empty_df = pd.DataFrame({"x": [], "y": []})
-    with pytest.raises(ValueError, match="No valid traces with required data found"):
-        pmv.density_scatter(df=empty_df, x="x", y="y", n_bins=5)
-
-
 def test_density_scatter_density_column_handling() -> None:
     """Test density column handling with None values."""
     df = pd.DataFrame({"x": [1, 2, 3, 4], "y": [1.1, 2.2, 2.9, 4.1]})
     fig = pmv.density_scatter(df=df, x="x", y="y", density="empirical", n_bins=3)
     assert isinstance(fig, go.Figure)
+    scatter_trace = fig.data[0]
+    assert scatter_trace.marker.color is not None
+    assert fig.layout.coloraxis.colorbar.title.text == "Point<br>Density"

@@ -8,7 +8,6 @@ import plotly.graph_objects as go
 import pytest
 
 import pymatviz as pmv
-from pymatviz.typing import VALID_COLOR_ELEM_STRATEGIES, ColorElemTypeStrategy
 
 
 if TYPE_CHECKING:
@@ -48,47 +47,6 @@ def test_ptable_hists_basic(
     assert n_hist_traces == n_elements
 
 
-@pytest.mark.parametrize(
-    ("font_size", "scale", "symbol_kwargs", "annotations"),
-    [
-        (12, 1.0, dict(x=0, y=1), dict(x=1, y=1)),  # Most common case
-        (None, 0.5, dict(x=0.5, y=0.5), dict(x=0.5, y=0.5)),  # Test None font_size
-    ],
-)
-def test_ptable_hists_layout(
-    font_size: int | None,
-    scale: float,
-    symbol_kwargs: dict[str, Any],
-    annotations: dict[str, Any],
-) -> None:
-    fig = pmv.ptable_hists(
-        {"Fe": [1, 2, 3], "O": [2, 3, 4]},
-        font_size=font_size,
-        scale=scale,
-        symbol_kwargs=symbol_kwargs,
-        annotations=annotations,
-    )
-    assert isinstance(fig, go.Figure)
-    if font_size:
-        assert any(
-            anno.font.size == font_size * scale
-            for anno in fig.layout.annotations
-            if anno.font is not None
-        )
-
-
-@pytest.mark.parametrize(
-    "color_elem_strategy",
-    VALID_COLOR_ELEM_STRATEGIES,
-)
-def test_ptable_hists_element_colors(
-    color_elem_strategy: ColorElemTypeStrategy,
-) -> None:
-    data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
-    fig = pmv.ptable_hists(data, color_elem_strategy=color_elem_strategy)
-    assert isinstance(fig, go.Figure)
-
-
 def test_ptable_hists_annotations() -> None:
     data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
     anno_kwargs: dict[str, str | int] = {"font_size": 14, "font_color": "red"}
@@ -101,8 +59,12 @@ def test_ptable_hists_annotations() -> None:
         ],
         "O": {"text": "Oxygen", **anno_kwargs},
     }
-    fig = pmv.ptable_hists(data, annotations=annotations)  # ty: ignore[invalid-argument-type]
-    assert isinstance(fig, go.Figure)
+    fig = pmv.ptable_hists(
+        data,
+        annotations=annotations,  # ty: ignore[invalid-argument-type]
+        font_size=12,
+        symbol_kwargs=dict(x=0, y=1),
+    )
 
     # Check multiple annotations are present
     anno_texts = [anno.text for anno in fig.layout.annotations]
@@ -111,6 +73,9 @@ def test_ptable_hists_annotations() -> None:
     assert "<br>Fe" in anno_texts
     assert "Oxygen" in anno_texts
     assert "O" in anno_texts
+    assert any(
+        anno.font.size == 12 for anno in fig.layout.annotations if anno.font is not None
+    )
 
     # Test with callable annotations returning multiple annotations
     def annotation_func(value: Sequence[float]) -> list[dict[str, Any]]:
@@ -148,26 +113,6 @@ def test_ptable_hists_error_cases() -> None:
         pmv.ptable_hists(data, bins=0)
 
 
-@pytest.mark.parametrize(
-    ("element_symbol_map", "symbol_kwargs"),
-    [
-        ({"Fe": "Iron", "O": "Oxygen"}, {"font": {"size": 14}}),
-        (None, None),
-        ({"Fe": "Fe*"}, {"font": {"color": "red"}}),
-    ],
-)
-def test_ptable_hists_symbol_customization(
-    element_symbol_map: dict[str, str] | None,
-    symbol_kwargs: dict[str, Any] | None,
-) -> None:
-    fig = pmv.ptable_hists(
-        {"Fe": [1, 2, 3], "O": [2, 3, 4]},
-        element_symbol_map=element_symbol_map,
-        symbol_kwargs=symbol_kwargs,
-    )
-    assert isinstance(fig, go.Figure)
-
-
 def test_ptable_hists_subplot_kwargs() -> None:
     data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
     sub_titles = ["Iron", "Oxygen"]
@@ -177,7 +122,6 @@ def test_ptable_hists_subplot_kwargs() -> None:
         "subplot_titles": sub_titles,
     }
     fig = pmv.ptable_hists(data, subplot_kwargs=subplot_kwargs)
-    assert isinstance(fig, go.Figure)
     # Verify subplot titles are set
     assert [anno.text for anno in fig.layout.annotations][:2] == sub_titles
 

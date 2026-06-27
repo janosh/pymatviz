@@ -106,13 +106,6 @@ def test_coordination_hist_bar_mode(structures: Sequence[Structure]) -> None:
     assert fig_group.layout.barmode == "group"
 
 
-def test_coordination_hist_hover_data(structures: Sequence[Structure]) -> None:
-    """Test coordination_hist with custom hover data."""
-    structures[0].add_site_property("test_property", list(range(len(structures[0]))))
-    fig = coordination_hist(structures[0], hover_data=["test_property"])
-    assert "test_property" in fig.data[0].hovertext[0]
-
-
 def test_coordination_hist_element_color_scheme(
     structures: Sequence[Structure],
 ) -> None:
@@ -123,14 +116,6 @@ def test_coordination_hist_element_color_scheme(
     fig = coordination_hist(structures[0], element_color_scheme=custom_colors)
     for trace in fig.data:
         assert trace.marker.color == custom_colors[trace.name.split(" - ")[1]]
-
-
-def test_coordination_hist_annotate_bars(structures: Sequence[Structure]) -> None:
-    """Test coordination_hist with bar annotations."""
-    fig = coordination_hist(structures[0], annotate_bars=True)
-    elements = {site.specie.symbol for site in structures[0]} | {""}
-    for trace in fig.data:
-        assert {trace.text} <= elements, f"Invalid text: {trace.text}"
 
 
 def test_coordination_hist_bar_kwargs(structures: Sequence[Structure]) -> None:
@@ -293,19 +278,6 @@ def test_coordination_hist_subplot_layout(structures: Sequence[Structure]) -> No
     assert len(fig_elem.layout.annotations) == len(elements) + 2
 
 
-def test_coordination_hist_bar_customization(structures: Sequence[Structure]) -> None:
-    """Test bar customization options in coordination_hist."""
-    # Test bar width
-    bar_kwargs = {"width": 0.5}
-    fig = coordination_hist(structures[0], bar_kwargs=bar_kwargs)
-    assert all(trace.width == 0.5 for trace in fig.data)
-
-    # Test bar opacity
-    bar_kwargs = {"opacity": 0.7}
-    fig = coordination_hist(structures[0], bar_kwargs=bar_kwargs)
-    assert all(trace.opacity == 0.7 for trace in fig.data)
-
-
 def test_coordination_hist_color_schemes(structures: Sequence[Structure]) -> None:
     """Test different color schemes in coordination_hist."""
     # Test JMOL colors
@@ -349,6 +321,8 @@ def test_coordination_hist_bar_annotations(structures: Sequence[Structure]) -> N
     # Test default annotation settings
     fig = coordination_hist(structures[0], annotate_bars=True)
     assert all(trace.text is not None for trace in fig.data)
+    elements = {site.specie.symbol for site in structures[0]} | {""}
+    assert {trace.text for trace in fig.data} <= elements
 
     # Test custom annotation settings
     custom_annotations = {"size": 14, "color": "red"}

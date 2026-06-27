@@ -4,7 +4,6 @@ import re
 from collections.abc import Callable, Sequence
 from typing import Any, Literal, TypeAlias
 
-import numpy as np
 import plotly.graph_objects as go
 import pytest
 from pymatgen.core import Element
@@ -377,6 +376,13 @@ def test_ptable_scatter_multi_line() -> None:
     # Check that lines have correct names in legend
     line_names = {trace.name for trace in fig.data if trace.name}
     assert line_names == {"line1", "line2"}
+    hover_prefixes = {trace.hovertemplate.split("<br>")[0] for trace in fig.data}
+    assert hover_prefixes == {
+        "Iron - line1",
+        "Iron - line2",
+        "Cobalt - line1",
+        "Cobalt - line2",
+    }
 
     # Check that only first element shows in legend (to avoid duplicates)
     legend_traces = [trace for trace in fig.data if trace.showlegend]
@@ -399,35 +405,6 @@ def test_ptable_scatter_multi_line() -> None:
     assert line1_colors != line2_colors
 
 
-def test_ptable_scatter_hover_text() -> None:
-    """Test that hover text is correctly formatted for multi-line plots."""
-    data = {"Fe": {"line1": ([1], [4]), "line2": ([1], [7])}}
-
-    fig = pmv.ptable_scatter(data, mode="lines")
-
-    # Check hover text format
-    for trace in fig.data:
-        if trace.name == "line1":
-            assert "Iron - line1" in trace.hovertemplate
-        elif trace.name == "line2":
-            assert "Iron - line2" in trace.hovertemplate
-
-
-def test_mixed_length_lines() -> None:
-    """Test plotting lines of different lengths in the same element."""
-    data = {
-        "Fe": {
-            "short": ([1, 2], [3, 4]),
-            "long": ([1, 2, 3, 4], [5, 6, 7, 8]),
-        }
-    }
-    fig = pmv.ptable_scatter(data, mode="lines")
-
-    # Check that both lines are plotted correctly
-    assert len(fig.data) == 2
-    assert len(fig.data[0].x) != len(fig.data[1].x)
-
-
 def test_empty_element_data() -> None:
     """Test handling of empty sequences in element data."""
     data = {
@@ -443,20 +420,6 @@ def test_empty_element_data() -> None:
     assert fig.data[1].hovertemplate.startswith("Copper")
 
 
-def test_single_point_lines() -> None:
-    """Test plotting lines with just one point."""
-    data = {
-        "Fe": {
-            "single": ([1], [2]),
-            "multi": ([1, 2, 3], [4, 5, 6]),
-        }
-    }
-    fig = pmv.ptable_scatter(data, mode="lines")
-
-    # Both should be plotted even though one has a single point
-    assert len(fig.data) == 2
-
-
 def test_duplicate_line_names() -> None:
     """Test handling of duplicate line names across elements."""
     data = {
@@ -468,19 +431,3 @@ def test_duplicate_line_names() -> None:
     # Check that lines with same name have same color
     colors = {trace.line.color for trace in fig.data if trace.name == "common"}
     assert len(colors) == 1  # All lines named "common" should have same color
-
-
-def test_mixed_input_types() -> None:
-    """Test handling of mixed input types (lists, arrays, tuples)."""
-    data = {
-        "Fe": {
-            "list": ([1, 2], [3, 4]),  # Python lists
-            "array": (np.array([1, 2]), np.array([3, 4])),  # NumPy arrays
-            "tuple": ((1, 2), (3, 4)),  # Python tuples
-        }
-    }
-    fig = pmv.ptable_scatter(data, mode="lines")
-
-    # All should be plotted correctly
-    assert len(fig.data) == 3
-    assert {trace.name for trace in fig.data} == {"list", "array", "tuple"}

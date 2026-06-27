@@ -308,16 +308,6 @@ def test_chem_env_treemap_chemenv_scenarios(
         assert "No CN/CE data to display" in fig.layout.title.text
 
 
-def test_chem_env_treemap_crystal_nn_method(
-    structures: tuple[Structure, Structure],
-) -> None:
-    """Test chem_env_treemap with CrystalNN method."""
-    fig = chem_env_treemap([structures[0]], chem_env_settings="crystal_nn")
-    assert isinstance(fig, go.Figure)
-    assert len(fig.data) == 1
-    assert fig.data[0].type == "treemap"
-
-
 @pytest.mark.parametrize(
     ("max_cells_cn", "max_cells_ce"),
     [
@@ -365,6 +355,7 @@ def test_chem_env_treemap_show_counts(
     )
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == 1
+    assert fig.layout.paper_bgcolor == "rgba(0, 0, 0, 0)"
     assert "values" in fig.data[0]
     assert "labels" in fig.data[0]
 
@@ -485,35 +476,8 @@ def test_chem_env_treemap_invalid_show_counts(mock_structure: MagicMock) -> None
             )
 
 
-def test_chem_env_treemap_figure_styling(chemenv_mocks: dict[str, Any]) -> None:
-    """Test that figure has proper styling applied."""
-    mocks = chemenv_mocks
-    mocks["lse"].coordination_environments = [[{"ce_symbol": "T:4"}]]
-    mocks["geoms_instance"].get_symbol_cn_mapping.return_value = {"T:4": 4}
-
-    fig = chem_env_treemap(mocks["structure"], chem_env_settings="chemenv")
-    assert fig.layout.paper_bgcolor == "rgba(0, 0, 0, 0)"
-
-
 def test_text_wrapping_functionality() -> None:
     """Test that long chemical environment names are wrapped with line breaks."""
-    import textwrap
-
-    def wrap_text(text: str) -> str:
-        return "<br>".join(
-            textwrap.wrap(text, width=15, break_long_words=True, break_on_hyphens=True)
-        )
-
-    test_cases = [
-        ("short", "short"),
-        ("rectangular see-saw-like:4", "rectangular<br>see-saw-like:4"),
-        ("square-pyramidal:5", "square-<br>pyramidal:5"),
-    ]
-
-    for input_text, expected_output in test_cases:
-        result = wrap_text(input_text)
-        assert result == expected_output
-
     mock_data = [
         {"coord_num": 4, "chem_env_symbol": "rectangular see-saw-like:4", "count": 10},
         {"coord_num": 5, "chem_env_symbol": "short", "count": 5},

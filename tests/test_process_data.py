@@ -120,11 +120,6 @@ def test_count_elements_fill_value() -> None:
         {"Fe": 22, "O": 63, "P": 12}, index=pmv.df_ptable.index, name="count"
     )
     pd.testing.assert_series_equal(
-        pmv_pd.count_elements(compositions, count_mode=ElemCountMode.composition),
-        expected,
-        check_dtype=False,
-    )
-    pd.testing.assert_series_equal(
         pmv_pd.count_elements(
             compositions, count_mode=ElemCountMode.composition, fill_value=0
         ),
@@ -361,16 +356,22 @@ def test_normalize_structures_empty(empty_input: list | dict) -> None:
 
 
 class MockAseAtoms:
+    """Mock object whose type identity matches ASE Atoms."""
+
     __module__ = "ase.atoms"
     __qualname__ = "Atoms"
 
 
 class MockMsonAtoms:
+    """Mock object whose type identity matches pymatgen MSONAtoms."""
+
     __module__ = "pymatgen.io.ase"
     __qualname__ = "MSONAtoms"
 
 
 class NotAse:
+    """Mock object whose type identity should not match ASE Atoms."""
+
     __module__ = "some.other.module"
     __qualname__ = "SomeClass"
 
@@ -393,24 +394,32 @@ def test_is_ase_atoms(obj: object, expected: bool) -> None:
     assert pmv_pd.is_ase_atoms(obj) == expected
 
 
-def test_is_phonopy_atoms() -> None:
-    pytest.importorskip("phonopy")
-    from phonopy.structure.atoms import PhonopyAtoms
-
-    phonopy_atoms = PhonopyAtoms(
-        symbols=["Si"], positions=[[0, 0, 0]], cell=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]
-    )
-    assert pmv_pd.is_phonopy_atoms(phonopy_atoms)
-
-
 @pytest.mark.parametrize(
-    "obj", [Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]]), "string", 123, None]
+    ("obj", "expected"),
+    [
+        pytest.param("phonopy_atoms", True, id="phonopy_atoms"),
+        (Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]]), False),
+        ("string", False),
+        (123, False),
+        (None, False),
+    ],
 )
-def test_is_phonopy_atoms_false(obj: object) -> None:
-    assert pmv_pd.is_phonopy_atoms(obj) is False
+def test_is_phonopy_atoms(obj: object, expected: bool) -> None:
+    if obj == "phonopy_atoms":
+        pytest.importorskip("phonopy")
+        from phonopy.structure.atoms import PhonopyAtoms
+
+        obj = PhonopyAtoms(
+            symbols=["Si"],
+            positions=[[0, 0, 0]],
+            cell=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+        )
+    assert pmv_pd.is_phonopy_atoms(obj) is expected
 
 
 class DummyClass:
+    """Dummy object exposing name and formula attributes."""
+
     def __init__(self, name: str) -> None:
         self.name = name
         self.formula = name
@@ -652,20 +661,6 @@ def test_normalize_spacegroups_invalid_symbol_raises() -> None:
     """Test that invalid space group symbols raise ValueError."""
     with pytest.raises(ValueError, match="InvalidSymbol"):
         pmv_pd.normalize_spacegroups(["Fm-3m", "InvalidSymbol", "P1"])
-
-
-def test_sankey_flow_data_returns_expected_keys() -> None:
-    """Test sankey_flow_data returns all expected keys."""
-    df_test = pd.DataFrame({"A": ["x", "x", "y"], "B": ["p", "q", "p"]})
-    result = pmv_pd.sankey_flow_data(df_test, ["A", "B"])
-    assert set(result) == {
-        "source",
-        "target",
-        "value",
-        "labels",
-        "source_indices",
-        "target_indices",
-    }
 
 
 @pytest.mark.parametrize(

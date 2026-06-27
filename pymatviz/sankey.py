@@ -63,7 +63,9 @@ def sankey_from_2_df_cols(
 
     if annotate_columns:
         # Add column labels as annotations
-        anno_kwargs = annotate_columns if isinstance(annotate_columns, dict) else {}
+        anno_kwargs = (
+            dict(annotate_columns) if isinstance(annotate_columns, dict) else {}
+        )
         xshift = anno_kwargs.pop("xshift", 35)
         fig.layout.margin = dict(l=xshift, r=xshift)
         for idx, col in enumerate(cols):

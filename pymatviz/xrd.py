@@ -142,7 +142,7 @@ def xrd_pattern(  # noqa: D417
         if isinstance(pattern_data, tuple):
             pattern_or_struct, trace_kwargs = (
                 pattern_data[0],
-                cast("dict[str, Any]", pattern_data[1]),
+                dict(cast("dict[str, Any]", pattern_data[1])),
             )
         else:
             pattern_or_struct, trace_kwargs = pattern_data, {}

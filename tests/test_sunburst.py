@@ -7,7 +7,6 @@ import types
 from typing import TYPE_CHECKING, Any, Literal, get_args
 
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 import pytest
 
@@ -54,32 +53,45 @@ def test_spacegroup_sunburst_invalid_show_counts() -> None:
 def test_spacegroup_sunburst_single_item() -> None:
     """Test with single-item input."""
     fig = spacegroup_sunburst([1], show_counts="value")
-    assert isinstance(fig, go.Figure)
     assert len(fig.data[0].ids) == 2  # one for crystal system, one for spg number
 
     fig = spacegroup_sunburst(["P1"], show_counts="value+percent")
-    assert isinstance(fig, go.Figure)
     assert len(fig.data[0].ids) == 2
 
 
-def test_spacegroup_sunburst_other_types(
-    spg_symbols: list[str], structures: list[Structure]
-) -> None:
+def test_spacegroup_sunburst_series_counts() -> None:
     """Test with other types of input."""
     # test with pandas series
     series = pd.Series([*[1] * 3, *[2] * 10, *[3] * 5])
     fig = spacegroup_sunburst(series, show_counts="value")
-    assert isinstance(fig, go.Figure)
     values = [*map(int, fig.data[0].values)]
     assert values == [10, 5, 3, 13, 5], f"actual {values=}"
 
-    # test with strings of space group symbols
-    fig = spacegroup_sunburst(spg_symbols)
-    assert isinstance(fig, go.Figure)
 
-    # test with pymatgen structures
-    fig = spacegroup_sunburst(structures)
-    assert isinstance(fig, go.Figure)
+def test_spacegroup_sunburst_symbol_counts(spg_symbols: list[str]) -> None:
+    """Space-group symbols are grouped into crystal systems with counts."""
+    fig = spacegroup_sunburst(spg_symbols, show_counts="value")
+    trace = fig.data[0]
+    values_by_label = dict(zip(trace.labels, map(int, trace.values), strict=True))
+    parents_by_label = dict(zip(trace.labels, trace.parents, strict=True))
+
+    assert values_by_label["monoclinic"] == 4
+    assert values_by_label["cubic"] == 5
+    assert values_by_label["hexagonal"] == 3
+    assert parents_by_label["C2/m"] == "monoclinic"
+    assert parents_by_label["P-43m"] == "cubic"
+
+
+def test_spacegroup_sunburst_structure_counts(
+    structures: tuple[Structure, Structure],
+) -> None:
+    """Structure inputs are converted to space group counts via moyopy."""
+    fig = spacegroup_sunburst(structures, show_counts="value")
+    trace = fig.data[0]
+
+    assert list(trace.labels) == ["12", "129", "monoclinic", "tetragonal"]
+    assert list(trace.parents) == ["monoclinic", "tetragonal", "", ""]
+    assert [*map(int, trace.values)] == [1, 1, 1, 1]
 
 
 def test_spacegroup_sunburst_requires_moyopy(
@@ -457,58 +469,79 @@ def test_chem_sys_sunburst_max_slices_mode_invalid() -> None:
 
 @pytest.mark.parametrize("show_counts", get_args(ShowCounts))
 def test_chem_env_sunburst_show_counts(show_counts: ShowCounts) -> None:
-    """Test chem_env_sunburst with different show_counts options using mocked data."""
-    from unittest.mock import patch
+    """Test chem_env_sunburst text formatting with representative processed data."""
+    from pymatviz.sunburst.chem_env import _process_chem_env_data_sunburst
 
-    from pymatgen.core import Lattice, Structure
-
-    lattice = Lattice.cubic(4.0)
-    coords = [[0.0, 0.0, 0.0]]
-    species = ["Fe"]
-    simple_structure = Structure(lattice, species, coords)
-
-    # Mock the expensive ChemEnv computation to return test data
-    mock_chem_env_data = [
+    chem_env_data = [
         {"coord_num": 4, "chem_env_symbol": "T:4", "count": 2.0},
         {"coord_num": 6, "chem_env_symbol": "O:6", "count": 1.0},
     ]
 
-    with patch("pymatviz.sunburst.chem_env_sunburst") as mock_func:
-        # Create a mock figure with expected properties
-        import pandas as pd
+    fig = _process_chem_env_data_sunburst(
+        chem_env_data=chem_env_data,
+        max_slices_cn=None,
+        max_slices_ce=None,
+        max_slices_mode="other",
+        show_counts=show_counts,
+    )
 
-        df_mock = pd.DataFrame(mock_chem_env_data)
-        fig = px.sunburst(
-            df_mock, path=["coord_num", "chem_env_symbol"], values="count"
-        )
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) == 1
+    assert fig.data[0].textinfo == "none"
+    assert fig.data[0].marker.line.color == "white"
 
-        # Apply the formatting based on show_counts
-        text_templates = {
-            "value": "%{label}: %{value}",
+    text_template = fig.data[0].texttemplate
+    assert (
+        text_template
+        == {
+            "value": "%{label}: %{value:.2f}",
             "percent": "%{label}: %{percentParent:.1%}",
-            "value+percent": "%{label}: %{value} (%{percentParent:.1%})",
+            "value+percent": "%{label}: %{value:.2f} (%{percentParent:.1%})",
             False: "%{label}",
-        }
-        fig.data[0].texttemplate = text_templates[show_counts]
-        fig.data[0].textinfo = "none"
-        fig.data[0].update(marker=dict(line=dict(color="white")))
+        }[show_counts]
+    )
 
-        mock_func.return_value = fig
-        result = mock_func([simple_structure], show_counts=show_counts)
 
-        assert isinstance(result, go.Figure)
-        assert len(result.data) == 1
+@pytest.mark.parametrize(
+    ("max_slices_mode", "expected_labels", "expected_parents", "expected_values"),
+    [
+        (
+            "other",
+            ["T:4", "Other CEs (2<br>more not shown)", "Other CNs", "4", "Other CNs"],
+            ["4", "4", "Other CNs", "", ""],
+            [5.0, 3.0, 4.0, 8.0, 4.0],
+        ),
+        ("drop", ["T:4", "4"], ["4", ""], [5.0, 5.0]),
+    ],
+)
+def test_chem_env_sunburst_limits_cn_and_ce_slices(
+    max_slices_mode: Literal["other", "drop"],
+    expected_labels: list[str],
+    expected_parents: list[str],
+    expected_values: list[float],
+) -> None:
+    """CN/CE slice limits aggregate or drop lower-count environments."""
+    from pymatviz.sunburst.chem_env import _process_chem_env_data_sunburst
 
-        # Check text formatting based on show_counts
-        if show_counts == "value":
-            assert "%{value}" in result.data[0].texttemplate
-        elif show_counts == "percent":
-            assert "%{percentParent" in result.data[0].texttemplate
-        elif show_counts == "value+percent":
-            assert "%{value}" in result.data[0].texttemplate
-            assert "%{percentParent" in result.data[0].texttemplate
-        elif show_counts is False:
-            assert result.data[0].texttemplate == "%{label}"
+    chem_env_data = [
+        {"coord_num": 4, "chem_env_symbol": "T:4", "count": 5},
+        {"coord_num": 4, "chem_env_symbol": "C:4", "count": 2},
+        {"coord_num": 4, "chem_env_symbol": "D:4", "count": 1},
+        {"coord_num": 5, "chem_env_symbol": "A:5", "count": 4},
+    ]
+
+    fig = _process_chem_env_data_sunburst(
+        chem_env_data=chem_env_data,
+        max_slices_cn=1,
+        max_slices_ce=1,
+        max_slices_mode=max_slices_mode,
+        show_counts="value",
+    )
+    trace = fig.data[0]
+
+    assert list(trace.labels) == expected_labels
+    assert list(trace.parents) == expected_parents
+    assert [*map(float, trace.values)] == expected_values
 
 
 @pytest.mark.parametrize("invalid_show_counts", ["invalid", "bad_value", 123, True])
@@ -554,60 +587,6 @@ def test_chem_env_sunburst_no_data() -> None:
         # Should have title indicating no data
         if fig.layout.title and fig.layout.title.text:
             assert "No CN/CE data to display" in fig.layout.title.text
-
-
-@pytest.mark.parametrize(
-    ("max_slices_cn", "max_slices_ce", "max_slices_mode", "normalize"),
-    [
-        (None, None, "other", False),  # No limits
-        (2, None, "other", True),  # CN limit only, normalized
-        (None, 3, "drop", False),  # CE limit only, drop mode
-        (1, 2, "other", True),  # Both limits, other mode, normalized
-        (0, 0, "other", True),  # Zero limits (treated as None)
-    ],
-)
-def test_chem_env_sunburst_parameters(
-    max_slices_cn: int | None,
-    max_slices_ce: int | None,
-    max_slices_mode: Literal["other", "drop"],
-    normalize: bool,
-) -> None:
-    """Test chem_env_sunburst with various parameter combinations."""
-    from pymatgen.core import Lattice, Structure
-
-    lattice = Lattice.cubic(4.0)
-    coords = [[0.0, 0.0, 0.0]]
-    species = ["Fe"]
-    simple_structure = Structure(lattice, species, coords)
-
-    # Test that parameter combos don't crash
-    fig = pmv.chem_env_sunburst(
-        [simple_structure],
-        max_slices_cn=max_slices_cn,
-        max_slices_ce=max_slices_ce,
-        max_slices_mode=max_slices_mode,
-        normalize=normalize,
-    )
-    assert isinstance(fig, go.Figure)
-    assert len(fig.data) == 1
-
-
-def test_chem_env_sunburst_custom_chem_env_settings() -> None:
-    """Test chem_env_sunburst with custom ChemEnv settings."""
-    from pymatgen.core import Lattice, Structure
-
-    lattice = Lattice.cubic(4.0)
-    coords = [[0.0, 0.0, 0.0]]
-    species = ["Fe"]
-    simple_structure = Structure(lattice, species, coords)
-
-    # Since ChemEnv parameter names are complex and may change,
-    # just test that empty settings work (which they should)
-    custom_settings: dict[str, Any] = {}
-
-    # Test that custom settings don't crash
-    fig = pmv.chem_env_sunburst([simple_structure], chem_env_settings=custom_settings)
-    assert isinstance(fig, go.Figure)
 
 
 def test_chem_env_sunburst_crystal_nn_method() -> None:
@@ -928,23 +907,6 @@ def test_chem_env_sunburst_m_colon_invalid_parsing() -> None:
 
 def test_sunburst_text_wrapping_functionality() -> None:
     """Test that long chemical environment names are wrapped with line breaks."""
-    import textwrap
-
-    def wrap_text(text: str) -> str:
-        return "<br>".join(
-            textwrap.wrap(text, width=15, break_long_words=True, break_on_hyphens=True)
-        )
-
-    test_cases = [
-        ("short", "short"),
-        ("rectangular see-saw-like:4", "rectangular<br>see-saw-like:4"),
-        ("square-pyramidal:5", "square-<br>pyramidal:5"),
-    ]
-
-    for input_text, expected_output in test_cases:
-        result = wrap_text(input_text)
-        assert result == expected_output
-
     mock_data = [
         {"coord_num": 4, "chem_env_symbol": "rectangular see-saw-like:4", "count": 10},
         {"coord_num": 5, "chem_env_symbol": "short", "count": 5},

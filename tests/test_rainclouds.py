@@ -38,23 +38,26 @@ def sample_dataframe() -> pd.DataFrame:
     )
 
 
-@pytest.mark.parametrize(
-    "kwargs",
-    [
-        {},
-        {"orientation": "v"},
-        {"alpha": 0.5, "width_viol": 0.4, "width_box": 0.2},
-        {"jitter": 0.02, "point_size": 5, "bw": 0.3, "cut": 0.1},
-        {"scale": "count", "rain_offset": -0.2, "offset": 0.1},
-        {"hover_data": ["extra"]},
-    ],
-)
-def test_rainclouds_basic(
-    sample_data: dict[str, np.ndarray], kwargs: dict[str, Any]
-) -> None:
-    fig = pmv.rainclouds(sample_data, **kwargs)
-    assert isinstance(fig, go.Figure)
+def test_rainclouds_style_options(sample_data: dict[str, np.ndarray]) -> None:
+    fig = pmv.rainclouds(
+        sample_data,
+        alpha=0.5,
+        width_viol=0.4,
+        width_box=0.2,
+        jitter=0.02,
+        point_size=5,
+        scale="width",
+        offset=0.3,
+    )
+    violin_trace, box_trace, points_trace = fig.data[:3]
+
     assert len(fig.data) == len(sample_data) * 3
+    assert violin_trace.fillcolor.endswith(",0.5)")
+    assert max(violin_trace.y) - min(violin_trace.y) == pytest.approx(0.4, abs=0.01)
+    assert box_trace.width == 0.2
+    assert box_trace.y[0] == pytest.approx(-0.15)
+    assert points_trace.marker.size == 5
+    assert np.std(points_trace.y) > 0
 
 
 @pytest.mark.parametrize(

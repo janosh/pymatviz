@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import tomllib
 from glob import glob
 from importlib.metadata import version
 from types import ModuleType
@@ -18,18 +19,13 @@ def test_pkg_metadata() -> None:
         pkg_data = json.load(file)
     assert pkg_data["name"] == pmv.PKG_NAME
 
-    try:
-        import tomllib
+    # check pyproject.toml matches package.json and __init__.py
+    with open("pyproject.toml", mode="rb") as file:
+        pyproject = tomllib.load(file)
 
-        # check pyproject.toml matches package.json and __init__.py
-        with open("pyproject.toml", mode="rb") as file:
-            pyproject = tomllib.load(file)
-
-        assert pyproject["project"]["name"] == pmv.PKG_NAME
-        assert pyproject["project"]["version"] == pmv.__version__
-        assert pyproject["project"]["description"] == pkg_data["description"]
-    except ImportError:
-        pass  # tomllib only available in 3.11+
+    assert pyproject["project"]["name"] == pmv.PKG_NAME
+    assert pyproject["project"]["version"] == pmv.__version__
+    assert pyproject["project"]["description"] == pkg_data["description"]
 
 
 def test_all_modules_reexported() -> None:

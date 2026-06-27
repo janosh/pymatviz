@@ -448,6 +448,7 @@ def coordination_vs_cutoff_line(
         )
 
     cutoffs = np.linspace(cutoff_range[0], cutoff_range[1], num_points)
+    neighbor_fns = [normalize_get_neighbors(strategy=cutoff) for cutoff in cutoffs]
 
     element_colors = _resolve_element_colors(element_color_scheme)
 
@@ -472,11 +473,10 @@ def coordination_vs_cutoff_line(
         )
 
         for element in elements:
-            coord_numbers = []
-            for cutoff in cutoffs:
-                get_neighbors_fn = normalize_get_neighbors(strategy=cutoff)
-                avg_cn = calculate_average_cn(structure, element, get_neighbors_fn)
-                coord_numbers.append(avg_cn)
+            coord_numbers = [
+                calculate_average_cn(structure, element, get_neighbors_fn)
+                for get_neighbors_fn in neighbor_fns
+            ]
 
             color = element_colors.get(element)
             if isinstance(color, tuple) and len(color) == 3:

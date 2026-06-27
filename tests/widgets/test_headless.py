@@ -19,7 +19,6 @@ from pymatviz.widgets._headless import (
     _build_html,
     _capture_page,
     _has_running_event_loop,
-    _prepare_render,
     _render_widget_async,
     _RenderInputs,
     build_interactive_html,
@@ -35,20 +34,6 @@ HEADLESS_PATH = "pymatviz.widgets._headless"
 DUMMY_WIDGET_DATA: dict[str, Any] = {"widget_type": "scatter_plot", "style": ""}
 DUMMY_ESM = "export default { render() {} }"
 DUMMY_CSS = ".widget {}"
-
-
-# === _SVG_EXTRACT_JS constant ===
-
-
-def test_svg_extract_js_is_callable_js() -> None:
-    """The shared SVG extraction JS is a non-empty string containing key logic."""
-    assert isinstance(_SVG_EXTRACT_JS, str)
-    assert "querySelectorAll" in _SVG_EXTRACT_JS
-    assert "XMLSerializer" in _SVG_EXTRACT_JS
-    assert len(_SVG_EXTRACT_JS) > 100
-    # Icon fallback was removed: only chart-sized SVGs (>= 20px) are returned,
-    # so toolbar/legend icons can never be mistaken for the chart.
-    assert "fallback" not in _SVG_EXTRACT_JS
 
 
 # === _has_running_event_loop ===
@@ -136,6 +121,61 @@ def test_render_widget_headless_uses_sync_path_without_event_loop() -> None:
     mock_browser.new_page.assert_called_once()
 
 
+@pytest.mark.parametrize(
+    ("fmt", "dpi", "expected_scale", "expected_bytes"),
+    [
+        ("png", 144, 2.0, b"\x89PNG dpi"),
+        ("jpeg", 216, 3.0, b"\xff\xd8 dpi"),
+        ("svg", 300, 1, b"<svg>dpi</svg>"),
+    ],
+)
+def test_render_widget_headless_uses_dpi_scale_factor(
+    fmt: str, dpi: int, expected_scale: float, expected_bytes: bytes
+) -> None:
+    """render_widget_headless maps DPI to browser scale for raster formats."""
+    mock_page = _mock_page(svg_result=expected_bytes.decode() if fmt == "svg" else None)
+    mock_page.locator.return_value.screenshot.return_value = expected_bytes
+    mock_browser = MagicMock()
+    mock_browser.new_page.return_value = mock_page
+
+    with (
+        patch(f"{HEADLESS_PATH}._has_running_event_loop", return_value=False),
+        patch(f"{HEADLESS_PATH}._get_browser", return_value=mock_browser),
+    ):
+        result = render_widget_headless(
+            DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS, fmt=fmt, dpi=dpi
+        )
+
+    assert result == expected_bytes
+    mock_browser.new_page.assert_called_once_with(
+        viewport={"width": 1024, "height": 768},
+        device_scale_factor=expected_scale,
+    )
+
+
+def test_render_widget_headless_canvas_pdf_uses_dpi_scale() -> None:
+    """Canvas-backed PDF export passes the DPI scale into PDF rasterization."""
+    mock_page = _mock_page(has_canvas=True)
+    mock_browser = MagicMock()
+    mock_browser.new_page.return_value = mock_page
+
+    with (
+        patch(f"{HEADLESS_PATH}._has_running_event_loop", return_value=False),
+        patch(f"{HEADLESS_PATH}._get_browser", return_value=mock_browser),
+        patch(f"{HEADLESS_PATH}._png_to_pdf", return_value=b"%PDF-raster") as mock_pdf,
+    ):
+        result = render_widget_headless(
+            DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS, fmt="pdf", dpi=216
+        )
+
+    assert result == b"%PDF-raster"
+    mock_browser.new_page.assert_called_once_with(
+        viewport={"width": 1024, "height": 768},
+        device_scale_factor=3.0,
+    )
+    mock_pdf.assert_called_once_with(b"PNGDATA", scale=3.0)
+
+
 # === _render_widget_async ===
 
 
@@ -216,42 +256,11 @@ def test_build_html_applies_dimension_overrides() -> None:
     assert "900px" in html
 
 
-# === No ThreadPoolExecutor remnants ===
-
-
-def test_no_thread_pool_executor_in_module() -> None:
-    """The old ThreadPoolExecutor-based async offload has been removed."""
-    from pymatviz.widgets import _headless
-
-    assert not hasattr(_headless, "_async_pool"), (
-        "_async_pool should not exist — async path now uses Playwright async API"
-    )
-    assert not hasattr(_headless, "_async_pool_lock"), (
-        "_async_pool_lock should not exist"
-    )
-
-
 # === Content-aware capture (_capture_page) ===
 #
 # Capture picks SVG-vs-raster and vector-vs-rasterized PDF from the rendered DOM
 # (_HAS_CANVAS_JS / _SVG_EXTRACT_JS), not a static widget_type list. The async
 # twin mirrors this logic and is smoke-tested via _render_widget_async above.
-
-
-@pytest.mark.parametrize(
-    ("fmt", "dpi", "expected_scale"),
-    [("png", 144, 2.0), ("pdf", 72, 1.0), ("pdf", 216, 3.0), ("svg", 300, 1)],
-)
-def test_prepare_render_scale_factor(fmt: str, dpi: int, expected_scale: float) -> None:
-    """Raster formats (png/jpeg/pdf) scale by DPI; SVG stays 1x (pure vector)."""
-    import os
-
-    inputs = _RenderInputs({"widget_type": "bar_plot"}, "// esm", "/* css */", fmt, dpi)
-    tmp_path, _ms, scale = _prepare_render(inputs)
-    try:
-        assert scale == expected_scale
-    finally:
-        os.unlink(tmp_path)
 
 
 def _mock_page(*, svg_result: str | None = None, has_canvas: bool = False) -> MagicMock:

@@ -346,6 +346,7 @@ def test_configure_assets_reset() -> None:
         ({"version": "v1.0.0", "esm_src": "/f.js"}, "not both"),
         ({"version": "v1.0.0", "css_src": "/f.css"}, "not both"),
         ({"css_src": "/f.css"}, "requires 'esm_src'"),
+        ({"esm_src": "/bundle"}, "derive 'css_src'"),
     ],
 )
 def test_configure_assets_rejects_invalid_combos(
@@ -421,6 +422,7 @@ def test_lazy_matterviz_widget_version_override() -> None:
         ),
     ],
 )
+@pytest.mark.usefixtures("_clean_asset_cache")
 def test_matterviz_widget_to_dict(
     init_kwargs: dict[str, Any],
     updates: dict[str, Any],
@@ -448,6 +450,7 @@ def test_matterviz_widget_to_dict(
 
 
 @pytest.mark.parametrize("static_val", ["", None])
+@pytest.mark.usefixtures("_clean_asset_cache")
 def test_show_interactive(static_val: str | None) -> None:
     """show() displays the widget interactively when PYMATVIZ_STATIC is unset/empty."""
     with (
@@ -466,6 +469,7 @@ def test_show_interactive(static_val: str | None) -> None:
 
 
 @pytest.mark.parametrize("static_val", ["1", "0"], ids=["val_1", "val_0"])
+@pytest.mark.usefixtures("_clean_asset_cache")
 def test_show_static_png(static_val: str) -> None:
     """show() renders static PNG when PYMATVIZ_STATIC is any non-empty string.
 

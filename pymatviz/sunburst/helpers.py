@@ -67,7 +67,9 @@ def _limit_slices(
 
     # Set the label for the other entry
     for col in df_grouped.columns:
-        if col in (group_col, count_col):
+        if col == count_col:
+            continue
+        if col == group_col and col != child_col_for_other_label:
             continue
         if child_col_for_other_label and col == child_col_for_other_label:
             other_row[col] = other_text

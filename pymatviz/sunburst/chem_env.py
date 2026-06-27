@@ -172,6 +172,7 @@ def _process_chem_env_data_sunburst(
                 other_label="Other CEs",
                 child_col_for_other_label="chem_env_symbol",
             )
+            df_cn_subset["coord_num"] = cn_val
             df_ce_limited.append(df_cn_subset)
         df_chem_env = pd.concat(df_ce_limited, ignore_index=True)
 

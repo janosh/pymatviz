@@ -291,32 +291,6 @@ def test_chem_sys_treemap_grouping_modes(
         assert actual_counts[system] == count
 
 
-def test_chem_sys_treemap_other_entries_styling() -> None:
-    """Test that 'Other' entries have custom styling applied."""
-    max_cells = 3  # Small enough to create "Other" entries
-    fig = pmv.chem_sys_treemap(TEST_SYSTEMS, max_cells=max_cells)
-    labels = fig.data[0].labels
-
-    # Find all "Other" entries
-    other_indices = [
-        idx
-        for idx, label in enumerate(labels)
-        if "Other" in label and "more not shown" in label
-    ]
-
-    # Verify that we have at least one "Other" entry
-    assert len(other_indices) > 0
-
-    # Verify styling
-    assert hasattr(fig.data[0], "marker")
-    assert hasattr(fig.data[0].marker, "colors")
-    assert fig.data[0].marker.colors is not None
-
-    # Verify that "Other" entries have the custom color
-    for idx in other_indices:
-        assert fig.data[0].marker.colors[idx] == "rgba(255,255,255,0.1)"
-
-
 @pytest.mark.parametrize(
     ("max_cells", "arity", "expected_systems", "expected_other_count"),
     [
@@ -365,17 +339,14 @@ def test_chem_sys_treemap_max_cells(
         assert other_value == expected_other_count
 
         # Verify "Other" entry has different styling
-        colors = (
-            fig.data[0].marker.colors if hasattr(fig.data[0].marker, "colors") else None
-        )
-        if colors:
-            other_indices = [
-                idx
-                for idx, label in enumerate(labels)
-                if "Other" in label and arity in parents[idx]
-            ]
-            assert len(other_indices) > 0
-            assert colors[other_indices[0]] == "rgba(255,255,255,0.1)"
+        colors = fig.data[0].marker.colors
+        other_indices = [
+            idx
+            for idx, label in enumerate(labels)
+            if "Other" in label and arity in parents[idx]
+        ]
+        assert len(other_indices) > 0
+        assert colors[other_indices[0]] == "rgba(255,255,255,0.1)"
     else:
         assert len(other_entries) == 0
 

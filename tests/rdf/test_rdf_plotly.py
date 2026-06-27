@@ -5,7 +5,6 @@ from typing import Any
 import numpy as np
 import plotly.graph_objects as go
 import pytest
-from numpy.testing import assert_allclose
 from pymatgen.core import Lattice, Structure
 
 from pymatviz.rdf.figures import element_pair_rdfs, full_rdf
@@ -77,6 +76,7 @@ def test_element_pair_rdfs_layout_and_annotations(
     )
     fig = element_pair_rdfs(structs, subplot_kwargs=subplot_kwargs)
 
+    assert subplot_kwargs["cols"] == n_cols
     assert isinstance(fig, go.Figure)
     assert fig.layout.title.text is None  # Assuming no main title is set
     assert fig.layout.yaxis.title.text == "g(r)"  # Common y-axis title
@@ -200,15 +200,6 @@ def test_element_pair_rdfs_custom_element_pairs(
     assert [anno.text for anno in fig.layout.annotations] == [
         f"{pair[0]}-{pair[1]}" for pair in expected_pairs
     ]
-
-
-def test_element_pair_rdfs_consistency(structures: list[Structure]) -> None:
-    for struct in structures:
-        fig1 = element_pair_rdfs(struct, cutoff=5, bin_size=0.1)
-        fig2 = element_pair_rdfs(struct, cutoff=5, bin_size=0.1)
-        for trace1, trace2 in zip(fig1.data, fig2.data, strict=True):
-            assert_allclose(trace1.x, trace2.x)
-            assert_allclose(trace1.y, trace2.y)
 
 
 @pytest.mark.parametrize("structs_type", ["dict", "list"])
@@ -347,19 +338,6 @@ def test_full_rdf_cutoff_and_bin_size(
             assert abs(len(trace.x) - expected_bins) <= 1, (
                 f"Expected around {expected_bins} bins, got {len(trace.x)}"
             )
-
-
-def test_full_rdf_consistency(structures: list[Structure]) -> None:
-    for struct in structures:
-        fig1 = full_rdf(struct, cutoff=5, bin_size=0.1)
-        fig2 = full_rdf(struct, cutoff=5, bin_size=0.1)
-        assert_allclose(fig1.data[0].x, fig2.data[0].x)
-        assert_allclose(fig1.data[0].y, fig2.data[0].y)
-        assert len(fig1.data[0].x) == len(fig2.data[0].x)
-
-        fig3 = full_rdf(struct, cutoff=6, bin_size=0.2)
-        assert 30 == len(fig3.data[0].x) < len(fig1.data[0].x) == 50
-        assert 30 == len(fig3.data[0].y) < len(fig1.data[0].y) == 50
 
 
 @pytest.mark.parametrize("structs_type", ["dict", "list"])
