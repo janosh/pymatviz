@@ -31,7 +31,6 @@ class ScatterPlotWidget(MatterVizWidget):
     controls = tl.Dict(allow_none=True).tag(sync=True)
     padding = tl.Dict(allow_none=True).tag(sync=True)
     range_padding = tl.Float(allow_none=True, default_value=None).tag(sync=True)
-    show_legend = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     x2_axis = tl.Dict(allow_none=True).tag(sync=True)
     x_range = tl.List(allow_none=True).tag(sync=True)
     x2_range = tl.List(allow_none=True).tag(sync=True)
@@ -75,7 +74,6 @@ class ScatterPlotWidget(MatterVizWidget):
         controls: dict[str, Any] | None = None,
         padding: dict[str, int] | None = None,
         range_padding: float | None = None,
-        show_legend: bool | None = None,
         x2_axis: dict[str, Any] | None = None,
         x_range: list[float | None] | None = None,
         x2_range: list[float | None] | None = None,
@@ -110,7 +108,6 @@ class ScatterPlotWidget(MatterVizWidget):
                 in pixels.
             range_padding: Fraction of data range to add as padding.
                 Python default is ``None``; the frontend uses ``0.05``.
-            show_legend: Whether to show the legend.
             x2_axis: Secondary X axis configuration.
             x_range: Fixed X axis range ``[min, max]``.
             x2_range: Fixed secondary X axis range ``[min, max]``.
@@ -144,7 +141,6 @@ class ScatterPlotWidget(MatterVizWidget):
             controls=normalize_plot_json(controls, "ScatterPlot.controls"),
             padding=normalize_plot_json(padding, "ScatterPlot.padding"),
             range_padding=range_padding,
-            show_legend=show_legend,
             x2_axis=normalize_plot_json(x2_axis, "ScatterPlot.x2_axis"),
             x_range=normalize_plot_json(x_range, "ScatterPlot.x_range"),
             x2_range=normalize_plot_json(x2_range, "ScatterPlot.x2_range"),

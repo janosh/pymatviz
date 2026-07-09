@@ -8,7 +8,14 @@ NOT shared since its default differs between the two widgets.
 
 from __future__ import annotations
 
+from typing import Any
+
 import traitlets as tl
+
+
+def optional_trait(trait_cls: Any, **kwargs: Any) -> Any:
+    """Synced trait defaulting to None so the frontend component default applies."""
+    return trait_cls(allow_none=True, default_value=None, **kwargs).tag(sync=True)
 
 
 class StructureVizTraits(tl.HasTraits):
@@ -40,7 +47,11 @@ class StructureVizTraits(tl.HasTraits):
     # Bonds
     bond_thickness = tl.Float(allow_none=True, default_value=None).tag(sync=True)
     bond_color = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
-    bonding_strategy = tl.Unicode("nearest_neighbor").tag(sync=True)
+    # None defers to the frontend default. An unknown strategy name would crash
+    # the renderer (matterviz looks it up in BONDING_STRATEGIES), so validate here.
+    bonding_strategy = tl.CaselessStrEnum(
+        values=["electroneg_ratio", "solid_angle"], allow_none=True, default_value=None
+    ).tag(sync=True)
 
     # Cell
     cell_edge_opacity = tl.Float(0.1).tag(sync=True)

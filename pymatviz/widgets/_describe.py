@@ -207,6 +207,33 @@ def _describe_bands_and_dos(data: Mapping[str, Any]) -> dict[str, Any]:
     return {**_describe_band_structure(data), **_describe_dos(data)}
 
 
+def _describe_treemap(data: Mapping[str, Any]) -> dict[str, Any]:
+    """Node/leaf counts and depth for a treemap hierarchy."""
+    tree = data.get("data")
+    roots = tree if isinstance(tree, (list, tuple)) else [tree]
+    n_nodes = n_leaves = max_depth = 0
+    stack = [(node, 1) for node in roots if isinstance(node, Mapping)]
+    seen_ids: set[int] = set()  # cycle guard: post-init trait mutation can
+    while stack:  # produce self-referential dicts that would hang the walk
+        node, depth = stack.pop()
+        if id(node) in seen_ids:
+            continue
+        seen_ids.add(id(node))
+        n_nodes += 1
+        max_depth = max(max_depth, depth)
+        children = node.get("children")
+        children = children if isinstance(children, (list, tuple)) else []
+        child_nodes = [child for child in children if isinstance(child, Mapping)]
+        if child_nodes:
+            stack.extend((child, depth + 1) for child in child_nodes)
+        else:  # no valid child dicts (incl. malformed children entries) -> leaf
+            n_leaves += 1
+    facts: dict[str, Any] = {"n_nodes": n_nodes, "n_leaves": n_leaves}
+    if max_depth:
+        facts["max_depth"] = max_depth
+    return facts
+
+
 def _describe_brillouin_zone(data: Mapping[str, Any]) -> dict[str, Any]:
     """Data source flags plus structure facts for a Brillouin zone."""
     return {
@@ -237,6 +264,7 @@ _HANDLERS: dict[str, Any] = {
     "dos": _describe_dos,
     "band_structure": _describe_band_structure,
     "bands_and_dos": _describe_bands_and_dos,
+    "treemap": _describe_treemap,
     # which optional data source is populated (structures/patterns, fermi/band)
     "rdf_plot": functools.partial(_source_flags, keys=("structures", "patterns")),
     "fermi_surface": functools.partial(_source_flags, keys=("fermi_data", "band_data")),
@@ -260,6 +288,7 @@ _PRIMARY_DATA: dict[str, str | tuple[str, ...]] = {
     "spacegroup_bar": "data",
     "dos": "dos",
     "band_structure": "band_structure",
+    "treemap": "data",
     # can render with either input, so only warn when both are missing
     "bands_and_dos": ("dos", "band_structure"),
 }
@@ -297,6 +326,7 @@ def short_summary(report: Mapping[str, Any]) -> str:
         ("n_frames", "frames"),
         ("n_entries", "entries"),
         ("n_elements", "elements"),
+        ("n_nodes", "nodes"),
     ):
         if key in report:
             return f"{widget_type}: {report[key]} {noun}"

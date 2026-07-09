@@ -47,8 +47,9 @@ class CompositionWidget(MatterVizWidget):
         default_value="Jmol",
     ).tag(sync=True)
 
-    # PyMatGen composition kwargs
-    pymatgen_kwargs = tl.Dict(allow_none=True).tag(sync=True)
+    # kwargs for the pymatgen Composition constructor. Python-side only (not
+    # synced): the frontend has no such prop, it only affects parsing here.
+    pymatgen_kwargs = tl.Dict(allow_none=True)
 
     def __init__(
         self, composition: CompositionLike | None = None, **kwargs: Any

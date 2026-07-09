@@ -27,7 +27,6 @@ class HistogramWidget(MatterVizWidget):
     legend = tl.Dict(allow_none=True).tag(sync=True)
     bar = tl.Dict(allow_none=True).tag(sync=True)
     ref_lines = tl.List(allow_none=True).tag(sync=True)
-    controls = tl.Dict(allow_none=True).tag(sync=True)
     padding = tl.Dict(allow_none=True).tag(sync=True)
     range_padding = tl.Float(allow_none=True, default_value=None).tag(sync=True)
     x2_axis = tl.Dict(allow_none=True).tag(sync=True)
@@ -51,7 +50,6 @@ class HistogramWidget(MatterVizWidget):
         legend: dict[str, Any] | None = None,
         bar: dict[str, Any] | None = None,
         ref_lines: list[dict[str, Any]] | None = None,
-        controls: dict[str, Any] | None = None,
         padding: dict[str, int] | None = None,
         range_padding: float | None = None,
         x2_axis: dict[str, Any] | None = None,
@@ -77,7 +75,6 @@ class HistogramWidget(MatterVizWidget):
             legend: Legend configuration.
             bar: Bar-style configuration.
             ref_lines: Reference line definitions.
-            controls: Control pane configuration.
             padding: Plot area padding ``{"t": N, "b": N, "l": N, "r": N}``
                 in pixels.
             range_padding: Fraction of data range to add as padding.
@@ -102,7 +99,6 @@ class HistogramWidget(MatterVizWidget):
             legend=normalize_plot_json(legend, "Histogram.legend"),
             bar=normalize_plot_json(bar, "Histogram.bar"),
             ref_lines=normalize_plot_json(ref_lines, "Histogram.ref_lines"),
-            controls=normalize_plot_json(controls, "Histogram.controls"),
             padding=normalize_plot_json(padding, "Histogram.padding"),
             range_padding=range_padding,
             x2_axis=normalize_plot_json(x2_axis, "Histogram.x2_axis"),

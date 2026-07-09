@@ -430,7 +430,7 @@ ase_traj_widget = pmv.TrajectoryWidget(
     vector_scale=0.5,
     vector_color="#ff4444",
     show_bonds=True,
-    bonding_strategy="nearest_neighbor",
+    bonding_strategy="electroneg_ratio",
     style="height: 600px;",
 )
 ase_traj_widget.show()

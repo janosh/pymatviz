@@ -73,6 +73,12 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
             pmv.XrdWidget(patterns={"x": [10, 20, 30], "y": [100, 50, 75]}),
             {"n_peaks": 3, "two_theta_range": [10.0, 30.0]},
         ),
+        (
+            pmv.TreemapWidget(
+                data={"children": [{"children": [{"value": 2}]}, {"value": 1}]}
+            ),
+            {"n_nodes": 4, "n_leaves": 2, "max_depth": 3},
+        ),
     ],
 )
 def test_describe_widget(widget: Any, expected: dict[str, Any]) -> None:
@@ -93,6 +99,31 @@ def test_describe_handles_empty_data(widget: Any) -> None:
     assert report["widget_type"] == widget.widget_type
 
 
+@pytest.mark.parametrize(
+    ("data", "n_nodes", "n_leaves"),
+    [
+        # children with no valid node dicts count as a leaf, not a branch
+        ({"label": "root", "children": [1, "bad", None]}, 1, 1),
+        ({"label": "root", "children": []}, 1, 1),
+        (None, 0, 0),
+        ("not-a-node", 0, 0),
+    ],
+)
+def test_describe_treemap_malformed_data(
+    data: Any, n_nodes: int, n_leaves: int
+) -> None:
+    """_describe_treemap tolerates malformed/empty hierarchies without raising."""
+    report = describe_widget({"widget_type": "treemap", "data": data})
+    assert (report["n_nodes"], report["n_leaves"]) == (n_nodes, n_leaves)
+
+
+def test_describe_treemap_cyclic_data_terminates() -> None:
+    """_describe_treemap does not hang on cyclic node dicts (post-init mutation)."""
+    node: dict[str, Any] = {"label": "root"}
+    node["children"] = [node]
+    assert describe_widget({"widget_type": "treemap", "data": node})["n_nodes"] == 1
+
+
 def test_describe_unknown_widget_type() -> None:
     """Unknown widget types fall back to just the type."""
     assert describe_widget({"widget_type": "mystery"}) == {"widget_type": "mystery"}
@@ -107,6 +138,7 @@ def test_describe_unknown_widget_type() -> None:
         ),
         ({"widget_type": "scatter_plot", "n_series": 3}, "scatter_plot: 3 series"),
         ({"widget_type": "convex_hull", "n_entries": 5}, "convex_hull: 5 entries"),
+        ({"widget_type": "treemap", "n_nodes": 4}, "treemap: 4 nodes"),
         ({"widget_type": "xrd"}, "xrd"),
     ],
 )
@@ -127,6 +159,8 @@ def test_short_summary(report: dict[str, Any], expected: str) -> None:
         (pmv.RdfPlotWidget(structures=[]), True),
         (pmv.RdfPlotWidget(patterns=[]), True),
         (pmv.RdfPlotWidget(patterns=[{"label": "a", "x": [1.0], "y": [2.0]}]), False),
+        (pmv.TreemapWidget(), True),
+        (pmv.TreemapWidget(data={"label": "root", "value": 1}), False),
     ],
 )
 def test_check_inputs(widget: Any, expect_warning: bool) -> None:

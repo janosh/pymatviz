@@ -28,7 +28,6 @@ class BarPlotWidget(MatterVizWidget):
     bar = tl.Dict(allow_none=True).tag(sync=True)
     line = tl.Dict(allow_none=True).tag(sync=True)
     ref_lines = tl.List(allow_none=True).tag(sync=True)
-    controls = tl.Dict(allow_none=True).tag(sync=True)
     padding = tl.Dict(allow_none=True).tag(sync=True)
     range_padding = tl.Float(allow_none=True, default_value=None).tag(sync=True)
     show_legend = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
@@ -55,7 +54,6 @@ class BarPlotWidget(MatterVizWidget):
         bar: dict[str, Any] | None = None,
         line: dict[str, Any] | None = None,
         ref_lines: list[dict[str, Any]] | None = None,
-        controls: dict[str, Any] | None = None,
         padding: dict[str, int] | None = None,
         range_padding: float | None = None,
         show_legend: bool | None = None,
@@ -83,7 +81,6 @@ class BarPlotWidget(MatterVizWidget):
             bar: Bar-style configuration.
             line: Line-style configuration for line-rendered series.
             ref_lines: Reference line definitions.
-            controls: Control pane configuration.
             padding: Plot area padding ``{"t": N, "b": N, "l": N, "r": N}``
                 in pixels.
             range_padding: Fraction of data range to add as padding.
@@ -111,7 +108,6 @@ class BarPlotWidget(MatterVizWidget):
             bar=normalize_plot_json(bar, "BarPlot.bar"),
             line=normalize_plot_json(line, "BarPlot.line"),
             ref_lines=normalize_plot_json(ref_lines, "BarPlot.ref_lines"),
-            controls=normalize_plot_json(controls, "BarPlot.controls"),
             padding=normalize_plot_json(padding, "BarPlot.padding"),
             range_padding=range_padding,
             show_legend=show_legend,
