@@ -28,6 +28,7 @@ from pymatviz.widgets.scatter_plot_3d import ScatterPlot3DWidget
 from pymatviz.widgets.spacegroup_bar import SpacegroupBarPlotWidget
 from pymatviz.widgets.structure import StructureWidget
 from pymatviz.widgets.trajectory import TrajectoryWidget
+from pymatviz.widgets.treemap import TreemapWidget
 from pymatviz.widgets.xrd import XrdWidget
 
 

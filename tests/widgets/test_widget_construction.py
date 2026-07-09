@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
+import traitlets as tl
 from pymatgen.core import Lattice, Structure
 
 from pymatviz.widgets.band_structure import BandStructureWidget
@@ -28,6 +29,7 @@ from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 from pymatviz.widgets.scatter_plot_3d import ScatterPlot3DWidget
 from pymatviz.widgets.spacegroup_bar import SpacegroupBarPlotWidget
 from pymatviz.widgets.structure import StructureWidget
+from pymatviz.widgets.treemap import TreemapWidget
 from pymatviz.widgets.xrd import XrdWidget
 
 
@@ -152,6 +154,12 @@ def _case(
             "chem_pot_diagram",
             "entries",
         ),
+        _case(
+            TreemapWidget,
+            {"data": {"label": "root", "children": [{"label": "leaf", "value": 3}]}},
+            "treemap",
+            "data",
+        ),
     ],
 )
 def test_widget_construction_and_type(
@@ -186,6 +194,7 @@ def test_widget_construction_and_type(
         (HeatmapMatrixWidget, {"x_items": ["A"], "y_items": ["B"]}),
         (SpacegroupBarPlotWidget, {"data": [225]}),
         (ChemPotDiagramWidget, {"entries": [{"name": "Li", "energy": -1.9}]}),
+        (TreemapWidget, {"data": {"label": "root", "value": 1}}),
     ],
 )
 def test_to_dict_includes_subclass_fields(
@@ -253,7 +262,8 @@ _MINIMAL_KWARGS: dict[type, dict[str, Any]] = {
         (PeriodicTableWidget, "color_scale", "interpolateViridis"),
         (PeriodicTableWidget, "log_scale", False),
         (PeriodicTableWidget, "show_color_bar", True),
-        (PeriodicTableWidget, "missing_color", "element-category"),
+        (PeriodicTableWidget, "missing", None),
+        (HeatmapMatrixWidget, "missing", None),
         (ScatterPlot3DWidget, "camera_projection", "perspective"),
         (HeatmapMatrixWidget, "color_scale", "interpolateViridis"),
         (HeatmapMatrixWidget, "tile_size", "50px"),
@@ -270,6 +280,19 @@ def test_widget_traitlet_defaults(widget_cls: type, attr: str, expected: Any) ->
     """Widgets expose correct default traitlet values."""
     widget = widget_cls(**_MINIMAL_KWARGS.get(widget_cls, {}))
     assert getattr(widget, attr) == expected
+
+
+def test_treemap_widget_all_config_traits_default_to_none() -> None:
+    """Every treemap config trait defaults to None so frontend defaults apply.
+
+    Guards against container traits regressing to []/{} defaults (traitlets
+    List/Dict need explicit default_value=None) which would override the
+    component's own defaults.
+    """
+    base_traits = {"widget_type", "style", "show_controls"}
+    state = TreemapWidget().to_dict()
+    non_none = {key for key, val in state.items() if val is not None} - base_traits
+    assert not non_none, f"expected None defaults, got non-None for {sorted(non_none)}"
 
 
 # === Input normalization at widget level ===
@@ -329,6 +352,7 @@ def test_periodic_table_accepts_list_input() -> None:
         (ChemPotDiagramWidget, {}, "chem_pot_diagram"),
         (HeatmapMatrixWidget, {}, "heatmap_matrix"),
         (SpacegroupBarPlotWidget, {}, "spacegroup_bar"),
+        (TreemapWidget, {}, "treemap"),
     ],
 )
 def test_new_widgets_construct_with_no_data(
@@ -390,6 +414,38 @@ def test_spacegroup_bar_data_inputs() -> None:
     ]:
         with pytest.raises(error_cls, match=match):
             SpacegroupBarPlotWidget(data=bad_data)
+
+
+def test_treemap_widget_traits_and_validation() -> None:
+    """TreemapWidget normalizes data, validates enums, and syncs zoom state."""
+    data = {"label": "root", "children": [{"label": "a", "value": np.float64(2.5)}]}
+    config = {
+        "value_mode": "total",
+        "label_fit": "shrink",
+        "label_min_font_size": 7,
+        "label_max_font_size": 14,
+        "parent_label_font_size": 16,
+        "zoom_root_id": "root/a",
+    }
+    widget = TreemapWidget(data=data, **config)
+    leaf_value = widget.data["children"][0]["value"]
+    assert leaf_value == 2.5
+    assert type(leaf_value) is float  # numpy scalar normalized
+    state = widget.to_dict()
+    for key, expected in config.items():
+        assert state[key] == expected
+
+    # zoom_root_id is two-way synced: assignment after construction must work
+    widget.zoom_root_id = None
+    assert widget.zoom_root_id is None
+
+    for bad_key in ("value_mode", "label_text", "label_fit"):
+        with pytest.raises(tl.TraitError):
+            TreemapWidget(data=data, **{bad_key: "not-an-option"})
+
+    # forest input: list of root nodes passes through unchanged
+    roots = [{"label": "x", "value": 1}, {"label": "y", "value": 2}]
+    assert TreemapWidget(data=roots).to_dict()["data"] == roots
 
 
 def test_heatmap_matrix_values_none_passthrough() -> None:
@@ -778,7 +834,12 @@ def test_render_widget_headless_dpi_to_scale(
     mock_browser = MagicMock()
     mock_browser.new_page = MagicMock(return_value=mock_page)
 
-    with patch(f"{_HEADLESS}._get_browser", return_value=mock_browser):
+    # pin the sync path: a real sync-Playwright launch earlier in the session
+    # leaves an asyncio loop running, which would route down the unmocked async path
+    with (
+        patch(f"{_HEADLESS}._get_browser", return_value=mock_browser),
+        patch(f"{_HEADLESS}._has_running_event_loop", return_value=False),
+    ):
         from pymatviz.widgets._headless import render_widget_headless
 
         render_widget_headless(

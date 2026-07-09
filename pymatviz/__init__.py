@@ -105,6 +105,7 @@ from pymatviz.widgets import (
     SpacegroupBarPlotWidget,
     StructureWidget,
     TrajectoryWidget,
+    TreemapWidget,
     WidgetLink,
     XrdWidget,
     configure_assets,

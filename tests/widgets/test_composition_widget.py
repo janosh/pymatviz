@@ -152,10 +152,12 @@ def test_widget_edge_cases_composition() -> None:
     assert_widget_build_files(widget)
 
 
-def test_composition_widget_pymatgen_kwargs_synced() -> None:
-    """pymatgen_kwargs reaches the synced traitlet (regression: pop() consumed
-    it before super().__init__, leaving the trait at its default).
+def test_composition_widget_pymatgen_kwargs() -> None:
+    """pymatgen_kwargs reaches the traitlet (regression: pop() consumed it before
+    super().__init__, leaving the trait at its default) but is Python-side only,
+    so it never leaks into the synced frontend payload.
     """
     widget = CompositionWidget("Fe2O3", pymatgen_kwargs={"allow_negative": True})
     assert widget.pymatgen_kwargs == {"allow_negative": True}
     assert widget.composition is not None
+    assert "pymatgen_kwargs" not in widget.to_dict()

@@ -6,6 +6,7 @@ from typing import Any
 
 import traitlets as tl
 
+from pymatviz.widgets._traits import optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -32,6 +33,18 @@ class BandsAndDosWidget(MatterVizWidget):
     band_structure = tl.Dict(allow_none=True).tag(sync=True)
     dos = tl.Dict(allow_none=True).tag(sync=True)
 
+    # Config forwarded to the embedded Bands (band_type, show_legend) and Dos
+    # (stack, sigma, normalize, spin_mode) panels. fermi_level/reference_frequency
+    # and dos orientation are controlled internally by the combined view.
+    band_type = optional_trait(tl.CaselessStrEnum, values=["phonon", "electronic"])
+    show_legend = optional_trait(tl.Bool)
+    stack = optional_trait(tl.Bool)
+    sigma = optional_trait(tl.Float)
+    normalize = optional_trait(tl.CaselessStrEnum, values=["max", "sum", "integral"])
+    spin_mode = optional_trait(
+        tl.CaselessStrEnum, values=["mirror", "overlay", "up_only", "down_only"]
+    )
+
     def __init__(
         self,
         band_structure: Any | None = None,
@@ -44,7 +57,9 @@ class BandsAndDosWidget(MatterVizWidget):
             band_structure: Band structure data -- a pymatgen BandStructure,
                 BandStructureSymmLine, PhononBandStructureSymmLine, or dict.
             dos: DOS data -- a pymatgen Dos, CompleteDos, PhononDos, or dict.
-            **kwargs: Additional widget properties.
+            **kwargs: Additional widget properties, e.g. ``band_type`` and
+                ``show_legend`` for the bands panel, or ``stack``, ``sigma``,
+                ``normalize``, and ``spin_mode`` for the DOS panel.
         """
         from pymatviz.widgets._normalize import _to_dict
 

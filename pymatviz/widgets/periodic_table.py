@@ -32,7 +32,9 @@ class PeriodicTableWidget(MatterVizWidget):
     log_scale = tl.Bool(default_value=False).tag(sync=True)
     show_color_bar = tl.Bool(default_value=True).tag(sync=True)
     gap = tl.Unicode(default_value="0.3cqw").tag(sync=True)
-    missing_color = tl.Unicode(default_value="element-category").tag(sync=True)
+    # styling for tiles with no heatmap value, e.g. {"color": "gray", "label": "N/A"}.
+    # color "element-category" uses the element's category color.
+    missing = tl.Dict(default_value=None, allow_none=True).tag(sync=True)
 
     _DEFAULT_STYLE = "width: 100%; max-height: 400px; aspect-ratio: 18/10;"
 

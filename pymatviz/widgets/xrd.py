@@ -34,6 +34,8 @@ class XrdWidget(MatterVizWidget):
     """
 
     patterns = tl.Dict(allow_none=True).tag(sync=True)
+    # control pane configuration; merged with show_controls into controls.show
+    controls = tl.Dict(default_value=None, allow_none=True).tag(sync=True)
 
     def __init__(self, patterns: Any | None = None, **kwargs: Any) -> None:
         """Initialize the XrdWidget.
@@ -41,7 +43,8 @@ class XrdWidget(MatterVizWidget):
         Args:
             patterns: XRD pattern data -- a pymatgen DiffractionPattern or dict with
                 x (2-theta angles) and y (intensities) keys.
-            **kwargs: Additional widget properties.
+            **kwargs: Additional widget properties (e.g. ``controls`` for the
+                control pane configuration).
         """
         from pymatviz.widgets._normalize import normalize_xrd_pattern
 
