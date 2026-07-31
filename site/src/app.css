@@ -7,9 +7,15 @@
   --github-corner-color: var(--night);
   --github-corner-bg: white;
 
-  --sms-options-bg: rgb(50, 48, 66);
-  --sms-li-color: white;
-  --sms-active-color: cornflowerblue;
+  --nav-link-active-color: var(--blue);
+  --footer-bg: #00061a;
+  --footer-nav-margin: 2em;
+  --toc-mobile-bg: #0d1a1d;
+  --toc-mobile-shadow: 0 0 1em 0 black;
+  --toc-active-border: solid var(--blue);
+  --toc-active-border-width: 0 0 0 2pt;
+  --page-search-highlight-bg: #806300;
+  --page-search-highlight-color: #fff3ba;
 }
 body {
   background: var(--night);
@@ -72,7 +78,6 @@ label {
   font-weight: bold;
   cursor: pointer;
 }
-
 table {
   border-collapse: collapse;
   width: 100%;
@@ -93,17 +98,14 @@ h1 {
 .hide-in-docs {
   display: none;
 }
-
 /* :where() for zero specificity so page-specific styles can override */
 :where(h2, h3, h4, h5, h6) {
   scroll-margin-top: 50px;
   transition: 0.3s;
 }
-/* Highlight heading on fragment navigation or ToC click */
 :is(h2, h3, h4, h5, h6):is(:target, .toc-clicked) {
   color: orange;
 }
-/* Heading anchor links (heading_anchors attachment) */
 :is(h2, h3, h4, h5, h6) a[aria-hidden='true'] {
   transition: 0.3s;
   margin-left: 4pt;
@@ -112,7 +114,6 @@ h1 {
 :is(h2, h3, h4, h5, h6):hover a[aria-hidden='true'] {
   opacity: 1;
 }
-
 blockquote {
   border-left: 3pt solid var(--blue);
   padding: 4pt 2pt 4pt 9pt;
@@ -125,7 +126,27 @@ blockquote p:last-child {
 blockquote p:first-child {
   margin-top: 0;
 }
-
 caption {
   display: block;
+}
+nav.site-nav {
+  margin: 1.5em auto 0.5em;
+}
+footer strong {
+  font-size: 20px;
+  vertical-align: 16px;
+}
+/* beat Toc's equally-specific `aside.toc.desktop { position: sticky }` */
+html body aside.toc.desktop {
+  position: fixed;
+  font-size: 0.6em;
+  top: 5em;
+  left: calc(50vw + var(--max-main-width) / 2 + 15em);
+}
+aside.toc.mobile > nav {
+  padding-left: 9pt;
+}
+::highlight(highlight-match) {
+  background: var(--page-search-highlight-bg);
+  color: var(--page-search-highlight-color);
 }

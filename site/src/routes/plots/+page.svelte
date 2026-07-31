@@ -1,9 +1,9 @@
 <script lang="ts">
-  const figs = import.meta.glob(`$root/assets/*.svg`, {
+  const figs = import.meta.glob<string>(`$root/assets/*.svg`, {
     eager: true,
     query: `?url`,
     import: `default`,
-  }) as Record<string, string>
+  })
 </script>
 
 <h1>Figures</h1>

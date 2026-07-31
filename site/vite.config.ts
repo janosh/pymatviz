@@ -1,8 +1,10 @@
-import { config } from '@janosh/vite-config'
+import { make_config } from 'svelte-widgets/vite-config'
 import { sveltekit } from '@sveltejs/kit/vite'
 
+const config = make_config()
+
 export default {
-  ...config, // shared lint/fmt/build from @janosh/vite-config (dotfiles)
+  ...config, // shared lint/fmt/build
   plugins: [sveltekit()],
   preview: { port: 3000 },
   server: {

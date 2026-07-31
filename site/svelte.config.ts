@@ -1,7 +1,7 @@
 import adapter from '@sveltejs/adapter-static'
 import type { Config } from '@sveltejs/kit'
 import { mdsvex } from 'mdsvex'
-import { heading_ids } from 'svelte-multiselect/heading-anchors'
+import { heading_ids } from 'svelte-widgets/heading-anchors'
 
 const { default: pkg } = await import(`./package.json`, {
   with: { type: `json` },

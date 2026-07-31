@@ -1,109 +1,93 @@
 <script lang="ts">
-  import { goto } from '$app/navigation'
+  import { afterNavigate, goto } from '$app/navigation'
+  import { asset } from '$app/paths'
   import { page } from '$app/state'
   import { repository } from '$site/package.json'
-  import Icon from '@iconify/svelte'
   import type { Snippet } from 'svelte'
-  import { CmdPalette, GitHubCorner } from 'svelte-multiselect'
-  import { heading_anchors } from 'svelte-multiselect/heading-anchors'
-  import Toc from 'svelte-toc'
+  import {
+    CopyButton,
+    Footer,
+    GitHubCorner,
+    Nav,
+    PageSearch,
+    Toc,
+    type FooterLink,
+  } from 'svelte-widgets'
+  import { highlight_matches } from 'svelte-widgets/attachments'
+  import { heading_anchors } from 'svelte-widgets/heading-anchors'
   // oxlint-disable-next-line import/no-unassigned-import -- global app styles
   import '../app.css'
 
-  let {
-    children,
-    data,
-  }: {
-    children?: Snippet
-    data: { notebook_routes: string[] }
-  } = $props()
-  let toc_desktop = $state(true)
+  let { children, data }: { children?: Snippet; data: { notebook_routes: string[] } } =
+    $props()
+  let page_search_query = $state(``)
 
-  let headingSelector = $derived(
+  const heading_selector = $derived(
     `main :is(${
       page.url.pathname === `/api` ? `h1, h2, h3, h4` : `h2`
-    }):not(.toc-exclude)`,
+    }):not(.toc-exclude, :where(.subpage-grid *))`,
   )
 
-  const file_routes = Object.keys(import.meta.glob(`./**/+page.{svx,svelte,md}`))
-    .filter((key) => !key.includes(`/[`))
-    .map((filename) => filename.replace(/^\./u, ``).replace(/\/\+page\.\w+$/u, ``) || `/`)
+  const nav_labels: Record<string, string> = {
+    '/': `Home`,
+    '/api': `API`,
+    '/notebooks': `Notebooks`,
+    '/plots': `Plots`,
+    '/changelog': `Changelog`,
+  }
+  const page_title = $derived(nav_labels[page.url.pathname] ?? `pymatviz`)
 
-  let actions = $derived(
-    [...new Set([...file_routes, ...data.notebook_routes])].map((name) => ({
+  const page_routes = Object.keys(import.meta.glob(`./**/+page.{svx,svelte,md}`))
+    .filter((route) => !route.includes(`/[`))
+    .map((route) => route.replace(/^\./u, ``).replace(/\/\+page\.\w+$/u, ``) || `/`)
+  const fallback_actions = $derived(
+    [...new Set([...page_routes, ...data.notebook_routes])].map((name) => ({
       label: name,
       action: () => goto(name),
     })),
   )
+
+  const footer_links: FooterLink[] = [
+    { href: `${repository}/issues`, label: `Issues`, icon: `Issues` },
+    { href: `${repository}/discussions`, label: `Discussion`, icon: `Comment` },
+  ]
+
+  afterNavigate(() => (page_search_query = ``))
 </script>
 
-<CmdPalette {actions} placeholder="Go to..." />
+<svelte:head>
+  <title>{page.url.pathname === `/` ? `pymatviz` : `${page_title} · pymatviz`}</title>
+  <meta data-pagefind-meta="title[content]" content={page_title} />
+</svelte:head>
 
-<Toc
-  {headingSelector}
-  breakpoint={1500}
-  bind:desktop={toc_desktop}
-  asideProps={{
-    style: toc_desktop
-      ? `position: fixed; font-size: 0.6em; top: 5em; left: calc(50vw + var(--max-main-width) / 2 + 15em)`
-      : ``,
+<PageSearch
+  {fallback_actions}
+  navigate={async (url, { query }) => {
+    await goto(url)
+    page_search_query = ``
+    queueMicrotask(() => (page_search_query = query))
   }}
-  navProps={{ style: toc_desktop ? `` : `padding-left: 9pt` }}
-  --toc-mobile-bg="#0d1a1d"
-  --toc-mobile-shadow="0 0 1em 0 black"
-  --toc-active-border="solid var(--blue)"
-  --toc-active-border-width="0 0 0 2pt"
+  strip_html_suffix
+  pagefind_path={asset(`/pagefind/pagefind.js`)}
 />
 
-{#if page.url.pathname !== `/`}
-  <a href="/" aria-label="Back to index page">&laquo; home</a>
-{/if}
+<CopyButton global global_selector="pre:not(li > pre) > code" />
+
+<Nav class="site-nav" routes={Object.keys(nav_labels)} labels={nav_labels} {page} />
+
+<Toc headingSelector={heading_selector} breakpoint={1500} />
 
 <GitHubCorner href={repository} />
 
-<main {@attach heading_anchors()}>
+<main
+  data-pagefind-body
+  {@attach heading_anchors()}
+  {@attach highlight_matches({ query: page_search_query, duration_ms: 8000 })}
+>
   {@render children?.()}
 </main>
 
-<footer>
-  <nav>
-    <a href="{repository}/issues">
-      <Icon icon="octicon:mark-github" inline />&ensp;Issues
-    </a>
-    <a href="{repository}/discussion"><Icon icon="mdi:chat" inline />&ensp;Discussion</a>
-  </nav>
+<Footer links={footer_links}>
   <img src="/favicon.svg" alt="Logo" height="40px" />
   <strong>pymatviz</strong>
-</footer>
-
-<style>
-  a[href='/'] {
-    font-size: 15pt;
-    position: absolute;
-    top: 2em;
-    left: 2em;
-    background-color: rgba(255, 255, 255, 0.1);
-    padding: 1pt 5pt;
-    border-radius: 3pt;
-    transition: 0.2s;
-  }
-  a[href='/']:hover {
-    background-color: rgba(255, 255, 255, 0.2);
-  }
-  footer {
-    padding: 3vh 3vw;
-    background: #00061a;
-    text-align: center;
-  }
-  footer nav {
-    margin: 2em;
-    display: flex;
-    gap: 2em;
-    place-content: center;
-    flex-wrap: wrap;
-  }
-  strong {
-    font-size: 20px;
-    vertical-align: 16px;
-  }
-</style>
+</Footer>
