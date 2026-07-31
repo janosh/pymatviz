@@ -2,7 +2,7 @@
 
 import re
 from collections.abc import Callable, Sequence
-from typing import Any, Literal, TypeAlias
+from typing import Any, Literal
 
 import plotly.graph_objects as go
 import pytest
@@ -11,8 +11,8 @@ from pymatgen.core import Element
 import pymatviz as pmv
 
 
-SampleData: TypeAlias = dict[str, tuple[Sequence[float], Sequence[float]]]
-ColorData: TypeAlias = dict[
+type SampleData = dict[str, tuple[Sequence[float], Sequence[float]]]
+type ColorData = dict[
     str,
     tuple[Sequence[float], Sequence[float]]
     | tuple[Sequence[float], Sequence[float], Sequence[float | str]],

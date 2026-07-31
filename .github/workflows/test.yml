@@ -24,7 +24,7 @@ jobs:
     secrets: inherit
     with:
       os: ${{ matrix.os }}
-      python-version: '3.11'
+      python-version: '3.12'
       # widget assets are fetched from the matterviz-anywidget npm package via
       # jsDelivr at runtime (no local Node build needed). Requires
       # matterviz-anywidget@<MATTERVIZ_ANYWIDGET_VERSION> to be published to npm
@@ -47,7 +47,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          python-version: '3.12'
 
       - name: Setup uv
         uses: astral-sh/setup-uv@v8.2.0
@@ -87,7 +87,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: 3.11
+          python-version: 3.12
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v8.2.0

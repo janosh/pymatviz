@@ -1,5 +1,5 @@
 from collections.abc import Callable, Sequence
-from typing import Any, Literal, TypeAlias
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
@@ -19,7 +19,7 @@ def binary_classification_data() -> tuple[np.ndarray, np.ndarray]:
     return targets, probs
 
 
-TestInput: TypeAlias = np.ndarray | dict[str, Any] | pd.Series
+type TestInput = np.ndarray | dict[str, Any] | pd.Series
 
 
 @pytest.mark.parametrize(

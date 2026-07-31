@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, Literal, cast, get_args
+from typing import Any, Literal, cast, get_args
 
 import numpy as np
 import plotly.graph_objects as go
@@ -14,12 +14,8 @@ from pymatgen.core import Structure
 from pymatviz.process_data import is_ase_atoms
 
 
-if TYPE_CHECKING:
-    from typing import TypeAlias
-
-
-PatternOrStruct: TypeAlias = DiffractionPattern | Structure
-HklFormat: TypeAlias = Literal["compact", "full"] | None
+type PatternOrStruct = DiffractionPattern | Structure
+type HklFormat = Literal["compact", "full"] | None
 ValidHklFormats = HklCompact, HklFull = get_args(get_args(HklFormat)[0])
 cu_k_alpha_wavelength = 1.54184  # Angstroms
 

@@ -728,7 +728,7 @@ def test_marker_size_adjustment_3d(sample_df: pd.DataFrame) -> None:
 def test_hover_text_alignment(
     request: pytest.FixtureRequest,
     fixture_name: str,
-    sort_option: bool | int | None | Callable[[np.ndarray], np.ndarray],
+    sort_option: bool | int | Callable[[np.ndarray], np.ndarray] | None,
     viz_mode: ShowChemSys | None,
     prop_name: str | None,
     embedding_method: str,
