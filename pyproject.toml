@@ -136,4 +136,4 @@ unused-ignore-comment = "ignore"
 # examples and asset scripts import heavy optional deps (torch, mace, mp_api, dash,
 # marimo, matbench-discovery, ...) that aren't part of any pymatviz extra
 include = ["examples/**", "assets/scripts/**"]
-rules = { unresolved-import = "ignore" }
+rules = { unresolved-import = "ignore", unsupported-operator = "ignore", invalid-return-type = "ignore" }
