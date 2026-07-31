@@ -216,10 +216,10 @@ See [`pymatviz/brillouin.py`](pymatviz/brillouin.py).
 
 See [`pymatviz/xrd.py`](pymatviz/xrd.py).
 
-|             [`xrd_pattern(pattern)`](pymatviz/xrd.py#L42) [![fig-icon]](assets/scripts/xrd/xrd_pattern.py)             |  [`xrd_pattern({key1: patt1, key2: patt2})`](pymatviz/xrd.py#L42)   |
+|             [`xrd_pattern(pattern)`](pymatviz/xrd.py#L43) [![fig-icon]](assets/scripts/xrd/xrd_pattern.py)             |  [`xrd_pattern({key1: patt1, key2: patt2})`](pymatviz/xrd.py#L43)   |
 | :--------------------------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------: |
 |                                                     ![xrd-pattern]                                                     |                       ![xrd-pattern-multiple]                       |
-| [`xrd_pattern(struct_dict, stack="horizontal")`](pymatviz/xrd.py#L42) [![fig-icon]](assets/scripts/xrd/xrd_pattern.py) | [`xrd_pattern(struct_dict, stack="vertical")`](pymatviz/xrd.py#L42) |
+| [`xrd_pattern(struct_dict, stack="horizontal")`](pymatviz/xrd.py#L43) [![fig-icon]](assets/scripts/xrd/xrd_pattern.py) | [`xrd_pattern(struct_dict, stack="vertical")`](pymatviz/xrd.py#L43) |
 |                                            ![xrd-pattern-horizontal-stack]                                             |                    ![xrd-pattern-vertical-stack]                    |
 
 [xrd-pattern]: assets/svg/xrd-pattern.svg

@@ -15,7 +15,8 @@ from pymatviz.process_data import is_ase_atoms
 
 
 type PatternOrStruct = DiffractionPattern | Structure
-type HklFormat = Literal["compact", "full"] | None
+# Bare assignment: get_args() is empty on PEP 695 `type` aliases
+HklFormat = Literal["compact", "full"] | None
 ValidHklFormats = HklCompact, HklFull = get_args(get_args(HklFormat)[0])
 cu_k_alpha_wavelength = 1.54184  # Angstroms
 

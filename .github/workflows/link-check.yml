@@ -24,4 +24,5 @@ jobs:
             --exclude https://s3.us-east-1.amazonaws.com/materialsproject-contribs/MatPES_2025_1
             --exclude https://github.com/ACEsuit/mace-foundations/releases/download
             --exclude https://s3.amazonaws.com/publications.matr.io/7/deployment/data/files
+            --exclude https://www.jp-minerals.org/vesta/en/
             -- ./**/*.{py,md,svelte,ts,yml,yaml}

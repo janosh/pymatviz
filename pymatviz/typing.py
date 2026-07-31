@@ -22,15 +22,16 @@ type AnyStructure = (
 )
 type AnyDos = "PhononDos | TotalDos"
 
-type ColorElemTypeStrategy = Literal["symbol", "background", "both", "off"]
+# Bare Literal assignments (not `type`): get_args() is empty on PEP 695 type aliases
+ColorElemTypeStrategy = Literal["symbol", "background", "both", "off"]
 VALID_COLOR_ELEM_STRATEGIES = get_args(ColorElemTypeStrategy)
 
-type PTableSplitOrientation = Literal["diagonal", "horizontal", "vertical", "grid"]
+PTableSplitOrientation = Literal["diagonal", "horizontal", "vertical", "grid"]
 PTABLE_SPLIT_ORIENTATIONS: tuple[PTableSplitOrientation, ...] = get_args(
     PTableSplitOrientation
 )
 
-type CrystalSystem = Literal[
+CrystalSystem = Literal[
     "triclinic",
     "monoclinic",
     "orthorhombic",
@@ -49,14 +50,11 @@ type ElemValues = (
 
 T = TypeVar("T")  # generic type for input validation
 
-type SetMode = Literal["union", "intersection", "strict"]
+SetMode = Literal["union", "intersection", "strict"]
 SET_MODE = SET_UNION, SET_INTERSECTION, SET_STRICT = get_args(SetMode)
 
-
 type Rgb256ColorType = tuple[int, int, int]  # 8-bit RGB
-
 type RgbColorType = tuple[float, float, float] | str  # normalized to [0, 1]
-
 type RgbAColorType = (  # normalized to [0, 1] with alpha
     str  # "none" or "#RRGGBBAA"/"#RGBA" hex strings
     | tuple[float, float, float, float]
@@ -65,6 +63,6 @@ type RgbAColorType = (  # normalized to [0, 1] with alpha
 )
 type ColorType = RgbColorType | RgbAColorType
 FormulaGroupBy = Literal["formula", "reduced_formula", "chem_sys"]
-type Corner = Literal["top-left", "top-right", "bottom-left", "bottom-right"]
+Corner = Literal["top-left", "top-right", "bottom-left", "bottom-right"]
 VALID_CORNERS = TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT = get_args(Corner)
 ShowCounts = Literal["value", "percent", "value+percent", False]
