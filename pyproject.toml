@@ -15,13 +15,12 @@ keywords = [
 ]
 classifiers = [
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
 ]
 urls = { Homepage = "https://github.com/janosh/pymatviz" }
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
   "anywidget>=0.9.18",
   "moyopy[interface]>=0.8",
@@ -77,6 +76,7 @@ ignore = [
   "ANN401", # Any-type
   "C408", # unnecessary-collection-call
   "C901", # complex-structure
+  "CPY001", # missing copyright notice
   "COM812", # trailing comma missing
   "D205", # 1 blank line required between summary line and description
   "E731", # do not assign a lambda expression, use a def
@@ -89,6 +89,7 @@ ignore = [
   "PLR0912", # too-many-branches
   "PLR0913", # function-with-too-many-arguments
   "PLR0915", # too-many-statements
+  "PLR0917", # too-many-positional-arguments
   "PLR2004", # magic-number-comparison
   "PTH", # prefer pathlib over os.path
   "S108", # Probable insecure usage of temporary file or directory
@@ -135,4 +136,4 @@ unused-ignore-comment = "ignore"
 # examples and asset scripts import heavy optional deps (torch, mace, mp_api, dash,
 # marimo, matbench-discovery, ...) that aren't part of any pymatviz extra
 include = ["examples/**", "assets/scripts/**"]
-rules = { unresolved-import = "ignore" }
+rules = { unresolved-import = "ignore", unsupported-operator = "ignore", invalid-return-type = "ignore" }

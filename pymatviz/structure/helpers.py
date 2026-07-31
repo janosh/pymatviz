@@ -18,6 +18,7 @@ from pymatgen.core import (
     IStructure,
     Lattice,
     PeriodicSite,
+    Site,
     Species,
     Structure,
 )
@@ -216,14 +217,14 @@ CELL_EDGES = (
 )
 
 
-def get_site_species(site: PeriodicSite) -> Composition | Species | Element:
+def get_site_species(site: Site) -> Composition | Species | Element:
     """Get species/composition from a site (handles ordered and disordered sites)."""
     return cast(
         "Composition | Species | Element", getattr(site, "specie", site.species)
     )
 
 
-def get_site_elements(site: PeriodicSite) -> set[str]:
+def get_site_elements(site: Site) -> set[str]:
     """Get element symbols from a site (handles ordered and disordered sites)."""
     species = get_site_species(site)
     if isinstance(species, Composition):
@@ -231,7 +232,7 @@ def get_site_elements(site: PeriodicSite) -> set[str]:
     return {getattr(species, "symbol", str(species))}
 
 
-def get_site_symbol(site: PeriodicSite) -> str:
+def get_site_symbol(site: Site) -> str:
     """Get single element symbol for a site (picks highest occupancy for disordered)."""
     species = get_site_species(site)
 

@@ -14,16 +14,16 @@ from pymatgen.util.string import htmlify
 
 
 if TYPE_CHECKING:
-    from typing import Any, Self, TypeAlias
+    from typing import Any, Self
 
     import plotly.graph_objects as go
     from phonopy.phonon.band_structure import BandStructure as PhonopyBandStructure
     from pymatgen.core import Structure
     from pymatgen.phonon.dos import PhononDos
 
-AnyBandStructure: TypeAlias = BandStructure | BandStructureSymmLine | PhononBands
-YMin: TypeAlias = float | Literal["y_min"]
-YMax: TypeAlias = float | Literal["y_max"]
+type AnyBandStructure = BandStructure | BandStructureSymmLine | PhononBands
+type YMin = float | Literal["y_min"]
+type YMax = float | Literal["y_max"]
 
 
 @dataclass

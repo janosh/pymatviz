@@ -1,7 +1,7 @@
 """Plotly-based classification metrics visualization."""
 
 from collections.abc import Callable, Mapping
-from typing import Any, Literal, TypeAlias, cast
+from typing import Any, Literal, cast
 
 import numpy as np
 import pandas as pd
@@ -13,7 +13,7 @@ from pymatviz.process_data import df_to_arrays
 from pymatviz.utils.plotting import PLOTLY_LINE_STYLES
 
 
-Predictions: TypeAlias = ArrayLike | str | Mapping[str, ArrayLike | dict[str, Any]]
+type Predictions = ArrayLike | str | Mapping[str, ArrayLike | dict[str, Any]]
 
 
 def _standardize_input(

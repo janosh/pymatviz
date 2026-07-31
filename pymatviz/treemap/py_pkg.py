@@ -16,7 +16,7 @@ import tempfile
 import urllib.error
 import urllib.request
 from collections.abc import Callable, Iterable, Sequence
-from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypeAlias
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple
 
 import pandas as pd
 import plotly.express as px
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from pymatviz.typing import ShowCounts
 
 ModuleFormatter = Callable[[str, int, int], str]
-GroupBy: TypeAlias = Literal["file", "directory", "module"]
+type GroupBy = Literal["file", "directory", "module"]
 
 _COMMENT_PREFIXES: dict[str, str] = {
     ".py": "#",
@@ -73,7 +73,7 @@ class ModuleStats(NamedTuple):
     n_type_checking_imports: int
 
 
-CellSizeFn: TypeAlias = Callable[[ModuleStats], float | int]
+type CellSizeFn = Callable[[ModuleStats], float | int]
 
 
 def default_module_formatter(module: str, count: int, total: int) -> str:

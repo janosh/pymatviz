@@ -13,7 +13,7 @@ jobs:
     with:
       node-version: 24
       install-cmd: corepack enable && pnpm install
-      python-version: "3.11"
+      python-version: "3.12"
       working-directory: site
       pre-build: |
         pip install -e '..[gh-pages]'

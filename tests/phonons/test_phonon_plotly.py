@@ -10,7 +10,13 @@ import pytest
 from pymatgen.phonon.dos import PhononDos
 
 import pymatviz as pmv
-from pymatviz.typing import SET_INTERSECTION, SET_STRICT, SET_UNION
+from pymatviz.typing import SET_INTERSECTION, SET_MODE, SET_STRICT, SET_UNION
+
+
+def test_set_mode_literal_args() -> None:
+    """get_args must unpack SetMode (empty if rewritten as PEP 695 `type`)."""
+    assert SET_MODE == ("union", "intersection", "strict")
+    assert {SET_UNION, SET_INTERSECTION, SET_STRICT} == set(SET_MODE)
 
 
 if TYPE_CHECKING:

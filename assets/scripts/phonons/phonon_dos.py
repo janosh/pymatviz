@@ -3,7 +3,7 @@
 # %%
 import json
 from glob import glob
-from typing import Any, cast
+from typing import Any
 
 import plotly.graph_objects as go
 from monty.io import zopen
@@ -103,7 +103,7 @@ complete_dos = CompletePhononDos(struct, total_dos, site_dos)
 
 
 # %% Element-projected DOS (default: with total overlay)
-projected_examples: list[tuple[str, dict[str, str | bool]]] = [
+projected_examples: list[tuple[str, dict[str, Any]]] = [
     ("NaCl Element-Projected Phonon DOS", {"project": "element"}),
     (
         "NaCl Element-Projected Phonon DOS (no total)",
@@ -120,7 +120,7 @@ projected_examples: list[tuple[str, dict[str, str | bool]]] = [
     ),
 ]
 for plot_title, plot_kwargs in projected_examples:
-    fig = pmv.phonon_dos(complete_dos, **cast("dict[str, Any]", plot_kwargs))
+    fig = pmv.phonon_dos(complete_dos, **plot_kwargs)
     show_figure(fig, plot_title)
 
 # pmv.io.save_and_compress_svg(fig, "phonon-dos-element-projected")

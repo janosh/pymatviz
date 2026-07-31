@@ -1,19 +1,14 @@
 <script lang="ts">
+  import { SubpageGrid } from 'svelte-widgets'
+
   let { data }: { data: { notebook_routes: string[] } } = $props()
+
+  const subpages = $derived(
+    data.notebook_routes.map((route): [string, string, string, `Code`] => {
+      const slug = route.split(`/`).at(-1) ?? route
+      return [slug.replaceAll(`_`, ` `), route, `${slug}.ipynb`, `Code`]
+    }),
+  )
 </script>
 
-<h1 class="toc-exclude">Examples</h1>
-
-<ol>
-  {#each data.notebook_routes as route (route)}
-    <li><a href={route}>{route.split(`/`).at(-1)}.ipynb</a></li>
-  {/each}
-</ol>
-
-<style>
-  ol {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1ex;
-  }
-</style>
+<SubpageGrid title="Examples" subtitle="Rendered example notebooks." {subpages} />

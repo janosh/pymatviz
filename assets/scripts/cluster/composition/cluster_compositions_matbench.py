@@ -31,15 +31,11 @@ from pymatviz.enums import Key
 
 
 if TYPE_CHECKING:
-    from typing import TypeAlias
-
     import plotly.graph_objects as go
 
     # (dataset_name, target_key, target_label, target_symbol, embed_method,
     #  proj_method, n_components, colorbar_kwargs)
-    PlotConfig: TypeAlias = tuple[
-        str, str, str, str, Embed, Project, int, dict[str, Any]
-    ]
+    type PlotConfig = tuple[str, str, str, str, Embed, Project, int, dict[str, Any]]
 
 
 pmv.set_plotly_template("pymatviz_white")

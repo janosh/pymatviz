@@ -3,37 +3,35 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Literal, TypeVar, Union, get_args
+from typing import TYPE_CHECKING, Literal, TypeVar, get_args
 
 import pandas as pd
-from pymatgen.core import Composition, IMolecule, IStructure, Molecule, Structure
-from pymatgen.io.ase import MSONAtoms
-from pymatgen.phonon.dos import PhononDos
 
 
 if TYPE_CHECKING:
-    from typing import TypeAlias
-
     from ase.atoms import Atoms as AseAtoms
     from phonopy.phonon.dos import TotalDos
+    from pymatgen.core import Composition, IMolecule, IStructure, Molecule, Structure
+    from pymatgen.io.ase import MSONAtoms
+    from pymatgen.phonon.dos import PhononDos
 
-Xyz: TypeAlias = tuple[float, float, float]
-AnyStructure: TypeAlias = Union[
-    Structure, IStructure, Molecule, IMolecule, MSONAtoms, "AseAtoms"
-]
-AnyDos: TypeAlias = Union[PhononDos, "TotalDos"]
+type Xyz = tuple[float, float, float]
+# Quoted unions: PEP 695 treats a bare `"Name"` as Literal, not a forward ref
+type AnyStructure = (
+    "Structure | IStructure | Molecule | IMolecule | MSONAtoms | AseAtoms"
+)
+type AnyDos = "PhononDos | TotalDos"
 
-ColorElemTypeStrategy: TypeAlias = Literal["symbol", "background", "both", "off"]
+# Bare Literal assignments (not `type`): get_args() is empty on PEP 695 type aliases
+ColorElemTypeStrategy = Literal["symbol", "background", "both", "off"]
 VALID_COLOR_ELEM_STRATEGIES = get_args(ColorElemTypeStrategy)
 
-PTableSplitOrientation: TypeAlias = Literal[
-    "diagonal", "horizontal", "vertical", "grid"
-]
+PTableSplitOrientation = Literal["diagonal", "horizontal", "vertical", "grid"]
 PTABLE_SPLIT_ORIENTATIONS: tuple[PTableSplitOrientation, ...] = get_args(
     PTableSplitOrientation
 )
 
-CrystalSystem: TypeAlias = Literal[
+CrystalSystem = Literal[
     "triclinic",
     "monoclinic",
     "orthorhombic",
@@ -43,7 +41,7 @@ CrystalSystem: TypeAlias = Literal[
     "cubic",
 ]
 
-ElemValues: TypeAlias = (
+type ElemValues = (
     Mapping[str, int | float]
     | Mapping[int, int | float]
     | pd.Series
@@ -52,22 +50,19 @@ ElemValues: TypeAlias = (
 
 T = TypeVar("T")  # generic type for input validation
 
-SetMode: TypeAlias = Literal["union", "intersection", "strict"]
+SetMode = Literal["union", "intersection", "strict"]
 SET_MODE = SET_UNION, SET_INTERSECTION, SET_STRICT = get_args(SetMode)
 
-
-Rgb256ColorType: TypeAlias = tuple[int, int, int]  # 8-bit RGB
-
-RgbColorType: TypeAlias = tuple[float, float, float] | str  # normalized to [0, 1]
-
-RgbAColorType: TypeAlias = (  # normalized to [0, 1] with alpha
+type Rgb256ColorType = tuple[int, int, int]  # 8-bit RGB
+type RgbColorType = tuple[float, float, float] | str  # normalized to [0, 1]
+type RgbAColorType = (  # normalized to [0, 1] with alpha
     str  # "none" or "#RRGGBBAA"/"#RGBA" hex strings
     | tuple[float, float, float, float]
     | tuple[RgbColorType, float]
     | tuple[tuple[float, float, float, float], float]
 )
-ColorType: TypeAlias = RgbColorType | RgbAColorType
+type ColorType = RgbColorType | RgbAColorType
 FormulaGroupBy = Literal["formula", "reduced_formula", "chem_sys"]
-Corner: TypeAlias = Literal["top-left", "top-right", "bottom-left", "bottom-right"]
+Corner = Literal["top-left", "top-right", "bottom-left", "bottom-right"]
 VALID_CORNERS = TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT = get_args(Corner)
 ShowCounts = Literal["value", "percent", "value+percent", False]

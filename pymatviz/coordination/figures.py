@@ -412,10 +412,12 @@ def coordination_vs_cutoff_line(
     if (
         isinstance(strategy, tuple)
         and len(strategy) == 2
-        and {*map(type, strategy)} <= {int, float}
+        and isinstance(strategy[0], int | float)
+        and isinstance(strategy[1], int | float)
+        and not isinstance(strategy[0], bool)
+        and not isinstance(strategy[1], bool)
     ):
-        # runtime-checked numeric 2-tuple, ty can't narrow the set comparison above
-        cutoff_range = cast("tuple[float, float]", strategy)
+        cutoff_range = (float(strategy[0]), float(strategy[1]))
 
     elif isinstance(strategy, NearNeighbors) or (
         isclass(strategy) and issubclass(strategy, NearNeighbors)

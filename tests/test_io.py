@@ -298,7 +298,7 @@ def test_tqdm_download(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr(urllib.request, "urlretrieve", mock_urlretrieve)
 
     with pmv.io.TqdmDownload(desc=test_url) as pbar:
-        urllib.request.urlretrieve(test_url, test_file_path, reporthook=pbar.update_to)  # noqa: S310
+        urllib.request.urlretrieve(test_url, test_file_path, reporthook=pbar.update_to)
 
     assert pbar.n == total_size
     assert pbar.total == total_size

@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import math
 import re
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 
 if TYPE_CHECKING:
@@ -310,8 +310,7 @@ def normalize_convex_hull_entries(obj: Any) -> list[dict[str, Any]] | None:
     if obj is None:
         return None
     if isinstance(obj, (list, tuple)):
-        entries = cast("Sequence[dict[str, Any]]", obj)
-        return _normalize_entry_compositions(entries)
+        return _normalize_entry_compositions(obj)
 
     try:
         from pymatgen.analysis.phase_diagram import PhaseDiagram

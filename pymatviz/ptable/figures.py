@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Callable, Collection, Mapping, Sequence
-from typing import Any, Literal, TypeAlias, cast
+from typing import Any, Literal, cast
 
 import numpy as np
 import pandas as pd
@@ -27,7 +27,7 @@ from pymatviz.utils.data import si_fmt
 from pymatviz.utils.plotting import luminance
 
 
-ColorScale: TypeAlias = (
+type ColorScale = (
     str | Sequence[str] | Sequence[tuple[float, str]] | Callable[[str, float, int], str]
 )
 
@@ -55,7 +55,7 @@ def ptable_heatmap(
     fill_value: float | None = None,
     element_symbol_map: dict[str, str] | None = None,
     label_map: dict[str, str] | Callable[[str], str] | Literal[False] | None = None,
-    border: dict[str, Any] | None | Literal[False] = None,
+    border: dict[str, Any] | Literal[False] | None = None,
     scale: float = 1.0,
     **kwargs: Any,
 ) -> go.Figure:
@@ -1098,11 +1098,12 @@ def ptable_heatmap_splits(
         if not isinstance(obj, Sequence) or isinstance(obj, str):
             return False
         named_colorscales = set(plotly.colors.named_colorscales())
-        if all(isinstance(item, str) for item in obj):
-            return all(
-                item.lower().removesuffix("_r") in named_colorscales
-                for item in cast("Sequence[str]", obj)
-            )
+        if all(
+            isinstance(item, str)
+            and item.lower().removesuffix("_r") in named_colorscales
+            for item in obj
+        ):
+            return True
         return all(
             callable(item)
             or isinstance(item, Mapping)
@@ -1195,7 +1196,7 @@ def ptable_heatmap_splits(
         )
 
     def create_section_coords(
-        n_splits: Literal[2, 3, 4],
+        n_splits: int,
         orientation: PTableSplitOrientation,
     ) -> list[tuple[list[float], list[float]]]:
         """Generate x,y coordinates to split a unit square into n equal sections."""
@@ -1285,7 +1286,6 @@ def ptable_heatmap_splits(
         n_sections = len(values)
         if n_sections not in {2, 3, 4}:
             raise ValueError(f"Number of splits {n_sections} must be 2, 3, or 4")
-        n_sections = cast("Literal[2, 3, 4]", n_sections)
 
         # Create sections
         sections = create_section_coords(n_sections, orientation)
@@ -1597,13 +1597,13 @@ def ptable_heatmap_splits(
     return fig
 
 
-XYArray: TypeAlias = Sequence[float] | np.ndarray[Any, Any]
-ElemData: TypeAlias = (
+type XYArray = Sequence[float] | np.ndarray[Any, Any]
+type ElemData = (
     tuple[XYArray, XYArray]
     | tuple[XYArray, XYArray, Sequence[float | str] | np.ndarray[Any, Any]]
     | Mapping[str, tuple[XYArray, XYArray]]
 )
-LineData: TypeAlias = (
+type LineData = (
     tuple[XYArray, XYArray]
     | tuple[XYArray, XYArray, Sequence[float | str] | np.ndarray[Any, Any]]
 )
@@ -1746,9 +1746,9 @@ def ptable_scatter(
                 "Mapping[str, LineData]",
                 elem_data if isinstance(elem_data, Mapping) else {"": elem_data},
             )
-            for x_vals, y_vals, *_ in line_data.values():
-                all_x_vals.extend(x_vals)
-                all_y_vals.extend(y_vals)
+            for item in line_data.values():
+                all_x_vals.extend(item[0])
+                all_y_vals.extend(item[1])
 
         if x_range is None:
             x_range = (min(all_x_vals), max(all_x_vals))
@@ -1791,6 +1791,7 @@ def ptable_scatter(
             for elem_data in data.values()
             if isinstance(elem_data, Mapping)
             for key in elem_data
+            if isinstance(key, str)
         }
         # Create color map for line names
         import plotly.express as px

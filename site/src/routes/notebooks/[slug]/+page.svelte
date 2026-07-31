@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from '$app/state'
-  import { PrevNext } from 'svelte-multiselect'
+  import { PrevNext } from 'svelte-widgets'
 
   let { data }: { data: { html: string; slug: string; path: string; routes: string[] } } =
     $props()

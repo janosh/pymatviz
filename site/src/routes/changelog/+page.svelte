@@ -1,6 +1,6 @@
 <script lang="ts">
   import Changelog from '$root/changelog.md'
-  import Toc from 'svelte-toc'
+  import { Toc } from 'svelte-widgets'
 </script>
 
 <Changelog />

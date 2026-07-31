@@ -112,7 +112,7 @@ def density_scatter(
     df: pd.DataFrame | None = None,
     density: Literal["kde", "empirical"] | None = None,
     log_density: bool | None = None,
-    n_bins: int | None | Literal[False] = None,
+    n_bins: int | Literal[False] | None = None,
     bin_counts_col: str | None = None,
     xlabel: str | None = None,
     ylabel: str | None = None,
@@ -279,7 +279,7 @@ def _bin_and_calculate_density(
     x: str,
     y: str,
     density: str,
-    n_bins: int | None | Literal[False],
+    n_bins: int | Literal[False] | None,
     bin_counts_col: str,
 ) -> pd.DataFrame:
     """Helper function to bin data and calculate density."""
@@ -596,7 +596,7 @@ def density_scatter_with_hist(
     bins: int = 100,
     density: Literal["kde", "empirical"] | None = None,
     log_density: bool | None = None,
-    n_bins: int | None | Literal[False] = None,
+    n_bins: int | Literal[False] | None = None,
     **kwargs: Any,
 ) -> go.Figure:
     """Scatter plot colored by density with marginal histograms along each dimension.

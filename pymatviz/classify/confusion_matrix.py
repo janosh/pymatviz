@@ -105,14 +105,14 @@ def confusion_matrix(
             row_sum, col_sum = row.sum(), conf_mat_arr[:, jj].sum()
             row_pct = val / row_sum if row_sum > 0 else 0
             col_pct = val / col_sum if col_sum > 0 else 0
-            hover_row += [
+            hover_row.append(
                 f"True: {y_labels[ii]}<br>"
                 f"Pred: {x_labels[jj]}<br>"
                 f"Count: {count:,}<br>"
                 f"Percent: {pct:.1%}<br>"
                 f"Row %: {row_pct:.1%}<br>"
                 f"Col %: {col_pct:.1%}"
-            ]
+            )
         hover_text += [hover_row]
 
     # Split long y-labels with line breaks if needed (>15 chars)

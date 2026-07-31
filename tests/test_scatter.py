@@ -32,7 +32,7 @@ DF_TIPS = px.data.tips()
 def test_density_scatter(
     df_or_arrays: DfOrArrays,
     log_density: bool | None,
-    n_bins: int | None | bool,
+    n_bins: int | bool | None,
     stats: bool | dict[str, Any],
     density: Literal["kde", "empirical"] | None,
 ) -> None:

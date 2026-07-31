@@ -411,8 +411,8 @@ def structure_3d(
     standardize_struct: bool | None = None,
     n_cols: int = 3,
     subplot_title: Callable[[AnyStructure, Hashable], str | dict[str, Any]]
-    | None
-    | Literal[False] = None,
+    | Literal[False]
+    | None = None,
     show_site_vectors: str | Sequence[str] = ("force", "magmom"),
     show_image_vectors: bool = True,
     vector_kwargs: dict[str, dict[str, Any]] | None = None,
