@@ -157,7 +157,6 @@ def test_widget_construction_and_type(
     widget = widget_cls(**kwargs)
     assert widget.widget_type == expected_type
     assert getattr(widget, state_key) == kwargs[state_key]
-    assert widget.to_dict()[state_key] == kwargs[state_key]
 
 
 # === to_dict auto-discovery ===

@@ -12,7 +12,10 @@
   ).map(([path, svg]) => ({
     id: path,
     src: svg.default,
-    title: /(?<stem>[^/]+)\.svg$/u.exec(path)?.groups?.stem?.replaceAll(`-`, ` `) ?? path,
+    title: path
+      .replace(/^.*\//u, ``)
+      .replace(/\.svg$/u, ``)
+      .replaceAll(`-`, ` `),
   }))
 </script>
 

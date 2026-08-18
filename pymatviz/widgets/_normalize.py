@@ -64,15 +64,12 @@ def _to_dict(obj: Any, label: str) -> dict[str, Any] | None:
     if obj is None:
         return None
     if isinstance(obj, dict):
-        converted: dict[str, Any] = {}
-        changed = False
-        for key, value in obj.items():
-            if hasattr(value, "as_dict") and not isinstance(value, dict):
-                converted[key] = value.as_dict()
-                changed = True
-            else:
-                converted[key] = value
-        return converted if changed else obj
+        converted = {
+            key: value.as_dict()
+            for key, value in obj.items()
+            if hasattr(value, "as_dict") and not isinstance(value, dict)
+        }
+        return {**obj, **converted} if converted else obj
     if hasattr(obj, "as_dict"):
         return obj.as_dict()
     raise TypeError(

@@ -1,10 +1,8 @@
 :root {
   --night: #061e25;
   --blue: cornflowerblue;
-  --text-color: rgb(208, 208, 208);
-  --text: var(--text-color);
-  --max-main-width: 55em;
-  --main-max-width: var(--max-main-width);
+  --text: rgb(208, 208, 208);
+  --main-max-width: 55em;
   color-scheme: dark;
 
   --github-corner-color: var(--night);
@@ -23,7 +21,7 @@
 body {
   background: var(--night);
   font-family: -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
-  color: var(--text-color);
+  color: var(--text);
   line-height: 1.5;
   margin: 0;
   min-height: 100vh;
@@ -34,7 +32,7 @@ main {
   padding: calc(1ex + 2vw);
   box-sizing: border-box;
   width: 100%;
-  max-width: var(--max-main-width);
+  max-width: var(--main-max-width);
 }
 a {
   color: var(--blue);

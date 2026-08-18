@@ -18,7 +18,7 @@
     gap: 6pt;
   }
   :global(table) {
-    max-width: var(--max-main-width);
+    max-width: var(--main-max-width);
     table-layout: fixed;
   }
 </style>

@@ -74,7 +74,12 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
             {"n_peaks": 3, "two_theta_range": [10.0, 30.0]},
         ),
         (
-            pmv.DosWidget(dos={"energies": [-1, 0, 1]}),
+            pmv.DosWidget(
+                dos={
+                    "energies": [-1, 0, 1],
+                    "extra": {"energies": [-2, 2]},
+                }
+            ),
             {"n_energies": 3, "energy_range": [-1.0, 1.0]},
         ),
         (
@@ -151,23 +156,26 @@ def test_describe_unknown_widget_type() -> None:
 
 
 @pytest.mark.parametrize(
-    ("widget", "absent"),
+    ("data", "absent"),
     [
         (
-            pmv.BandStructureWidget(
-                band_structure={"bands": {"up": [[-1, 0, 1]], "down": [[0, 1, 2]]}}
-            ),
+            {
+                "widget_type": "band_structure",
+                "band_structure": {"bands": {"up": [[-1]], "down": [[0]]}},
+            },
             "n_bands",
         ),
         (
-            pmv.DosWidget(dos={"energies": {"up": [-1, 0], "down": [0, 1]}}),
+            {"widget_type": "dos", "dos": {"energies": {"up": [-1], "down": [0]}}},
             "n_energies",
         ),
     ],
 )
-def test_describe_skips_non_sequence_spectral_fields(widget: Any, absent: str) -> None:
+def test_describe_skips_non_sequence_spectral_fields(
+    data: dict[str, Any], absent: str
+) -> None:
     """Spin-keyed dicts are not counted as band/energy sequences."""
-    assert absent not in widget.describe()
+    assert absent not in describe_widget(data)
 
 
 @pytest.mark.parametrize(

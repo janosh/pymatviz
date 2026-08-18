@@ -8,21 +8,20 @@ const slugs = (extension: string) =>
     .toSorted()
     .map((file_name) => file_name.slice(0, -extension.length))
 
-const href_label = (slug: string): [string, string] => [
-  `/notebooks/${slug}`,
-  slug.replaceAll(`_`, ` `),
-]
+const notebook_href = (slug: string) => `/notebooks/${slug}`
+const notebook_title = (slug: string) => slug.replaceAll(`_`, ` `)
 
-export const notebook_routes = (extension = `.ipynb`) =>
-  slugs(extension).map((slug) => `/notebooks/${slug}`)
+export const notebook_routes = () => slugs(`.ipynb`).map(notebook_href)
 
 export const notebook_subpages = (): [string, string, string][] =>
-  slugs(`.ipynb`).map((slug) => {
-    const [href, title] = href_label(slug)
-    return [title, href, `${slug}.ipynb`]
-  })
+  slugs(`.ipynb`).map((slug) => [
+    notebook_title(slug),
+    notebook_href(slug),
+    `${slug}.ipynb`,
+  ])
 
-export const notebook_prev_next = (): [string, string][] => slugs(`.html`).map(href_label)
+export const notebook_prev_next = (): [string, string][] =>
+  slugs(`.html`).map((slug) => [notebook_href(slug), notebook_title(slug)])
 
 export const notebook_entries = () => slugs(`.html`).map((slug) => ({ slug }))
 

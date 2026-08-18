@@ -182,42 +182,54 @@ def _describe_spacegroup_bar(data: Mapping[str, Any]) -> dict[str, Any]:
     return {"n_entries": len(values), "n_unique": len(set(values))}
 
 
-def _spectral_values(
-    data: Mapping[str, Any], data_key: str, value_key: str
-) -> list[Any]:
-    """Return a spectral field from one payload or a mapping of named payloads."""
+def _describe_spectral(
+    data: Mapping[str, Any],
+    *,
+    data_key: str,
+    value_key: str,
+    count_key: str,
+    range_key: str | None = None,
+) -> dict[str, Any]:
+    """Count (and optionally range) a field from one payload or named payloads."""
     payloads = data.get(data_key)
     if not isinstance(payloads, Mapping):
-        return []
-    sources = (
-        [payloads]
-        if isinstance(payloads.get(value_key), (list, tuple))
-        else payloads.values()
-    )
-    return [
-        payload[value_key]
-        for payload in sources
-        if isinstance(payload, Mapping)
-        and isinstance(payload.get(value_key), (list, tuple))
-    ]
+        return {}
+    if isinstance(payloads.get(value_key), (list, tuple)):
+        sequences = [payloads[value_key]]
+    else:
+        sequences = [
+            payload[value_key]
+            for payload in payloads.values()
+            if isinstance(payload, Mapping)
+            and isinstance(payload.get(value_key), (list, tuple))
+        ]
+    if not sequences:
+        return {}
+    facts: dict[str, Any] = {count_key: sum(map(len, sequences))}
+    if range_key is None:
+        return facts
+    value_range = _minmax(sequences)
+    if value_range is not None:
+        facts[range_key] = value_range
+    return facts
 
 
 def _describe_dos(data: Mapping[str, Any]) -> dict[str, Any]:
     """Energy-grid facts for a density of states."""
-    energies = _spectral_values(data, "dos", "energies")
-    facts: dict[str, Any] = {}
-    if energies:
-        facts["n_energies"] = sum(map(len, energies))
-    energy_range = _minmax(energies)
-    if energy_range is not None:
-        facts["energy_range"] = energy_range
-    return facts
+    return _describe_spectral(
+        data,
+        data_key="dos",
+        value_key="energies",
+        count_key="n_energies",
+        range_key="energy_range",
+    )
 
 
 def _describe_band_structure(data: Mapping[str, Any]) -> dict[str, Any]:
     """Band count for a band structure."""
-    bands = _spectral_values(data, "band_structure", "bands")
-    return {"n_bands": sum(map(len, bands))} if bands else {}
+    return _describe_spectral(
+        data, data_key="band_structure", value_key="bands", count_key="n_bands"
+    )
 
 
 def _describe_bands_and_dos(data: Mapping[str, Any]) -> dict[str, Any]:
