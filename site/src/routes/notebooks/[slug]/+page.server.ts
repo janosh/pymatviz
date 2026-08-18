@@ -11,7 +11,7 @@ export const entries: EntryGenerator = notebook_entries
 export const load: PageServerLoad = ({ params }) => {
   const html = read_notebook_html(params.slug)
   if (html === null) {
-    error(404, `No notebook found at path=../examples/${params.slug}.ipynb`)
+    error(404, `No rendered notebook found at path=../examples/${params.slug}.html`)
   }
   return { html, items: notebook_prev_next() }
 }
