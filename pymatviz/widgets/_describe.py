@@ -194,42 +194,37 @@ def _describe_spectral(
     payloads = data.get(data_key)
     if not isinstance(payloads, Mapping):
         return {}
-    if isinstance(payloads.get(value_key), (list, tuple)):
-        sequences = [payloads[value_key]]
-    else:
-        sequences = [
-            payload[value_key]
-            for payload in payloads.values()
-            if isinstance(payload, Mapping)
-            and isinstance(payload.get(value_key), (list, tuple))
-        ]
+    sequences = [
+        payload[value_key]
+        for payload in (
+            [payloads]
+            if isinstance(payloads.get(value_key), (list, tuple))
+            else payloads.values()
+        )
+        if isinstance(payload, Mapping)
+        and isinstance(payload.get(value_key), (list, tuple))
+    ]
     if not sequences:
         return {}
     facts: dict[str, Any] = {count_key: sum(map(len, sequences))}
-    if range_key is None:
-        return facts
-    value_range = _minmax(sequences)
-    if value_range is not None:
+    if range_key is not None and (value_range := _minmax(sequences)) is not None:
         facts[range_key] = value_range
     return facts
 
 
-def _describe_dos(data: Mapping[str, Any]) -> dict[str, Any]:
-    """Energy-grid facts for a density of states."""
-    return _describe_spectral(
-        data,
-        data_key="dos",
-        value_key="energies",
-        count_key="n_energies",
-        range_key="energy_range",
-    )
-
-
-def _describe_band_structure(data: Mapping[str, Any]) -> dict[str, Any]:
-    """Band count for a band structure."""
-    return _describe_spectral(
-        data, data_key="band_structure", value_key="bands", count_key="n_bands"
-    )
+_describe_dos = functools.partial(
+    _describe_spectral,
+    data_key="dos",
+    value_key="energies",
+    count_key="n_energies",
+    range_key="energy_range",
+)
+_describe_band_structure = functools.partial(
+    _describe_spectral,
+    data_key="band_structure",
+    value_key="bands",
+    count_key="n_bands",
+)
 
 
 def _describe_bands_and_dos(data: Mapping[str, Any]) -> dict[str, Any]:

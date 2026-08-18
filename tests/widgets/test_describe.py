@@ -105,14 +105,27 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
             ),
             {"n_nodes": 4, "n_leaves": 2, "max_depth": 3},
         ),
+        (
+            pmv.BandStructureWidget(
+                band_structure={"bands": {"up": [[-1]], "down": [[0]]}}
+            ),
+            {"n_bands": None},
+        ),
+        (
+            pmv.DosWidget(dos={"energies": {"up": [-1], "down": [0]}}),
+            {"n_energies": None},
+        ),
     ],
 )
 def test_describe_widget(widget: Any, expected: dict[str, Any]) -> None:
-    """describe() reports the widget type plus the expected structured facts."""
+    """describe() reports expected facts; None means the key is absent."""
     report = widget.describe()
     assert report["widget_type"] == widget.widget_type
     for key, value in expected.items():
-        assert report[key] == value, f"{key}: {report.get(key)!r} != {value!r}"
+        if value is None:
+            assert key not in report
+        else:
+            assert report[key] == value, f"{key}: {report.get(key)!r} != {value!r}"
 
 
 @pytest.mark.parametrize(
@@ -153,29 +166,6 @@ def test_describe_treemap_cyclic_data_terminates() -> None:
 def test_describe_unknown_widget_type() -> None:
     """Unknown widget types fall back to just the type."""
     assert describe_widget({"widget_type": "mystery"}) == {"widget_type": "mystery"}
-
-
-@pytest.mark.parametrize(
-    ("data", "absent"),
-    [
-        (
-            {
-                "widget_type": "band_structure",
-                "band_structure": {"bands": {"up": [[-1]], "down": [[0]]}},
-            },
-            "n_bands",
-        ),
-        (
-            {"widget_type": "dos", "dos": {"energies": {"up": [-1], "down": [0]}}},
-            "n_energies",
-        ),
-    ],
-)
-def test_describe_skips_non_sequence_spectral_fields(
-    data: dict[str, Any], absent: str
-) -> None:
-    """Spin-keyed dicts are not counted as band/energy sequences."""
-    assert absent not in describe_widget(data)
 
 
 @pytest.mark.parametrize(

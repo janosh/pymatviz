@@ -48,11 +48,9 @@ def _normalize_ferrox_hkls(hkls_data: Any) -> Any:
 def _to_dict(obj: Any, label: str) -> dict[str, Any] | None:
     """Convert None/dict/MSONable object to a JSON-serializable dict.
 
-    Dict values that themselves expose ``as_dict`` (e.g. ``{"DFT": dos}``) are
-    converted too; already-serialized dicts pass through unchanged.
-
     Args:
-        obj: None, a dict, or any object with .as_dict().
+        obj: None, a dict (MSONable values converted via ``as_dict``), or any
+            object with .as_dict().
         label: Human-readable name for error messages (e.g. "band structure").
 
     Returns:
@@ -67,7 +65,7 @@ def _to_dict(obj: Any, label: str) -> dict[str, Any] | None:
         converted = {
             key: value.as_dict()
             for key, value in obj.items()
-            if hasattr(value, "as_dict") and not isinstance(value, dict)
+            if callable(getattr(value, "as_dict", None)) and not isinstance(value, dict)
         }
         return {**obj, **converted} if converted else obj
     if hasattr(obj, "as_dict"):

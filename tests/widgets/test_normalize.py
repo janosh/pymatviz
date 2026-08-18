@@ -51,13 +51,10 @@ _MOCK_DICT = {"@class": "Mock", "value": 42}
 )
 def test_to_dict_passthrough(input_val: Any, label: str, expected: Any) -> None:
     """Test _to_dict handles None, dict, and MSONable objects."""
-    assert _to_dict(input_val, label) == expected
-
-
-def test_to_dict_keeps_plain_dict_identity() -> None:
-    """Already-serialized dicts pass through as the same object."""
-    payload = {"key": "val"}
-    assert _to_dict(payload, "test") is payload
+    result = _to_dict(input_val, label)
+    assert result == expected
+    if isinstance(input_val, dict) and input_val == expected:
+        assert result is input_val
 
 
 @pytest.mark.parametrize("label", ["band structure", "DOS"])

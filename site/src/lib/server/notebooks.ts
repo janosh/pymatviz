@@ -9,19 +9,18 @@ const slugs = (extension: string) =>
     .map((file_name) => file_name.slice(0, -extension.length))
 
 const notebook_href = (slug: string) => `/notebooks/${slug}`
-const notebook_title = (slug: string) => slug.replaceAll(`_`, ` `)
-
-export const notebook_routes = () => slugs(`.ipynb`).map(notebook_href)
 
 export const notebook_subpages = (): [string, string, string][] =>
   slugs(`.ipynb`).map((slug) => [
-    notebook_title(slug),
+    slug.replaceAll(`_`, ` `),
     notebook_href(slug),
     `${slug}.ipynb`,
   ])
 
+export const notebook_routes = () => slugs(`.ipynb`).map(notebook_href)
+
 export const notebook_prev_next = (): [string, string][] =>
-  slugs(`.html`).map((slug) => [notebook_href(slug), notebook_title(slug)])
+  slugs(`.html`).map((slug) => [notebook_href(slug), slug.replaceAll(`_`, ` `)])
 
 export const notebook_entries = () => slugs(`.html`).map((slug) => ({ slug }))
 

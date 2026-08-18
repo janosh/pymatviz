@@ -51,15 +51,25 @@ code {
 }
 pre code {
   background-color: transparent;
-  display: inline-block;
+  display: block;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
 }
 pre {
-  position: relative;
+  display: flex;
+  align-items: flex-start;
+  column-gap: 8pt;
   border-radius: 4pt;
   background-color: rgba(255, 255, 255, 0.05);
   overflow-x: auto;
   padding: 6pt 8pt;
   margin: 1em auto;
+}
+pre [data-sms-copy] {
+  flex-shrink: 0;
+  height: calc(1.2em * 1.5);
+  place-content: center;
 }
 ul {
   padding-left: 1em;

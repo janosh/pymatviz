@@ -27,9 +27,6 @@
     '/api': `h1, h2, h3, h4`,
     '/changelog': `h2, h3`,
   }
-  const heading_selector = $derived(
-    `main :is(${toc_headings[page.url.pathname] ?? `h2`})`,
-  )
 
   const nav_labels: Record<string, string> = {
     '/': `Home`,
@@ -74,7 +71,7 @@
   pagefind_path={asset(`/pagefind/pagefind.js`)}
 />
 
-<CopyButton global global_selector="pre:not(li > pre) > code" />
+<CopyButton global global_selector="pre:not(li > pre) > code" style="position: static" />
 
 <Nav class="site-nav" routes={Object.keys(nav_labels)} labels={nav_labels} {page} />
 
@@ -89,7 +86,7 @@
     {@render children?.()}
   </main>
   <Toc
-    headingSelector={heading_selector}
+    headingSelector={`main :is(${toc_headings[page.url.pathname] ?? `h2`})`}
     excludeSelector=".toc-exclude, .subpage-grid"
     minItems={1}
   />
