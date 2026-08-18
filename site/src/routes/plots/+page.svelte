@@ -3,15 +3,15 @@
 
   type PlotFig = { id: string; src: string; title: string }
 
+  // Vite 8 SSR still binds the module namespace when import is `default`, and prerender then crawls `/[object Module]`.
   const figs: PlotFig[] = Object.entries(
-    import.meta.glob<string>(`$root/assets/svg/*.svg`, {
+    import.meta.glob<{ default: string }>(`$root/assets/svg/*.svg`, {
       eager: true,
       query: `?url`,
-      import: `default`,
     }),
-  ).map(([path, src]) => ({
+  ).map(([path, svg]) => ({
     id: path,
-    src,
+    src: svg.default,
     title: /(?<stem>[^/]+)\.svg$/u.exec(path)?.groups?.stem?.replaceAll(`-`, ` `) ?? path,
   }))
 </script>
