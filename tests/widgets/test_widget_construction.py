@@ -36,125 +36,110 @@ from pymatviz.widgets.xrd import XrdWidget
 # === Construction and widget_type ===
 
 
-def _case(
-    widget_cls: type,
-    kwargs: dict[str, Any],
-    expected_type: str,
-    state_key: str,
-    expected_state: Any = None,
-) -> tuple[type, dict[str, Any], str, str, Any]:
-    """Build a widget construction test case."""
-    return (
-        widget_cls,
-        kwargs,
-        expected_type,
-        state_key,
-        kwargs[state_key] if expected_state is None else expected_state,
-    )
-
-
 @pytest.mark.parametrize(
-    ("widget_cls", "kwargs", "expected_type", "state_key", "expected_state"),
+    ("widget_cls", "kwargs", "expected_type", "state_key"),
     [
-        _case(
+        (
             ConvexHullWidget,
             {"entries": [{"composition": {"Li": 1}, "energy": -1.5}]},
             "convex_hull",
             "entries",
         ),
-        _case(
+        (
             BandStructureWidget,
             {"band_structure": {"bands": []}},
             "band_structure",
             "band_structure",
         ),
-        _case(DosWidget, {"dos": {"energies": [0]}}, "dos", "dos"),
-        _case(
+        (DosWidget, {"dos": {"energies": [0]}}, "dos", "dos"),
+        (
             BandsAndDosWidget,
             {"band_structure": {"bands": []}, "dos": {"energies": []}},
             "bands_and_dos",
             "dos",
         ),
-        _case(
+        (
             FermiSurfaceWidget,
             {"fermi_data": {"isosurfaces": []}},
             "fermi_surface",
             "fermi_data",
         ),
-        _case(
+        (
             FermiSurfaceWidget,
             {"band_data": {"energies": []}},
             "fermi_surface",
             "band_data",
         ),
-        _case(
+        (
             BrillouinZoneWidget,
             {"structure": {"lattice": {}, "sites": []}},
             "brillouin_zone",
             "structure",
         ),
-        _case(
+        (
             PhaseDiagramWidget,
             {"data": {"components": ["A", "B"]}},
             "phase_diagram",
             "data",
         ),
-        _case(XrdWidget, {"patterns": {"x": [10], "y": [100]}}, "xrd", "patterns"),
-        _case(
+        (XrdWidget, {"patterns": {"x": [10], "y": [100]}}, "xrd", "patterns"),
+        (
             ScatterPlotWidget,
             {"series": [{"x": [0, 1], "y": [1, 2], "label": "curve"}]},
             "scatter_plot",
             "series",
-            [{"x": [0.0, 1.0], "y": [1.0, 2.0], "label": "curve"}],
         ),
-        _case(
+        (
             BarPlotWidget,
             {"series": [{"x": [0, 1], "y": [2, 3], "label": "bars"}]},
             "bar_plot",
             "series",
-            [{"x": [0.0, 1.0], "y": [2.0, 3.0], "label": "bars"}],
         ),
-        _case(
+        (
             HistogramWidget,
             {"series": [{"x": [0, 1], "y": [2, 2.5], "label": "hist"}]},
             "histogram",
             "series",
-            [{"x": [0.0, 1.0], "y": [2.0, 2.5], "label": "hist"}],
         ),
-        _case(
+        (
             PeriodicTableWidget,
             {"heatmap_values": {"Fe": 42, "O": 100}},
             "periodic_table",
             "heatmap_values",
         ),
-        _case(
+        (
             RdfPlotWidget,
             {"structures": {"lattice": {}, "sites": []}},
             "rdf_plot",
             "structures",
         ),
-        _case(
+        (
             ScatterPlot3DWidget,
             {"series": [{"x": [1], "y": [2], "z": [3], "label": "pt"}]},
             "scatter_plot_3d",
             "series",
         ),
-        _case(
+        (
             HeatmapMatrixWidget,
             {"x_items": ["A", "B"], "y_items": ["C", "D"], "values": [[1, 2], [3, 4]]},
             "heatmap_matrix",
             "values",
         ),
-        _case(
-            SpacegroupBarPlotWidget, {"data": [225, 166, 62]}, "spacegroup_bar", "data"
+        (PeriodicTableWidget, {"log_scale": True}, "periodic_table", "log_scale"),
+        (
+            HeatmapMatrixWidget,
+            {"x_items": ["A"], "y_items": ["B"], "log_scale": True},
+            "heatmap_matrix",
+            "log_scale",
         ),
-        _case(
+        (SpacegroupBarPlotWidget, {"data": [225, 166, 62]}, "spacegroup_bar", "data"),
+        (
             ChemPotDiagramWidget,
             {"entries": [{"name": "Li2O", "energy": -14.3}]},
             "chem_pot_diagram",
             "entries",
         ),
-        _case(
+        (
             TreemapWidget,
             {"data": {"label": "root", "children": [{"label": "leaf", "value": 3}]}},
             "treemap",
@@ -167,12 +152,12 @@ def test_widget_construction_and_type(
     kwargs: dict[str, Any],
     expected_type: str,
     state_key: str,
-    expected_state: Any,
 ) -> None:
     """Widget constructors preserve expected normalized state."""
     widget = widget_cls(**kwargs)
     assert widget.widget_type == expected_type
-    assert getattr(widget, state_key) == expected_state
+    assert getattr(widget, state_key) == kwargs[state_key]
+    assert widget.to_dict()[state_key] == kwargs[state_key]
 
 
 # === to_dict auto-discovery ===
@@ -263,6 +248,7 @@ _MINIMAL_KWARGS: dict[type, dict[str, Any]] = {
         (PeriodicTableWidget, "log_scale", False),
         (PeriodicTableWidget, "show_color_bar", True),
         (PeriodicTableWidget, "missing", None),
+        (HeatmapMatrixWidget, "log_scale", False),
         (HeatmapMatrixWidget, "missing", None),
         (ScatterPlot3DWidget, "camera_projection", "perspective"),
         (HeatmapMatrixWidget, "color_scale", "interpolateViridis"),

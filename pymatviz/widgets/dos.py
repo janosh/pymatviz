@@ -6,6 +6,7 @@ from typing import Any
 
 import traitlets as tl
 
+from pymatviz.widgets._normalize import _to_dict
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -46,6 +47,4 @@ class DosWidget(MatterVizWidget):
             dos: DOS data -- a pymatgen Dos, CompleteDos, PhononDos, or dict.
             **kwargs: Additional widget properties.
         """
-        from pymatviz.widgets._normalize import _to_dict
-
         super().__init__(widget_type="dos", dos=_to_dict(dos, "DOS"), **kwargs)

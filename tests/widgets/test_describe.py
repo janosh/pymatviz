@@ -74,6 +74,27 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
             {"n_peaks": 3, "two_theta_range": [10.0, 30.0]},
         ),
         (
+            pmv.DosWidget(dos={"energies": [-1, 0, 1]}),
+            {"n_energies": 3, "energy_range": [-1.0, 1.0]},
+        ),
+        (
+            pmv.BandStructureWidget(band_structure={"bands": [[-1, 0, 1]]}),
+            {"n_bands": 1},
+        ),
+        (
+            pmv.BandsAndDosWidget(
+                band_structure={
+                    "first": {"bands": [[-1, 0, 1]]},
+                    "second": {"bands": [[-2, -1, 0], [0, 1, 2]]},
+                },
+                dos={
+                    "first": {"energies": [-2, -1, 0]},
+                    "second": {"energies": [1, 2]},
+                },
+            ),
+            {"n_bands": 3, "n_energies": 5, "energy_range": [-2.0, 2.0]},
+        ),
+        (
             pmv.TreemapWidget(
                 data={"children": [{"children": [{"value": 2}]}, {"value": 1}]}
             ),
@@ -130,6 +151,26 @@ def test_describe_unknown_widget_type() -> None:
 
 
 @pytest.mark.parametrize(
+    ("widget", "absent"),
+    [
+        (
+            pmv.BandStructureWidget(
+                band_structure={"bands": {"up": [[-1, 0, 1]], "down": [[0, 1, 2]]}}
+            ),
+            "n_bands",
+        ),
+        (
+            pmv.DosWidget(dos={"energies": {"up": [-1, 0], "down": [0, 1]}}),
+            "n_energies",
+        ),
+    ],
+)
+def test_describe_skips_non_sequence_spectral_fields(widget: Any, absent: str) -> None:
+    """Spin-keyed dicts are not counted as band/energy sequences."""
+    assert absent not in widget.describe()
+
+
+@pytest.mark.parametrize(
     ("report", "expected"),
     [
         (
@@ -154,6 +195,12 @@ def test_short_summary(report: dict[str, Any], expected: str) -> None:
         (pmv.ScatterPlotWidget(series=[{"x": [0, 1], "y": [1, 2]}]), False),
         (pmv.PeriodicTableWidget(), True),
         (pmv.PeriodicTableWidget(heatmap_values={"Fe": 1}), False),
+        (pmv.DosWidget(), True),
+        (pmv.DosWidget(dos={"energies": [0]}), False),
+        (pmv.BandStructureWidget(), True),
+        (pmv.BandStructureWidget(band_structure={"bands": [[0]]}), False),
+        (pmv.BandsAndDosWidget(), True),
+        (pmv.BandsAndDosWidget(dos={"energies": [0]}), False),
         # rdf_plot warns when neither source given, incl. empty (not just None)
         (pmv.RdfPlotWidget(), True),
         (pmv.RdfPlotWidget(structures=[]), True),

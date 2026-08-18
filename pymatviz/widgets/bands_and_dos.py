@@ -6,6 +6,7 @@ from typing import Any
 
 import traitlets as tl
 
+from pymatviz.widgets._normalize import _to_dict
 from pymatviz.widgets._traits import optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
@@ -61,8 +62,6 @@ class BandsAndDosWidget(MatterVizWidget):
                 ``show_legend`` for the bands panel, or ``stack``, ``sigma``,
                 ``normalize``, and ``spin_mode`` for the DOS panel.
         """
-        from pymatviz.widgets._normalize import _to_dict
-
         super().__init__(
             widget_type="bands_and_dos",
             band_structure=_to_dict(band_structure, "band structure"),

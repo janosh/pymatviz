@@ -182,13 +182,32 @@ def _describe_spacegroup_bar(data: Mapping[str, Any]) -> dict[str, Any]:
     return {"n_entries": len(values), "n_unique": len(set(values))}
 
 
+def _spectral_values(
+    data: Mapping[str, Any], data_key: str, value_key: str
+) -> list[Any]:
+    """Return a spectral field from one payload or a mapping of named payloads."""
+    payloads = data.get(data_key)
+    if not isinstance(payloads, Mapping):
+        return []
+    sources = (
+        [payloads]
+        if isinstance(payloads.get(value_key), (list, tuple))
+        else payloads.values()
+    )
+    return [
+        payload[value_key]
+        for payload in sources
+        if isinstance(payload, Mapping)
+        and isinstance(payload.get(value_key), (list, tuple))
+    ]
+
+
 def _describe_dos(data: Mapping[str, Any]) -> dict[str, Any]:
     """Energy-grid facts for a density of states."""
-    dos = data.get("dos")
-    energies = dos.get("energies") if isinstance(dos, Mapping) else None
+    energies = _spectral_values(data, "dos", "energies")
     facts: dict[str, Any] = {}
-    if energies is not None:
-        facts["n_energies"] = len(energies)
+    if energies:
+        facts["n_energies"] = sum(map(len, energies))
     energy_range = _minmax(energies)
     if energy_range is not None:
         facts["energy_range"] = energy_range
@@ -197,9 +216,8 @@ def _describe_dos(data: Mapping[str, Any]) -> dict[str, Any]:
 
 def _describe_band_structure(data: Mapping[str, Any]) -> dict[str, Any]:
     """Band count for a band structure."""
-    bands = data.get("band_structure")
-    bands = bands.get("bands") if isinstance(bands, Mapping) else None
-    return {"n_bands": len(bands)} if isinstance(bands, (list, tuple)) else {}
+    bands = _spectral_values(data, "band_structure", "bands")
+    return {"n_bands": sum(map(len, bands))} if bands else {}
 
 
 def _describe_bands_and_dos(data: Mapping[str, Any]) -> dict[str, Any]:
