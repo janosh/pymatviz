@@ -182,24 +182,49 @@ def _describe_spacegroup_bar(data: Mapping[str, Any]) -> dict[str, Any]:
     return {"n_entries": len(values), "n_unique": len(set(values))}
 
 
-def _describe_dos(data: Mapping[str, Any]) -> dict[str, Any]:
-    """Energy-grid facts for a density of states."""
-    dos = data.get("dos")
-    energies = dos.get("energies") if isinstance(dos, Mapping) else None
-    facts: dict[str, Any] = {}
-    if energies is not None:
-        facts["n_energies"] = len(energies)
-    energy_range = _minmax(energies)
-    if energy_range is not None:
-        facts["energy_range"] = energy_range
+def _describe_spectral(
+    data: Mapping[str, Any],
+    *,
+    data_key: str,
+    value_key: str,
+    count_key: str,
+    range_key: str | None = None,
+) -> dict[str, Any]:
+    """Count (and optionally range) a field from one payload or named payloads."""
+    payloads = data.get(data_key)
+    if not isinstance(payloads, Mapping):
+        return {}
+    sequences = [
+        payload[value_key]
+        for payload in (
+            [payloads]
+            if isinstance(payloads.get(value_key), (list, tuple))
+            else payloads.values()
+        )
+        if isinstance(payload, Mapping)
+        and isinstance(payload.get(value_key), (list, tuple))
+    ]
+    if not sequences:
+        return {}
+    facts: dict[str, Any] = {count_key: sum(map(len, sequences))}
+    if range_key is not None and (value_range := _minmax(sequences)) is not None:
+        facts[range_key] = value_range
     return facts
 
 
-def _describe_band_structure(data: Mapping[str, Any]) -> dict[str, Any]:
-    """Band count for a band structure."""
-    bands = data.get("band_structure")
-    bands = bands.get("bands") if isinstance(bands, Mapping) else None
-    return {"n_bands": len(bands)} if isinstance(bands, (list, tuple)) else {}
+_describe_dos = functools.partial(
+    _describe_spectral,
+    data_key="dos",
+    value_key="energies",
+    count_key="n_energies",
+    range_key="energy_range",
+)
+_describe_band_structure = functools.partial(
+    _describe_spectral,
+    data_key="band_structure",
+    value_key="bands",
+    count_key="n_bands",
+)
 
 
 def _describe_bands_and_dos(data: Mapping[str, Any]) -> dict[str, Any]:

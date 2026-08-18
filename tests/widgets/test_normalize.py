@@ -42,11 +42,19 @@ _MOCK_DICT = {"@class": "Mock", "value": 42}
         (None, "test", None),
         ({"key": "val"}, "test", {"key": "val"}),
         (_MockMSONable(), "test", _MOCK_DICT),
+        (
+            {"DFT": _MockMSONable(), "MACE": _MOCK_DICT},
+            "DOS",
+            {"DFT": _MOCK_DICT, "MACE": _MOCK_DICT},
+        ),
     ],
 )
 def test_to_dict_passthrough(input_val: Any, label: str, expected: Any) -> None:
     """Test _to_dict handles None, dict, and MSONable objects."""
-    assert _to_dict(input_val, label) == expected
+    result = _to_dict(input_val, label)
+    assert result == expected
+    if isinstance(input_val, dict) and input_val == expected:
+        assert result is input_val
 
 
 @pytest.mark.parametrize("label", ["band structure", "DOS"])

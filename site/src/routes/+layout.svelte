@@ -13,6 +13,7 @@
     Toc,
     type FooterLink,
   } from 'svelte-widgets'
+  import { Comment, Issues } from 'svelte-widgets/icons'
   import { highlight_matches } from 'svelte-widgets/attachments'
   import { heading_anchors } from 'svelte-widgets/heading-anchors'
   // oxlint-disable-next-line import/no-unassigned-import -- global app styles
@@ -22,11 +23,10 @@
     $props()
   let page_search_query = $state(``)
 
-  const heading_selector = $derived(
-    `main :is(${
-      page.url.pathname === `/api` ? `h1, h2, h3, h4` : `h2`
-    }):not(.toc-exclude, :where(.subpage-grid *))`,
-  )
+  const toc_headings: Record<string, string> = {
+    '/api': `h1, h2, h3, h4`,
+    '/changelog': `h2, h3`,
+  }
 
   const nav_labels: Record<string, string> = {
     '/': `Home`,
@@ -48,8 +48,8 @@
   )
 
   const footer_links: FooterLink[] = [
-    { href: `${repository}/issues`, label: `Issues`, icon: `Issues` },
-    { href: `${repository}/discussions`, label: `Discussion`, icon: `Comment` },
+    { href: `${repository}/issues`, label: `Issues`, icon: Issues },
+    { href: `${repository}/discussions`, label: `Discussion`, icon: Comment },
   ]
 
   afterNavigate(() => (page_search_query = ``))
@@ -71,23 +71,37 @@
   pagefind_path={asset(`/pagefind/pagefind.js`)}
 />
 
-<CopyButton global global_selector="pre:not(li > pre) > code" />
+<CopyButton global global_selector="pre:not(li > pre) > code" style="position: static" />
 
 <Nav class="site-nav" routes={Object.keys(nav_labels)} labels={nav_labels} {page} />
 
-<Toc headingSelector={heading_selector} breakpoint={1500} />
-
 <GitHubCorner href={repository} />
 
-<main
-  data-pagefind-body
-  {@attach heading_anchors()}
-  {@attach highlight_matches({ query: page_search_query, duration_ms: 8000 })}
->
-  {@render children?.()}
-</main>
+<div class="page-body">
+  <main
+    data-pagefind-body
+    {@attach heading_anchors()}
+    {@attach highlight_matches({ query: page_search_query, duration_ms: 8000 })}
+  >
+    {@render children?.()}
+  </main>
+  <Toc
+    headingSelector={`main :is(${toc_headings[page.url.pathname] ?? `h2`})`}
+    excludeSelector=".toc-exclude, .subpage-grid"
+    minItems={1}
+  />
+</div>
 
 <Footer links={footer_links}>
   <img src="/favicon.svg" alt="Logo" height="40px" />
   <strong>pymatviz</strong>
 </Footer>
+
+<style>
+  .page-body {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    flex: 1;
+  }
+</style>

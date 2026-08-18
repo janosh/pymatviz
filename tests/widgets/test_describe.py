@@ -74,19 +74,58 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
             {"n_peaks": 3, "two_theta_range": [10.0, 30.0]},
         ),
         (
+            pmv.DosWidget(
+                dos={
+                    "energies": [-1, 0, 1],
+                    "extra": {"energies": [-2, 2]},
+                }
+            ),
+            {"n_energies": 3, "energy_range": [-1.0, 1.0]},
+        ),
+        (
+            pmv.BandStructureWidget(band_structure={"bands": [[-1, 0, 1]]}),
+            {"n_bands": 1},
+        ),
+        (
+            pmv.BandsAndDosWidget(
+                band_structure={
+                    "first": {"bands": [[-1, 0, 1]]},
+                    "second": {"bands": [[-2, -1, 0], [0, 1, 2]]},
+                },
+                dos={
+                    "first": {"energies": [-2, -1, 0]},
+                    "second": {"energies": [1, 2]},
+                },
+            ),
+            {"n_bands": 3, "n_energies": 5, "energy_range": [-2.0, 2.0]},
+        ),
+        (
             pmv.TreemapWidget(
                 data={"children": [{"children": [{"value": 2}]}, {"value": 1}]}
             ),
             {"n_nodes": 4, "n_leaves": 2, "max_depth": 3},
         ),
+        (
+            pmv.BandStructureWidget(
+                band_structure={"bands": {"up": [[-1]], "down": [[0]]}}
+            ),
+            {"n_bands": None},
+        ),
+        (
+            pmv.DosWidget(dos={"energies": {"up": [-1], "down": [0]}}),
+            {"n_energies": None},
+        ),
     ],
 )
 def test_describe_widget(widget: Any, expected: dict[str, Any]) -> None:
-    """describe() reports the widget type plus the expected structured facts."""
+    """describe() reports expected facts; None means the key is absent."""
     report = widget.describe()
     assert report["widget_type"] == widget.widget_type
     for key, value in expected.items():
-        assert report[key] == value, f"{key}: {report.get(key)!r} != {value!r}"
+        if value is None:
+            assert key not in report
+        else:
+            assert report[key] == value, f"{key}: {report.get(key)!r} != {value!r}"
 
 
 @pytest.mark.parametrize(
@@ -154,6 +193,12 @@ def test_short_summary(report: dict[str, Any], expected: str) -> None:
         (pmv.ScatterPlotWidget(series=[{"x": [0, 1], "y": [1, 2]}]), False),
         (pmv.PeriodicTableWidget(), True),
         (pmv.PeriodicTableWidget(heatmap_values={"Fe": 1}), False),
+        (pmv.DosWidget(), True),
+        (pmv.DosWidget(dos={"energies": [0]}), False),
+        (pmv.BandStructureWidget(), True),
+        (pmv.BandStructureWidget(band_structure={"bands": [[0]]}), False),
+        (pmv.BandsAndDosWidget(), True),
+        (pmv.BandsAndDosWidget(dos={"energies": [0]}), False),
         # rdf_plot warns when neither source given, incl. empty (not just None)
         (pmv.RdfPlotWidget(), True),
         (pmv.RdfPlotWidget(structures=[]), True),

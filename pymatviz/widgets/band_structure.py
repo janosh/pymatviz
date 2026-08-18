@@ -6,6 +6,7 @@ from typing import Any
 
 import traitlets as tl
 
+from pymatviz.widgets._normalize import _to_dict
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -46,8 +47,6 @@ class BandStructureWidget(MatterVizWidget):
                 BandStructureSymmLine, PhononBandStructureSymmLine, or dict.
             **kwargs: Additional widget properties.
         """
-        from pymatviz.widgets._normalize import _to_dict
-
         super().__init__(
             widget_type="band_structure",
             band_structure=_to_dict(band_structure, "band structure"),

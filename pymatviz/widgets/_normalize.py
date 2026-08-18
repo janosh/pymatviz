@@ -49,7 +49,8 @@ def _to_dict(obj: Any, label: str) -> dict[str, Any] | None:
     """Convert None/dict/MSONable object to a JSON-serializable dict.
 
     Args:
-        obj: None, a dict (passthrough), or any object with .as_dict().
+        obj: None, a dict (MSONable values converted via ``as_dict``), or any
+            object with .as_dict().
         label: Human-readable name for error messages (e.g. "band structure").
 
     Returns:
@@ -61,7 +62,12 @@ def _to_dict(obj: Any, label: str) -> dict[str, Any] | None:
     if obj is None:
         return None
     if isinstance(obj, dict):
-        return obj
+        converted = {
+            key: value.as_dict()
+            for key, value in obj.items()
+            if callable(getattr(value, "as_dict", None)) and not isinstance(value, dict)
+        }
+        return {**obj, **converted} if converted else obj
     if hasattr(obj, "as_dict"):
         return obj.as_dict()
     raise TypeError(

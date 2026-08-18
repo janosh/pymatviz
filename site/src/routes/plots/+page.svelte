@@ -1,61 +1,60 @@
 <script lang="ts">
-  const figs = import.meta.glob<string>(`$root/assets/*.svg`, {
-    eager: true,
-    query: `?url`,
-    import: `default`,
-  })
+  import { Masonry } from 'svelte-widgets'
+
+  type PlotFig = { id: string; src: string; title: string }
+
+  // Vite 8 SSR glob values are namespaces; `.default` is the URL string.
+  const figs: PlotFig[] = Object.entries(
+    import.meta.glob<{ default: string }>(`$root/assets/svg/*.svg`, {
+      eager: true,
+      query: `?url`,
+    }),
+  ).map(([id, svg]) => ({
+    id,
+    src: svg.default,
+    title: id
+      .slice(id.lastIndexOf(`/`) + 1)
+      .replace(/\.svg$/u, ``)
+      .replaceAll(`-`, ` `),
+  }))
 </script>
 
 <h1>Figures</h1>
 
-<ul>
-  {#each Object.entries(figs) as [alt, src], idx (alt)}
-    {@const filename = alt.split(`/`).at(-1)?.split(`.`)[0]}
-    <li>
+<Masonry items={figs} minColWidth={300} gap={32}>
+  {#snippet children({ item, idx }: { item: PlotFig; idx: number })}
+    <article>
       <span>{idx + 1}</span>
-      <h3>{filename?.replaceAll(`-`, ` `)}</h3>
-      {#if src.endsWith(`.svelte`)}
-        {#await import(src) then { default: Component }}
-          <Component />
-        {/await}
-      {:else if src.endsWith(`.pdf`)}
-        <embed {src} width="100%" height="500px" />
-      {:else}
-        <img {src} {alt} />
-      {/if}
-    </li>
-  {/each}
-</ul>
+      <h3>{item.title}</h3>
+      <img src={item.src} alt={item.title} />
+    </article>
+  {/snippet}
+</Masonry>
 
 <style>
   h1 {
-    margin: 3em 0 1em;
+    margin: 0 0 1em;
   }
-  img {
-    width: 100%;
-  }
-  ul {
-    list-style: none;
-    padding: 0;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 2em;
-    max-width: min(90vw, 1200px);
-    margin: 0 auto;
-  }
-  ul > li {
+  article {
+    position: relative;
     background-color: rgba(255, 255, 255, 0.05);
-    padding: 0 1em;
+    padding: 0 1em 1em;
     border-radius: 4pt;
+    h3 {
+      text-align: center;
+      margin: 1em;
+      text-transform: capitalize;
+    }
+    span {
+      position: absolute;
+      font-weight: lighter;
+      margin: 0.5em 0;
+    }
+    img {
+      width: 100%;
+    }
   }
-  ul > li > h3 {
-    text-align: center;
-    margin: 1em;
-    text-transform: capitalize;
-  }
-  ul > li > span {
-    position: absolute;
-    font-weight: lighter;
-    margin: 0.5em 0;
+  :global(main:has(.masonry)) {
+    max-width: min(90vw, 1200px);
   }
 </style>

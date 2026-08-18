@@ -1,8 +1,9 @@
 :root {
   --night: #061e25;
   --blue: cornflowerblue;
-  --text-color: rgb(208, 208, 208);
-  --max-main-width: 55em;
+  --text: rgb(208, 208, 208);
+  --main-max-width: 55em;
+  color-scheme: dark;
 
   --github-corner-color: var(--night);
   --github-corner-bg: white;
@@ -20,29 +21,18 @@
 body {
   background: var(--night);
   font-family: -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
-  color: var(--text-color);
+  color: var(--text);
   line-height: 1.5;
   margin: 0;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  align-items: center;
 }
 main {
   padding: calc(1ex + 2vw);
-  flex: 1;
-  margin: auto;
   box-sizing: border-box;
   width: 100%;
-  max-width: var(--max-main-width);
-}
-button {
-  color: var(--text-color);
-  cursor: pointer;
-  border: none;
-  border-radius: 3pt;
-  background: teal;
-  padding: 2pt 4pt;
+  max-width: var(--main-max-width);
 }
 a {
   color: var(--blue);
@@ -61,15 +51,25 @@ code {
 }
 pre code {
   background-color: transparent;
-  display: inline-block;
+  display: block;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
 }
 pre {
-  position: relative;
+  display: flex;
+  align-items: flex-start;
+  column-gap: 8pt;
   border-radius: 4pt;
   background-color: rgba(255, 255, 255, 0.05);
   overflow-x: auto;
   padding: 6pt 8pt;
   margin: 1em auto;
+}
+pre [data-sms-copy] {
+  flex-shrink: 0;
+  height: calc(1.2em * 1.5);
+  place-content: center;
 }
 ul {
   padding-left: 1em;
@@ -130,21 +130,12 @@ caption {
   display: block;
 }
 nav.site-nav {
-  margin: 1.5em auto 0.5em;
+  align-self: center;
+  margin: 1.5em 0 0.5em;
 }
 footer strong {
   font-size: 20px;
   vertical-align: 16px;
-}
-/* beat Toc's equally-specific `aside.toc.desktop { position: sticky }` */
-html body aside.toc.desktop {
-  position: fixed;
-  font-size: 0.6em;
-  top: 5em;
-  left: calc(50vw + var(--max-main-width) / 2 + 15em);
-}
-aside.toc.mobile > nav {
-  padding-left: 9pt;
 }
 ::highlight(highlight-match) {
   background: var(--page-search-highlight-bg);
