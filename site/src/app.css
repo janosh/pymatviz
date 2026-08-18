@@ -2,7 +2,10 @@
   --night: #061e25;
   --blue: cornflowerblue;
   --text-color: rgb(208, 208, 208);
+  --text: var(--text-color);
   --max-main-width: 55em;
+  --main-max-width: var(--max-main-width);
+  color-scheme: dark;
 
   --github-corner-color: var(--night);
   --github-corner-bg: white;
@@ -26,23 +29,12 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  align-items: center;
 }
 main {
   padding: calc(1ex + 2vw);
-  flex: 1;
-  margin: auto;
   box-sizing: border-box;
   width: 100%;
   max-width: var(--max-main-width);
-}
-button {
-  color: var(--text-color);
-  cursor: pointer;
-  border: none;
-  border-radius: 3pt;
-  background: teal;
-  padding: 2pt 4pt;
 }
 a {
   color: var(--blue);
@@ -130,21 +122,12 @@ caption {
   display: block;
 }
 nav.site-nav {
-  margin: 1.5em auto 0.5em;
+  align-self: center;
+  margin: 1.5em 0 0.5em;
 }
 footer strong {
   font-size: 20px;
   vertical-align: 16px;
-}
-/* beat Toc's equally-specific `aside.toc.desktop { position: sticky }` */
-html body aside.toc.desktop {
-  position: fixed;
-  font-size: 0.6em;
-  top: 5em;
-  left: calc(50vw + var(--max-main-width) / 2 + 15em);
-}
-aside.toc.mobile > nav {
-  padding-left: 9pt;
 }
 ::highlight(highlight-match) {
   background: var(--page-search-highlight-bg);

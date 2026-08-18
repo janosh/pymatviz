@@ -1,14 +1,13 @@
 <script lang="ts">
   import { SubpageGrid } from 'svelte-widgets'
+  import { Code } from 'svelte-widgets/icons'
 
-  let { data }: { data: { notebook_routes: string[] } } = $props()
-
-  const subpages = $derived(
-    data.notebook_routes.map((route): [string, string, string, `Code`] => {
-      const slug = route.split(`/`).at(-1) ?? route
-      return [slug.replaceAll(`_`, ` `), route, `${slug}.ipynb`, `Code`]
-    }),
-  )
+  let { data }: { data: { subpages: [string, string, string][] } } = $props()
 </script>
 
-<SubpageGrid title="Examples" subtitle="Rendered example notebooks." {subpages} />
+<SubpageGrid
+  title="Examples"
+  subtitle="Rendered example notebooks."
+  subpages={data.subpages}
+  fallback_icon={Code}
+/>

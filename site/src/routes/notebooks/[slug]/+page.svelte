@@ -2,10 +2,9 @@
   import { page } from '$app/state'
   import { PrevNext } from 'svelte-widgets'
 
-  let { data }: { data: { html: string; slug: string; path: string; routes: string[] } } =
-    $props()
+  let { data }: { data: { html: string; items: [string, string][] } } = $props()
 </script>
 
 {@html data.html}
 
-<PrevNext items={data.routes} current={page.url.pathname} />
+<PrevNext items={data.items} current={page.url.pathname} />
