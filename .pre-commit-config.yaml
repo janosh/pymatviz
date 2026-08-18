@@ -2,7 +2,7 @@ default_install_hook_types: [pre-commit, commit-msg]
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.1
+    rev: v0.16.3
     hooks:
       - id: ruff-check
         args: [--fix]
@@ -11,13 +11,12 @@ repos:
         types_or: [python, jupyter]
 
   - repo: https://github.com/astral-sh/ty-pre-commit
-    rev: v0.0.65
+    rev: v0.0.72
     hooks:
       - id: ty
-        # --isolated: don't create/update uv.lock or the local .venv
-        # --all-extras: make optional deps (pytest, phonopy, ...) resolvable by ty
+        # Isolated extras in a temp env. Override shell UV_FROZEN=1 / UV_NO_SYNC=1 or that env stays empty.
         args: [--isolated, --all-extras]
-        env: { UV_FROZEN: "0" } # prek hook: override global UV_FROZEN=1 which would require a uv.lock
+        env: { UV_FROZEN: "0", UV_NO_SYNC: "0" }
 
   - repo: local
     hooks:
@@ -90,7 +89,7 @@ repos:
         pass_filenames: false
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.37.4
+    rev: 0.38.0
     hooks:
       - id: check-jsonschema
         files: ^pymatviz/keys\.yml$
