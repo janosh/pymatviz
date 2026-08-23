@@ -24,7 +24,7 @@ from pymatviz.typing import (
 )
 from pymatviz.utils import df_ptable
 from pymatviz.utils.data import si_fmt
-from pymatviz.utils.plotting import luminance
+from pymatviz.utils.plotting import annotated_heatmap, luminance
 
 
 type ColorScale = (
@@ -144,7 +144,7 @@ def ptable_heatmap(
             Pass False to disable borders.
         scale (float): Scaling factor for whole figure layout. Defaults to 1.
         **kwargs: Additional keyword arguments passed to
-            plotly.figure_factory.create_annotated_heatmap().
+            pymatviz.utils.plotting.annotated_heatmap().
 
     Returns:
         Figure: Plotly Figure object.
@@ -298,9 +298,7 @@ def ptable_heatmap(
     zmax = max(non_nan_values) if cscale_max is None else cscale_max
     car_multiplier = 100 if heat_mode == "percent" else 1
 
-    import plotly.figure_factory as ff  # slow import
-
-    fig = ff.create_annotated_heatmap(
+    fig = annotated_heatmap(
         car_multiplier * heatmap_values,
         annotation_text=tile_texts,
         text=hover_texts,

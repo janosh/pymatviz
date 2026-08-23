@@ -1,10 +1,2 @@
-# dependencies
-node_modules
-
-# production build
-.svelte-kit
-build
 api-docs/*.md
-
-# environment variables
 .env

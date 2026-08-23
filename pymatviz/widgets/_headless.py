@@ -32,8 +32,10 @@ if TYPE_CHECKING:
     from playwright.async_api import Page as AsyncPage
     from playwright.sync_api import Browser, Page
 
-# Module-level browser cache -- reused across to_img() calls to amortize
-# the ~2s Chromium startup cost.
+# Module-level browser cache -- reused across to_img() calls to amortize the ~2s
+# Chromium startup cost. _pw_cm (the PlaywrightContextManager from sync_playwright())
+# owns the loop sync Playwright runs on, which _foreign_running_loop must recognize.
+_pw_cm: Any = None
 _pw: Any = None
 _browser: Browser | None = None
 _atexit_registered = False
@@ -51,7 +53,7 @@ def _get_browser() -> Browser:
 
     Thread-safe: concurrent callers block on a lock during launch.
     """
-    global _pw, _browser, _atexit_registered  # noqa: PLW0603
+    global _pw_cm, _pw, _browser, _atexit_registered  # noqa: PLW0603
     if _browser is not None and _browser.is_connected():
         return _browser
 
@@ -69,7 +71,8 @@ def _get_browser() -> Browser:
                 " && playwright install chromium"
             ) from None
 
-        pw = sync_playwright().start()
+        pw_cm = sync_playwright()
+        pw = pw_cm.start()
         try:
             launch_args = ["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage"]
             browser = pw.chromium.launch(headless=True, args=launch_args)
@@ -79,6 +82,7 @@ def _get_browser() -> Browser:
             except (OSError, RuntimeError):
                 pass
             raise
+        _pw_cm = pw_cm
         _pw = pw
         _browser = browser
         if not _atexit_registered:
@@ -89,7 +93,7 @@ def _get_browser() -> Browser:
 
 def _shutdown_browser() -> None:
     """Clean up the browser and Playwright on interpreter exit."""
-    global _pw, _browser  # noqa: PLW0603
+    global _pw_cm, _pw, _browser  # noqa: PLW0603
     try:
         if _browser is not None:
             _browser.close()
@@ -102,6 +106,7 @@ def _shutdown_browser() -> None:
     except (OSError, RuntimeError):
         pass
     _pw = None
+    _pw_cm = None
 
 
 async def _get_async_browser() -> AsyncBrowser:
@@ -816,15 +821,21 @@ def _write_temp_html(html: str) -> str:
     return path
 
 
-def _has_running_event_loop() -> bool:
-    """Return True if there is a running asyncio event loop in this thread."""
-    import asyncio
+def _foreign_running_loop() -> asyncio.AbstractEventLoop | None:
+    """The event loop running in this thread, unless it is sync Playwright's own.
 
+    Sync Playwright switches back to the caller mid ``run_forever`` (greenlets), so
+    after the first ``_get_browser()`` its loop stays "running" for the rest of the
+    process. That loop must keep using the sync browser; only a loop we did not start
+    (a Jupyter/IPython kernel, ``nbconvert --execute``) needs the async path. The
+    owned loop is ``_pw_cm._loop``: the ``PlaywrightContextManager`` creates it in
+    ``start()``; the ``Playwright`` object only mirrors it via a private attribute.
+    """
     try:
-        asyncio.get_running_loop()
+        loop = asyncio.get_running_loop()
     except RuntimeError:
-        return False
-    return True
+        return None
+    return None if loop is getattr(_pw_cm, "_loop", None) else loop
 
 
 def _apply_nest_asyncio(loop: asyncio.AbstractEventLoop) -> bool:
@@ -890,8 +901,7 @@ def render_widget_headless(
         widget_data, esm_content, css_content, fmt, dpi, timeout, width, height
     )
 
-    if _has_running_event_loop():
-        loop = asyncio.get_running_loop()
+    if (loop := _foreign_running_loop()) is not None:
         if not _apply_nest_asyncio(loop):
             raise RuntimeError(
                 "nest_asyncio is required for headless widget export inside "
@@ -1067,8 +1077,7 @@ def render_diagnostics(
         widget_data, esm_content, css_content, dpi=dpi, timeout=timeout
     )
 
-    if _has_running_event_loop():
-        loop = asyncio.get_running_loop()
+    if (loop := _foreign_running_loop()) is not None:
         if not _apply_nest_asyncio(loop):
             return _assemble_diagnostics(
                 None, None, "nest_asyncio is required inside a running event loop"

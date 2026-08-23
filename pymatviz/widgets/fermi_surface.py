@@ -14,6 +14,9 @@ class FermiSurfaceWidget(MatterVizWidget):
 
     Accepts pre-computed Fermi surface data (isosurfaces + reciprocal lattice) or
     raw band grid data (energies on a k-grid for marching cubes extraction).
+    ``fermi_data``: ``{isosurfaces: [{vertices, faces, normals?, band_index, spin}],
+    k_lattice, fermi_energy}`` or an IFermi ``FermiSurface.as_dict()``; ``band_data``:
+    ``{energies: [spin][band][kx][ky][kz], k_grid, k_lattice, fermi_energy}``.
 
     Examples:
         From pre-computed Fermi surface data:

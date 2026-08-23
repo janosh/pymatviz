@@ -25,12 +25,12 @@ jobs:
     with:
       os: ${{ matrix.os }}
       python-version: '3.12'
-      # widget assets are fetched from the matterviz-anywidget npm package via
-      # jsDelivr at runtime (no local Node build needed). Requires
-      # matterviz-anywidget@<MATTERVIZ_ANYWIDGET_VERSION> to be published to npm
-      # first -- widget tests can't fetch the bundle until then.
+      # Widget assets are the matterviz-anywidget npm release pinned in
+      # MATTERVIZ_ANYWIDGET_VERSION, fetched from jsDelivr at runtime (no Node build).
+      # playwright + chromium so the headless export and JS prop parity tests run
       install-cmd: |
-        uv pip install -e '.[test,brillouin]'  --system
+        uv pip install -e '.[test,brillouin,export]' --system
+        playwright install --with-deps chromium
       # pytest-split distributes work load so parallel jobs finish in similar time
       # update durations file with `pytest --store-durations --durations-path tests/files/.pytest-split-durations`
       test-cmd: pytest --durations 20 --cov-branch --cov-report=xml --cov pymatviz --splits 4 --group ${{ matrix.split }} --splitting-algorithm least_duration

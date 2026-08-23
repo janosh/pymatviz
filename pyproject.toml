@@ -35,7 +35,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-make-assets = ["matminer>=0.9"]
+# kaleido: the asset scripts render figures, and plotly 7 requires it separately for
+# static export and full_figure_for_development (plotly 6 did not)
+make-assets = ["kaleido>=1.2.0", "matminer>=0.9"]
 gh-pages = ["jupyter>=1.1", "lazydocs>=0.4", "nbconvert>=7.16"]
 phonons = ["phonopy>=2.31"] # only needed if user passes in phonopy objects
 test = [
@@ -45,7 +47,7 @@ test = [
   "pytest-split>=0.9",
   "pytest>=8",
 ]
-export = ["kaleido>=1.2.0", "playwright>=1.40"]
+export = ["kaleido>=1.2.0", "nest-asyncio>=1.6", "playwright>=1.40"]
 brillouin = ["seekpath>=2.1"]
 clustering = [
   "matminer>=0.9",

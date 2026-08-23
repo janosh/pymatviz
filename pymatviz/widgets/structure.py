@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
+import numpy as np
 import traitlets as tl
 
 from pymatviz.widgets._traits import StructureVizTraits
@@ -22,6 +24,51 @@ def structure_to_dict(structure: Any) -> dict[str, Any] | None:
     from pymatviz.process_data import normalize_structures
 
     return next(iter(normalize_structures(structure).values())).as_dict()
+
+
+def volume_to_dicts(volume: Any) -> list[dict[str, Any]]:
+    """Convert a volumetric dict (flat ``values`` + ``dims`` or nested ``grid``) or a
+    pymatgen ``VolumetricData`` (one payload per ``data`` key, ``Chgcar`` divided by the
+    cell volume to e/Å³ like matterviz's CHGCAR parser) to flat z-fastest matterviz
+    payloads. Shape errors (dims, lattice, origin, periodic) are reported by the
+    renderer.
+    """
+    if isinstance(volume, Mapping):
+        nested = "grid" in volume
+        arr = np.asarray(volume["grid"] if nested else volume.get("values", []), float)
+        payload = {"values": arr.ravel().tolist()}
+        payload["dims"] = list(arr.shape) if nested else volume.get("dims")
+        for key in (
+            "lattice",
+            "origin",
+            "periodic",
+            "label",
+            "source",
+            "source_filename",
+        ):
+            if key in volume:
+                payload[key] = volume[key]
+        return [payload]
+
+    data, structure = getattr(volume, "data", None), getattr(volume, "structure", None)
+    if not isinstance(data, Mapping) or structure is None:
+        raise TypeError(
+            "volumetric_data entries must be dicts or pymatgen VolumetricData, got "
+            f"{type(volume).__name__}"
+        )
+    # CHGCAR stores rho * V_cell; matterviz divides by the volume on parse
+    scale = 1 / structure.volume if type(volume).__name__ == "Chgcar" else 1
+    return [
+        {
+            "values": (np.asarray(grid, dtype=float) * scale).ravel().tolist(),
+            "dims": list(np.shape(grid)),
+            "lattice": structure.lattice.matrix.tolist(),
+            "origin": [0.0, 0.0, 0.0],
+            "periodic": True,
+            "label": str(key),
+        }
+        for key, grid in data.items()
+    ]
 
 
 class StructureWidget(StructureVizTraits, MatterVizWidget):
@@ -56,6 +103,14 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
         >>> StructureWidget(structure=struct_with_forces)  # auto-detected
         >>> StructureWidget(structure=struct, vector_origin_gap=0.3)  # multi-method
         >>> StructureWidget(structure=struct, vector_normalize=True)  # direction only
+
+        Isosurfaces: pymatgen ``VolumetricData`` objects or dicts plus explicit layers
+        (``isovalue`` in the volume's units, e/Å³ for CHGCAR):
+        >>> layer = dict(isovalue=0.05, color="#3b82f6", opacity=0.6, visible=True)
+        >>> StructureWidget(
+        ...     volumetric_data=[Chgcar.from_file("CHGCAR")],
+        ...     isosurface_settings={"layers": [layer], "wireframe": False, "halo": 0},
+        ... )
     """
 
     # display options shared with TrajectoryWidget live in StructureVizTraits
@@ -65,14 +120,17 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
 
     show_image_atoms = tl.Bool(default_value=True).tag(sync=True)
 
-    # Isosurface (for volumetric data: CHGCAR, ELFCAR, CUBE files)
-    # Pass volumetric grid data directly instead of loading from data_url.
-    # Each element is a dict matching matterviz VolumetricData:
-    #   grid (3D nested list), grid_dims ([nx,ny,nz]), lattice ([[ax,ay,az],...]),
-    #   origin ([ox,oy,oz]), data_range ({min,max,abs_max,mean}),
-    #   periodic (bool), label (str, optional), data_order (str, optional).
-    volumetric_data = tl.List(tl.Dict(), default_value=[]).tag(sync=True)
+    # Isosurface: pymatgen VolumetricData objects or dicts (see volume_to_dicts) and
+    # matterviz IsosurfaceSettings {layers: [{isovalue, color, opacity, visible,
+    # show_negative, negative_color}], wireframe, halo, display_range?}
+    volumetric_data = tl.List(default_value=[]).tag(sync=True)
     isosurface_settings = tl.Dict(allow_none=True).tag(sync=True)
+    # Two-way synced isosurface view state (active volume, structure/slice view, plane)
+    active_volume_idx = tl.Int(default_value=0).tag(sync=True)
+    display_mode = tl.CaselessStrEnum(
+        ["structure", "slice"], default_value="structure"
+    ).tag(sync=True)
+    slice_settings = tl.Dict(default_value={}).tag(sync=True)
 
     # UI controls
     enable_info_pane = tl.Bool(default_value=True).tag(sync=True)
@@ -86,6 +144,11 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
     selected_sites = tl.List(tl.Int(), default_value=[]).tag(sync=True)
     highlighted_sites = tl.List(tl.Int(), default_value=[]).tag(sync=True)
     hovered_site_idx = tl.Int(allow_none=True, default_value=None).tag(sync=True)
+
+    @tl.validate("volumetric_data")
+    def _normalize_volumetric_data(self, proposal: dict) -> list[dict[str, Any]]:
+        """Flatten every volume (dict or pymatgen VolumetricData) on assignment."""
+        return [pl for vol in proposal["value"] for pl in volume_to_dicts(vol)]
 
     def __init__(
         self, structure: dict[str, Any] | Any | None = None, **kwargs: Any

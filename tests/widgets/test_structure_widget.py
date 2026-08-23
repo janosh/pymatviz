@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+import numpy as np
 import pytest
 import traitlets as tl
 
@@ -17,6 +18,16 @@ from tests.widgets.conftest import (
 
 if TYPE_CHECKING:
     from pymatgen.core import Structure
+
+
+# minimal flat matterviz VolumetricData payload (2x1x1 grid)
+_VOLUME: dict[str, Any] = {
+    "values": [0.1, 0.2],
+    "dims": [2, 1, 1],
+    "lattice": [[4.0, 0.0, 0.0], [0.0, 4.0, 0.0], [0.0, 0.0, 4.0]],
+    "origin": [0.0, 0.0, 0.0],
+    "periodic": True,
+}
 
 
 @pytest.mark.parametrize(
@@ -65,7 +76,7 @@ def test_widget_invalid_structure_handling(invalid_structure: Any) -> None:
         ("style", [None, "width: 400px; height: 600px", "width: 600px; height: 800px"]),
         ("show_controls", [True, False]),
         ("enable_info_pane", [True, False]),
-        ("volumetric_data", [[], [{"grid": [[[0.1]]], "grid_dims": [1, 1, 1]}]]),
+        ("volumetric_data", [[], [_VOLUME]]),
     ],
 )
 def test_widget_property_sync_structure(
@@ -154,29 +165,60 @@ def test_widget_preserves_multi_vector_site_properties(
 
 
 def test_widget_volumetric_data_trait() -> None:
-    """volumetric_data defaults to [], round-trips, and supports mutation."""
+    """volumetric_data defaults to [], keeps flat payloads as-is (dropping keys the
+    renderer recomputes), flattens legacy nested grid[ix][iy][iz] dicts to z-fastest
+    values + dims and supports mutation.
+    """
     assert StructureWidget().volumetric_data == []
-
-    vol = {"grid": [[[0.1]]], "grid_dims": [1, 1, 1], "periodic": True, "label": "chg"}
+    vol = {**_VOLUME, "label": "chg"}
     widget = StructureWidget(volumetric_data=[vol])
-    assert widget.volumetric_data == [vol]
     assert widget.to_dict()["volumetric_data"] == [vol]
+    widget.volumetric_data = [vol, {**_VOLUME, "periodic": False, "label": "elf"}]
+    assert widget.volumetric_data == [vol, {**vol, "periodic": False, "label": "elf"}]
 
-    vol2 = {
-        "grid": [[[1.0]]],
-        "grid_dims": [1, 1, 1],
-        "periodic": False,
-        "label": "elf",
+    grid = np.random.default_rng(seed=0).random((2, 3, 4))
+    meta = {k: v for k, v in vol.items() if k not in ("values", "dims")}
+    legacy = {**meta, "grid": grid.tolist(), "grid_dims": [2, 3, 4], "data_order": "z"}
+    (payload,) = StructureWidget(volumetric_data=[legacy]).volumetric_data
+    # z fastest: index (ix * ny + iy) * nz + iz == numpy C-order ravel
+    assert payload == {**meta, "values": grid.ravel().tolist(), "dims": [2, 3, 4]}
+    assert payload["values"][(1 * 3 + 2) * 4 + 3] == grid[1, 2, 3]
+
+
+def test_widget_volumetric_data_from_pymatgen() -> None:
+    """Pymatgen VolumetricData expands to one flat payload per data key; Chgcar values
+    are divided by the cell volume like matterviz's CHGCAR parser.
+    """
+    from pymatgen.core import Lattice, Structure
+    from pymatgen.io.vasp.outputs import Chgcar, VolumetricData
+
+    struct = Structure(Lattice.cubic(2.0), ["Na"], [[0, 0, 0]])
+    rng = np.random.default_rng(seed=0)
+    data = {"total": rng.random((2, 2, 3)), "diff": rng.random((2, 2, 3))}
+    total, diff = StructureWidget(
+        volumetric_data=[Chgcar(struct, data)]
+    ).volumetric_data
+    assert diff["label"] == "diff"
+    assert total == {
+        "values": pytest.approx((data["total"] / 8.0).ravel().tolist(), rel=1e-15),
+        "dims": [2, 2, 3],
+        "lattice": struct.lattice.matrix.tolist(),
+        "origin": [0.0, 0.0, 0.0],
+        "periodic": True,
+        "label": "total",
     }
-    widget.volumetric_data = [vol, vol2]
-    assert len(widget.volumetric_data) == 2
-    assert widget.volumetric_data[1]["label"] == "elf"
+    # generic VolumetricData (ELFCAR, LOCPOT, ...) is passed through unscaled
+    volume = VolumetricData(struct, {"total": data["total"]})
+    (raw,) = StructureWidget(volumetric_data=[volume]).volumetric_data
+    assert raw["values"] == data["total"].ravel().tolist()
 
 
 @pytest.mark.parametrize("bad_input", ["not_a_list", ["not_a_dict"], [42]])
 def test_widget_volumetric_data_rejects_invalid(bad_input: Any) -> None:
-    """volumetric_data rejects non-list and non-dict elements."""
-    with pytest.raises(tl.TraitError):
+    """volumetric_data rejects non-lists and elements that are neither dicts nor
+    pymatgen VolumetricData (shape errors are left to the renderer).
+    """
+    with pytest.raises((tl.TraitError, TypeError), match="volumetric_data"):
         StructureWidget(volumetric_data=bad_input)
 
 

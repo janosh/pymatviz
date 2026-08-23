@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import importlib.util
 from enum import IntEnum
 from typing import Any
@@ -331,6 +332,8 @@ def test_normalize_structure_for_bz_unsupported_type() -> None:
     [
         (np.array([0, 1, 2]), np.array([0.1, 0.2, 0.3])),
         (pd.Series([0, 1, 2]), pd.Series([0.1, 0.2, 0.3])),
+        # 1-element arrays must stay lists (.item() would collapse them to scalars)
+        (np.array([0]), pd.Series([0.1])),
     ],
 )
 def test_normalize_plot_series_from_array_like_inputs(
@@ -341,7 +344,10 @@ def test_normalize_plot_series_from_array_like_inputs(
         [{"x": x_values, "y": y_values, "label": "A"}],
         component_name="ScatterPlot",
     )
-    assert normalized == [{"x": [0.0, 1.0, 2.0], "y": [0.1, 0.2, 0.3], "label": "A"}]
+    n_pts = len(x_values)
+    assert normalized == [
+        {"x": [0.0, 1.0, 2.0][:n_pts], "y": [0.1, 0.2, 0.3][:n_pts], "label": "A"}
+    ]
 
 
 def test_normalize_plot_json_scalar_subclasses() -> None:
@@ -362,17 +368,48 @@ def test_normalize_plot_json_scalar_subclasses() -> None:
 
 
 @pytest.mark.parametrize(
-    ("series_data", "error_cls", "match"),
+    ("series_data", "samples_key", "error_cls", "match"),
     [
-        ("bad", TypeError, "must be a list/tuple"),
-        ([{"x": [0, 1]}], ValueError, "must include keys 'x' and 'y'"),
-        ([{"x": [0], "y": [0, 1]}], ValueError, "lengths must match"),
-        ([{"x": [0, float("nan")], "y": [1, 2]}], ValueError, "non-finite"),
+        ("bad", None, TypeError, "must be a list/tuple"),
+        ([{"x": [0, 1]}], None, ValueError, "must include keys 'x' and 'y'"),
+        ([{"x": [0], "y": [0, 1]}], None, ValueError, "lengths must match"),
+        ([{"x": [0, float("nan")], "y": [1, 2]}], None, ValueError, "non-finite"),
+        # histogram: samples in `values`, legacy {x, y} validated like any series
+        ([[1, 2]], "values", TypeError, "entries must be dicts"),
+        ([{"label": "no samples"}], "values", ValueError, "must include key 'values'"),
+        ([{"y": [1, 2]}], "values", ValueError, "must include keys 'x' and 'y'"),
+        ([{"x": [0], "y": [0, 1]}], "values", ValueError, "lengths must match"),
+        ([{"values": 3}], "values", TypeError, "values must be list-like"),
+        ([{"values": [1, "two"]}], "values", TypeError, "must be numeric"),
+        ([{"values": [1, float("inf")]}], "values", ValueError, "finite"),
     ],
 )
 def test_normalize_plot_series_validation_errors(
-    series_data: Any, error_cls: type[Exception], match: str
+    series_data: Any, samples_key: str | None, error_cls: type[Exception], match: str
 ) -> None:
-    """Invalid plot series payloads should fail with helpful messages."""
+    """Invalid plot/histogram series payloads fail with helpful messages."""
     with pytest.raises(error_cls, match=match):
-        normalize_plot_series(series_data, component_name="ScatterPlot")
+        normalize_plot_series(
+            series_data, component_name="Plot", samples_key=samples_key
+        )
+
+
+def test_normalize_histogram_series_values_and_legacy_xy() -> None:
+    """Histogram series take their samples from `values` (any array-like, preferred)
+    or the legacy {x, y} shape where y holds the samples; both are JSON-normalized.
+    """
+    hist = functools.partial(
+        normalize_plot_series, component_name="Histogram", samples_key="values"
+    )
+    assert hist(None) is None
+    assert hist(
+        [
+            {"values": np.array([3, 1, 2]), "label": "A", "color": "#ef4444"},
+            {"values": pd.Series([0.5]), "visible": False},
+            {"x": [0, 1], "y": np.array([4, 5]), "label": "legacy"},
+        ]
+    ) == [
+        {"values": [3.0, 1.0, 2.0], "label": "A", "color": "#ef4444"},
+        {"values": [0.5], "visible": False},
+        {"x": [0.0, 1.0], "y": [4.0, 5.0], "label": "legacy"},
+    ]

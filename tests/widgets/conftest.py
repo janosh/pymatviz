@@ -28,7 +28,11 @@ def ensure_widget_assets() -> None:
 def multi_frame_trajectory(fe3co4_disordered: Structure) -> dict[str, Any]:
     """Multi-frame trajectory for testing."""
     frames = [
-        {"structure": fe3co4_disordered.as_dict(), "metadata": {"step": idx}}
+        {
+            "structure": fe3co4_disordered.as_dict(),
+            "step": idx,
+            "metadata": {"step": idx},
+        }
         for idx in range(5)
     ]
     return {"frames": frames}

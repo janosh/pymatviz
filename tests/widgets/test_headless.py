@@ -8,6 +8,7 @@ deadlocked in jupyter nbconvert --execute due to greenlet conflicts.
 from __future__ import annotations
 
 import asyncio
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -18,7 +19,7 @@ from pymatviz.widgets._headless import (
     _SVG_EXTRACT_JS,
     _build_html,
     _capture_page,
-    _has_running_event_loop,
+    _foreign_running_loop,
     _render_widget_async,
     _RenderInputs,
     build_interactive_html,
@@ -36,24 +37,59 @@ DUMMY_ESM = "export default { render() {} }"
 DUMMY_CSS = ".widget {}"
 
 
-# === _has_running_event_loop ===
+# === _foreign_running_loop ===
 
 
-def test_has_running_event_loop_outside_loop() -> None:
-    """Returns False when no event loop is running."""
-    assert _has_running_event_loop() is False
+def test_foreign_running_loop_outside_loop() -> None:
+    """Returns None when no event loop is running."""
+    assert _foreign_running_loop() is None
 
 
-def test_has_running_event_loop_inside_loop() -> None:
-    """Returns True when called from inside a running event loop."""
-    result = None
+@pytest.mark.parametrize("owner", [None, "this_loop", "other_loop"])
+def test_foreign_running_loop_inside_loop(owner: str | None) -> None:
+    """A running loop is foreign unless the cached sync Playwright context manager
+    owns it: sync Playwright leaves its own loop "running" after the first launch
+    (greenlet switch mid run_forever), which must not route exports down the async
+    path. A loop it does not own (e.g. a Jupyter kernel after a script-mode export in
+    the same process) stays foreign. Ownership is read from ``_pw_cm._loop``, not
+    from the ``Playwright`` object ``start()`` returns.
+    """
+    other_loop = asyncio.new_event_loop()
 
-    async def check() -> None:
-        nonlocal result
-        result = _has_running_event_loop()
+    async def check() -> asyncio.AbstractEventLoop | None:
+        loops = {"this_loop": asyncio.get_running_loop(), "other_loop": other_loop}
+        pw_cm = None if owner is None else SimpleNamespace(_loop=loops[owner])
+        with patch(f"{HEADLESS_PATH}._pw_cm", pw_cm), patch(f"{HEADLESS_PATH}._pw"):
+            return _foreign_running_loop()
 
-    asyncio.run(check())
-    assert result is True
+    result = asyncio.run(check())
+    other_loop.close()
+    if owner == "this_loop":
+        assert result is None
+    else:
+        assert isinstance(result, asyncio.AbstractEventLoop)
+
+
+def test_foreign_running_loop_after_shutdown() -> None:
+    """_shutdown_browser clears the cached context manager, so the loop it owned is
+    foreign again (no dangling reference keeps routing to the closed sync browser).
+    """
+    import pymatviz.widgets._headless as headless_mod
+
+    async def check() -> asyncio.AbstractEventLoop | None:
+        pw_cm = SimpleNamespace(_loop=asyncio.get_running_loop())
+        with (
+            patch(f"{HEADLESS_PATH}._pw_cm", pw_cm),
+            patch(f"{HEADLESS_PATH}._pw") as pw,
+            patch(f"{HEADLESS_PATH}._browser", None),
+        ):
+            assert _foreign_running_loop() is None
+            headless_mod._shutdown_browser()
+            pw.stop.assert_called_once()
+            assert (headless_mod._pw_cm, headless_mod._pw) == (None, None)
+            return _foreign_running_loop()
+
+    assert isinstance(asyncio.run(check()), asyncio.AbstractEventLoop)
 
 
 # === Async path dispatch ===
@@ -70,7 +106,10 @@ def test_render_widget_headless_dispatches_async_in_event_loop() -> None:
         return fake_png
 
     with (
-        patch(f"{HEADLESS_PATH}._has_running_event_loop", return_value=True),
+        patch(
+            f"{HEADLESS_PATH}._foreign_running_loop",
+            side_effect=asyncio.get_running_loop,
+        ),
         patch(
             f"{HEADLESS_PATH}._render_widget_async", side_effect=fake_render
         ) as mock_async,
@@ -108,7 +147,7 @@ def test_render_widget_headless_uses_sync_path_without_event_loop() -> None:
     mock_browser.new_page.return_value = mock_page
 
     with (
-        patch(f"{HEADLESS_PATH}._has_running_event_loop", return_value=False),
+        patch(f"{HEADLESS_PATH}._foreign_running_loop", return_value=None),
         patch(f"{HEADLESS_PATH}._get_browser", return_value=mock_browser),
         patch(f"{HEADLESS_PATH}._render_widget_async") as mock_async,
     ):
@@ -139,7 +178,7 @@ def test_render_widget_headless_uses_dpi_scale_factor(
     mock_browser.new_page.return_value = mock_page
 
     with (
-        patch(f"{HEADLESS_PATH}._has_running_event_loop", return_value=False),
+        patch(f"{HEADLESS_PATH}._foreign_running_loop", return_value=None),
         patch(f"{HEADLESS_PATH}._get_browser", return_value=mock_browser),
     ):
         result = render_widget_headless(
@@ -160,7 +199,7 @@ def test_render_widget_headless_canvas_pdf_uses_dpi_scale() -> None:
     mock_browser.new_page.return_value = mock_page
 
     with (
-        patch(f"{HEADLESS_PATH}._has_running_event_loop", return_value=False),
+        patch(f"{HEADLESS_PATH}._foreign_running_loop", return_value=None),
         patch(f"{HEADLESS_PATH}._get_browser", return_value=mock_browser),
         patch(f"{HEADLESS_PATH}._png_to_pdf", return_value=b"%PDF-raster") as mock_pdf,
     ):

@@ -29,7 +29,7 @@ class PeriodicTableWidget(MatterVizWidget):
     color_scale_range = tl.List(allow_none=True).tag(sync=True)
     color_overrides = tl.Dict(allow_none=True).tag(sync=True)
     labels = tl.Dict(allow_none=True).tag(sync=True)
-    log_scale = tl.Bool(default_value=False).tag(sync=True)
+    log = tl.Bool(default_value=False).tag(sync=True)
     show_color_bar = tl.Bool(default_value=True).tag(sync=True)
     gap = tl.Unicode(default_value="0.3cqw").tag(sync=True)
     # styling for tiles with no heatmap value, e.g. {"color": "gray", "label": "N/A"}.

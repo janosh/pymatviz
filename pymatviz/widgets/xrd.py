@@ -6,10 +6,11 @@ from typing import Any
 
 import traitlets as tl
 
+from pymatviz.widgets._traits import PlotControlsTraits
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
-class XrdWidget(MatterVizWidget):
+class XrdWidget(PlotControlsTraits, MatterVizWidget):
     """MatterViz widget for visualizing X-ray diffraction patterns.
 
     Accepts a pymatgen DiffractionPattern or a dict with either:
@@ -34,8 +35,6 @@ class XrdWidget(MatterVizWidget):
     """
 
     patterns = tl.Dict(allow_none=True).tag(sync=True)
-    # control pane configuration; merged with show_controls into controls.show
-    controls = tl.Dict(default_value=None, allow_none=True).tag(sync=True)
 
     def __init__(self, patterns: Any | None = None, **kwargs: Any) -> None:
         """Initialize the XrdWidget.
@@ -43,8 +42,8 @@ class XrdWidget(MatterVizWidget):
         Args:
             patterns: XRD pattern data -- a pymatgen DiffractionPattern or dict with
                 x (2-theta angles) and y (intensities) keys.
-            **kwargs: Additional widget properties (e.g. ``controls`` for the
-                control pane configuration).
+            **kwargs: Additional widget properties (e.g. ``controls_open`` to
+                start with the control pane expanded).
         """
         from pymatviz.widgets._normalize import normalize_xrd_pattern
 

@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, Any, cast
 import numpy as np
 import plotly.graph_objects as go
 
+from pymatviz.utils.plotting import annotated_heatmap
+
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -53,7 +55,7 @@ def confusion_matrix(
         colorscale (str): Plotly colorscale name
         float_fmt (str): Format string for floating point numbers in annotations
         heatmap_kwargs (dict | None): Additional keywords for
-            plotly.figure_factory.create_annotated_heatmap()
+            pymatviz.utils.plotting.annotated_heatmap()
         metrics (dict[str, str | None] | Sequence[str]): Which metrics to display and
             their format strings. If not dict, uses float_fmt for all metrics. Defaults
             to ("Acc", "MCC"). Available metrics: "Acc", "Prec", "Rec", "F1", "MCC"
@@ -66,7 +68,6 @@ def confusion_matrix(
     Returns:
         go.Figure: Plotly figure object
     """
-    import plotly.figure_factory as ff
     import sklearn.metrics as skm
 
     if float_fmt == "":
@@ -173,7 +174,9 @@ def confusion_matrix(
     # confusion matrix orientation; regression: rot90 used to transpose the
     # matrix, rendering true on x and predicted on y, contradicting the
     # docstring, hover text, and axis titles)
-    heatmap_defaults = dict(
+    # annotated so the ** unpack below does not widen every argument into a union of
+    # the dict's value types, which then matches none of the narrower parameters
+    heatmap_defaults: dict[str, Any] = dict(
         z=np.flipud(conf_mat_arr),
         x=formatted_labels["x"],
         y=formatted_labels["y"],
@@ -185,7 +188,7 @@ def confusion_matrix(
         hoverinfo="text",
         text=np.flipud(hover_text),
     )
-    fig = ff.create_annotated_heatmap(**heatmap_defaults | (heatmap_kwargs or {}))
+    fig = annotated_heatmap(**heatmap_defaults | (heatmap_kwargs or {}))
 
     # Calculate accuracy and other metrics
     acc = conf_mat_arr.diagonal().sum() / conf_mat_arr.sum()
