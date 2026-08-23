@@ -338,7 +338,7 @@ def _(pmv):
         _phonon_doc = json.loads(file.read(), cls=MontyDecoder)
 
     _band_data = _phonon_doc.phonon_bandstructure
-    pmv.BandStructureWidget(band_structure=_band_data, style="height: 400px;")
+    pmv.BandStructureWidget(band_structs=_band_data, style="height: 400px;")
     return (_band_data, _phonon_doc)
 
 
@@ -353,7 +353,7 @@ def _(mo):
 @app.cell
 def _(_phonon_doc, pmv):
     _dos_data = _phonon_doc.phonon_dos
-    pmv.DosWidget(dos=_dos_data, style="height: 400px;")
+    pmv.DosWidget(doses=_dos_data, style="height: 400px;")
     return (_dos_data,)
 
 
@@ -368,7 +368,7 @@ def _(mo):
 @app.cell
 def _(_band_data, _dos_data, pmv):
     pmv.BandsAndDosWidget(
-        band_structure=_band_data, dos=_dos_data, style="height: 500px;"
+        band_structs=_band_data, doses=_dos_data, style="height: 500px;"
     )
 
 
@@ -469,6 +469,17 @@ def _(Final):
 
 
 @app.cell
+def _():
+    def iso_settings(isovalue: float, opacity: float, *, show_negative: bool) -> dict:
+        """Layers-only matterviz IsosurfaceSettings: one blue (+) / red (-) layer."""
+        layer = dict(isovalue=isovalue, color="#3b82f6", opacity=opacity, visible=True)
+        layer |= dict(show_negative=show_negative, negative_color="#ef4444")
+        return {"layers": [layer], "wireframe": False, "halo": 0}
+
+    return (iso_settings,)
+
+
+@app.cell
 def _(mo):
     mo.md("""
     ### Isosurface Rendering (CHGCAR)
@@ -477,15 +488,10 @@ def _(mo):
 
 
 @app.cell
-def _(matterviz_iso_dir_url, pmv):
+def _(iso_settings, matterviz_iso_dir_url, pmv):
     pmv.StructureWidget(
         data_url=f"{matterviz_iso_dir_url}/Si-CHGCAR.gz",
-        isosurface_settings={
-            "isovalue": 0.05,
-            "opacity": 0.6,
-            "positive_color": "#3b82f6",
-            "show_negative": False,
-        },
+        isosurface_settings=iso_settings(0.05, 0.6, show_negative=False),
         style="height: 500px;",
     )
 
@@ -499,16 +505,10 @@ def _(mo):
 
 
 @app.cell
-def _(matterviz_iso_dir_url, pmv):
+def _(iso_settings, matterviz_iso_dir_url, pmv):
     pmv.StructureWidget(
         data_url=f"{matterviz_iso_dir_url}/caffeine-HOMO.cube.gz",
-        isosurface_settings={
-            "isovalue": 0.02,
-            "opacity": 0.7,
-            "positive_color": "#3b82f6",
-            "negative_color": "#ef4444",
-            "show_negative": True,
-        },
+        isosurface_settings=iso_settings(0.02, 0.7, show_negative=True),
         show_bonds=True,
         style="height: 500px;",
     )

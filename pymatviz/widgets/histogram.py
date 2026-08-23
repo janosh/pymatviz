@@ -7,11 +7,14 @@ from typing import Any
 import traitlets as tl
 
 from pymatviz.widgets._normalize import normalize_plot_json, normalize_plot_series
+from pymatviz.widgets._traits import PlotControlsTraits
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
-class HistogramWidget(MatterVizWidget):
-    """MatterViz widget wrapper for histogram visualizations."""
+class HistogramWidget(PlotControlsTraits, MatterVizWidget):
+    """MatterViz widget wrapper for histogram visualizations. Each series holds the
+    raw samples to bin in ``values``; binning happens in the frontend.
+    """
 
     series = tl.List(allow_none=True).tag(sync=True)
     bins = tl.Int(default_value=100).tag(sync=True)
@@ -62,8 +65,8 @@ class HistogramWidget(MatterVizWidget):
         """Initialize a histogram widget.
 
         Args:
-            series: Plot series with required ``x`` and ``y`` arrays (``y`` values are
-                used for histogram binning by the frontend component).
+            series: Series dicts ``{"values": [...], "label", "color", ...}`` with
+                the raw samples in ``values`` (legacy ``{x, y}``: ``y`` as samples).
             bins: Number of bins.
             mode: Histogram mode (``single`` or ``overlay``).
             selected_property: Active series label in single-mode controls.
@@ -87,7 +90,9 @@ class HistogramWidget(MatterVizWidget):
         """
         super().__init__(
             widget_type="histogram",
-            series=normalize_plot_series(series, component_name="Histogram"),
+            series=normalize_plot_series(
+                series, component_name="Histogram", samples_key="values"
+            ),
             bins=bins,
             mode=mode,
             selected_property=selected_property,

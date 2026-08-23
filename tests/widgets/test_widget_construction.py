@@ -47,16 +47,16 @@ from pymatviz.widgets.xrd import XrdWidget
         ),
         (
             BandStructureWidget,
-            {"band_structure": {"bands": []}},
+            {"band_structs": {"bands": []}},
             "band_structure",
-            "band_structure",
+            "band_structs",
         ),
-        (DosWidget, {"dos": {"energies": [0]}}, "dos", "dos"),
+        (DosWidget, {"doses": {"energies": [0]}}, "dos", "doses"),
         (
             BandsAndDosWidget,
-            {"band_structure": {"bands": []}, "dos": {"energies": []}},
+            {"band_structs": {"bands": []}, "doses": {"energies": []}},
             "bands_and_dos",
-            "dos",
+            "doses",
         ),
         (
             FermiSurfaceWidget,
@@ -125,12 +125,12 @@ from pymatviz.widgets.xrd import XrdWidget
             "heatmap_matrix",
             "values",
         ),
-        (PeriodicTableWidget, {"log_scale": True}, "periodic_table", "log_scale"),
+        (PeriodicTableWidget, {"log": True}, "periodic_table", "log"),
         (
             HeatmapMatrixWidget,
-            {"x_items": ["A"], "y_items": ["B"], "log_scale": True},
+            {"x_items": ["A"], "y_items": ["B"], "log": True},
             "heatmap_matrix",
-            "log_scale",
+            "log",
         ),
         (SpacegroupBarPlotWidget, {"data": [225, 166, 62]}, "spacegroup_bar", "data"),
         (
@@ -171,7 +171,7 @@ def test_widget_construction_and_type(
             {"series": [{"x": [0, 1], "y": [1, 2]}], "bins": 50, "mode": "overlay"},
         ),
         (BarPlotWidget, {"series": [{"x": [0], "y": [1]}], "mode": "grouped"}),
-        (DosWidget, {"dos": {"energies": [0, 1]}, "sigma": 0.05}),
+        (DosWidget, {"doses": {"energies": [0, 1]}, "sigma": 0.05}),
         (ConvexHullWidget, {"entries": [{"composition": {"Li": 1}, "energy": -1.5}]}),
         (PeriodicTableWidget, {"heatmap_values": {"Fe": 42}}),
         (ScatterPlot3DWidget, {"series": [{"x": [1], "y": [2], "z": [3]}]}),
@@ -244,10 +244,10 @@ _MINIMAL_KWARGS: dict[type, dict[str, Any]] = {
         (HistogramWidget, "mode", "single"),
         (HistogramWidget, "show_legend", True),
         (PeriodicTableWidget, "color_scale", "interpolateViridis"),
-        (PeriodicTableWidget, "log_scale", False),
+        (PeriodicTableWidget, "log", False),
         (PeriodicTableWidget, "show_color_bar", True),
         (PeriodicTableWidget, "missing", None),
-        (HeatmapMatrixWidget, "log_scale", False),
+        (HeatmapMatrixWidget, "log", False),
         (HeatmapMatrixWidget, "missing", None),
         (ScatterPlot3DWidget, "camera_projection", "perspective"),
         (HeatmapMatrixWidget, "color_scale", "interpolateViridis"),
@@ -274,7 +274,8 @@ def test_treemap_widget_all_config_traits_default_to_none() -> None:
     List/Dict need explicit default_value=None) which would override the
     component's own defaults.
     """
-    base_traits = {"widget_type", "style", "show_controls"}
+    # controls_open is two-way view state mirroring the frontend's false default
+    base_traits = {"widget_type", "style", "show_controls", "controls_open"}
     state = TreemapWidget().to_dict()
     non_none = {key for key, val in state.items() if val is not None} - base_traits
     assert not non_none, f"expected None defaults, got non-None for {sorted(non_none)}"
@@ -284,19 +285,26 @@ def test_treemap_widget_all_config_traits_default_to_none() -> None:
 
 
 def test_histogram_widget_delegates_series_validation() -> None:
-    """HistogramWidget constructor delegates to normalize_plot_series validation."""
+    """HistogramWidget accepts `{values}` series and delegates validation of the
+    legacy {x, y} shape to normalize_plot_series.
+    """
+    widget = HistogramWidget(series=[{"values": np.array([2, 1]), "label": "a"}])
+    assert widget.to_dict()["series"] == [{"values": [2.0, 1.0], "label": "a"}]
     with pytest.raises(ValueError, match="must include keys 'x' and 'y'"):
         HistogramWidget(series=[{"x": [0, 1]}])
+    with pytest.raises(ValueError, match="must include key 'values'"):
+        HistogramWidget(series=[{"label": "empty"}])
 
 
 # === New widget specific behaviors ===
 
 
 def test_structure_widget_isosurface_settings() -> None:
-    """StructureWidget passes isosurface_settings through to_dict."""
-    iso_settings = {"isovalue": 0.05, "opacity": 0.6, "positive_color": "#3b82f6"}
-    widget = StructureWidget(isosurface_settings=iso_settings)
-    state = widget.to_dict()
+    """StructureWidget passes layers-only isosurface_settings through to_dict."""
+    layer = dict(isovalue=0.05, color="#3b82f6", opacity=0.6, visible=True)
+    layer |= dict(show_negative=False, negative_color="#ef4444")
+    iso_settings = {"layers": [layer], "wireframe": False, "halo": 0}
+    state = StructureWidget(isosurface_settings=iso_settings).to_dict()
     assert state["isosurface_settings"] == iso_settings
     assert state["widget_type"] == "structure"
 
@@ -730,19 +738,16 @@ def test_build_html_embeds_data_and_css() -> None:
 
 
 def test_shutdown_browser_tolerates_none() -> None:
-    """_shutdown_browser handles _browser=None and _pw=None without error."""
+    """_shutdown_browser handles _browser/_pw/_pw_cm all None without error."""
     import pymatviz.widgets._headless as headless_mod
     from pymatviz.widgets._headless import _shutdown_browser
 
-    orig_browser = headless_mod._browser
-    orig_pw = headless_mod._pw
-    headless_mod._browser = None
-    headless_mod._pw = None
-    try:
+    with (
+        patch.object(headless_mod, "_browser", None),
+        patch.object(headless_mod, "_pw", None),
+        patch.object(headless_mod, "_pw_cm", None),
+    ):
         _shutdown_browser()
-    finally:
-        headless_mod._browser = orig_browser
-        headless_mod._pw = orig_pw
 
 
 def test_get_browser_import_error() -> None:
@@ -823,7 +828,7 @@ def test_render_widget_headless_dpi_to_scale(
     # leaves an asyncio loop running, which would route down the unmocked async path
     with (
         patch(f"{_HEADLESS}._get_browser", return_value=mock_browser),
-        patch(f"{_HEADLESS}._has_running_event_loop", return_value=False),
+        patch(f"{_HEADLESS}._foreign_running_loop", return_value=None),
     ):
         from pymatviz.widgets._headless import render_widget_headless
 

@@ -85,10 +85,10 @@ def test_create_widget_unknown_type_raises(bad_input: Any, match: str) -> None:
 @pytest.mark.parametrize(
     ("class_name", "expected_widget", "expected_param"),
     [
-        ("BandStructure", BandStructureWidget, "band_structure"),
-        ("BandStructureSymmLine", BandStructureWidget, "band_structure"),
-        ("Dos", DosWidget, "dos"),
-        ("CompleteDos", DosWidget, "dos"),
+        ("BandStructure", BandStructureWidget, "band_structs"),
+        ("BandStructureSymmLine", BandStructureWidget, "band_structs"),
+        ("Dos", DosWidget, "doses"),
+        ("CompleteDos", DosWidget, "doses"),
         ("DiffractionPattern", XrdWidget, "patterns"),
         ("PhaseDiagram", ConvexHullWidget, "entries"),
         ("Structure", None, "structure"),

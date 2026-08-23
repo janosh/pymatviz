@@ -185,6 +185,8 @@ widget.render_report()  # headless render health check: blank fraction, warnings
 
 `to_img` and `render_report` require [Playwright](https://playwright.dev/python): `pip install pymatviz[export] && playwright install chromium`. Set the `PYMATVIZ_STATIC` env var to make `widget.show()` render static PNGs instead of live widgets (useful for CI notebook execution).
 
+Widget constructor kwargs mirror the props of the matching MatterViz component one-to-one (e.g. `BandStructureWidget(band_structs=...)`, `DosWidget(doses=...)`, `HeatmapMatrixWidget(log=True)`), and every plot widget takes `show_controls`, `controls_open`, `controls_toggle_props` and `controls_pane_props` for its control pane. The frontend is the prebuilt [`matterviz-anywidget`](https://www.npmjs.com/package/matterviz-anywidget) npm bundle pinned in [`pymatviz/widgets/matterviz.py`](pymatviz/widgets/matterviz.py) (fetched from jsDelivr and cached); set `MATTERVIZ_ANYWIDGET_DIR` to a local `matterviz/extensions/anywidget/build` to develop against an unreleased MatterViz.
+
 **Examples:**
 
 - [Jupyter notebook demo](examples/widgets/jupyter_demo.ipynb)

@@ -2,7 +2,7 @@ default_install_hook_types: [pre-commit, commit-msg]
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.3
+    rev: v0.16.4
     hooks:
       - id: ruff-check
         args: [--fix]
@@ -11,7 +11,7 @@ repos:
         types_or: [python, jupyter]
 
   - repo: https://github.com/astral-sh/ty-pre-commit
-    rev: v0.0.72
+    rev: v0.0.74
     hooks:
       - id: ty
         # Isolated extras in a temp env. Override shell UV_FROZEN=1 / UV_NO_SYNC=1 or that env stays empty.
@@ -59,7 +59,7 @@ repos:
       - id: codespell
         stages: [pre-commit, commit-msg]
         exclude_types: [csv, svg, html, yaml, jupyter]
-        args: [--ignore-words-list, 'hist,mape,te,nd,fpr,abou,nam', --check-filenames]
+        args: [--ignore-words-list, "hist,mape,te,nd,fpr,abou,nam", --check-filenames]
 
   - repo: https://github.com/kynan/nbstripout
     rev: 0.9.1
@@ -69,24 +69,12 @@ repos:
 
   - repo: local
     hooks:
-      - id: vp-fmt
-        name: Format (oxfmt)
-        entry: bash -c 'cd site && { [ -d node_modules ] || pnpm install; } && node_modules/.bin/vp fmt --write'
-        types_or: [ts, javascript, json, css, html, svelte]
+      - id: vp-staged
+        name: Format, lint and type-check staged files (vp staged)
+        entry: env PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false pnpm -C site exec vp staged
         language: system
         pass_filenames: false
-      - id: vp-lint
-        name: Lint (oxlint)
-        entry: bash -c 'cd site && { [ -d node_modules ] || pnpm install; } && node_modules/.bin/vp lint --fix'
-        types_or: [ts, javascript, json, css, html, svelte]
-        language: system
-        pass_filenames: false
-      - id: svelte-check
-        name: Svelte type check
-        entry: bash -c 'cd site && { [ -d node_modules ] || pnpm install; } && node_modules/.bin/svelte-kit sync && node_modules/.bin/svelte-check-rs --threshold error'
-        language: system
-        types_or: [ts, svelte]
-        pass_filenames: false
+        stages: [pre-commit]
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
     rev: 0.38.0

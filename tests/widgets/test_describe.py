@@ -34,6 +34,22 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
             },
         ),
         (pmv.BarPlotWidget(series=[{"x": [0, 1], "y": [2, 3]}]), {"n_series": 1}),
+        # histogram samples live in `values` (binned on x); a legacy {x, y} series
+        # bins `y` and ignores `x` like the renderer, and bin counts are not a y_range
+        (
+            pmv.HistogramWidget(
+                series=[
+                    {"values": [1, 5, 3], "label": "a"},
+                    {"x": [100, 200], "y": [7, 2]},
+                ]
+            ),
+            {"n_series": 2, "n_points": 5, "series_labels": ["a"]}
+            | {"x_range": [1.0, 7.0], "y_range": None},
+        ),
+        (  # `values` wins over `y` when a series carries both
+            pmv.HistogramWidget(series=[{"values": [4, 6], "y": [0, 99]}]),
+            {"n_points": 2, "x_range": [4.0, 6.0], "y_range": None},
+        ),
         (
             pmv.ScatterPlot3DWidget(series=[{"x": [1, 2], "y": [2, 3], "z": [3, 4]}]),
             {"n_series": 1, "z_range": [3.0, 4.0]},
@@ -75,7 +91,7 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
         ),
         (
             pmv.DosWidget(
-                dos={
+                doses={
                     "energies": [-1, 0, 1],
                     "extra": {"energies": [-2, 2]},
                 }
@@ -83,16 +99,16 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
             {"n_energies": 3, "energy_range": [-1.0, 1.0]},
         ),
         (
-            pmv.BandStructureWidget(band_structure={"bands": [[-1, 0, 1]]}),
+            pmv.BandStructureWidget(band_structs={"bands": [[-1, 0, 1]]}),
             {"n_bands": 1},
         ),
         (
             pmv.BandsAndDosWidget(
-                band_structure={
+                band_structs={
                     "first": {"bands": [[-1, 0, 1]]},
                     "second": {"bands": [[-2, -1, 0], [0, 1, 2]]},
                 },
-                dos={
+                doses={
                     "first": {"energies": [-2, -1, 0]},
                     "second": {"energies": [1, 2]},
                 },
@@ -107,12 +123,12 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
         ),
         (
             pmv.BandStructureWidget(
-                band_structure={"bands": {"up": [[-1]], "down": [[0]]}}
+                band_structs={"bands": {"up": [[-1]], "down": [[0]]}}
             ),
             {"n_bands": None},
         ),
         (
-            pmv.DosWidget(dos={"energies": {"up": [-1], "down": [0]}}),
+            pmv.DosWidget(doses={"energies": {"up": [-1], "down": [0]}}),
             {"n_energies": None},
         ),
     ],
@@ -191,14 +207,19 @@ def test_short_summary(report: dict[str, Any], expected: str) -> None:
     [
         (pmv.ScatterPlotWidget(), True),
         (pmv.ScatterPlotWidget(series=[{"x": [0, 1], "y": [1, 2]}]), False),
+        # histograms bin `values` (or legacy `y`); `x` alone is blank
+        (pmv.HistogramWidget(), True),
+        (pmv.HistogramWidget(series=[{"values": [1, 2, 3]}]), False),
+        (pmv.HistogramWidget(series=[{"x": [0, 1, 2], "y": [1, 2, 3]}]), False),
+        (pmv.HistogramWidget(series=[{"values": []}, {"x": [], "y": []}]), True),
         (pmv.PeriodicTableWidget(), True),
         (pmv.PeriodicTableWidget(heatmap_values={"Fe": 1}), False),
         (pmv.DosWidget(), True),
-        (pmv.DosWidget(dos={"energies": [0]}), False),
+        (pmv.DosWidget(doses={"energies": [0]}), False),
         (pmv.BandStructureWidget(), True),
-        (pmv.BandStructureWidget(band_structure={"bands": [[0]]}), False),
+        (pmv.BandStructureWidget(band_structs={"bands": [[0]]}), False),
         (pmv.BandsAndDosWidget(), True),
-        (pmv.BandsAndDosWidget(dos={"energies": [0]}), False),
+        (pmv.BandsAndDosWidget(doses={"energies": [0]}), False),
         # rdf_plot warns when neither source given, incl. empty (not just None)
         (pmv.RdfPlotWidget(), True),
         (pmv.RdfPlotWidget(structures=[]), True),

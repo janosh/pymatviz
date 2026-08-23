@@ -7,10 +7,11 @@ from typing import Any
 import traitlets as tl
 
 from pymatviz.widgets._normalize import normalize_plot_json
+from pymatviz.widgets._traits import PlotControlsTraits
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
-class ScatterPlot3DWidget(MatterVizWidget):
+class ScatterPlot3DWidget(PlotControlsTraits, MatterVizWidget):
     """MatterViz widget for 3D scatter/surface plots with camera controls.
 
     Examples:
@@ -32,7 +33,7 @@ class ScatterPlot3DWidget(MatterVizWidget):
     color_scale = tl.Dict(allow_none=True).tag(sync=True)
     size_scale = tl.Dict(allow_none=True).tag(sync=True)
     legend = tl.Dict(allow_none=True).tag(sync=True)
-    controls = tl.Dict(allow_none=True).tag(sync=True)
+    show_legend = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     camera_projection = tl.Unicode(default_value="perspective").tag(sync=True)
 
     def __init__(

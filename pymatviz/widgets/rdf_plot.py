@@ -7,10 +7,11 @@ from typing import Any
 import traitlets as tl
 
 from pymatviz.widgets._normalize import _to_dict, normalize_plot_json
+from pymatviz.widgets._traits import PlotControlsTraits
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
-class RdfPlotWidget(MatterVizWidget):
+class RdfPlotWidget(PlotControlsTraits, MatterVizWidget):
     """MatterViz widget for radial distribution function (RDF) plots.
 
     Accepts pre-computed RDF patterns or structure data for on-the-fly computation.
@@ -32,8 +33,6 @@ class RdfPlotWidget(MatterVizWidget):
     n_bins = tl.Int(default_value=75).tag(sync=True)
     x_axis = tl.Dict(allow_none=True).tag(sync=True)
     y_axis = tl.Dict(allow_none=True).tag(sync=True)
-    # control pane configuration; merged with show_controls into controls.show
-    controls = tl.Dict(default_value=None, allow_none=True).tag(sync=True)
 
     def __init__(
         self,

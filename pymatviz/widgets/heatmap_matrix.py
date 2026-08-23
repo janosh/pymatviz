@@ -64,7 +64,7 @@ class HeatmapMatrixWidget(MatterVizWidget):
     values = tl.Any(allow_none=True).tag(sync=True)
     color_scale = tl.Unicode(default_value="interpolateViridis").tag(sync=True)
     color_scale_range = tl.List(allow_none=True).tag(sync=True)
-    log_scale = tl.Bool(default_value=False).tag(sync=True)
+    log = tl.Bool(default_value=False).tag(sync=True)
     # styling for cells with no value, e.g. {"color": "gray", "label": "N/A"}
     missing = tl.Dict(default_value=None, allow_none=True).tag(sync=True)
     x_axis = tl.Dict(allow_none=True).tag(sync=True)

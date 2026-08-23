@@ -7,10 +7,11 @@ from typing import Any
 import traitlets as tl
 
 from pymatviz.widgets._normalize import normalize_plot_json, normalize_plot_series
+from pymatviz.widgets._traits import PlotControlsTraits
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
-class BarPlotWidget(MatterVizWidget):
+class BarPlotWidget(PlotControlsTraits, MatterVizWidget):
     """MatterViz widget wrapper for grouped/stacked/overlay bar plots."""
 
     series = tl.List(allow_none=True).tag(sync=True)
@@ -38,7 +39,6 @@ class BarPlotWidget(MatterVizWidget):
     y2_range = tl.List(allow_none=True).tag(sync=True)
     color_scale = tl.Dict(allow_none=True).tag(sync=True)
     size_scale = tl.Dict(allow_none=True).tag(sync=True)
-    point_tween = tl.Dict(allow_none=True).tag(sync=True)
 
     def __init__(
         self,
@@ -64,7 +64,6 @@ class BarPlotWidget(MatterVizWidget):
         y2_range: list[float | None] | None = None,
         color_scale: dict[str, Any] | None = None,
         size_scale: dict[str, Any] | None = None,
-        point_tween: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize a bar plot widget.
@@ -92,7 +91,6 @@ class BarPlotWidget(MatterVizWidget):
             y2_range: Fixed secondary Y axis range ``[min, max]``.
             color_scale: Color scaling configuration for bar colors.
             size_scale: Marker size scaling (for line markers on bars).
-            point_tween: Point/marker animation configuration.
             **kwargs: Additional base widget keyword arguments.
         """
         super().__init__(
@@ -118,6 +116,5 @@ class BarPlotWidget(MatterVizWidget):
             y2_range=normalize_plot_json(y2_range, "BarPlot.y2_range"),
             color_scale=normalize_plot_json(color_scale, "BarPlot.color_scale"),
             size_scale=normalize_plot_json(size_scale, "BarPlot.size_scale"),
-            point_tween=normalize_plot_json(point_tween, "BarPlot.point_tween"),
             **kwargs,
         )

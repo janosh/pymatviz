@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- 💥 Widgets render the [matterviz-anywidget](https://www.npmjs.com/package/matterviz-anywidget) 0.6.0 bundle; synced traits mirror its JS contract exactly (`tests/widgets/test_js_prop_parity.py`). Renamed: `BandStructureWidget(band_structure=)` → `band_structs=`, `DosWidget(dos=)` → `doses=` (also `BandsAndDosWidget`; both take a `{label: obj}` dict to overlay several), `log_scale` → `log` on `HeatmapMatrixWidget`/`PeriodicTableWidget`, `show_gizmo` → `gizmo` (`bool` or `GizmoOptions` dict) on `StructureWidget`/`TrajectoryWidget`. Removed: `controls` on `XrdWidget`/`RdfPlotWidget`/`ScatterPlotWidget`/`ScatterPlot3DWidget`, `ScatterPlotWidget.point_events`, `BarPlotWidget.point_tween`.
+- 💥 `StructureWidget.isosurface_settings` is layers-only (`{"layers": [{isovalue, color, opacity, visible, show_negative, negative_color}], "wireframe", "halo"}`); `volumetric_data` accepts pymatgen `VolumetricData` objects and nested-`grid` dicts, emitted as flat `values` + `dims` (shape errors are reported by the renderer). `HistogramWidget.series` samples live in `values` (legacy `{x, y}` still binned on `y`).
+- 🎉 Plot widgets gain `controls_open` (two-way), `controls_toggle_props`, `controls_pane_props`; `ScatterPlotWidget` gains `show_legend`, `marker_renderer`; `ScatterPlot3DWidget` gains `show_legend`; `StructureWidget` gains two-way `active_volume_idx`, `display_mode` (`"structure" | "slice"`), `slice_settings`; `TrajectoryWidget` gains `atom_type_mapping` for LAMMPS dumps loaded via `data_url`.
+- 🐛 Headless export (`to_img`/`render_report`) broke from the second call on in plain scripts without `nest_asyncio`: sync Playwright's own "running" loop was mistaken for a Jupyter kernel loop. Only a foreign loop takes the async path now; `nest-asyncio` is part of the `export` extra.
+- 🐛 `normalize_plot_json` no longer collapses 1-element numpy arrays / pandas Series to scalars.
+- 🚧 CI installs playwright so headless-export and trait-parity tests run against the pinned `matterviz-anywidget` release (`MATTERVIZ_ANYWIDGET_DIR` for a local build).
+
 ## [v0.18.0](https://github.com/janosh/pymatviz/compare/v0.17.6...v0.18.0)
 
 > 7 June 2026

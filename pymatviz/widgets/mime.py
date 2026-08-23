@@ -35,18 +35,18 @@ _CLASS_SPECS: list[tuple[str, list[str], type, str]] = [
         "pymatgen.electronic_structure.bandstructure",
         ["BandStructure", "BandStructureSymmLine"],
         BandStructureWidget,
-        "band_structure",
+        "band_structs",
     ),
     (
         "pymatgen.phonon.bandstructure",
         ["PhononBandStructureSymmLine"],
         BandStructureWidget,
-        "band_structure",
+        "band_structs",
     ),
     # DOS (pymatgen electronic + phonon, phonopy)
-    ("pymatgen.electronic_structure.dos", ["Dos", "CompleteDos"], DosWidget, "dos"),
-    ("pymatgen.phonon.dos", ["PhononDos"], DosWidget, "dos"),
-    ("phonopy.phonon.dos", ["TotalDos"], DosWidget, "dos"),
+    ("pymatgen.electronic_structure.dos", ["Dos", "CompleteDos"], DosWidget, "doses"),
+    ("pymatgen.phonon.dos", ["PhononDos"], DosWidget, "doses"),
+    ("phonopy.phonon.dos", ["TotalDos"], DosWidget, "doses"),
     # XRD
     (
         "pymatgen.analysis.diffraction.xrd",
