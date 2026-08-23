@@ -13,13 +13,56 @@ class FermiSurfaceWidget(MatterVizWidget):
     """MatterViz widget for visualizing Fermi surfaces.
 
     Accepts pre-computed Fermi surface data (isosurfaces + reciprocal lattice) or
-    raw band grid data (energies on a k-grid for marching cubes extraction).
+    raw band grid data (energies on a k-grid for marching cubes extraction). Both
+    are plain JSON; the frontend packs them into typed arrays.
+
+    ``fermi_data`` is a JSON mesh dict::
+
+        {
+            "isosurfaces": [
+                {
+                    "vertices": [[x, y, z], ...],  # Cartesian k-space rows
+                    "faces": [[i, j, k], ...],  # vertex index rows (any polygon size)
+                    "normals": [[nx, ny, nz], ...],  # optional, one row per vertex
+                    "properties": [...],  # optional per-vertex scalar (e.g. velocity)
+                    "band_index": 0,
+                    "spin": "up" | "down" | None,
+                },
+            ],
+            "k_lattice": [[...], [...], [...]],  # reciprocal lattice rows
+            "fermi_energy": 5.0,  # eV
+            "reciprocal_cell": "wigner_seitz" | "parallelepiped",
+            "metadata": {"n_bands": 1, "n_surfaces": 1},
+        }
+
+    or an IFermi ``FermiSurface.as_dict()`` (``@class: "FermiSurface"`` with
+    ``isosurfaces`` keyed by signed band index, negative = spin down, and
+    ``reciprocal_space.reciprocal_lattice``), which the frontend converts itself.
+
+    ``band_data`` is a band grid dict::
+
+        {
+            "energies": [[band_grid, ...]],  # [spin][band][kx][ky][kz] nested lists
+            "k_grid": [nx, ny, nz],  # must match every band grid's shape
+            "k_lattice": [[...], [...], [...]],
+            "fermi_energy": 5.0,
+            "n_bands": 4,
+            "n_spins": 1,
+            "origin": [0, 0, 0],  # optional
+            "periodic": False,  # optional: True for k = i/n grids without endpoint
+        }
+
+    The frontend flattens the nested grids to z-fastest arrays (index
+    ``(ix * ny + iy) * nz + iz``) once at the prop boundary.
 
     Examples:
         From pre-computed Fermi surface data:
         >>> from pymatviz import FermiSurfaceWidget
         >>> widget = FermiSurfaceWidget(fermi_data=fermi_dict)
         >>> widget
+
+        From IFermi:
+        >>> widget = FermiSurfaceWidget(fermi_data=ifermi_fermi_surface.as_dict())
 
         From raw band grid data:
         >>> widget = FermiSurfaceWidget(band_data=band_grid_dict)

@@ -6,12 +6,28 @@ from typing import Any
 
 import traitlets as tl
 
-from pymatviz.widgets._normalize import normalize_plot_json, normalize_plot_series
+from pymatviz.widgets._normalize import normalize_histogram_series, normalize_plot_json
+from pymatviz.widgets._traits import PlotControlsTraits
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
-class HistogramWidget(MatterVizWidget):
-    """MatterViz widget wrapper for histogram visualizations."""
+class HistogramWidget(PlotControlsTraits, MatterVizWidget):
+    """MatterViz widget wrapper for histogram visualizations.
+
+    Each series holds the raw samples to bin in ``values``; binning happens in the
+    frontend, so ``bins`` and the axis scales can be changed interactively.
+
+    Examples:
+        >>> from pymatviz import HistogramWidget
+        >>> widget = HistogramWidget(
+        ...     series=[
+        ...         {"values": energies_a, "label": "A"},
+        ...         {"values": energies_b, "label": "B", "color": "#ef4444"},
+        ...     ],
+        ...     bins=50,
+        ...     mode="overlay",
+        ... )
+    """
 
     series = tl.List(allow_none=True).tag(sync=True)
     bins = tl.Int(default_value=100).tag(sync=True)
@@ -62,8 +78,11 @@ class HistogramWidget(MatterVizWidget):
         """Initialize a histogram widget.
 
         Args:
-            series: Plot series with required ``x`` and ``y`` arrays (``y`` values are
-                used for histogram binning by the frontend component).
+            series: Histogram series dicts ``{"values": [...], "label": ...,
+                "color": ..., "visible": ..., "x_axis": "x1"|"x2", "y_axis":
+                "y1"|"y2"}`` where ``values`` are the raw samples to bin. The legacy
+                ``{"x": [...], "y": [...]}`` shape is still accepted with ``y`` as
+                the samples (``x`` is ignored).
             bins: Number of bins.
             mode: Histogram mode (``single`` or ``overlay``).
             selected_property: Active series label in single-mode controls.
@@ -87,7 +106,7 @@ class HistogramWidget(MatterVizWidget):
         """
         super().__init__(
             widget_type="histogram",
-            series=normalize_plot_series(series, component_name="Histogram"),
+            series=normalize_histogram_series(series),
             bins=bins,
             mode=mode,
             selected_property=selected_property,

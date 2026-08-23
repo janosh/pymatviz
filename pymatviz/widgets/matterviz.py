@@ -22,11 +22,13 @@ if TYPE_CHECKING:
 
 
 # npm version of the prebuilt ``matterviz-anywidget`` bundle (built from
-# matterviz/extensions/anywidget) that pymatviz renders. Only bump this to a
-# version already published to npm: the default to_html/to_img path fetches
-# ``matterviz-anywidget@<this>`` from jsDelivr at runtime, so an unpublished pin
-# breaks widget rendering for everyone.
-MATTERVIZ_ANYWIDGET_VERSION = "0.4.2"
+# matterviz/extensions/anywidget) that pymatviz renders. The Python traits below
+# mirror this exact version's anywidget.ts WIDGET_MODEL_KEYS contract (checked by
+# tests/widgets/test_js_prop_parity.py), so bump it in lockstep with trait changes.
+# Only merge a bump once that version is published to npm: everyone without a local
+# ``MATTERVIZ_ANYWIDGET_DIR`` build fetches ``matterviz-anywidget@<this>`` from
+# jsDelivr at runtime, so an unpublished pin breaks widget rendering for all users.
+MATTERVIZ_ANYWIDGET_VERSION = "0.6.0"
 _ANYWIDGET_CDN = "https://cdn.jsdelivr.net/npm/matterviz-anywidget"
 # expanded at call time (not import time) so tests can patch os.path.expanduser
 _CACHE_ROOT = "~/.cache/pymatviz"

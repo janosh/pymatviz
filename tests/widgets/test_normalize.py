@@ -16,6 +16,7 @@ from pymatviz.widgets._normalize import (
     _parse_formula_to_dict,
     _to_dict,
     normalize_convex_hull_entries,
+    normalize_histogram_series,
     normalize_plot_json,
     normalize_plot_series,
     normalize_structure_for_bz,
@@ -331,6 +332,8 @@ def test_normalize_structure_for_bz_unsupported_type() -> None:
     [
         (np.array([0, 1, 2]), np.array([0.1, 0.2, 0.3])),
         (pd.Series([0, 1, 2]), pd.Series([0.1, 0.2, 0.3])),
+        # 1-element arrays must stay lists (.item() would collapse them to scalars)
+        (np.array([0]), pd.Series([0.1])),
     ],
 )
 def test_normalize_plot_series_from_array_like_inputs(
@@ -341,7 +344,10 @@ def test_normalize_plot_series_from_array_like_inputs(
         [{"x": x_values, "y": y_values, "label": "A"}],
         component_name="ScatterPlot",
     )
-    assert normalized == [{"x": [0.0, 1.0, 2.0], "y": [0.1, 0.2, 0.3], "label": "A"}]
+    n_pts = len(x_values)
+    assert normalized == [
+        {"x": [0.0, 1.0, 2.0][:n_pts], "y": [0.1, 0.2, 0.3][:n_pts], "label": "A"}
+    ]
 
 
 def test_normalize_plot_json_scalar_subclasses() -> None:
@@ -376,3 +382,46 @@ def test_normalize_plot_series_validation_errors(
     """Invalid plot series payloads should fail with helpful messages."""
     with pytest.raises(error_cls, match=match):
         normalize_plot_series(series_data, component_name="ScatterPlot")
+
+
+# === normalize_histogram_series ===
+
+
+def test_normalize_histogram_series_values_and_legacy_xy() -> None:
+    """Histogram series take their samples from `values` (any array-like, preferred)
+    or the legacy {x, y} shape where y holds the samples; both are JSON-normalized.
+    """
+    assert normalize_histogram_series(None) is None
+    normalized = normalize_histogram_series(
+        [
+            {"values": np.array([3, 1, 2]), "label": "A", "color": "#ef4444"},
+            {"values": pd.Series([0.5]), "visible": False},
+            {"x": [0, 1], "y": np.array([4, 5]), "label": "legacy"},
+        ]
+    )
+    assert normalized == [
+        {"values": [3.0, 1.0, 2.0], "label": "A", "color": "#ef4444"},
+        {"values": [0.5], "visible": False},
+        {"x": [0.0, 1.0], "y": [4.0, 5.0], "label": "legacy"},
+    ]
+
+
+@pytest.mark.parametrize(
+    ("series_data", "error_cls", "match"),
+    [
+        ("bad", TypeError, "must be a list/tuple"),
+        ([[1, 2]], TypeError, "entries must be dicts"),
+        ([{"label": "no samples"}], ValueError, "must include key 'values'"),
+        ([{"y": [1, 2]}], ValueError, "must include keys 'x' and 'y'"),
+        ([{"x": [0], "y": [0, 1]}], ValueError, "lengths must match"),
+        ([{"values": 3}], TypeError, "values must be list-like"),
+        ([{"values": [1, "two"]}], TypeError, "must be numeric"),
+        ([{"values": [1, float("inf")]}], ValueError, "finite"),
+    ],
+)
+def test_normalize_histogram_series_validation_errors(
+    series_data: Any, error_cls: type[Exception], match: str
+) -> None:
+    """Invalid histogram series payloads fail with helpful messages."""
+    with pytest.raises(error_cls, match=match):
+        normalize_histogram_series(series_data)

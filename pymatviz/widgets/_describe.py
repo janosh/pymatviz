@@ -74,12 +74,23 @@ def _structure_facts(struct: Any) -> dict[str, Any]:
 
 
 def _xy_facts(widget_data: Mapping[str, Any], axes: tuple[str, ...]) -> dict[str, Any]:
-    """Series count, point count, per-axis ranges, and labels for plot widgets."""
+    """Series count, point count, per-axis ranges, and labels for plot widgets.
+
+    Histogram series carry their samples in ``values`` (binned on the x axis) rather
+    than ``x``/``y``; those count as points and set ``x_range`` when ``x`` is absent.
+    """
     series = widget_data.get("series") or []
     series = [series_item for series_item in series if isinstance(series_item, Mapping)]
+
+    def samples(series_item: Mapping[str, Any], axis: str) -> Any:
+        axis_values = series_item.get(axis)
+        if axis == "x" and axis_values is None:
+            return series_item.get("values")
+        return axis_values
+
     facts: dict[str, Any] = {
         "n_series": len(series),
-        "n_points": sum(len(series_item.get("x") or []) for series_item in series),
+        "n_points": sum(len(samples(series_item, "x") or []) for series_item in series),
     }
     labels = [
         series_item.get("label") for series_item in series if series_item.get("label")
@@ -87,7 +98,7 @@ def _xy_facts(widget_data: Mapping[str, Any], axes: tuple[str, ...]) -> dict[str
     if labels:
         facts["series_labels"] = labels
     for axis in axes:
-        axis_range = _minmax([series_item.get(axis) for series_item in series])
+        axis_range = _minmax([samples(series_item, axis) for series_item in series])
         if axis_range is not None:
             facts[f"{axis}_range"] = axis_range
     return facts
@@ -214,14 +225,14 @@ def _describe_spectral(
 
 _describe_dos = functools.partial(
     _describe_spectral,
-    data_key="dos",
+    data_key="doses",
     value_key="energies",
     count_key="n_energies",
     range_key="energy_range",
 )
 _describe_band_structure = functools.partial(
     _describe_spectral,
-    data_key="band_structure",
+    data_key="band_structs",
     value_key="bands",
     count_key="n_bands",
 )
@@ -311,11 +322,11 @@ _PRIMARY_DATA: dict[str, str | tuple[str, ...]] = {
     "composition": "composition",
     "xrd": "patterns",
     "spacegroup_bar": "data",
-    "dos": "dos",
-    "band_structure": "band_structure",
+    "dos": "doses",
+    "band_structure": "band_structs",
     "treemap": "data",
     # can render with either input, so only warn when both are missing
-    "bands_and_dos": ("dos", "band_structure"),
+    "bands_and_dos": ("doses", "band_structs"),
 }
 
 

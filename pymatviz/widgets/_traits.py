@@ -21,7 +21,8 @@ def optional_trait(trait_cls: Any, **kwargs: Any) -> Any:
 class StructureVizTraits(tl.HasTraits):
     """Display options shared by structure-rendering widgets (synced to JS)."""
 
-    data_url = tl.Unicode(allow_none=True).tag(sync=True)
+    # None (not "") so the frontend does not try to fetch an empty URL
+    data_url = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
 
     # Atom visualization
     atom_radius = tl.Float(allow_none=True, default_value=None).tag(sync=True)
@@ -63,10 +64,26 @@ class StructureVizTraits(tl.HasTraits):
 
     # Appearance
     color_scheme = tl.Unicode("Vesta").tag(sync=True)
-    background_color = tl.Unicode(allow_none=True).tag(sync=True)
+    background_color = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
     background_opacity = tl.Float(allow_none=True, default_value=None).tag(sync=True)
 
-    # UI controls
-    show_gizmo = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    # UI controls. gizmo is a bool or a matterviz GizmoOptions dict (corner, size, ...).
+    gizmo = tl.Union([tl.Bool(), tl.Dict()], allow_none=True, default_value=None).tag(
+        sync=True
+    )
     auto_rotate = tl.Float(allow_none=True, default_value=None).tag(sync=True)
     fullscreen_toggle = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+
+
+class PlotControlsTraits(tl.HasTraits):
+    """Control-pane traits shared by matterviz plot components (synced to JS).
+
+    ``controls_open`` syncs both ways (toggling the pane in the UI writes it back);
+    ``controls_toggle_props``/``controls_pane_props`` are HTML attribute dicts spread
+    onto the pane's toggle button and the pane itself. ``show_controls`` lives on
+    ``MatterVizWidget``.
+    """
+
+    controls_open = tl.Bool(default_value=False).tag(sync=True)
+    controls_toggle_props = tl.Dict(allow_none=True, default_value=None).tag(sync=True)
+    controls_pane_props = tl.Dict(allow_none=True, default_value=None).tag(sync=True)

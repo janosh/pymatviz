@@ -7,6 +7,7 @@ from typing import Any
 import traitlets as tl
 
 from pymatviz.widgets._normalize import normalize_plot_json
+from pymatviz.widgets._traits import PlotControlsTraits
 from pymatviz.widgets._traits import optional_trait as _optional
 from pymatviz.widgets.matterviz import MatterVizWidget
 
@@ -16,7 +17,7 @@ _LABEL_FITS = ["hide", "shrink", "clip"]
 _VALUE_MODES = ["leaf-sum", "total", "remainder"]  # plotly branchvalues semantics
 
 
-class TreemapWidget(MatterVizWidget):
+class TreemapWidget(PlotControlsTraits, MatterVizWidget):
     """MatterViz widget for zoomable treemap charts of hierarchical data.
 
     Data is a nested node dict (or list of root nodes) with plotly-like

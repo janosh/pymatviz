@@ -17,18 +17,17 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
     trajectories in Python notebooks.
 
     The widget supports multiple input formats:
-    - Direct trajectory data (list of structures, dict with frames)
-    - Local file paths to trajectory files (automatically detected and loaded)
-    - Remote file URLs to trajectory files (automatically detected and loaded)
+    - Direct trajectory data (list of structures, dict with frames), sent as JSON
+    - ``data_url``: a URL the frontend fetches, decompresses and parses itself
 
-    Supported file formats:
-    - XYZ files (.xyz, .xyz.gz, .xyz.bz2, .xyz.xz, .extxyz, .extxyz.gz, ...)
+    File formats the frontend parses from ``data_url`` (optionally ``.gz`` or
+    ``.zip`` compressed; ``.bz2``/``.xz`` cannot be inflated in the browser):
+    - XYZ / extended XYZ (.xyz, .extxyz) with one or more frames
     - ASE ULM binary trajectory files (.traj)
-    - flame HDF5 files (.h5, .hdf5)
-    - NumPy compressed arrays (.npz)
-    - Pickle files (.pkl)
-    - Generic data files (.dat)
-    - ZIP archives (.zip) containing trajectory files
+    - VASP XDATCAR and LAMMPS dump files
+    - pymatgen ``Trajectory`` JSON or ``{"frames": [...]}`` JSON
+    HDF5 files are not parsed in the widget bundle: load them in Python and pass
+    the frames instead.
 
     Examples:
         Basic usage with list of structures:
@@ -57,6 +56,13 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
         With local file path (automatically detected and loaded):
         >>> widget = TrajectoryWidget(data_url="path/to/trajectory.xyz")
         >>> widget = TrajectoryWidget(data_url="path/to/trajectory.h5")
+
+        LAMMPS dumps without an element column only carry integer atom types; name
+        them with ``atom_type_mapping`` (unmapped types fall back to atomic number
+        = type, with a warning in the browser console):
+        >>> widget = TrajectoryWidget(
+        ...     data_url="path/to/dump.lammpstrj", atom_type_mapping={1: "Si", 2: "O"}
+        ... )
     """
 
     # display options shared with StructureWidget live in StructureVizTraits
@@ -79,6 +85,10 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
         default_value="structure+scatter",
     ).tag(sync=True)
     auto_play = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    # {atom type: element symbol} for LAMMPS dumps parsed from data_url, e.g.
+    # {"1": "Si", "2": "O"} (int keys are fine: JSON stringifies them). Forwarded into
+    # TrajectoryFileViewer.loading_options by the anywidget bridge.
+    atom_type_mapping = tl.Dict(allow_none=True, default_value=None).tag(sync=True)
 
     show_image_atoms = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
 
@@ -146,78 +156,59 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
     def _complete_structure_fields(
         self, structure_data: dict[str, Any]
     ) -> dict[str, Any]:
-        """Fill derived fields from minimal valid trajectory structure data."""
-        from pymatgen.core.lattice import Lattice
+        """Fill the fields matterviz's JSON reader does not default itself.
 
+        The renderer rebuilds every lattice from its ``matrix`` (scalar parameters,
+        volume, a fully periodic ``pbc`` when missing) and derives the missing one of
+        ``abc``/``xyz`` per site, so only a ``matrix`` built from cell parameters,
+        species objects/occupancies, site labels and site properties are filled here.
+        """
         completed_structure = dict(structure_data)
-        # copy so setdefault/assignments below don't mutate the caller's dict
+        # copy so assignments below don't mutate the caller's dict
         lattice_data = dict(completed_structure["lattice"])
 
-        has_lattice_matrix = "matrix" in lattice_data
-        has_cell_params = all(
-            key in lattice_data for key in ("a", "b", "c", "alpha", "beta", "gamma")
-        )
+        if "matrix" not in lattice_data:
+            if not all(
+                key in lattice_data for key in ("a", "b", "c", "alpha", "beta", "gamma")
+            ):
+                raise ValueError(
+                    "Trajectory frame structure lattice must provide either 'matrix' "
+                    "or all of ['a', 'b', 'c', 'alpha', 'beta', 'gamma']."
+                )
+            from pymatgen.core.lattice import Lattice
 
-        if has_lattice_matrix:
-            lattice_obj = Lattice(lattice_data["matrix"])
-        elif has_cell_params:
-            lattice_obj = Lattice.from_parameters(
-                a=float(lattice_data["a"]),
-                b=float(lattice_data["b"]),
-                c=float(lattice_data["c"]),
-                alpha=float(lattice_data["alpha"]),
-                beta=float(lattice_data["beta"]),
-                gamma=float(lattice_data["gamma"]),
-            )
-            lattice_data["matrix"] = lattice_obj.matrix.tolist()
-        else:
-            raise ValueError(
-                "Trajectory frame structure lattice must provide either 'matrix' or "
-                "all of ['a', 'b', 'c', 'alpha', 'beta', 'gamma']."
-            )
-
-        lattice_data.setdefault("pbc", [True, True, True])
-        for param in ("a", "b", "c", "alpha", "beta", "gamma", "volume"):
-            lattice_data[param] = float(getattr(lattice_obj, param))
+            lattice_data["matrix"] = Lattice.from_parameters(
+                *(
+                    float(lattice_data[key])
+                    for key in ("a", "b", "c", "alpha", "beta", "gamma")
+                )
+            ).matrix.tolist()
 
         completed_sites: list[dict[str, Any]] = []
         for site_idx, site_data in enumerate(completed_structure["sites"]):
             site_dict = dict(site_data)
             species_data = site_dict["species"]
             self._validate_species_list(species_data, f"Site index {site_idx}, value")
+            # the renderer reads species as {element, occu} objects: promote bare
+            # symbols and default the occupancy
             site_dict["species"] = [
-                (
-                    {**species, "occu": 1.0}
-                    if isinstance(species, Mapping) and "occu" not in species
-                    else species
-                )
+                {"element": species, "occu": 1.0}
+                if isinstance(species, str)
+                else {"occu": 1.0, **species}
                 for species in species_data
             ]
 
-            has_abc = "abc" in site_dict
-            has_xyz = "xyz" in site_dict
-            if not has_abc and not has_xyz:
+            if "abc" not in site_dict and "xyz" not in site_dict:
                 site_keys = sorted(str(key) for key in site_dict)
                 raise ValueError(
                     "Trajectory frame site needs coordinate key 'abc' or 'xyz'. "
                     f"Site index: {site_idx}, keys: {site_keys}."
                 )
-
-            if has_abc:
-                abc_coords = [float(coord) for coord in site_dict["abc"]]
-                site_dict["abc"] = abc_coords
-            if has_xyz:
-                xyz_coords = [float(coord) for coord in site_dict["xyz"]]
-                site_dict["xyz"] = xyz_coords
-
-            if has_abc and not has_xyz:
-                site_dict["xyz"] = lattice_obj.get_cartesian_coords(
-                    site_dict["abc"]
-                ).tolist()
-            elif has_xyz and not has_abc:
-                site_dict["abc"] = lattice_obj.get_fractional_coords(
-                    site_dict["xyz"]
-                ).tolist()
+            for coord_key in ("abc", "xyz"):
+                if coord_key in site_dict:
+                    site_dict[coord_key] = [
+                        float(coord) for coord in site_dict[coord_key]
+                    ]
 
             default_species = site_dict["species"][0]
             default_element = (
@@ -236,11 +227,16 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
     def _complete_trajectory_dict(
         self, trajectory_data: dict[str, Any]
     ) -> dict[str, Any]:
-        """Fill all frames with derived fields required by the widget renderer."""
+        """Fill all frames with the fields the widget renderer requires.
+
+        ``step`` defaults to the frame index: the renderer rejects frames without a
+        finite step (it is the x-axis of the property plots).
+        """
         completed_trajectory = dict(trajectory_data)
         completed_frames: list[dict[str, Any]] = []
-        for frame_data in trajectory_data["frames"]:
+        for frame_idx, frame_data in enumerate(trajectory_data["frames"]):
             frame_dict = dict(frame_data)
+            frame_dict.setdefault("step", frame_idx)
             frame_dict["structure"] = self._complete_structure_fields(
                 frame_dict["structure"]
             )

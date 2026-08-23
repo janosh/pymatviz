@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
+import traitlets as tl
 
 from pymatviz import TrajectoryWidget
 from tests.widgets.conftest import (
@@ -352,52 +353,60 @@ def test_trajectory_widget_invalid_dict_schema_raises_helpful_error(
 
 
 @pytest.mark.parametrize(
-    ("structure_input", "expected_site_coord_key", "expected_lattice_key"),
+    ("lattice_input", "coord_key", "coords"),
     [
+        ({"matrix": [[4, 0, 0], [0, 4, 0], [0, 0, 4]]}, "abc", [0.25, 0.5, 0.75]),
         (
-            {
-                "lattice": {"matrix": [[4, 0, 0], [0, 4, 0], [0, 0, 4]]},
-                "sites": [{"species": [{"element": "Si"}], "abc": [0.25, 0.5, 0.75]}],
-            },
+            dict(a=4.0, b=5.0, c=6.0, alpha=90.0, beta=90.0, gamma=90.0),
             "xyz",
-            "volume",
-        ),
-        (
-            {
-                "lattice": {
-                    "a": 4.0,
-                    "b": 5.0,
-                    "c": 6.0,
-                    "alpha": 90.0,
-                    "beta": 90.0,
-                    "gamma": 90.0,
-                },
-                "sites": [{"species": [{"element": "Si"}], "xyz": [1.0, 2.5, 3.0]}],
-            },
-            "abc",
-            "matrix",
+            [1.0, 2.5, 3.0],
         ),
     ],
 )
-def test_trajectory_widget_derives_missing_fields(
-    structure_input: dict[str, Any],
-    expected_site_coord_key: str,
-    expected_lattice_key: str,
+def test_trajectory_widget_completes_only_non_derivable_fields(
+    lattice_input: dict[str, Any], coord_key: str, coords: list[float]
 ) -> None:
-    """Trajectory dict inputs derive missing lattice/site fields."""
-    widget = TrajectoryWidget(
-        trajectory={"frames": [{"structure": structure_input, "step": 0}]}
-    )
-    structure = widget.trajectory["frames"][0]["structure"]
-    site = structure["sites"][0]
-    assert expected_lattice_key in structure["lattice"]
-    assert expected_site_coord_key in site
-    assert "label" in site
-    assert "properties" in site
+    """Dict frames get step, occu, label, properties and a lattice matrix; fields
+    matterviz's trajectory_from_json recomputes (a/b/c/angles/volume/pbc, the
+    missing abc<->xyz) are not emitted, keeping the JSON payload lean.
+    """
+    structure_input = {
+        "lattice": lattice_input,
+        "sites": [{"species": [{"element": "Si"}], coord_key: coords}],
+    }
+    widget = TrajectoryWidget(trajectory={"frames": [{"structure": structure_input}]})
+    frame = widget.trajectory["frames"][0]
+    assert frame["step"] == 0  # defaulted to the frame index (renderer requires it)
+    lattice = frame["structure"]["lattice"]
+    assert set(lattice) == {"matrix", *lattice_input}  # no a/b/c/.../volume/pbc added
+    if "matrix" not in lattice_input:
+        np.testing.assert_allclose(
+            lattice["matrix"], np.diag([4.0, 5.0, 6.0]), rtol=0, atol=1e-12
+        )
+    site = frame["structure"]["sites"][0]
+    assert site == {
+        "species": [{"element": "Si", "occu": 1.0}],
+        coord_key: coords,
+        "label": "Si1",
+        "properties": {},
+    }
+
+
+def test_trajectory_widget_keeps_explicit_step() -> None:
+    """An explicit frame step (e.g. MD step 500) is kept, not replaced by the index."""
+    structure = {
+        "lattice": {"matrix": [[4, 0, 0], [0, 4, 0], [0, 0, 4]]},
+        "sites": [{"species": [{"element": "Si", "occu": 1.0}], "abc": [0, 0, 0]}],
+    }
+    frames = [{"structure": structure, "step": 500}, {"structure": structure}]
+    widget = TrajectoryWidget(trajectory={"frames": frames})
+    assert [frame["step"] for frame in widget.trajectory["frames"]] == [500, 1]
 
 
 def test_trajectory_widget_accepts_string_species_entries() -> None:
-    """String species entries should normalize without assuming mapping access."""
+    """Bare symbol species are promoted to the {element, occu} objects the renderer
+    reads (a string species rendered an empty scene).
+    """
     widget = TrajectoryWidget(
         trajectory={
             "frames": [
@@ -413,9 +422,9 @@ def test_trajectory_widget_accepts_string_species_entries() -> None:
     )
     structure = widget.trajectory["frames"][0]["structure"]
     site = structure["sites"][0]
-    assert site["species"] == ["Si"]
+    assert site["species"] == [{"element": "Si", "occu": 1.0}]
     assert site["label"] == "Si1"
-    assert "xyz" in site
+    assert "xyz" not in site  # derived by the renderer from abc
 
 
 def test_trajectory_widget_single_structure_extra_fields() -> None:
@@ -524,6 +533,19 @@ def test_trajectory_widget_vector_configs_trait() -> None:
     assert widget.vector_configs == configs
     assert widget.vector_scale == 0.5
     assert TrajectoryWidget().vector_configs is None
+
+
+def test_trajectory_widget_atom_type_mapping_trait() -> None:
+    """atom_type_mapping (LAMMPS type -> element) is None by default, syncs as given
+    and rejects non-dicts.
+    """
+    assert TrajectoryWidget().atom_type_mapping is None
+    mapping = {1: "Si", "2": "O"}
+    widget = TrajectoryWidget(data_url="https://example.com/dump.lammpstrj")
+    widget.atom_type_mapping = mapping
+    assert widget.to_dict()["atom_type_mapping"] == mapping
+    with pytest.raises(tl.TraitError):
+        TrajectoryWidget(atom_type_mapping=["Si", "O"])
 
 
 def test_trajectory_widget_normalization_regressions(

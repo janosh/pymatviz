@@ -7,10 +7,11 @@ from typing import Any
 import traitlets as tl
 
 from pymatviz.widgets._normalize import normalize_plot_json, normalize_plot_series
+from pymatviz.widgets._traits import PlotControlsTraits
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
-class ScatterPlotWidget(MatterVizWidget):
+class ScatterPlotWidget(PlotControlsTraits, MatterVizWidget):
     """MatterViz widget wrapper for 2D scatter/line plots.
 
     The payload follows matterviz `ScatterPlot` props with a Python-friendly API.
@@ -28,7 +29,11 @@ class ScatterPlotWidget(MatterVizWidget):
     ref_lines = tl.List(allow_none=True).tag(sync=True)
     fill_regions = tl.List(allow_none=True).tag(sync=True)
     error_bands = tl.List(allow_none=True).tag(sync=True)
-    controls = tl.Dict(allow_none=True).tag(sync=True)
+    show_legend = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    # auto picks canvas above the dense-point threshold, svg below
+    marker_renderer = tl.CaselessStrEnum(
+        values=["auto", "svg", "canvas"], allow_none=True, default_value=None
+    ).tag(sync=True)
     padding = tl.Dict(allow_none=True).tag(sync=True)
     range_padding = tl.Float(allow_none=True, default_value=None).tag(sync=True)
     x2_axis = tl.Dict(allow_none=True).tag(sync=True)
@@ -41,7 +46,6 @@ class ScatterPlotWidget(MatterVizWidget):
     label_placement_config = tl.Dict(allow_none=True).tag(sync=True)
     point_tween = tl.Dict(allow_none=True).tag(sync=True)
     line_tween = tl.Dict(allow_none=True).tag(sync=True)
-    point_events = tl.Unicode(allow_none=True).tag(sync=True)
 
     # Interaction state (two-way synced with the frontend for ipywidgets linking).
     # selected_point drives a highlight from Python and takes
@@ -71,7 +75,8 @@ class ScatterPlotWidget(MatterVizWidget):
         ref_lines: list[dict[str, Any]] | None = None,
         fill_regions: list[dict[str, Any]] | None = None,
         error_bands: list[dict[str, Any]] | None = None,
-        controls: dict[str, Any] | None = None,
+        show_legend: bool | None = None,
+        marker_renderer: str | None = None,
         padding: dict[str, int] | None = None,
         range_padding: float | None = None,
         x2_axis: dict[str, Any] | None = None,
@@ -84,7 +89,6 @@ class ScatterPlotWidget(MatterVizWidget):
         label_placement_config: dict[str, Any] | None = None,
         point_tween: dict[str, Any] | None = None,
         line_tween: dict[str, Any] | None = None,
-        point_events: str | None = None,
         selected_point: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> None:
@@ -103,7 +107,9 @@ class ScatterPlotWidget(MatterVizWidget):
             ref_lines: Reference line definitions.
             fill_regions: Filled region definitions.
             error_bands: Error-band definitions.
-            controls: Control pane configuration.
+            show_legend: Whether to show the legend (frontend default: auto).
+            marker_renderer: ``"auto"`` (default), ``"svg"`` or ``"canvas"`` --
+                how points are drawn; auto switches to canvas for dense data.
             padding: Plot area padding ``{"t": N, "b": N, "l": N, "r": N}``
                 in pixels.
             range_padding: Fraction of data range to add as padding.
@@ -118,7 +124,6 @@ class ScatterPlotWidget(MatterVizWidget):
             label_placement_config: Data label positioning configuration.
             point_tween: Point animation configuration.
             line_tween: Line animation configuration.
-            point_events: CSS ``pointer-events`` value for data points.
             selected_point: Point to highlight from Python, as
                 ``{"series_idx", "point_idx"}``. Use ``observe("active_point")``
                 to react to clicks and link this widget to others.
@@ -138,7 +143,8 @@ class ScatterPlotWidget(MatterVizWidget):
             ref_lines=normalize_plot_json(ref_lines, "ScatterPlot.ref_lines"),
             fill_regions=normalize_plot_json(fill_regions, "ScatterPlot.fill_regions"),
             error_bands=normalize_plot_json(error_bands, "ScatterPlot.error_bands"),
-            controls=normalize_plot_json(controls, "ScatterPlot.controls"),
+            show_legend=show_legend,
+            marker_renderer=marker_renderer,
             padding=normalize_plot_json(padding, "ScatterPlot.padding"),
             range_padding=range_padding,
             x2_axis=normalize_plot_json(x2_axis, "ScatterPlot.x2_axis"),
@@ -153,7 +159,6 @@ class ScatterPlotWidget(MatterVizWidget):
             ),
             point_tween=normalize_plot_json(point_tween, "ScatterPlot.point_tween"),
             line_tween=normalize_plot_json(line_tween, "ScatterPlot.line_tween"),
-            point_events=point_events,
             selected_point=selected_point,
             **kwargs,
         )
