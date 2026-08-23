@@ -472,23 +472,17 @@ matterviz_iso_dir_url: Final = (
 )
 
 
+def iso_settings(isovalue: float, opacity: float, *, show_negative: bool) -> dict:
+    """Layers-only matterviz IsosurfaceSettings: one blue (+) / red (-) layer."""
+    layer = dict(isovalue=isovalue, color="#3b82f6", opacity=opacity, visible=True)
+    layer |= dict(show_negative=show_negative, negative_color="#ef4444")
+    return {"layers": [layer], "wireframe": False, "halo": 0}
+
+
 # %% Isosurface — Si charge density from CHGCAR
 iso_widget = pmv.StructureWidget(
     data_url=f"{matterviz_iso_dir_url}/Si-CHGCAR.gz",
-    isosurface_settings={
-        "layers": [
-            {
-                "isovalue": 0.05,
-                "color": "#3b82f6",
-                "opacity": 0.6,
-                "visible": True,
-                "show_negative": False,
-                "negative_color": "#ef4444",
-            }
-        ],
-        "wireframe": False,
-        "halo": 0,
-    },
+    isosurface_settings=iso_settings(0.05, 0.6, show_negative=False),
     style="height: 500px;",
 )
 iso_widget.show()
@@ -502,20 +496,7 @@ iso_widget.show()
 # %% Isosurface — caffeine HOMO
 orbital_widget = pmv.StructureWidget(
     data_url=f"{matterviz_iso_dir_url}/caffeine-HOMO.cube.gz",
-    isosurface_settings={
-        "layers": [
-            {
-                "isovalue": 0.02,
-                "color": "#3b82f6",
-                "opacity": 0.7,
-                "visible": True,
-                "show_negative": True,
-                "negative_color": "#ef4444",
-            }
-        ],
-        "wireframe": False,
-        "halo": 0,
-    },
+    isosurface_settings=iso_settings(0.02, 0.7, show_negative=True),
     show_bonds=True,
     style="height: 500px;",
 )

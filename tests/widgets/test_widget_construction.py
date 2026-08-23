@@ -286,7 +286,7 @@ def test_treemap_widget_all_config_traits_default_to_none() -> None:
 
 def test_histogram_widget_delegates_series_validation() -> None:
     """HistogramWidget accepts `{values}` series and delegates validation of the
-    legacy {x, y} shape to normalize_histogram_series.
+    legacy {x, y} shape to normalize_plot_series.
     """
     widget = HistogramWidget(series=[{"values": np.array([2, 1]), "label": "a"}])
     assert widget.to_dict()["series"] == [{"values": [2.0, 1.0], "label": "a"}]
@@ -301,22 +301,10 @@ def test_histogram_widget_delegates_series_validation() -> None:
 
 def test_structure_widget_isosurface_settings() -> None:
     """StructureWidget passes layers-only isosurface_settings through to_dict."""
-    iso_settings = {
-        "layers": [
-            {
-                "isovalue": 0.05,
-                "color": "#3b82f6",
-                "opacity": 0.6,
-                "visible": True,
-                "show_negative": False,
-                "negative_color": "#ef4444",
-            }
-        ],
-        "wireframe": False,
-        "halo": 0,
-    }
-    widget = StructureWidget(isosurface_settings=iso_settings)
-    state = widget.to_dict()
+    layer = dict(isovalue=0.05, color="#3b82f6", opacity=0.6, visible=True)
+    layer |= dict(show_negative=False, negative_color="#ef4444")
+    iso_settings = {"layers": [layer], "wireframe": False, "halo": 0}
+    state = StructureWidget(isosurface_settings=iso_settings).to_dict()
     assert state["isosurface_settings"] == iso_settings
     assert state["widget_type"] == "structure"
 
@@ -750,19 +738,16 @@ def test_build_html_embeds_data_and_css() -> None:
 
 
 def test_shutdown_browser_tolerates_none() -> None:
-    """_shutdown_browser handles _browser=None and _pw=None without error."""
+    """_shutdown_browser handles _browser/_pw/_pw_cm all None without error."""
     import pymatviz.widgets._headless as headless_mod
     from pymatviz.widgets._headless import _shutdown_browser
 
-    orig_browser = headless_mod._browser
-    orig_pw = headless_mod._pw
-    headless_mod._browser = None
-    headless_mod._pw = None
-    try:
+    with (
+        patch.object(headless_mod, "_browser", None),
+        patch.object(headless_mod, "_pw", None),
+        patch.object(headless_mod, "_pw_cm", None),
+    ):
         _shutdown_browser()
-    finally:
-        headless_mod._browser = orig_browser
-        headless_mod._pw = orig_pw
 
 
 def test_get_browser_import_error() -> None:
@@ -843,7 +828,7 @@ def test_render_widget_headless_dpi_to_scale(
     # leaves an asyncio loop running, which would route down the unmocked async path
     with (
         patch(f"{_HEADLESS}._get_browser", return_value=mock_browser),
-        patch(f"{_HEADLESS}._has_running_event_loop", return_value=False),
+        patch(f"{_HEADLESS}._foreign_running_loop", return_value=None),
     ):
         from pymatviz.widgets._headless import render_widget_headless
 

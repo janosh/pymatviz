@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import importlib.util
 from enum import IntEnum
 from typing import Any
@@ -16,7 +17,6 @@ from pymatviz.widgets._normalize import (
     _parse_formula_to_dict,
     _to_dict,
     normalize_convex_hull_entries,
-    normalize_histogram_series,
     normalize_plot_json,
     normalize_plot_series,
     normalize_structure_for_bz,
@@ -368,60 +368,48 @@ def test_normalize_plot_json_scalar_subclasses() -> None:
 
 
 @pytest.mark.parametrize(
-    ("series_data", "error_cls", "match"),
+    ("series_data", "samples_key", "error_cls", "match"),
     [
-        ("bad", TypeError, "must be a list/tuple"),
-        ([{"x": [0, 1]}], ValueError, "must include keys 'x' and 'y'"),
-        ([{"x": [0], "y": [0, 1]}], ValueError, "lengths must match"),
-        ([{"x": [0, float("nan")], "y": [1, 2]}], ValueError, "non-finite"),
+        ("bad", None, TypeError, "must be a list/tuple"),
+        ([{"x": [0, 1]}], None, ValueError, "must include keys 'x' and 'y'"),
+        ([{"x": [0], "y": [0, 1]}], None, ValueError, "lengths must match"),
+        ([{"x": [0, float("nan")], "y": [1, 2]}], None, ValueError, "non-finite"),
+        # histogram: samples in `values`, legacy {x, y} validated like any series
+        ([[1, 2]], "values", TypeError, "entries must be dicts"),
+        ([{"label": "no samples"}], "values", ValueError, "must include key 'values'"),
+        ([{"y": [1, 2]}], "values", ValueError, "must include keys 'x' and 'y'"),
+        ([{"x": [0], "y": [0, 1]}], "values", ValueError, "lengths must match"),
+        ([{"values": 3}], "values", TypeError, "values must be list-like"),
+        ([{"values": [1, "two"]}], "values", TypeError, "must be numeric"),
+        ([{"values": [1, float("inf")]}], "values", ValueError, "finite"),
     ],
 )
 def test_normalize_plot_series_validation_errors(
-    series_data: Any, error_cls: type[Exception], match: str
+    series_data: Any, samples_key: str | None, error_cls: type[Exception], match: str
 ) -> None:
-    """Invalid plot series payloads should fail with helpful messages."""
+    """Invalid plot/histogram series payloads fail with helpful messages."""
     with pytest.raises(error_cls, match=match):
-        normalize_plot_series(series_data, component_name="ScatterPlot")
-
-
-# === normalize_histogram_series ===
+        normalize_plot_series(
+            series_data, component_name="Plot", samples_key=samples_key
+        )
 
 
 def test_normalize_histogram_series_values_and_legacy_xy() -> None:
     """Histogram series take their samples from `values` (any array-like, preferred)
     or the legacy {x, y} shape where y holds the samples; both are JSON-normalized.
     """
-    assert normalize_histogram_series(None) is None
-    normalized = normalize_histogram_series(
+    hist = functools.partial(
+        normalize_plot_series, component_name="Histogram", samples_key="values"
+    )
+    assert hist(None) is None
+    assert hist(
         [
             {"values": np.array([3, 1, 2]), "label": "A", "color": "#ef4444"},
             {"values": pd.Series([0.5]), "visible": False},
             {"x": [0, 1], "y": np.array([4, 5]), "label": "legacy"},
         ]
-    )
-    assert normalized == [
+    ) == [
         {"values": [3.0, 1.0, 2.0], "label": "A", "color": "#ef4444"},
         {"values": [0.5], "visible": False},
         {"x": [0.0, 1.0], "y": [4.0, 5.0], "label": "legacy"},
     ]
-
-
-@pytest.mark.parametrize(
-    ("series_data", "error_cls", "match"),
-    [
-        ("bad", TypeError, "must be a list/tuple"),
-        ([[1, 2]], TypeError, "entries must be dicts"),
-        ([{"label": "no samples"}], ValueError, "must include key 'values'"),
-        ([{"y": [1, 2]}], ValueError, "must include keys 'x' and 'y'"),
-        ([{"x": [0], "y": [0, 1]}], ValueError, "lengths must match"),
-        ([{"values": 3}], TypeError, "values must be list-like"),
-        ([{"values": [1, "two"]}], TypeError, "must be numeric"),
-        ([{"values": [1, float("inf")]}], ValueError, "finite"),
-    ],
-)
-def test_normalize_histogram_series_validation_errors(
-    series_data: Any, error_cls: type[Exception], match: str
-) -> None:
-    """Invalid histogram series payloads fail with helpful messages."""
-    with pytest.raises(error_cls, match=match):
-        normalize_histogram_series(series_data)

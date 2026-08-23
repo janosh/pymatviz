@@ -25,20 +25,8 @@ jobs:
     with:
       os: ${{ matrix.os }}
       python-version: '3.12'
-      node-version: '24'
-      # Widget tests run against a matterviz-anywidget bundle built from matterviz
-      # main (not the npm release pinned in MATTERVIZ_ANYWIDGET_VERSION), so the
-      # Python<->JS trait parity test catches drift before a matterviz release.
-      # MATTERVIZ_ANYWIDGET_DIR makes fetch_widget_asset read that local build. Mirrors
-      # matterviz/.github/actions/setup (strict-dep-builds=false: skipped lifecycle
-      # scripts of registry deps are safe; --ignore-workspace: the anywidget package
-      # depends on `matterviz: file:../..`, which needs dist/ from package:dist).
-      pre-install-cmd: |
-        git clone --depth 1 https://github.com/janosh/matterviz "$HOME/matterviz"
-        # corepack pnpm from inside the clone honours matterviz's packageManager pin (the runner's pnpm is newer)
-        corepack enable
-        (cd "$HOME/matterviz" && MATTERVIZ_SKIP_PREPARE=1 corepack pnpm install --config.strict-dep-builds=false && corepack pnpm package:dist && corepack pnpm -C extensions/anywidget install --ignore-workspace --config.strict-dep-builds=false && corepack pnpm -C extensions/anywidget run build)
-        echo "MATTERVIZ_ANYWIDGET_DIR=$HOME/matterviz/extensions/anywidget/build" >> "$GITHUB_ENV"
+      # Widget assets are the matterviz-anywidget npm release pinned in
+      # MATTERVIZ_ANYWIDGET_VERSION, fetched from jsDelivr at runtime (no Node build).
       # playwright + chromium so the headless export and JS prop parity tests run
       install-cmd: |
         uv pip install -e '.[test,brillouin,export]' --system
@@ -63,20 +51,6 @@ jobs:
 
       - name: Setup uv
         uses: astral-sh/setup-uv@v8.2.0
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: '24'
-
-      # same matterviz-main bundle build as the tests job (see comment there)
-      - name: Build matterviz-anywidget bundle from matterviz main
-        run: |
-          git clone --depth 1 https://github.com/janosh/matterviz "$HOME/matterviz"
-          # corepack pnpm from inside the clone honours matterviz's packageManager pin (the runner's pnpm is newer)
-          corepack enable
-          (cd "$HOME/matterviz" && MATTERVIZ_SKIP_PREPARE=1 corepack pnpm install --config.strict-dep-builds=false && corepack pnpm package:dist && corepack pnpm -C extensions/anywidget install --ignore-workspace --config.strict-dep-builds=false && corepack pnpm -C extensions/anywidget run build)
-          echo "MATTERVIZ_ANYWIDGET_DIR=$HOME/matterviz/extensions/anywidget/build" >> "$GITHUB_ENV"
 
       - name: Run all widget demos
         run: |

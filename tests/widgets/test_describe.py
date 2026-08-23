@@ -34,18 +34,21 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
             },
         ),
         (pmv.BarPlotWidget(series=[{"x": [0, 1], "y": [2, 3]}]), {"n_series": 1}),
-        # histogram samples live in `values` (binned on x); legacy {x, y} still counts
+        # histogram samples live in `values` (binned on x); a legacy {x, y} series
+        # bins `y` and ignores `x` like the renderer, and bin counts are not a y_range
         (
             pmv.HistogramWidget(
-                series=[{"values": [1, 5, 3], "label": "a"}, {"x": [0, 1], "y": [7, 2]}]
+                series=[
+                    {"values": [1, 5, 3], "label": "a"},
+                    {"x": [100, 200], "y": [7, 2]},
+                ]
             ),
-            {
-                "n_series": 2,
-                "n_points": 5,
-                "series_labels": ["a"],
-                "x_range": [0.0, 5.0],
-                "y_range": [2.0, 7.0],
-            },
+            {"n_series": 2, "n_points": 5, "series_labels": ["a"]}
+            | {"x_range": [1.0, 7.0], "y_range": None},
+        ),
+        (  # `values` wins over `y` when a series carries both
+            pmv.HistogramWidget(series=[{"values": [4, 6], "y": [0, 99]}]),
+            {"n_points": 2, "x_range": [4.0, 6.0], "y_range": None},
         ),
         (
             pmv.ScatterPlot3DWidget(series=[{"x": [1, 2], "y": [2, 3], "z": [3, 4]}]),
@@ -204,6 +207,11 @@ def test_short_summary(report: dict[str, Any], expected: str) -> None:
     [
         (pmv.ScatterPlotWidget(), True),
         (pmv.ScatterPlotWidget(series=[{"x": [0, 1], "y": [1, 2]}]), False),
+        # histograms bin `values` (or legacy `y`); `x` alone is blank
+        (pmv.HistogramWidget(), True),
+        (pmv.HistogramWidget(series=[{"values": [1, 2, 3]}]), False),
+        (pmv.HistogramWidget(series=[{"x": [0, 1, 2], "y": [1, 2, 3]}]), False),
+        (pmv.HistogramWidget(series=[{"values": []}, {"x": [], "y": []}]), True),
         (pmv.PeriodicTableWidget(), True),
         (pmv.PeriodicTableWidget(heatmap_values={"Fe": 1}), False),
         (pmv.DosWidget(), True),

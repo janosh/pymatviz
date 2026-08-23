@@ -469,6 +469,17 @@ def _(Final):
 
 
 @app.cell
+def _():
+    def iso_settings(isovalue: float, opacity: float, *, show_negative: bool) -> dict:
+        """Layers-only matterviz IsosurfaceSettings: one blue (+) / red (-) layer."""
+        layer = dict(isovalue=isovalue, color="#3b82f6", opacity=opacity, visible=True)
+        layer |= dict(show_negative=show_negative, negative_color="#ef4444")
+        return {"layers": [layer], "wireframe": False, "halo": 0}
+
+    return (iso_settings,)
+
+
+@app.cell
 def _(mo):
     mo.md("""
     ### Isosurface Rendering (CHGCAR)
@@ -477,23 +488,10 @@ def _(mo):
 
 
 @app.cell
-def _(matterviz_iso_dir_url, pmv):
+def _(iso_settings, matterviz_iso_dir_url, pmv):
     pmv.StructureWidget(
         data_url=f"{matterviz_iso_dir_url}/Si-CHGCAR.gz",
-        isosurface_settings={
-            "layers": [
-                {
-                    "isovalue": 0.05,
-                    "color": "#3b82f6",
-                    "opacity": 0.6,
-                    "visible": True,
-                    "show_negative": False,
-                    "negative_color": "#ef4444",
-                }
-            ],
-            "wireframe": False,
-            "halo": 0,
-        },
+        isosurface_settings=iso_settings(0.05, 0.6, show_negative=False),
         style="height: 500px;",
     )
 
@@ -507,23 +505,10 @@ def _(mo):
 
 
 @app.cell
-def _(matterviz_iso_dir_url, pmv):
+def _(iso_settings, matterviz_iso_dir_url, pmv):
     pmv.StructureWidget(
         data_url=f"{matterviz_iso_dir_url}/caffeine-HOMO.cube.gz",
-        isosurface_settings={
-            "layers": [
-                {
-                    "isovalue": 0.02,
-                    "color": "#3b82f6",
-                    "opacity": 0.7,
-                    "visible": True,
-                    "show_negative": True,
-                    "negative_color": "#ef4444",
-                }
-            ],
-            "wireframe": False,
-            "halo": 0,
-        },
+        isosurface_settings=iso_settings(0.02, 0.7, show_negative=True),
         show_bonds=True,
         style="height: 500px;",
     )

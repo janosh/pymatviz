@@ -165,50 +165,24 @@ def test_widget_preserves_multi_vector_site_properties(
 
 
 def test_widget_volumetric_data_trait() -> None:
-    """volumetric_data defaults to [], keeps flat payloads as-is (plus optional label)
-    and supports mutation.
+    """volumetric_data defaults to [], keeps flat payloads as-is (dropping keys the
+    renderer recomputes), flattens legacy nested grid[ix][iy][iz] dicts to z-fastest
+    values + dims and supports mutation.
     """
     assert StructureWidget().volumetric_data == []
-
     vol = {**_VOLUME, "label": "chg"}
     widget = StructureWidget(volumetric_data=[vol])
-    assert widget.volumetric_data == [vol]
     assert widget.to_dict()["volumetric_data"] == [vol]
-
     widget.volumetric_data = [vol, {**_VOLUME, "periodic": False, "label": "elf"}]
-    assert len(widget.volumetric_data) == 2
-    assert widget.volumetric_data[1]["label"] == "elf"
-    assert widget.volumetric_data[1]["periodic"] is False
+    assert widget.volumetric_data == [vol, {**vol, "periodic": False, "label": "elf"}]
 
-
-def test_widget_volumetric_data_flattens_nested_grid() -> None:
-    """A legacy nested grid[ix][iy][iz] dict is emitted as flat z-fastest values + dims
-    and the keys matterviz recomputes or no longer reads are dropped.
-    """
-    rng = np.random.default_rng(seed=0)
-    grid = rng.random((2, 3, 4))
-    legacy = {
-        "grid": grid.tolist(),
-        "grid_dims": [2, 3, 4],
-        "data_order": "z_fastest",
-        "data_range": {"min": 0, "max": 1, "abs_max": 1, "mean": 0.5},
-        "lattice": np.eye(3).tolist(),
-        "origin": [0, 0, 0],
-        "periodic": True,
-        "label": "chg",
-    }
+    grid = np.random.default_rng(seed=0).random((2, 3, 4))
+    meta = {k: v for k, v in vol.items() if k not in ("values", "dims")}
+    legacy = {**meta, "grid": grid.tolist(), "grid_dims": [2, 3, 4], "data_order": "z"}
     (payload,) = StructureWidget(volumetric_data=[legacy]).volumetric_data
-    assert set(payload) == {"values", "dims", "lattice", "origin", "periodic", "label"}
-    assert payload["dims"] == [2, 3, 4]
     # z fastest: index (ix * ny + iy) * nz + iz == numpy C-order ravel
-    assert payload["values"] == grid.ravel(order="C").tolist()
+    assert payload == {**meta, "values": grid.ravel().tolist(), "dims": [2, 3, 4]}
     assert payload["values"][(1 * 3 + 2) * 4 + 3] == grid[1, 2, 3]
-    assert payload["label"] == "chg"
-    # the same grid passed flat (numpy array) gives an identical payload
-    flat = {**legacy, "values": grid.ravel(), "dims": (2, 3, 4)}
-    for key in ("grid", "grid_dims", "data_order", "data_range"):
-        flat.pop(key)
-    assert StructureWidget(volumetric_data=[flat]).volumetric_data == [payload]
 
 
 def test_widget_volumetric_data_from_pymatgen() -> None:
@@ -221,42 +195,30 @@ def test_widget_volumetric_data_from_pymatgen() -> None:
     struct = Structure(Lattice.cubic(2.0), ["Na"], [[0, 0, 0]])
     rng = np.random.default_rng(seed=0)
     data = {"total": rng.random((2, 2, 3)), "diff": rng.random((2, 2, 3))}
-
     total, diff = StructureWidget(
         volumetric_data=[Chgcar(struct, data)]
     ).volumetric_data
-    assert [total["label"], diff["label"]] == ["total", "diff"]
-    assert total["dims"] == [2, 2, 3]
-    assert total["lattice"] == struct.lattice.matrix.tolist()
-    assert total["origin"] == [0.0, 0.0, 0.0]
-    assert total["periodic"] is True
-    np.testing.assert_allclose(
-        total["values"], (data["total"] / 8.0).ravel(), rtol=1e-15, atol=0
-    )
+    assert diff["label"] == "diff"
+    assert total == {
+        "values": pytest.approx((data["total"] / 8.0).ravel().tolist(), rel=1e-15),
+        "dims": [2, 2, 3],
+        "lattice": struct.lattice.matrix.tolist(),
+        "origin": [0.0, 0.0, 0.0],
+        "periodic": True,
+        "label": "total",
+    }
     # generic VolumetricData (ELFCAR, LOCPOT, ...) is passed through unscaled
-    (raw,) = StructureWidget(
-        volumetric_data=[VolumetricData(struct, {"total": data["total"]})]
-    ).volumetric_data
+    volume = VolumetricData(struct, {"total": data["total"]})
+    (raw,) = StructureWidget(volumetric_data=[volume]).volumetric_data
     assert raw["values"] == data["total"].ravel().tolist()
 
 
-@pytest.mark.parametrize(
-    ("bad_input", "match"),
-    [
-        ("not_a_list", "volumetric_data"),
-        (["not_a_dict"], "dicts or pymatgen VolumetricData"),
-        ([42], "dicts or pymatgen VolumetricData"),
-        ([{**_VOLUME, "values": [0.1]}], "do not fill dims"),
-        ([{**_VOLUME, "dims": [2, 1]}], "need dims"),
-        ([{k: v for k, v in _VOLUME.items() if k != "values"}], "'values' \\+ 'dims'"),
-        ([{**_VOLUME, "lattice": [[1, 0], [0, 1]]}], "3x3 'lattice'"),
-        ([{**_VOLUME, "periodic": "yes"}], "boolean 'periodic'"),
-        ([{**_VOLUME, "grid": [[[0.1]]], "grid_dims": [2, 2, 2]}], "do not match"),
-    ],
-)
-def test_widget_volumetric_data_rejects_invalid(bad_input: Any, match: str) -> None:
-    """volumetric_data rejects non-lists, non-dict elements and malformed payloads."""
-    with pytest.raises((tl.TraitError, TypeError, ValueError), match=match):
+@pytest.mark.parametrize("bad_input", ["not_a_list", ["not_a_dict"], [42]])
+def test_widget_volumetric_data_rejects_invalid(bad_input: Any) -> None:
+    """volumetric_data rejects non-lists and elements that are neither dicts nor
+    pymatgen VolumetricData (shape errors are left to the renderer).
+    """
+    with pytest.raises((tl.TraitError, TypeError), match="volumetric_data"):
         StructureWidget(volumetric_data=bad_input)
 
 

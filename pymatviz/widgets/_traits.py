@@ -67,7 +67,7 @@ class StructureVizTraits(tl.HasTraits):
     background_color = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
     background_opacity = tl.Float(allow_none=True, default_value=None).tag(sync=True)
 
-    # UI controls. gizmo is a bool or a matterviz GizmoOptions dict (corner, size, ...).
+    # UI controls. gizmo: bool or a matterviz GizmoOptions dict
     gizmo = tl.Union([tl.Bool(), tl.Dict()], allow_none=True, default_value=None).tag(
         sync=True
     )
@@ -76,12 +76,8 @@ class StructureVizTraits(tl.HasTraits):
 
 
 class PlotControlsTraits(tl.HasTraits):
-    """Control-pane traits shared by matterviz plot components (synced to JS).
-
-    ``controls_open`` syncs both ways (toggling the pane in the UI writes it back);
-    ``controls_toggle_props``/``controls_pane_props`` are HTML attribute dicts spread
-    onto the pane's toggle button and the pane itself. ``show_controls`` lives on
-    ``MatterVizWidget``.
+    """Control-pane traits shared by matterviz plot components: two-way
+    ``controls_open`` plus HTML attribute dicts for the toggle button and the pane.
     """
 
     controls_open = tl.Bool(default_value=False).tag(sync=True)

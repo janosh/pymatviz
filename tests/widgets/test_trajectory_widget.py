@@ -261,170 +261,58 @@ def test_trajectory_widget_edge_cases(
         assert result is None
 
 
-def _build_invalid_trajectory_input(
-    case_name: str, valid_structure: dict[str, Any]
-) -> dict[str, Any]:
-    """Create compact invalid trajectory dict variants for schema validation tests."""
-
-    def _single_frame(structure_data: Any) -> dict[str, Any]:
-        """Wrap structure payload in a single-frame trajectory dict."""
-        return {"frames": [{"structure": structure_data, "step": 0}]}
-
-    def _site_with_species(
-        element_symbol: str, *, include_abc: bool, empty_species: bool = False
-    ) -> dict[str, Any]:
-        """Build a minimal site payload with optional fractional coordinates."""
-        site_data: dict[str, Any] = {
-            "species": []
-            if empty_species
-            else [{"element": element_symbol, "occu": 1.0}]
-        }
-        if include_abc:
-            site_data["abc"] = [0, 0, 0]
-        return site_data
-
-    invalid_cases: dict[str, dict[str, Any]] = {
-        "missing_frames": {"metadata": {}},
-        "empty_frames": {"frames": []},
-        "non_dict_frame": {"frames": [123]},
-        "missing_structure": {"frames": [{"step": 0}]},
-        "bad_structure_type": {"frames": [{"structure": "bad", "step": 0}]},
-        "missing_lattice_params": _single_frame(
-            {
-                "lattice": {"a": 1.0, "b": 1.0, "c": 1.0},
-                "sites": [_site_with_species("Si", include_abc=True)],
-            }
-        ),
-        "empty_sites": _single_frame({**valid_structure, "sites": []}),
-        "missing_site_coords": _single_frame(
-            {**valid_structure, "sites": [_site_with_species("Si", include_abc=False)]}
-        ),
-        "empty_species": _single_frame(
-            {
-                **valid_structure,
-                "sites": [
-                    _site_with_species("Si", include_abc=True, empty_species=True)
-                ],
-            }
-        ),
-        "missing_coords_second_site": _single_frame(
-            {
-                **valid_structure,
-                "sites": [
-                    _site_with_species("Si", include_abc=True),
-                    _site_with_species("O", include_abc=False),
-                ],
-            }
-        ),
-    }
-    return invalid_cases[case_name]
+_CUBIC = {"matrix": [[4, 0, 0], [0, 4, 0], [0, 0, 4]]}
+_SI = {"element": "Si", "occu": 1.0}
 
 
 @pytest.mark.parametrize(
-    ("case_name", "error_cls", "match"),
+    ("lattice_input", "species", "expected_species", "coord_key"),
     [
-        ("missing_frames", ValueError, "missing required key 'frames'"),
-        ("empty_frames", ValueError, "frames' is empty"),
-        ("non_dict_frame", TypeError, "frame must be a dict"),
-        ("missing_structure", ValueError, "missing required key 'structure'"),
-        ("bad_structure_type", TypeError, "'structure' must be a dict"),
-        (
-            "missing_lattice_params",
-            ValueError,
-            "must provide either 'matrix' or all of",
-        ),
-        ("empty_sites", ValueError, "empty 'sites'"),
-        ("empty_species", ValueError, "species' must be a non-empty list"),
-        ("missing_site_coords", ValueError, "coordinate key 'abc' or 'xyz'"),
-        ("missing_coords_second_site", ValueError, "coordinate key 'abc' or 'xyz'"),
-    ],
-)
-def test_trajectory_widget_invalid_dict_schema_raises_helpful_error(
-    case_name: str,
-    error_cls: type[Exception],
-    match: str,
-    fe3co4_disordered: Structure,
-) -> None:
-    """Invalid trajectory dicts should fail with actionable schema errors."""
-    valid_structure = fe3co4_disordered.as_dict()
-    trajectory_input = _build_invalid_trajectory_input(case_name, valid_structure)
-    with pytest.raises(error_cls, match=match):
-        TrajectoryWidget(trajectory=trajectory_input)
-
-
-@pytest.mark.parametrize(
-    ("lattice_input", "coord_key", "coords"),
-    [
-        ({"matrix": [[4, 0, 0], [0, 4, 0], [0, 0, 4]]}, "abc", [0.25, 0.5, 0.75]),
+        (_CUBIC, ["Si"], [_SI], "abc"),  # bare symbols become {element, occu}
         (
             dict(a=4.0, b=5.0, c=6.0, alpha=90.0, beta=90.0, gamma=90.0),
+            [{"element": "Si"}],
+            [_SI],
             "xyz",
-            [1.0, 2.5, 3.0],
         ),
+        (_CUBIC, [{**_SI, "occu": 0.5}, {"element": "Ge", "occu": 0.5}], None, "xyz"),
     ],
 )
 def test_trajectory_widget_completes_only_non_derivable_fields(
-    lattice_input: dict[str, Any], coord_key: str, coords: list[float]
+    lattice_input: dict[str, Any],
+    species: list[Any],
+    expected_species: list[dict[str, Any]] | None,
+    coord_key: str,
 ) -> None:
     """Dict frames get step, occu, label, properties and a lattice matrix; fields
     matterviz's trajectory_from_json recomputes (a/b/c/angles/volume/pbc, the
-    missing abc<->xyz) are not emitted, keeping the JSON payload lean.
+    missing abc<->xyz) are not emitted, keeping the JSON payload lean. Explicit steps
+    (int, float, numpy) and occupancies are kept, missing steps default to the index.
     """
-    structure_input = {
+    coords = [0.25, 0.5, 0.75]
+    structure = {
         "lattice": lattice_input,
-        "sites": [{"species": [{"element": "Si"}], coord_key: coords}],
+        "sites": [{"species": species, coord_key: coords}],
     }
-    widget = TrajectoryWidget(trajectory={"frames": [{"structure": structure_input}]})
+    steps = ({"step": 500}, {}, {"step": 2.5}, {"step": np.int64(3000)})
+    frames = [{"structure": structure, **step} for step in steps]
+    widget = TrajectoryWidget(trajectory={"frames": frames})
+    assert [f["step"] for f in widget.trajectory["frames"]] == [500, 1, 2.5, 3000]
     frame = widget.trajectory["frames"][0]
-    assert frame["step"] == 0  # defaulted to the frame index (renderer requires it)
     lattice = frame["structure"]["lattice"]
     assert set(lattice) == {"matrix", *lattice_input}  # no a/b/c/.../volume/pbc added
     if "matrix" not in lattice_input:
         np.testing.assert_allclose(
-            lattice["matrix"], np.diag([4.0, 5.0, 6.0]), rtol=0, atol=1e-12
+            lattice["matrix"], np.diag([4.0, 5.0, 6.0]), atol=1e-12
         )
-    site = frame["structure"]["sites"][0]
-    assert site == {
-        "species": [{"element": "Si", "occu": 1.0}],
-        coord_key: coords,
-        "label": "Si1",
-        "properties": {},
-    }
-
-
-def test_trajectory_widget_keeps_explicit_step() -> None:
-    """An explicit frame step (e.g. MD step 500) is kept, not replaced by the index."""
-    structure = {
-        "lattice": {"matrix": [[4, 0, 0], [0, 4, 0], [0, 0, 4]]},
-        "sites": [{"species": [{"element": "Si", "occu": 1.0}], "abc": [0, 0, 0]}],
-    }
-    frames = [{"structure": structure, "step": 500}, {"structure": structure}]
-    widget = TrajectoryWidget(trajectory={"frames": frames})
-    assert [frame["step"] for frame in widget.trajectory["frames"]] == [500, 1]
-
-
-def test_trajectory_widget_accepts_string_species_entries() -> None:
-    """Bare symbol species are promoted to the {element, occu} objects the renderer
-    reads (a string species rendered an empty scene).
-    """
-    widget = TrajectoryWidget(
-        trajectory={
-            "frames": [
-                {
-                    "structure": {
-                        "lattice": {"matrix": [[4, 0, 0], [0, 4, 0], [0, 0, 4]]},
-                        "sites": [{"species": ["Si"], "abc": [0.0, 0.0, 0.0]}],
-                    },
-                    "step": 0,
-                }
-            ]
+    assert frame["structure"]["sites"] == [
+        {
+            "species": expected_species or species,
+            coord_key: coords,
+            "label": "Si1",
+            "properties": {},
         }
-    )
-    structure = widget.trajectory["frames"][0]["structure"]
-    site = structure["sites"][0]
-    assert site["species"] == [{"element": "Si", "occu": 1.0}]
-    assert site["label"] == "Si1"
-    assert "xyz" not in site  # derived by the renderer from abc
+    ]
 
 
 def test_trajectory_widget_single_structure_extra_fields() -> None:

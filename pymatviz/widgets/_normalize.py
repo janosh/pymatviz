@@ -169,148 +169,71 @@ def normalize_plot_json(value: Any, label: str) -> Any:
     )
 
 
-def _series_entries(series_data: Any, component_name: str) -> list[dict[str, Any]]:
-    """Check that ``series_data`` is a list/tuple of dicts and return it as a list."""
+def normalize_plot_series(
+    series_data: Any, *, component_name: str, samples_key: str | None = None
+) -> list[dict[str, Any]] | None:
+    """Normalize and validate plot series payloads (``None`` passes through).
+
+    Entries are dicts with ``x`` and ``y`` lists of equal length (``x`` all strings
+    for categorical axes or all numeric, ``y`` numeric, both finite). With
+    ``samples_key`` (histograms bin ``values``), an entry may instead hold its raw
+    samples under that key; the legacy ``{x, y}`` shape is still accepted with ``y``
+    as the samples. Raises TypeError for wrong container/entry/sample types and
+    ValueError for missing keys, length mismatches and non-finite numbers.
+    """
+    if series_data is None:
+        return None
     if not isinstance(series_data, (list, tuple)):
         raise TypeError(
             f"{component_name} 'series' must be a list/tuple of dicts, got "
             f"{type(series_data)}."
         )
+    normalized_series: list[dict[str, Any]] = []
     for series_index, series_entry in enumerate(series_data):
         if not isinstance(series_entry, dict):
             raise TypeError(
                 f"{component_name} series entries must be dicts. "
                 f"Got type {type(series_entry)} at index {series_index}."
             )
-    return list(series_data)
-
-
-def _normalize_xy_entry(
-    series_entry: dict[str, Any], *, component_name: str, series_index: int
-) -> dict[str, Any]:
-    """Normalize one ``{x, y}`` series entry (both keys required, equal length)."""
-    if "x" not in series_entry or "y" not in series_entry:
-        available_keys = sorted(str(key) for key in series_entry)
-        raise ValueError(
-            f"{component_name} series entry must include keys 'x' and 'y'. "
-            f"Got keys at index {series_index}: {available_keys}."
-        )
-
-    normalized_entry = normalize_plot_json(series_entry, f"{component_name}.series")
-    x_values = normalized_entry["x"]
-    y_values = normalized_entry["y"]
-    if not isinstance(x_values, list) or not isinstance(y_values, list):
-        raise TypeError(
-            f"{component_name} series x/y must be list-like after normalization. "
-            f"Got types x={type(x_values)}, y={type(y_values)} at index "
-            f"{series_index}."
-        )
-    if len(x_values) != len(y_values):
-        raise ValueError(
-            f"{component_name} series x/y lengths must match at index "
-            f"{series_index}, got len(x)={len(x_values)} and "
-            f"len(y)={len(y_values)}."
-        )
-
-    # x can be strings (categorical) or numeric; y must always be numeric
-    is_categorical = x_values and all(isinstance(val, str) for val in x_values)
-    if not is_categorical:
-        if x_values and any(isinstance(val, str) for val in x_values):
-            raise TypeError(
-                f"{component_name} series x values must be all strings "
-                f"(categorical) or all numeric, got mixed types at index "
-                f"{series_index}."
-            )
-        normalized_entry["x"] = _normalize_numeric_sequence(
-            x_values, "x", series_index=series_index
-        )
-    normalized_entry["y"] = _normalize_numeric_sequence(
-        y_values, "y", series_index=series_index
-    )
-    return normalized_entry
-
-
-def normalize_plot_series(
-    series_data: Any, *, component_name: str
-) -> list[dict[str, Any]] | None:
-    """Normalize and validate generic ``{x, y}`` plot series payloads.
-
-    Args:
-        series_data: Sequence of series dicts or None.
-        component_name: Widget/component name used in error messages.
-
-    Returns:
-        Normalized list of series dictionaries or ``None``.
-
-    Raises:
-        TypeError: If input type or series item types are invalid.
-        ValueError: If required fields are missing, malformed, or length-mismatched.
-    """
-    if series_data is None:
-        return None
-    return [
-        _normalize_xy_entry(
-            series_entry, component_name=component_name, series_index=series_index
-        )
-        for series_index, series_entry in enumerate(
-            _series_entries(series_data, component_name)
-        )
-    ]
-
-
-def normalize_histogram_series(series_data: Any) -> list[dict[str, Any]] | None:
-    """Normalize and validate histogram series payloads.
-
-    Each entry is a matterviz ``HistogramSeries``: the samples to bin live in
-    ``values`` (``{"values": [...], "label": ..., "color": ...}``). The legacy
-    ``{x, y}`` shape is still accepted, with ``y`` read as the samples (the frontend
-    ignores ``x``); it is validated like any other plot series.
-
-    Args:
-        series_data: Sequence of series dicts or None.
-
-    Returns:
-        Normalized list of series dictionaries or ``None``.
-
-    Raises:
-        TypeError: If input type, series item types or sample types are invalid.
-        ValueError: If neither ``values`` nor ``x``/``y`` are present, or samples are
-            non-finite.
-    """
-    if series_data is None:
-        return None
-
-    normalized_series: list[dict[str, Any]] = []
-    for series_index, series_entry in enumerate(
-        _series_entries(series_data, "Histogram")
-    ):
-        if "values" not in series_entry:
-            if "x" not in series_entry and "y" not in series_entry:
-                available_keys = sorted(str(key) for key in series_entry)
-                raise ValueError(
-                    "Histogram series entry must include key 'values' (or legacy "
-                    f"'x' and 'y' with y as the samples). Got keys at index "
-                    f"{series_index}: {available_keys}."
+        entry = normalize_plot_json(series_entry, f"{component_name}.series")
+        keys = (samples_key,) if samples_key and samples_key in entry else ("x", "y")
+        if not all(key in entry for key in keys):
+            what = "keys 'x' and 'y'"
+            if samples_key and not {samples_key, "x", "y"} & set(entry):
+                what = (
+                    f"key '{samples_key}' (or legacy 'x' and 'y' with y as the samples)"
                 )
-            normalized_series.append(
-                _normalize_xy_entry(
-                    series_entry, component_name="Histogram", series_index=series_index
+            raise ValueError(
+                f"{component_name} series entry must include {what}. "
+                f"Got keys at index {series_index}: {sorted(entry)}."
+            )
+        for key in keys:
+            if not isinstance(entry[key], list):
+                raise TypeError(
+                    f"{component_name} series {key} must be list-like after "
+                    f"normalization. Got {type(entry[key])} at index {series_index}."
                 )
+        if len(keys) == 2 and len(entry["x"]) != len(entry["y"]):
+            raise ValueError(
+                f"{component_name} series x/y lengths must match at index "
+                f"{series_index}, got len(x)={len(entry['x'])} and "
+                f"len(y)={len(entry['y'])}."
             )
-            continue
-
-        normalized_entry = normalize_plot_json(series_entry, "Histogram.series")
-        values = normalized_entry["values"]
-        if not isinstance(values, list):
-            raise TypeError(
-                "Histogram series values must be list-like after normalization. "
-                f"Got type {type(values)} at index {series_index}."
+        for key in keys:
+            values = entry[key]
+            # x can be strings (categorical) or numeric; samples/y are always numeric
+            if key == "x" and values and all(isinstance(val, str) for val in values):
+                continue
+            if key == "x" and any(isinstance(val, str) for val in values):
+                raise TypeError(
+                    f"{component_name} series x values must be all strings "
+                    f"(categorical) or all numeric, got mixed types at index "
+                    f"{series_index}."
+                )
+            entry[key] = _normalize_numeric_sequence(
+                values, key, series_index=series_index
             )
-        normalized_entry["values"] = _normalize_numeric_sequence(
-            values, "values", series_index=series_index
-        )
-        normalized_series.append(normalized_entry)
-
+        normalized_series.append(entry)
     return normalized_series
 
 

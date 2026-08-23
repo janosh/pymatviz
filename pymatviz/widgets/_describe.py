@@ -73,33 +73,37 @@ def _structure_facts(struct: Any) -> dict[str, Any]:
     return facts
 
 
-def _xy_facts(widget_data: Mapping[str, Any], axes: tuple[str, ...]) -> dict[str, Any]:
+def _series_list(widget_data: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    """The dict-valued entries of a plot widget's ``series`` traitlet."""
+    series = widget_data.get("series") or []
+    return [series_item for series_item in series if isinstance(series_item, Mapping)]
+
+
+def _histogram_samples(series_item: Mapping[str, Any]) -> Any:
+    """Samples a histogram bins: ``values`` or legacy ``y`` (``x`` is ignored)."""
+    values = series_item.get("values")
+    return series_item.get("y") if values is None else values
+
+
+def _xy_facts(
+    widget_data: Mapping[str, Any], axes: tuple[str, ...], *, histogram: bool = False
+) -> dict[str, Any]:
     """Series count, point count, per-axis ranges, and labels for plot widgets.
 
-    Histogram series carry their samples in ``values`` (binned on the x axis) rather
-    than ``x``/``y``; those count as points and set ``x_range`` when ``x`` is absent.
+    Histograms bin their samples along x, so those set ``n_points``/``x_range``; bin
+    counts are computed in the renderer, so no ``y_range`` is reported.
     """
-    series = widget_data.get("series") or []
-    series = [series_item for series_item in series if isinstance(series_item, Mapping)]
-
-    def samples(series_item: Mapping[str, Any], axis: str) -> Any:
-        axis_values = series_item.get(axis)
-        if axis == "x" and axis_values is None:
-            return series_item.get("values")
-        return axis_values
-
-    facts: dict[str, Any] = {
-        "n_series": len(series),
-        "n_points": sum(len(samples(series_item, "x") or []) for series_item in series),
+    series = _series_list(widget_data)
+    samples = {
+        axis: [_histogram_samples(s) if histogram else s.get(axis) for s in series]
+        for axis in axes
     }
-    labels = [
-        series_item.get("label") for series_item in series if series_item.get("label")
-    ]
-    if labels:
+    facts: dict[str, Any] = {"n_series": len(series)}
+    facts["n_points"] = sum(len(vals or []) for vals in samples["x"])
+    if labels := [s.get("label") for s in series if s.get("label")]:
         facts["series_labels"] = labels
-    for axis in axes:
-        axis_range = _minmax([samples(series_item, axis) for series_item in series])
-        if axis_range is not None:
+    for axis, axis_samples in samples.items():
+        if (axis_range := _minmax(axis_samples)) is not None:
             facts[f"{axis}_range"] = axis_range
     return facts
 
@@ -278,15 +282,16 @@ def _describe_brillouin_zone(data: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-# Facts for 2D scatter/bar/histogram plots (3D adds a z-axis range)
+# Facts for 2D scatter/bar plots (3D adds a z-axis range, histograms bin along x)
 _describe_xy = functools.partial(_xy_facts, axes=("x", "y"))
 _describe_xyz = functools.partial(_xy_facts, axes=("x", "y", "z"))
+_describe_histogram = functools.partial(_xy_facts, axes=("x",), histogram=True)
 
 # widget_type -> handler deriving structured facts from to_dict() output
 _HANDLERS: dict[str, Any] = {
     "scatter_plot": _describe_xy,
     "bar_plot": _describe_xy,
-    "histogram": _describe_xy,
+    "histogram": _describe_histogram,
     "scatter_plot_3d": _describe_xyz,
     "structure": _describe_structure,
     "trajectory": _describe_trajectory,
@@ -391,12 +396,15 @@ def check_inputs(widget_data: Mapping[str, Any]) -> list[str]:
             )
 
     if widget_type in ("scatter_plot", "bar_plot", "histogram", "scatter_plot_3d"):
-        series = [
-            s for s in (widget_data.get("series") or []) if isinstance(s, Mapping)
-        ]
-        if series and all(not (series_item.get("x")) for series_item in series):
+        # histograms bin `values` (or legacy `y`); the other plots need `x`
+        hist = widget_type == "histogram"
+        series = _series_list(widget_data)
+        if series and not any(
+            _histogram_samples(s) if hist else s.get("x") for s in series
+        ):
+            what = "samples ('values')" if hist else "'x'"
             warnings.append(
-                f"{widget_type}: all series have empty 'x'; nothing to plot"
+                f"{widget_type}: all series have empty {what}; nothing to plot"
             )
 
     if widget_type == "rdf_plot" and not (
