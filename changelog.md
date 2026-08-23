@@ -4,7 +4,7 @@
 
 ### 💥 Breaking Changes
 
-- Widgets now render the [matterviz-anywidget](https://www.npmjs.com/package/matterviz-anywidget) 0.6.0 bundle (`MATTERVIZ_ANYWIDGET_VERSION`) and their traits mirror its Python<->JS contract exactly (enforced by `tests/widgets/test_js_prop_parity.py`):
+- Widgets now render the [matterviz-anywidget](https://www.npmjs.com/package/matterviz-anywidget) 0.6.0 bundle (`MATTERVIZ_ANYWIDGET_VERSION`) and their traits mirror its Python ↔ JS contract exactly (enforced by `tests/widgets/test_js_prop_parity.py`):
   - Renamed constructor kwargs/traits: `BandStructureWidget(band_structure=)` → `band_structs=` and `DosWidget(dos=)` → `doses=` (also on `BandsAndDosWidget`; both accept a `{label: obj}` dict to overlay several), `HeatmapMatrixWidget`/`PeriodicTableWidget` `log_scale` → `log`, `StructureWidget`/`TrajectoryWidget` `show_gizmo` → `gizmo` (`bool` or a matterviz `GizmoOptions` dict).
   - Removed traits the frontend no longer reads: `controls` on `XrdWidget`, `RdfPlotWidget`, `ScatterPlotWidget` and `ScatterPlot3DWidget` (use the `controls_*` traits below), `ScatterPlotWidget.point_events` and `BarPlotWidget.point_tween`.
   - `StructureWidget.isosurface_settings` is layers-only: `{"layers": [{"isovalue", "color", "opacity", "visible", "show_negative", "negative_color"}], "wireframe", "halo", "display_range"?}` replaces the flat `isovalue`/`positive_color`/... dict. `volumetric_data` entries are emitted as flat `values` + `dims` (nested `grid` inputs and pymatgen `VolumetricData` objects are converted).

@@ -35,11 +35,9 @@ jobs:
       # depends on `matterviz: file:../..`, which needs dist/ from package:dist).
       pre-install-cmd: |
         git clone --depth 1 https://github.com/janosh/matterviz "$HOME/matterviz"
+        # corepack pnpm from inside the clone honours matterviz's packageManager pin (the runner's pnpm is newer)
         corepack enable
-        pnpm -C "$HOME/matterviz" install --config.strict-dep-builds=false
-        pnpm -C "$HOME/matterviz" package:dist
-        pnpm -C "$HOME/matterviz/extensions/anywidget" install --ignore-workspace --config.strict-dep-builds=false
-        pnpm -C "$HOME/matterviz/extensions/anywidget" run build
+        (cd "$HOME/matterviz" && MATTERVIZ_SKIP_PREPARE=1 corepack pnpm install --config.strict-dep-builds=false && corepack pnpm package:dist && corepack pnpm -C extensions/anywidget install --ignore-workspace --config.strict-dep-builds=false && corepack pnpm -C extensions/anywidget run build)
         echo "MATTERVIZ_ANYWIDGET_DIR=$HOME/matterviz/extensions/anywidget/build" >> "$GITHUB_ENV"
       # playwright + chromium so the headless export and JS prop parity tests run
       install-cmd: |
@@ -75,11 +73,9 @@ jobs:
       - name: Build matterviz-anywidget bundle from matterviz main
         run: |
           git clone --depth 1 https://github.com/janosh/matterviz "$HOME/matterviz"
+          # corepack pnpm from inside the clone honours matterviz's packageManager pin (the runner's pnpm is newer)
           corepack enable
-          pnpm -C "$HOME/matterviz" install --config.strict-dep-builds=false
-          pnpm -C "$HOME/matterviz" package:dist
-          pnpm -C "$HOME/matterviz/extensions/anywidget" install --ignore-workspace --config.strict-dep-builds=false
-          pnpm -C "$HOME/matterviz/extensions/anywidget" run build
+          (cd "$HOME/matterviz" && MATTERVIZ_SKIP_PREPARE=1 corepack pnpm install --config.strict-dep-builds=false && corepack pnpm package:dist && corepack pnpm -C extensions/anywidget install --ignore-workspace --config.strict-dep-builds=false && corepack pnpm -C extensions/anywidget run build)
           echo "MATTERVIZ_ANYWIDGET_DIR=$HOME/matterviz/extensions/anywidget/build" >> "$GITHUB_ENV"
 
       - name: Run all widget demos
