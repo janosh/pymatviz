@@ -3,7 +3,7 @@ name: SVG Compression
 on:
   pull_request:
     branches: [main]
-    paths: [assets/*.svg] # only run workflow when SVG files changed
+    paths: ['assets/**/*.svg'] # only run workflow when SVG files changed
 
 jobs:
   tests:
@@ -23,10 +23,6 @@ jobs:
         run: |
           # Install SVGO
           npm install --global svgo
-
-          # Show SVGO version (DEBUG #187)
-          # TODO: remove after 2025-01-01 if nothing goes wrong
-          svgo --version
 
           svgo --multipass --final-newline assets
 
