@@ -19,6 +19,8 @@ from pymatviz.widgets._headless import (
     _SVG_EXTRACT_JS,
     _build_html,
     _capture_page,
+    _diagnose_async,
+    _diagnose_sync,
     _foreign_running_loop,
     _render_widget_async,
     _RenderInputs,
@@ -35,6 +37,21 @@ HEADLESS_PATH = "pymatviz.widgets._headless"
 DUMMY_WIDGET_DATA: dict[str, Any] = {"widget_type": "scatter_plot", "style": ""}
 DUMMY_ESM = "export default { render() {} }"
 DUMMY_CSS = ".widget {}"
+
+
+@pytest.mark.parametrize("is_async", [False, True])
+def test_diagnostics_reports_browser_startup_failure(is_async: bool) -> None:
+    """Browser launch failures return a report in both execution modes."""
+    inputs = _RenderInputs(DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS)
+    browser_fn = "_get_async_browser" if is_async else "_get_browser"
+    with patch(
+        f"{HEADLESS_PATH}.{browser_fn}", side_effect=RuntimeError("missing Chromium")
+    ):
+        report = (
+            asyncio.run(_diagnose_async(inputs)) if is_async else _diagnose_sync(inputs)
+        )
+    assert report.ok is False
+    assert report.error == "render failed: missing Chromium"
 
 
 # === _foreign_running_loop ===
