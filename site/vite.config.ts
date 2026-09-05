@@ -23,12 +23,7 @@ const svelte_config = {
 } satisfies Parameters<typeof sveltekit>[0]
 
 export default {
-  ...make_config({
-    staged: {
-      // shared hook runs the JS svelte-check; this site uses the Rust port
-      '*.{ts,svelte}': `sh -c 'npx svelte-kit sync && npx svelte-check-rs --threshold error'`,
-    },
-  }),
+  ...make_config(),
   plugins: [sveltekit(svelte_config)],
   preview: { port: 3000 },
   server: {

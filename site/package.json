@@ -22,10 +22,10 @@
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.1.2",
     "svelte": "^5.56.10",
-    "svelte-check-rs": "^0.11.0",
+    "svelte-check": "^4.7.6",
     "svelte-widgets": "^1.6.0",
     "tslib": "^2.8.1",
-    "typescript": "^7.0.2",
+    "typescript": "^6.0.3",
     "unified": "^11.0.5",
     "vite": "^8.2.2",
     "vite-plus": "^0.2.9"
