@@ -2,6 +2,8 @@
 
 Available functions:
     - annotate: Annotate a plotly figure with text.
+    - annotated_heatmap: Heatmap with per-cell text, replacing the removed
+      plotly.figure_factory.create_annotated_heatmap.
     - get_font_color: Get the font color used in a Plotly figure.
     - get_fig_xy_range: Get the x and y range of a plotly figure.
     - luminance: Compute the luminance of a color.
@@ -13,6 +15,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Final, cast
 
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
@@ -342,3 +345,132 @@ def get_fig_xy_range(
             y_range = (min(df_xy.y), max(df_xy.y))
 
     return x_range, y_range
+
+
+# Plotly colorscales running light -> dark, and the one that runs dark -> light. Used to
+# pick a readable annotation color when the caller names a colorscale instead of listing
+# its stops.
+_LIGHT_TO_DARK_SCALES: Final = (
+    "Greys", "Greens", "Blues", "YIGnBu", "YIOrRd", "RdBu", "Picnic", "Jet", "Hot",
+    "Blackbody", "Earth", "Electric", "Viridis", "Cividis",
+)  # fmt: skip
+_DARK_TO_LIGHT_SCALES: Final = ("Reds",)
+
+
+def _scale_end_colors(
+    colorscale: Any, font_colors: Any, *, reversescale: bool
+) -> tuple[str, str]:
+    """Annotation colors for the low and high ends of a colorscale."""
+    white, black = "#FFFFFF", "#000000"
+    if font_colors:
+        return font_colors[0], font_colors[-1]
+    if colorscale in _LIGHT_TO_DARK_SCALES:
+        return (black, white) if reversescale else (white, black)
+    if colorscale in _DARK_TO_LIGHT_SCALES:
+        return (white, black) if reversescale else (black, white)
+    if isinstance(colorscale, list):
+        low, high = colorscale[0][1], colorscale[-1][1]
+        if reversescale:
+            low, high = high, low
+
+        # luminance() takes a color string and returns 0-1; >0.7 is roughly plotly's
+        # own 186/255 threshold for switching to black text
+        def pick(end: ColorType) -> str:
+            return black if luminance(end) > 0.7 else white
+
+        return pick(low), pick(high)
+    return black, black
+
+
+def annotated_heatmap(
+    z: Any,
+    # x/y/font_colors are Any, not Sequence: callers pass numpy arrays, and the main
+    # call site unpacks a dict so every argument arrives widened
+    x: Any = None,
+    y: Any = None,
+    annotation_text: Any = None,
+    colorscale: Any = "Plasma",
+    font_colors: Any = None,
+    *,
+    showscale: bool = False,
+    reversescale: bool = False,
+    **kwargs: Any,
+) -> go.Figure:
+    """Heatmap with a text annotation centered on every cell.
+
+    Replaces plotly.figure_factory.create_annotated_heatmap, removed in plotly 7. The
+    output is the same shape the factory produced: one heatmap trace plus one
+    layout annotation per cell, so callers reading fig.layout.annotations still work.
+
+    Args:
+        z: 2D array of values driving the cell colors.
+        x: Column labels. Defaults to positional indices.
+        y: Row labels. Defaults to positional indices.
+        annotation_text: 2D array of per-cell text. Defaults to z.
+        colorscale: Any plotly colorscale, named or as a list of stops.
+        font_colors: Annotation colors for the low and high ends of the scale. Chosen
+            from the colorscale for contrast when omitted.
+        showscale: Whether to draw the colorbar.
+        reversescale: Whether to reverse the colorscale.
+        **kwargs: Forwarded to the heatmap trace. zmin/zmax/zmid also move the
+            threshold at which annotations switch between the two font colors.
+
+    Returns:
+        go.Figure: The annotated heatmap.
+    """
+    z_arr = np.asarray(z)
+    if annotation_text is None:
+        annotation_text = z_arr
+    x_labels = list(x) if x else range(z_arr.shape[1])
+    y_labels = list(y) if y else range(z_arr.shape[0])
+
+    # the value at which annotations flip from the low to the high font color
+    z_min = np.nanmin(z_arr) if (kw_min := kwargs.get("zmin")) is None else kw_min
+    z_max = np.nanmax(z_arr) if (kw_max := kwargs.get("zmax")) is None else kw_max
+    z_mid = (z_max + z_min) / 2 if (kw_mid := kwargs.get("zmid")) is None else kw_mid
+
+    low_color, high_color = _scale_end_colors(
+        colorscale, font_colors or (), reversescale=reversescale
+    )
+    annotations = [
+        go.layout.Annotation(
+            text=str(np.asarray(annotation_text)[row_idx][col_idx]),
+            x=x_labels[col_idx],
+            y=y_labels[row_idx],
+            xref="x1",
+            yref="y1",
+            font=dict(color=low_color if val < z_mid else high_color),
+            showarrow=False,
+        )
+        for row_idx, row in enumerate(z_arr)
+        for col_idx, val in enumerate(row)
+    ]
+
+    labelled = bool(x) or bool(y)
+    trace = dict(
+        type="heatmap",
+        z=z,
+        colorscale=colorscale,
+        showscale=showscale,
+        reversescale=reversescale,
+        **({"x": x, "y": y} if labelled else {}),
+        **kwargs,
+    )
+    axis_extra = {} if labelled else dict(showticklabels=False)
+    layout = dict(
+        annotations=annotations,
+        xaxis=dict(
+            ticks="",
+            side="top",
+            gridcolor="rgb(0, 0, 0)",
+            **({"dtick": 1} if labelled else {}),
+            **axis_extra,
+        ),
+        yaxis=dict(
+            ticks="",
+            ticksuffix="  ",
+            **({"dtick": 1} if labelled else {}),
+            **axis_extra,
+        ),
+    )
+    return go.Figure(data=[trace], layout=layout)

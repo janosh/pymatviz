@@ -22,5 +22,16 @@ jobs:
         run: corepack enable && pnpm install
         working-directory: site
 
+      # ty resolves the project env by shelling out to uv, and something in that chain
+      # passes --frozen (the hook's `UV_FROZEN: "0"` override does not disable it). uv.lock
+      # is gitignored, so with no lockfile `uv workspace metadata` exits 2 and ty then
+      # reports real third-party attributes as unresolved. Generate one for the runner
+      # only — it is never committed.
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Generate a lockfile for ty
+        run: uv lock
+
       - name: Run prek
         uses: j178/prek-action@v2

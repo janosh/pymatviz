@@ -71,7 +71,10 @@ repos:
     hooks:
       - id: vp-staged
         name: Format, lint and type-check staged files (vp staged)
-        entry: env PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false pnpm -C site exec vp staged
+        # `cd site` not `pnpm -C site`: corepack reads `packageManager` from the CWD, and
+        # there is no root package.json, so from the root it picks its own pnpm and then trips
+        # the version check against site/package.json
+        entry: env PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false sh -c 'cd site && pnpm exec vp staged'
         language: system
         pass_filenames: false
         stages: [pre-commit]
