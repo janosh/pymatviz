@@ -24,7 +24,7 @@ jobs:
           # Install SVGO
           npm install --global svgo
 
-          svgo --multipass --final-newline assets
+          svgo --multipass --final-newline --recursive --folder assets
 
           if git diff --quiet assets; then
             echo "No changes to commit"
