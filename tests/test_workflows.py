@@ -8,7 +8,11 @@ import yaml
 def test_svg_compression_recursive() -> None:
     """The SVG workflow compresses the nested assets selected by its trigger."""
     with open(".github/workflows/svgo.yml") as file:
-        workflow = yaml.safe_load(file)
+        # String-only loading preserves "on" instead of treating it as a boolean.
+        workflow = yaml.load(file, Loader=yaml.BaseLoader)  # noqa: S506
+
+    assert workflow["on"]["pull_request"]["paths"] == ["assets/**/*.svg"]
+    assert workflow["jobs"]["tests"]["permissions"] == {"contents": "write"}
 
     commands = [
         shlex.split(line)
