@@ -3,16 +3,35 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, cast
 
 import numpy as np
+import pandas as pd
 import pytest
 
 import pymatviz as pmv
-from pymatviz.utils.plotting import contrast_ratio
+from pymatviz.utils.plotting import annotated_heatmap, contrast_ratio
 
 
 if TYPE_CHECKING:
     from typing import Literal
 
     from pymatviz.typing import ColorType, RgbColorType
+
+
+@pytest.mark.parametrize("labels", [list, np.array, pd.Index])
+def test_annotated_heatmap_array_labels(labels: type) -> None:
+    """Array-like labels and font colors retain their annotation positions."""
+    fig = annotated_heatmap(
+        [[0, 1], [2, 3]],
+        x=labels(["left", "right"]),
+        y=labels(["bottom", "top"]),
+        font_colors=np.array(["red", "blue"]),
+    )
+    assert [(anno.x, anno.y, anno.font.color) for anno in fig.layout.annotations] == [
+        ("left", "bottom", "red"),
+        ("right", "bottom", "red"),
+        ("left", "top", "blue"),
+        ("right", "top", "blue"),
+    ]
+    assert list(fig.data[0].x) == ["left", "right"]
 
 
 @pytest.mark.parametrize(

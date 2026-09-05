@@ -12,7 +12,6 @@ Available functions:
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import TYPE_CHECKING, Final, cast
 
 import numpy as np
@@ -22,7 +21,7 @@ import plotly.io as pio
 
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
     from typing import Any
 
     from pymatviz.typing import ColorType
@@ -286,19 +285,27 @@ def get_fig_xy_range(
             - Callable: A function that takes a trace and returns True/False
 
     Returns:
-        tuple[float, float, float, float]: The x and y range of the figure in the format
-            (x_min, x_max, y_min, y_max).
+        tuple: The axis ranges as ((x_min, x_max), (y_min, y_max)).
     """
     if not isinstance(fig, go.Figure):
         raise TypeError(f"Expected plotly Figure, got {type(fig)}")
 
-    # If kaleido is missing, try block raises ValueError: Full figure generation
-    # requires the kaleido package. Install with: pip install kaleido
-    # If so, we resort to manually computing the xy data ranges which are usually are
-    # close to but not the same as the axes limits.
+    if isinstance(traces, int):
+        selected = [fig.data[traces]]
+    elif isinstance(traces, slice):
+        selected = list(fig.data[traces])
+    elif callable(traces):
+        trace_predicate = cast("Callable[[go.Scatter], bool]", traces)
+        selected = [trace for trace in fig.data if trace_predicate(trace)]
+    else:
+        selected = [fig.data[idx] for idx in traces]
+    if not selected:
+        raise ValueError(f"No valid traces with required data found for {traces=}")
+
+    # Without Kaleido, use data bounds; these omit Plotly's autorange padding.
     try:
-        # https://stackoverflow.com/a/62042077
-        dev_fig = fig.full_figure_for_development(warn=False)
+        selected_fig = go.Figure(data=selected, layout=fig.layout)
+        dev_fig = selected_fig.full_figure_for_development(warn=False)
         x_axis_type = dev_fig.layout.xaxis.type
         y_axis_type = dev_fig.layout.yaxis.type
 
@@ -312,37 +319,32 @@ def get_fig_xy_range(
             y_range = (10 ** y_range[0], 10 ** y_range[1])
 
     except ValueError:
-        # Select a trace to use for determining the range
-        trace_index = 0
-        if isinstance(traces, int):
-            trace_index = traces
-        elif isinstance(traces, slice):
-            indices = list(range(*traces.indices(len(fig.data))))
-            trace_index = indices[0] if indices else 0
-        elif isinstance(traces, (list, tuple)):
-            trace_index = traces[0] if traces else 0
-        elif isinstance(traces, Callable):
-            trace_predicate = cast("Callable[[Any], bool]", traces)
-            for idx, trace in enumerate(fig.data):
-                if trace_predicate(trace):
-                    trace_index = idx
-                    break
-
-        trace = fig.data[trace_index]
-        df_xy = pd.DataFrame({"x": trace.x, "y": trace.y}).dropna()
+        df_xy = pd.concat(
+            [pd.DataFrame({"x": trace.x, "y": trace.y}) for trace in selected]
+        ).dropna()
         if df_xy.empty:
             raise ValueError("No valid traces with required data found") from None
 
-        # Determine ranges based on the type of axes
-        if fig.layout.xaxis.type == "log":
-            x_range = (10 ** min(df_xy.x), 10 ** max(df_xy.x))
-        else:
-            x_range = (min(df_xy.x), max(df_xy.x))
-
-        if fig.layout.yaxis.type == "log":
-            y_range = (10 ** min(df_xy.y), 10 ** max(df_xy.y))
-        else:
-            y_range = (min(df_xy.y), max(df_xy.y))
+        ranges = []
+        for axis in ("x", "y"):
+            layout_axis = fig.layout[f"{axis}axis"]
+            values = df_xy[axis]
+            if layout_axis.type == "log":
+                values = values[values > 0]
+            if values.empty:
+                raise ValueError(f"No valid data for {axis}-axis") from None
+            bounds = (values.min(), values.max())
+            if layout_axis.range is not None:
+                bounds = tuple(
+                    auto
+                    if bound is None
+                    else 10**bound
+                    if layout_axis.type == "log"
+                    else bound
+                    for auto, bound in zip(bounds, layout_axis.range, strict=True)
+                )
+            ranges.append(bounds)
+        x_range, y_range = ranges
 
     return x_range, y_range
 
@@ -362,7 +364,7 @@ def _scale_end_colors(
 ) -> tuple[str, str]:
     """Annotation colors for the low and high ends of a colorscale."""
     white, black = "#FFFFFF", "#000000"
-    if font_colors:
+    if font_colors is not None and len(font_colors):
         return font_colors[0], font_colors[-1]
     if colorscale in _LIGHT_TO_DARK_SCALES:
         return (black, white) if reversescale else (white, black)
@@ -373,9 +375,8 @@ def _scale_end_colors(
         if reversescale:
             low, high = high, low
 
-        # luminance() takes a color string and returns 0-1; >0.7 is roughly plotly's
-        # own 186/255 threshold for switching to black text
         def pick(end: ColorType) -> str:
+            """Choose dark text for light colorscale endpoints."""
             return black if luminance(end) > 0.7 else white
 
         return pick(low), pick(high)
@@ -384,8 +385,6 @@ def _scale_end_colors(
 
 def annotated_heatmap(
     z: Any,
-    # x/y/font_colors are Any, not Sequence: callers pass numpy arrays, and the main
-    # call site unpacks a dict so every argument arrives widened
     x: Any = None,
     y: Any = None,
     annotation_text: Any = None,
@@ -397,10 +396,6 @@ def annotated_heatmap(
     **kwargs: Any,
 ) -> go.Figure:
     """Heatmap with a text annotation centered on every cell.
-
-    Replaces plotly.figure_factory.create_annotated_heatmap, removed in plotly 7. The
-    output is the same shape the factory produced: one heatmap trace plus one
-    layout annotation per cell, so callers reading fig.layout.annotations still work.
 
     Args:
         z: 2D array of values driving the cell colors.
@@ -419,10 +414,9 @@ def annotated_heatmap(
         go.Figure: The annotated heatmap.
     """
     z_arr = np.asarray(z)
-    if annotation_text is None:
-        annotation_text = z_arr
-    x_labels = list(x) if x else range(z_arr.shape[1])
-    y_labels = list(y) if y else range(z_arr.shape[0])
+    annotation_text = z_arr if annotation_text is None else np.asarray(annotation_text)
+    x_labels = list(x) if x is not None else range(z_arr.shape[1])
+    y_labels = list(y) if y is not None else range(z_arr.shape[0])
 
     # the value at which annotations flip from the low to the high font color
     z_min = np.nanmin(z_arr) if (kw_min := kwargs.get("zmin")) is None else kw_min
@@ -430,11 +424,11 @@ def annotated_heatmap(
     z_mid = (z_max + z_min) / 2 if (kw_mid := kwargs.get("zmid")) is None else kw_mid
 
     low_color, high_color = _scale_end_colors(
-        colorscale, font_colors or (), reversescale=reversescale
+        colorscale, font_colors, reversescale=reversescale
     )
     annotations = [
         go.layout.Annotation(
-            text=str(np.asarray(annotation_text)[row_idx][col_idx]),
+            text=str(annotation_text[row_idx][col_idx]),
             x=x_labels[col_idx],
             y=y_labels[row_idx],
             xref="x1",
@@ -446,7 +440,7 @@ def annotated_heatmap(
         for col_idx, val in enumerate(row)
     ]
 
-    labelled = bool(x) or bool(y)
+    labelled = x is not None or y is not None
     trace = dict(
         type="heatmap",
         z=z,

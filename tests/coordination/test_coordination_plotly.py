@@ -236,26 +236,36 @@ def test_coordination_vs_cutoff_line_invalid_strategy() -> None:
         coordination_vs_cutoff_line(structure, strategy="invalid")  # ty: ignore[invalid-argument-type]
 
 
+@pytest.mark.parametrize("split_mode", list(CnSplitMode))
 def test_coordination_hist_hover_text_formatting(
     structures: Sequence[Structure],
+    split_mode: CnSplitMode,
 ) -> None:
     """Test hover text formatting in coordination_hist."""
     # Add test property
     structures[0].add_site_property("test_prop", list(range(len(structures[0]))))
 
-    # Test with single structure: must not show Formula in hover (regression:
-    # len() on the raw Structure counted sites, so any multi-site structure was
-    # treated as multiple structures)
-    fig = coordination_hist(structures[0], hover_data=["test_prop"])
+    fig = coordination_hist(
+        structures[0], hover_data=["test_prop"], split_mode=split_mode
+    )
     hover_text = fig.data[0].hovertext[0]
-    assert "Element:" in hover_text
+    assert ("Element:" in hover_text) == (split_mode != CnSplitMode.by_structure)
     assert "Coordination number:" in hover_text
     assert "test_prop:" in hover_text
     assert "Formula:" not in hover_text
+    populated = [
+        text
+        for trace in fig.data
+        for count, text in zip(trace.y, trace.hovertext, strict=True)
+        if count
+    ]
+    assert any("test_prop: 0, 1" in text for text in populated)
 
     # Test with multiple structures
     struct_dict = {"struct1": structures[0], "struct2": structures[1]}
-    fig_multi = coordination_hist(struct_dict, hover_data=["test_prop"])
+    fig_multi = coordination_hist(
+        struct_dict, hover_data=["test_prop"], split_mode=split_mode
+    )
     hover_text_multi = fig_multi.data[0].hovertext[0]
     assert "Formula:" in hover_text_multi
 

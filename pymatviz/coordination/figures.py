@@ -185,8 +185,7 @@ def coordination_hist(
         bar_kwargs or {}
     )
 
-    # Keep track of elements already added to legend to not sure repeated legend items
-    # for same elements in different subplots (for different structures).
+    # Show each element once in the legend across structures.
     legend_elements_shown = set()
 
     for struct_key, struct_data in coord_data.items():
@@ -240,6 +239,17 @@ def coordination_hist(
             all_cn = [
                 cn for elem_data in struct_data.values() for cn in elem_data["cn"]
             ]
+            combined_data = {
+                "cn": all_cn,
+                "hover_data": {
+                    key: [
+                        value
+                        for elem_data in struct_data.values()
+                        for value in elem_data["hover_data"][key]
+                    ]
+                    for key in hover_data
+                },
+            }
             counts = Counter(all_cn)
             y = [counts.get(idx, 0) for idx in x_range]
 
@@ -250,7 +260,7 @@ def coordination_hist(
                     cn=cn,
                     count=count,
                     hover_data=hover_data,
-                    data={},
+                    data=combined_data,
                     is_single_structure=is_single_structure,
                 )
                 for cn, count in zip(x_range, y, strict=False)

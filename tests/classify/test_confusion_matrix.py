@@ -99,8 +99,7 @@ def test_confusion_matrix_color_text_alignment(sample_conf_mat: np.ndarray) -> N
     )
     assert abs(z_values[max_val_idx] - max_hover_pct) < 1e-10
 
-    # Test alignment with raw labels
-    # Create a test case where we know TN should be highest
+    # TN is the largest cell when labels are inferred from raw targets.
     y_true = ["Negative"] * 6 + ["Positive"] * 2
     # 5 TN, 1 FP, 1 FN, 1 TP
     y_pred = ["Negative"] * 5 + ["Positive", "Negative", "Positive"]
@@ -108,23 +107,17 @@ def test_confusion_matrix_color_text_alignment(sample_conf_mat: np.ndarray) -> N
     fig = confusion_matrix(y_true=y_true, y_pred=y_pred, normalize=True)
     heatmap = fig.data[0]
 
-    # Check that false positives and false negatives have correct relative positions
     z_values = heatmap.z
-    # In a 2x2 confusion matrix with our test data:
-    # After np.rot90() is applied in the confusion_matrix function:
-    # z[1,0] = TN = 5/8 = 0.625 (highest)
-    # z[1,1] = FP = 1/8 = 0.125
-    # z[0,0] = FN = 1/8 = 0.125
-    # z[0,1] = TP = 1/8 = 0.125
+    # Reversing true-class rows puts TN/FP above FN/TP.
     assert z_values[1, 0] > z_values[1, 1]  # TN > FP
     assert z_values[0, 1] == z_values[0, 0]  # TP = FN in this case
 
     # Verify this matches the hover text
     hover_text = heatmap.text
-    for ii, jj in [(1, 0), (1, 1), (0, 0), (0, 1)]:  # indices after rotation
-        text = hover_text[ii][jj]
+    for row_idx, col_idx in [(1, 0), (1, 1), (0, 0), (0, 1)]:
+        text = hover_text[row_idx][col_idx]
         pct = float(text.split("Percent: ")[1].split("%")[0]) / 100
-        assert abs(z_values[ii, jj] - pct) < 1e-10
+        assert abs(z_values[row_idx, col_idx] - pct) < 1e-10
 
 
 @pytest.mark.parametrize(

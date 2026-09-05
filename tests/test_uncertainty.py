@@ -31,7 +31,7 @@ def test_error_decay_with_uncert(
 
     assert isinstance(fig, go.Figure)
     assert fig.layout.xaxis.title.text == (
-        "Confidence percentiles" if percentiles else "Excluded samples"
+        "Excluded samples (%)" if percentiles else "Excluded samples"
     )
     assert fig.layout.yaxis.title.text == "MAE"
     assert len(fig.data) >= 2  # At least uncertainty line and error line
@@ -40,6 +40,31 @@ def test_error_decay_with_uncert(
     trace_names = {trace.name for trace in fig.data if trace.name}
     assert "error" in trace_names
     assert "random" in trace_names or "random (mean)" in trace_names
+
+    nonmonotonic = error_decay_with_uncert(
+        np.zeros(3),
+        np.array([9, 1, 8]),
+        np.array([1, 2, 3]),
+        percentiles=percentiles,
+        n_rand=5,
+    )
+    # Retaining 1, 2, then 3 samples must preserve the uncertainty order.
+    np.testing.assert_array_equal(nonmonotonic.data[0].y, [9, 5, 6])
+    expected_x = np.array([2, 1, 0]) * (100 / 3 if percentiles else 1)
+    np.testing.assert_allclose(nonmonotonic.data[0].x, expected_x, rtol=1e-14, atol=0)
+    for trace in nonmonotonic.data[3:]:
+        np.testing.assert_array_equal(trace.x, nonmonotonic.data[0].x)
+        assert trace.y[-1] == 6  # No sampling variance when all samples remain.
+    assert nonmonotonic.layout.yaxis.range is None
+
+
+@pytest.mark.parametrize(("n_samples", "n_rand"), [(0, 5), (3, 0)])
+def test_error_decay_invalid_sampling(n_samples: int, n_rand: int) -> None:
+    """Reject empty data and missing random baseline samples."""
+    with pytest.raises(ValueError, match="non-empty data and n_rand >= 1"):
+        error_decay_with_uncert(
+            np.zeros(n_samples), np.ones(n_samples), np.ones(n_samples), n_rand=n_rand
+        )
 
 
 @pytest.mark.parametrize("y_std", [xs, {"foo": xs, "bar": 0.1 * xs}])
@@ -106,3 +131,6 @@ def test_qq_gaussian_multiple_uncertainties() -> None:
     assert any("epistemic" in name for name in trace_names)
     assert any("aleatoric" in name for name in trace_names)
     assert len(fig.data) >= 4  # 2 Q-Q lines + 2 fill areas + identity line
+
+    extreme = qq_gaussian(np.zeros(2), np.full(2, 100), np.ones(2))
+    assert extreme.data[-1].name == "std (miscal: 0.50)"

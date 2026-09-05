@@ -16,19 +16,26 @@ if TYPE_CHECKING:
     from typing import Any, Literal
 
 
-def test_ptable_heatmap_splits_basic() -> None:
+@pytest.mark.parametrize("on_empty", ["hide", "show"])
+def test_ptable_heatmap_splits_basic(on_empty: Literal["hide", "show"]) -> None:
     """Test basic functionality of ptable_heatmap_splits."""
     # Test grid orientation separately with 4 splits
     data_4_split = {"Fe": [1, 2, 3, 4]}
     fig = pmv.ptable_heatmap_splits(
-        data_4_split, orientation="grid", split_value_fmt=".0f"
+        data_4_split, orientation="grid", split_value_fmt=".0f", on_empty=on_empty
     )
-    assert len(fig.data) == sum(len(v) for v in data_4_split.values()) + 1
+    if on_empty == "hide":
+        assert len(fig.data) == 5
+    else:
+        assert len(fig.data) > 5
 
     # grid sections are in reading order and each value annotation sits inside
     # its own section (regression: sections were placed bottom-row first,
     # putting every annotation in the vertically-opposite quadrant)
-    sections = [trace for trace in fig.data if trace.fill == "toself"]
+    fe_ref = next(anno.xref for anno in fig.layout.annotations if anno.text == "1")
+    sections = [
+        trace for trace in fig.data if trace.fill == "toself" and trace.xaxis == fe_ref
+    ]
     anno_xy = {a.text: (a.x, a.y) for a in fig.layout.annotations if a.text.isdigit()}
     for idx, trace in enumerate(sections):
         anno_x, anno_y = anno_xy[str(idx + 1)]

@@ -148,17 +148,9 @@ def patch_dict(
     Yields:
         dict: The patched dictionary incl. temporary updates.
     """
-    # if both args and kwargs are passed, kwargs will overwrite args
+    # Keyword updates take precedence; nested values remain shared with the original.
     updates = {**args[0], **kwargs} if args and isinstance(args[0], dict) else kwargs
-
-    # save original values as shallow copy for speed
-    # warning: in-place changes to nested dicts and objects will persist beyond context!
-    patched = dct.copy()
-
-    # apply updates
-    patched.update(updates)
-
-    yield patched
+    yield dct | updates
 
 
 def si_fmt(
@@ -198,16 +190,18 @@ def si_fmt(
 
     if abs(val) >= 1:
         # 1, Kilo, Mega, Giga, Tera, Peta, Exa, Zetta, Yotta
-        for _scale in ("", "k", "M", "G", "T", "P", "E", "Z", "Y"):
+        for scale in ("k", "M", "G", "T", "P", "E", "Z", "Y"):
             if abs(val) < factor:
                 break
             val /= factor
+            _scale = scale
     elif val != 0 and abs(val) < decimal_threshold:
         # milli, micro, nano, pico, femto, atto, zepto, yocto
-        for _scale in ("", "m", "μ", "n", "p", "f", "a", "z", "y"):
+        for scale in ("m", "μ", "n", "p", "f", "a", "z", "y"):
             if abs(val) >= 1:
                 break
             val *= factor
+            _scale = scale
 
     return f"{val:{fmt}}{sep}{_scale}"
 

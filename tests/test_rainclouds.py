@@ -205,20 +205,25 @@ def test_rainclouds_long_labels(sample_data: dict[str, np.ndarray]) -> None:
         (False, False, False, 0),
     ],
 )
+@pytest.mark.parametrize("orientation", ["h", "v"])
 def test_rainclouds_trace_visibility(
     sample_data: dict[str, np.ndarray],
     show_violin: bool,
     show_box: bool,
     show_points: bool,
     n_expected_traces: int,
+    orientation: Literal["h", "v"],
 ) -> None:
     fig = pmv.rainclouds(
         sample_data,
         show_violin=show_violin,
         show_box=show_box,
         show_points=show_points,
+        orientation=orientation,
     )
     assert len(fig.data) == len(sample_data) * n_expected_traces
+    category_axis = fig.layout.yaxis if orientation == "h" else fig.layout.xaxis
+    assert category_axis.range is None  # Autorange includes jitter and offsets.
 
 
 def test_rainclouds_hover_no_duplicate_primary_value() -> None:

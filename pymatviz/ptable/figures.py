@@ -555,15 +555,18 @@ def ptable_hists(
         rows=n_rows, cols=n_cols, **subplot_defaults | (subplot_kwargs or {})
     )
 
-    # Get all-elements x_range if not provided
-    if x_range is None:
-        all_values = [val for vals in data.values() for val in vals if not pd.isna(val)]
-        bins_range = (min(all_values), max(all_values)) if all_values else (0, 1)
-    else:
-        bins_range = x_range
-    # user-provided x_range may contain None bounds, default those to (0, 1)
-    bin_start = 0 if bins_range[0] is None else bins_range[0]
-    bin_end = 1 if bins_range[1] is None else bins_range[1]
+    all_values = [val for vals in data.values() for val in vals if not pd.isna(val)]
+    data_min, data_max = (min(all_values), max(all_values)) if all_values else (0, 1)
+    lower, upper = x_range if x_range is not None else (None, None)
+    bin_edges = np.histogram_bin_edges(
+        all_values,
+        bins=bins,
+        range=(
+            data_min if lower is None else lower,
+            data_max if upper is None else upper,
+        ),
+    )
+    bin_start, bin_end = bin_edges[0], bin_edges[-1]
 
     # If row 7 is empty, pull all rows below it up by one.
     row_7_is_empty = _row_7_is_empty(data)
@@ -1279,7 +1282,7 @@ def ptable_heatmap_splits(
         xy_ref = dict(xref=f"x{subplot_key}", yref=f"y{subplot_key}")
 
         # Get values and colors
-        values = np.asarray(data.get(symbol, []), dtype=float)
+        values = np.asarray(data.get(symbol, np.full(n_splits, np.nan)), dtype=float)
 
         n_sections = len(values)
         if n_sections not in {2, 3, 4}:

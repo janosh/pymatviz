@@ -59,20 +59,7 @@ def chem_env_treemap(
 ) -> go.Figure:
     """Create treemap plot of coordination numbers and chemical environments.
 
-    Uses pymatgen's ChemEnv module by default for detailed geometric analysis with
-    dozens of cutoffs to determine coordination numbers and chemical environment
-    symbols (T:4, O:6, etc.), which is comprehensive but slow.     For faster analysis,
-    use chem_env_settings="crystal_nn" to employ CrystalNN
-    (Zimmerman et al. 2017, DOI: 10.3389/fmats.2017.00034),
-    which provides coordination numbers and approximate environment classification
-    using order parameters but with less detailed geometric information.
-
-    Performance Note:
-        Based on informal benchmarks, "crystal_nn" is ~90x faster than "chemenv"
-        (e.g., 0.025s vs 2.25s for a small test set), which is why "crystal_nn"
-        is the default. For large datasets or interactive applications, "crystal_nn"
-        provides a good speed vs detail trade-off, while "chemenv" may give
-        better geometric accuracy.
+    Uses CrystalNN by default; select "chemenv" for detailed geometric analysis.
 
     Args:
         structures (AnyStructure | Sequence[AnyStructure]): Structures to analyze.

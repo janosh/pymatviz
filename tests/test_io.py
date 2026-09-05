@@ -6,6 +6,7 @@ import urllib.request
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
+import numpy as np
 import plotly.graph_objects as go
 import pytest
 
@@ -146,19 +147,28 @@ def test_save_fig_type_error(tmp_path: Path) -> None:
         pmv.save_fig("not a figure", f"{tmp_path}/dummy.html", env_disable=[])  # ty: ignore[invalid-argument-type]
 
 
-def test_save_fig_prec_rounds_floats(tmp_path: Path) -> None:
-    """save_fig with prec rounds float coordinates."""
+@pytest.mark.parametrize("dtype", [float, np.float32])
+def test_save_fig_prec_rounds_floats(tmp_path: Path, dtype: type) -> None:
+    """Precision export handles mixed traces without mutating their coordinates."""
     fig = go.Figure()
-    fig.add_scatter(x=[1.123456789, 2.987654321], y=[3.111111111, 4.999999999])
+    fig.add_scatter(
+        x=np.array([1.123456789, 2.987654321], dtype=dtype),
+        y=[3.111111111, 4.999999999],
+    )
+    fig.add_pie(values=[1, 2])
+    fig.add_bar(x=["group"], y=[2**55 + 1])
+    original_x = fig.data[0].x.copy()
 
     path = f"{tmp_path}/fig_prec.html"
-    pmv.save_fig(fig, path, prec=3, env_disable=[])
-
-    with open(path) as file:
-        html = file.read()
-    # rounded values should appear, originals should not
-    assert "1.12" in html
-    assert "1.123456789" not in html
+    with patch.object(go.Figure, "write_html", autospec=True) as write_html:
+        pmv.save_fig(fig, path, prec=3, env_disable=[])
+    exported = write_html.call_args.args[0]
+    np.testing.assert_array_equal(exported.data[0].x, [1.123, 2.988])
+    np.testing.assert_array_equal(exported.data[0].y, [3.111, 5.0])
+    assert exported.data[2].x == ("group",)
+    assert exported.data[2].y == (2**55 + 1,)
+    np.testing.assert_array_equal(fig.data[0].x, original_x)
+    assert fig.data[1]["values"] == (1, 2)
 
 
 def test_save_fig_style_param(tmp_path: Path) -> None:

@@ -89,12 +89,21 @@ def test_density_scatter_uses_series_name_as_label() -> None:
 def test_density_scatter_with_hist(df_or_arrays: DfOrArrays) -> None:
     """Test density_scatter_with_hist function."""
     df, x, y = df_or_arrays
-    fig = pmv.density_scatter_with_hist(df=df, x=x, y=y)
+    fig = pmv.density_scatter_with_hist(
+        df=df, x=x, y=y, identity_line=True, best_fit_line=True, stats=True
+    )
     assert isinstance(fig, go.Figure)
     assert len(fig.data) >= 3
     assert sum(isinstance(trace, go.Bar) for trace in fig.data) == 2
     assert fig.layout.xaxis.title.text == (x if isinstance(x, str) else "Actual")
     assert fig.layout.yaxis2.title.text == (y if isinstance(y, str) else "Predicted")
+    assert len(fig.layout.shapes) == 2
+    assert len(fig.layout.annotations) == 2
+    assert all(shape.xref == "x2" and shape.yref == "y2" for shape in fig.layout.shapes)
+    assert all(
+        anno.xref == "x2 domain" and anno.yref == "y2 domain"
+        for anno in fig.layout.annotations
+    )
 
 
 @pytest.mark.parametrize("gridsize", [50, 100])
@@ -129,13 +138,22 @@ def test_density_hexbin(
 def test_density_hexbin_with_hist(df_or_arrays: DfOrArrays) -> None:
     """Test density_hexbin_with_hist function."""
     df, x, y = df_or_arrays
-    fig = pmv.density_hexbin_with_hist(df=df, x=x, y=y)
+    fig = pmv.density_hexbin_with_hist(
+        df=df, x=x, y=y, identity_line=True, best_fit_line=True, stats=True
+    )
     assert isinstance(fig, go.Figure)
     assert len(fig.data) >= 3
     assert sum(isinstance(trace, go.Bar) for trace in fig.data) == 2
     assert any(
         isinstance(trace, go.Scatter) and trace.marker.symbol == "hexagon"
         for trace in fig.data
+    )
+    assert len(fig.layout.shapes) == 2
+    assert len(fig.layout.annotations) == 2
+    assert all(shape.xref == "x2" and shape.yref == "y2" for shape in fig.layout.shapes)
+    assert all(
+        anno.xref == "x2 domain" and anno.yref == "y2 domain"
+        for anno in fig.layout.annotations
     )
 
 

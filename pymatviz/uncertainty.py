@@ -90,7 +90,9 @@ def qq_gaussian(
     for key, std in y_std.items():
         z_scored = (res / std).reshape(-1, 1)
         obs_proportions = np.mean(z_scored <= norm.ppf(exp_proportions), axis=0)
-        miscal_area = np.trapezoid(np.abs(obs_proportions - exp_proportions), dx=0.01)
+        miscal_area = np.trapezoid(
+            np.abs(obs_proportions - exp_proportions), x=exp_proportions
+        )
 
         # Invisible reference line for fill
         fig.add_scatter(
@@ -147,7 +149,7 @@ def error_decay_with_uncert(
         y_std: Uncertainties (single array or dict for multiple)
         df: DataFrame containing data columns
         n_rand: Random shuffles for baseline
-        percentiles: Use percentiles vs sample count on x-axis
+        percentiles: Show excluded samples as a percentage rather than a count
         fig: Existing plotly figure to add to
 
     Returns:
@@ -159,43 +161,42 @@ def error_decay_with_uncert(
     if not isinstance(y_std, Mapping):
         y_std = {"std": y_std}
 
-    # Calculate error decay curves
     abs_err = np.abs(y_true - y_pred)
     n_samples = len(abs_err)
-    xs = list(range(100 if percentiles else n_samples, 0, -1))
+    if n_samples == 0 or n_rand < 1:
+        raise ValueError(
+            f"Expected non-empty data and n_rand >= 1, got {n_samples=}, {n_rand=}"
+        )
+    retained = np.arange(1, n_samples + 1)
+    sample_indices = (
+        np.linspace(0, n_samples - 1, min(100, n_samples), dtype=int)
+        if percentiles
+        else np.arange(n_samples)
+    )
+    xs = (n_samples - retained[sample_indices]).astype(float)
+    if percentiles:
+        xs *= 100 / n_samples
 
     # Add uncertainty-based decay lines
     for key, std in y_std.items():
-        # Sort by uncertainty and calculate cumulative error
-        decay = abs_err[np.argsort(std)].cumsum() / np.arange(1, n_samples + 1)
-        if percentiles:
-            decay = np.percentile(decay, xs[::-1])
-        fig.add_scatter(x=xs, y=decay, mode="lines", name=key)
+        decay = abs_err[np.argsort(std)].cumsum() / retained
+        fig.add_scatter(x=xs, y=decay[sample_indices], mode="lines", name=key)
 
     # Optimal error-based decay
-    decay_optimal = np.sort(abs_err).cumsum() / np.arange(1, n_samples + 1)
-    if percentiles:
-        decay_optimal = np.percentile(decay_optimal, xs[::-1])
-    fig.add_scatter(x=xs, y=decay_optimal, mode="lines", name="error")
+    decay_optimal = np.sort(abs_err).cumsum() / retained
+    fig.add_scatter(x=xs, y=decay_optimal[sample_indices], mode="lines", name="error")
 
     # Add random baseline with confidence interval
     rand_mean = abs_err.mean()
-    # Calculate random std dev
     abs_err_tile = np.tile(abs_err, [n_rand, 1])
     rng = np.random.default_rng(seed=0)
     for row in abs_err_tile:
         rng.shuffle(row)
-    rand_std = abs_err_tile.cumsum(1).std(0) / np.arange(1, n_samples + 1)
-
-    if percentiles:
-        rand_std = np.percentile(rand_std, xs[::-1])
-
-    x_range = [1, 100] if percentiles else [n_samples, 0]
-    x_fill = xs[::-1] if percentiles else xs
+    rand_std = (abs_err_tile.cumsum(1).std(0) / retained)[sample_indices]
 
     # Random mean line
     fig.add_scatter(
-        x=x_range,
+        x=[xs[-1], xs[0]],
         y=[rand_mean, rand_mean],
         mode="lines",
         name="random (mean)",
@@ -205,7 +206,7 @@ def error_decay_with_uncert(
 
     # Random confidence interval
     fig.add_scatter(
-        x=x_fill,
+        x=xs,
         y=rand_mean + rand_std,
         mode="lines",
         line=dict(width=0),
@@ -213,7 +214,7 @@ def error_decay_with_uncert(
         hoverinfo="skip",
     )
     fig.add_scatter(
-        x=x_fill,
+        x=xs,
         y=rand_mean - rand_std,
         mode="lines",
         fill="tonexty",
@@ -224,8 +225,8 @@ def error_decay_with_uncert(
     )
 
     fig.layout.xaxis = dict(
-        title="Confidence percentiles" if percentiles else "Excluded samples"
+        title="Excluded samples (%)" if percentiles else "Excluded samples"
     )
-    fig.layout.yaxis = dict(title="MAE", range=[0, rand_mean * 1.3])
+    fig.layout.yaxis = dict(title="MAE", rangemode="tozero")
 
     return fig

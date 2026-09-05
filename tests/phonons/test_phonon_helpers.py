@@ -26,7 +26,7 @@ if TYPE_CHECKING:
             ["GAMMA-X", "X-U"],
             "union",
             dict(width=2),
-            tuple("ΓLXΓWXU"),
+            tuple("ΓXU"),
         ),
         # test empty tuple branches with intersection mode
         ((), "intersection", None, tuple("ΓLXΓWXU")),
@@ -37,7 +37,7 @@ if TYPE_CHECKING:
                 "acoustic": dict(width=2.5, dash="solid", name="Acoustic modes"),
                 "optical": dict(width=1, dash="dash", name="Optical modes"),
             },
-            tuple("ΓLXΓWXU"),
+            tuple("ΓX"),
         ),
         (  # test callable line_kwargs
             (),
@@ -75,6 +75,11 @@ def test_phonon_bands(
         line_kwargs=line_kwargs,
     )
     assert isinstance(fig, go.Figure)
+    if branches:
+        assert (
+            len(fig.data)
+            == len(branches) * phonon_bands_doses_mp_2758["bands"]["DFT"].nb_bands
+        )
     assert fig.layout.xaxis.title.text == "Wave Vector"
     assert fig.layout.yaxis.title.text == "Frequency (THz)"
     assert fig.layout.font.size == 16
@@ -175,6 +180,11 @@ def test_phonon_bands_raises(
     stdout, stderr = capsys.readouterr()
     assert stdout == ""
     assert "Warning missing_branches={'foo-bar'}, available branches:" in stderr
+
+    with pytest.raises(ValueError, match="No matching branches"):
+        pmv.phonon_bands(
+            phonon_bands_doses_mp_2758["bands"]["DFT"], branches=["missing"]
+        )
 
     with pytest.raises(ValueError, match="Invalid path_mode='invalid'"):
         pmv.phonon_bands(

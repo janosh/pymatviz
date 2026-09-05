@@ -10,6 +10,7 @@ import pytest
 from pymatgen.phonon.dos import PhononDos
 
 import pymatviz as pmv
+from pymatviz.phonons.figures import convert_frequencies
 from pymatviz.typing import SET_INTERSECTION, SET_MODE, SET_STRICT, SET_UNION
 
 
@@ -46,8 +47,11 @@ def test_phonon_dos(
     normalize: Literal["max", "sum", "integral"] | None,
     last_peak_anno: str | None,
 ) -> None:
+    doses = phonon_bands_doses_mp_2758["doses"]
+    if stack:
+        doses = dict.fromkeys(doses, doses["DFT"])
     fig = pmv.phonon_dos(
-        phonon_bands_doses_mp_2758["doses"],  # test dict
+        doses,
         stack=stack,
         sigma=sigma,
         normalize=normalize,
@@ -59,6 +63,13 @@ def test_phonon_dos(
     assert fig.layout.xaxis.title.text == f"Frequency ({units})"
     assert fig.layout.yaxis.title.text == "Density of States"
     assert fig.layout.font.size == 16
+    if last_peak_anno is not None:
+        for shape, dos in zip(fig.layout.shapes, doses.values(), strict=True):
+            expected_peak = convert_frequencies(np.array([dos.get_last_peak()]), units)[
+                0
+            ]
+            assert shape.x0 == expected_peak
+            assert shape.x1 == expected_peak
 
     fig = pmv.phonon_dos(
         phonon_bands_doses_mp_2758["doses"]["DFT"],  # test single
@@ -78,6 +89,19 @@ def test_phonon_dos_raises(phonon_bands_doses_mp_2758: BandsDoses) -> None:
 
     with pytest.raises(ValueError, match="Empty DOS dict"):
         pmv.phonon_dos({})
+
+    aligned = {
+        "first": PhononDos([0, 1, 2], [0, 1, 0]),
+        "second": PhononDos([0, 1, 2], [1, 0, 1]),
+    }
+    np.testing.assert_array_equal(
+        pmv.phonon_dos(aligned, stack=True).data[1].y, [1, 1, 1]
+    )
+    aligned["second"] = PhononDos([1, 2, 3], [1, 0, 1])
+    with pytest.raises(
+        ValueError, match="Cannot stack DOS 'second': frequency grids differ"
+    ):
+        pmv.phonon_dos(aligned, stack=True)
 
     expected_msg = (
         "Invalid unit='invalid', must be one of ['THz', 'eV', 'meV', 'Ha', 'cm-1']"
@@ -115,6 +139,8 @@ def test_phonon_bands_and_dos(
         units=units,
         last_peak_anno=last_peak_anno,
     )
+    if stack:
+        doses = dict.fromkeys(doses, doses["DFT"])
     # test dicts
     fig = pmv.phonon_bands_and_dos(bands, doses, dos_kwargs=dos_kwargs)
 
@@ -125,6 +151,22 @@ def test_phonon_bands_and_dos(
     assert fig.layout.font.size == 16
     # check legend labels
     assert {trace.name for trace in fig.data} == {"DFT", "MACE"}
+    reference = pmv.phonon_bands(bands)
+    for trace, original in zip(
+        (trace for trace in fig.data if trace.xaxis == "x"), reference.data, strict=True
+    ):
+        np.testing.assert_allclose(
+            trace.y,
+            convert_frequencies(np.asarray(original.y), units),
+            rtol=1e-14,
+            atol=0,
+        )
+    np.testing.assert_allclose(
+        fig.layout.yaxis.range,
+        convert_frequencies(np.asarray(reference.layout.yaxis.range), units),
+        rtol=1e-14,
+        atol=0,
+    )
 
     fig = pmv.phonon_bands_and_dos(bands["DFT"], doses["DFT"])
     assert isinstance(fig, go.Figure)
