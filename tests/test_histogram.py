@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import pytest
@@ -12,8 +13,6 @@ from tests.conftest import df_regr, y_true
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-
-    import numpy as np
 
 
 @pytest.mark.parametrize(
@@ -110,8 +109,34 @@ def test_histogram_rejects_invalid_values(values: Any, match: str) -> None:
 
 def test_histogram_preserves_zero_x_range_boundary() -> None:
     """Histogram treats zero x_range bounds as explicit values."""
-    fig = histogram([1, 2, 3], x_range=(0, None), bins=3)
-    assert fig.data[0].x[0] == 0
+    fig = histogram([1, 2, 3], x_range=(0, None), bins=3, bin_width=1)
+    assert fig.data[0].x[0] - fig.data[0].width[0] / 2 == 0
+
+
+@pytest.mark.parametrize(
+    ("values", "bins", "centers", "widths", "counts"),
+    [
+        ([0.5, 2, 4], [0, 1, 3, 6], [0.5, 2, 4.5], [1, 2, 3], [1, 1, 1]),
+        ([5, 5, 5], 2, [4.75, 5.25], [0.5, 0.5], [0, 3]),
+    ],
+)
+@pytest.mark.parametrize("density", [False, True])
+def test_histogram_bin_geometry(
+    values: list[float],
+    bins: int | list[float],
+    centers: list[float],
+    widths: list[float],
+    counts: list[int],
+    density: bool,
+) -> None:
+    """Bin centers and widths preserve counts and density area for uneven bins."""
+    trace = histogram(values, bins=bins, density=density, bin_width=1).data[0]
+    np.testing.assert_array_equal(trace.x, centers)
+    np.testing.assert_array_equal(trace.width, widths)
+    expected = (
+        np.array(counts) / (len(values) * np.array(widths)) if density else counts
+    )
+    np.testing.assert_allclose(trace.y, expected, rtol=1e-14, atol=0)
 
 
 @pytest.mark.parametrize(

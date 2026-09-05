@@ -69,6 +69,19 @@ def test_one_hot_encode_pandas_input() -> None:
     assert np.allclose(np.linalg.norm(result, axis=1), 1.0)
 
 
+@pytest.mark.parametrize("normalize", [False, True])
+def test_one_hot_encode_oxidation_states(normalize: bool) -> None:
+    """Oxidation states do not change elemental fractions or normalized embeddings."""
+    result = one_hot_encode(
+        ["Fe2O3", Composition({"Fe3+": 2, "O2-": 3})],
+        elements=["Fe", "O"],
+        normalize=normalize,
+    )
+    np.testing.assert_array_equal(result[0], result[1])
+    if not normalize:
+        np.testing.assert_array_equal(result, [[0.4, 0.6], [0.4, 0.6]])
+
+
 def test_one_hot_encode_invalid_input() -> None:
     """Test one-hot encoding with invalid input."""
     with pytest.raises(ValueError, match="Invalid composition="):

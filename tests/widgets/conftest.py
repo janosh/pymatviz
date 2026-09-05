@@ -38,18 +38,15 @@ def multi_frame_trajectory(fe3co4_disordered: Structure) -> dict[str, Any]:
     return {"frames": frames}
 
 
-# Shared test helper functions
 def assert_widget_build_files(
     widget: CompositionWidget | StructureWidget | TrajectoryWidget,
 ) -> None:
     """Test that widget loads build files correctly."""
-    # Test build files are loaded
     assert hasattr(widget, "_esm"), "Widget missing JavaScript code"
     assert hasattr(widget, "_css"), "Widget missing CSS code"
     assert len(widget._esm) > 1000, "JavaScript code suspiciously short"
     assert len(widget._css) > 100, "CSS code suspiciously short"
 
-    # Test widget has required display attributes
     required_attrs = ["_model_name", "_view_name", "_model_module", "_view_module"]
     for attr in required_attrs:
         assert hasattr(widget, attr)
@@ -77,28 +74,6 @@ def assert_widget_notebook_integration(
     assert isinstance(view, dict)
     assert isinstance(view.get("model_id"), str)
     assert bool(view["model_id"]) is True
-    # Fresh model_id on a new repr call (new view)
-    mime2 = widget._repr_mimebundle_()  # ty: ignore[missing-argument]
-    if mime2 is not None:
-        mime2 = mime2[0] if isinstance(mime2, tuple) else mime2
-        view2 = mime2[view_key]
-        model_id1 = view.get("model_id")
-        model_id2 = view2.get("model_id")
-        if model_id1 == model_id2:
-            # This might indicate VS Code re-evaluation bugs or widget caching issues
-            import warnings
-
-            msg = (
-                f"Widget {type(widget).__name__} returned same model_id "
-                f"on repeated repr calls: {model_id1}. This may indicate "
-                f"VS Code re-evaluation bugs or widget caching issues."
-            )
-            warnings.warn(msg, UserWarning, stacklevel=2)
-        else:
-            # This is the expected behavior - fresh model_id on each repr call
-            assert model_id1 != model_id2, (
-                "Model IDs should be different on repeated repr calls"
-            )
     assert isinstance(view.get("version_major"), int)
     assert type(widget).__name__ in str(mime_data["text/plain"])
 
@@ -147,6 +122,5 @@ def assert_widget_property_sync(
     setattr(widget, property_name, test_value)
     assert getattr(widget, property_name) == test_value
 
-    # Test that attribute is tagged for sync
     trait = widget.class_traits()[property_name]
     assert trait.metadata.get("sync") is True, f"Property {property_name} not synced"

@@ -6,6 +6,7 @@ import copy
 import os
 import re
 import subprocess
+from numbers import Integral, Real
 from shutil import which
 from time import sleep
 from typing import TYPE_CHECKING
@@ -70,13 +71,13 @@ def save_fig(
     env_disable: Sequence[str] = ("CI",),
     pdf_sleep: float = 0.6,
     style: str = "",
-    prec: int | None = None,  # Added round keyword argument
+    prec: int | None = None,
     template: str | None = None,
     **kwargs: Any,
 ) -> None:
     """Write a plotly figure to disk (as HTML/PDF/SVG/...).
 
-    If the file is has .svelte extension, insert `{...$$props}` into the figure's
+    If the file has .svelte extension, insert `{...$$props}` into the figure's
     top-level div so it can be later styled and customized from Svelte code.
 
     Args:
@@ -112,19 +113,18 @@ def save_fig(
         raise TypeError(f"Unsupported figure type {type(fig)}, expected plotly Figure")
 
     if prec is not None:
-        # create a copy of figure and round all floats in fig.data to round significant
-        # figures
+        # Round coordinates on a copy so exporting leaves the caller's figure intact.
+        source_traces = fig.data
         fig = copy.deepcopy(fig)
-        for trace in fig.data:
-            # trace is a go.Scatter or go.Bar or go.Heatmap or ...
-            if trace.x is not None:
-                trace.x = [
-                    round(x, prec) if isinstance(x, float) else x for x in trace.x
-                ]
-            if trace.y is not None:
-                trace.y = [
-                    round(y, prec) if isinstance(y, float) else y for y in trace.y
-                ]
+        for trace, source in zip(fig.data, source_traces, strict=True):
+            for axis in ("x", "y"):
+                if (coords := getattr(source, axis, None)) is not None:
+                    trace[axis] = [
+                        round(float(value), prec)
+                        if isinstance(value, Real) and not isinstance(value, Integral)
+                        else value
+                        for value in coords
+                    ]
 
     if path.lower().endswith((".svelte", ".html")):
         config = dict(
@@ -145,14 +145,10 @@ def save_fig(
         fig_defaults = dict(include_plotlyjs=False, full_html=False, config=config)
         fig.write_html(path, **fig_defaults | kwargs)
         if path.lower().endswith(".svelte"):
-            # insert {...$$props} into top-level div to be able to post-process and
-            # style plotly figures from within Svelte files
+            # Forward Svelte props to the outer div, preserving Plotly's attributes.
             with open(path, encoding="utf-8") as file:
-                # inject after the opening <div tag (plotly may add attributes to
-                # it, e.g. style="..." since plotly 6.8), so match <div, not <div>
                 text = re.sub(r"<div\b", "<div {...$$props}", file.read(), count=1)
             with open(path, mode="w", encoding="utf-8") as file:
-                # add trailing newline for pre-commit end-of-file commit hook
                 file.write(text + "\n")
         if style:
             with open(path, encoding="utf-8") as file:
@@ -184,7 +180,7 @@ def save_fig(
 
 
 def save_and_compress_svg(fig: go.Figure, filename: str) -> None:
-    """Save Plotly figure as SVG and HTML to assets/ folder.
+    """Save a Plotly figure as SVG to assets/svg/.
     Compresses SVG file with svgo CLI if available in PATH.
 
     If filename does not include .svg extension and is not absolute, will be treated as
@@ -195,7 +191,7 @@ def save_and_compress_svg(fig: go.Figure, filename: str) -> None:
         filename (str): Name of SVG file (w/o extension).
 
     Raises:
-        ValueError: If fig is None.
+        TypeError: If fig is not a Plotly figure.
     """
     if not isinstance(fig, go.Figure):
         raise TypeError("fig must be a plotly Figure instance")

@@ -169,13 +169,7 @@ def confusion_matrix(
         processed_annotations = np.char.add(anno_arr, "<br>")
         processed_annotations = np.char.add(processed_annotations, fmt_tile_vals)
 
-    # flipud flips rows (true classes) to match Plotly's bottom-left origin so
-    # that x-axis = predicted class and y-axis = true class (the standard
-    # confusion matrix orientation; regression: rot90 used to transpose the
-    # matrix, rendering true on x and predicted on y, contradicting the
-    # docstring, hover text, and axis titles)
-    # annotated so the ** unpack below does not widen every argument into a union of
-    # the dict's value types, which then matches none of the narrower parameters
+    # Reverse true-class rows for Plotly's bottom-left origin.
     heatmap_defaults: dict[str, Any] = dict(
         z=np.flipud(conf_mat_arr),
         x=formatted_labels["x"],
@@ -234,14 +228,7 @@ def confusion_matrix(
                 f"Unknown {metric=}. Available: {', '.join(available_metrics)}"
             )
 
-        # Skip binary classification metrics for multi-class problems
-        if n_classes > 2 and metric != "Acc":
-            print(f"Warning: skipping binary {metric=} for multi-class problem")  # noqa: T201
-            continue
-
         metric_val = available_metrics[metric]()
-        if metric_val is None:  # skip metrics that returned None
-            continue
 
         # use float_fmt if no specific format given
         f_fmt = float_fmt if fmt is None else fmt

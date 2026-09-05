@@ -186,6 +186,7 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
             return None
 
         from pymatviz.process_data import is_structure_like
+        from pymatviz.widgets._normalize import normalize_plot_json
 
         if isinstance(trajectory, dict):
             frames_data = trajectory.get("frames")
@@ -199,10 +200,10 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
                     input_metadata = trajectory.get("metadata")
                     if isinstance(input_metadata, dict):
                         normalized_trajectory["metadata"] = input_metadata
-                return normalized_trajectory
-            return self._complete_trajectory_dict(trajectory)
-
-        from pymatviz.widgets._normalize import normalize_plot_json
+                return normalize_plot_json(normalized_trajectory, "trajectory")
+            return normalize_plot_json(
+                self._complete_trajectory_dict(trajectory), "trajectory"
+            )
 
         if isinstance(trajectory, (list, tuple)):
             frames: list[dict[str, Any]] = []

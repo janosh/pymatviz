@@ -51,7 +51,7 @@ def test_widget_creates_view_model(multi_frame_trajectory: dict[str, Any]) -> No
         trait = class_traits[trait_name]
         assert trait.metadata.get("sync") is True
 
-    assert widget.trajectory == multi_frame_trajectory
+    assert widget.trajectory == json.loads(json.dumps(multi_frame_trajectory))
     assert widget.current_step_idx == 0
     assert widget.layout == "auto"
     assert widget.display_mode == "structure+scatter"
@@ -71,7 +71,7 @@ def test_widget_trajectory_updates(
 
     # Test trajectory assignment
     widget.trajectory = multi_frame_trajectory
-    assert widget.trajectory == multi_frame_trajectory
+    assert widget.trajectory == json.loads(json.dumps(multi_frame_trajectory))
 
     # Test step navigation
     widget.current_step_idx = 2
@@ -98,7 +98,7 @@ def test_widget_complete_lifecycle(
     )
 
     # Test initial state
-    assert widget.trajectory == multi_frame_trajectory
+    assert widget.trajectory == json.loads(json.dumps(multi_frame_trajectory))
     assert widget.current_step_idx == 0
     assert widget.style == "width: 800px; height: 600px"
     assert widget.show_controls is False
@@ -284,11 +284,7 @@ def test_trajectory_widget_completes_only_non_derivable_fields(
     expected_species: list[dict[str, Any]] | None,
     coord_key: str,
 ) -> None:
-    """Dict frames get step, occu, label, properties and a lattice matrix; fields
-    matterviz's trajectory_from_json recomputes (a/b/c/angles/volume/pbc, the
-    missing abc<->xyz) are not emitted, keeping the JSON payload lean. Explicit steps
-    (int, float, numpy) and occupancies are kept, missing steps default to the index.
-    """
+    """Dict frames gain required fields and serialize NumPy values as JSON numbers."""
     coords = [0.25, 0.5, 0.75]
     structure = {
         "lattice": lattice_input,
@@ -296,8 +292,15 @@ def test_trajectory_widget_completes_only_non_derivable_fields(
     }
     steps = ({"step": 500}, {}, {"step": 2.5}, {"step": np.int64(3000)})
     frames = [{"structure": structure, **step} for step in steps]
-    widget = TrajectoryWidget(trajectory={"frames": frames})
+    frames[0]["metadata"] = {"forces": np.zeros((1, 3))}
+    widget = TrajectoryWidget(
+        trajectory={"frames": frames, "metadata": {"temperature": np.int64(300)}}
+    )
     assert [f["step"] for f in widget.trajectory["frames"]] == [500, 1, 2.5, 3000]
+    exported = json.loads(json.dumps(widget.to_dict()))["trajectory"]
+    assert exported["metadata"]["temperature"] == 300
+    assert exported["frames"][3]["step"] == 3000
+    assert exported["frames"][0]["metadata"]["forces"] == [[0.0, 0.0, 0.0]]
     frame = widget.trajectory["frames"][0]
     lattice = frame["structure"]["lattice"]
     assert set(lattice) == {"matrix", *lattice_input}  # no a/b/c/.../volume/pbc added

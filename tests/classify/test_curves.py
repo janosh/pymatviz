@@ -166,9 +166,9 @@ def test_large_dataset() -> None:
         assert isinstance(fig, go.Figure)
 
 
-def test_no_skill_line() -> None:
+@pytest.mark.parametrize("targets", [[0, 1, 0, 1], [0, 0, 0, 1], [0, 1, 1, 1]])
+def test_no_skill_line(targets: list[int]) -> None:
     """Test that the no-skill line is added correctly."""
-    targets = np.array([0, 1, 0, 1])
     probs = np.array([0.1, 0.9, 0.2, 0.8])
 
     # Test with no_skill=True (default)
@@ -178,6 +178,8 @@ def test_no_skill_line() -> None:
     assert len(fig_pr.data) == 1  # 1 model trace
     assert len(fig_pr.layout.shapes) == 1  # 1 no-skill line shape
     assert len(fig_pr.layout.annotations) == 1  # 1 no-skill annotation
+    assert fig_pr.layout.shapes[0].y0 == np.mean(targets)
+    assert fig_pr.layout.shapes[0].y1 == np.mean(targets)
 
     fig_roc = roc_curve(targets, probs)
     assert isinstance(fig_roc, go.Figure)

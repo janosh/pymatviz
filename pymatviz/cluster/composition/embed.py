@@ -127,29 +127,20 @@ def one_hot_encode(
             to an element's fraction in that composition.
     """
     if elements is None:
-        # All elements in the periodic table
         elements = list(map(str, Element))
 
-    # Convert compositions to pymatgen Composition objects
     comp_objs = [try_composition(comp) for comp in compositions]
-
-    # Initialize feature matrix of zeros
     n_compositions = len(comp_objs)
     n_elements = len(elements)
     features = np.zeros((n_compositions, n_elements))
 
-    # Fill the feature matrix with element fractions
     for idx, comp in enumerate(comp_objs):
-        # Get fractional amounts for each element
-        comp_dict = comp.fractional_composition.as_dict()
+        comp_dict = comp.element_composition.fractional_composition.as_dict()
         for element, fraction in comp_dict.items():
             if element in elements:
-                # Get the index of the element in our elements list
                 element_idx = elements.index(element)
-                # Use the fractional composition as features
                 features[idx, element_idx] = fraction
 
-    # Normalize vectors if requested
     if normalize:
         features = sklearn.preprocessing.normalize(features, norm="l2", axis=1)
 

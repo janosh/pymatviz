@@ -49,7 +49,7 @@ def test_project_vectors_basic(sample_data: np.ndarray) -> None:
 @pytest.mark.parametrize(
     ("method", "kwargs", "expected_obj_type", "obj_attrs"),
     [
-        ("pca", {}, PCA, {"n_components_": 2}),
+        ("pca", {"whiten": True}, PCA, {"n_components_": 2, "whiten": True}),
         (
             "tsne",
             {"perplexity": 10.0, "learning_rate": 100.0},
@@ -58,21 +58,26 @@ def test_project_vectors_basic(sample_data: np.ndarray) -> None:
         ),
         (
             "umap",
-            {"n_neighbors": 5, "min_dist": 0.2},
+            {"n_neighbors": 5, "min_dist": 0.2, "spread": 2},
             None,
-            {"n_neighbors": 5, "min_dist": 0.2},
+            {"n_neighbors": 5, "min_dist": 0.2, "spread": 2},
         ),
         (
             "isomap",
-            {"n_neighbors": 5, "metric": "euclidean"},
+            {"n_neighbors": 5, "metric": "euclidean", "path_method": "D"},
             Isomap,
-            {"n_neighbors": 5, "metric": "euclidean"},
+            {"n_neighbors": 5, "metric": "euclidean", "path_method": "D"},
         ),
         (
             "kernel_pca",
-            {"kernel": "rbf", "gamma": 0.1},
+            {"kernel": "rbf", "gamma": 0.1, "fit_inverse_transform": True},
             KernelPCA,
-            {"n_components": 2, "kernel": "rbf", "gamma": 0.1},
+            {
+                "n_components": 2,
+                "kernel": "rbf",
+                "gamma": 0.1,
+                "fit_inverse_transform": True,
+            },
         ),
     ],
 )
@@ -88,9 +93,7 @@ def test_project_vectors_methods(
         pytest.importorskip("umap")
         from umap import UMAP
 
-        kwargs = {"n_neighbors": 5, "min_dist": 0.2}
         expected_obj_type = UMAP
-        obj_attrs = {"n_neighbors": 5, "min_dist": 0.2}
 
     result, proj_obj = project_vectors(sample_data, method=method, **kwargs)
 

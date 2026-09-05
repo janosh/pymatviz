@@ -61,11 +61,14 @@ class BrillouinZoneWidget(MatterVizWidget):
             bz_data: Pre-computed BZ data with vertices, faces, and edges.
             **kwargs: Additional widget properties.
         """
-        from pymatviz.widgets._normalize import normalize_structure_for_bz
+        from pymatviz.widgets._normalize import (
+            normalize_plot_json,
+            normalize_structure_for_bz,
+        )
 
         super().__init__(
             widget_type="brillouin_zone",
             structure=normalize_structure_for_bz(structure),
-            bz_data=bz_data,
+            bz_data=normalize_plot_json(bz_data, "bz_data"),
             **kwargs,
         )

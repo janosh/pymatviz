@@ -1,14 +1,4 @@
-"""Radial distribution functions (RDFs) of pymatgen structures using plotly.
-
-The main function, pairwise_rdfs, generates a plotly figure with facets for each
-pair of elements in the given structure. It supports customization of cutoff distance,
-bin size, specific element pairs to plot, reference line.
-
-Example usage:
-    structure = Structure(...)  # Create or load a pymatgen Structure
-    fig = pairwise_rdfs(structure, bin_size=0.1)
-    fig.show()
-"""
+"""Plot full and element-pair radial distribution functions of structures."""
 
 from __future__ import annotations
 

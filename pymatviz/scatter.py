@@ -500,11 +500,9 @@ def density_hexbin(
     # Create the scatter plot with hexagon markers
     fig = go.Figure()
 
-    # Calculate marker size to prevent overlap
-    # Make markers much smaller than the hex boundaries to avoid visual overlap
-    # Scale inversely with gridsize - more hexagons = smaller markers
-    base_size = 400 / gridsize  # Doubled the base scaling factor
-    marker_size = min(12, max(4, base_size))  # Doubled size range: 4-12
+    # Shrink markers as the grid becomes denser.
+    base_size = 400 / gridsize
+    marker_size = min(12, max(4, base_size))
 
     scatter_defaults = dict(
         mode="markers",
@@ -584,6 +582,24 @@ def _with_marginal_hist(
     # Copy colorbar settings
     if hasattr(fig.layout, "coloraxis"):
         subplot_fig.layout.coloraxis = fig.layout.coloraxis
+
+    # Keep parity lines and statistics anchored to the main panel.
+    for items, add_item in (
+        (fig.layout.shapes, subplot_fig.add_shape),
+        (fig.layout.annotations, subplot_fig.add_annotation),
+    ):
+        for item in items:
+            spec = item.to_plotly_json()
+            for axis in ("x", "y"):
+                ref = spec.get(f"{axis}ref", axis)
+                spec[f"{axis}ref"] = {
+                    axis: f"{axis}2",
+                    f"{axis} domain": f"{axis}2 domain",
+                    "paper": f"{axis}2 domain",
+                }.get(ref, ref)
+                if spec.get(f"a{axis}ref") == axis:
+                    spec[f"a{axis}ref"] = f"{axis}2"
+            add_item(**spec)
 
     return subplot_fig
 

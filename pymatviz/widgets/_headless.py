@@ -170,7 +170,7 @@ def _shutdown_async_browser() -> None:
 
 @dataclasses.dataclass(frozen=True)
 class _RenderInputs:
-    """Inputs threaded through the headless render pipeline (one bundle, not 8 args)."""
+    """Inputs shared by the headless render pipeline."""
 
     widget_data: dict[str, Any]
     esm_content: str
@@ -386,11 +386,7 @@ def _widget_data_json(widget_data: dict[str, Any]) -> str:
 
 
 def _esm_blob_loader_js(esm_content: str) -> str:
-    """JS that decodes the base64 ESM bundle into a ``blob:`` URL named ``esm_url``.
-
-    blob URLs work with dynamic ``import()``; ``data:`` module URLs are blocked by
-    browsers, hence the base64 + Blob dance.
-    """
+    """Decode base64 ESM into a ``blob:`` URL named ``esm_url`` for dynamic import."""
     esm_b64 = _get_esm_b64(esm_content)
     return (
         f'const esm_bytes = Uint8Array.from(atob("{esm_b64}"), c => c.charCodeAt(0));\n'
@@ -1044,8 +1040,8 @@ def _diagnose_sync(inputs: _RenderInputs) -> RenderReport:
 
 async def _diagnose_async(inputs: _RenderInputs) -> RenderReport:
     """Async twin of _diagnose_sync for event-loop (Jupyter) contexts."""
-    browser = await _get_async_browser()
     try:
+        browser = await _get_async_browser()
         async with _rendered_page_async(browser, inputs) as (
             page,
             render_error,

@@ -6,6 +6,7 @@ from typing import Any
 
 import traitlets as tl
 
+from pymatviz.widgets._normalize import normalize_plot_json
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -67,7 +68,7 @@ class FermiSurfaceWidget(MatterVizWidget):
 
         super().__init__(
             widget_type="fermi_surface",
-            fermi_data=fermi_data,
-            band_data=band_data,
+            fermi_data=normalize_plot_json(fermi_data, "fermi_data"),
+            band_data=normalize_plot_json(band_data, "band_data"),
             **kwargs,
         )

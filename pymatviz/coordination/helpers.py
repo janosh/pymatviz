@@ -43,11 +43,13 @@ def create_hover_text(
     hover_text += f"Element: {elem_symbol}<br>" if elem_symbol else ""
     hover_text += f"Coordination number: {cn}<br>Count: {count}"
 
-    if hover_data:
-        hover_text += "<br>" + "<br>".join(
-            f"{label}: {data['hover_data'][key][idx] if idx < len(data['hover_data'][key]) else 'N/A'}"  # noqa: E501
-            for idx, (key, label) in enumerate(hover_data.items())
+    for key, label in hover_data.items():
+        values = dict.fromkeys(
+            str(value) if value is not None else "N/A"
+            for site_cn, value in zip(data["cn"], data["hover_data"][key], strict=True)
+            if site_cn == cn
         )
+        hover_text += f"<br>{label}: {', '.join(values) or 'N/A'}"
 
     return hover_text
 

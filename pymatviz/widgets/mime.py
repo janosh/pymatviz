@@ -84,6 +84,11 @@ def create_widget(obj: Any) -> Any:
     for cls in type(obj).__mro__:
         if cls in _AUTO_DISPLAY:
             widget_cls, param_name = _AUTO_DISPLAY[cls]
+            if cls.__module__ == "phonopy.phonon.dos" and cls.__name__ == "TotalDos":
+                obj = {
+                    "frequencies": obj.frequency_points.tolist(),
+                    "densities": obj.dos.tolist(),
+                }
             return widget_cls(**{param_name: obj})
 
     # Fallback: trajectory heuristic (list/tuple of structures or dicts)

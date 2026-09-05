@@ -60,9 +60,9 @@ See [`pymatviz/ptable/figures.py`](pymatviz/ptable/figures.py). The module suppo
 |                                     [`ptable_heatmap(atomic_masses)`](pymatviz/ptable/figures.py#L35)                                     | [`ptable_heatmap(compositions, log=True)`](pymatviz/ptable/figures.py#L35) [![fig-icon]](assets/scripts/ptable/ptable_heatmap.py) |
 | :---------------------------------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------------------: |
 |                                                 ![ptable-heatmap-plotly-more-hover-data]                                                  |                                                   ![ptable-heatmap-plotly-log]                                                    |
-|               [`ptable_hists(data)`](pymatviz/ptable/figures.py#L454) [![fig-icon]](assets/scripts/ptable/ptable_hists.py)                | [`ptable_scatter(data, mode="markers")`](pymatviz/ptable/figures.py#L1610) [![fig-icon]](assets/scripts/ptable/ptable_scatter.py) |
+|               [`ptable_hists(data)`](pymatviz/ptable/figures.py#L454) [![fig-icon]](assets/scripts/ptable/ptable_hists.py)                | [`ptable_scatter(data, mode="markers")`](pymatviz/ptable/figures.py#L1613) [![fig-icon]](assets/scripts/ptable/ptable_scatter.py) |
 |                                                          ![ptable-hists-plotly]                                                           |                                                 ![ptable-scatter-plotly-markers]                                                  |
-| [`ptable_heatmap_splits(2_vals_per_elem)`](pymatviz/ptable/figures.py#L925) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_splits.py) |                            [`ptable_heatmap_splits(3_vals_per_elem)`](pymatviz/ptable/figures.py#L925)                            |
+| [`ptable_heatmap_splits(2_vals_per_elem)`](pymatviz/ptable/figures.py#L928) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_splits.py) |                            [`ptable_heatmap_splits(3_vals_per_elem)`](pymatviz/ptable/figures.py#L928)                            |
 |                                                     ![ptable-heatmap-splits-plotly-2]                                                     |                                                 ![ptable-heatmap-splits-plotly-3]                                                 |
 
 [ptable-heatmap-plotly-log]: assets/svg/ptable-heatmap-plotly-log.svg
@@ -80,10 +80,10 @@ See [`examples/mprester_ptable.ipynb`](examples/mprester_ptable.ipynb).
 
 ## Phonons
 
-| [`phonon_bands(bands_dict)`](pymatviz/phonons/figures.py#L44) [![fig-icon]](assets/scripts/phonons/phonon_bands.py) |                  [`phonon_dos(doses_dict)`](pymatviz/phonons/figures.py#L366) [![fig-icon]](assets/scripts/phonons/phonon_dos.py)                  |
+| [`phonon_bands(bands_dict)`](pymatviz/phonons/figures.py#L44) [![fig-icon]](assets/scripts/phonons/phonon_bands.py) |                  [`phonon_dos(doses_dict)`](pymatviz/phonons/figures.py#L377) [![fig-icon]](assets/scripts/phonons/phonon_dos.py)                  |
 | :-----------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                                   ![phonon-bands]                                                   |                                                                   ![phonon-dos]                                                                    |
-|                 [`phonon_bands_and_dos(bands_dict, doses_dict)`](pymatviz/phonons/figures.py#L606)                  | [`phonon_bands_and_dos(single_bands, single_dos)`](pymatviz/phonons/figures.py#L606) [![fig-icon]](assets/scripts/phonons/phonon_bands_and_dos.py) |
+|                 [`phonon_bands_and_dos(bands_dict, doses_dict)`](pymatviz/phonons/figures.py#L626)                  | [`phonon_bands_and_dos(single_bands, single_dos)`](pymatviz/phonons/figures.py#L626) [![fig-icon]](assets/scripts/phonons/phonon_bands_and_dos.py) |
 |                                           ![phonon-bands-and-dos-mp-2758]                                           |                                                          ![phonon-bands-and-dos-mp-23907]                                                          |
 
 [phonon-bands]: assets/svg/phonon-bands-mp-2758.svg
@@ -233,7 +233,7 @@ See [`pymatviz/xrd.py`](pymatviz/xrd.py).
 
 See [`pymatviz/rdf/figures.py`](pymatviz/rdf/figures.py).
 
-| [`element_pair_rdfs(pmg_struct)`](pymatviz/rdf/figures.py#L36) | [`element_pair_rdfs({"A": struct1, "B": struct2})`](pymatviz/rdf/figures.py#L36) [![fig-icon]](assets/scripts/rdf/element_pair_rdfs.py) |
+| [`element_pair_rdfs(pmg_struct)`](pymatviz/rdf/figures.py#L26) | [`element_pair_rdfs({"A": struct1, "B": struct2})`](pymatviz/rdf/figures.py#L26) [![fig-icon]](assets/scripts/rdf/element_pair_rdfs.py) |
 | :------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------------------------: |
 |                 ![element-pair-rdfs-Na8Nb8O24]                 |                                                ![element-pair-rdfs-crystal-vs-amorphous]                                                |
 
@@ -247,7 +247,7 @@ See [`pymatviz/coordination/figures.py`](pymatviz/coordination/figures.py).
 |              [`coordination_hist(struct_dict)`](pymatviz/coordination/figures.py#L51)              |            [`coordination_hist(struct_dict, by_element=True)`](pymatviz/coordination/figures.py#L51) [![fig-icon]](assets/scripts/coordination/coordination_hist.py)             |
 | :------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                    ![coordination-hist-single]                                     |                                                                  ![coordination-hist-by-structure-and-element]                                                                   |
-| [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination/figures.py#L377) | [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination/figures.py#L377) [![fig-icon]](assets/scripts/coordination/coordination_vs_cutoff_line.py#L52) |
+| [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination/figures.py#L387) | [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination/figures.py#L387) [![fig-icon]](assets/scripts/coordination/coordination_vs_cutoff_line.py#L52) |
 |                                  ![coordination-vs-cutoff-single]                                  |                                                                        ![coordination-vs-cutoff-multiple]                                                                        |
 
 [coordination-hist-single]: assets/svg/coordination-hist-single.svg
@@ -360,7 +360,7 @@ See [`pymatviz/uncertainty.py`](pymatviz/uncertainty.py).
 |             [`qq_gaussian(y_true, y_pred, y_std)`](pymatviz/uncertainty.py#L42) [![fig-icon]](assets/scripts/uncertainty/qq_gaussian.py)              |       [`qq_gaussian(y_true, y_pred, y_std: dict)`](pymatviz/uncertainty.py#L42)        |
 | :---------------------------------------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------: |
 |                                                                    ![qq-gaussian]                                                                     |                                ![qq-gaussian-multiple]                                 |
-| [`error_decay_with_uncert(y_true, y_pred, y_std)`](pymatviz/uncertainty.py#L132) [![fig-icon]](assets/scripts/uncertainty/error_decay_with_uncert.py) | [`error_decay_with_uncert(y_true, y_pred, y_std: dict)`](pymatviz/uncertainty.py#L132) |
+| [`error_decay_with_uncert(y_true, y_pred, y_std)`](pymatviz/uncertainty.py#L134) [![fig-icon]](assets/scripts/uncertainty/error_decay_with_uncert.py) | [`error_decay_with_uncert(y_true, y_pred, y_std: dict)`](pymatviz/uncertainty.py#L134) |
 |                                                              ![error-decay-with-uncert]                                                               |                          ![error-decay-with-uncert-multiple]                           |
 
 ## Classification
@@ -373,7 +373,7 @@ See [`pymatviz/classify/confusion_matrix.py`](pymatviz/classify/confusion_matrix
 
 See [`pymatviz/classify/curves.py`](pymatviz/classify/curves.py).
 
-| [`roc_curve(targets, probs_positive)`](pymatviz/classify/curves.py#L124) [![fig-icon]](assets/scripts/classify/roc_curve.py) | [`precision_recall_curve(targets, probs_positive)`](pymatviz/classify/curves.py#L225) [![fig-icon]](assets/scripts/classify/precision_recall_curve.py) |
+| [`roc_curve(targets, probs_positive)`](pymatviz/classify/curves.py#L111) [![fig-icon]](assets/scripts/classify/roc_curve.py) | [`precision_recall_curve(targets, probs_positive)`](pymatviz/classify/curves.py#L212) [![fig-icon]](assets/scripts/classify/precision_recall_curve.py) |
 | :-------------------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                                ![roc-curve-plotly-multiple]                                                 |                                                       ![precision-recall-curve-plotly-multiple]                                                        |
 

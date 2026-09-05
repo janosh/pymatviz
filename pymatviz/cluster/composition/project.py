@@ -7,7 +7,6 @@ techniques.
 
 from __future__ import annotations
 
-import warnings
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -17,9 +16,6 @@ from sklearn.manifold import TSNE, Isomap
 
 if TYPE_CHECKING:
     from pymatviz.cluster.composition.plot import ProjectionMethod
-
-# Suppress sparse matrix efficiency warnings from scikit-learn
-warnings.filterwarnings("ignore", category=UserWarning, module="scipy.sparse._index")
 
 
 def project_vectors(
@@ -75,13 +71,9 @@ def project_vectors(
         data = np.nan_to_num(standardize(data), nan=0.0)
 
     if method == "pca":
-        pca = PCA(n_components=n_components, random_state=random_state)
-        projected_data = pca.fit_transform(data)
-        if scale_data:
-            projected_data = standardize(projected_data)
-        return projected_data, pca
+        reducer = PCA(n_components=n_components, random_state=random_state, **kwargs)
 
-    if method == "tsne":
+    elif method == "tsne":
         if n_components > 3:
             raise ValueError("t-SNE visualization typically uses 2 or 3 components")
         # Adjust perplexity for small datasets
@@ -94,60 +86,45 @@ def project_vectors(
             "init": "pca",
             "random_state": random_state,
         } | kwargs
-        tsne = TSNE(**tsne_kwargs)
-        projected_data = tsne.fit_transform(data)
-        if scale_data:
-            projected_data = standardize(projected_data)
-        return projected_data, tsne
+        reducer = TSNE(**tsne_kwargs)
 
-    if method == "umap":
+    elif method == "umap":
         try:
             from umap import UMAP
         except ImportError:
             raise ImportError(
                 "UMAP requires the 'umap-learn' package: pip install umap-learn"
             ) from None
-        umap_reducer = UMAP(
+        reducer = UMAP(
             n_components=n_components,
-            n_neighbors=kwargs.get("n_neighbors", 15),
-            min_dist=kwargs.get("min_dist", 0.1),
-            metric=kwargs.get("metric", "euclidean"),
             random_state=random_state,
+            **kwargs,
         )
-        projected_data = umap_reducer.fit_transform(data)
-        if scale_data:
-            projected_data = standardize(projected_data)
-        return projected_data, umap_reducer
 
-    if method == "isomap":
+    elif method == "isomap":
         # Adjust n_neighbors for small datasets
         n_samples = data.shape[0]
-        n_neighbors = kwargs.get("n_neighbors", 5)
+        n_neighbors = kwargs.pop("n_neighbors", 5)
         if n_samples < 10 and n_neighbors > n_samples / 2:
             n_neighbors = max(2, int(n_samples / 2))
             print(f"Warning: Adjusted to {n_neighbors=} due to small dataset size")  # noqa: T201
-        isomap = Isomap(
+        reducer = Isomap(
             n_components=n_components,
             n_neighbors=n_neighbors,
-            metric=kwargs.get("metric", "euclidean"),
+            **kwargs,
         )
-        projected_data = isomap.fit_transform(data)
-        if scale_data:
-            projected_data = standardize(projected_data)
-        return projected_data, isomap
 
-    if method == "kernel_pca":
-        kpca = KernelPCA(
+    elif method == "kernel_pca":
+        reducer = KernelPCA(
             n_components=n_components,
-            kernel=kwargs.get("kernel", "rbf"),
-            gamma=kwargs.get("gamma"),
-            degree=kwargs.get("degree", 3),
-            coef0=kwargs.get("coef0", 1.0),
+            kernel=kwargs.pop("kernel", "rbf"),
             random_state=random_state,
+            **kwargs,
         )
-        projected_data = kpca.fit_transform(data)
-        if scale_data:
-            projected_data = standardize(projected_data)
-        return projected_data, kpca
+    else:
+        raise ValueError(f"Unknown projection {method=}")
 
-    raise ValueError(f"Unknown projection {method=}")
+    projected_data = reducer.fit_transform(data)
+    if scale_data:
+        projected_data = standardize(projected_data)
+    return projected_data, reducer

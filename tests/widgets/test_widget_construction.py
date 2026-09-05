@@ -382,16 +382,37 @@ def test_new_widgets_construct_with_no_data(
             "data",
             [225, 166, 62],
         ),
+        (
+            BrillouinZoneWidget,
+            {"bz_data": {"vertices": np.eye(3)}},
+            "bz_data",
+            {"vertices": np.eye(3).tolist()},
+        ),
+        (
+            FermiSurfaceWidget,
+            {"fermi_data": {"vertices": np.eye(3)}},
+            "fermi_data",
+            {"vertices": np.eye(3).tolist()},
+        ),
+        (
+            FermiSurfaceWidget,
+            {"band_data": {"energies": np.zeros((1, 1, 2, 2, 2))}},
+            "band_data",
+            {"energies": np.zeros((1, 1, 2, 2, 2)).tolist()},
+        ),
     ],
 )
 def test_widget_normalizes_numpy_values(
-    widget_cls: type, kwargs: dict[str, Any], attr: str, expected: list[Any]
+    widget_cls: type,
+    kwargs: dict[str, Any],
+    attr: str,
+    expected: list[Any] | dict[str, Any],
 ) -> None:
     """Widgets normalize numpy arrays to plain Python lists."""
     widget = widget_cls(**kwargs)
     result = getattr(widget, attr)
     assert result == expected
-    assert type(result) is list
+    assert type(result) is type(expected)
 
 
 def test_spacegroup_bar_data_inputs() -> None:

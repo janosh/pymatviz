@@ -20,8 +20,6 @@ def _standardize_input(
     targets: ArrayLike | str,
     probs_positive: Predictions,
     df: Any = None,
-    *,
-    strict: bool = False,
 ) -> tuple[ArrayLike, dict[str, dict[str, Any]]]:
     """Standardize input into tuple of (targets, {name: {probs_positive,
     **trace_kwargs}}).
@@ -34,7 +32,6 @@ def _standardize_input(
             - dict of form {"name": {"probs_positive": np.array, **trace_kwargs}}
         df (pd.DataFrame | None): Optional DataFrame containing targets and
             probs_positive columns
-        strict (bool): If True, check that probabilities are in [0, 1].
 
     Returns:
         tuple[ArrayLike, dict[str, dict[str, Any]]]: targets, curves_dict
@@ -74,16 +71,6 @@ def _standardize_input(
                 )
     else:
         curves_dict = {"": {"probs_positive": probs_positive}}
-
-    if strict:
-        for trace_dict in curves_dict.values():
-            curve_probs = np.asarray(trace_dict["probs_positive"])
-            curve_probs_no_nan = curve_probs[~np.isnan(curve_probs)]
-            min_prob, max_prob = curve_probs_no_nan.min(), curve_probs_no_nan.max()
-            if not (0 <= min_prob <= max_prob <= 1):
-                raise ValueError(
-                    f"Probabilities must be in [0, 1], got range {(min_prob, max_prob)}"
-                )
 
     return targets, curves_dict
 
@@ -302,7 +289,7 @@ def precision_recall_curve(
         no_skill_line = no_skill.pop("line", {})
         no_skill_anno = no_skill.pop("annotation", {})
         fig.add_hline(
-            y=0.5,
+            y=np.mean(targets[~pd.isna(targets)] == 1),
             line=dict(dash="dash", color="gray") | no_skill_line,
             showlegend=False,
             annotation=dict(text="No skill", font=dict(color="gray")) | no_skill_anno,

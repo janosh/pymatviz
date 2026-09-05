@@ -86,6 +86,31 @@ def test_notebook_mode_toggle(enable: bool) -> None:
     pmv.notebook_mode(on=False)
 
 
+@pytest.mark.parametrize("attr", ["_ipython_display_", "_repr_mimebundle_"])
+def test_notebook_mode_preserves_external_hooks(
+    monkeypatch: pytest.MonkeyPatch, attr: str
+) -> None:
+    """Disabling restores prior hooks without overwriting third-party replacements."""
+    pmv.notebook_mode(on=False)
+    original = object()
+    monkeypatch.setattr(Structure, attr, original, raising=False)
+    pmv.notebook_mode(on=False)
+    assert getattr(Structure, attr) is original
+    try:
+        pmv.notebook_mode(on=True)
+        pmv.notebook_mode(on=True)
+        pmv.notebook_mode(on=False)
+        assert getattr(Structure, attr) is original
+
+        pmv.notebook_mode(on=True)
+        replacement = object()
+        setattr(Structure, attr, replacement)
+        pmv.notebook_mode(on=False)
+        assert getattr(Structure, attr) is replacement
+    finally:
+        pmv.notebook_mode(on=False)
+
+
 @pytest.mark.parametrize(
     ("obj_name", "should_skip"),
     [("structure", False), ("ase_atoms", True), ("diffraction_pattern", True)],
@@ -196,5 +221,6 @@ def test_phonopy_dos_integration(monkeypatch: pytest.MonkeyPatch) -> None:
         phonopy_nacl.total_dos._ipython_display_()  # ty: ignore[unresolved-attribute]
         assert len(published_data) == 1
         assert "text/plain" in published_data[0]
+        assert "application/vnd.jupyter.widget-view+json" in published_data[0]
     finally:
         pmv.notebook_mode(on=False)

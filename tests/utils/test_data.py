@@ -152,6 +152,19 @@ def test_si_fmt() -> None:
     assert pmv.utils.si_fmt(1.23456789e-10, fmt="5.1f", sep="\t") == "123.5\tp"
 
 
+@pytest.mark.parametrize("binary", [False, True])
+@pytest.mark.parametrize("sign", [-1, 1])
+def test_si_fmt_extreme_scales(binary: bool, sign: int) -> None:
+    """Values beyond the last prefix retain their magnitude."""
+    factor = 1024 if binary else 1000
+    assert pmv.utils.si_fmt(sign * factor**9, binary=binary, fmt=".3g") == (
+        f"{sign * factor:.3g}Y"
+    )
+    assert pmv.utils.si_fmt(sign * factor**-9, binary=binary, fmt=".3g") == (
+        f"{sign / factor:.3g}y"
+    )
+
+
 def test_si_fmt_int() -> None:
     assert pmv.utils.si_fmt_int(0) == "0"
     assert pmv.utils.si_fmt_int(123) == "123"
@@ -270,11 +283,35 @@ def test_get_fig_xy_range(plotly_scatter: go.Figure) -> None:
     assert x_range[0] < x_range[1]
     assert y_range[0] < y_range[1]
 
-    # test invalid input
-    # currently suboptimal behavior: fig must be passed as kwarg to trigger helpful
-    # error message
     with pytest.raises(TypeError, match="Expected plotly Figure"):
         pmv.utils.get_fig_xy_range(fig="invalid")  # ty: ignore[invalid-argument-type]
+
+
+@pytest.mark.parametrize("selector", [[0, 1], slice(None), lambda _trace: True])
+@pytest.mark.parametrize("axis_type", ["linear", "log"])
+def test_get_fig_xy_range_without_kaleido(
+    monkeypatch: pytest.MonkeyPatch, selector: Any, axis_type: str
+) -> None:
+    """Data-derived bounds include all selected traces and preserve log units."""
+
+    def no_kaleido(*_args: Any, **_kwargs: Any) -> None:
+        """Simulate an unavailable static renderer."""
+        raise ValueError("Kaleido unavailable")
+
+    monkeypatch.setattr(go.Figure, "full_figure_for_development", no_kaleido)
+    fig = go.Figure().add_scatter(x=[1, 10], y=[2, 20])
+    fig.add_scatter(x=[100, 200], y=[300, 400])
+    fig.update_xaxes(type=axis_type)
+    fig.update_yaxes(type=axis_type)
+    assert pmv.utils.get_fig_xy_range(fig, traces=selector) == ((1, 200), (2, 400))
+    assert pmv.utils.get_fig_xy_range(fig, traces=1) == ((100, 200), (300, 400))
+    fig.update_xaxes(range=[0, 3])
+    expected_x = (1, 1000) if axis_type == "log" else (0, 3)
+    assert pmv.utils.get_fig_xy_range(fig, traces=selector)[0] == expected_x
+    fig.update_xaxes(range=[None, 3])
+    assert pmv.utils.get_fig_xy_range(fig, traces=selector)[0] == (1, expected_x[1])
+    with pytest.raises(ValueError, match="No valid traces"):
+        pmv.utils.get_fig_xy_range(fig, traces=lambda _trace: False)
 
 
 def test_get_font_color() -> None:

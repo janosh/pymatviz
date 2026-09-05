@@ -244,20 +244,10 @@ def rainclouds(
     max_label_len = max(len(label) for label in labels)
     label_orientation = "v" if max_label_len > 10 else "h"
 
-    # Calculate the range based on visible elements
-    range_adjustment = 0.0
-    if show_violin:
-        range_adjustment += 0.2
-    if show_box:
-        range_adjustment += 0.1
-    if show_points:
-        range_adjustment += 0.1
-
     if orientation == "h":
         fig.update_yaxes(
             ticktext=labels,
             tickvals=positions,
-            range=[positions[0] - range_adjustment, positions[-1] + range_adjustment],
             tickangle=0 if label_orientation == "h" else -90,
         )
         fig.update_xaxes(zeroline=False)
@@ -265,7 +255,6 @@ def rainclouds(
         fig.update_xaxes(
             ticktext=labels,
             tickvals=positions,
-            range=[positions[0] - range_adjustment, positions[-1] + range_adjustment],
             tickangle=0 if label_orientation == "h" else -90,
         )
         fig.update_yaxes(zeroline=False)

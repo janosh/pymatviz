@@ -157,23 +157,19 @@ def histogram(
             global_max if x_range[1] is None else x_range[1],
         )
 
-    # Calculate bin edges
-    if isinstance(bins, int):
-        bin_edges = np.linspace(x_range[0], x_range[1], bins + 1)
-    elif isinstance(bins, str):
-        bin_edges = np.histogram_bin_edges(all_values, bins=bins, range=x_range)
-    else:
-        bin_edges = np.asarray(bins)
+    bin_edges = np.histogram_bin_edges(all_values, bins=bins, range=x_range)
+    widths = np.diff(bin_edges)
+    centers = bin_edges[:-1] + widths / 2
 
     fig = go.Figure(**fig_kwargs or {})
     for label, vals in data_arrays.items():
         hist_vals, _ = np.histogram(vals, bins=bin_edges, density=density)
         fig.add_bar(
-            x=bin_edges[:-1],
+            x=centers,
             y=hist_vals,
             name=label,
             opacity=0.7,
-            width=bin_width * (bin_edges[1] - bin_edges[0]),
+            width=bin_width * widths,
             marker_line_width=0,
             **kwargs,
         )

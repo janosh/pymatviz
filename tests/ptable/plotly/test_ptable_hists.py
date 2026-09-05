@@ -23,6 +23,9 @@ if TYPE_CHECKING:
         # Single element, log scale
         (pd.DataFrame({"Fe": [0.1, 0.2]}), 5, (0, 1), True, "Viridis"),
         ({"H": [0.1, 0.2], "He": [0.3, 0.4]}, 5, None, True, "Turbo"),
+        ({"Fe": [2, 3, 4]}, 2, (2, None), False, "Viridis"),
+        ({"Fe": [2, 3, 4]}, 2, (None, 4), False, "Viridis"),
+        ({"Fe": [5, 5, 5]}, 2, None, False, "Viridis"),
     ],
 )
 def test_ptable_hists_basic(
@@ -45,6 +48,23 @@ def test_ptable_hists_basic(
     else:
         raise TypeError(f"unexpected {type(elem_data)=}")
     assert n_hist_traces == n_elements
+    values = np.asarray(
+        list(elem_data.values()) if isinstance(elem_data, dict) else elem_data
+    ).ravel()
+    lower, upper = x_range or (None, None)
+    edges = np.histogram_bin_edges(
+        values,
+        bins=bins,
+        range=(
+            values.min() if lower is None else lower,
+            values.max() if upper is None else upper,
+        ),
+    )
+    for trace in fig.data:
+        if isinstance(trace, go.Histogram):
+            assert trace.xbins.start == edges[0]
+            assert trace.xbins.end == edges[-1]
+            assert trace.xbins.size > 0
 
 
 def test_ptable_hists_annotations() -> None:
@@ -109,7 +129,7 @@ def test_ptable_hists_error_cases() -> None:
     assert "An int or float in the interval [1, inf]" in str(exc.value)
 
     # Test invalid bins
-    with pytest.raises(ZeroDivisionError, match="division by zero"):
+    with pytest.raises(ValueError, match=r"bins.*must be positive"):
         pmv.ptable_hists(data, bins=0)
 
 

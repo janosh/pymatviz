@@ -202,10 +202,21 @@ def phonon_bands(
         avail_branches = "\n- ".join(common_branches)
         common_branches &= set(branches)
         if missing_branches:
-            print(  # keep this warning after "No common branches" error  # noqa: T201
+            print(  # noqa: T201
                 f"Warning {missing_branches=}, available branches:\n- {avail_branches}",
                 file=sys.stderr,
             )
+        segments_to_plot &= {
+            (
+                band_struct.qpoints[branch["start_index"]].label,
+                band_struct.qpoints[branch["end_index"]].label,
+            )
+            for band_struct in bs_dict.values()
+            for branch in band_struct.branches
+            if branch["name"] in common_branches
+        }
+        if not segments_to_plot:
+            raise ValueError(f"No matching branches found for {branches=}")
 
     # Create a mapping of q-point pairs to x-axis positions
     x_positions: dict[tuple[str | None, str | None], tuple[float, float]] = {}
@@ -503,6 +514,7 @@ def phonon_dos(
 
     fig = go.Figure()
     cumulative_density_by_group: dict[str, np.ndarray] = {}
+    frequencies_by_group: dict[str, np.ndarray] = {}
     seen_stack_groups: set[str] = set()
 
     def _stack_group(trace_name: str) -> str:
@@ -516,6 +528,14 @@ def phonon_dos(
         scatter_kwargs: dict[str, Any] = {"mode": "lines"}
         if stack:
             stack_group = _stack_group(dos_name)
+            if stack_group in frequencies_by_group and not np.array_equal(
+                frequencies, frequencies_by_group[stack_group]
+            ):
+                raise ValueError(
+                    f"Cannot stack DOS {dos_name!r}: frequency grids differ in group "
+                    f"{stack_group!r}"
+                )
+            frequencies_by_group[stack_group] = frequencies
             densities = densities + cumulative_density_by_group.get(
                 stack_group, np.zeros_like(densities)
             )
@@ -549,7 +569,7 @@ def phonon_dos(
     if last_peak_anno:
         qual_colors = px.colors.qualitative.Plotly
         for idx, (key, dos) in enumerate(dos_dict.items()):
-            last_peak = dos.get_last_peak()
+            last_peak = convert_frequencies(np.array([dos.get_last_peak()]), units)[0]
             color = (
                 fig.data[idx].line.color
                 or fig.data[idx].marker.color
@@ -658,13 +678,20 @@ def phonon_bands_and_dos(
     # disable shaded_ys for bands, would cause double shading due to _shaded_range below
     bands_kwargs["shaded_ys"] = False
     bands_fig = phonon_bands(band_structs, path_mode=path_mode, **kwargs | bands_kwargs)
+    dos_options = kwargs | (dos_kwargs or {})
+    units = dos_options.get("units", "THz")
+    for trace in bands_fig.data:
+        trace.y = convert_frequencies(np.asarray(trace.y), units)
+    bands_fig.layout.yaxis.range = convert_frequencies(
+        np.asarray(bands_fig.layout.yaxis.range), units
+    )
     # import band structure layout to main figure
     fig.update_layout(bands_fig.layout)
 
     fig.add_traces(bands_fig.data, rows=1, cols=1)
 
     # plot density of states
-    dos_fig = phonon_dos(doses, **kwargs | (dos_kwargs or {}))
+    dos_fig = phonon_dos(doses, **dos_options)
     # swap DOS x and y axes (for 90 degrees rotation)
     for trace in dos_fig.data:
         trace.x, trace.y = trace.y, trace.x
