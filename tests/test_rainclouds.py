@@ -100,13 +100,21 @@ def test_rainclouds_accepts_two_item_series_with_non_default_index() -> None:
 @pytest.mark.parametrize(
     ("orientation", "expected_axis"), [("h", "yaxis"), ("v", "xaxis")]
 )
+@pytest.mark.parametrize("label_length", [5, 10, 11, 30])
 def test_rainclouds_orientation(
     sample_data: dict[str, np.ndarray],
     orientation: Literal["h", "v"],
     expected_axis: str,
+    label_length: int,
 ) -> None:
-    fig = pmv.rainclouds(sample_data, orientation=orientation)
-    assert getattr(fig.layout, expected_axis).ticktext == tuple(sample_data)
+    """Keep y-axis labels horizontal; rotate long x-axis labels."""
+    data = {
+        label.ljust(label_length, "x"): values for label, values in sample_data.items()
+    }
+    fig = pmv.rainclouds(data, orientation=orientation)
+    axis = getattr(fig.layout, expected_axis)
+    assert axis.ticktext == tuple(data)
+    assert axis.tickangle == (-90 if orientation == "v" and label_length > 10 else 0)
 
 
 @pytest.mark.parametrize(
@@ -181,15 +189,6 @@ def test_rainclouds_invalid_input(
 ) -> None:
     with pytest.raises(ValueError, match=re.escape(expected_msg)):
         pmv.rainclouds(data_input)
-
-
-def test_rainclouds_long_labels(sample_data: dict[str, np.ndarray]) -> None:
-    long_labels = {
-        f"Very long label {idx}": data
-        for idx, (_, data) in enumerate(sample_data.items())
-    }
-    fig = pmv.rainclouds(long_labels)
-    assert fig.layout.yaxis.tickangle == -90
 
 
 @pytest.mark.parametrize(

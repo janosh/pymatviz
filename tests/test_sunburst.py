@@ -715,35 +715,28 @@ def test_chem_env_sunburst_empty_coordination_environments() -> None:
             assert "No CN/CE data to display" in fig.layout.title.text
 
 
-# Tests for _limit_slices helper function
-def test_limit_slices_edge_cases() -> None:
-    """Test edge cases in _limit_slices function."""
+@pytest.mark.parametrize("label_col", [Key.formula, "coord_num"])
+def test_limit_slices_edge_cases(label_col: str) -> None:
+    """Label aggregate slices for formula and coordination-number frames."""
     import pandas as pd
 
     from pymatviz.sunburst.helpers import _limit_slices
 
-    # Create test data with more items than limit
-    df_test = pd.DataFrame(
-        [
-            {"group": "A", "count": 10, "formula": "A1"},
-            {"group": "A", "count": 5, "formula": "A2"},
-            {"group": "A", "count": 3, "formula": "A3"},
-            {"group": "A", "count": 1, "formula": "A4"},
-        ]
-    )
-
+    df_test = pd.DataFrame({"coord_num": [4, 5, 6, 7], "count": [10, 5, 3, 1]})
+    if label_col == Key.formula:
+        df_test[Key.formula] = ["A1", "A2", "A3", "A4"]
     result = _limit_slices(
         df_test,
-        group_col="group",
+        group_col="coord_num",
         count_col="count",
         max_slices=2,
         max_slices_mode="other",
+        other_label="Other CNs",
     )
-
-    # Should have 3 rows: top 2 + other
     assert len(result) == 3
-    other_rows = result[result["count"] == 4]  # Combined count of last 2 items
-    assert len(other_rows) == 1
+    assert result["count"].tolist() == [10, 5, 4]
+    assert result.iloc[-1][label_col] == "Other CNs (2 more not shown)"
+    assert df_test["coord_num"].tolist() == [4, 5, 6, 7]
 
 
 @pytest.mark.parametrize(
@@ -799,6 +792,7 @@ def test_limit_slices_invalid_mode() -> None:
         (Key.chem_sys, [Key.formula, Key.spg_num]),
         (Key.formula, [Key.chem_sys, Key.spg_num]),
         (Key.spg_num, [Key.chem_sys, Key.formula]),
+        ("group", [Key.chem_sys, Key.formula, Key.spg_num]),
     ],
 )
 def test_limit_slices_child_col_exclusion(

@@ -232,7 +232,7 @@ def rainclouds(
         fig.update_yaxes(
             ticktext=labels,
             tickvals=positions,
-            tickangle=-90 if max_label_len > 10 else 0,
+            tickangle=0,
         )
         fig.update_xaxes(zeroline=False)
     else:

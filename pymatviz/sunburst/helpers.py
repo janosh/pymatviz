@@ -58,16 +58,19 @@ def _limit_slices(
     top_slices = df_grouped[:max_slices]
     remaining_slices = df_grouped[max_slices:]
 
-    other_row = {group_col: top_slices.iloc[0][group_col]}
-    other_count = remaining_slices[count_col].sum()
-    other_row[count_col] = other_count
+    other_row = {
+        group_col: top_slices.iloc[0][group_col],
+        count_col: remaining_slices[count_col].sum(),
+    }
 
     n_hidden = len(remaining_slices)
     other_text = f"{other_label} ({n_hidden} more not shown)"
 
-    label_col = child_col_for_other_label or Key.formula
+    label_col = child_col_for_other_label or (
+        Key.formula if Key.formula in df_grouped else group_col
+    )
     for col in df_grouped.columns:
-        if col == count_col or (col == group_col and col != child_col_for_other_label):
+        if col == count_col or (col == group_col and col != label_col):
             continue
         other_row[col] = other_text if col == label_col else ""
 
