@@ -72,7 +72,8 @@ def measure_import_time(module_name: str, repeats: int = 3) -> float:
 
 
 @pytest.mark.skipif(
-    os.getenv("GITHUB_REF") != "refs/heads/main", reason="Only run on the main branch"
+    os.getenv("PYMATVIZ_IMPORT_BENCHMARK") != "1",
+    reason="Run separately with PYMATVIZ_IMPORT_BENCHMARK=1",
 )
 @pytest.mark.skipif(GEN_REF_TIME, reason="Generating reference import time.")
 def test_import_time() -> None:

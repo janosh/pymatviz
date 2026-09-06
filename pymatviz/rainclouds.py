@@ -147,7 +147,7 @@ def rainclouds(
                 fill="toself",
                 fillcolor=rgba_color,
                 line=dict(color="rgba(255,255,255,0)"),
-                showlegend=True,  # Show in legend as the group representative
+                showlegend=True,
                 name=label,
                 legendgroup=label,
                 hoverinfo="x+y",
@@ -165,7 +165,7 @@ def rainclouds(
                 fillcolor=rgba_color,
                 line=dict(color=color),
                 orientation=orientation,
-                showlegend=False,
+                showlegend=not show_violin,
                 legendgroup=label,
             )
 
@@ -218,7 +218,7 @@ def rainclouds(
                 y=pos + rain_offset + jitter_values if orientation == "h" else values,
                 mode="markers",
                 marker=dict(color=color, size=point_size, opacity=0.5),
-                showlegend=False,
+                showlegend=not (show_violin or show_box),
                 name=label,
                 legendgroup=label,
                 hoverinfo="text",

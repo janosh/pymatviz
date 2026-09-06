@@ -10,6 +10,10 @@ on:
   workflow_dispatch:
   workflow_call:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'release' }}
+
 env:
   MPLBACKEND: Agg # non-interactive backend for matplotlib
 
@@ -33,10 +37,22 @@ jobs:
         playwright install --with-deps chromium
       # pytest-split distributes work load so parallel jobs finish in similar time
       # update durations file with `pytest --store-durations --durations-path tests/files/.pytest-split-durations`
-      test-cmd: pytest --durations 20 --cov-branch --cov-report=xml --cov pymatviz --splits 4 --group ${{ matrix.split }} --splitting-algorithm least_duration
+      test-cmd: pytest --durations 20 --ignore=tests/performance_tests/test_import_time.py --cov-branch --cov-report=xml --cov pymatviz --splits 4 --group ${{ matrix.split }} --splitting-algorithm least_duration
       # 'yes' uploads coverage but keeps CI green if Codecov errors (its GPG key
       # import from keybase flakes intermittently); 'strict' would fail the job
       upload-coverage: 'yes'
+
+  import-performance:
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8.2.0
+        with:
+          python-version: '3.12'
+      - run: uv run --no-project --with-editable . --with pytest pytest --noconftest tests/performance_tests/test_import_time.py -v
+        env:
+          PYMATVIZ_IMPORT_BENCHMARK: '1'
 
   run-widget-demos:
     runs-on: ubuntu-latest
@@ -69,17 +85,33 @@ jobs:
 
       - name: Find Python scripts
         id: set-matrix
+        shell: python
         run: |
-          SCRIPTS=$(find assets/scripts -name "*.py" | jq -R -s -c 'split("\n")[:-1]')
-          echo "example_scripts=$SCRIPTS" >> $GITHUB_OUTPUT
+          import glob
+          import json
+          import os
+
+          # These two examples took 4–5 minutes each; keep them independent.
+          slow_scripts = {
+              "assets/scripts/cluster/composition/cluster_compositions_matbench.py",
+              "assets/scripts/sunburst/chem_env_sunburst.py",
+          }
+          scripts = sorted(glob.glob("assets/scripts/**/*.py", recursive=True))
+          groups = [[script] for script in scripts if script in slow_scripts]
+          remaining = [script for script in scripts if script not in slow_scripts]
+          groups.extend(remaining[group_idx::2] for group_idx in range(2))
+          matrix = [{"group": idx + 1, "scripts": group} for idx, group in enumerate(groups) if group]
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"example_scripts={json.dumps(matrix)}\n")
 
   test-example-scripts:
+    name: Examples (group ${{ matrix.group }})
     needs: find-example-scripts
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        example_script: ${{fromJson(needs.find-example-scripts.outputs.example_scripts)}}
+        include: ${{fromJson(needs.find-example-scripts.outputs.example_scripts)}}
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -92,5 +124,14 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v8.2.0
 
-      - name: Run script
-        run: uv run --with-editable .[make-assets] ${{ matrix.example_script }}
+      - name: Run examples
+        env:
+          SCRIPTS: ${{ toJSON(matrix.scripts) }}
+        run: |
+          failed=0
+          while IFS= read -r script; do
+            echo "::group::$script"
+            uv run --with-editable '.[make-assets]' "$script" || failed=1
+            echo '::endgroup::'
+          done < <(jq -r '.[]' <<< "$SCRIPTS")
+          exit "$failed"

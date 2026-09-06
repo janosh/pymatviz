@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 import traitlets as tl
 from pymatgen.core import Composition
 
+from pymatviz.widgets._traits import ELEMENT_COLOR_SCHEMES
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -42,10 +43,9 @@ class CompositionWidget(MatterVizWidget):
         sync=True
     )
     show_percentages = tl.Bool(default_value=False).tag(sync=True)
-    color_scheme = tl.CaselessStrEnum(
-        ["Jmol", "CPK", "Vesta", "Alloy", "Pastel", "Muted", "Dark Mode"],
-        default_value="Jmol",
-    ).tag(sync=True)
+    color_scheme = tl.CaselessStrEnum(ELEMENT_COLOR_SCHEMES, default_value="Jmol").tag(
+        sync=True
+    )
 
     # kwargs for the pymatgen Composition constructor. Python-side only (not
     # synced): the frontend has no such prop, it only affects parsing here.

@@ -40,6 +40,7 @@ class BandStructureWidget(PlotControlsTraits, MatterVizWidget):
     band_type = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
     show_legend = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     fermi_level = tl.Float(allow_none=True, default_value=None).tag(sync=True)
+    # Horizontal reference line in the data unit (THz for phonons, eV for electrons)
     reference_frequency = tl.Float(allow_none=True, default_value=None).tag(sync=True)
 
     def __init__(self, band_structs: Any | None = None, **kwargs: Any) -> None:

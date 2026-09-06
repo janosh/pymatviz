@@ -4,10 +4,12 @@ import re
 from collections import OrderedDict
 from typing import TYPE_CHECKING, Literal
 
+import numpy as np
 import plotly.graph_objects as go
 import pytest
 from pymatgen.analysis.diffraction.xrd import DiffractionPattern, XRDCalculator
 from pymatgen.core import Structure
+from pymatgen.io.ase import AseAtomsAdaptor
 
 import pymatviz as pmv
 from pymatviz.utils.testing import TEST_FILES
@@ -45,6 +47,7 @@ ORDERED_XRD_INPUT = OrderedDict(
         (MOCK_DIFFRACTION_PATTERN, 1),
         (BI2_ZR2_O7_XRD, 1),
         (BI2_ZR2_O7_STRUCT, 1),
+        (AseAtomsAdaptor.get_atoms(BI2_ZR2_O7_STRUCT), 1),
         ({"Structure": BI2_ZR2_O7_STRUCT, "Pattern": MOCK_DIFFRACTION_PATTERN}, 2),
         (ORDERED_XRD_INPUT, 2),
     ],
@@ -62,11 +65,25 @@ def test_xrd_pattern_peak_width(peak_width: float) -> None:
     assert fig.data[0].width == peak_width
 
 
-@pytest.mark.parametrize("annotate_peaks", [0, 3, 5, 0.5, 0.8, -0.1, 1.5])
-def test_xrd_pattern_annotate_peaks(annotate_peaks: float) -> None:
-    if annotate_peaks < 0 or (
-        isinstance(annotate_peaks, float) and annotate_peaks >= 1
-    ):
+@pytest.mark.parametrize(
+    ("annotate_peaks", "expected_peaks"),
+    [
+        (0, 0),
+        (3, 3),
+        (5, 5),
+        (0.5, 3),
+        (0.8, 1),
+        (-0.1, None),
+        (1.5, None),
+        (np.nan, None),
+        (np.inf, None),
+    ],
+)
+def test_xrd_pattern_annotate_peaks(
+    annotate_peaks: float, expected_peaks: int | None
+) -> None:
+    """Select peaks by count or intensity and reject invalid limits."""
+    if expected_peaks is None:
         err_msg = re.escape(
             f"{annotate_peaks=} should be a positive int or a float in (0, 1)"
         )
@@ -76,30 +93,7 @@ def test_xrd_pattern_annotate_peaks(annotate_peaks: float) -> None:
         fig = pmv.xrd_pattern(MOCK_DIFFRACTION_PATTERN, annotate_peaks=annotate_peaks)
         annotations = fig.layout.annotations
 
-        n_peak_annotations_expected = 0
-        if isinstance(annotate_peaks, int):
-            if annotate_peaks > 0:
-                n_peak_annotations_expected = min(
-                    annotate_peaks, len(MOCK_DIFFRACTION_PATTERN.x)
-                )
-        elif 0 < annotate_peaks < 1:  # float case
-            y_values = MOCK_DIFFRACTION_PATTERN.y
-            if y_values.size > 0:
-                max_intensity = max(y_values)
-                if max_intensity > 0:
-                    normalized_intensities = [
-                        (y_val / max_intensity) * 100 for y_val in y_values
-                    ]
-                    n_peak_annotations_expected = sum(
-                        1
-                        for intensity in normalized_intensities
-                        if intensity > annotate_peaks * 100
-                    )
-                # else: all intensities are 0 or less, so 0 peak annotations
-            # else: y_values is empty, so 0 peak annotations
-
-        # Total annotations = peak annotations + 2 for axis titles
-        assert len(annotations) == n_peak_annotations_expected + 2
+        assert len(annotations) == expected_peaks + 2  # Includes both axis titles.
         # Axis title annotations are identified by not having an arrowhead
         axis_texts = {anno.text for anno in annotations if not anno.arrowhead}
         assert "2θ (degrees)" in axis_texts
@@ -204,6 +198,8 @@ def test_xrd_pattern_empty_input() -> None:
         ValueError, match="No intensities found in the diffraction pattern"
     ):
         pmv.xrd_pattern(empty_pattern)
+    with pytest.raises(ValueError, match="patterns must not be empty"):
+        pmv.xrd_pattern({})
 
 
 def test_xrd_pattern_intensity_normalization() -> None:
@@ -212,6 +208,16 @@ def test_xrd_pattern_intensity_normalization() -> None:
     normalized_max = max(fig.data[0].y)
     assert normalized_max == 100
     assert normalized_max / original_max == pytest.approx(100 / original_max)
+
+    zero_pattern = DiffractionPattern([10], [0], [[{"hkl": (1, 0, 0)}]], [1])
+    combined = pmv.xrd_pattern(
+        {"zero": zero_pattern, "nonzero": MOCK_DIFFRACTION_PATTERN}
+    )
+    assert list(combined.data[0].y) == [0]
+    for intensity in [0, -1, np.nan, np.inf]:
+        pattern = DiffractionPattern([10], [intensity], [[{"hkl": (1, 0, 0)}]], [1])
+        with pytest.raises(ValueError, match=r"intensit|Intensit"):
+            pmv.xrd_pattern(pattern)
 
 
 @pytest.mark.parametrize("wavelength", [cu_k_alpha_wavelength, 0.7093])

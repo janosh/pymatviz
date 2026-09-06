@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import copy
 import re
+import subprocess
+import sys
 from typing import TYPE_CHECKING
 
 import pandas as pd
 import pytest
+from ase import Atoms
 from pymatgen.core import (
     Composition,
     IMolecule,
@@ -241,6 +244,11 @@ def test_count_formulas_mixed_input() -> None:
 
 PMG_FORMULA_0 = SI_STRUCTS[0].formula
 SI_ISTRUCTURE_0 = IStructure.from_sites(SI_STRUCTS[0])
+
+
+class DerivedAtoms(Atoms):
+    """Exercise adapter-free conversion of caller-defined ASE subclasses."""
+
 
 H2O_MOL = Molecule(["H", "H", "O"], [[0, 0, 0], [0, 0, 1.5], [0, 0, 0.75]])
 CO2_MOL = Molecule(["C", "O", "O"], [[0, 0, 0], [0, 0, 1.2], [0, 0, -1.2]])
@@ -550,6 +558,8 @@ def test_bin_df_cols_raises() -> None:
     ("data", "expected"),
     [
         ([1, 2, 3, 225], [1, 2, 3, 225]),
+        ([225.0, 1.0, 62.0], [225, 1, 62]),
+        (pd.Series([225, 1, 62], dtype="Float64"), [225, 1, 62]),
         (pd.Series([1, 225, 167]), [1, 225, 167]),
         (["Fm-3m", "P1", "Pnma"], [225, 1, 62]),  # Hermann-Mauguin symbols -> numbers
     ],
@@ -567,7 +577,11 @@ def test_normalize_spacegroups(
     pd.testing.assert_series_equal(pmv_pd.normalize_spacegroups(data), expected_series)
 
 
-@pytest.mark.parametrize("structures", [SI_STRUCTS, SI_ATOMS], ids=["pymatgen", "ase"])
+@pytest.mark.parametrize(
+    "structures",
+    [SI_STRUCTS, SI_ATOMS, tuple(DerivedAtoms(atoms) for atoms in SI_ATOMS)],
+    ids=["pymatgen", "ase", "ase_subclass"],
+)
 @pytest.mark.parametrize("as_series", [False, True])
 def test_normalize_spacegroups_with_structures(
     structures: tuple, as_series: bool
@@ -585,6 +599,35 @@ def test_normalize_spacegroups_with_structures(
         data = pd.Series(list(structures), index=index, name="spacegroup")
         expected.index, expected.name = index, "spacegroup"
     pd.testing.assert_series_equal(pmv_pd.normalize_spacegroups(data), expected)
+
+
+def test_symmetry_and_widgets_without_ase() -> None:
+    """Base imports, structure symmetry and notebook widgets need no ASE adapter."""
+    subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            """
+import sys
+sys.modules["ase"] = None
+sys.modules["moyopy.interface"] = None
+import pymatviz as pmv
+from pymatgen.core import IStructure, Lattice, Structure
+from pymatviz.process_data import normalize_spacegroups
+from pymatviz.structure.helpers import get_subplot_title
+
+structure = Structure(Lattice.cubic(3), ["Si"], [[0, 0, 0]])
+immutable = IStructure.from_sites(structure)
+assert normalize_spacegroups([structure, immutable]).tolist() == [221, 221]
+assert get_subplot_title(immutable, 0, 1, None)["text"] == "1. Si1 (spg=221)"
+assert "221" in pmv.spacegroup_sunburst([structure]).data[0].labels
+pmv.StructureWidget(structure=structure.as_dict())
+""",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
 
 
 def test_normalize_spacegroups_empty_raises() -> None:

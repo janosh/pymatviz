@@ -50,18 +50,19 @@ def calculate_rdf(
         tuple[np.ndarray, np.ndarray]: Arrays of (radii, g(r)) values.
 
     Raises:
-        ValueError: If cutoff or n_bins are not positive values.
+        ValueError: If cutoff is not positive and finite, n_bins is not a positive
+            integer, or pbc does not contain three 0/1 flags.
         TypeError: If structure is unsupported or not periodic (e.g. a Molecule).
     """
     struct = next(iter(normalize_periodic_structures(structure).values()))
 
-    # Handle empty structure
-    if len(struct) == 0:
-        return np.linspace(cutoff / n_bins, cutoff, n_bins), np.zeros(n_bins)
-    if cutoff <= 0:
-        raise ValueError(f"{cutoff=} must be positive")
-    if n_bins <= 0:
-        raise ValueError(f"{n_bins=} must be positive")
+    if not np.isfinite(cutoff) or cutoff <= 0:
+        raise ValueError(f"{cutoff=} must be positive and finite")
+    if not isinstance(n_bins, int | np.integer) or n_bins <= 0:
+        raise ValueError(f"{n_bins=} must be positive and integral")
+    pbc_array = np.asarray(pbc)
+    if pbc_array.shape != (3,) or not np.isin(pbc_array, [0, 1]).all():
+        raise ValueError(f"{pbc=} must contain three 0/1 flags")
 
     bin_size = cutoff / n_bins
     radii = np.linspace(0, cutoff, n_bins + 1)[1:]
@@ -89,32 +90,31 @@ def calculate_rdf(
     else:
         neighbor_indices = list(range(len(struct)))
 
-    # If there are no center atoms or neighbor atoms, return an empty RDF
     if not center_indices or not neighbor_indices:
-        return radii, rdf  # Return zeros if no centers or neighbors
+        return radii, rdf
 
     center_neighbors = find_points_in_spheres(
         all_coords=struct.cart_coords,
         center_coords=struct.cart_coords[center_indices],
         r=cutoff,
-        # Convert bools to ints (needed for cython code)
-        pbc=np.array([*map(int, pbc)]),
+        pbc=pbc_array.astype(int),
         lattice=struct.lattice.matrix,
     )
 
     # Exclude the zero-distance self-pair, but count its periodic images.
-    neighbor_set = set(neighbor_indices)
-    for _idx1, idx2, _, dist in zip(*center_neighbors, strict=True):
-        if idx2 in neighbor_set and 1e-10 < dist < cutoff:
-            bin_index = min(int(dist / bin_size), n_bins - 1)
-            rdf[bin_index] += 1
+    _, neighbor_ids, _, distances = center_neighbors
+    selected = np.zeros(len(struct), dtype=bool)
+    selected[neighbor_indices] = True
+    distances = distances[
+        selected[neighbor_ids] & (distances > 1e-10) & (distances < cutoff)
+    ]
+    bin_indices = np.minimum((distances / bin_size).astype(int), n_bins - 1)
+    rdf = np.bincount(bin_indices, minlength=n_bins).astype(float)
 
     # Neighbor density is N/V without a -1 correction: periodic self-images count.
-    n_center = len(center_indices)
-    n_neighbor = len(neighbor_indices)
-    normalization = n_center * n_neighbor
+    normalization = len(center_indices) * len(neighbor_indices)
 
-    # Spherical shell volume = surface area (4πr²) times thickness (bin_size)
+    # Approximate shell volume using its outer radius and thickness.
     rdf /= normalization
     shell_volumes = 4 * np.pi * radii**2 * bin_size
     rdf /= shell_volumes / struct.volume

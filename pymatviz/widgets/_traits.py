@@ -7,6 +7,13 @@ from typing import Any
 import traitlets as tl
 
 
+# Mirror matterviz's ELEMENT_COLOR_SCHEME_NAMES (src/lib/constants.ts) and
+# BONDING_STRATEGIES (src/lib/structure/bonding.ts). The renderer throws on any other
+# name, so traits validate against these (case-insensitively, stored canonical).
+ELEMENT_COLOR_SCHEMES = ("Vesta", "Jmol", "Alloy", "Pastel", "Muted", "Dark Mode")
+BONDING_STRATEGIES = ("electroneg_ratio", "explicit_only")
+
+
 def optional_trait(trait_cls: Any, **kwargs: Any) -> Any:
     """Synced trait defaulting to None so the frontend component default applies."""
     return trait_cls(allow_none=True, default_value=None, **kwargs).tag(sync=True)
@@ -38,11 +45,8 @@ class StructureVizTraits(tl.HasTraits):
     # Bonds
     bond_thickness = optional_trait(tl.Float)
     bond_color = optional_trait(tl.Unicode)
-    # None defers to the frontend default. An unknown strategy name would crash
-    # the renderer (matterviz looks it up in BONDING_STRATEGIES), so validate here.
-    bonding_strategy = tl.CaselessStrEnum(
-        values=["electroneg_ratio", "solid_angle"], allow_none=True, default_value=None
-    ).tag(sync=True)
+    # None defers to the frontend default (electroneg_ratio)
+    bonding_strategy = optional_trait(tl.CaselessStrEnum, values=BONDING_STRATEGIES)
 
     # Cell
     cell_edge_opacity = tl.Float(0.1).tag(sync=True)
@@ -53,7 +57,9 @@ class StructureVizTraits(tl.HasTraits):
     show_cell_vectors = optional_trait(tl.Bool)
 
     # Appearance
-    color_scheme = tl.Unicode("Vesta").tag(sync=True)
+    color_scheme = tl.CaselessStrEnum(
+        values=ELEMENT_COLOR_SCHEMES, default_value="Vesta"
+    ).tag(sync=True)
     background_color = optional_trait(tl.Unicode)
     background_opacity = optional_trait(tl.Float)
 

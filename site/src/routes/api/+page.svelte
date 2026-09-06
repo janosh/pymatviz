@@ -2,7 +2,7 @@
   let { data }: { data: { html: string } } = $props()
 </script>
 
-<h1 class="toc-exclude">API</h1>
+<h1 id="api" class="toc-exclude">API</h1>
 
 {@html data.html}
 

@@ -26,6 +26,7 @@ from pymatgen.core.periodic_table import Element
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 from pymatviz.enums import ElemColorScheme, Key, SiteCoords
+from pymatviz.process_data import get_spacegroup_number
 from pymatviz.utils import df_ptable, pick_max_contrast_color
 
 
@@ -429,16 +430,7 @@ def get_subplot_title(
 
     if not title_dict.get("text"):
         if isinstance(struct_key, int) and isinstance(struct_i, IStructure):
-            from moyopy import MoyoDataset
-            from moyopy.interface import MoyoAdapter
-
-            # moyopy only accepts mutable Structure objects, not IStructure
-            struct_for_spg = (
-                struct_i
-                if isinstance(struct_i, Structure)
-                else Structure.from_sites(list(struct_i))
-            )
-            spg_num = MoyoDataset(MoyoAdapter.from_py_obj(struct_for_spg)).number
+            spg_num = get_spacegroup_number(struct_i)
             title_dict["text"] = f"{idx}. {struct_i.formula} (spg={spg_num})"
         else:  # For str or any other Hashable type, convert to string
             title_dict["text"] = str(struct_key)

@@ -302,8 +302,11 @@ def is_structure_like(obj: Any) -> bool:
 
 def is_ase_atoms(struct: Any) -> TypeIs[Atoms]:
     """Check if the input is an ASE Atoms object without importing ase."""
-    cls_name = f"{type(struct).__module__}.{type(struct).__qualname__}"
-    return cls_name in ("ase.atoms.Atoms", "pymatgen.io.ase.MSONAtoms")
+    return any(
+        f"{cls.__module__}.{cls.__qualname__}"
+        in ("ase.atoms.Atoms", "pymatgen.io.ase.MSONAtoms")
+        for cls in type(struct).__mro__
+    )
 
 
 def is_phonopy_atoms(obj: Any) -> TypeIs[PhonopyAtoms]:
@@ -523,6 +526,31 @@ def bin_df_cols(
     return df_bin.set_index(orig_index_name)
 
 
+def get_spacegroup_number(structure: AnyStructure) -> int:
+    """Determine an ordered periodic structure's space group without adapter extras."""
+    from moyopy import Cell, MoyoDataset
+
+    if isinstance(structure, IStructure):
+        if not structure.is_ordered:
+            raise ValueError("Structure must be ordered")
+        cell = Cell(
+            basis=structure.lattice.matrix.tolist(),
+            positions=structure.frac_coords.tolist(),
+            numbers=list(structure.atomic_numbers),
+        )
+    elif is_ase_atoms(structure):
+        cell = Cell(
+            basis=structure.cell.tolist(),
+            positions=structure.get_scaled_positions().tolist(),
+            numbers=structure.get_atomic_numbers().tolist(),
+        )
+    else:
+        raise TypeError(
+            f"Expected periodic Structure or ASE Atoms, got {type(structure)}"
+        )
+    return MoyoDataset(cell).number
+
+
 def normalize_spacegroups(
     data: Sequence[int | str | Any] | pd.Series,
 ) -> pd.Series:
@@ -539,7 +567,7 @@ def normalize_spacegroups(
             - pandas Series of any of the above
 
     Returns:
-        pd.Series: Space group numbers (1-230), preserving Series index and name.
+        pd.Series: Integer space group numbers (1-230), preserving index and name.
 
     Raises:
         ValueError: If data is empty, contains missing values, invalid symbols,
@@ -554,13 +582,7 @@ def normalize_spacegroups(
     first_item = result.iloc[0]
 
     if is_structure_like(first_item):
-        # pymatgen Structure or ASE Atoms - extract spacegroup numbers via moyopy
-        from moyopy import MoyoDataset
-        from moyopy.interface import MoyoAdapter
-
-        return result.map(
-            lambda struct: MoyoDataset(MoyoAdapter.from_py_obj(struct)).number
-        )
+        return result.map(get_spacegroup_number)
 
     if pd.api.types.is_numeric_dtype(result):
         invalid = result[(result < 1) | (result > 230) | (result % 1 != 0)]
@@ -569,7 +591,7 @@ def normalize_spacegroups(
                 "Space group numbers must be in [1, 230] and integral, "
                 f"got: {invalid.tolist()}"
             )
-        return result
+        return result.astype(int)
 
     # Convert Hermann-Mauguin symbols to space group numbers
     if isinstance(first_item, str):

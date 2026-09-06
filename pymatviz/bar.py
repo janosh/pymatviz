@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 
 def spacegroup_bar(
-    data: Sequence[int | str | Structure] | pd.Series,
+    data: Sequence[int | float | str | Structure] | pd.Series,
     *,
     show_counts: bool = True,
     xticks: Literal["all", "crys_sys_edges"] | int = 20,
@@ -33,17 +33,17 @@ def spacegroup_bar(
     """Plot a histogram of spacegroups shaded by crystal system using Plotly.
 
     Args:
-        data (list[int | str | Structure] | pd.Series): Space group strings or numbers
-            (from 1 - 230) or pymatgen structures.
+        data (Sequence[int | float | str | Structure] | pd.Series): Space group symbols,
+            integral numbers (1-230), or pymatgen structures. All inputs use numerically
+            ordered space group numbers as x-axis labels.
         show_counts (bool, optional): Whether to count the number of items
             in each crystal system. Defaults to True.
         xticks ("all" | "crys_sys_edges" | int, optional): Where to add x-ticks. An
             integer will add ticks below that number of tallest bars. Defaults to 20.
             "all" will show below all bars, "crys_sys_edges" only at the edge from one
             crystal system to another.
-        show_empty_bins (bool, optional): Whether to include a 0-height bar for missing
-            space groups missing from the data. Currently only implemented for numbers,
-            not symbols. Defaults to False.
+        show_empty_bins (bool, optional): Whether to include a zero-height bar for every
+            missing space group, for any input format. Defaults to False.
         log (bool, optional): Whether to log scale the y-axis. Defaults to False.
         **kwargs: Keywords passed to plotly.express.bar().
 
@@ -71,32 +71,10 @@ def spacegroup_bar(
         "cubic": "darkred",
     }
 
-    if df_data.index.inferred_type == "integer":  # assume index is space group numbers
-        df_data = df_data.reindex(range(1, 231), fill_value=0).sort_index()
-        if not show_empty_bins:
-            df_data = df_data.query(f"{count_col} > 0")
-        df_data[Key.crystal_system] = [spg_to_crystal_sys(x) for x in df_data.index]
-
-        x_label = "International Spacegroup Number"
-
-    else:  # assume index is space group symbols
-        # TODO: figure out how to implement show_empty_bins for space group symbols
-        # if show_empty_bins:
-        #     idx = [SpaceGroup.from_int_number(x).symbol for x in range(1, 231)]
-        #     df = df.reindex(idx, fill_value=0)
+    df_data = df_data.reindex(range(1, 231), fill_value=0)
+    if not show_empty_bins:
         df_data = df_data[df_data[count_col] > 0]
-        df_data[Key.crystal_system] = df_data.index.map(spg_to_crystal_sys)
-
-        # sort df by crystal system going from smallest to largest spacegroup numbers
-        # e.g. triclinic (1-2) comes first, cubic (195-230) last
-        sys_order = dict(
-            zip(crystal_sys_colors, range(len(crystal_sys_colors)), strict=True)
-        )
-        df_data = df_data.loc[
-            df_data[Key.crystal_system].map(sys_order).sort_values().index
-        ]
-
-        x_label = "International Spacegroup Symbol"
+    df_data[Key.crystal_system] = df_data.index.map(spg_to_crystal_sys)
 
     # count rows per crystal system
     crys_sys_counts = df_data.groupby(Key.crystal_system)[[count_col]].sum()
@@ -109,23 +87,19 @@ def spacegroup_bar(
     ]
 
     fig_title = f"{count_col} per crystal system" if show_counts else None
-    df_plot = df_data if show_empty_bins else df_data.reset_index()
-    if show_empty_bins and df_data.index.inferred_type == "integer":
-        # numeric x-axis showing actual spacegroup numbers
-        x_range = (df_data.index.min() - 0.5, df_data.index.max() + 0.5)
-    else:  # positional x-axis (reset_index) or categorical symbol axis
-        x_range = (0, len(df_data) - 1)
+    x_values = df_data.index if show_empty_bins else pd.RangeIndex(len(df_data))
+    x_range = (x_values[0] - 0.5, x_values[-1] + 0.5)
 
     fig = px.bar(
-        df_plot,
-        x=df_plot.index,
+        df_data,
+        x=x_values,
         y=count_col,
         color=df_data[Key.crystal_system],
         color_discrete_map=crystal_sys_colors,
         **kwargs,
     )
     # add vertical lines between crystal systems and fill area with color
-    x0 = x1 = 0
+    x0 = x1 = x_range[0]
     for idx, (crys_sys, count, width, color) in enumerate(crys_sys_counts.itertuples()):
         prev_width = x1 - x0 if idx > 0 else 0
         x1 = x0 + width
@@ -157,26 +131,25 @@ def spacegroup_bar(
 
     fig.layout.showlegend = False
     fig.layout.title = dict(text=fig_title, x=0.5)
-    fig.layout.xaxis.update(showgrid=False, title=x_label, range=x_range)
+    fig.layout.xaxis.update(
+        showgrid=False, title="International Spacegroup Number", range=x_range
+    )
     count_max = df_data[count_col].max()
     y_max = np.log10(count_max * 1.05) if log else count_max * 1.05
     fig.layout.yaxis.update(range=(0, y_max), type="log" if log else None)
     fig.layout.margin = dict(l=0, r=0, t=40, b=0)
 
     if isinstance(xticks, int):
-        # get x_locs of n=xticks tallest bars
-        x_indices = df_data.reset_index()[count_col].nlargest(xticks).index
-        tick_text = df_data.iloc[x_indices].index
+        x_indices = df_data[count_col].reset_index(drop=True).nlargest(xticks).index
     elif xticks == "crys_sys_edges":
-        # add x_locs of n=xticks tallest bars
-        x_indices = crys_sys_counts.width.cumsum()
-        tick_text = df_data.index[x_indices - 1]
+        x_indices = crys_sys_counts.width.cumsum() - 1
     elif xticks == "all":
-        x_indices = df_data.reset_index().index
-        tick_text = df_data.index
+        x_indices = range(len(df_data))
     else:
         raise ValueError(f"Invalid {xticks=}, must be int, 'all' or 'crys_sys_edges'")
 
-    fig.update_xaxes(tickvals=x_indices, ticktext=tick_text, tickangle=90)
+    fig.update_xaxes(
+        tickvals=x_values[x_indices], ticktext=df_data.index[x_indices], tickangle=90
+    )
 
     return fig

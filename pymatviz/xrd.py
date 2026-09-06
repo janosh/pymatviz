@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any, Literal, cast, get_args
+from typing import TYPE_CHECKING, Any, Literal, cast, get_args
 
 import numpy as np
 import plotly.graph_objects as go
@@ -14,7 +14,11 @@ from pymatgen.core import Structure
 from pymatviz.process_data import is_ase_atoms
 
 
-type PatternOrStruct = DiffractionPattern | Structure
+if TYPE_CHECKING:
+    from ase import Atoms
+
+
+type PatternOrStruct = DiffractionPattern | Structure | Atoms
 # Bare assignment: get_args() is empty on PEP 695 `type` aliases
 HklFormat = Literal["compact", "full"] | None
 ValidHklFormats = HklCompact, HklFull = get_args(get_args(HklFormat)[0])
@@ -54,8 +58,8 @@ def xrd_pattern(  # noqa: D417
     subtitle_kwargs: dict[str, Any] | None = None,
     axis_title_kwargs: dict[str, Any] | None = None,
 ) -> go.Figure:
-    """Create a plotly figure of XRD patterns from a pymatgen DiffractionPattern,
-    from a pymatgen Structure, or a dictionary of either of them.
+    """Plot XRD patterns from DiffractionPattern, pymatgen Structure, or ASE Atoms
+    objects, individually or in a mapping.
 
     Args:
         patterns (PatternOrStruct | dict[str, PatternOrStruct | tuple[PatternOrStruct,
@@ -86,14 +90,17 @@ def xrd_pattern(  # noqa: D417
             settings. E.g. dict(font_size=14). Default is None.
 
     Raises:
-        ValueError: If annotate_peaks is not a positive int or a float in (0, 1).
-        TypeError: If patterns is not a DiffractionPattern, Structure or a dict of them.
+        ValueError: If patterns are empty, intensities cannot be normalized, or
+            annotate_peaks is not a nonnegative int or a float in (0, 1).
+        TypeError: If patterns is not a DiffractionPattern, Structure, ASE Atoms,
+            or a mapping of them.
 
     Returns:
         go.Figure: A plotly figure of the XRD pattern(s).
     """
     if (
         not isinstance(annotate_peaks, int | float)
+        or not np.isfinite(annotate_peaks)
         or annotate_peaks < 0
         or (isinstance(annotate_peaks, float) and annotate_peaks >= 1)
     ):
@@ -102,13 +109,15 @@ def xrd_pattern(  # noqa: D417
         )
 
     # Convert single object to dict for uniform processing
-    if isinstance(patterns, (DiffractionPattern, Structure)):
+    if isinstance(patterns, DiffractionPattern | Structure) or is_ase_atoms(patterns):
         patterns = {"XRD Pattern": patterns}
     elif not isinstance(patterns, Mapping):
         raise TypeError(
-            "patterns must be a DiffractionPattern, Structure, or mapping of labels "
-            f"to patterns/structures, got {type(patterns).__name__}"
+            "patterns must be a DiffractionPattern, Structure, ASE Atoms, or mapping "
+            f"of labels to patterns/structures, got {type(patterns).__name__}"
         )
+    if not patterns:
+        raise ValueError("patterns must not be empty")
 
     # Determine show_angles based on number of patterns
     if show_angles is None:
@@ -169,10 +178,14 @@ def xrd_pattern(  # noqa: D417
             raise ValueError(
                 f"No intensities found in the diffraction pattern for {label}"
             )
+        if not np.isfinite(intensities).all() or np.any(intensities < 0):
+            raise ValueError(
+                f"Intensities for {label!r} must be finite and non-negative"
+            )
 
         # get max intensity and two_theta across all patterns
-        max_intensity = max(max_intensity, *intensities)
-        max_two_theta = max(max_two_theta, *two_theta)
+        max_intensity = max(max_intensity, intensities.max())
+        max_two_theta = max(max_two_theta, two_theta.max())
 
         tooltips = [
             f"<b>{label}</b><br>2θ: {x:.2f}°<br>Intensity: {y:.2f}<br>hkl: "
@@ -194,6 +207,9 @@ def xrd_pattern(  # noqa: D417
             hoverinfo="text",
             **trace_kwargs,
         )
+
+    if max_intensity == 0:
+        raise ValueError("At least one diffraction intensity must be positive")
 
     # Normalize intensities to 100 and add annotations
     for trace_idx, trace in enumerate(fig.data):

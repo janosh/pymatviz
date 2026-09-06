@@ -62,7 +62,7 @@ def test_widget_invalid_composition_handling(
     ("property_name", "test_values"),
     [
         ("show_percentages", [False, True]),
-        ("color_scheme", ["Jmol", "CPK", "Vesta"]),
+        ("color_scheme", ["Jmol", "Alloy", "Vesta"]),
         ("style", [None, "width: 400px; height: 600px", "width: 600px; height: 800px"]),
         ("mode", ["pie", "bar", "bubble"]),
     ],
@@ -97,14 +97,14 @@ def test_widget_complete_lifecycle() -> None:
     widget = CompositionWidget(
         composition="Fe2O3",
         show_percentages=True,
-        color_scheme="CPK",
+        color_scheme="Pastel",
         mode="bar",
         style="width: 800px; height: 600px",
     )
 
     assert widget.composition == Composition("Fe2O3").as_dict()
     assert widget.show_percentages is True
-    assert widget.color_scheme == "CPK"
+    assert widget.color_scheme == "Pastel"
     assert widget.mode == "bar"
     assert widget.style == "width: 800px; height: 600px"
 

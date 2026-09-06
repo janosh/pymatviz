@@ -23,7 +23,7 @@ urls = { Homepage = "https://github.com/janosh/pymatviz" }
 requires-python = ">=3.12"
 dependencies = [
   "anywidget>=0.9.18",
-  "moyopy[interface]>=0.8",
+  "moyopy>=0.8",
   "numpy>=2",
   "pandas[output-formatting,xml]>=2.2", # output-formatting needed for pandas Stylers,
   # see https://github.com/pandas-dev/pandas/blob/-/pyproject.toml
@@ -37,10 +37,13 @@ dependencies = [
 [project.optional-dependencies]
 # kaleido: the asset scripts render figures, and plotly 7 requires it separately for
 # static export and full_figure_for_development (plotly 6 did not)
-make-assets = ["kaleido>=1.2.0", "matminer>=0.9"]
+# moyopy[interface]: pymatgen's get_symmetry_dataset (used by the spacegroup scripts) needs
+# moyopy's ase-based structure interface
+make-assets = ["kaleido>=1.2.0", "matminer>=0.9", "moyopy[interface]>=0.8"]
 gh-pages = ["jupyter>=1.1", "lazydocs>=0.4", "nbconvert>=7.16"]
 phonons = ["phonopy>=2.31"] # only needed if user passes in phonopy objects
 test = [
+  "ase>=3.23",
   "kaleido>=1.2.0",
   "pymatviz[clustering, phonons]",
   "pytest-cov>=6",

@@ -51,7 +51,9 @@ def test_hist_elemental_prevalence(
     expected_yaxis: str,
 ) -> None:
     """Test elements histogram counts, labels, and y-axis options."""
-    fig = elements_hist(["Fe2O3", "LiFePO4"], bar_width=0.5, opacity=0.9, **kwargs)
+    fig = elements_hist(
+        ["Fe2O3", "LiFePO4"], bar_width=0.5, opacity=0.9, marker_line_width=3, **kwargs
+    )
     trace = fig.data[0]
 
     assert list(trace.x) == expected_x
@@ -61,6 +63,7 @@ def test_hist_elemental_prevalence(
 
     assert trace.width == 0.5
     assert trace.opacity == 0.9
+    assert trace.marker.line.width == 3
 
 
 @pytest.mark.parametrize("log_y", [True, False])
@@ -124,7 +127,16 @@ def test_histogram_bin_geometry(
     density: bool,
 ) -> None:
     """Bin centers and widths preserve counts and density area for uneven bins."""
-    trace = histogram(values, bins=bins, density=density, bin_width=1).data[0]
+    trace = histogram(
+        values,
+        bins=bins,
+        density=density,
+        bin_width=1,
+        opacity=0.3,
+        marker_line_width=2,
+    ).data[0]
+    assert trace.opacity == 0.3
+    assert trace.marker.line.width == 2
     np.testing.assert_array_equal(trace.x, centers)
     np.testing.assert_array_equal(trace.width, widths)
     expected = (

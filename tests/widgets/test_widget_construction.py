@@ -11,11 +11,13 @@ import pytest
 import traitlets as tl
 from pymatgen.core import Lattice, Structure
 
+from pymatviz.widgets._traits import BONDING_STRATEGIES, ELEMENT_COLOR_SCHEMES
 from pymatviz.widgets.band_structure import BandStructureWidget
 from pymatviz.widgets.bands_and_dos import BandsAndDosWidget
 from pymatviz.widgets.bar_plot import BarPlotWidget
 from pymatviz.widgets.brillouin_zone import BrillouinZoneWidget
 from pymatviz.widgets.chem_pot_diagram import ChemPotDiagramWidget
+from pymatviz.widgets.composition import CompositionWidget
 from pymatviz.widgets.convex_hull import ConvexHullWidget
 from pymatviz.widgets.dos import DosWidget
 from pymatviz.widgets.fermi_surface import FermiSurfaceWidget
@@ -29,6 +31,7 @@ from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 from pymatviz.widgets.scatter_plot_3d import ScatterPlot3DWidget
 from pymatviz.widgets.spacegroup_bar import SpacegroupBarPlotWidget
 from pymatviz.widgets.structure import StructureWidget
+from pymatviz.widgets.trajectory import TrajectoryWidget
 from pymatviz.widgets.treemap import TreemapWidget
 from pymatviz.widgets.xrd import XrdWidget
 
@@ -82,7 +85,12 @@ from pymatviz.widgets.xrd import XrdWidget
             "phase_diagram",
             "data",
         ),
-        (XrdWidget, {"patterns": {"x": [10], "y": [100]}}, "xrd", "patterns"),
+        (
+            XrdWidget,
+            {"patterns": {"x": [10], "y": [100], "kind": "profile"}},
+            "xrd",
+            "patterns",
+        ),
         (
             ScatterPlotWidget,
             {"series": [{"x": [0, 1], "y": [1, 2], "label": "curve"}]},
@@ -456,6 +464,67 @@ def test_treemap_widget_traits_and_validation() -> None:
     # forest input: list of root nodes passes through unchanged
     roots = [{"label": "x", "value": 1}, {"label": "y", "value": 2}]
     assert TreemapWidget(data=roots).to_dict()["data"] == roots
+
+
+_COLOR_SCHEME_CASES = [
+    *[(name, name) for name in ELEMENT_COLOR_SCHEMES],
+    ("dark mode", "Dark Mode"),  # caseless, stored canonical
+    ("CPK", tl.TraitError),  # never a matterviz scheme
+    ("", tl.TraitError),
+]
+_BONDING_STRATEGY_CASES = [
+    *[(name, name) for name in BONDING_STRATEGIES],
+    (None, None),
+    ("solid_angle", tl.TraitError),  # removed from matterviz
+]
+
+
+@pytest.mark.parametrize(
+    ("widget_cls", "trait_name", "value", "expected"),
+    [
+        *[
+            (cls, "color_scheme", *case)
+            for cls in (StructureWidget, TrajectoryWidget, CompositionWidget)
+            for case in _COLOR_SCHEME_CASES
+        ],
+        *[
+            (cls, "bonding_strategy", *case)
+            for cls in (StructureWidget, TrajectoryWidget)
+            for case in _BONDING_STRATEGY_CASES
+        ],
+    ],
+)
+def test_matterviz_name_enums(
+    widget_cls: type[MatterVizWidget],
+    trait_name: str,
+    value: str | None,
+    expected: str | type[Exception] | None,
+) -> None:
+    """Scheme/strategy traits accept exactly matterviz's names, canonicalized."""
+    widget = widget_cls()
+    if isinstance(expected, type):
+        with pytest.raises(expected):
+            setattr(widget, trait_name, value)
+    else:
+        setattr(widget, trait_name, value)
+        assert widget.to_dict()[trait_name] == expected
+
+
+@pytest.mark.parametrize("widget_cls", [DosWidget, BandsAndDosWidget])
+@pytest.mark.parametrize(
+    ("sigma", "expected"), [(None, None), (0.0, 0.0), (0.2, 0.2), (-0.1, tl.TraitError)]
+)
+def test_dos_sigma_in_data_unit(
+    widget_cls: type[MatterVizWidget],
+    sigma: float | None,
+    expected: float | type[Exception] | None,
+) -> None:
+    """DOS sigma syncs unconverted (THz/eV data unit) and rejects negatives."""
+    if isinstance(expected, type):
+        with pytest.raises(expected):
+            widget_cls(sigma=sigma)
+    else:
+        assert widget_cls(sigma=sigma).to_dict()["sigma"] == expected
 
 
 def test_heatmap_matrix_values_none_passthrough() -> None:

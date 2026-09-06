@@ -10,7 +10,7 @@ from pymatgen.core import Structure
 
 import pymatviz as pmv
 from pymatviz.enums import Key
-from pymatviz.process_data import is_structure_like
+from pymatviz.process_data import get_spacegroup_number, is_structure_like
 from pymatviz.sunburst.helpers import (
     _apply_sunburst_show_counts,
     _limit_slices_per_group,
@@ -59,19 +59,10 @@ def spacegroup_sunburst(
     # materialize as list[Any] for Series-safe positional access and untyped iteration
     values: list[Any] = data.tolist() if isinstance(data, pd.Series) else list(data)
     if is_structure_like(values[0]):  # if 1st item is structure-like, assume all are
-        try:
-            from moyopy import MoyoDataset
-            from moyopy.interface import MoyoAdapter
-        except ImportError as exc:
-            raise RuntimeError(
-                "moyopy is required to pass Structure objects to "
-                "spacegroup_sunburst. Install it with `pip install moyopy`."
-            ) from exc
-
         spg_nums: list[int] = []
         for idx, struct in enumerate(values):
             try:
-                spg_nums.append(MoyoDataset(MoyoAdapter.from_py_obj(struct)).number)
+                spg_nums.append(get_spacegroup_number(struct))
             except (TypeError, ValueError, RuntimeError) as exc:
                 raise TypeError(
                     "Could not determine space group for structure at index "
@@ -81,19 +72,15 @@ def spacegroup_sunburst(
         series = pd.Series(spg_nums)
     else:
         series = pd.Series(values)
+    if series.isna().any():
+        raise ValueError("Space group data must not contain missing values")
 
     df_spg_counts = pd.DataFrame(series.value_counts().reset_index())
     df_spg_counts.columns = [Key.spg_num, "count"]
 
-    try:  # assume column contains integers as space group numbers
-        df_spg_counts[Key.crystal_system] = df_spg_counts[Key.spg_num].map(
-            pmv.utils.spg_to_crystal_sys
-        )
-
-    except (ValueError, TypeError):  # assume column is strings of space group symbols
-        df_spg_counts[Key.crystal_system] = df_spg_counts[Key.spg_num].map(
-            pmv.utils.spg_num_to_from_symbol
-        )
+    df_spg_counts[Key.crystal_system] = df_spg_counts[Key.spg_num].map(
+        pmv.utils.spg_to_crystal_sys
+    )
 
     # Limit the number of space groups per crystal system if requested
     df_spg_counts = _limit_slices_per_group(

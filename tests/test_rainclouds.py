@@ -221,6 +221,9 @@ def test_rainclouds_trace_visibility(
         orientation=orientation,
     )
     assert len(fig.data) == len(sample_data) * n_expected_traces
+    assert [trace.name for trace in fig.data if trace.showlegend] == (
+        list(sample_data) if n_expected_traces else []
+    )
     category_axis = fig.layout.yaxis if orientation == "h" else fig.layout.xaxis
     assert category_axis.range is None  # Autorange includes jitter and offsets.
 

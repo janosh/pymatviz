@@ -6,12 +6,15 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import pytest
+from scipy.stats import norm
 
 from pymatviz.uncertainty import error_decay_with_uncert, qq_gaussian
 from tests.conftest import DfOrArrays, xs, y_pred, y_true
 
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from numpy.typing import ArrayLike
 
 
@@ -134,3 +137,64 @@ def test_qq_gaussian_multiple_uncertainties() -> None:
 
     extreme = qq_gaussian(np.zeros(2), np.full(2, 100), np.ones(2))
     assert extreme.data[-1].name == "std (miscal: 0.50)"
+    # Repeated residuals on a quantile boundary must all count toward the CDF.
+    proportions = np.linspace(1e-10, 1 - 1e-10, 100)
+    residuals = np.array([-1, *[norm.ppf(proportions[35])] * 2, 1])
+    observed = qq_gaussian(np.zeros(4), residuals, np.ones(4)).data[-1].y
+    expected = [
+        np.count_nonzero(residuals <= norm.ppf(prop)) / 4 for prop in proportions
+    ]
+    np.testing.assert_array_equal(observed, expected)
+
+
+@pytest.mark.parametrize("plot", [qq_gaussian, error_decay_with_uncert])
+@pytest.mark.parametrize("std_kind", ["array", "list", "mapping", "column", "columns"])
+def test_uncertainty_dataframe_alignment(plot: Callable, std_kind: str) -> None:
+    """Filter external uncertainties with the same row mask as DataFrame targets."""
+    frame = pd.DataFrame(
+        {"true": [0, np.nan, 0], "pred": [3, 99, 1], "std": [2, 10, 1]},
+        index=pd.Index(["a", "b", "c"]),
+    )
+    uncertainties = {
+        "array": frame["std"].to_numpy(),
+        "list": frame["std"].tolist(),
+        "mapping": {"std": frame["std"].to_numpy()},
+        "column": "std",
+        "columns": ["std"],
+    }[std_kind]
+    actual = plot("true", "pred", uncertainties, df=frame)
+    expected = plot([0, 0], [3, 1], [2, 1])
+    for trace, reference in zip(actual.data, expected.data, strict=True):
+        np.testing.assert_array_equal(trace.x, reference.x)
+        np.testing.assert_array_equal(trace.y, reference.y)
+
+
+@pytest.mark.parametrize("plot", [qq_gaussian, error_decay_with_uncert])
+@pytest.mark.parametrize(
+    ("true_vals", "pred_vals", "std", "match"),
+    [
+        ([[0], [0]], [1, 2], [1, 1], "must be 1D"),
+        ([0, 0], [1], [1, 1], "must be 1D"),
+        ([0, 0], [1, 2], [1], "must be 1D"),
+        ([0, 0], [1, 2], [[1], [1]], "must be 1D"),
+        ([0, np.nan], [1, 2], [1, 1], "finite values"),
+        ([0, 0], [1, 2], [1, np.inf], "finite values"),
+    ],
+)
+def test_uncertainty_invalid_arrays(
+    plot: Callable,
+    true_vals: list,
+    pred_vals: list,
+    std: list,
+    match: str,
+) -> None:
+    """Reject broadcasting and nonfinite data before plotting calibration metrics."""
+    with pytest.raises(ValueError, match=match):
+        plot(true_vals, pred_vals, std)
+
+
+@pytest.mark.parametrize("std", [[], [0], [-1]])
+def test_qq_gaussian_invalid_uncertainties(std: list[float]) -> None:
+    """Calibration requires observations with positive standard deviations."""
+    with pytest.raises(ValueError, match=r"non-empty|must be positive"):
+        qq_gaussian(np.zeros(len(std)), np.ones(len(std)), std)

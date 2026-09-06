@@ -14,8 +14,11 @@ class XrdWidget(PlotControlsTraits, MatterVizWidget):
     """MatterViz widget for visualizing X-ray diffraction patterns.
 
     Accepts a pymatgen DiffractionPattern or a dict with either:
-    - canonical keys: x (2-theta), y (intensity), optional hkls/d_hkls
-    - Ferrox keys: two_theta, intensities, optional hkls/d_spacings
+    - canonical keys: x (2-theta), y (intensity), optional hkls/d_hkls/kind
+    - Ferrox keys: two_theta, intensities, optional hkls/d_spacings/kind
+
+    Patterns without hkls are treated as measured scans (``kind="profile"``): drawn
+    as a line and never broadened. Pass ``kind="sticks"`` to force bar rendering.
 
     Examples:
         From a pymatgen DiffractionPattern:

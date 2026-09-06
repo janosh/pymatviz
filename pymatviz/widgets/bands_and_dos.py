@@ -42,7 +42,8 @@ class BandsAndDosWidget(PlotControlsTraits, MatterVizWidget):
     band_type = optional_trait(tl.CaselessStrEnum, values=["phonon", "electronic"])
     show_legend = optional_trait(tl.Bool)
     stack = optional_trait(tl.Bool)
-    sigma = optional_trait(tl.Float)
+    # DOS smearing width in the data unit: THz for phonons, eV for electrons
+    sigma = optional_trait(tl.Float, min=0.0)
     normalize = optional_trait(tl.CaselessStrEnum, values=["max", "sum", "integral"])
     spin_mode = optional_trait(
         tl.CaselessStrEnum, values=["mirror", "overlay", "up_only", "down_only"]
@@ -63,8 +64,9 @@ class BandsAndDosWidget(PlotControlsTraits, MatterVizWidget):
             doses: DOS data -- a pymatgen Dos, CompleteDos, PhononDos, a dict, or a
                 ``{label: dos}`` dict of those.
             **kwargs: Additional widget properties, e.g. ``band_type`` and
-                ``show_legend`` for the bands panel, or ``stack``, ``sigma``,
-                ``normalize``, and ``spin_mode`` for the DOS panel.
+                ``show_legend`` for the bands panel, or ``stack``, ``sigma`` (THz for
+                phonons, eV for electrons), ``normalize``, and ``spin_mode`` for the
+                DOS panel.
         """
         super().__init__(
             widget_type="bands_and_dos",

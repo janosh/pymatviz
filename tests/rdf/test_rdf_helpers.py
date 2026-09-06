@@ -382,6 +382,9 @@ def test_calculate_rdf_with_no_atoms_of_requested_species(
             ValueError,
             "n_bins=-5 must be positive",
         ),
+        ({"cutoff": float("nan")}, ValueError, "must be positive and finite"),
+        ({"cutoff": float("inf")}, ValueError, "must be positive and finite"),
+        ({"n_bins": 2.5}, ValueError, "must be positive and integral"),
         (  # invalid_pbc_type
             {"pbc": "invalid"},
             (TypeError, ValueError),  # Accept either error type
@@ -389,14 +392,18 @@ def test_calculate_rdf_with_no_atoms_of_requested_species(
         ),
     ],
 )
+@pytest.mark.parametrize("empty", [False, True])
 def test_calculate_rdf_input_validation(
     test_input: dict[str, str | float],
     expected_err_cls: type[Exception] | tuple[type[Exception], ...],
     error_msg: str | None,
+    empty: bool,
 ) -> None:
     """Test input validation in calculate_rdf function."""
     # Create a simple structure for testing
-    structure = Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]])
+    structure = Structure(
+        Lattice.cubic(5), [] if empty else ["Si"], [] if empty else [[0, 0, 0]]
+    )
 
     # Set default parameters
     params = {"structure": structure, "cutoff": 10, "n_bins": 10} | test_input

@@ -12,7 +12,9 @@
 <svelte:window bind:online />
 
 <div>
-  <h1>Error {String(page.status).replace(`0`, `😵`)}: {page.error?.message}</h1>
+  <h1 id="error">
+    Error {String(page.status).replace(`0`, `😵`)}: {page.error?.message}
+  </h1>
   {#if page.status >= 500}
     <p>
       If page reloading doesn't help, please raise an issue on

@@ -42,6 +42,7 @@
     .map((route) => route.replace(/^\./u, ``).replace(/\/\+page\.\w+$/u, ``) || `/`)
   const fallback_actions = $derived(
     [...new Set([...page_routes, ...data.notebook_routes])].map((name) => ({
+      id: `route:${name}`,
       label: name,
       action: () => goto(name),
     })),
@@ -73,7 +74,11 @@
 
 <CopyButton global global_selector="pre:not(li > pre) > code" style="position: static" />
 
-<Nav class="site-nav" routes={Object.keys(nav_labels)} labels={nav_labels} {page} />
+<Nav
+  class="site-nav"
+  routes={Object.entries(nav_labels).map(([href, label]) => ({ href, label }))}
+  {page}
+/>
 
 <GitHubCorner href={repository} />
 
@@ -86,9 +91,9 @@
     {@render children?.()}
   </main>
   <Toc
-    headingSelector={`main :is(${toc_headings[page.url.pathname] ?? `h2`})`}
-    excludeSelector=".toc-exclude, .subpage-grid"
-    minItems={1}
+    heading_selector={`main :is(${toc_headings[page.url.pathname] ?? `h2`})`}
+    exclude_selector=".toc-exclude, .subpage-grid"
+    min_items={1}
   />
 </div>
 

@@ -1,6 +1,7 @@
 name: Lint
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
   pull_request:
@@ -19,7 +20,8 @@ jobs:
           node-version: 24
 
       - name: Install site dependencies
-        run: corepack enable && pnpm install
+        # svelte-widgets comes from GitHub; see gh-pages.yml for why these flags are needed
+        run: corepack enable && NPM_CONFIG_LEGACY_PEER_DEPS=true pnpm install --config.dangerously-allow-all-builds=true
         working-directory: site
 
       # ty resolves the project env by shelling out to uv, and something in that chain

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import functools
 import importlib.util
 from enum import IntEnum
@@ -166,10 +167,62 @@ def test_normalize_convex_hull_entries_unsupported_type() -> None:
 
 
 def test_normalize_xrd_pattern_passthrough() -> None:
-    """Test None and dict passthrough."""
+    """Test None and dict-with-hkls passthrough."""
     assert normalize_xrd_pattern(None) is None
-    test_dict = {"x": [1, 2], "y": [3, 4]}
+    test_dict = {"x": [1, 2], "y": [3, 4], "hkls": [[{"hkl": [1, 0, 0]}]] * 2}
     assert normalize_xrd_pattern(test_dict) is test_dict
+
+
+_HKLS = [[{"hkl": [1, 0, 0]}], [{"hkl": [1, 1, 0]}]]
+
+
+@pytest.mark.parametrize(
+    ("pattern", "expected_kind"),
+    [
+        # measured scans: no Miller indices -> continuous profile
+        ({"x": [10.0, 10.02], "y": [5.0, 7.0]}, "profile"),
+        ({"x": [10.0, 10.02], "y": [5.0, 7.0], "hkls": []}, "profile"),
+        ({"two_theta": [10.0, 10.02], "intensities": [5.0, 7.0]}, "profile"),
+        # computed patterns carry hkls and stay untagged (matterviz sticks default)
+        ({"x": [10.0, 20.0], "y": [100.0, 50.0], "hkls": _HKLS}, None),
+        (
+            {"two_theta": [10.0, 20.0], "intensities": [1.0, 2.0], "hkls": _HKLS},
+            None,
+        ),
+        # explicit kind wins in both schemas
+        ({"x": [10.0, 20.0], "y": [100.0, 50.0], "kind": "sticks"}, "sticks"),
+        ({"x": [10.0], "y": [1.0], "hkls": _HKLS[:1], "kind": "profile"}, "profile"),
+        ({"two_theta": [10.0], "intensities": [1.0], "kind": "sticks"}, "sticks"),
+    ],
+)
+def test_normalize_xrd_pattern_kind(
+    pattern: dict[str, Any], expected_kind: str | None
+) -> None:
+    """Measured (hkl-less) patterns get kind='profile'; computed ones stay sticks."""
+    input_copy = copy.deepcopy(pattern)
+    result = normalize_xrd_pattern(pattern)
+    assert result is not None
+    assert result.get("kind") == expected_kind
+    assert pattern == input_copy  # caller's dict not mutated
+
+
+@pytest.mark.parametrize("bad_kind", ["line", "", None, "Profile"])
+def test_normalize_xrd_pattern_rejects_bad_kind(bad_kind: str | None) -> None:
+    """Unknown XRD kind values raise with the offending value in the message."""
+    with pytest.raises(ValueError, match=f"kind={bad_kind!r} must be one of"):
+        normalize_xrd_pattern({"x": [1.0], "y": [2.0], "kind": bad_kind})
+
+
+def test_normalize_xrd_pattern_diffraction_pattern_kind() -> None:
+    """DiffractionPatterns are sticks with hkls, profiles without."""
+    from pymatgen.analysis.diffraction.xrd import DiffractionPattern
+
+    x_vals, y_vals = np.array([10.0, 20.0]), np.array([100.0, 50.0])
+    computed = normalize_xrd_pattern(DiffractionPattern(x_vals, y_vals, _HKLS, None))
+    measured = normalize_xrd_pattern(DiffractionPattern(x_vals, y_vals, None, None))
+    assert computed is not None
+    assert "kind" not in computed
+    assert measured == {"x": [10.0, 20.0], "y": [100.0, 50.0], "kind": "profile"}
 
 
 @pytest.mark.parametrize(

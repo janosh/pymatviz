@@ -19,9 +19,9 @@
   }))
 </script>
 
-<h1>Figures</h1>
+<h1 id="figures">Figures</h1>
 
-<Masonry items={figs} minColWidth={300} gap={32}>
+<Masonry items={figs} min_col_width={300} gap={32}>
   {#snippet children({ item, idx }: { item: PlotFig; idx: number })}
     <article>
       <span>{idx + 1}</span>

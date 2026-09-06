@@ -72,7 +72,7 @@ def test_widget_invalid_structure_handling(invalid_structure: Any) -> None:
     [
         ("atom_radius", [1.0, 1.5, 2.0]),
         ("show_bonds", [True, False]),
-        ("color_scheme", ["Jmol", "CPK", "VESTA"]),
+        ("color_scheme", ["Jmol", "Vesta", "Dark Mode"]),
         ("style", [None, "width: 400px; height: 600px", "width: 600px; height: 800px"]),
         ("show_controls", [True, False]),
         ("enable_info_pane", [True, False]),

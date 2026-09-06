@@ -24,19 +24,47 @@ def _load_regression_data(
     y_pred: ArrayLike | str,
     y_std: ArrayLike | Mapping[str, ArrayLike] | str | Sequence[str],
     df: pd.DataFrame | None,
-) -> tuple[np.ndarray, np.ndarray, Any]:
+) -> tuple[np.ndarray, np.ndarray, dict[str, np.ndarray]]:
     """Resolve y_true/y_pred/y_std into arrays, pulling columns from df when given."""
-    # str/pd.Index or a sequence of column names -> resolve from df (multi-col -> dict)
-    if isinstance(y_std, str | pd.Index) or (
-        isinstance(y_std, Sequence) and not isinstance(y_std, str)
+    row_mask = None
+    if isinstance(y_std, str) or (
+        df is not None
+        and isinstance(y_std, Sequence | pd.Index)
+        and all(isinstance(column, str) for column in y_std)
     ):
-        arrays = df_to_arrays(df, y_true, y_pred, y_std)  # ty: ignore
-        true_vals, pred_vals, y_std = arrays[0], arrays[1], arrays[2]
+        true_vals, pred_vals, y_std = df_to_arrays(df, y_true, y_pred, y_std)  # ty: ignore
     else:
-        arrays = df_to_arrays(df, y_true, y_pred)
-        true_vals, pred_vals = arrays[0], arrays[1]
+        true_vals, pred_vals = df_to_arrays(df, y_true, y_pred)
+        if df is not None:
+            row_mask = df[[y_true, y_pred]].notna().all(axis=1).to_numpy()
 
-    return np.asarray(true_vals), np.asarray(pred_vals), y_std  # ty: ignore
+    true_vals, pred_vals = np.asarray(true_vals), np.asarray(pred_vals)
+    std_arrays = {
+        str(key): np.asarray(std)
+        for key, std in (
+            y_std if isinstance(y_std, Mapping) else {"std": y_std}
+        ).items()
+    }
+    if row_mask is not None:
+        for key, std in std_arrays.items():
+            if std.ndim != 1 or len(std) != len(row_mask):
+                raise ValueError(
+                    f"Uncertainties for {key!r} must have shape {(len(row_mask),)}, "
+                    f"got {std.shape}"
+                )
+        std_arrays = {key: std[row_mask] for key, std in std_arrays.items()}
+    for name, values in [
+        ("y_true", true_vals),
+        ("y_pred", pred_vals),
+        *std_arrays.items(),
+    ]:
+        if values.ndim != 1 or values.shape != true_vals.shape:
+            raise ValueError(
+                f"{name} must be 1D with shape {true_vals.shape}, got {values.shape}"
+            )
+        if not np.isfinite(values).all():
+            raise ValueError(f"{name} must contain only finite values")
+    return true_vals, pred_vals, std_arrays
 
 
 def qq_gaussian(
@@ -53,7 +81,7 @@ def qq_gaussian(
     Args:
         y_true: Ground truth targets
         y_pred: Model predictions
-        y_std: Uncertainties (single array or dict for multiple)
+        y_std: Positive standard deviations (single array or dict for multiple)
         df: DataFrame containing data columns
         fig: Existing plotly figure to add to
         identity_line: Show perfect calibration line
@@ -64,13 +92,12 @@ def qq_gaussian(
     y_true, y_pred, y_std = _load_regression_data(y_true, y_pred, y_std, df)
 
     fig = fig or go.Figure()
-    if not isinstance(y_std, Mapping):
-        y_std = {"std": y_std}
-
-    # Calculate Q-Q data
-    res = y_pred - y_true  # Signed residuals
+    res = y_pred - y_true
+    if len(res) == 0:
+        raise ValueError("Q-Q calibration requires non-empty data")
     eps = 1e-10
     exp_proportions = np.linspace(eps, 1 - eps, 100)
+    quantiles = norm.ppf(exp_proportions)
 
     if identity_line:
         line_props = (
@@ -88,8 +115,10 @@ def qq_gaussian(
         )
 
     for key, std in y_std.items():
-        z_scored = (res / std).reshape(-1, 1)
-        obs_proportions = np.mean(z_scored <= norm.ppf(exp_proportions), axis=0)
+        if np.any(std <= 0):
+            raise ValueError(f"Uncertainties for {key!r} must be positive")
+        z_scored = np.sort(res / std)
+        obs_proportions = np.searchsorted(z_scored, quantiles, side="right") / res.size
         miscal_area = np.trapezoid(
             np.abs(obs_proportions - exp_proportions), x=exp_proportions
         )
@@ -158,9 +187,6 @@ def error_decay_with_uncert(
     y_true, y_pred, y_std = _load_regression_data(y_true, y_pred, y_std, df)
 
     fig = fig or go.Figure()
-    if not isinstance(y_std, Mapping):
-        y_std = {"std": y_std}
-
     abs_err = np.abs(y_true - y_pred)
     n_samples = len(abs_err)
     if n_samples == 0 or n_rand < 1:

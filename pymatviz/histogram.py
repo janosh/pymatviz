@@ -68,15 +68,17 @@ def elements_hist(
 
     fig = go.Figure(**fig_kwargs or {})
     fig.add_bar(
-        x=non_zero.index,
-        y=non_zero_values,
-        text=text_labels,
-        textposition="outside",
-        opacity=opacity,
-        marker_line_width=1,
-        marker_line_color="black",
-        width=bar_width,
-        **kwargs,
+        **dict(
+            x=non_zero.index,
+            y=non_zero_values,
+            text=text_labels,
+            textposition="outside",
+            opacity=opacity,
+            marker_line_width=1,
+            marker_line_color="black",
+            width=bar_width,
+        )
+        | kwargs,
     )
 
     y_title = "log(Element Count)" if log_y else "Element Count"
@@ -154,13 +156,15 @@ def histogram(
     for label, vals in data_arrays.items():
         hist_vals, _ = np.histogram(vals, bins=bin_edges, density=density)
         fig.add_bar(
-            x=centers,
-            y=hist_vals,
-            name=label,
-            opacity=0.7,
-            width=bin_width * widths,
-            marker_line_width=0,
-            **kwargs,
+            **dict(
+                x=centers,
+                y=hist_vals,
+                name=label,
+                opacity=0.7,
+                width=bin_width * widths,
+                marker_line_width=0,
+            )
+            | kwargs,
         )
 
     y_title = "Density" if density else "Count"

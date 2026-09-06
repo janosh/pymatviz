@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import sys
-import types
 from typing import TYPE_CHECKING, Any, Literal, get_args
 
 import pandas as pd
@@ -48,6 +47,13 @@ def test_spacegroup_sunburst_invalid_show_counts() -> None:
     """Test that invalid show_counts values raise ValueError."""
     with pytest.raises(ValueError, match=r"Invalid.*show_counts"):
         spacegroup_sunburst([1], show_counts="invalid")  # ty: ignore[invalid-argument-type]
+
+
+@pytest.mark.parametrize("invalid", [None, float("nan"), pd.NA, 0, 231, 2.5, "invalid"])
+def test_spacegroup_sunburst_invalid_data(invalid: Any) -> None:
+    """Reject missing and invalid groups instead of losing or mislabeling slices."""
+    with pytest.raises(ValueError, match=r"missing values|Invalid space group"):
+        spacegroup_sunburst([1, invalid])
 
 
 def test_spacegroup_sunburst_single_item() -> None:
@@ -97,9 +103,9 @@ def test_spacegroup_sunburst_structure_counts(
 def test_spacegroup_sunburst_requires_moyopy(
     structures: list[Structure], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Raise a helpful error when moyopy is missing for Structure input."""
+    """Report the missing required backend for Structure input."""
     monkeypatch.setitem(sys.modules, "moyopy", None)
-    with pytest.raises(RuntimeError, match=r"moyopy is required.*pip install moyopy"):
+    with pytest.raises(ModuleNotFoundError):
         spacegroup_sunburst(structures)
 
 
@@ -108,20 +114,13 @@ def test_spacegroup_sunburst_reports_moyopy_conversion_failure(
 ) -> None:
     """Report index and type when moyopy cannot convert a structure."""
 
-    class MockMoyoAdapter:
-        """Mock adapter that rejects all structures."""
+    def reject_structure(_struct: Any) -> int:
+        """Simulate unsupported structure input."""
+        raise TypeError("unsupported structure")
 
-        @staticmethod
-        def from_py_obj(_struct: Any) -> None:
-            """Raise the same broad kind of error as unsupported moyopy input."""
-            raise TypeError("unsupported structure")
-
-    mock_interface = types.ModuleType("moyopy.interface")
-    mock_moyopy = types.ModuleType("moyopy")
-    mock_moyopy.__dict__["MoyoDataset"] = lambda _cell: None
-    mock_interface.__dict__["MoyoAdapter"] = MockMoyoAdapter
-    monkeypatch.setitem(sys.modules, "moyopy", mock_moyopy)
-    monkeypatch.setitem(sys.modules, "moyopy.interface", mock_interface)
+    monkeypatch.setattr(
+        "pymatviz.sunburst.spacegroup.get_spacegroup_number", reject_structure
+    )
 
     with pytest.raises(TypeError, match="structure at index 0 \\(Structure\\)"):
         spacegroup_sunburst(structures)

@@ -37,7 +37,10 @@ class DosWidget(PlotControlsTraits, MatterVizWidget):
 
     # Display options
     stack = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
-    sigma = tl.Float(allow_none=True, default_value=None).tag(sync=True)
+    # Gaussian smearing width in the data unit: THz for phonon DOS (pymatgen PhononDos
+    # frequencies), eV for electronic DOS. matterviz reads sigma in the data unit
+    # whatever frequency unit the plot displays.
+    sigma = tl.Float(allow_none=True, default_value=None, min=0.0).tag(sync=True)
     normalize = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
     orientation = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
     show_legend = tl.Bool(allow_none=True, default_value=None).tag(sync=True)

@@ -316,17 +316,57 @@ def normalize_convex_hull_entries(obj: Any) -> list[dict[str, Any]] | None:
     )
 
 
+XRD_PATTERN_KINDS = ("sticks", "profile")
+
+
+def _with_xrd_kind(pattern: dict[str, Any]) -> dict[str, Any]:
+    """Tag a pattern without Miller indices as a measured ``kind="profile"`` scan.
+
+    matterviz draws ``profile`` patterns as a line and never broadens them, while
+    ``sticks`` (its default) are discrete reflections drawn as bars. Computed patterns
+    (pymatgen, Ferrox) carry ``hkls`` and stay untagged; an explicit ``kind`` wins.
+
+    Raises:
+        ValueError: If ``pattern["kind"]`` is not one of ``XRD_PATTERN_KINDS``.
+    """
+    if "kind" in pattern:
+        if pattern["kind"] not in XRD_PATTERN_KINDS:
+            raise ValueError(
+                f"XRD pattern kind={pattern['kind']!r} must be one of "
+                f"{list(XRD_PATTERN_KINDS)}."
+            )
+        return pattern
+    if pattern.get("hkls"):
+        return pattern
+    return {**pattern, "kind": "profile"}
+
+
 def normalize_xrd_pattern(obj: Any) -> dict[str, Any] | None:
-    """Convert a pymatgen DiffractionPattern to a JSON-serializable dict.
+    """Convert an XRD pattern to a JSON-serializable dict for matterviz.
+
+    Patterns without ``hkls`` (measured scans) get ``kind="profile"`` so matterviz
+    draws them as a continuous line and skips peak broadening.
 
     Args:
         obj: A pymatgen DiffractionPattern, a dict, or None.
 
     Returns:
-        XRD pattern dict with x, y, hkls, d_hkls keys, or None.
+        XRD pattern dict with x, y, and optional hkls, d_hkls, kind keys, or None.
     """
     if obj is None:
         return None
+    return _with_xrd_kind(_xrd_pattern_to_dict(obj))
+
+
+def _xrd_pattern_to_dict(obj: Any) -> dict[str, Any]:
+    """Convert a canonical/Ferrox dict or pymatgen DiffractionPattern to a dict.
+
+    Args:
+        obj: A pymatgen DiffractionPattern or a dict.
+
+    Returns:
+        XRD pattern dict with x, y, and optional hkls, d_hkls keys.
+    """
     if isinstance(obj, dict):
         has_canonical_keys = all(key in obj for key in ("x", "y"))
         has_ferrox_keys = all(key in obj for key in ("two_theta", "intensities"))
@@ -358,6 +398,8 @@ def normalize_xrd_pattern(obj: Any) -> dict[str, Any] | None:
 
             if "hkls" in obj:
                 normalized["hkls"] = _normalize_ferrox_hkls(obj["hkls"])
+            if "kind" in obj:
+                normalized["kind"] = obj["kind"]
 
             return normalized
 

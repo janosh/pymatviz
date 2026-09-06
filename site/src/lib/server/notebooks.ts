@@ -1,3 +1,4 @@
+import type { LinkItem } from 'svelte-widgets'
 import { readdirSync, readFileSync } from 'node:fs'
 
 const examples_dir = new URL(`../examples/`, `file://${process.cwd()}/`)
@@ -19,8 +20,11 @@ export const notebook_subpages = (): [string, string, string][] =>
 
 export const notebook_routes = () => slugs(`.ipynb`).map(notebook_href)
 
-export const notebook_prev_next = (): [string, string][] =>
-  slugs(`.html`).map((slug) => [notebook_href(slug), slug.replaceAll(`_`, ` `)])
+export const notebook_prev_next = (): LinkItem[] =>
+  slugs(`.html`).map((slug) => ({
+    href: notebook_href(slug),
+    label: slug.replaceAll(`_`, ` `),
+  }))
 
 export const notebook_entries = () => slugs(`.html`).map((slug) => ({ slug }))
 
