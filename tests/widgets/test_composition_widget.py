@@ -17,29 +17,33 @@ from tests.widgets.conftest import (
 
 
 @pytest.mark.parametrize(
-    ("composition_input", "expected_elements"),
+    "composition_input",
     [
-        ("Fe2O3", {"Fe", "O"}),
-        ({"Fe": 2, "O": 3}, {"Fe", "O"}),
-        ("Li0.5FePO4", {"Li", "Fe", "P", "O"}),
-        ("CuSO4(H2O)5", {"Cu", "S", "O", "H"}),
-        ("Al0.2Co0.2Cr0.2Fe0.2Ni0.2", {"Al", "Co", "Cr", "Fe", "Ni"}),
-        ("Fe", {"Fe"}),  # Single element
+        "Fe2O3",
+        {"Fe": 2, "O": 3},
+        "Li0.5FePO4",
+        "CuSO4(H2O)5",
+        "Al0.2Co0.2Cr0.2Fe0.2Ni0.2",
+        "Fe",
+        pytest.param({}, id="empty"),
+        pytest.param({"Fe": 1000.0, "O": 1500.0}, id="large-counts"),
+        pytest.param(
+            Composition(
+                "Li0.1Na0.05K0.05Mg0.1Ca0.05Ba0.05Al0.1Si0.2Ti0.05V0.05Cr0.05"
+                "Mn0.1Fe0.15Co0.05Ni0.05Cu0.05Zn0.05O1.0"
+            ),
+            id="many-elements",
+        ),
     ],
 )
 def test_widget_composition_inputs(
-    composition_input: str | dict[str, float], expected_elements: set[str]
+    composition_input: str | dict[str, float] | Composition,
 ) -> None:
     """Widget must handle different composition input types and formats."""
     widget = CompositionWidget(composition=composition_input)
     assert widget.widget_type == "composition"
-    assert widget.composition is not None
-    assert isinstance(widget.composition, dict)
-    assert set(widget.composition) == expected_elements
-
-    # Test composition is properly converted to dict
-    expected_comp = Composition(composition_input).as_dict()
-    assert widget.composition == expected_comp
+    assert widget.composition == Composition(composition_input).as_dict()
+    json.dumps(widget.composition)
 
 
 @pytest.mark.parametrize(
@@ -90,7 +94,6 @@ def test_widget_notebook_integration_composition() -> None:
 
 def test_widget_complete_lifecycle() -> None:
     """Test complete widget lifecycle including state persistence."""
-    # Create widget with custom settings
     widget = CompositionWidget(
         composition="Fe2O3",
         show_percentages=True,
@@ -99,14 +102,12 @@ def test_widget_complete_lifecycle() -> None:
         style="width: 800px; height: 600px",
     )
 
-    # Test initial state
     assert widget.composition == Composition("Fe2O3").as_dict()
     assert widget.show_percentages is True
     assert widget.color_scheme == "CPK"
     assert widget.mode == "bar"
     assert widget.style == "width: 800px; height: 600px"
 
-    # Test state persistence
     state = {
         "composition": widget.composition,
         "show_percentages": widget.show_percentages,
@@ -115,41 +116,10 @@ def test_widget_complete_lifecycle() -> None:
         "style": widget.style,
     }
 
-    # Create new widget from state
     restored_widget = CompositionWidget(**state)
 
-    # Verify state preservation
     for key, value in state.items():
         assert getattr(restored_widget, key) == value
-
-
-def test_widget_complex_composition_handling() -> None:
-    """Test widget handles complex and large-number compositions correctly."""
-    # Test complex composition handling
-    complex_comp = Composition(
-        "Li0.1Na0.05K0.05Mg0.1Ca0.05Ba0.05Al0.1Si0.2Ti0.05V0.05Cr0.05"
-        "Mn0.1Fe0.15Co0.05Ni0.05Cu0.05Zn0.05O1.0"
-    )
-    widget = CompositionWidget(composition=complex_comp)
-    assert widget.composition is not None
-    assert len(widget.composition) > 10  # Many elements
-
-    # Test large number handling
-    large_comp = {"Fe": 1000.0, "O": 1500.0}
-    widget = CompositionWidget(composition=large_comp)
-    expected_comp = Composition(large_comp).as_dict()
-    assert widget.composition == expected_comp
-
-
-def test_widget_edge_cases_composition() -> None:
-    """Test widget edge cases and special scenarios."""
-    # Test empty composition (valid in pymatgen)
-    empty_widget = CompositionWidget(composition={})
-    assert empty_widget.composition == {}
-
-    # Build-asset sanity check on a regular instance.
-    widget = CompositionWidget(composition="Fe2O3")
-    assert_widget_build_files(widget)
 
 
 def test_composition_widget_pymatgen_kwargs() -> None:

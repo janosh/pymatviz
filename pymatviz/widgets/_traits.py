@@ -1,10 +1,4 @@
-"""Shared synced traitlets for structure-rendering widgets.
-
-StructureWidget and TrajectoryWidget render the same matterviz structure viewer
-and accept the same ~30 display options. This mixin holds the traits they share
-so each widget only declares what is specific to it. Note: show_image_atoms is
-NOT shared since its default differs between the two widgets.
-"""
+"""Shared synced display traits; widget-specific defaults stay on each widget."""
 
 from __future__ import annotations
 
@@ -22,32 +16,28 @@ class StructureVizTraits(tl.HasTraits):
     """Display options shared by structure-rendering widgets (synced to JS)."""
 
     # None (not "") so the frontend does not try to fetch an empty URL
-    data_url = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
+    data_url = optional_trait(tl.Unicode)
 
     # Atom visualization
-    atom_radius = tl.Float(allow_none=True, default_value=None).tag(sync=True)
+    atom_radius = optional_trait(tl.Float)
     show_atoms = tl.Bool(default_value=True).tag(sync=True)
-    show_bonds = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
-    show_site_labels = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
-    show_site_indices = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
-    same_size_atoms = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    show_bonds = optional_trait(tl.Bool)
+    show_site_labels = optional_trait(tl.Bool)
+    show_site_indices = optional_trait(tl.Bool)
+    same_size_atoms = optional_trait(tl.Bool)
 
-    # Site vectors (force, magmom, spin, etc.) -- per-key configuration
-    # Keys map to site property names (e.g. "force", "magmom", "force_DFT").
-    # Values are dicts with optional keys: visible (bool), color (str|null),
-    # scale (float|null). Auto-populated by the frontend when omitted.
-    vector_configs = tl.Dict(allow_none=True, default_value=None).tag(sync=True)
-    vector_scale = tl.Float(allow_none=True, default_value=None).tag(sync=True)
-    vector_color = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
-    vector_normalize = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
-    vector_uniform_thickness = tl.Bool(allow_none=True, default_value=None).tag(
-        sync=True
-    )
-    vector_origin_gap = tl.Float(allow_none=True, default_value=None).tag(sync=True)
+    # Per-property vectors: {property_name: {visible?, color?, scale?}}.
+    # The frontend populates omitted configs from site properties.
+    vector_configs = optional_trait(tl.Dict)
+    vector_scale = optional_trait(tl.Float)
+    vector_color = optional_trait(tl.Unicode)
+    vector_normalize = optional_trait(tl.Bool)
+    vector_uniform_thickness = optional_trait(tl.Bool)
+    vector_origin_gap = optional_trait(tl.Float)
 
     # Bonds
-    bond_thickness = tl.Float(allow_none=True, default_value=None).tag(sync=True)
-    bond_color = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
+    bond_thickness = optional_trait(tl.Float)
+    bond_color = optional_trait(tl.Unicode)
     # None defers to the frontend default. An unknown strategy name would crash
     # the renderer (matterviz looks it up in BONDING_STRATEGIES), so validate here.
     bonding_strategy = tl.CaselessStrEnum(
@@ -57,22 +47,22 @@ class StructureVizTraits(tl.HasTraits):
     # Cell
     cell_edge_opacity = tl.Float(0.1).tag(sync=True)
     cell_surface_opacity = tl.Float(0.05).tag(sync=True)
-    cell_edge_color = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
-    cell_surface_color = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
+    cell_edge_color = optional_trait(tl.Unicode)
+    cell_surface_color = optional_trait(tl.Unicode)
     cell_edge_width = tl.Float(1.5).tag(sync=True)
-    show_cell_vectors = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    show_cell_vectors = optional_trait(tl.Bool)
 
     # Appearance
     color_scheme = tl.Unicode("Vesta").tag(sync=True)
-    background_color = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
-    background_opacity = tl.Float(allow_none=True, default_value=None).tag(sync=True)
+    background_color = optional_trait(tl.Unicode)
+    background_opacity = optional_trait(tl.Float)
 
     # UI controls. gizmo: bool or a matterviz GizmoOptions dict
     gizmo = tl.Union([tl.Bool(), tl.Dict()], allow_none=True, default_value=None).tag(
         sync=True
     )
-    auto_rotate = tl.Float(allow_none=True, default_value=None).tag(sync=True)
-    fullscreen_toggle = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    auto_rotate = optional_trait(tl.Float)
+    fullscreen_toggle = optional_trait(tl.Bool)
 
 
 class PlotControlsTraits(tl.HasTraits):
@@ -81,5 +71,5 @@ class PlotControlsTraits(tl.HasTraits):
     """
 
     controls_open = tl.Bool(default_value=False).tag(sync=True)
-    controls_toggle_props = tl.Dict(allow_none=True, default_value=None).tag(sync=True)
-    controls_pane_props = tl.Dict(allow_none=True, default_value=None).tag(sync=True)
+    controls_toggle_props = optional_trait(tl.Dict)
+    controls_pane_props = optional_trait(tl.Dict)

@@ -1,12 +1,7 @@
 """Reactively link a shared selection index across MatterViz widgets.
 
-This is the Python-side answer to building ``structure+scatter``-style coordinated
-views by composition instead of bundling the link at the JS level (see
-https://github.com/janosh/pymatviz/issues/354). It builds on the interaction-state
-traitlets that sync both ways with the frontend (``TrajectoryWidget``'s
-``current_step_idx``, ``ScatterPlotWidget``'s ``active_point``/``selected_point``,
-``StructureWidget``'s ``structure``): observing one widget's selection and writing
-it to the others keeps a shared "current index" in sync.
+Trajectory steps and scatter selections update every linked widget, including
+structure viewers backed by a frame sequence.
 
 Example:
     >>> import pymatviz as pmv
@@ -144,14 +139,7 @@ class WidgetLink:
         self._broadcast(int(point["point_idx"]))
 
     def _broadcast(self, index: int) -> None:
-        """Push ``index`` to every linked widget's sink (re-entrancy guarded).
-
-        Applies to all widgets including the interaction source: a scatter source
-        reports via ``active_point`` but its sink is ``selected_point`` (so the
-        clicked point must be highlighted here too), and re-applying a trajectory
-        source's own ``current_step_idx`` is a traitlets no-op. The ``_syncing``
-        guard absorbs any resulting echo notification.
-        """
+        """Update every sink, including the source's highlight, without re-entry."""
         if self._syncing:
             return
         self._syncing = True

@@ -57,7 +57,6 @@ def test_widget_creates_view_model(multi_frame_trajectory: dict[str, Any]) -> No
     assert widget.display_mode == "structure+scatter"
     assert widget.show_controls is True
 
-    # Test that trajectory can be serialized
     json.dumps(widget.trajectory)
 
 
@@ -72,11 +71,9 @@ def test_widget_trajectory_updates(
     assert widget.trajectory is None
     assert widget.current_step_idx == 0
 
-    # Test trajectory assignment
     widget.trajectory = multi_frame_trajectory
     assert widget.trajectory == json.loads(json.dumps(multi_frame_trajectory))
 
-    # Test step navigation
     widget.current_step_idx = 2
     assert widget.current_step_idx == 2
 
@@ -120,7 +117,6 @@ def test_widget_complete_lifecycle(
     multi_frame_trajectory: dict[str, Any], fe3co4_disordered: Structure
 ) -> None:
     """Test complete widget lifecycle including state persistence."""
-    # Create widget with custom settings
     widget = TrajectoryWidget(
         trajectory=multi_frame_trajectory,
         style="width: 800px; height: 600px",
@@ -129,7 +125,6 @@ def test_widget_complete_lifecycle(
         display_mode="structure",
     )
 
-    # Test initial state
     assert widget.trajectory == json.loads(json.dumps(multi_frame_trajectory))
     assert widget.current_step_idx == 0
     assert widget.style == "width: 800px; height: 600px"
@@ -137,11 +132,9 @@ def test_widget_complete_lifecycle(
     assert widget.layout == "horizontal"
     assert widget.display_mode == "structure"
 
-    # Test step navigation
     widget.current_step_idx = 2
     assert widget.current_step_idx == 2
 
-    # Test trajectory update
     new_trajectory = {"frames": [fe3co4_disordered] * 10}
     widget.trajectory = new_trajectory
     expected_structure = json.loads(json.dumps(fe3co4_disordered.as_dict()))
@@ -149,7 +142,6 @@ def test_widget_complete_lifecycle(
         expected_structure
     ] * 10
 
-    # Test state persistence
     state = {
         "trajectory": widget.trajectory,
         "current_step_idx": widget.current_step_idx,
@@ -159,10 +151,8 @@ def test_widget_complete_lifecycle(
         "display_mode": widget.display_mode,
     }
 
-    # Create new widget from state
     restored_widget = TrajectoryWidget(**state)
 
-    # Verify state preservation
     for key, value in state.items():
         assert getattr(restored_widget, key) == value
 
@@ -235,17 +225,14 @@ def test_trajectory_widget_property_extraction(
     for idx, frame in enumerate(widget.trajectory["frames"]):
         assert frame["step"] == idx
 
-    # Test no extra fields in trajectory dict
     assert set(widget.trajectory) == {"frames", "metadata"}
 
 
 @pytest.mark.parametrize(
-    ("trajectory_input", "expected_frames"),
-    [([], 0), (["struct1"], 1), (["struct1", "struct2", "struct3"], 3)],
+    "n_frames",
+    [0, 1, 3],
 )
-def test_trajectory_widget_backward_compatibility(
-    trajectory_input: list[str], expected_frames: int
-) -> None:
+def test_trajectory_widget_structure_sequence(n_frames: int) -> None:
     """Test TrajectoryWidget handles list of structures."""
     from pymatgen.core import Lattice, Structure
 
@@ -255,21 +242,18 @@ def test_trajectory_widget_backward_compatibility(
             species=("Fe", "Fe"),
             coords=((0, 0, 0), (0.5, 0.5, 0.5)),
         )
-        for idx in range(len(trajectory_input))
+        for idx in range(n_frames)
     ]
 
     widget = TrajectoryWidget(trajectory=structures)
 
     assert widget.trajectory is not None
-    assert len(widget.trajectory["frames"]) == expected_frames
+    assert len(widget.trajectory["frames"]) == n_frames
     assert all(
         frame["step"] == idx for idx, frame in enumerate(widget.trajectory["frames"])
     )
 
-    # Test no extra fields in trajectory dict
-    if widget.trajectory is not None:
-        actual_keys = set(widget.trajectory)
-        assert actual_keys == {"frames", "metadata"}
+    assert set(widget.trajectory) == {"frames", "metadata"}
 
 
 @pytest.mark.parametrize(
@@ -285,10 +269,7 @@ def test_trajectory_widget_edge_cases(
 ) -> None:
     """Test TrajectoryWidget handles edge cases correctly."""
     result = TrajectoryWidget(trajectory=trajectory_input).trajectory
-    if expected_result is not None:
-        assert result == expected_result  # Test exact match for non-None results
-    else:
-        assert result is None
+    assert result == expected_result
 
 
 _CUBIC = {"matrix": [[4, 0, 0], [0, 4, 0], [0, 0, 4]]}
@@ -348,26 +329,6 @@ def test_trajectory_widget_completes_only_non_derivable_fields(
     ]
 
 
-def test_trajectory_widget_single_structure_extra_fields() -> None:
-    """Test TrajectoryWidget handles single structures without extra fields."""
-    from pymatgen.core import Lattice, Structure
-
-    structure = Structure(
-        lattice=Lattice.cubic(3.0),
-        species=("Fe", "Fe"),
-        coords=((0, 0, 0), (0.5, 0.5, 0.5)),
-    )
-
-    widget = TrajectoryWidget(trajectory=structure)
-
-    assert widget.trajectory is not None
-    assert len(widget.trajectory["frames"]) == 1
-    assert widget.trajectory["frames"][0]["step"] == 0
-
-    # Test no extra fields in single structure trajectory
-    assert set(widget.trajectory) == {"frames", "metadata"}
-
-
 def test_trajectory_string_input_raises_error() -> None:
     """Test that passing string to trajectory parameter raises error."""
     with pytest.raises(TypeError, match="Unsupported trajectory type"):
@@ -377,12 +338,13 @@ def test_trajectory_string_input_raises_error() -> None:
 @pytest.mark.parametrize(
     ("metadata_field", "metadata_value"),
     [
+        pytest.param(None, {}, id="no-metadata"),
         ("properties", {"energy": -1.23, "forces": [[0.1, 0.2, 0.3]]}),
         ("info", {"temperature": 300, "pressure": 1.0}),
     ],
 )
 def test_trajectory_widget_with_structure_metadata(
-    metadata_field: str, metadata_value: dict[str, Any]
+    metadata_field: str | None, metadata_value: dict[str, Any]
 ) -> None:
     """TrajectoryWidget forwards structure properties/info to frame metadata."""
     from pymatgen.core import Lattice, Structure
@@ -394,7 +356,7 @@ def test_trajectory_widget_with_structure_metadata(
     )
     if metadata_field == "properties":
         structure.properties = metadata_value
-    else:
+    elif metadata_field == "info":
         object.__setattr__(structure, "info", metadata_value)
 
     widget = TrajectoryWidget(trajectory=structure)
@@ -402,46 +364,36 @@ def test_trajectory_widget_with_structure_metadata(
     assert widget.trajectory is not None
     assert len(widget.trajectory["frames"]) == 1
     frame = widget.trajectory["frames"][0]
-    assert "metadata" in frame
-    assert frame["metadata"] == metadata_value
-
-
-def test_trajectory_widget_with_ase_atoms() -> None:
-    """Test TrajectoryWidget handles ASE Atoms objects."""
-    pytest.importorskip("ase")
-    from ase import Atoms
-
-    # Create ASE Atoms with no cell (molecular system)
-    atoms = Atoms("H2O", positions=[[0, 0, 0], [0, 0, 1], [0, 1, 0]])
-    atoms.info = {"energy": -1.5}
-
-    widget = TrajectoryWidget(trajectory=atoms)
-
-    assert widget.trajectory is not None
-    assert len(widget.trajectory["frames"]) == 1
-    frame = widget.trajectory["frames"][0]
     assert frame["step"] == 0
-    assert "metadata" in frame
-    assert frame["metadata"]["energy"] == -1.5
+    assert set(widget.trajectory) == {"frames", "metadata"}
+    if metadata_field is None:
+        assert "metadata" not in frame
+    else:
+        assert frame["metadata"] == metadata_value
 
 
-def test_trajectory_widget_with_ase_atoms_with_cell() -> None:
-    """Test TrajectoryWidget handles ASE Atoms with cell."""
-    pytest.importorskip("ase")
-    from ase import Atoms
-
-    # Create ASE Atoms with cell
-    atoms = Atoms("Fe2", positions=[[0, 0, 0], [0.5, 0.5, 0.5]], cell=[3, 3, 3])
-    atoms.info = {"energy": -2.0}
-
+@pytest.mark.parametrize(
+    ("symbols", "positions", "cell", "energy"),
+    [
+        pytest.param(
+            "H2O", [[0, 0, 0], [0, 0, 1], [0, 1, 0]], None, -1.5, id="molecule"
+        ),
+        pytest.param(
+            "Fe2", [[0, 0, 0], [0.5, 0.5, 0.5]], [3, 3, 3], -2.0, id="periodic"
+        ),
+    ],
+)
+def test_trajectory_widget_with_ase_atoms(
+    symbols: str, positions: list[list[float]], cell: list[int] | None, energy: float
+) -> None:
+    """ASE frames preserve metadata with and without a simulation cell."""
+    atoms_cls = pytest.importorskip("ase").Atoms
+    atoms = atoms_cls(symbols, positions=positions, cell=cell)
+    atoms.info = {"energy": energy}
     widget = TrajectoryWidget(trajectory=atoms)
-
-    assert widget.trajectory is not None
-    assert len(widget.trajectory["frames"]) == 1
-    frame = widget.trajectory["frames"][0]
+    (frame,) = widget.trajectory["frames"]
     assert frame["step"] == 0
-    assert "metadata" in frame
-    assert frame["metadata"]["energy"] == -2.0
+    assert frame["metadata"] == {"energy": energy}
 
 
 def test_trajectory_widget_vector_configs_trait() -> None:

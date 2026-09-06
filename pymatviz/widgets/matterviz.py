@@ -1,4 +1,4 @@
-"""Lazy loading of MatterViz widget assets from GitHub releases."""
+"""Load MatterViz widget assets from npm, cache, or a local build."""
 
 from __future__ import annotations
 
@@ -21,13 +21,8 @@ if TYPE_CHECKING:
     from pymatviz.widgets._headless import RenderReport
 
 
-# npm version of the prebuilt ``matterviz-anywidget`` bundle (built from
-# matterviz/extensions/anywidget) that pymatviz renders. The Python traits below
-# mirror this exact version's anywidget.ts WIDGET_MODEL_KEYS contract (checked by
-# tests/widgets/test_js_prop_parity.py), so bump it in lockstep with trait changes.
-# Only merge a bump once that version is published to npm: everyone without a local
-# ``MATTERVIZ_ANYWIDGET_DIR`` build fetches ``matterviz-anywidget@<this>`` from
-# jsDelivr at runtime, so an unpublished pin breaks widget rendering for all users.
+# Pin a published npm bundle matching the Python traits (test_js_prop_parity.py).
+# Users without MATTERVIZ_ANYWIDGET_DIR fetch this version from jsDelivr.
 MATTERVIZ_ANYWIDGET_VERSION = "0.6.0"
 _ANYWIDGET_CDN = "https://cdn.jsdelivr.net/npm/matterviz-anywidget"
 # expanded at call time (not import time) so tests can patch os.path.expanduser
@@ -214,19 +209,14 @@ def fetch_widget_asset(filename: str, version_override: str | None = None) -> st
     """
     version = version_override or MATTERVIZ_ANYWIDGET_VERSION
 
-    def read_file(path: str) -> str:
-        """Read a local/cached asset file."""
-        with open(path, encoding="utf-8") as file:
-            return file.read()
-
     dev_dir = os.environ.get("MATTERVIZ_ANYWIDGET_DIR")
     if dev_dir and os.path.isfile(dev_path := f"{dev_dir}/{filename}"):
-        return read_file(dev_path)
+        return _read_asset_source(dev_path)
 
     cache_dir = _cache_dir(version)
     cache_path = f"{cache_dir}/{filename}"
     if os.path.isfile(cache_path):
-        return read_file(cache_path)
+        return _read_asset_source(cache_path)
 
     if not re.match(r"^\d+\.\d+\.\d+([-+].+)?$", version):  # semver, optional pre/build
         raise ValueError(f"Invalid matterviz-anywidget version: {version=}")

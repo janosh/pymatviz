@@ -14,9 +14,9 @@ from collections.abc import Mapping
 from typing import Any
 
 
-def _numbers(values: Any) -> list[float]:
-    """Flatten nested lists/tuples/mappings into finite floats (bools ignored)."""
-    out: list[float] = []
+def _minmax(values: Any) -> list[float] | None:
+    """Find finite extrema in nested lists/tuples/mappings, ignoring bools."""
+    minimum, maximum = math.inf, -math.inf
     stack = [values]
     while stack:
         item = stack.pop()
@@ -27,19 +27,14 @@ def _numbers(values: Any) -> list[float]:
                 num = float(item)
             except OverflowError:
                 continue
-            if math.isfinite(num):  # drop NaN/inf so they can't poison _minmax
-                out.append(num)
+            if math.isfinite(num):
+                minimum = min(minimum, num)
+                maximum = max(maximum, num)
         elif isinstance(item, (list, tuple)):
             stack.extend(item)
         elif isinstance(item, Mapping):
             stack.extend(item.values())
-    return out
-
-
-def _minmax(values: Any) -> list[float] | None:
-    """Return ``[min, max]`` of flattened numeric values, or None if none found."""
-    nums = _numbers(values)
-    return [min(nums), max(nums)] if nums else None
+    return [minimum, maximum] if minimum != math.inf else None
 
 
 def _fmt_amount(amount: float) -> str:
@@ -79,12 +74,6 @@ def _series_list(widget_data: Mapping[str, Any]) -> list[Mapping[str, Any]]:
     return [series_item for series_item in series if isinstance(series_item, Mapping)]
 
 
-def _histogram_samples(series_item: Mapping[str, Any]) -> Any:
-    """Samples a histogram bins: ``values`` or legacy ``y`` (``x`` is ignored)."""
-    values = series_item.get("values")
-    return series_item.get("y") if values is None else values
-
-
 def _xy_facts(
     widget_data: Mapping[str, Any], axes: tuple[str, ...], *, histogram: bool = False
 ) -> dict[str, Any]:
@@ -95,8 +84,7 @@ def _xy_facts(
     """
     series = _series_list(widget_data)
     samples = {
-        axis: [_histogram_samples(s) if histogram else s.get(axis) for s in series]
-        for axis in axes
+        axis: [s.get("values" if histogram else axis) for s in series] for axis in axes
     }
     facts: dict[str, Any] = {"n_series": len(series)}
     facts["n_points"] = sum(len(vals or []) for vals in samples["x"])
@@ -396,12 +384,10 @@ def check_inputs(widget_data: Mapping[str, Any]) -> list[str]:
             )
 
     if widget_type in ("scatter_plot", "bar_plot", "histogram", "scatter_plot_3d"):
-        # histograms bin `values` (or legacy `y`); the other plots need `x`
+        # Histograms bin `values`; the other plots need `x`.
         hist = widget_type == "histogram"
         series = _series_list(widget_data)
-        if series and not any(
-            _histogram_samples(s) if hist else s.get("x") for s in series
-        ):
+        if series and not any(s.get("values" if hist else "x") for s in series):
             what = "samples ('values')" if hist else "'x'"
             warnings.append(
                 f"{widget_type}: all series have empty {what}; nothing to plot"

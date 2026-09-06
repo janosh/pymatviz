@@ -66,7 +66,7 @@ class HistogramWidget(PlotControlsTraits, MatterVizWidget):
 
         Args:
             series: Series dicts ``{"values": [...], "label", "color", ...}`` with
-                the raw samples in ``values`` (legacy ``{x, y}``: ``y`` as samples).
+                the raw samples in ``values``.
             bins: Number of bins.
             mode: Histogram mode (``single`` or ``overlay``).
             selected_property: Active series label in single-mode controls.
@@ -97,19 +97,24 @@ class HistogramWidget(PlotControlsTraits, MatterVizWidget):
             mode=mode,
             selected_property=selected_property,
             show_legend=show_legend,
-            x_axis=normalize_plot_json(x_axis, "Histogram.x_axis"),
-            y_axis=normalize_plot_json(y_axis, "Histogram.y_axis"),
-            y2_axis=normalize_plot_json(y2_axis, "Histogram.y2_axis"),
-            display=normalize_plot_json(display, "Histogram.display"),
-            legend=normalize_plot_json(legend, "Histogram.legend"),
-            bar=normalize_plot_json(bar, "Histogram.bar"),
-            ref_lines=normalize_plot_json(ref_lines, "Histogram.ref_lines"),
-            padding=normalize_plot_json(padding, "Histogram.padding"),
+            **normalize_plot_json(
+                dict(
+                    x_axis=x_axis,
+                    y_axis=y_axis,
+                    y2_axis=y2_axis,
+                    display=display,
+                    legend=legend,
+                    bar=bar,
+                    ref_lines=ref_lines,
+                    padding=padding,
+                    x2_axis=x2_axis,
+                    x_range=x_range,
+                    x2_range=x2_range,
+                    y_range=y_range,
+                    y2_range=y2_range,
+                ),
+                "Histogram",
+            ),
             range_padding=range_padding,
-            x2_axis=normalize_plot_json(x2_axis, "Histogram.x2_axis"),
-            x_range=normalize_plot_json(x_range, "Histogram.x_range"),
-            x2_range=normalize_plot_json(x2_range, "Histogram.x2_range"),
-            y_range=normalize_plot_json(y_range, "Histogram.y_range"),
-            y2_range=normalize_plot_json(y2_range, "Histogram.y2_range"),
             **kwargs,
         )

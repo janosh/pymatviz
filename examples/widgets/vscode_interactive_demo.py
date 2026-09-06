@@ -316,7 +316,7 @@ bar_plot_widget.show()
 
 # %% Histogram Widget — distribution overlay for scatter data
 histogram_series = [
-    {key: s[key] for key in ("label", "x", "y")} for s in scatter_series
+    {"label": series["label"], "values": series["y"]} for series in scatter_series
 ]
 histogram_widget = pmv.HistogramWidget(
     series=histogram_series,

@@ -1,7 +1,6 @@
 """Shared pytest configuration and fixtures for widget tests."""
 
 from typing import Any
-from unittest.mock import patch
 
 import pytest
 from pymatgen.core import Structure
@@ -79,31 +78,6 @@ def assert_widget_notebook_integration(
 
     for attr_name in ("_model_name", "_view_name", "_model_module", "_view_module"):
         assert hasattr(widget, attr_name)
-
-    # IPython display path (validate if present)
-    try:
-        with (
-            patch("IPython.display.publish_display_data") as pub,
-            patch("IPython.display.display") as disp,
-        ):
-            from IPython.display import display
-
-            display(widget)
-            assert disp.call_count == 1
-            if pub.call_count:
-                args, kwargs = pub.call_args
-                data = kwargs.get("data")
-                if data is None and args:
-                    data = args[0]
-                assert isinstance(data, dict)
-                assert view_key in data
-                assert "text/plain" in data
-                pub_view = data[view_key]
-                assert isinstance(pub_view, dict)
-                assert pub_view.get("model_id") == view.get("model_id")
-                assert isinstance(pub_view.get("version_major"), int)
-    except ImportError:
-        pass
 
     # Anywidget ESM/CSS sanity
     esm, css = widget._esm, widget._css

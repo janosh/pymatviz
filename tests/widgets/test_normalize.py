@@ -374,11 +374,16 @@ def test_normalize_plot_json_scalar_subclasses() -> None:
         ([{"x": [0, 1]}], None, ValueError, "must include keys 'x' and 'y'"),
         ([{"x": [0], "y": [0, 1]}], None, ValueError, "lengths must match"),
         ([{"x": [0, float("nan")], "y": [1, 2]}], None, ValueError, "non-finite"),
-        # histogram: samples in `values`, legacy {x, y} validated like any series
+        # Histograms require samples in `values`, including when x/y are present.
         ([[1, 2]], "values", TypeError, "entries must be dicts"),
         ([{"label": "no samples"}], "values", ValueError, "must include key 'values'"),
-        ([{"y": [1, 2]}], "values", ValueError, "must include keys 'x' and 'y'"),
-        ([{"x": [0], "y": [0, 1]}], "values", ValueError, "lengths must match"),
+        ([{"y": [1, 2]}], "values", ValueError, "must include key 'values'"),
+        (
+            [{"x": [0, 1], "y": [0, 1]}],
+            "values",
+            ValueError,
+            "must include key 'values'",
+        ),
         ([{"values": 3}], "values", TypeError, "values must be list-like"),
         ([{"values": [1, "two"]}], "values", TypeError, "must be numeric"),
         ([{"values": [1, float("inf")]}], "values", ValueError, "finite"),
@@ -394,10 +399,8 @@ def test_normalize_plot_series_validation_errors(
         )
 
 
-def test_normalize_histogram_series_values_and_legacy_xy() -> None:
-    """Histogram series take their samples from `values` (any array-like, preferred)
-    or the legacy {x, y} shape where y holds the samples; both are JSON-normalized.
-    """
+def test_normalize_histogram_series_values() -> None:
+    """Histogram sample arrays and metadata are JSON-normalized."""
     hist = functools.partial(
         normalize_plot_series, component_name="Histogram", samples_key="values"
     )
@@ -406,10 +409,10 @@ def test_normalize_histogram_series_values_and_legacy_xy() -> None:
         [
             {"values": np.array([3, 1, 2]), "label": "A", "color": "#ef4444"},
             {"values": pd.Series([0.5]), "visible": False},
-            {"x": [0, 1], "y": np.array([4, 5]), "label": "legacy"},
+            {"values": [], "label": "empty"},
         ]
     ) == [
         {"values": [3.0, 1.0, 2.0], "label": "A", "color": "#ef4444"},
         {"values": [0.5], "visible": False},
-        {"x": [0.0, 1.0], "y": [4.0, 5.0], "label": "legacy"},
+        {"values": [], "label": "empty"},
     ]

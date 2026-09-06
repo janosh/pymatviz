@@ -79,20 +79,7 @@ def _to_dict(obj: Any, label: str) -> dict[str, Any] | None:
 def _normalize_numeric_sequence(
     values: list[Any], field_label: str, *, series_index: int
 ) -> list[float]:
-    """Normalize a numeric sequence into finite floats.
-
-    Args:
-        values: Candidate numeric sequence.
-        field_label: Field name for error context (usually ``x`` or ``y``).
-        series_index: Zero-based series index for actionable error messages.
-
-    Returns:
-        List of finite floats.
-
-    Raises:
-        TypeError: If a value is not numeric.
-        ValueError: If a numeric value is non-finite (NaN/inf).
-    """
+    """Convert JSON-normalized series values to floats, rejecting non-numeric items."""
     normalized_values: list[float] = []
     for value_index, value in enumerate(values):
         if not isinstance(value, (int, float)):
@@ -101,14 +88,7 @@ def _normalize_numeric_sequence(
                 f"Got {field_label}[{value_index}]={value!r} in series index "
                 f"{series_index}."
             )
-        numeric_value = float(value)
-        if not math.isfinite(numeric_value):
-            raise ValueError(
-                "Plot series values must be finite numbers. "
-                f"Got {field_label}[{value_index}]={value!r} in series index "
-                f"{series_index}."
-            )
-        normalized_values.append(numeric_value)
+        normalized_values.append(float(value))
     return normalized_values
 
 
@@ -176,9 +156,8 @@ def normalize_plot_series(
 
     Entries are dicts with ``x`` and ``y`` lists of equal length (``x`` all strings
     for categorical axes or all numeric, ``y`` numeric, both finite). With
-    ``samples_key`` (histograms bin ``values``), an entry may instead hold its raw
-    samples under that key; the legacy ``{x, y}`` shape is still accepted with ``y``
-    as the samples. Raises TypeError for wrong container/entry/sample types and
+    ``samples_key`` (histograms bin ``values``), entries must instead hold raw
+    samples under that key. Raises TypeError for wrong container/entry/sample types and
     ValueError for missing keys, length mismatches and non-finite numbers.
     """
     if series_data is None:
@@ -189,6 +168,7 @@ def normalize_plot_series(
             f"{type(series_data)}."
         )
     normalized_series: list[dict[str, Any]] = []
+    keys = (samples_key,) if samples_key else ("x", "y")
     for series_index, series_entry in enumerate(series_data):
         if not isinstance(series_entry, dict):
             raise TypeError(
@@ -196,13 +176,8 @@ def normalize_plot_series(
                 f"Got type {type(series_entry)} at index {series_index}."
             )
         entry = normalize_plot_json(series_entry, f"{component_name}.series")
-        keys = (samples_key,) if samples_key and samples_key in entry else ("x", "y")
         if not all(key in entry for key in keys):
-            what = "keys 'x' and 'y'"
-            if samples_key and not {samples_key, "x", "y"} & set(entry):
-                what = (
-                    f"key '{samples_key}' (or legacy 'x' and 'y' with y as the samples)"
-                )
+            what = f"key '{samples_key}'" if samples_key else "keys 'x' and 'y'"
             raise ValueError(
                 f"{component_name} series entry must include {what}. "
                 f"Got keys at index {series_index}: {sorted(entry)}."

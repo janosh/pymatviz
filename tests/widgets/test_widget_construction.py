@@ -97,7 +97,7 @@ from pymatviz.widgets.xrd import XrdWidget
         ),
         (
             HistogramWidget,
-            {"series": [{"x": [0, 1], "y": [2, 2.5], "label": "hist"}]},
+            {"series": [{"values": [2, 2.5], "label": "hist"}]},
             "histogram",
             "series",
         ),
@@ -168,7 +168,7 @@ def test_widget_construction_and_type(
         (ScatterPlotWidget, {"series": [{"x": [0, 1], "y": [1, 2], "label": "s"}]}),
         (
             HistogramWidget,
-            {"series": [{"x": [0, 1], "y": [1, 2]}], "bins": 50, "mode": "overlay"},
+            {"series": [{"values": [1, 2]}], "bins": 50, "mode": "overlay"},
         ),
         (BarPlotWidget, {"series": [{"x": [0], "y": [1]}], "mode": "grouped"}),
         (DosWidget, {"doses": {"energies": [0, 1]}, "sigma": 0.05}),
@@ -200,7 +200,7 @@ def test_to_dict_includes_subclass_fields(
 def test_to_dict_reflects_constructor_values() -> None:
     """to_dict values match what was passed to the constructor."""
     widget = HistogramWidget(
-        series=[{"x": [0, 1], "y": [2, 3], "label": "h"}],
+        series=[{"values": [2, 3], "label": "h"}],
         bins=25,
         mode="overlay",
         x_axis={"label": "Value"},
@@ -208,7 +208,7 @@ def test_to_dict_reflects_constructor_values() -> None:
     state = widget.to_dict()
     assert state["bins"] == 25
     assert state["mode"] == "overlay"
-    assert state["series"] == [{"x": [0.0, 1.0], "y": [2.0, 3.0], "label": "h"}]
+    assert state["series"] == [{"values": [2.0, 3.0], "label": "h"}]
     assert state["x_axis"] == {"label": "Value"}
 
 
@@ -229,7 +229,7 @@ def test_to_dict_reflects_runtime_mutations() -> None:
 
 _MINIMAL_KWARGS: dict[type, dict[str, Any]] = {
     BarPlotWidget: {"series": [{"x": [0, 1], "y": [1, 2]}]},
-    HistogramWidget: {"series": [{"x": [0, 1], "y": [1, 2]}]},
+    HistogramWidget: {"series": [{"values": [1, 2]}]},
     HeatmapMatrixWidget: {"x_items": ["A"], "y_items": ["B"]},
     SpacegroupBarPlotWidget: {"data": [225]},
 }
@@ -285,15 +285,11 @@ def test_treemap_widget_all_config_traits_default_to_none() -> None:
 
 
 def test_histogram_widget_delegates_series_validation() -> None:
-    """HistogramWidget accepts `{values}` series and delegates validation of the
-    legacy {x, y} shape to normalize_plot_series.
-    """
+    """HistogramWidget requires sample arrays in `values`."""
     widget = HistogramWidget(series=[{"values": np.array([2, 1]), "label": "a"}])
     assert widget.to_dict()["series"] == [{"values": [2.0, 1.0], "label": "a"}]
-    with pytest.raises(ValueError, match="must include keys 'x' and 'y'"):
-        HistogramWidget(series=[{"x": [0, 1]}])
     with pytest.raises(ValueError, match="must include key 'values'"):
-        HistogramWidget(series=[{"label": "empty"}])
+        HistogramWidget(series=[{"x": [0, 1], "y": [2, 3]}])
 
 
 # === New widget specific behaviors ===
@@ -550,10 +546,7 @@ def test_fermi_surface_widget_invalid_input_combo(
 )
 def test_show_not_shadowed_by_display_traitlet(widget_cls: type) -> None:
     """show() remains callable on widgets that define a 'display' traitlet."""
-    widget = widget_cls(
-        series=[{"x": [0, 1], "y": [1, 2]}],
-        display={"x_grid": True},
-    )
+    widget = widget_cls(display={"x_grid": True})
     assert callable(widget.show)
     assert isinstance(widget.display, dict)
 

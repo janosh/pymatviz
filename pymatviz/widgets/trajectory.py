@@ -53,8 +53,6 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
         ... )
     """
 
-    # display options shared with StructureWidget live in StructureVizTraits
-
     trajectory = tl.Any(default_value=None, allow_none=True).tag(sync=True)
     current_step_idx = tl.Int(0).tag(sync=True)
 
@@ -84,9 +82,7 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
     ).tag(sync=True)
     property_labels = tl.Dict(allow_none=True).tag(sync=True)
 
-    def __init__(
-        self, trajectory: dict[str, Any] | list[Any] | Any | None = None, **kwargs: Any
-    ) -> None:
+    def __init__(self, trajectory: Any = None, **kwargs: Any) -> None:
         """Initialize the TrajectoryWidget.
 
         Args:
@@ -232,12 +228,7 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
         if hasattr(trajectory, "as_dict") or hasattr(
             trajectory, "get_chemical_symbols"
         ):
-            structure_dict, metadata_source = self._to_structure_dict(trajectory)
-            frame: dict[str, Any] = {"structure": structure_dict, "step": 0}
-            metadata = self._extract_object_metadata(metadata_source)
-            if metadata:
-                frame["metadata"] = metadata
-            return {"frames": [frame], "metadata": {}}
+            return self._normalize_trajectory([trajectory])
 
         raise TypeError(
             f"Unsupported trajectory type: {type(trajectory)}. "
