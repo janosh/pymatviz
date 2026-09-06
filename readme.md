@@ -57,12 +57,12 @@ See the Jupyter notebooks under [`examples/`](examples) for how to use `pymatviz
 
 See [`pymatviz/ptable/figures.py`](pymatviz/ptable/figures.py). The module supports heatmaps, heatmap splits (multiple values per element), histograms, scatter plots and line plots. All visualizations are interactive through [Plotly](https://plotly.com) and support displaying additional data on hover.
 
-|                                     [`ptable_heatmap(atomic_masses)`](pymatviz/ptable/figures.py#L35)                                     | [`ptable_heatmap(compositions, log=True)`](pymatviz/ptable/figures.py#L35) [![fig-icon]](assets/scripts/ptable/ptable_heatmap.py) |
+|                                     [`ptable_heatmap(atomic_masses)`](pymatviz/ptable/figures.py#L36)                                     | [`ptable_heatmap(compositions, log=True)`](pymatviz/ptable/figures.py#L36) [![fig-icon]](assets/scripts/ptable/ptable_heatmap.py) |
 | :---------------------------------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------------------: |
 |                                                 ![ptable-heatmap-plotly-more-hover-data]                                                  |                                                   ![ptable-heatmap-plotly-log]                                                    |
-|               [`ptable_hists(data)`](pymatviz/ptable/figures.py#L454) [![fig-icon]](assets/scripts/ptable/ptable_hists.py)                | [`ptable_scatter(data, mode="markers")`](pymatviz/ptable/figures.py#L1577) [![fig-icon]](assets/scripts/ptable/ptable_scatter.py) |
+|               [`ptable_hists(data)`](pymatviz/ptable/figures.py#L455) [![fig-icon]](assets/scripts/ptable/ptable_hists.py)                | [`ptable_scatter(data, mode="markers")`](pymatviz/ptable/figures.py#L1571) [![fig-icon]](assets/scripts/ptable/ptable_scatter.py) |
 |                                                          ![ptable-hists-plotly]                                                           |                                                 ![ptable-scatter-plotly-markers]                                                  |
-| [`ptable_heatmap_splits(2_vals_per_elem)`](pymatviz/ptable/figures.py#L926) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_splits.py) |                            [`ptable_heatmap_splits(3_vals_per_elem)`](pymatviz/ptable/figures.py#L926)                            |
+| [`ptable_heatmap_splits(2_vals_per_elem)`](pymatviz/ptable/figures.py#L931) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_splits.py) |                            [`ptable_heatmap_splits(3_vals_per_elem)`](pymatviz/ptable/figures.py#L931)                            |
 |                                                     ![ptable-heatmap-splits-plotly-2]                                                     |                                                 ![ptable-heatmap-splits-plotly-3]                                                 |
 
 [ptable-heatmap-plotly-log]: assets/svg/ptable-heatmap-plotly-log.svg
@@ -80,10 +80,10 @@ See [`examples/mprester_ptable.ipynb`](examples/mprester_ptable.ipynb).
 
 ## Phonons
 
-| [`phonon_bands(bands_dict)`](pymatviz/phonons/figures.py#L44) [![fig-icon]](assets/scripts/phonons/phonon_bands.py) |                  [`phonon_dos(doses_dict)`](pymatviz/phonons/figures.py#L355) [![fig-icon]](assets/scripts/phonons/phonon_dos.py)                  |
+| [`phonon_bands(bands_dict)`](pymatviz/phonons/figures.py#L43) [![fig-icon]](assets/scripts/phonons/phonon_bands.py) |                  [`phonon_dos(doses_dict)`](pymatviz/phonons/figures.py#L325) [![fig-icon]](assets/scripts/phonons/phonon_dos.py)                  |
 | :-----------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                                   ![phonon-bands]                                                   |                                                                   ![phonon-dos]                                                                    |
-|                 [`phonon_bands_and_dos(bands_dict, doses_dict)`](pymatviz/phonons/figures.py#L595)                  | [`phonon_bands_and_dos(single_bands, single_dos)`](pymatviz/phonons/figures.py#L595) [![fig-icon]](assets/scripts/phonons/phonon_bands_and_dos.py) |
+|                 [`phonon_bands_and_dos(bands_dict, doses_dict)`](pymatviz/phonons/figures.py#L565)                  | [`phonon_bands_and_dos(single_bands, single_dos)`](pymatviz/phonons/figures.py#L565) [![fig-icon]](assets/scripts/phonons/phonon_bands_and_dos.py) |
 |                                           ![phonon-bands-and-dos-mp-2758]                                           |                                                          ![phonon-bands-and-dos-mp-23907]                                                          |
 
 [phonon-bands]: assets/svg/phonon-bands-mp-2758.svg

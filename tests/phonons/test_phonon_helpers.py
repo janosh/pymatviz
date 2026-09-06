@@ -65,7 +65,7 @@ def test_phonon_db_doc_deserialization(via_monty: bool) -> None:
             tuple("ΓXU"),
         ),
         # test empty tuple branches with intersection mode
-        ((), "intersection", None, tuple("ΓLXΓWXU")),
+        ((), "intersection", None, ("Γ", "L|Γ", "X|K", "Γ|L", "W", "X", "U")),
         (  # test separate acoustic/optical styling
             ["GAMMA-X"],
             "union",
@@ -79,19 +79,19 @@ def test_phonon_db_doc_deserialization(via_monty: bool) -> None:
             (),
             "union",
             lambda _freqs, idx: dict(dash="solid" if idx < 3 else "dash"),
-            tuple("ΓLXΓWXU"),
+            ("Γ", "L|Γ", "X|K", "Γ|L", "W", "X", "U"),
         ),
         (  # test shaded_ys as True
             (),
             "union",
             None,
-            tuple("ΓLXΓWXU"),
+            ("Γ", "L|Γ", "X|K", "Γ|L", "W", "X", "U"),
         ),
         pytest.param(  # test invalid line_kwargs structure
             (),
             "union",
             {"acoustic": dict(width=2)},  # missing optical key
-            tuple("ΓLXΓWXU"),
+            ("Γ", "L|Γ", "X|K", "Γ|L", "W", "X", "U"),
             marks=pytest.mark.xfail(raises=ValueError),
         ),
     ],

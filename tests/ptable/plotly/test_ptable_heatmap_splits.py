@@ -157,18 +157,37 @@ def test_ptable_heatmap_splits_display_options(
 
 @pytest.mark.parametrize(
     "colorbar",
-    [None, False, dict(orientation="v", len=0.8), dict(orientation="h", len=0.3)],
+    [
+        None,
+        False,
+        dict(orientation="v", len=0.8),
+        dict(orientation="h", len=0.3),
+        [{}, {}],
+    ],
 )
+@pytest.mark.parametrize("as_dataframe", [False, True])
 def test_ptable_heatmap_splits_colorbar(
-    colorbar: dict[str, Any] | Literal[False] | None,
+    as_dataframe: bool,
+    colorbar: dict[str, Any] | list[dict[str, Any]] | Literal[False] | None,
 ) -> None:
     """Test colorbar customization in ptable_heatmap_splits."""
-    data = {"Fe": [1, 2], "O": [3, 4], "H": [0.5, 1.5], "He": [1.5, 2.5]}
-
-    fig = pmv.ptable_heatmap_splits(data, colorbar=colorbar)
-
-    hidden_scatter_trace = [trace for trace in fig.data if trace.x[0] is None]
-    assert (len(hidden_scatter_trace) == 0) == (colorbar is False)
+    data = {"H": [1, 2], "He": [2, 3]}
+    fig = pmv.ptable_heatmap_splits(
+        pd.DataFrame.from_dict(data, orient="index") if as_dataframe else data,
+        colorbar=colorbar,
+    )
+    markers = [trace.marker for trace in fig.data if trace.marker.showscale]
+    fills = [trace.fillcolor for trace in fig.data if trace.fill == "toself"]
+    if as_dataframe or isinstance(colorbar, list):
+        assert [(marker.cmin, marker.cmax) for marker in markers] == (
+            [] if colorbar is False else [(1, 2), (2, 3)]
+        )
+        assert fills[1] != fills[2]
+    else:
+        assert fills[1] == fills[2], "Equal values must share a color with one scale"
+        assert [(marker.cmin, marker.cmax) for marker in markers] == (
+            [] if colorbar is False else [(1, 3)]
+        )
 
 
 def test_ptable_heatmap_splits_annotations() -> None:
@@ -225,95 +244,140 @@ def test_ptable_heatmap_splits_annotations() -> None:
         assert any(value in anno.text for anno in value_annotations)
 
 
-def test_ptable_heatmap_splits_error_cases() -> None:
-    """Test error cases for ptable_heatmap_splits."""
-    data = {"Fe": [1, 2], "O": [3, 4]}
+@pytest.mark.parametrize(
+    ("data", "kwargs", "message"),
+    [
+        ({}, {}, r"ptable_heatmap_splits: data={} must not be empty"),
+        ({"Fe": [1]}, {}, "Number of splits 1 must be 2, 3, or 4"),
+        ({"Fe": [1] * 5}, {}, "must be 2, 3, or 4"),
+        ({"Fe": [1, 2], "O": [3, 4, 5]}, {}, "O.*3.*expected 2"),
+        ({"Fe": [1, float("inf")]}, {}, "Fe.*finite"),
+        ({"Fe": [1, 2]}, dict(orientation="typo"), "orientation"),
+        (
+            {"Fe": [1, 2]},
+            dict(orientation="grid"),
+            "orientation='grid' is only supported for n_splits=4, got n_splits=2",
+        ),
+        (
+            {"Fe": [1, 2]},
+            dict(colorscale=["Viridis", "Plasma", "Inferno"]),
+            "Number of colorscales .* must match",
+        ),
+        (
+            {"Fe": [1, 2]},
+            dict(scale=-1.0),
+            "received for the 'size' property of layout.annotation.font",
+        ),
+        (
+            {"Fe": [1, 2]},
+            dict(colorscale="invalid_colorscale"),
+            (
+                "Invalid value of type 'builtins.str' received for the "
+                "'colorscale' property of scatter.marker"
+            ),
+        ),
+    ],
+)
+def test_ptable_heatmap_splits_error_cases(
+    data: dict[str, list[float]], kwargs: dict[str, Any], message: str
+) -> None:
+    """Reject invalid split arrays, geometry, and colors before rendering."""
+    with pytest.raises(ValueError, match=message):
+        pmv.ptable_heatmap_splits(data, **kwargs)
 
-    # Test empty data
-    with pytest.raises(
-        ValueError, match=r"ptable_heatmap_splits: data={} must not be empty"
-    ):
-        pmv.ptable_heatmap_splits({})
 
-    # Test invalid n_splits
-    with pytest.raises(ValueError, match="Number of splits 1 must be 2, 3, or 4"):
-        pmv.ptable_heatmap_splits({"Fe": [1]})
-
-    # Test invalid orientation
-    with pytest.raises(
-        ValueError,
-        match="orientation='grid' is only supported for n_splits=4, got n_splits=2",
-    ):
-        pmv.ptable_heatmap_splits(data, orientation="grid")
-
-    # Test invalid scale
-    with pytest.raises(
-        ValueError, match=r"received for the 'size' property of layout.annotation.font"
-    ):
-        pmv.ptable_heatmap_splits(data, scale=-1.0)
-
-    # Test invalid colorscale
-    with pytest.raises(
-        ValueError,
-        match=r"Invalid value of type 'builtins.str' received for the "
-        "'colorscale' property of scatter.marker",
-    ):
-        pmv.ptable_heatmap_splits(data, colorscale="invalid_colorscale")
-
-
-def test_ptable_heatmap_splits_colorscales() -> None:
-    """Test different colorscale configurations."""
-    # Create test data with 2 values per element
-    data = {str(elem): [1, 2] for elem in list(Element)[:5]}
-
-    # Test single colorscale
+@pytest.mark.parametrize("as_dataframe", [False, True])
+@pytest.mark.parametrize(
+    ("colorscale", "n_colorbars"),
+    [
+        ("Viridis", 1),
+        (["Viridis", "Plasma_r"], 2),
+        ([[(0, "rgba(255,0,0,0.1)"), (1, "rgba(0,0,255,0.5)")]] * 2, 2),
+        (["#ff0000", "#0000ff"], 1),
+        (["#f00", "#00f"], 1),
+        (["red", "blue"], 1),
+        ([(0, "rgb(255,0,0)"), (0.5, "rgb(255,255,0)"), (1, "rgb(0,0,255)")], 1),
+        ([(0, "red"), (1, "blue")], 1),
+        ([["#ff0000", "#0000ff"], ["#000000", "#ffffff"]], 2),
+        (["Viridis", [(0, "rgb(0,0,0)"), (1, "rgb(255,255,255)")]], 2),
+    ],
+)
+def test_ptable_heatmap_splits_colorscales(
+    colorscale: Any, n_colorbars: int, as_dataframe: bool
+) -> None:
+    """Normalize individual and per-split scales without confusing color stops."""
+    data = {"H": [1, 3], "He": [2, 2], "Li": [3, 1]}
     fig = pmv.ptable_heatmap_splits(
-        data=data,
-        orientation="diagonal",
-        colorscale="Viridis",
-        colorbar=dict(title="Test"),  # Add colorbar to trigger split_names check
+        pd.DataFrame.from_dict(data, orient="index") if as_dataframe else data,
+        colorscale=colorscale,
     )
-    assert isinstance(fig, go.Figure)
+    colorbars = [trace.marker for trace in fig.data if trace.marker.showscale]
+    assert len(colorbars) == (2 if as_dataframe else n_colorbars)
+    for colorbar in colorbars:
+        assert (colorbar.cmin, colorbar.cmax) == (1, 3)
+    if "rgba(" in str(colorscale):
+        assert all(
+            colorbar.colorscale == ((0, "rgba(255,0,0,0.1)"), (1, "rgba(0,0,255,0.5)"))
+            for colorbar in colorbars
+        )
+    fills = [trace.fillcolor for trace in fig.data if trace.fill == "toself"]
+    assert len(fills) == 6
+    assert fills[0] != fills[2] != fills[4]
+    if n_colorbars == 1:
+        assert fills[0] == fills[5]
+        assert fills[1] == fills[4]
+        assert fills[2] == fills[3]
+    if colorscale in (["red", "blue"], [(0, "red"), (1, "blue")]):
+        assert fills == [
+            "rgb(255, 0, 0)",
+            "rgb(0, 0, 255)",
+            "rgb(128, 0, 128)",
+            "rgb(128, 0, 128)",
+            "rgb(0, 0, 255)",
+            "rgb(255, 0, 0)",
+        ]
 
-    # Test multiple colorscales as list of strings
+
+@pytest.mark.parametrize("magnitude", [4.0, 1e308, np.finfo(float).max])
+def test_ptable_heatmap_splits_extreme_range(magnitude: float) -> None:
+    """Normalize finite opposite-sign extrema without overflowing their span."""
     fig = pmv.ptable_heatmap_splits(
-        data=data,
-        orientation="diagonal",
-        colorscale=["Viridis", "Plasma"],  # One colorscale per split
-        colorbar=[
-            dict(title="First"),
-            dict(title="Second"),
-        ],  # Add colorbars to trigger split_names check
+        {"H": [-magnitude, magnitude], "He": [-magnitude / 2, magnitude / 2]},
+        colorscale=["#000000", "#ffffff"],
     )
-    assert isinstance(fig, go.Figure)
-
-    # Test custom colorscale as list of RGB tuples
-    custom_colorscale = [
-        (0.0, "rgb(255,0,0)"),
-        (0.5, "rgb(255,255,0)"),
-        (1.0, "rgb(0,0,255)"),
+    fills = [trace.fillcolor for trace in fig.data if trace.fill == "toself"]
+    assert fills == [
+        "rgb(0, 0, 0)",
+        "rgb(255, 255, 255)",
+        "rgb(64, 64, 64)",
+        "rgb(191, 191, 191)",
     ]
+    colorbar = next(trace.marker for trace in fig.data if trace.marker.showscale)
+    assert (colorbar.cmin, colorbar.cmax) == (-magnitude, magnitude)
+
+
+@pytest.mark.parametrize("per_split", [False, True])
+def test_ptable_heatmap_splits_callable_colors(per_split: bool) -> None:
+    """Callable tile and colorbar colors receive the actual split index."""
+
+    def color_func(_symbol: str, value: float, split_idx: int) -> str:
+        """Encode the split index in a valid RGB color."""
+        return f"rgb({split_idx * 100}, 0, {value * 10:.0f})"
+
     fig = pmv.ptable_heatmap_splits(
-        data=data,
-        orientation="diagonal",
-        colorscale=[custom_colorscale, custom_colorscale],  # One per split
+        {"H": [1, 2], "He": [3, 4]},
+        colorscale=[color_func, color_func] if per_split else color_func,
+        colorbar=[{}, {}],
     )
-    assert isinstance(fig, go.Figure)
-
-    # Test invalid number of splits
-    with pytest.raises(ValueError, match="must be 2, 3, or 4"):
-        pmv.ptable_heatmap_splits(
-            data={str(elem): [1] * 5 for elem in list(Element)[:5]},  # 5 splits
-            orientation="diagonal",
-        )
-
-    # Test mismatched colorscales and data splits
-    with pytest.raises(ValueError, match=r"Number of colorscales .* must match"):
-        pmv.ptable_heatmap_splits(
-            data=data,  # 2 splits
-            orientation="diagonal",
-            colorscale=["Viridis", "Plasma", "Inferno"],  # 3 colorscales
-        )
+    assert [trace.fillcolor for trace in fig.data if trace.fill == "toself"] == [
+        "rgb(0, 0, 10)",
+        "rgb(100, 0, 20)",
+        "rgb(0, 0, 30)",
+        "rgb(100, 0, 40)",
+    ]
+    colorbars = [trace.marker for trace in fig.data if trace.marker.showscale]
+    assert colorbars[0].colorscale == ((0, "rgb(0, 0, 10)"), (1, "rgb(0, 0, 30)"))
+    assert colorbars[1].colorscale == ((0, "rgb(100, 0, 20)"), (1, "rgb(100, 0, 40)"))
 
 
 def test_ptable_heatmap_splits_colorbars() -> None:
@@ -621,10 +685,10 @@ def test_ptable_heatmap_splits_dataframe_input() -> None:
         and trace.marker.colorbar.title is not None
     ]
     assert len(colorbar_traces) == 2, "Expected 2 colorbars"
-    # TODO make sure dataframe column names make their way into colorbar titles
-    # titles = [trace.marker.colorbar.title.text for trace in colorbar_traces]
-    # assert any("Formation Energy" in title for title in titles), f"{titles=}"
-    # assert any("Band Gap" in title for title in titles), f"{titles=}"
+    assert [trace.marker.colorbar.title.text for trace in colorbar_traces] == [
+        "First",
+        "Second",
+    ]
 
 
 def test_ptable_heatmap_splits_special_colors() -> None:

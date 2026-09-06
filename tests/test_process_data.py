@@ -55,17 +55,28 @@ def test_count_elements(
     pd.testing.assert_series_equal(series, expected, check_dtype=False)
 
 
-def test_count_elements_by_atomic_nums() -> None:
-    series_in = pd.Series(1, index=range(1, 119))
+@pytest.mark.parametrize("index_type", [int, float, str])
+def test_count_elements_by_atomic_nums(index_type: type) -> None:
+    """Accept integer atomic numbers without changing counts."""
+    series_in = pd.Series(1, index=list(map(index_type, range(1, 119))))
     el_cts = pmv_pd.count_elements(series_in)
     expected = pd.Series(1, index=pmv.df_ptable.index, name="count")
 
     pd.testing.assert_series_equal(expected, el_cts)
 
 
-def test_count_elements_invalid_symbol_keys() -> None:
-    with pytest.raises(ValueError, match=r"Unexpected element symbol\(s\): Zz"):
-        pmv_pd.count_elements({"Fe": 1, "Zz": 2})
+@pytest.mark.parametrize(
+    ("values", "match"),
+    [
+        ({"Fe": 1, "Zz": 2}, r"Unexpected element symbol\(s\): Zz"),
+        ({1.5: 4}, "Atomic numbers must be integers"),
+        ({1.5: 4, "2": 3}, "Atomic numbers must be integers"),
+    ],
+)
+def test_count_elements_invalid_symbol_keys(values: dict, match: str) -> None:
+    """Reject unknown elements and atomic numbers that would be truncated."""
+    with pytest.raises(ValueError, match=match):
+        pmv_pd.count_elements(values)
 
 
 @pytest.mark.parametrize("range_limits", [(-1, 10), (100, 200)])
@@ -543,24 +554,37 @@ def test_bin_df_cols_raises() -> None:
         (["Fm-3m", "P1", "Pnma"], [225, 1, 62]),  # Hermann-Mauguin symbols -> numbers
     ],
 )
-def test_normalize_spacegroups(data: list | pd.Series, expected: list) -> None:
+@pytest.mark.parametrize("as_series", [False, True])
+def test_normalize_spacegroups(
+    data: list | pd.Series, expected: list, as_series: bool
+) -> None:
     """Test normalize_spacegroups with various input types."""
-    assert list(pmv_pd.normalize_spacegroups(data)) == expected
+    expected_series = pd.Series(expected)
+    if as_series:
+        index = pd.Index([f"sample-{idx}" for idx in range(len(data))], name="sample")
+        data = pd.Series(list(data), index=index, name="spacegroup")
+        expected_series = pd.Series(expected, index=index, name="spacegroup")
+    pd.testing.assert_series_equal(pmv_pd.normalize_spacegroups(data), expected_series)
 
 
-def test_normalize_spacegroups_with_structures() -> None:
-    """Test normalize_spacegroups with pymatgen Structure objects."""
-    result = pmv_pd.normalize_spacegroups(SI_STRUCTS)
-    assert len(result) == len(SI_STRUCTS)
-    # Si structures should have space group 227 (Fd-3m) or similar cubic
-    assert all(1 <= spg <= 230 for spg in result)
+@pytest.mark.parametrize("structures", [SI_STRUCTS, SI_ATOMS], ids=["pymatgen", "ase"])
+@pytest.mark.parametrize("as_series", [False, True])
+def test_normalize_spacegroups_with_structures(
+    structures: tuple, as_series: bool
+) -> None:
+    """Preserve identifiers when extracting symmetry from either structure format."""
+    from moyopy import MoyoDataset
+    from moyopy.interface import MoyoAdapter
 
-
-def test_normalize_spacegroups_with_ase_atoms() -> None:
-    """Test normalize_spacegroups with ASE Atoms objects."""
-    result = pmv_pd.normalize_spacegroups(SI_ATOMS)
-    assert len(result) == len(SI_ATOMS)
-    assert all(1 <= spg <= 230 for spg in result)
+    expected = pd.Series(
+        [MoyoDataset(MoyoAdapter.from_py_obj(struct)).number for struct in structures]
+    )
+    data: tuple | pd.Series = structures
+    if as_series:
+        index = pd.Index(["sample-a", "sample-b"], name="sample")
+        data = pd.Series(list(structures), index=index, name="spacegroup")
+        expected.index, expected.name = index, "spacegroup"
+    pd.testing.assert_series_equal(pmv_pd.normalize_spacegroups(data), expected)
 
 
 def test_normalize_spacegroups_empty_raises() -> None:
@@ -569,11 +593,18 @@ def test_normalize_spacegroups_empty_raises() -> None:
         pmv_pd.normalize_spacegroups([])
 
 
-@pytest.mark.parametrize("invalid_val", [0, -1, 231, 500])
-def test_normalize_spacegroups_invalid_number_raises(invalid_val: int) -> None:
-    """Test that out-of-range spacegroup numbers raise ValueError."""
-    with pytest.raises(ValueError, match=r"Space group numbers must be in \[1, 230\]"):
-        pmv_pd.normalize_spacegroups([1, invalid_val, 225])
+@pytest.mark.parametrize("invalid_val", [0, -1, 231, 500, 2.5, float("nan"), pd.NA])
+@pytest.mark.parametrize("as_nullable_series", [False, True])
+def test_normalize_spacegroups_invalid_number_raises(
+    invalid_val: Any, as_nullable_series: bool
+) -> None:
+    """Reject out-of-range, fractional, and missing space-group numbers."""
+    data = [1, invalid_val, 225]
+    if as_nullable_series:
+        data = pd.Series(data, dtype="Float64")
+    match = "missing values" if pd.isna(invalid_val) else r"must be in \[1, 230\]"
+    with pytest.raises(ValueError, match=match):
+        pmv_pd.normalize_spacegroups(data)
 
 
 def test_normalize_spacegroups_invalid_symbol_raises() -> None:

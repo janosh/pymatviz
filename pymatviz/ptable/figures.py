@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Callable, Collection, Mapping, Sequence
+from numbers import Real
 from typing import Any, Literal, cast
 
 import numpy as np
@@ -24,7 +25,7 @@ from pymatviz.typing import (
 )
 from pymatviz.utils import df_ptable
 from pymatviz.utils.data import si_fmt
-from pymatviz.utils.plotting import annotated_heatmap, luminance
+from pymatviz.utils.plotting import _rgb_components, annotated_heatmap, luminance
 
 
 type ColorScale = (
@@ -845,12 +846,16 @@ def _add_colorbar_trace(
     colorbar: dict[str, Any],
     row: int | None = None,
     col: int | None = None,
+    split_idx: int = 0,
 ) -> None:
     """Add an invisible scatter trace with a colorbar to the figure."""
     # For callable colorscales, sample at endpoints to create a 2-point colorscale
     if callable(colorscale):
         color_fn = cast("Callable[[str, float, int], str]", colorscale)
-        colorscale = [[0, color_fn("", cmin, 0)], [1, color_fn("", cmax, 0)]]  # ty: ignore[invalid-assignment]
+        colorscale = [
+            (0, color_fn("", cmin, split_idx)),
+            (1, color_fn("", cmax, split_idx)),
+        ]
 
     # Ensure tickformat is included in colorbar settings
     if "tickformat" not in colorbar:
@@ -968,9 +973,9 @@ def ptable_heatmap_splits(
 
         --- Figure ---
         colorscale (ColorScale | Sequence[ColorScale]): Color scale(s) for heatmap.
-            If a single colorscale is provided, it will be used for all splits.
+            A single scale and colorbar share one value range across all splits.
             If a sequence is provided, each colorscale will be used for its
-            corresponding split. Can be:
+            corresponding split with an independent range. Can be:
             - str: Name of built-in colorscale ("turbo", "inferno", "plasma", ...)
             - list[str]: List of colors to interpolate between
             - list[tuple[float, str]]: List of (position, color) pairs
@@ -1057,8 +1062,6 @@ def ptable_heatmap_splits(
     from plotly.validator_cache import ValidatorCache
     from pymatgen.core import Element
 
-    colorscale_validator = ValidatorCache.get_validator("scatter.marker", "colorscale")
-
     # Get split names if data is a DataFrame
     split_labels: list[str] = []
     if isinstance(data, pd.DataFrame):
@@ -1084,90 +1087,94 @@ def ptable_heatmap_splits(
     elif isinstance(data, pd.Series):
         data = data.to_dict()
 
-    # Calculate split ranges early if using multiple colorscales
     if not data:
         raise ValueError(f"ptable_heatmap_splits: {data=} must not be empty")
     n_splits = len(next(iter(data.values())))
-
-    if not split_labels:  # if not DataFrame or empty columns
-        split_labels = [f"Split {idx + 1}" for idx in range(n_splits)]
+    if n_splits not in {2, 3, 4}:
+        raise ValueError(f"Number of splits {n_splits} must be 2, 3, or 4")
+    if orientation not in ("diagonal", "horizontal", "vertical", "grid"):
+        raise ValueError(f"Invalid {orientation=}")
+    data = {symbol: np.asarray(values, dtype=float) for symbol, values in data.items()}
+    for symbol, values in data.items():
+        if values.shape != (n_splits,):
+            raise ValueError(
+                f"{symbol}: got split shape {values.shape}, expected {n_splits}"
+            )
+        if np.isinf(values).any():
+            raise ValueError(
+                f"{symbol}: split values must be finite or NaN, got {values}"
+            )
 
     def is_multi_colorscale(obj: object) -> bool:
-        """Distinguish multiple colorscales from a single list of color tokens."""
+        """Distinguish per-split scales from color tokens and positioned stops."""
         if not isinstance(obj, Sequence) or isinstance(obj, str):
             return False
-        named_colorscales = set(plotly.colors.named_colorscales())
-        if all(
-            isinstance(item, str)
-            and item.lower().removesuffix("_r") in named_colorscales
-            for item in obj
-        ):
-            return True
+        names = set(plotly.colors.named_colorscales())
         return all(
             callable(item)
-            or isinstance(item, Mapping)
-            or (isinstance(item, Sequence) and not isinstance(item, str))
+            or (isinstance(item, str) and item.lower().removesuffix("_r") in names)
+            or (
+                isinstance(item, Sequence)
+                and not isinstance(item, str)
+                and not (len(item) == 2 and isinstance(item[0], Real))
+            )
             for item in obj
         )
 
-    use_multiple_cbar = is_multi_colorscale(colorscale) or isinstance(
-        colorbar, Sequence
+    multiple_scales = is_multi_colorscale(colorscale)
+    use_multiple_cbar = (
+        bool(split_labels) or multiple_scales or isinstance(colorbar, Sequence)
     )
-
-    # Calculate ranges per split
-    split_ranges = []
-    for split_idx in range(n_splits):
-        split_values = [
-            values[split_idx]
-            for values in data.values()
-            if len(values) > split_idx
-            and not np.isnan(values[split_idx])
-            and values[split_idx] != 0
-        ]
-        if split_values:
-            split_ranges.append((min(split_values), max(split_values)))
-        else:
-            split_ranges.append((0, 1))  # Default range if no valid values
-
-    if use_multiple_cbar:
-        # Multiple colorscales/colorbars mode
-        colorscales = (
-            [colorscale] * n_splits
-            if not isinstance(colorscale, Sequence) or isinstance(colorscale, str)
-            else colorscale
-        )
-
-        # Validate lengths
-        if len(colorscales) != n_splits:
-            raise ValueError(
-                f"Number of colorscales ({len(colorscales)}) must match {n_splits=}"
-            )
-        colorbars = list(
-            [colorbar or {}] * n_splits
-            if not isinstance(colorbar, Sequence)
-            else colorbar
-        )
-        if len(colorbars) != n_splits:
-            raise ValueError(
-                f"Number of colorbars ({len(colorbars)}) must match {n_splits=}"
-            )
-    else:
-        # Single colorscale/colorbar mode (default)
-        colorscales = [colorscale] * n_splits
-        colorbars = [colorbar or {}]
-
-    colorscales = cast("list[ColorScale]", list(colorscales))
+    if not split_labels:
+        split_labels = [f"Split {idx + 1}" for idx in range(n_splits)]
+    colorscales = cast(
+        "list[ColorScale]",
+        list(colorscale)
+        if multiple_scales and isinstance(colorscale, Sequence)
+        else [colorscale] * n_splits,
+    )
+    colorbars = (
+        list(colorbar)
+        if isinstance(colorbar, Sequence)
+        else [colorbar or {}] * (n_splits if use_multiple_cbar else 1)
+    )
     colorbars = cast("list[dict[str, Any]]", colorbars)
+    if len(colorscales) != n_splits:
+        raise ValueError(
+            f"Number of colorscales ({len(colorscales)}) must match {n_splits=}"
+        )
+    if len(colorbars) != (n_splits if use_multiple_cbar else 1):
+        raise ValueError(
+            f"Number of colorbars ({len(colorbars)}) must match {n_splits=}"
+        )
 
-    # Validate colorscales
-    validator = colorscale_validator
+    all_values = np.array(list(data.values()))
+    range_values = all_values.T if use_multiple_cbar else [all_values.ravel()]
+    split_ranges = []
+    for values in range_values:
+        valid = values[np.isfinite(values) & (values != 0)]
+        split_ranges.append(
+            (float(valid.min()), float(valid.max())) if valid.size else (0, 1)
+        )
+    if not use_multiple_cbar:
+        split_ranges *= n_splits
+
+    validator = ValidatorCache.get_validator("scatter.marker", "colorscale")
     for idx, cscale in enumerate(colorscales):
         if callable(cscale):
             continue
-        if isinstance(cscale, str):
-            colorscales[idx] = validator.validate_coerce(cscale)  # ty: ignore[invalid-assignment]
-        else:
-            colorscales[idx] = validator.validate_coerce(list(cscale))  # ty: ignore[invalid-assignment]
+        # Plotly interpolation needs RGB channels, not CSS names or short hex.
+        normalized_scale = validator.validate_coerce(cscale)
+        for stop in normalized_scale:
+            color = stop[1]
+            if color.startswith(("rgb(", "rgba(")) or (
+                color.startswith("#") and len(color) == 7
+            ):
+                continue
+            stop[1] = plotly.colors.label_rgb(
+                tuple(channel * 255 for channel in _rgb_components(stop[1]))
+            )
+        colorscales[idx] = normalized_scale
 
     # Initialize figure with subplots
     has_f_block_data = any(
@@ -1257,8 +1264,8 @@ def ptable_heatmap_splits(
     # If row 7 is empty, pull all rows below it up by one.
     row_7_is_empty = _row_7_is_empty(data)
 
-    # collect annotations and batch-assign after the loop (_extend_layout_items)
     tile_annotations: list[dict[str, Any]] = []
+    sections = create_section_coords(n_splits, orientation)
 
     # Process data and create shapes for each element
     for symbol, period, group, _name, *_ in df_ptable.itertuples():
@@ -1282,41 +1289,26 @@ def ptable_heatmap_splits(
         # Get values and colors
         values = np.asarray(data.get(symbol, np.full(n_splits, np.nan)), dtype=float)
 
-        n_sections = len(values)
-        if n_sections not in {2, 3, 4}:
-            raise ValueError(f"Number of splits {n_sections} must be 2, 3, or 4")
-
-        # Create sections
-        sections = create_section_coords(n_sections, orientation)
         split_colors: list[str] = []  # Store colors for each split
-        for idx, (xs, ys) in enumerate(sections):  # Loop over element tile splits
+        for idx, (xs, ys) in enumerate(sections):
+            cscale = colorscales[idx]
             if values[idx] == 0:
                 color = zero_color
-            elif len(values) <= idx or np.isnan(values[idx]):
+            elif np.isnan(values[idx]):
                 color = nan_color
-            elif isinstance(colorscale, Callable):
-                # Use the callable to get color directly
-                colorscale_func = cast("Callable[[str, float, int], str]", colorscale)
-                color = colorscale_func(symbol, values[idx], idx)
+            elif callable(cscale):
+                color_fn = cast("Callable[[str, float, int], str]", cscale)
+                color = color_fn(symbol, values[idx], idx)
             else:
-                # Get the colorscale for this split
-                cscale = colorscales[idx]
-
-                # Get range for this split
                 cmin, cmax = split_ranges[idx]
-
-                # Calculate normalized position in colorscale
-                denom = cmax - cmin
-                scale_pos = 0.5 if denom == 0 else (values[idx] - cmin) / denom
-                # Clamp scale_pos to [0, 1] to handle values outside the range
-                scale_pos = max(0, min(1, scale_pos))
-
-                # Non-callable scales were normalized before the tile loop.
-                if not isinstance(cscale, list | tuple):
-                    raise ValueError(
-                        f"Invalid colorscale type: {type(cscale)}. Must be string, "
-                        "list of colors, or list of (position, color) pairs."
-                    )
+                span = cmax - cmin
+                if span == 0:
+                    scale_pos = 0.5
+                elif np.isfinite(span):
+                    scale_pos = (values[idx] - cmin) / span
+                else:
+                    # Halving before subtraction keeps opposite finite extremes finite.
+                    scale_pos = (values[idx] / 2 - cmin / 2) / (cmax / 2 - cmin / 2)
                 color = plotly.colors.sample_colorscale(cscale, [scale_pos])[0]
 
             split_colors.append(color)
@@ -1557,7 +1549,9 @@ def ptable_heatmap_splits(
                 font_size=font_size,
                 scale=scale,
             )
-            _add_colorbar_trace(fig, cscale, cmin, cmax, cbar_settings)
+            _add_colorbar_trace(
+                fig, cscale, cmin, cmax, cbar_settings, split_idx=split_idx
+            )
 
     return fig
 

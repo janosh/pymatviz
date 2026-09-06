@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import re
+from itertools import pairwise
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -111,12 +112,14 @@ def test_phonon_dos_raises(phonon_bands_doses_mp_2758: BandsDoses) -> None:
 
 
 @pytest.mark.parametrize(
-    ("units", "stack", "sigma", "normalize", "last_peak_anno"),
+    ("units", "stack", "sigma", "normalize", "last_peak_anno", "fill"),
     [
-        ("eV", False, 0.01, "max", "{key}={last_peak:.1f}"),
-        ("meV", False, 0.05, "sum", "{key}={last_peak:.4} ({units})"),
-        ("cm-1", True, 0.1, "integral", None),
-        ("THz", True, 0.1, None, ""),
+        ("eV", False, 0.01, "max", "{key}={last_peak:.1f}", None),
+        ("meV", False, 0.05, "sum", "{key}={last_peak:.4} ({units})", None),
+        ("cm-1", True, 0.1, "integral", None, None),
+        ("THz", True, 0.1, None, "", None),
+        ("THz", False, 0, None, None, "tozerox"),
+        ("THz", False, 0, None, None, "tonextx"),
     ],
 )
 def test_phonon_bands_and_dos(
@@ -127,6 +130,7 @@ def test_phonon_bands_and_dos(
     sigma: float,
     normalize: Literal["max", "sum", "integral"] | None,
     last_peak_anno: str | None,
+    fill: str | None,
 ) -> None:
     bands, doses = (
         phonon_bands_doses_mp_2758["bands"],
@@ -139,6 +143,8 @@ def test_phonon_bands_and_dos(
         units=units,
         last_peak_anno=last_peak_anno,
     )
+    if fill is not None:
+        dos_kwargs["fill"] = fill
     if stack:
         doses = dict.fromkeys(doses, doses["DFT"])
     # test dicts
@@ -151,6 +157,11 @@ def test_phonon_bands_and_dos(
     assert fig.layout.font.size == 16
     # check legend labels
     assert {trace.name for trace in fig.data} == {"DFT", "MACE"}
+    dos_traces = [trace for trace in fig.data if trace.xaxis == "x2"]
+    expected_fill = {"tozerox": "tozeroy", "tonextx": "tonexty"}.get(fill)
+    assert [trace.fill for trace in dos_traces] == (
+        ["tozerox", "tonextx"] if stack else [expected_fill, expected_fill]
+    )
     reference = pmv.phonon_bands(bands)
     for trace, original in zip(
         (trace for trace in fig.data if trace.xaxis == "x"), reference.data, strict=True
@@ -178,17 +189,18 @@ def test_phonon_bands_and_dos(
         pmv.phonon_bands_and_dos(bands, phonon_doses)
 
 
+@pytest.mark.parametrize("duplicate_branches", [False, True])
 @pytest.mark.parametrize(
     ("path_mode", "expected_segments"),
     [
         (SET_STRICT, {}),
         (
             SET_INTERSECTION,
-            {("Γ", "L"), ("L", "X"), ("X", "Γ"), ("Γ", "W"), ("W", "U")},
+            {("Γ", "X"), ("X", "U"), ("K", "Γ"), ("Γ", "L"), ("L", "W")},
         ),
         (
             SET_UNION,
-            {("X", "U"), ("W", "X"), ("Γ", "W"), ("Γ", "L"), ("L", "X"), ("X", "Γ")},
+            {("Γ", "X"), ("X", "U"), ("K", "Γ"), ("Γ", "L"), ("L", "W"), ("W", "X")},
         ),
     ],
 )
@@ -196,15 +208,17 @@ def test_phonon_bands_path_modes(
     phonon_bands_doses_mp_2758: BandsDoses,
     path_mode: SetMode,
     expected_segments: set[tuple[str, str]],
+    duplicate_branches: bool,
 ) -> None:
     """Test different path_mode options for phonon band structure plotting."""
     bands = phonon_bands_doses_mp_2758["bands"]
 
-    # Modify one band structure to have a different path
-    modified_bands = bands.copy()
-    modified_bands["MACE"] = copy.deepcopy(modified_bands["MACE"])
-    # Remove last branch to create a mismatch
-    modified_bands["MACE"].branches = modified_bands["MACE"].branches[:-1]
+    modified_bands = copy.deepcopy(bands)
+    modified_bands["MACE"].branches.pop()
+    if duplicate_branches:
+        # Repeat both a shared segment and one absent from MACE.
+        dft_branches = modified_bands["DFT"].branches
+        dft_branches.extend([dft_branches[0], dft_branches[-1]])
 
     if path_mode == SET_STRICT:
         with pytest.raises(
@@ -212,24 +226,26 @@ def test_phonon_bands_path_modes(
         ):
             pmv.phonon_bands(modified_bands, path_mode=path_mode)
         return
-    if path_mode == SET_INTERSECTION:
-        bands = modified_bands
-
     fig = pmv.phonon_bands(modified_bands, path_mode=path_mode)
 
-    # Extract plotted segments from x-axis labels
-    plotted_segments = set()
-    labels = fig.layout.xaxis.ticktext
-    for idx in range(len(labels) - 1):
-        if not (labels[idx] and labels[idx + 1]):  # Skip empty labels
-            continue
-        # Convert from pretty format back to raw
-        start = labels[idx]
-        end = labels[idx + 1]
-        if "|" in end:
-            end = end.split("|")[0]  # Take first part of combined labels
-        plotted_segments.add((start, end))
+    expected_traces = []
+    for label, band_struct in modified_bands.items():
+        for branch in band_struct.branches:
+            if path_mode == SET_INTERSECTION and branch == bands["DFT"].branches[-1]:
+                continue
+            start, stop = branch["start_index"], branch["end_index"] + 1
+            expected_traces.extend(
+                (label, frequencies[start:stop]) for frequencies in band_struct.bands
+            )
+    assert len(fig.data) == len(expected_traces)
+    for trace, (label, frequencies) in zip(fig.data, expected_traces, strict=True):
+        assert trace.name == label
+        np.testing.assert_array_equal(trace.y, frequencies)
 
+    labels = fig.layout.xaxis.ticktext
+    plotted_segments = {
+        (start.split("|")[-1], end.split("|")[0]) for start, end in pairwise(labels)
+    }
     assert plotted_segments == expected_segments
 
 

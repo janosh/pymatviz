@@ -17,19 +17,44 @@ if TYPE_CHECKING:
 
 
 @pytest.mark.parametrize("labels", [list, np.array, pd.Index])
-def test_annotated_heatmap_array_labels(labels: type) -> None:
+@pytest.mark.parametrize("reversescale", [False, True])
+@pytest.mark.parametrize(
+    ("colorscale", "font_colors", "expected_colors"),
+    [
+        ("Plasma", ["red", "blue"], ("red", "blue")),
+        (None, None, ("#000000", "#000000")),
+        (["black", "white"], None, ("#FFFFFF", "#000000")),
+        ([[0, "white"], [1, "black"]], None, ("#000000", "#FFFFFF")),
+        ("viridis", None, ("#FFFFFF", "#000000")),
+        ("Viridis_r", None, ("#000000", "#FFFFFF")),
+        ("Blues", None, ("#000000", "#FFFFFF")),
+        ("RdBu", None, ("#FFFFFF", "#FFFFFF")),
+    ],
+)
+def test_annotated_heatmap_array_labels(
+    labels: type,
+    reversescale: bool,
+    colorscale: str | list | None,
+    font_colors: list[str] | None,
+    expected_colors: tuple[str, str],
+) -> None:
     """Array-like labels and font colors retain their annotation positions."""
     fig = annotated_heatmap(
         [[0, 1], [2, 3]],
         x=labels(["left", "right"]),
         y=labels(["bottom", "top"]),
-        font_colors=np.array(["red", "blue"]),
+        colorscale=colorscale,
+        font_colors=np.array(font_colors) if font_colors is not None else None,
+        reversescale=reversescale,
     )
+    if reversescale and font_colors is None:
+        expected_colors = expected_colors[::-1]
+    low_color, high_color = expected_colors
     assert [(anno.x, anno.y, anno.font.color) for anno in fig.layout.annotations] == [
-        ("left", "bottom", "red"),
-        ("right", "bottom", "red"),
-        ("left", "top", "blue"),
-        ("right", "top", "blue"),
+        ("left", "bottom", low_color),
+        ("right", "bottom", low_color),
+        ("left", "top", high_color),
+        ("right", "top", high_color),
     ]
     assert list(fig.data[0].x) == ["left", "right"]
 
@@ -39,7 +64,7 @@ def test_annotated_heatmap_array_labels(labels: type) -> None:
     [
         ((0, 0, 0), 0),  # Black
         ((1, 1, 1), 1),  # White
-        ((0.5, 0.5, 0.5), 0.21404),  # Gray
+        ((0.5, 0.5, 0.5), 0.21404114048223255),  # Gray
         ((1, 0, 0), 0.2126),  # Red
         ((0, 1, 0), 0.7152),  # Green
         ((0, 0, 1, 0.3), 0.0722),  # Blue with alpha (should be ignored)
@@ -47,28 +72,36 @@ def test_annotated_heatmap_array_labels(labels: type) -> None:
         ("#00FF00", 0.7152),  # Green
         ("#0000FF", 0.0722),  # Blue
         ("red", 0.2126),
-        ("green", 0.7152),  # Web/CSS/Plotly green
+        ("green", 0.1543834296814607),
+        ("gray", 0.21586050011389926),
+        (" GREY ", 0.21586050011389926),
+        ("#abc", 0.4844632879252147),
         ("blue", 0.0722),
         # RGB color string tests
         ("rgb(255, 0, 0)", 0.2126),  # Red in RGB format
         ("rgb(0, 255, 0)", 0.7152),  # Green in RGB format
         ("rgb(0, 0, 255)", 0.0722),  # Blue in RGB format
-        ("rgb(128, 128, 128)", 0.21586),  # Gray in RGB format
+        ("rgb(128, 128, 128)", 0.21586050011389926),  # Gray in RGB format
         ("rgb(255, 255, 255)", 1.0),  # White in RGB format
         ("rgb(0, 0, 0)", 0.0),  # Black in RGB format
         ("rgb(255, 0, 0, 0.5)", 0.2126),  # Red with alpha
         # Edge cases
         ("rgb(255,0,0)", 0.2126),  # No spaces
         ("rgb( 255, 0, 0 )", 0.2126),  # Extra spaces
-        ("rgb(127.5, 127.5, 127.5)", 0.21404),  # Decimal values
-        # Values already in [0,1] range
-        ("rgb(1, 0, 0)", 0.2126),  # Red with values in [0,1] range
-        ("rgb(0, 1, 0)", 0.7152),  # Green with values in [0,1] range
-        ("rgb(0, 0, 1)", 0.0722),  # Blue with values in [0,1] range
+        ("rgb(127.5, 127.5, 127.5)", 0.21404114048223255),  # Decimal values
+        ("rgb(1, 0, 0)", 0.2126 / (255 * 12.92)),
+        ("rgb(0, 1, 0)", 0.7152 / (255 * 12.92)),
+        ("rgb(0, 0, 1)", 0.0722 / (255 * 12.92)),
+        ("rgb(1, 1, 1)", 1 / (255 * 12.92)),
+        (" RGB(255,0,0) ", 0.2126),
+        ("rgba(255,0,0,0.5)", 0.2126),
     ],
 )
 def test_luminance(color: RgbColorType, expected: float) -> None:
-    assert pmv.utils.luminance(color) == pytest.approx(expected, 0.001), f"{color=}"
+    """RGB strings use CSS byte channels; tuples may use normalized channels."""
+    assert pmv.utils.luminance(color) == pytest.approx(
+        expected, rel=1e-12, abs=1e-15
+    ), f"{color=}"
 
 
 @pytest.mark.parametrize(
@@ -106,6 +139,8 @@ def test_text_color_contrast() -> None:
         ("#90EE90", "black"),  # Light green
         # RGB format
         ("rgb(0, 0, 0)", "white"),  # Black
+        ("rgb(1, 1, 1)", "white"),
+        ("green", "white"),
         ("rgb(255, 255, 255)", "black"),  # White
         ("rgb(128, 0, 0)", "white"),  # Maroon
         ("rgb(0, 128, 0)", "white"),  # Green
@@ -123,23 +158,38 @@ def test_text_color_contrast() -> None:
         assert actual == expected, f"For {color}, expected {expected}, got {actual}"
 
 
-def test_luminance_with_edge_cases() -> None:
-    """Test the luminance function with edge cases."""
-    # Test with standard color names
-    assert abs(pmv.utils.luminance("black") - 0.0) < 0.01
-    assert abs(pmv.utils.luminance("white") - 1.0) < 0.01
-    assert abs(pmv.utils.luminance("red") - 0.2126) < 0.01
-
-    # The actual value for 'green' in web/CSS/Plotly is 0.7152
-    green_lum = pmv.utils.luminance("green")
-    assert abs(green_lum - 0.7152) < 0.01
-
-    # Test with blue
-    assert abs(pmv.utils.luminance("blue") - 0.0722) < 0.01
-
-    # Test with invalid color
-    with pytest.raises(ValueError, match="Unsupported color format: not_a_color"):
-        pmv.utils.luminance("not_a_color")
+@pytest.mark.parametrize(
+    "color",
+    [
+        "not_a_color",
+        "rgb(255,0,0",
+        "rgb(255,0,0))",
+        "rgb(1,2)",
+        "rgb(1,2,3,4,5)",
+        "rgb(255,0,0,nan)",
+        "rgba(255,0,0,2)",
+        "rgb(256,0,0)",
+        "rgb(-1,0,0)",
+        "rgb(nan,0,0)",
+        "rgb(inf,0,0)",
+        "rgb(red,0,0)",
+        "##fff",
+        "#ff",
+        "#-ff",
+        "#ggg",
+        (-1, 0, 0),
+        (256, 0, 0),
+        (float("nan"), 0, 0),
+        (float("inf"), 0, 0),
+        ("red", 0, 0),
+        (0, 0),
+        (0, 0, 0, 0, 0),
+    ],
+)
+def test_luminance_with_edge_cases(color: ColorType) -> None:
+    """Malformed and out-of-range colors fail before producing invalid luminance."""
+    with pytest.raises(ValueError, match=r"color|channels"):
+        pmv.utils.luminance(color)
 
 
 def test_luminance_accepts_numpy_scalar_rgb_tuple() -> None:

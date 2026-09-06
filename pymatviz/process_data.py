@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import itertools
 from collections.abc import Hashable, Mapping, Sequence
+from numbers import Number
 from typing import TYPE_CHECKING, Any, Final
 
 import numpy as np
@@ -54,7 +55,7 @@ def count_elements(
             - composition (default): Count elements in each composition as is,
                 i.e. without reduction or normalization.
             - fractional_composition: Convert to normalized compositions in which the
-                amounts of each species sum to before counting.
+                amounts of each species sum to one before counting.
                 Example: Fe2 O3 -> Fe0.4 O0.6
             - reduced_composition: Convert to reduced compositions (i.e. amounts
                 normalized by greatest common denominator) before counting.
@@ -102,10 +103,18 @@ def count_elements(
         )
 
     try:
-        # If index consists entirely of strings representing integers, convert to ints
-        srs.index = srs.index.astype(int)
+        atomic_numbers = srs.index.astype(int)
     except (ValueError, TypeError):
         pass
+    else:
+        if any(
+            isinstance(key, Number) and key != number
+            for key, number in zip(srs.index, atomic_numbers, strict=True)
+        ):
+            raise ValueError(
+                f"Atomic numbers must be integers, got: {srs.index.tolist()}"
+            )
+        srs.index = atomic_numbers
 
     if pd.api.types.is_integer_dtype(srs.index):
         # If index is all integers, assume they represent atomic
@@ -128,8 +137,7 @@ def count_elements(
             f"Unexpected element symbol(s): {', '.join(map(str, bad_symbols))}"
         )
 
-    # Ensure all elements are present in returned Series (with value zero if they
-    # weren't in values before)
+    # Fill elements absent from the input with fill_value.
     srs = srs.reindex(df_ptable.index, fill_value=fill_value).rename("count")
 
     if len(exclude_elements) > 0:
@@ -201,20 +209,13 @@ def count_formulas(
     systems: list[tuple[str, ...]] = []
     formulas: list[str | None] = []  # store formulas if not grouping by chem_sys
     for item in data:
-        if isinstance(item, Structure):
-            elems = sorted(item.composition.chemical_system.split("-"))
+        if isinstance(item, Structure | Composition):
+            comp = item.composition if isinstance(item, Structure) else item
+            elems = sorted(comp.chemical_system.split("-"))
             if group_by == "formula":
-                formula = str(item.composition)
+                formula = str(comp)
             elif group_by == "reduced_formula":
-                formula = item.composition.reduced_formula
-            else:  # chem_sys
-                formula = None
-        elif isinstance(item, Composition):
-            elems = sorted(item.chemical_system.split("-"))
-            if group_by == "formula":
-                formula = str(item)
-            elif group_by == "reduced_formula":
-                formula = item.reduced_formula
+                formula = comp.reduced_formula
             else:  # chem_sys
                 formula = None
         elif isinstance(item, str):
@@ -538,32 +539,35 @@ def normalize_spacegroups(
             - pandas Series of any of the above
 
     Returns:
-        pd.Series: Series of space group numbers (1-230).
+        pd.Series: Space group numbers (1-230), preserving Series index and name.
 
     Raises:
-        ValueError: If data is empty.
+        ValueError: If data is empty, contains missing values, invalid symbols,
+            or nonintegral/out-of-range space group numbers.
     """
     if len(data) == 0:
         raise ValueError("Cannot normalize empty spacegroup data")
 
-    first_item = data.iloc[0] if isinstance(data, pd.Series) else data[0]
+    result = pd.Series(data)
+    if result.isna().any():
+        raise ValueError("Space group data must not contain missing values")
+    first_item = result.iloc[0]
 
     if is_structure_like(first_item):
         # pymatgen Structure or ASE Atoms - extract spacegroup numbers via moyopy
         from moyopy import MoyoDataset
         from moyopy.interface import MoyoAdapter
 
-        return pd.Series(
-            [MoyoDataset(MoyoAdapter.from_py_obj(struct)).number for struct in data]  # ty: ignore[invalid-argument-type]
+        return result.map(
+            lambda struct: MoyoDataset(MoyoAdapter.from_py_obj(struct)).number
         )
 
-    result = pd.Series(data)
-    # Validate if data appears to be spacegroup numbers
     if pd.api.types.is_numeric_dtype(result):
-        invalid = result[(result < 1) | (result > 230)]
+        invalid = result[(result < 1) | (result > 230) | (result % 1 != 0)]
         if len(invalid) > 0:
             raise ValueError(
-                f"Space group numbers must be in [1, 230], got: {invalid.tolist()}"
+                "Space group numbers must be in [1, 230] and integral, "
+                f"got: {invalid.tolist()}"
             )
         return result
 
@@ -572,7 +576,7 @@ def normalize_spacegroups(
         from pymatgen.symmetry.groups import SpaceGroup
 
         try:
-            return pd.Series([SpaceGroup(sym).int_number for sym in result])
+            return result.map(lambda symbol: SpaceGroup(symbol).int_number)
         except ValueError as exc:
             raise ValueError(f"Invalid Hermann-Mauguin symbol: {exc}") from exc
 
