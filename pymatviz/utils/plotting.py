@@ -20,6 +20,8 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
 
+from pymatviz.colors import _CSS_NAMED_COLORS
+
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -124,25 +126,11 @@ def get_font_color(fig: go.Figure) -> str:
 
 
 def _rgb_components(color: ColorType) -> tuple[float, float, float]:
-    """Normalize RGB(A) tuples, basic CSS names, hex, and rgb/rgba byte channels."""
-    color_map = {
-        "black": (0, 0, 0),
-        "white": (1, 1, 1),
-        "red": (1, 0, 0),
-        "green": (0, 128 / 255, 0),
-        "blue": (0, 0, 1),
-        "yellow": (1, 1, 0),
-        "cyan": (0, 1, 1),
-        "magenta": (1, 0, 1),
-        "gray": (128 / 255,) * 3,
-        "grey": (128 / 255,) * 3,
-    }
-
+    """Normalize RGB(A) tuples, CSS names, hex, and rgb/rgba byte channels."""
     if isinstance(color, str):
         color = color.strip().lower()
-        if color in color_map:
-            channels = color_map[color]
-        elif color.startswith("#"):
+        color = _CSS_NAMED_COLORS.get(color, color)
+        if color.startswith("#"):
             if not re.fullmatch(r"#[0-9a-f]{3}(?:[0-9a-f]{3})?", color):
                 raise ValueError(f"Invalid hex color: {color}")
             hex_value = color[1:]
@@ -184,7 +172,7 @@ def luminance(color: ColorType) -> float:
 
     Args:
         color (ColorType): RGB color tuple with values in [0, 1] or [0, 255], or a color
-            string (basic CSS name, hex, or rgb/rgba with channels in [0, 255]).
+            string (CSS name, hex, or rgb/rgba with channels in [0, 255]).
             Alpha is ignored.
 
     Returns:

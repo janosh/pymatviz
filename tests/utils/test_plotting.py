@@ -24,6 +24,7 @@ if TYPE_CHECKING:
         ("Plasma", ["red", "blue"], ("red", "blue")),
         (None, None, ("#000000", "#000000")),
         (["black", "white"], None, ("#FFFFFF", "#000000")),
+        (["rebeccapurple", "lightyellow"], None, ("#FFFFFF", "#000000")),
         ([[0, "white"], [1, "black"]], None, ("#000000", "#FFFFFF")),
         ("viridis", None, ("#FFFFFF", "#000000")),
         ("Viridis_r", None, ("#000000", "#FFFFFF")),
@@ -57,6 +58,26 @@ def test_annotated_heatmap_array_labels(
         ("right", "top", high_color),
     ]
     assert list(fig.data[0].x) == ["left", "right"]
+
+
+@pytest.mark.parametrize(
+    ("name", "channels"),
+    [
+        ("lightblue", (173, 216, 230)),
+        ("RoyalBlue", (65, 105, 225)),
+        (" rebeccapurple ", (102, 51, 153)),
+        ("darkslategray", (47, 79, 79)),
+    ],
+)
+def test_css_named_colors(name: str, channels: tuple[int, int, int]) -> None:
+    """Support every Plotly CSS name with the standard RGB values."""
+    from _plotly_utils.basevalidators import ColorValidator
+
+    from pymatviz.utils.plotting import _rgb_components
+
+    np.testing.assert_array_equal(_rgb_components(name), np.array(channels) / 255)
+    for color in ColorValidator.named_colors:
+        assert 0 <= pmv.utils.luminance(color) <= 1
 
 
 @pytest.mark.parametrize(

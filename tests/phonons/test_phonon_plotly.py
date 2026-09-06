@@ -249,13 +249,76 @@ def test_phonon_bands_path_modes(
     assert plotted_segments == expected_segments
 
 
-def test_phonon_bands_path_mode_raises(phonon_bands_doses_mp_2758: BandsDoses) -> None:
+@pytest.mark.parametrize("change", ["reverse", "duplicate"])
+def test_phonon_bands_path_mode_raises(
+    phonon_bands_doses_mp_2758: BandsDoses, change: str
+) -> None:
     """Test error cases for path_mode parameter."""
     with pytest.raises(ValueError, match="Invalid path_mode='invalid'"):
         pmv.phonon_bands(
             phonon_bands_doses_mp_2758["bands"]["DFT"],
             path_mode="invalid",  # ty: ignore[invalid-argument-type]
         )
+
+    bands = copy.deepcopy(phonon_bands_doses_mp_2758["bands"])
+    if change == "reverse":
+        bands["MACE"].branches.reverse()
+    else:
+        bands["MACE"].branches.append(bands["MACE"].branches[0])
+    with pytest.raises(ValueError, match="different q-point paths"):
+        pmv.phonon_bands(bands, path_mode=SET_STRICT)
+
+
+@pytest.mark.parametrize("branch_indices", [(2, 0, 1), (0, 1, 0), (0, 0)])
+@pytest.mark.parametrize("filter_branches", [False, True])
+def test_phonon_bands_strict_path_positions(
+    phonon_bands_doses_mp_2758: BandsDoses,
+    branch_indices: tuple[int, ...],
+    filter_branches: bool,
+) -> None:
+    """Strict paths retain branch order and separate repeated segments."""
+    bands = copy.deepcopy(phonon_bands_doses_mp_2758["bands"])
+    for band_struct in bands.values():
+        band_struct.branches = [band_struct.branches[idx] for idx in branch_indices]
+    reference = bands["DFT"]
+    branches = [reference.branches[0]["name"]] if filter_branches else []
+    fig = pmv.phonon_bands(bands, branches=branches, path_mode=SET_STRICT)
+    expected_positions = []
+    position = 0.0
+    for branch in reference.branches:
+        if branches and branch["name"] not in branches:
+            continue
+        length = (
+            reference.distance[branch["end_index"]]
+            - reference.distance[branch["start_index"]]
+        )
+        expected_positions.append((position, position + length))
+        position += length
+
+    trace_idx = 0
+    for label, band_struct in bands.items():
+        selected = [
+            branch
+            for branch in band_struct.branches
+            if not branches or branch["name"] in branches
+        ]
+        for branch, (start, end) in zip(selected, expected_positions, strict=True):
+            for frequencies in band_struct.bands:
+                trace = fig.data[trace_idx]
+                assert trace.name == label
+                # Endpoint rescaling uses a multiply/divide pair; allow 1e-14 on x.
+                np.testing.assert_allclose(
+                    [trace.x[0], trace.x[-1]], [start, end], rtol=0, atol=1e-14
+                )
+                np.testing.assert_array_equal(
+                    trace.y,
+                    frequencies[branch["start_index"] : branch["end_index"] + 1],
+                )
+                trace_idx += 1
+    assert trace_idx == len(fig.data)
+    assert fig.layout.xaxis.tickvals == pytest.approx(
+        [0, *(end for _, end in expected_positions)], rel=0, abs=1e-14
+    )
 
 
 @pytest.mark.parametrize("path_mode", [SET_STRICT, SET_INTERSECTION, SET_UNION])

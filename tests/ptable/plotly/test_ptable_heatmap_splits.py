@@ -296,6 +296,8 @@ def test_ptable_heatmap_splits_error_cases(
         (["#ff0000", "#0000ff"], 1),
         (["#f00", "#00f"], 1),
         (["red", "blue"], 1),
+        (["lightblue", "royalblue"], 1),
+        ([(0, "rebeccapurple"), (1, "darkslategray")], 1),
         ([(0, "rgb(255,0,0)"), (0.5, "rgb(255,255,0)"), (1, "rgb(0,0,255)")], 1),
         ([(0, "red"), (1, "blue")], 1),
         ([["#ff0000", "#0000ff"], ["#000000", "#ffffff"]], 2),

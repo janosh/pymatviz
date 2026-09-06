@@ -85,7 +85,7 @@ def phonon_bands(
             with different q-point paths. Defaults to "strict":
             - "union": Plot all path segments from all band structures
             - "intersection": Only plot segments common to all band structures
-            - "strict": Raise error if paths don't match exactly (default)
+            - "strict": Require matching branch order and repetitions (default)
         shaded_ys (dict[tuple[float | str, float | str], dict]): Keys are y-ranges
             (min, max) tuple and values are kwargs for shaded regions created by
             fig.add_hrect(). Defaults to single entry (0, "y_min"):
@@ -111,13 +111,15 @@ def phonon_bands(
     if isinstance(branches, str):
         branches = [branches]
 
-    segment_lengths: dict[tuple[str | None, str | None], float] = {}
-    segment_sets: list[set[tuple[str | None, str | None]]] = []
+    # Strict keys include branch position to preserve order and repeated segments.
+    segment_lengths: dict[tuple[int, str | None, str | None], float] = {}
+    segment_sets: list[set[tuple[int, str | None, str | None]]] = []
     for band_struct in bs_dict.values():
         these_segments = set()
-        for branch in band_struct.branches:
+        for branch_idx, branch in enumerate(band_struct.branches):
             start_idx, end_idx = branch["start_index"], branch["end_index"]
             segment = (
+                branch_idx if path_mode == SET_STRICT else 0,
                 band_struct.qpoints[start_idx].label,
                 band_struct.qpoints[end_idx].label,
             )
@@ -171,21 +173,21 @@ def phonon_bands(
             )
         segments_to_plot &= {
             (
+                branch_idx if path_mode == SET_STRICT else 0,
                 band_struct.qpoints[branch["start_index"]].label,
                 band_struct.qpoints[branch["end_index"]].label,
             )
             for band_struct in bs_dict.values()
-            for branch in band_struct.branches
+            for branch_idx, branch in enumerate(band_struct.branches)
             if branch["name"] in common_branches
         }
         if not segments_to_plot:
             raise ValueError(f"No matching branches found for {branches=}")
 
-    # Create a mapping of q-point pairs to x-axis positions
-    x_positions: dict[tuple[str | None, str | None], tuple[float, float]] = {}
+    x_positions: dict[tuple[int, str | None, str | None], tuple[float, float]] = {}
     current_x = 0.0
 
-    for segment in sorted(segments_to_plot):  # Sort to ensure consistent ordering
+    for segment in sorted(segments_to_plot):
         segment_len = segment_lengths[segment]
         x_positions[segment] = (current_x, current_x + segment_len)
         current_x += segment_len
@@ -199,14 +201,18 @@ def phonon_bands(
         color = colors[bs_idx % len(colors)]
         line_style = line_styles[bs_idx % len(line_styles)]
 
-        for branch in band_struct.branches:
+        for branch_idx, branch in enumerate(band_struct.branches):
             start_idx = branch["start_index"]
             end_idx = branch["end_index"] + 1
 
             # Get the x-axis position for this segment
             start_label = band_struct.qpoints[start_idx].label
             end_label = band_struct.qpoints[end_idx - 1].label
-            segment = (start_label, end_label)
+            segment = (
+                branch_idx if path_mode == SET_STRICT else 0,
+                start_label,
+                end_label,
+            )
 
             if segment not in segments_to_plot:
                 continue  # Skip segments not in the segments_to_plot set
@@ -265,7 +271,7 @@ def phonon_bands(
 
     # Update x-axis ticks to show all q-points
     x_ticks, x_labels = [], []
-    for (start_label, end_label), (x_start, x_end) in x_positions.items():
+    for (_, start_label, end_label), (x_start, x_end) in x_positions.items():
         if x_ticks and x_start == x_ticks[-1]:
             if x_labels[-1] != (start_label or ""):
                 x_labels[-1] += f"|{start_label or ''}"
