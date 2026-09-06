@@ -43,8 +43,7 @@ PLOTLY_LINE_STYLES: Final[tuple[str, ...]] = (
 
 
 def annotate(text: str | Sequence[str], fig: go.Figure, **kwargs: Any) -> go.Figure:
-    """Annotate a plotly figure. Supports faceted plots plotly figure with
-    trace with empty strings skipped.
+    """Annotate a Plotly figure or its facets, skipping empty facet labels.
 
     Args:
         text (str): The text to use for annotation. If fig is plotly faceted, text can
@@ -71,16 +70,14 @@ def annotate(text: str | Sequence[str], fig: go.Figure, **kwargs: Any) -> go.Fig
     # assigned to an x-axis other than the primary "x")
     if any(getattr(trace, "xaxis", None) not in (None, "x") for trace in fig.data):
         for idx, trace in enumerate(fig.data):
-            # if text is str, use it for all subplots though we might want to
-            # warn since this will likely rarely be intended
             sub_text = text if isinstance(text, str) else text[idx]
             # skip traces for which no annotations were provided
             if not sub_text:
                 continue
 
-            subplot_idx = trace.xaxis[1:] or ""  # e.g. 'x2' -> '2', 'x' -> ''
-            xref = f"x{subplot_idx} domain" if subplot_idx else "x domain"
-            yref = f"y{subplot_idx} domain" if subplot_idx else "y domain"
+            subplot_idx = trace.xaxis[1:]  # e.g. 'x2' -> '2', 'x' -> ''
+            xref = f"x{subplot_idx} domain"
+            yref = f"y{subplot_idx} domain"
             fig.add_annotation(
                 text=sub_text,
                 **(dict(xref=xref, yref=yref) | text_defaults | kwargs),
@@ -98,15 +95,13 @@ def annotate(text: str | Sequence[str], fig: go.Figure, **kwargs: Any) -> go.Fig
     return fig
 
 
-def _get_plotly_font_color(fig: go.Figure) -> str:
-    """Get the font color used in a Plotly figure.
+def get_font_color(fig: go.Figure) -> str:
+    """Get the font color from a Plotly figure, its template, or the global template.
 
-    Args:
-        fig (go.Figure): A Plotly figure object.
-
-    Returns:
-        str: The font color as a string (e.g. 'black', '#000000').
+    Defaults to black when no font color is set. Raises TypeError for non-figures.
     """
+    if not isinstance(fig, go.Figure):
+        raise TypeError(f"Input must be plotly Figure, got {type(fig)=}")
     if fig.layout.font and fig.layout.font.color:
         return fig.layout.font.color
 
@@ -125,23 +120,6 @@ def _get_plotly_font_color(fig: go.Figure) -> str:
         return template.layout.font.color
 
     return "black"
-
-
-def get_font_color(fig: go.Figure) -> str:
-    """Get the font color used in a Plotly figure.
-
-    Args:
-        fig (go.Figure): A Plotly figure object.
-
-    Returns:
-        str: The font color as a string (e.g. 'black', '#000000').
-
-    Raises:
-        TypeError: If fig is not a Plotly figure.
-    """
-    if not isinstance(fig, go.Figure):
-        raise TypeError(f"Input must be plotly Figure, got {type(fig)=}")
-    return _get_plotly_font_color(fig)
 
 
 def luminance(color: ColorType) -> float:

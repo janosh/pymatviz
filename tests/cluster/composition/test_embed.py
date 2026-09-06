@@ -10,63 +10,27 @@ from pymatviz.cluster.composition.embed import MatminerElementPropertyPreset
 
 
 @pytest.mark.parametrize(
-    ("compositions", "expected_shape"),
+    "compositions",
     [
-        (["H2O", "CO2", "NaCl"], (3, 118)),  # Test with formula strings
-        # Test with Composition objects
-        ([Composition(comp) for comp in ["H2O", "CO2", "NaCl"]], (3, 118)),
+        pytest.param(["H2O", "CO2", "NaCl"], id="strings"),
+        pytest.param(
+            [Composition(comp) for comp in ["H2O", "CO2", "NaCl"]],
+            id="compositions",
+        ),
+        pytest.param(pd.Series(["H2O", "CO2", "NaCl"]), id="series"),
     ],
 )
-def test_one_hot_encode(
-    compositions: list[str | Composition], expected_shape: tuple[int, int]
-) -> None:
-    """Test one-hot encoding of chemical formulas."""
-    # Default elements list contains all elements in the periodic table
+def test_one_hot_encode(compositions: list[str | Composition] | pd.Series) -> None:
+    """Encode supported inputs with all elements or a selected subset."""
     result = one_hot_encode(compositions)
+    assert result.shape == (3, 118)
+    np.testing.assert_allclose(np.linalg.norm(result, axis=1), 1.0, rtol=1e-14, atol=0)
 
-    # Check shape
-    assert result.shape == expected_shape
-
-    # Check if values are normalized
-    assert np.allclose(np.linalg.norm(result, axis=1), 1.0)
-
-    # Test with a custom elements list
     elements = ["H", "C", "O", "Na", "Cl"]
     result_custom = one_hot_encode(compositions, elements=elements)
-
-    # Check custom shape
     assert result_custom.shape == (len(compositions), len(elements))
-
-    # Basic check for H2O: should have non-zero values for H and O
-    # Find the index of H2O
-    h2o_idx = (
-        compositions.index("H2O")
-        if isinstance(compositions[0], str)
-        else compositions.index(Composition("H2O"))
-    )
-
-    # Get element indices
-    if elements is None:
-        # Get from periodic table - H is element 1, O is element 8
-        h_idx = 0  # 0-indexed
-        o_idx = 7  # 0-indexed
-    else:
-        h_idx = elements.index("H")
-        o_idx = elements.index("O")
-
-    # Check if H and O have non-zero values for H2O
-    assert result_custom[h2o_idx, h_idx] > 0
-    assert result_custom[h2o_idx, o_idx] > 0
-
-
-def test_one_hot_encode_pandas_input() -> None:
-    """Test one-hot encoding with pandas Series input."""
-    compositions = pd.Series(["H2O", "CO2", "NaCl"])
-    result = one_hot_encode(compositions)
-
-    # Check shape and normalization
-    assert result.shape == (3, 118)
-    assert np.allclose(np.linalg.norm(result, axis=1), 1.0)
+    assert result_custom[0, elements.index("H")] > 0
+    assert result_custom[0, elements.index("O")] > 0
 
 
 @pytest.mark.parametrize("normalize", [False, True])
@@ -167,17 +131,3 @@ def test_matminer_featurize_n_jobs() -> None:
 
     # Results should be the same regardless of n_jobs
     assert np.allclose(result1, result2)
-
-
-def test_magpie_preset() -> None:
-    """Test using matminer_featurize with magpie preset."""
-    pytest.importorskip("matminer")
-
-    compositions = ["H2O", "CO2", "NaCl"]
-
-    # Test using preset="magpie"
-    result = matminer_featurize(compositions, preset="magpie")
-
-    # Check that we got valid output
-    assert result.shape[0] == len(compositions)
-    assert not np.isnan(result).any()

@@ -349,17 +349,14 @@ def _update_colorbar_for_log_density(
     """
     from pymatviz.utils.data import si_fmt
 
-    # Get the actual (non-logged) min and max counts from the original data
-    # color_vals are already log10(counts + 1), so we need to convert back
+    # Recover counts from log10(counts + 1).
     logged_min = color_vals.min()
     logged_max = color_vals.max()
 
-    # The actual values in the data (before logging)
     actual_min = max(10 ** (logged_min) - 1, 1)  # Ensure min is at least 1
     actual_max = 10 ** (logged_max) - 1
 
-    # Generate tick positions that will be evenly spaced on a log scale
-    # For large ranges, use powers of 10 and intermediate values
+    # Use decade ticks for wide ranges and finer spacing for narrow ranges.
     if np.log10(actual_max) - np.log10(actual_min) > 2:
         # Start with powers of 10
         decades = range(
@@ -384,8 +381,6 @@ def _update_colorbar_for_log_density(
         )
         tick_values = np.logspace(np.log10(actual_min), np.log10(actual_max), num_ticks)
 
-    # Format tick labels using si_fmt for consistent formatting
-    # and manually strip trailing zeros for cleaner display
     tick_labels = []
     for val in tick_values:
         # float precision based on magnitude: small (large) values use 1 (0) decimals
@@ -396,29 +391,23 @@ def _update_colorbar_for_log_density(
 
         tick_labels.append(formatted)
 
-    # Calculate the tick positions in the transformed (logged) scale
-    # The transformation applied is log10(x + 1), so we need to apply the same
     tick_positions = np.log10(np.array(tick_values) + 1)
 
     # Update the colorbar with the correct tick positions and labels
     colorbar = fig.layout.coloraxis.colorbar
     colorbar.update(tickvals=tick_positions, ticktext=tick_labels)
 
-    # Apply hover formatting to all traces
+    template = (
+        f"{x}: %{{x}}<br>{y}: %{{y}}"
+        if custom_hovertemplate is None
+        else custom_hovertemplate
+    )
+
+    parts = template.split("<extra>", 1)
+    base = parts[0]
+    extra = f"<extra>{parts[1]}" if len(parts) > 1 else "<extra></extra>"
+
     for trace in fig.data:
-        # Use default template if None, otherwise use custom template
-        template = (
-            f"{x}: %{{x}}<br>{y}: %{{y}}"
-            if custom_hovertemplate is None
-            else custom_hovertemplate
-        )
-
-        # Split at <extra> tag if present
-        parts = template.split("<extra>", 1)
-        base = parts[0]
-        extra = f"<extra>{parts[1]}" if len(parts) > 1 else "<extra></extra>"
-
-        # Combine template with density info
         trace.hovertemplate = (
             f"{base}<br>{bin_counts_col}: %{{customdata[0]:{hover_format}}}{extra}"
         )

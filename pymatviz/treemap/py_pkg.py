@@ -105,19 +105,14 @@ def count_lines(file_path: str, comment_prefixes: tuple[str, ...] = ("#",)) -> i
     """
     try:
         with open(file_path, encoding="utf-8") as file_handle:
-            try:  # Read lines safely, handling potential decoding errors
-                lines = file_handle.readlines()
-            except UnicodeDecodeError:
-                return 0  # Treat undecodable files as having 0 countable lines
-
             return sum(
                 bool(
                     (stripped := line.strip())
-                    and not any(stripped.startswith(pfx) for pfx in comment_prefixes)
+                    and not stripped.startswith(comment_prefixes)
                 )
-                for line in lines
+                for line in file_handle
             )
-    except (FileNotFoundError, PermissionError):
+    except (FileNotFoundError, PermissionError, UnicodeDecodeError):
         return 0
 
 
@@ -608,13 +603,12 @@ def _match_coverage_path(
     for cov_path, cov_value in coverage_map.items():
         cov_path_unix = cov_path.replace(os.sep, "/")
         for pkg_name in package_names:
-            if pkg_name in cov_path_unix:
-                pkg_idx = cov_path_unix.find(pkg_name)
-                if pkg_idx != -1:
-                    cov_rel_path = cov_path_unix[pkg_idx:]
-                    # Direct match or with src/ prefix
-                    if cov_rel_path in (repo_path_segment, f"src/{repo_path_segment}"):
-                        return cov_value
+            pkg_idx = cov_path_unix.find(pkg_name)
+            if pkg_idx != -1:
+                cov_rel_path = cov_path_unix[pkg_idx:]
+                # Direct match or with src/ prefix
+                if cov_rel_path in (repo_path_segment, f"src/{repo_path_segment}"):
+                    return cov_value
 
     # Fallback: match by filename
     filename = os.path.basename(file_path)
@@ -944,17 +938,16 @@ def py_pkg_treemap(
         location = source_dir or package_names
         raise ValueError(f"No source files found in: {location}")
 
-    if cell_size_fn is None:  # set default cell size calculator if not provided
-        cell_size_fn = lambda module: module.line_count
-
-    # Apply cell_size_fn to get treemap sizing values
-    metrics_keys = ModuleStats._fields
-    df_modules["cell_value"] = df_modules.apply(
-        lambda row: cell_size_fn(
-            ModuleStats(**{k: row[k] for k in metrics_keys if k in row})
-        ),
-        axis=1,
-    )
+    if cell_size_fn is None:
+        df_modules["cell_value"] = df_modules["line_count"]
+    else:
+        metrics_keys = ModuleStats._fields
+        df_modules["cell_value"] = df_modules.apply(
+            lambda row: cell_size_fn(
+                ModuleStats(**{key: row[key] for key in metrics_keys if key in row})
+            ),
+            axis=1,
+        )
 
     # Filter out cells where cell_value is 0
     df_modules = df_modules[df_modules["cell_value"] > 0]
@@ -1339,84 +1332,33 @@ def py_pkg_treemap(
     # Apply hovertemplate - applies to all traces, which is fine as we have one
     fig.update_traces(hovertemplate=hovertemplate)
 
-    # Configure text display
-    def _build_text_template() -> tuple[str, str]:
-        """Build text template and textinfo based on configuration."""
-
-        def _get_coverage_text() -> str:
-            """Get coverage text for display."""
-            # When module depth is limited (either by max_module_depth or adaptive
-            # pruning), aggregated parent nodes don't have customdata, so
-            # referencing it would show "(?) " placeholders.
-            if has_depth_limit:
-                return ""
-            if color_by == "coverage" and has_color_mode:
-                color_value_index = len(custom_data_cols) - 1
-                return f"<br>%{{customdata[{color_value_index}]:,.1f}}% cov"
-            return ""
-
-        # Validate show_counts first
-        valid_show_counts = ("percent", "value", "value+percent", False)
-        if show_counts not in valid_show_counts:
-            raise ValueError(
-                f"Invalid {show_counts=}, must be one of {valid_show_counts}"
-            )
-
-        # Add coverage information if in coverage heatmap mode
-        coverage_text = _get_coverage_text()
-
-        # Define template components based on show_counts
-        count_templates = {
-            "percent": "%{percentEntry}",
-            "value": "%{value:,}",  # %{value} refers to cell_value
-            "value+percent": "%{value:,}<br>%{percentEntry}",
-            False: "",
-        }
-
-        # Define textinfo fallbacks when not using custom template
-        textinfo_fallbacks = {
-            "percent": "label+percent entry",
-            "value": "label+value",
-            "value+percent": "label+value+percent entry",
-            False: "label",
-        }
-
-        if processed_base_url and not has_depth_limit:
-            # Link template uses customdata[2,3] = leaf_label, file_url.
-            # Aggregated/synthetic parent nodes lack valid customdata, so
-            # links are only safe when the full hierarchy is shown.
-            link_part = (
-                "<a href='%{customdata[3]}' target='_blank'>%{customdata[2]}</a>"
-            )
-            count_part = count_templates[show_counts]
-
-            template_parts = [link_part]
-            if count_part:
-                template_parts.append(f"<br>{count_part}")
-            if coverage_text:
-                template_parts.append(coverage_text)
-
-            return "none", "".join(template_parts)
-        # Default behavior when base_url is not provided
-        count_part = count_templates[show_counts]
-
-        if coverage_text:
-            # Use custom template when coverage is shown
-            template_parts = ["%{label}"]
-            if count_part:
-                template_parts.append(f"<br>{count_part}")
-            template_parts.append(coverage_text)
-            return "none", "".join(template_parts)
-        if show_counts in ("value", "value+percent"):
-            # Use custom template for value formatting (maintains comma formatting)
-            template_parts = ["%{label}"]
-            if count_part:
-                template_parts.append(f"<br>{count_part}")
-            return "none", "".join(template_parts)
-        # Use Plotly's built-in textinfo for simple cases
-        return textinfo_fallbacks[show_counts], ""
-
-    textinfo, texttemplate = _build_text_template()
+    valid_show_counts = ("percent", "value", "value+percent", False)
+    if show_counts not in valid_show_counts:
+        raise ValueError(f"Invalid {show_counts=}, must be one of {valid_show_counts}")
+    count_part = {
+        "percent": "%{percentEntry}",
+        "value": "%{value:,}",
+        "value+percent": "%{value:,}<br>%{percentEntry}",
+        False: "",
+    }[show_counts]
+    # Aggregated parent nodes lack customdata for links and coverage labels.
+    coverage_text = ""
+    if not has_depth_limit and color_by == "coverage" and has_color_mode:
+        coverage_text = f"<br>%{{customdata[{len(custom_data_cols) - 1}]:,.1f}}% cov"
+    use_links = processed_base_url and not has_depth_limit
+    texttemplate = ""
+    if use_links or coverage_text or show_counts in ("value", "value+percent"):
+        label_part = (
+            "<a href='%{customdata[3]}' target='_blank'>%{customdata[2]}</a>"
+            if use_links
+            else "%{label}"
+        )
+        texttemplate = (
+            label_part + (f"<br>{count_part}" if count_part else "") + coverage_text
+        )
+        textinfo = "none"
+    else:
+        textinfo = "label+percent entry" if show_counts == "percent" else "label"
     fig.data[0].textinfo = textinfo
     if texttemplate:
         fig.data[0].texttemplate = texttemplate

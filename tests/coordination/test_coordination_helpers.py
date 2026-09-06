@@ -25,28 +25,18 @@ def test_normalize_get_neighbors_with_float() -> None:
     assert len(neighbors) == 8  # Simple cubic should have 8 nearest neighbors
 
 
-def test_normalize_get_neighbors_with_nn_instance() -> None:
-    """Test normalize_get_neighbors with NearNeighbors instance."""
+@pytest.mark.parametrize(
+    "strategy",
+    [pytest.param(VoronoiNN(), id="instance"), pytest.param(CrystalNN, id="class")],
+)
+def test_normalize_get_neighbors_with_nn(
+    strategy: NearNeighbors | type[NearNeighbors],
+) -> None:
+    """Normalize neighbor-finder instances and classes to neighbor dictionaries."""
     struct = Structure(Lattice.cubic(4.0), ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]])
-
-    voronoi = VoronoiNN()
-    get_neighbors = normalize_get_neighbors(strategy=voronoi)
-    neighbors = get_neighbors(struct[0], struct)
-
+    neighbors = normalize_get_neighbors(strategy)(struct[0], struct)
     assert isinstance(neighbors, list)
-    assert all(isinstance(n, dict) for n in neighbors)
-
-
-def test_normalize_get_neighbors_with_nn_class() -> None:
-    """Test normalize_get_neighbors with NearNeighbors class."""
-    lattice = Lattice.cubic(4.0)
-    struct = Structure(lattice, ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]])
-
-    get_neighbors = normalize_get_neighbors(strategy=CrystalNN)
-    neighbors = get_neighbors(struct[0], struct)
-
-    assert isinstance(neighbors, list)
-    assert all(isinstance(n, dict) for n in neighbors)
+    assert all(isinstance(neighbor, dict) for neighbor in neighbors)
 
 
 def test_normalize_get_neighbors_invalid_input() -> None:

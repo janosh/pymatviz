@@ -329,49 +329,47 @@ def test_confusion_matrix_long_labels(sample_conf_mat: np.ndarray) -> None:
         assert split_label in y_labels, f"{split_label} not in {y_labels=}"
 
 
-def test_confusion_matrix_edge_cases() -> None:
-    """Test edge cases and special situations in confusion matrix visualization."""
-    # Test case 1: Perfect predictions (only TN and TP)
-    y_true = ["Negative"] * 3 + ["Positive"] * 3
-    y_pred = ["Negative"] * 3 + ["Positive"] * 3
+@pytest.mark.parametrize(
+    ("y_true", "y_pred", "expected"),
+    [
+        pytest.param(
+            ["Negative"] * 3 + ["Positive"] * 3,
+            ["Negative"] * 3 + ["Positive"] * 3,
+            [[0, 0.5], [0.5, 0]],
+            id="perfect",
+        ),
+        pytest.param(
+            ["Negative"] * 3 + ["Positive"] * 3,
+            ["Positive"] * 3 + ["Negative"] * 3,
+            [[0.5, 0], [0, 0.5]],
+            id="all-wrong",
+        ),
+        pytest.param(
+            ["Negative"] * 3 + ["Positive"] * 3,
+            ["Negative"] * 6,
+            [[0.5, 0], [0.5, 0]],
+            id="constant-negative",
+        ),
+        pytest.param(
+            ["Negative", "Positive"],
+            ["Negative", "Positive"],
+            [[0, 0.5], [0.5, 0]],
+            id="single-per-class",
+        ),
+        pytest.param(
+            ["Negative"] * 99 + ["Positive"],
+            ["Negative"] * 99 + ["Positive"],
+            [[0, 0.01], [0.99, 0]],
+            id="imbalanced",
+        ),
+    ],
+)
+def test_confusion_matrix_edge_cases(
+    y_true: list[str], y_pred: list[str], expected: list[list[float]]
+) -> None:
+    """Preserve normalized cells and predicted-column orientation at edge cases."""
     fig = confusion_matrix(y_true=y_true, y_pred=y_pred, normalize=True)
-    z_values = fig.data[0].z
-    # After rotation, diagonal should be 0.5 each, off-diagonal 0
-    assert z_values.tolist() == [[0.0, 0.5], [0.5, 0.0]]
-
-    # Test case 2: All wrong predictions (only FP and FN)
-    y_true = ["Negative"] * 3 + ["Positive"] * 3
-    y_pred = ["Positive"] * 3 + ["Negative"] * 3
-    fig = confusion_matrix(y_true=y_true, y_pred=y_pred, normalize=True)
-    z_values = fig.data[0].z
-    # After rotation, off-diagonal should be 0.5 each, diagonal 0
-    assert z_values.tolist() == [[0.5, 0], [0, 0.5]]
-
-    # Test case 3: All predictions same class (no variation)
-    y_true = ["Negative"] * 3 + ["Positive"] * 3
-    y_pred = ["Negative"] * 6  # predict all negative
-    fig = confusion_matrix(y_true=y_true, y_pred=y_pred, normalize=True)
-    z_values = fig.data[0].z
-    # x-axis = predicted: all mass must sit in the predicted-Negative column
-    # (regression: the matrix used to render transposed, putting true classes
-    # on the x-axis)
-    assert z_values.tolist() == [[0.5, 0.0], [0.5, 0.0]]
-
-    # Test case 4: Single example per class
-    y_true = ["Negative", "Positive"]
-    y_pred = ["Negative", "Positive"]
-    fig = confusion_matrix(y_true=y_true, y_pred=y_pred, normalize=True)
-    z_values = fig.data[0].z
-    # After rotation, diagonal should be 0.5 each
-    assert z_values.tolist() == [[0.0, 0.5], [0.5, 0.0]]
-
-    # Test case 5: Highly imbalanced classes
-    y_true = ["Negative"] * 99 + ["Positive"]
-    y_pred = ["Negative"] * 99 + ["Positive"]
-    fig = confusion_matrix(y_true=y_true, y_pred=y_pred, normalize=True)
-    z_values = fig.data[0].z
-    # After rotation, TN should dominate
-    assert z_values.tolist() == [[0.0, 0.01], [0.99, 0.0]]
+    assert fig.data[0].z.tolist() == expected
 
 
 def test_confusion_matrix_label_order() -> None:

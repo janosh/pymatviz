@@ -66,23 +66,17 @@ def matminer_featurize(
             f"{preset} featurization requires pip install matminer"
         ) from None
 
-    # Convert compositions to pymatgen Composition objects
     comp_objs = [try_composition(comp) for comp in compositions]
 
-    # Initialize featurizer with the specified preset
     featurizer = ElementProperty.from_preset(preset)
     featurizer.set_n_jobs(n_jobs)
 
-    # Create a DataFrame for matminer featurizers
     df_comps = pd.DataFrame({"composition": comp_objs})
 
-    # Apply featurization
     feature_df = featurizer.featurize_dataframe(df_comps, "composition")
 
-    # Get the feature columns (skip the composition column)
     feature_cols = [col for col in feature_df if col != "composition"]
 
-    # Filter to subset if requested
     if feature_subset is not None:
         valid_cols = [col for col in feature_subset if col in feature_cols]
         if not valid_cols:
@@ -92,13 +86,8 @@ def matminer_featurize(
             )
         feature_cols = valid_cols
 
-    # Extract features as numpy array
-    features = feature_df[feature_cols].to_numpy()
+    features = np.nan_to_num(feature_df[feature_cols].to_numpy())
 
-    # Handle NaN values that might be present
-    features = np.nan_to_num(features)
-
-    # Normalize vectors if requested
     if normalize:
         features = sklearn.preprocessing.normalize(features, norm="l2", axis=1)
 

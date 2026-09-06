@@ -1643,45 +1643,58 @@ def test_disordered_site_constants() -> None:
     assert MAX_3D_WEDGE_RESOLUTION_PHI >= MIN_3D_WEDGE_RESOLUTION_PHI
 
 
-def test_spherical_wedge_mesh_generation() -> None:
-    """Test the spherical wedge mesh generation function."""
-    center = np.array([0.0, 0.0, 0.0])
+@pytest.mark.parametrize(
+    ("n_theta", "n_phi"), [(1, 1), (8, 6), (16, 24), (0, 6), (8, 0), (-1, 6), (8, -1)]
+)
+@pytest.mark.parametrize("end_angle", [0.0, np.pi / 2, 2 * np.pi])
+def test_spherical_wedge_mesh_generation(
+    n_theta: int, n_phi: int, end_angle: float
+) -> None:
+    """Wedges retain surface indexing and close only partial spheres."""
+    center = np.array([1.0, -2.0, 5.0])
     radius = 1.0
-    start_angle = 0.0
-    end_angle = np.pi / 2  # Quarter circle
+    if n_theta < 1 or n_phi < 1:
+        with pytest.raises(ValueError, match="Mesh subdivisions must be positive"):
+            get_spherical_wedge_mesh(center, radius, 0, end_angle, n_theta, n_phi)
+        return
 
     x_coords, y_coords, z_coords, i_indices, j_indices, k_indices = (
         get_spherical_wedge_mesh(
             center=center,
             radius=radius,
-            start_angle=start_angle,
+            start_angle=0,
             end_angle=end_angle,
-            n_theta=8,
-            n_phi=6,
+            n_theta=n_theta,
+            n_phi=n_phi,
         )
     )
 
-    # Check that we got reasonable outputs
-    assert len(x_coords) > 0
+    assert len(x_coords) == 1 + (n_theta + 1) * (n_phi + 1)
     assert len(y_coords) == len(x_coords)
     assert len(z_coords) == len(x_coords)
-    assert len(i_indices) == len(j_indices) == len(k_indices)
+    side_faces = 2 * n_theta if end_angle < 2 * np.pi else 0
+    assert (
+        len(i_indices)
+        == len(j_indices)
+        == len(k_indices)
+        == (2 * n_theta * n_phi + side_faces)
+    )
+    faces = np.array([i_indices, j_indices, k_indices]).T
+    assert faces.min() >= 0
+    assert faces.max() < len(x_coords)
+    assert faces[:2].tolist() == [[1, 2, n_phi + 2], [2, n_phi + 3, n_phi + 2]]
+    if side_faces:
+        assert faces[-side_faces].tolist() == [0, 1, n_phi + 2]
+        assert faces[-n_theta].tolist() == [0, 2 * (n_phi + 1), n_phi + 1]
+    else:
+        assert 0 not in faces
 
-    # Check that center point is included
-    assert x_coords[0] == center[0]
-    assert y_coords[0] == center[1]
-    assert z_coords[0] == center[2]
-
-    # Check that points are roughly within expected radius
-    for i in range(1, len(x_coords)):
-        distance = np.sqrt(
-            (x_coords[i] - center[0]) ** 2
-            + (y_coords[i] - center[1]) ** 2
-            + (z_coords[i] - center[2]) ** 2
-        )
-        assert abs(distance - radius) < 0.1, (
-            f"Point {i} distance {distance} not close to radius {radius}"
-        )
+    coords = np.array([x_coords, y_coords, z_coords]).T
+    np.testing.assert_array_equal(coords[0], center)
+    # Allow accumulated trig, translation, and norm error (about 45 float64 eps).
+    np.testing.assert_allclose(
+        np.linalg.norm(coords[1:] - center, axis=1), radius, rtol=1e-14, atol=1e-14
+    )
 
 
 @pytest.mark.parametrize(

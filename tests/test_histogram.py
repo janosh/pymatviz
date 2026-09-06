@@ -51,19 +51,13 @@ def test_hist_elemental_prevalence(
     expected_yaxis: str,
 ) -> None:
     """Test elements histogram counts, labels, and y-axis options."""
-    fig = elements_hist(["Fe2O3", "LiFePO4"], **kwargs)
+    fig = elements_hist(["Fe2O3", "LiFePO4"], bar_width=0.5, opacity=0.9, **kwargs)
     trace = fig.data[0]
 
     assert list(trace.x) == expected_x
     assert list(trace.y) == expected_y
     assert trace.text == expected_text
     assert fig.layout.yaxis.type == expected_yaxis
-
-
-def test_hist_elemental_prevalence_style_options() -> None:
-    """Test elements histogram forwards bar style options."""
-    fig = elements_hist(["Fe2O3", "LiFePO4"], bar_width=0.5, opacity=0.9)
-    trace = fig.data[0]
 
     assert trace.width == 0.5
     assert trace.opacity == 0.9

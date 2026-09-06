@@ -117,7 +117,9 @@ def phonon_bands(
         tuple[str | None, str | None], list[tuple[Hashable, PhononBands]]
     ] = defaultdict(list)
 
+    segment_sets: dict[Hashable, set[tuple[str | None, str | None]]] = {}
     for label, band_struct in bs_dict.items():
+        segment_sets[label] = set()
         for branch in band_struct.branches:
             start_idx = branch["start_index"]
             end_idx = branch["end_index"]
@@ -127,33 +129,13 @@ def phonon_bands(
             end_label = band_struct.qpoints[end_idx].label
 
             segment_key = (start_label, end_label)
-            all_segments[segment_key] += [(label, band_struct)]
+            all_segments[segment_key].append((label, band_struct))
+            segment_sets[label].add(segment_key)
 
     # Now we have all_segments, determine which segments to plot based on path_mode
     if path_mode == SET_STRICT:
-        # Check if all band structures have exactly the same segments
-        first_bs = next(iter(bs_dict.values()))
-        first_segments = {
-            (start, end)
-            for branch in first_bs.branches
-            for start, end in [
-                (
-                    first_bs.qpoints[branch["start_index"]].label,
-                    first_bs.qpoints[branch["end_index"]].label,
-                )
-            ]
-        }
-        for band_struct in bs_dict.values():
-            these_segments = {
-                (start, end)
-                for branch in band_struct.branches
-                for start, end in [
-                    (
-                        band_struct.qpoints[branch["start_index"]].label,
-                        band_struct.qpoints[branch["end_index"]].label,
-                    )
-                ]
-            }
+        first_segments = next(iter(segment_sets.values()))
+        for these_segments in segment_sets.values():
             if these_segments != first_segments:
                 raise ValueError(
                     "Band structures have different q-point paths. Use path_mode="
@@ -223,27 +205,27 @@ def phonon_bands(
     current_x = 0.0
 
     for segment in sorted(segments_to_plot):  # Sort to ensure consistent ordering
-        if segment not in x_positions:
-            # Find the length of this segment in the first band structure that has it
-            band_struct = all_segments[segment][0][1]
-            segment_len = 0
-            for branch in band_struct.branches:
-                start_idx, end_idx = branch["start_index"], branch["end_index"]
-                if (
-                    band_struct.qpoints[start_idx].label == segment[0]
-                    and band_struct.qpoints[end_idx].label == segment[1]
-                ):
-                    segment_len = (
-                        band_struct.distance[end_idx] - band_struct.distance[start_idx]
-                    )
-                    break
-            x_positions[segment] = (current_x, current_x + segment_len)
-            current_x += segment_len
+        # Find the length of this segment in the first band structure that has it
+        band_struct = all_segments[segment][0][1]
+        segment_len = 0
+        for branch in band_struct.branches:
+            start_idx, end_idx = branch["start_index"], branch["end_index"]
+            if (
+                band_struct.qpoints[start_idx].label == segment[0]
+                and band_struct.qpoints[end_idx].label == segment[1]
+            ):
+                segment_len = (
+                    band_struct.distance[end_idx] - band_struct.distance[start_idx]
+                )
+                break
+        x_positions[segment] = (current_x, current_x + segment_len)
+        current_x += segment_len
 
     # Now plot each band structure's segments at the correct x positions
     colors = px.colors.qualitative.Plotly
     line_styles = PLOTLY_LINE_STYLES
 
+    seen_names: set[str] = set()
     for bs_idx, (label, band_struct) in enumerate(bs_dict.items()):
         color = colors[bs_idx % len(colors)]
         line_style = line_styles[bs_idx % len(line_styles)]
@@ -278,7 +260,6 @@ def phonon_bands(
                     color=color, width=1.5 if is_acoustic else 1, dash=line_style
                 )
                 trace_name = label
-                existing_names = {trace.name for trace in fig.data}
 
                 # Apply line style based on line_kwargs type
                 if callable(line_kwargs):
@@ -291,11 +272,8 @@ def phonon_bands(
                 elif isinstance(line_kwargs, dict):
                     # check for custom line styles for one or both modes
                     if {"acoustic", "optical"} <= set(line_kwargs):
-                        # mode_type guaranteed to be "acoustic" or "optical"
-                        # (copy since pop below must not mutate the caller's dict)
+                        # Pop names from a copy to preserve the caller's styles.
                         mode_styles = dict(line_kwargs[mode_type])
-                        # use custom trace name if provided (needs to be popped before
-                        # passed to line kwargs)
                         if mode_name := mode_styles.pop("name", None):
                             trace_name = mode_name
 
@@ -304,7 +282,6 @@ def phonon_bands(
                     else:  # Apply single style dict to all lines
                         line_defaults |= cast("dict[str, Any]", line_kwargs)
 
-                is_new_name = trace_name not in existing_names
                 fig.add_scatter(
                     x=segment_distances,
                     y=frequencies,
@@ -312,9 +289,10 @@ def phonon_bands(
                     line=line_defaults,
                     legendgroup=trace_name,
                     name=trace_name,
-                    showlegend=is_new_name,
+                    showlegend=trace_name not in seen_names,
                     **kwargs,
                 )
+                seen_names.add(trace_name)
 
     # Update x-axis ticks to show all q-points
     x_ticks, x_labels = [], []
@@ -513,37 +491,28 @@ def phonon_dos(
         return frequencies, densities
 
     fig = go.Figure()
-    cumulative_density_by_group: dict[str, np.ndarray] = {}
-    frequencies_by_group: dict[str, np.ndarray] = {}
-    seen_stack_groups: set[str] = set()
-
-    def _stack_group(trace_name: str) -> str:
-        """Return stack accumulation group for this DOS trace."""
-        if project is None:
-            return ""
-        return stack_group_by_trace.get(trace_name, "") if stack_group_by_trace else ""
+    stack_state: dict[str, tuple[np.ndarray, np.ndarray]] = {}
 
     for dos_name, dos_obj in dos_dict.items():
         frequencies, densities = _prepare_dos(dos_obj)
         scatter_kwargs: dict[str, Any] = {"mode": "lines"}
         if stack:
-            stack_group = _stack_group(dos_name)
-            if stack_group in frequencies_by_group and not np.array_equal(
-                frequencies, frequencies_by_group[stack_group]
-            ):
+            stack_group = (
+                stack_group_by_trace.get(dos_name, "")
+                if project is not None and stack_group_by_trace
+                else ""
+            )
+            previous = stack_state.get(stack_group)
+            if previous is not None and not np.array_equal(frequencies, previous[0]):
                 raise ValueError(
                     f"Cannot stack DOS {dos_name!r}: frequency grids differ in group "
                     f"{stack_group!r}"
                 )
-            frequencies_by_group[stack_group] = frequencies
-            densities = densities + cumulative_density_by_group.get(
-                stack_group, np.zeros_like(densities)
+            densities = densities + (
+                np.zeros_like(densities) if previous is None else previous[1]
             )
-            cumulative_density_by_group[stack_group] = densities
-            scatter_kwargs["fill"] = (
-                "tozeroy" if stack_group not in seen_stack_groups else "tonexty"
-            )
-            seen_stack_groups.add(stack_group)
+            stack_state[stack_group] = (frequencies, densities)
+            scatter_kwargs["fill"] = "tozeroy" if previous is None else "tonexty"
         fig.add_scatter(
             x=frequencies, y=densities, name=dos_name, **scatter_kwargs | kwargs
         )

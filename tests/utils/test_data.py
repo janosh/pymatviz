@@ -9,7 +9,6 @@ import plotly.io as pio
 import pytest
 
 import pymatviz as pmv
-from pymatviz.utils.plotting import _get_plotly_font_color
 
 
 if TYPE_CHECKING:
@@ -59,76 +58,58 @@ def test_spg_to_crystal_sys_invalid(spg: int) -> None:
         pmv.utils.spg_to_crystal_sys(spg)
 
 
-sample_dict = {"a": 1, "b": None, "c": [3, 4]}
-ref_sample_dict = deepcopy(sample_dict)
-
-
-def test_patch_dict_with_kwargs() -> None:
-    with pmv.utils.patch_dict(sample_dict, a=2, b=3, d=4) as patched_dict:
-        assert patched_dict == {"a": 2, "b": 3, "c": [3, 4], "d": 4}
-    assert sample_dict == ref_sample_dict
-
-
-def test_patch_dict_with_args() -> None:
-    with pmv.utils.patch_dict(sample_dict, {"a": 5, "b": 6}) as patched_dict:
-        assert patched_dict == {"a": 5, "b": 6, "c": [3, 4]}
-    assert sample_dict == ref_sample_dict
-
-
-def test_patch_dict_with_none_value() -> None:
-    with pmv.utils.patch_dict(sample_dict, b=5, c=None) as patched_dict:
-        assert patched_dict == {"a": 1, "b": 5, "c": None}
-    assert sample_dict == ref_sample_dict
-
-
-def test_patch_dict_with_new_key() -> None:
-    with pmv.utils.patch_dict(sample_dict, d=7, e=None) as patched_dict:
-        assert patched_dict == {"a": 1, "b": None, "c": [3, 4], "d": 7, "e": None}
-    assert sample_dict == ref_sample_dict
+@pytest.mark.parametrize(
+    ("updates", "kwargs", "expected"),
+    [
+        ({}, dict(a=2, b=3, d=4), dict(a=2, b=3, c=[3, 4], d=4)),
+        (dict(a=5, b=6), {}, dict(a=5, b=6, c=[3, 4])),
+        ({}, dict(b=5, c=None), dict(a=1, b=5, c=None)),
+        ({}, dict(d=7, e=None), dict(a=1, b=None, c=[3, 4], d=7, e=None)),
+        ({}, dict(c={"x": 10, "y": 20}), dict(a=1, b=None, c={"x": 10, "y": 20})),
+        (dict(a=7), dict(a=8), dict(a=8, b=None, c=[3, 4])),
+    ],
+    ids=["kwargs", "positional", "none", "new-keys", "nested", "kwargs-precedence"],
+)
+def test_patch_dict(
+    updates: dict[str, Any], kwargs: dict[str, Any], expected: dict[str, Any]
+) -> None:
+    """Patches yield a copy, with keyword updates taking precedence."""
+    original = {"a": 1, "b": None, "c": [3, 4]}
+    before = deepcopy(original)
+    with pmv.utils.patch_dict(original, updates, **kwargs) as patched:
+        assert patched == expected
+    assert original == before
 
 
 def test_patch_dict_with_mutable_value() -> None:
-    with pmv.utils.patch_dict(sample_dict, c=[5, 6]) as patched_dict:
-        assert patched_dict["c"] == [5, 6]
-        patched_dict["c"].append(7)
-        patched_dict["c"][0] = 99
-        assert patched_dict == {"a": 1, "b": None, "c": [99, 6, 7]}
-
-    assert sample_dict != patched_dict
-    assert sample_dict == ref_sample_dict
+    """Mutating a replacement list leaves the original list unchanged."""
+    original = {"a": 1, "b": None, "c": [3, 4]}
+    with pmv.utils.patch_dict(original, c=[5, 6]) as patched:
+        assert patched["c"] == [5, 6]
+        patched["c"].append(7)
+        patched["c"][0] = 99
+        assert patched == {"a": 1, "b": None, "c": [99, 6, 7]}
+    assert original == {"a": 1, "b": None, "c": [3, 4]}
 
 
 def test_patch_dict_empty() -> None:
-    empty_dict: dict[str, int] = {}
-    with pmv.utils.patch_dict(empty_dict, a=2) as patched_dict:
-        assert patched_dict == {"a": 2}
-    assert empty_dict == {}
-
-
-def test_patch_dict_nested_dict() -> None:
-    with pmv.utils.patch_dict(sample_dict, c={"x": 10, "y": 20}) as patched_dict:
-        assert patched_dict == {"a": 1, "b": None, "c": {"x": 10, "y": 20}}
-    assert sample_dict == ref_sample_dict
-
-
-def test_patch_dict_overlapping_args_kwargs() -> None:
-    # kwargs should take precedence over args
-    a_val = 8
-    with pmv.utils.patch_dict(sample_dict, {"a": 7}, a=a_val) as patched_dict:
-        assert patched_dict["a"] == a_val
-    assert sample_dict == ref_sample_dict
+    """Deleting an added key from a patch leaves the original empty."""
+    original: dict[str, int] = {}
+    with pmv.utils.patch_dict(original, a=2) as patched:
+        assert patched == {"a": 2}
+        del patched["a"]
+        assert patched == {}
+    assert original == {}
 
 
 def test_patch_dict_remove_key_inside_context() -> None:
-    d_val = 7
-    with pmv.utils.patch_dict(sample_dict, d=d_val) as patched_dict:
-        assert patched_dict["d"] == d_val
-        del patched_dict["d"]
-        assert "d" not in patched_dict
-    assert sample_dict == ref_sample_dict
-
-
-assert ref_sample_dict == sample_dict, "sample_dict should not be modified"
+    """Deleting an added key leaves existing original values untouched."""
+    original = {"a": 1, "b": None, "c": [3, 4]}
+    with pmv.utils.patch_dict(original, d=7) as patched:
+        assert patched["d"] == 7
+        del patched["d"]
+        assert "d" not in patched
+    assert original == {"a": 1, "b": None, "c": [3, 4]}
 
 
 def test_si_fmt() -> None:
@@ -314,51 +295,40 @@ def test_get_fig_xy_range_without_kaleido(
         pmv.utils.get_fig_xy_range(fig, traces=lambda _trace: False)
 
 
-def test_get_font_color() -> None:
-    orig_template = pio.templates.default
-    try:
-        pio.templates.default = "plotly"
-        fig = go.Figure()
-        color = pmv.utils.get_font_color(fig)
-        assert color == "#2a3f5f"
-    finally:
-        pio.templates.default = orig_template
+@pytest.mark.parametrize(
+    ("layout_color", "template_color", "default_template", "expected"),
+    [
+        ("red", "blue", "plotly", "red"),
+        ("#00FF00", "blue", "plotly", "#00FF00"),
+        ("rgb(0, 0, 255)", "blue", "plotly", "rgb(0, 0, 255)"),
+        (None, "blue", "plotly", "blue"),
+        (None, None, "plotly", "#2a3f5f"),
+        (None, None, "none", "black"),
+    ],
+)
+def test_get_font_color(
+    monkeypatch: pytest.MonkeyPatch,
+    layout_color: str | None,
+    template_color: str | None,
+    default_template: str,
+    expected: str,
+) -> None:
+    """Font colors prefer layout, figure template, then global template."""
+    monkeypatch.setattr(pio.templates, "default", default_template)
+    fig = go.Figure().update_layout(
+        font_color=layout_color,
+        template=go.layout.Template(layout=dict(font_color=template_color)),
+    )
+    assert pmv.utils.get_font_color(fig) == expected
 
 
 def test_get_font_color_invalid_input() -> None:
+    """Non-figure input reports its type."""
     fig = "invalid input"
     with pytest.raises(
         TypeError, match=re.escape(f"Input must be plotly Figure, got {type(fig)=}")
     ):
         pmv.utils.get_font_color(fig)  # ty: ignore[invalid-argument-type]
-
-
-def test_get_plotly_font_color_default() -> None:
-    orig_template = pio.templates.default
-    try:
-        pio.templates.default = "plotly"
-        fig = go.Figure()
-        # test we get default Plotly color
-        assert _get_plotly_font_color(fig) == "#2a3f5f"
-    finally:
-        pio.templates.default = orig_template
-
-
-def test_get_plotly_font_color_from_template() -> None:
-    template = pio.templates["plotly_white"]
-    template.layout.font.color = "blue"
-    pio.templates.default = "plotly_white"
-    fig = go.Figure()
-    try:
-        assert _get_plotly_font_color(fig) == "blue"
-    finally:
-        pio.templates.default = "plotly"  # Reset to default template
-
-
-@pytest.mark.parametrize("color", ["red", "#00FF00", "rgb(0, 0, 255)"])
-def test_get_plotly_font_color(color: str) -> None:
-    fig = go.Figure().update_layout(font_color=color)
-    assert _get_plotly_font_color(fig) == color
 
 
 def test_hm_symbol_to_spg_num_map() -> None:

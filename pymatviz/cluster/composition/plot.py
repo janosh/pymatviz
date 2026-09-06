@@ -34,7 +34,6 @@ symbol_3d_validator = ValidatorCache.get_validator("scatter3d.marker", "symbol")
 class ClusterFigure(go.Figure):
     """A Plotly Figure with typed metadata for clustering visualizations."""
 
-    # Declare attributes for type checker
     projector: PCA | TSNE | Isomap | KernelPCA | None
     embeddings: np.ndarray | None
 
@@ -87,6 +86,20 @@ class ProjectionMethod(LabelEnum):
 
 ShowChemSys = Literal["color", "shape", "color+shape"]
 ColorScale = Literal["linear", "log", "arcsinh"]
+
+
+def _arcsinh_transform(
+    color_scale: ColorScale | dict[str, Any],
+) -> Callable[[float], float]:
+    """Use the same arcsinh scaling for property colors and colorbar positions."""
+    config = color_scale if isinstance(color_scale, dict) else {}
+    scale_factor = config.get("scale_factor", 2.0)
+    lin_thresh, lin_scale = config.get("lin_thresh"), config.get("lin_scale")
+    if lin_thresh is not None and lin_scale is not None:
+        return lambda value: (
+            np.arcsinh((value * lin_scale) / lin_thresh) * lin_thresh / scale_factor
+        )
+    return lambda value: np.arcsinh(value / scale_factor) * scale_factor
 
 
 def _format_tick_label(val: float) -> str:
@@ -220,24 +233,7 @@ def _generate_colorbar_ticks(
         min_val = min(df_plot["original_property"])
         max_val = max(df_plot["original_property"])
 
-        # Get arcsinh configuration
-        if isinstance(color_scale, dict):
-            scale_factor = color_scale.get("scale_factor", 2.0)
-            lin_thresh = color_scale.get("lin_thresh", None)
-            lin_scale = color_scale.get("lin_scale", None)
-
-            if lin_thresh is not None and lin_scale is not None:
-                # Custom arcsinh transformation function
-                transform_func = lambda x: (
-                    np.arcsinh((x * lin_scale) / lin_thresh) * lin_thresh / scale_factor
-                )
-            else:
-                # Simple arcsinh with scale factor
-                transform_func = lambda x: np.arcsinh(x / scale_factor) * scale_factor
-        else:
-            # Default arcsinh transformation
-            scale_factor = 2.0
-            transform_func = lambda x: np.arcsinh(x / scale_factor) * scale_factor
+        transform_func = _arcsinh_transform(color_scale)
 
         # Generate nice tick values based on data range
         tick_vals, tick_text = [], []
@@ -388,7 +384,7 @@ def cluster_compositions(
         embedding_method (str | EmbeddingMethod | Callable[[list[str], Any], ndarray]):
             Method to convert compositions to vectors (default: "magpie"). Options:
             - "one-hot": One-hot encoding of element fractions
-            - "magpie": Matminer's MagPie featurization (for backward compatibility)
+            - "magpie": Matminer's MagPie featurization
             - "deml": Matminer's DEML featurization
             - "matminer": Matminer's ElementProperty featurization
             - "matscholar_el": Matminer's Matscholar Element featurization
@@ -650,11 +646,7 @@ def cluster_compositions(
             valid_symbols = list(filter(symbol_filter, all_symbols))
 
         # Check if we have more unique systems than available symbols
-        if (
-            show_chem_sys is not None
-            and "shape" in show_chem_sys
-            and len(uniq_chem_sys) > len(valid_symbols)
-        ):
+        if "shape" in show_chem_sys and len(uniq_chem_sys) > len(valid_symbols):
             warnings.warn(
                 f"Number of unique chemical systems ({len(uniq_chem_sys)}) exceeds "
                 f"available marker symbols ({len(valid_symbols)}). Some systems will "
@@ -709,36 +701,9 @@ def cluster_compositions(
             elif color_scale == "arcsinh" or (
                 isinstance(color_scale, dict) and color_scale["type"] == "arcsinh"
             ):
-                # Get arcsinh configuration
-                if isinstance(color_scale, dict):
-                    scale_factor = color_scale.get("scale_factor", 2.0)
-                    lin_thresh = color_scale.get("lin_thresh", None)
-                    lin_scale = color_scale.get("lin_scale", None)
-
-                    if lin_thresh is not None and lin_scale is not None:
-                        # Custom arcsinh with linearity threshold and scale
-                        prop_values = [
-                            np.arcsinh((val * lin_scale) / lin_thresh)
-                            * lin_thresh
-                            / scale_factor
-                            for val in prop_values
-                        ]
-                        colorbar_title = f"{prop_name} (arcsinh scale)"
-                    else:
-                        # Custom arcsinh with just scale factor
-                        prop_values = [
-                            np.arcsinh(val / scale_factor) * scale_factor
-                            for val in prop_values
-                        ]
-                        colorbar_title = f"{prop_name} (arcsinh scale)"
-                else:
-                    # Default arcsinh with scale_factor=2.0
-                    scale_factor = 2.0
-                    prop_values = [
-                        np.arcsinh(val / scale_factor) * scale_factor
-                        for val in prop_values
-                    ]
-                    colorbar_title = f"{prop_name} (arcsinh scale)"
+                transform = _arcsinh_transform(color_scale)
+                prop_values = [transform(value) for value in prop_values]
+                colorbar_title = f"{prop_name} (arcsinh scale)"
             else:
                 # For linear scale, no transformation needed
                 colorbar_title = prop_name
@@ -760,46 +725,24 @@ def cluster_compositions(
     else:
         color_column = None
 
-    # Apply sorting if requested
     if sort and prop_values is not None:
-        sort_direction = 1  # Default to ascending order
-        if isinstance(sort, bool):
-            sort_direction = 1 if sort else 0
-        elif isinstance(sort, int):
-            sort_direction = sort
+        if isinstance(sort, int):  # Includes True; False is handled above.
+            sort_indices = np.argsort(prop_values)
+            if sort < 0:
+                sort_indices = sort_indices[::-1]
         elif callable(sort):
-            # Custom sort function
             sort_indices = sort(np.asarray(prop_values))
-            df_plot = df_plot.iloc[sort_indices]
-            projected = projected[sort_indices]
-            if embeddings is not None:
-                embeddings = embeddings[sort_indices]
-            # Also update comp_strs to maintain alignment
-            comp_strs = [comp_strs[i] for i in sort_indices]
-            # Update other array-like data if present
-            if chem_systems is not None:
-                chem_systems = [chem_systems[idx] for idx in sort_indices]
-            if prop_values is not None:
-                prop_values = [prop_values[idx] for idx in sort_indices]
         else:
             raise TypeError(f"Invalid sort parameter type: {type(sort).__name__}")
 
-        if not callable(sort):
-            # Sort by property values
-            sort_indices = np.argsort(prop_values)
-            if sort_direction < 0:
-                sort_indices = sort_indices[::-1]  # Reverse for descending order
-            df_plot = df_plot.iloc[sort_indices]
-            projected = projected[sort_indices]
-            if embeddings is not None:
-                embeddings = embeddings[sort_indices]
-            # Also update comp_strs to maintain alignment
-            comp_strs = [comp_strs[idx] for idx in sort_indices]
-            # Update other array-like data if present
-            if chem_systems is not None:
-                chem_systems = [chem_systems[idx] for idx in sort_indices]
-            if prop_values is not None:
-                prop_values = [prop_values[idx] for idx in sort_indices]
+        df_plot = df_plot.iloc[sort_indices]
+        projected = projected[sort_indices]
+        if embeddings is not None:
+            embeddings = embeddings[sort_indices]
+        comp_strs = [comp_strs[idx] for idx in sort_indices]
+        if chem_systems is not None:
+            chem_systems = [chem_systems[idx] for idx in sort_indices]
+        prop_values = [prop_values[idx] for idx in sort_indices]
 
     # Create hover text template
     hover_template: list[str] = []
@@ -869,30 +812,16 @@ def cluster_compositions(
             ):
                 stats_text.append(f"PC{idx + 1}: {var:.1%} (cumulative: {cum_var:.1%})")
             projection_stats = "<br>".join(stats_text)
-        elif projection == "tsne":
-            # For t-SNE, show perplexity and learning rate
-            perplexity = projection_kwargs.get("perplexity", 30)
-            learning_rate = projection_kwargs.get("learning_rate", 200)
-            stats_text = [f"{perplexity = }", f"{learning_rate = }"]
-            projection_stats = "<br>".join(stats_text)
-        elif projection == "umap":
-            # For UMAP, show n_neighbors and min_dist
-            n_neighbors = projection_kwargs.get("n_neighbors", 15)
-            min_dist = projection_kwargs.get("min_dist", 0.1)
-            stats_text = [f"{n_neighbors = }", f"{min_dist = }"]
-            projection_stats = "<br>".join(stats_text)
-        elif projection == "isomap":
-            # For Isomap, show n_neighbors and metric
-            n_neighbors = projection_kwargs.get("n_neighbors", 15)
-            metric = projection_kwargs.get("metric", "euclidean")
-            stats_text = [f"{n_neighbors = }", f"{metric = }"]
-            projection_stats = "<br>".join(stats_text)
-        elif projection == "kernel_pca":
-            # For Kernel PCA, show kernel type and parameters
-            kernel = projection_kwargs.get("kernel", "linear")
-            gamma = projection_kwargs.get("gamma", 1.0)
-            stats_text = [f"{kernel = }", f"{gamma = }"]
-            projection_stats = "<br>".join(stats_text)
+        elif projector is not None and isinstance(projection, str):
+            stat_params = {
+                "tsne": ("perplexity", "learning_rate"),
+                "umap": ("n_neighbors", "min_dist"),
+                "isomap": ("n_neighbors", "metric"),
+                "kernel_pca": ("kernel", "gamma"),
+            }[projection]
+            projection_stats = "<br>".join(
+                f"{param} = {getattr(projector, param)!r}" for param in stat_params
+            )
 
     # Create the plot
     plot_func = px.scatter if n_components == 2 else px.scatter_3d
@@ -904,132 +833,37 @@ def cluster_compositions(
     if n_components == 3:
         plot_kwargs["z"] = z_name
 
-    # Define helper functions to reduce redundancy
-    def create_shape_df() -> pd.DataFrame:
-        """Create a dataframe for shape-based visualization."""
-        df_shape = pd.DataFrame()
-        df_shape["composition"] = df_plot["composition"]
-        df_shape[x_name] = df_plot[x_name]
-        df_shape[y_name] = df_plot[y_name]
-        if n_components == 3:
-            df_shape[z_name] = df_plot[z_name]
-        df_shape["hover_text"] = df_plot["hover_text"]
-        if chem_systems is not None:
-            df_shape["chem_system"] = chem_systems
-        # Add properties for coloring if available
-        if prop_values is not None:
-            df_shape[color_column] = prop_values
-        return df_shape
+    if prop_values is not None:
+        plot_kwargs.update(
+            color=color_column, color_continuous_scale=heatmap_colorscale
+        )
+    elif color_column is not None and show_chem_sys != "color+shape":
+        plot_kwargs.update(color=color_column, color_discrete_map=color_discrete_map)
+    if show_chem_sys == "color":
+        plot_kwargs["hover_data"] = {"chem_system": True}
 
-    def apply_symbol_mapping(fig: go.Figure, symbol_map: dict[str, str]) -> None:
-        """Apply symbol mapping to the figure based on the visualization mode."""
-        if chem_systems is None:
-            return
+    fig = plot_func(df_plot, **plot_kwargs | kwargs)
 
-        if prop_values is not None or show_chem_sys == "shape":
-            # For property-colored plots or shape mode, we have one trace with
-            # different symbols
-            symbols = [symbol_map[cs] for cs in chem_systems]
-            fig.data[0].marker.symbol = symbols
-        elif show_chem_sys == "color":  # For chemically colored plots without
-            # properties, we have one trace per chemical system
-            for trace in fig.data:
-                if hasattr(trace, "name") and trace.name in symbol_map:
-                    fig.update_traces(
-                        selector=dict(name=trace.name),
-                        marker=dict(symbol=symbol_map[trace.name]),
-                    )
+    if show_chem_sys in ("shape", "color+shape") and chem_systems is not None:
+        symbol_map = {
+            system: valid_symbols[idx % len(valid_symbols)]
+            for idx, system in enumerate(sorted(uniq_chem_sys))
+        }
+        fig.data[0].marker.symbol = [symbol_map[system] for system in chem_systems]
 
-    # Set up color mapping
-    def configure_color_options(kwargs: dict[str, Any]) -> None:
-        """Configure color options based on properties and chemical systems."""
-        if prop_values is not None:
-            kwargs.update(color=color_column, color_continuous_scale=heatmap_colorscale)
-        elif color_column is not None:
-            kwargs.update(color=color_column, color_discrete_map=color_discrete_map)
-
-    # Handle different visualization modes
-    symbol_map = {
-        system: valid_symbols[idx % len(valid_symbols)]
-        for idx, system in enumerate(sorted(uniq_chem_sys))
-    }
-    if show_chem_sys == "shape":
-        # Create dataframe for shape-based visualization
-        df_shape = create_shape_df()
-
-        # Set up plot kwargs
-        shape_kwargs = plot_kwargs.copy()
-
-        configure_color_options(shape_kwargs)
-
-        fig = plot_func(df_shape, **shape_kwargs | kwargs)
-
-        # Apply symbols
-        apply_symbol_mapping(fig, symbol_map)
-
-    elif show_chem_sys == "color+shape":
-        # For color+shape mode, we need to ensure a single trace with both color and
-        # shape info
-        df_shape = create_shape_df()
-
-        # Set up plot kwargs without using color for grouping
-        shape_kwargs = plot_kwargs.copy()
-
-        # If we have properties, use them for coloring
-        if prop_values is not None:
-            shape_kwargs["color"] = color_column
-            shape_kwargs["color_continuous_scale"] = heatmap_colorscale
-
-        # Do not group by chem_system to avoid multiple traces
-        fig = plot_func(df_shape, **shape_kwargs | kwargs)
-
-        # Apply the symbols
-        if chem_systems is not None:
-            symbols = [symbol_map[cs] for cs in chem_systems]
-            fig.data[0].marker.symbol = symbols
-
-        # If we don't have properties to color by, but need to color by chemical system
-        # we need to manually set the colors
-        if prop_values is None and chem_systems is not None:
-            # Create a color mapping
-            color_map = color_discrete_map or {}
-            chem_sys_colors = []
-            for cs in chem_systems:
-                if cs in color_map:
-                    chem_sys_colors.append(color_map[cs])
-                else:
-                    # Use Plotly default colors if no custom map provided
-                    idx = sorted(uniq_chem_sys).index(cs)
-                    default_colors = [
-                        "#636EFA",
-                        "#EF553B",
-                        "#00CC96",
-                        "#AB63FA",
-                        "#FFA15A",
-                    ]
-                    chem_sys_colors.append(default_colors[idx % len(default_colors)])
-
-            # Set marker colors directly
-            fig.data[0].marker.color = chem_sys_colors
-
-    elif show_chem_sys == "color":
-        # For color mode, we create a plot with color by chemical system
-        plot_kwargs.update(hover_data={"chem_system": True})
-
-        configure_color_options(plot_kwargs)
-
-        fig = plot_func(df_plot, **plot_kwargs | kwargs)
-
-    else:  # No chemical system visualization
-        configure_color_options(plot_kwargs)
-
-        fig = plot_func(df_plot, **plot_kwargs | kwargs)
+        # Keep color+shape in one trace, assigning category colors per point.
+        if show_chem_sys == "color+shape" and prop_values is None:
+            default_colors = ["#636EFA", "#EF553B", "#00CC96", "#AB63FA", "#FFA15A"]
+            color_map = {
+                system: default_colors[idx % len(default_colors)]
+                for idx, system in enumerate(sorted(uniq_chem_sys))
+            } | dict(color_discrete_map or {})
+            fig.data[0].marker.color = [color_map[system] for system in chem_systems]
 
     fig.update_traces(marker_size=marker_size / 3 if n_components == 3 else marker_size)
 
     fig.update_traces(hovertemplate="%{customdata[1]}<extra></extra>")
 
-    # Use the already defined method_label for axis labels
     if n_components == 2:
         fig.layout.xaxis.title = f"{method_label} 1"
         fig.layout.yaxis.title = f"{method_label} 2"
@@ -1077,46 +911,34 @@ def cluster_compositions(
 
         fig.layout.coloraxis.colorbar.update(**color_bar)
 
-    # Add point annotations if function is provided
     if callable(annotate_points):
         df_plot[df_in.columns] = df_in
+        # Batch assignment avoids revalidating the entire array for every point.
+        annotations = []
+        for _idx, row in df_plot.iterrows():
+            row_annotation = annotate_points(row)
+            if isinstance(row_annotation, str):
+                row_annotation = {"text": row_annotation}
+            if not row_annotation:
+                continue
+            annotation = {
+                "x": row[x_name],
+                "y": row[y_name],
+                **({"z": row[z_name]} if n_components == 3 else {}),
+                "showarrow": False,
+                "yshift": 10,
+                "font": {"size": 10},
+                **row_annotation,
+            }
+            annotations.append(
+                go.layout.scene.Annotation(annotation)
+                if n_components == 3
+                else annotation
+            )
         if n_components == 3:
-            annotations_3d = []
-            for _, row in df_plot.iterrows():
-                row_annotation = annotate_points(row)
-                if isinstance(row_annotation, str):
-                    row_annotation = {"text": row_annotation}
-                if row_annotation:
-                    annotation = {
-                        "x": row[x_name],
-                        "y": row[y_name],
-                        "z": row[z_name],
-                        "showarrow": False,
-                        "yshift": 10,  # Default vertical shift for 3D text
-                        "font": {"size": 10},
-                        **row_annotation,
-                    }
-                    annotations_3d.append(go.layout.scene.Annotation(annotation))
-            fig.update_layout(scene_annotations=annotations_3d)
-        else:  # Handle 2D annotations
-            # batch-collect and assign in one go: fig.add_annotation() per point is
-            # O(n^2) as plotly re-validates the whole array on each call
-            annotations_2d = []
-            for _, row in df_plot.iterrows():
-                row_annotation = annotate_points(row)
-                if isinstance(row_annotation, str):
-                    row_annotation = {"text": row_annotation}
-                if row_annotation:
-                    annotation = {
-                        "x": row[x_name],
-                        "y": row[y_name],
-                        "showarrow": False,
-                        "yshift": 10,  # Shift text slightly above the point
-                        "font": {"size": 10},
-                        **row_annotation,
-                    }
-                    annotations_2d.append(annotation)
-            fig.layout.annotations = list(fig.layout.annotations) + annotations_2d
+            fig.update_layout(scene_annotations=annotations)
+        else:
+            fig.layout.annotations = list(fig.layout.annotations) + annotations
 
     # Convert to ClusterFigure and attach metadata
     cluster_fig = ClusterFigure(fig)

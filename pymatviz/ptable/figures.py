@@ -811,9 +811,7 @@ def _normalize_annotation(
     Returns:
         List of annotations, or None if input is not a recognized type.
     """
-    if isinstance(annotation, str):
-        return [annotation]
-    if isinstance(annotation, dict):
+    if isinstance(annotation, str | dict):
         return [annotation]
     if isinstance(annotation, list):
         # Validate list elements are str or dict
@@ -1313,20 +1311,8 @@ def ptable_heatmap_splits(
                 # Clamp scale_pos to [0, 1] to handle values outside the range
                 scale_pos = max(0, min(1, scale_pos))
 
-                # Use plotly builtin color interpolation logic
-                if isinstance(cscale, str):
-                    # For string colorscales, use plotly's get_colorscale
-                    cscale = plotly.colors.get_colorscale(cscale)
-                elif isinstance(cscale, list | tuple) and not isinstance(
-                    cscale[0], list | tuple
-                ):
-                    # If colorscale is list of colors, convert to proper format
-                    n_colors = len(cscale)
-                    cscale = [
-                        [idx / (n_colors - 1), color]
-                        for idx, color in enumerate(cscale)
-                    ]
-                elif not isinstance(cscale, list | tuple):
+                # Non-callable scales were normalized before the tile loop.
+                if not isinstance(cscale, list | tuple):
                     raise ValueError(
                         f"Invalid colorscale type: {type(cscale)}. Must be string, "
                         "list of colors, or list of (position, color) pairs."
@@ -1416,34 +1402,12 @@ def ptable_heatmap_splits(
                     }
 
                 elif orientation == "grid":  # n_splits must be 4
-                    if idx == 0:  # Top-left
-                        pos_config = {
-                            "x": 0.05,
-                            "y": 0.95,
-                            "xanchor": "left",
-                            "yanchor": "top",
-                        }
-                    elif idx == 1:  # Top-right
-                        pos_config = {
-                            "x": 0.95,
-                            "y": 0.95,
-                            "xanchor": "right",
-                            "yanchor": "top",
-                        }
-                    elif idx == 2:  # Bottom-left
-                        pos_config = {
-                            "x": 0.05,
-                            "y": 0.05,
-                            "xanchor": "left",
-                            "yanchor": "bottom",
-                        }
-                    elif idx == 3:  # Bottom-right
-                        pos_config = {
-                            "x": 0.95,
-                            "y": 0.05,
-                            "xanchor": "right",
-                            "yanchor": "bottom",
-                        }
+                    pos_config = {
+                        "x": (0.05, 0.95)[idx % 2],
+                        "y": (0.95, 0.05)[idx // 2],
+                        "xanchor": ("left", "right")[idx % 2],
+                        "yanchor": ("top", "bottom")[idx // 2],
+                    }
 
                 section_luminance = luminance(color)
                 anno_font_color = "black" if section_luminance > 0.55 else "white"

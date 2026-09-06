@@ -102,20 +102,14 @@ def calculate_rdf(
         lattice=struct.lattice.matrix,
     )
 
-    # Filter distances for the specific neighbor species and bin them. Only the
-    # true self-pair (dist ~ 0) is excluded; periodic images of the center atom
-    # are real neighbors and must be counted (regression: same-species RDFs used
-    # to drop all images of the center atom, zeroing e.g. monatomic RDFs).
+    # Exclude the zero-distance self-pair, but count its periodic images.
     neighbor_set = set(neighbor_indices)
     for _idx1, idx2, _, dist in zip(*center_neighbors, strict=True):
         if idx2 in neighbor_set and 1e-10 < dist < cutoff:
             bin_index = min(int(dist / bin_size), n_bins - 1)
             rdf[bin_index] += 1
 
-    # Normalize RDF by the number of center-neighbor pairs and shell volumes.
-    # The neighbor density is N_neighbor/V with no -1 self-correction: in a
-    # periodic crystal each center sees images of every atom incl. itself and
-    # only the r=0 self-pair is excluded, so g(r) -> 1 at large r.
+    # Neighbor density is N/V without a -1 correction: periodic self-images count.
     n_center = len(center_indices)
     n_neighbor = len(neighbor_indices)
     normalization = n_center * n_neighbor

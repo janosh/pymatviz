@@ -29,44 +29,20 @@ def test_pkg_metadata() -> None:
 
 
 def test_all_modules_reexported() -> None:
-    # pytest seems to have special import behavior for the tested module making all
-    # submodules importable, regardless of whether __init__ re-exports them, so we
-    # override pymatviz importing for this test
-    sys.modules.pop(pmv.PKG_NAME, None)
-
-    import pymatviz  # manually re-import
-
+    """Top-level modules are explicitly re-exported when importing the package."""
+    # Test a fresh package namespace without leaking it into subsequent tests.
+    original_module = sys.modules.pop(pmv.PKG_NAME)
     try:
-        first_level_modules = [
-            f"{pmv.PKG_NAME}.{os.path.basename(os.path.splitext(file)[0])}"
-            for file in glob(f"{pmv.PKG_DIR}/*.py")
-            if "__init__.py" not in file
-        ]
+        import pymatviz
 
-        for full_module_name in first_level_modules:
-            module_name = full_module_name.split(".")[-1]
-
-            # Skip histogram module which name-clashes with its own histogram function
-            if module_name in ("histogram", "rainclouds"):
+        for file in glob(f"{pmv.PKG_DIR}/*.py"):
+            module_name = os.path.basename(file).removesuffix(".py")
+            # These modules share their names with public plotting functions.
+            if module_name in ("__init__", "histogram", "rainclouds"):
                 continue
 
-            # Check if the module or subpackage is in the main package namespace
-            assert hasattr(pymatviz, module_name), (
-                f"{module_name} not exported in {pmv.PKG_NAME}/__init__.py"
+            assert isinstance(getattr(pymatviz, module_name, None), ModuleType), (
+                f"{module_name} is not a module exported in {pmv.PKG_NAME}/__init__.py"
             )
-
-            reexported_submodule = getattr(pymatviz, module_name)
-
-            # For subpackages, check if it's a module (subpackages are also modules)
-            if "." in full_module_name.split(".", maxsplit=1)[1]:
-                assert isinstance(reexported_submodule, ModuleType), (
-                    f"{module_name} in {pmv.PKG_NAME}/__init__.py is not a "
-                    "module/subpackage"
-                )
-            else:
-                assert (  # For regular modules, check more strictly
-                    type(reexported_submodule).__name__ == "module"
-                ), f"{module_name} in {pmv.PKG_NAME}/__init__.py is not a module"
-
     finally:
-        sys.modules[pmv.PKG_NAME] = pymatviz
+        sys.modules[pmv.PKG_NAME] = original_module

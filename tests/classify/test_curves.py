@@ -128,7 +128,6 @@ def test_edge_cases(edge_case: tuple[Sequence[float], Sequence[float]]) -> None:
     fig_pr = precision_recall_curve(targets, probs, no_skill=False)
     assert isinstance(fig_pr, go.Figure)
 
-    # Pass no_skill=False to disable the no-skill line to avoid annotation errors
     fig_roc = roc_curve(targets, probs, no_skill=False)
     assert isinstance(fig_roc, go.Figure)
 
@@ -147,21 +146,19 @@ def test_custom_styling() -> None:
         },
     }
 
-    # Pass no_skill=False to disable the no-skill line to avoid annotation errors
     fig = precision_recall_curve(targets, probs, no_skill=False)
     assert fig.data[0].line.color == "red"
     assert fig.data[1].line.dash == "dash"
 
 
 def test_large_dataset() -> None:
-    """Test performance with a larger dataset."""
+    """Render both classifiers with a larger dataset."""
     rng = np.random.default_rng(seed=0)
     n_samples = 10_000
     targets = rng.binomial(n=1, p=0.5, size=n_samples)
     probs = rng.random(size=n_samples)
 
     for curve_func in [precision_recall_curve, roc_curve]:
-        # Pass no_skill=False to disable the no-skill line to avoid annotation errors
         fig = curve_func(targets, probs, no_skill=False)
         assert isinstance(fig, go.Figure)
 
@@ -171,7 +168,7 @@ def test_no_skill_line(targets: list[int]) -> None:
     """Test that the no-skill line is added correctly."""
     probs = np.array([0.1, 0.9, 0.2, 0.8])
 
-    # Test with no_skill=True (default)
+    # The default baseline is a PR shape and a ROC trace.
     fig_pr = precision_recall_curve(targets, probs)
     assert isinstance(fig_pr, go.Figure)
     # PR curve adds the no-skill line as a shape, not a trace
@@ -205,7 +202,6 @@ def test_no_skill_line(targets: list[int]) -> None:
     assert fig_pr_custom.layout.shapes[0].line.color == "red"  # Custom color
 
     # Test with custom no_skill options for ROC curve
-    # For ROC curve, we need to pass the line color differently
     custom_no_skill_roc = {"line": {"color": "red"}}
     fig_roc_custom = roc_curve(targets, probs, no_skill=custom_no_skill_roc)
     assert isinstance(fig_roc_custom, go.Figure)

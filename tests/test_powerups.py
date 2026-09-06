@@ -37,13 +37,24 @@ def test_powerups_custom_metrics_and_font_preservation() -> None:
     assert anno_font.size == 13
 
 
-def test_enhance_parity_plot_keeps_dict_best_fit_line() -> None:
-    """Dict-configured best-fit lines work when stats are disabled."""
+@pytest.mark.parametrize("explicit_data", [False, True])
+@pytest.mark.parametrize("stats", [False, True])
+@pytest.mark.parametrize("annotation_mode", ["combined", "per_trace"])
+def test_enhance_parity_plot_keeps_dict_best_fit_line(
+    explicit_data: bool, stats: bool, annotation_mode: powerups.AnnotationMode
+) -> None:
+    """Direct and trace-derived fits preserve styling with optional metrics."""
     fig = go.Figure()
     fig.add_scatter(x=[1, 2, 3], y=[1, 2, 4])
 
     powerups.enhance_parity_plot(
-        fig, identity_line=False, best_fit_line={"color": "red"}, stats=False
+        fig,
+        xs=[1, 2, 3] if explicit_data else (),
+        ys=[1, 2, 4] if explicit_data else (),
+        identity_line=False,
+        best_fit_line={"color": "red"},
+        stats=stats,
+        annotation_mode=annotation_mode,
     )
 
     assert fig.layout.shapes[-1].line.color == "red"

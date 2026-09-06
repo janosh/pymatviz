@@ -71,8 +71,7 @@ def chemenv_mocks() -> Generator[dict[str, Any], None, None]:
 
 
 def test_default_cn_formatter_edge_cases() -> None:
-    """Test default_cn_formatter with edge cases to improve coverage."""
-    # Test with float count >= 1 (line 19-22 coverage)
+    """Format integer, fractional, and non-integral coordination counts."""
     result = default_cn_formatter(4, 2.5, 10)
     assert "2.5" in result
     assert "25.0%" in result
@@ -97,7 +96,7 @@ def test_chem_env_treemap_chemenv_import_error(mock_structure: MagicMock) -> Non
         ) as mock_lgf,
     ):
         mock_norm.return_value.values.return_value = [mock_structure]
-        mock_lgf.side_effect = ImportError("ChemEnv not available")  # Line 225 coverage
+        mock_lgf.side_effect = ImportError("ChemEnv not available")
 
         fig = chem_env_treemap(mock_structure, chem_env_settings="chemenv")
         assert isinstance(fig, go.Figure)
@@ -174,7 +173,6 @@ def test_chem_env_treemap_max_cells_cn_logic() -> None:
     # Import the function directly to test it
     from pymatviz.treemap.chem_env import _process_chem_env_data_treemap
 
-    # Test max_cells_cn with "Other CNs" creation (lines 350-376)
     fig = _process_chem_env_data_treemap(
         chem_env_data=mock_data,
         max_cells_cn=3,  # Should create "Other CNs" entry
@@ -206,7 +204,6 @@ def test_chem_env_treemap_max_cells_ce_logic() -> None:
     # Import the function directly to test it
     from pymatviz.treemap.chem_env import _process_chem_env_data_treemap
 
-    # Test max_cells_ce with "Other CEs" creation (lines 387-414)
     fig = _process_chem_env_data_treemap(
         chem_env_data=mock_data,
         max_cells_cn=None,

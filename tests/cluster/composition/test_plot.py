@@ -229,75 +229,6 @@ def test_chemical_system_visualization(
             assert color in px.colors.qualitative.Plotly[:5]
 
 
-def test_chemical_system_with_properties(sample_df: pd.DataFrame) -> None:
-    """Test detailed behavior of chemical system visualization with properties."""
-    # Test shape mode with properties
-    fig_shape = pmv.cluster_compositions(
-        df_in=sample_df,
-        prop_name="property",
-        embedding_method="one-hot",
-        projection="pca",
-        show_chem_sys="shape",
-    )
-
-    assert len(fig_shape.data) == 1
-
-    # Verify shape mapping
-    data_dict = fig_shape.to_dict()["data"][0]
-    assert isinstance(data_dict["marker"]["symbol"], list)
-
-    # Verify properties are used for coloring
-    assert "coloraxis" in data_dict["marker"]
-    assert data_dict["marker"]["coloraxis"] == "coloraxis"
-
-    # Verify the colorbar exists with the right title
-    assert hasattr(fig_shape.layout, "coloraxis")
-    assert fig_shape.layout.coloraxis.colorbar.title.text == "property"
-
-    # Test color mode with properties
-    fig_color = pmv.cluster_compositions(
-        df_in=sample_df,
-        prop_name="property",
-        embedding_method="one-hot",
-        projection="pca",
-        show_chem_sys="color",  # Should use properties, not chem systems
-    )
-
-    assert len(fig_color.data) == 1  # Should have one trace (all properties)
-
-    # Verify properties are used for coloring
-    data_dict = fig_color.to_dict()["data"][0]
-    assert "coloraxis" in data_dict["marker"]
-    assert data_dict["marker"]["coloraxis"] == "coloraxis"
-
-    # Verify the colorbar exists with the right title
-    assert hasattr(fig_color.layout, "coloraxis")
-    assert fig_color.layout.coloraxis.colorbar.title.text == "property"
-
-    # Test color+shape mode with properties
-    fig_both = pmv.cluster_compositions(
-        df_in=sample_df,
-        prop_name="property",
-        embedding_method="one-hot",
-        projection="pca",
-        show_chem_sys="color+shape",
-    )
-
-    assert len(fig_both.data) == 1  # Should have one trace (all properties)
-
-    # Verify properties are used for coloring
-    data_dict = fig_both.to_dict()["data"][0]
-    assert "coloraxis" in data_dict["marker"]
-    assert data_dict["marker"]["coloraxis"] == "coloraxis"
-
-    # Verify the colorbar exists with the right title
-    assert hasattr(fig_both.layout, "coloraxis")
-    assert fig_both.layout.coloraxis.colorbar.title.text == "property"
-
-    # Verify shapes are set
-    assert isinstance(data_dict["marker"]["symbol"], list)
-
-
 @pytest.mark.parametrize(
     "sort_value",
     [
@@ -422,28 +353,54 @@ def test_composite_viz_modes(sample_df: pd.DataFrame) -> None:
         (
             "tsne",
             {"perplexity": 1.0, "learning_rate": "auto"},
-            ["perplexity", "learning_rate"],
+            ["perplexity = 1.0", "learning_rate = 'auto'"],
         ),
         (
             "isomap",
             {"n_neighbors": 2, "metric": "euclidean"},
-            ["n_neighbors", "metric"],
+            ["n_neighbors = 2", "metric = 'euclidean'"],
         ),
-        ("kernel_pca", {"kernel": "rbf", "gamma": 0.1}, ["kernel", "gamma"]),
+        (
+            "kernel_pca",
+            {"kernel": "rbf", "gamma": 0.1},
+            ["kernel = 'rbf'", "gamma = 0.1"],
+        ),
+        pytest.param(
+            "tsne",
+            {},
+            ["perplexity = 1.6666666666666667", "learning_rate = 'auto'"],
+            id="tsne-defaults",
+        ),
+        pytest.param(
+            "isomap",
+            {},
+            ["n_neighbors = 2", "metric = 'minkowski'"],
+            id="isomap-defaults",
+        ),
+        pytest.param(
+            "isomap",
+            {"n_neighbors": 4},
+            ["n_neighbors = 2"],
+            id="isomap-adjusted-neighbors",
+        ),
+        pytest.param(
+            "kernel_pca",
+            {},
+            ["kernel = 'rbf'", "gamma = None"],
+            id="kernel-pca-defaults",
+        ),
         ("umap", {"n_neighbors": 15, "min_dist": 0.1}, ["n_neighbors", "min_dist"]),
     ],
 )
 def test_projection_stats(
-    request: pytest.FixtureRequest,
+    df_prop: pd.DataFrame,
     projection: ProjectionMethod,
     projection_kwargs: dict[str, Any],
     expected_texts: list[str],
 ) -> None:
     """Test projection statistics display for different methods."""
     if projection == "umap":
-        pytest.importorskip("umap-learn")
-    # Get the dataframe from fixture
-    df_prop = request.getfixturevalue("df_prop")
+        pytest.importorskip("umap")
 
     fig = pmv.cluster_compositions(
         df_in=df_prop,
@@ -2737,7 +2694,7 @@ def test_arcsinh_custom_parameters() -> None:
                 "has_matching_ticks": True,
             },
         },
-        {  # Modified tests for arcsinh custom params - removing specific boundary check
+        {
             "name": "custom_arcsinh_small",
             "data_values": [-10.0, -5.0, -0.5, 0.5, 5.0, 10.0],
             "color_scale": {"type": "arcsinh", "lin_thresh": 0.1, "lin_scale": 0.5},
@@ -2755,7 +2712,7 @@ def test_arcsinh_custom_parameters() -> None:
             "color_scale": {"type": "arcsinh", "lin_thresh": 6.0, "lin_scale": 2.0},
             "assertions": {"title_contains": "property (arcsinh scale"},
         },
-        {  # Add more test cases that don't rely on specific tick values
+        {
             "name": "wide_range_arcsinh",
             "data_values": [0.0001, 0.01, 1.0, 100.0, 10000.0],
             "color_scale": "arcsinh",
@@ -2791,7 +2748,7 @@ def test_arcsinh_custom_parameters() -> None:
             "color_scale": "arcsinh",
             "assertions": {"has_negative_ticks": True},
         },
-        {  # Modified custom arcsinh tests - only check title contains
+        {
             "name": "custom_arcsinh_tiny_thresh",
             "data_values": [-10.0, -1.0, -0.1, 0.0, 0.1, 1.0, 10.0],
             "color_scale": {
@@ -2821,18 +2778,7 @@ def test_arcsinh_custom_parameters() -> None:
 )
 def test_colorscale_tick_generation(test_case: dict[str, Any]) -> None:
     """Parameterized test for various color scale tick generation scenarios."""
-    # Create a DataFrame from the test data
-    test_name = test_case["name"]
-
-    if "data_values" in test_case:
-        # Use the new property name in updated tests
-        data_values = test_case["data_values"]
-    elif "data" in test_case:
-        # Support the old property name for backwards compatibility
-        data_values = test_case["data"]
-    else:
-        raise ValueError(f"Test case {test_name} must have data_values")
-
+    data_values = test_case["data_values"]
     element_list = "Fe2O3 Al2O3 Cu SiO2 TiO2 ZnO MgO CaO Na2O K2O".split()  # noqa: SIM905
     df_test = pd.DataFrame(
         {"composition": element_list[: len(data_values)], "property": data_values}
@@ -2893,7 +2839,7 @@ def test_colorscale_tick_generation(test_case: dict[str, Any]) -> None:
 
 
 def test_log_scale_with_negative_values(sample_df: pd.DataFrame) -> None:
-    """Test log scale with -ve values doesn't crash and fall back to linear scale."""
+    """Non-positive properties are omitted from logarithmic coloring."""
     # Create data with negative values
     df_test = sample_df.copy()
     df_test["property"] = [1.0, -1.0, 2.0]  # Contains negative value
@@ -2910,8 +2856,8 @@ def test_log_scale_with_negative_values(sample_df: pd.DataFrame) -> None:
     # Verify the figure was created successfully
     assert isinstance(fig, ClusterFigure)
 
-    # Verify we have a colorbar (should have fallen back to not using log scale)
-    assert hasattr(fig.layout.coloraxis, "colorbar")
+    assert fig.layout.coloraxis.colorbar.title.text == "property (log scale)"
+    assert np.isnan(fig.data[0].marker.color).sum() == 1
 
 
 def test_arcsinh_tick_count() -> None:

@@ -58,7 +58,6 @@ def elements_hist(
         non_zero = non_zero.head(keep_top)
 
     non_zero_values = non_zero.to_numpy()
-    # Prepare text labels for bars
     text_labels = None
     if show_values is not None:
         if show_values == "percent":
@@ -80,7 +79,6 @@ def elements_hist(
         **kwargs,
     )
 
-    # Set y-axis scale and labels
     y_title = "log(Element Count)" if log_y else "Element Count"
     fig.update_yaxes(type="log" if log_y else "linear", title=y_title)
     fig.update_xaxes(title="Element")
@@ -105,16 +103,8 @@ def histogram(
 ) -> go.Figure:
     """Get a histogram using Plotly with fast numpy pre-processing.
 
-    Very common use case when dealing with large datasets so worth having a dedicated
-    function for it. Two advantages over the plotly native histograms are
-    much faster and much smaller file sizes (when saving plotly figs as HTML since
-    plotly saves a complete copy of the data to disk from which it recomputes the
-    histogram on the fly to render the figure).
-    Speedup example:
-
-        gaussian = np.random.default_rng(seed=0).normal(0, 1, 1_000_000_000)
-        histogram(gaussian)  # takes 17s
-        px.histogram(gaussian)  # ran for 3m45s before crashing the Jupyter kernel
+    Precompute bins with NumPy so rendering and HTML exports store bin counts
+    instead of every input value.
 
     Args:
         values: Values to plot as a histogram. Accepts a sequence, NumPy array, pandas
@@ -144,7 +134,6 @@ def histogram(
                 f"histogram values for {label!r} must be a non-empty 1D array."
             )
 
-    # Calculate the maximum data range across all datasets
     all_values = np.concatenate(list(data_arrays.values()))
     global_min = np.min(all_values)
     global_max = np.max(all_values)

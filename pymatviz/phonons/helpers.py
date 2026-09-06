@@ -131,11 +131,8 @@ def phonopy_to_pymatgen_bands(band_struct: PhonopyBandStructure) -> PhononBands:
     import yaml
     from pymatgen.io.phonopy import get_ph_bs_symm_line_from_dict
 
-    # Write band structure to temporary YAML file
     with tempfile.NamedTemporaryFile() as tmp_file:
-        # Use phonopy's band structure YAML writer
         band_struct.write_yaml(filename=tmp_file.name)
-        # Load YAML and convert to pymatgen band structure
         with open(tmp_file.name) as file:
             bands_dict = yaml.safe_load(file)
         return get_ph_bs_symm_line_from_dict(bands_dict)

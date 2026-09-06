@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import textwrap
-from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Literal, get_args
+from typing import TYPE_CHECKING, Literal, get_args
 
 import pandas as pd
 import plotly.express as px
@@ -40,7 +39,7 @@ def chem_env_sunburst(
         chem_env_settings (dict[str, Any] | "chemenv" | "crystal_nn"): Analysis method.
             - "crystal_nn" (default): Use CrystalNN (faster)
             - "chemenv": Use ChemEnv module (slower)
-            - dict: Custom ChemEnv settings (original behavior)
+            - dict: Custom ChemEnv settings
         max_slices_cn (int | None): Maximum CN slices to show. Defaults to None.
         max_slices_ce (int | None): Maximum CE slices per CN to show. Defaults to None.
         max_slices_mode ("other" | "drop"): How to handle excess slices. Defaults to
@@ -64,7 +63,7 @@ def chem_env_sunburst(
         chem_env_data = chem_env.collect_coord_envs_crystal_nn(
             structs, normalize=normalize
         )
-    else:  # "chemenv" (legacy default) or custom ChemEnv settings dict
+    else:  # "chemenv" or custom settings
         settings = {} if chem_env_settings == "chemenv" else chem_env_settings
         chem_env_data = chem_env.collect_coord_envs_chemenv(
             structs, chem_env_settings=settings, normalize=normalize

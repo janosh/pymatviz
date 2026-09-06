@@ -1,15 +1,4 @@
-"""Data processing utils:
-* df_ptable (DataFrame): Periodic table.
-* atomic_numbers (dict[str, int]): Map elements to atomic numbers.
-* element_symbols (dict[int, str]): Map atomic numbers to elements.
-
-- spg_to_crystal_sys: Get the crystal system for an international
-    space group number.
-- html_tag: Wrap text in a span with custom style.
-- patch_dict: Context manager to temporarily patch the specified keys in a
-    dictionary and restore it to its original state on context exit.
-- si_fmt/si_fmt_int: Convert large numbers into human readable format using SI suffixes.
-"""
+"""Element and space-group lookups, dictionary patches, and display formatting."""
 
 from __future__ import annotations
 
@@ -51,7 +40,6 @@ for spg, val in [*hm_symbol_to_spg_num_map.items()]:
 
 def spg_to_crystal_sys(spg: float | str) -> CrystalSystem:
     """Get the crystal system for an international space group number."""
-    # Ensure integer or float with no decimal part
     if isinstance(spg, str):
         spg = hm_symbol_to_spg_num_map.get(spg, spg)
 
@@ -61,7 +49,7 @@ def spg_to_crystal_sys(spg: float | str) -> CrystalSystem:
     if not (1 <= spg <= 230):
         raise ValueError(f"Invalid space group {spg}, must be 1 <= num <= 230")
 
-    if 1 <= spg <= 2:
+    if spg <= 2:
         return "triclinic"
     if spg <= 15:
         return "monoclinic"

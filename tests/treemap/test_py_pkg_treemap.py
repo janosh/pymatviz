@@ -95,20 +95,35 @@ def _add_dummy_to_path(dummy_pkg_path: Path) -> Generator[None, None, None]:
 
 
 @pytest.mark.parametrize(
-    ("file_content", "expected_lines"),
+    ("file_content", "prefixes", "expected_lines"),
     [
-        ("", 0),
-        ("\n\n", 0),
-        ("# comment\n\n# another comment", 0),
-        ("import os\nx = 1", 2),
-        ("import os\n# comment\nx = 1\n\ny=2 # inline comment", 3),
+        ("", ("#",), 0),
+        ("\n\n", ("#",), 0),
+        ("# comment\n\n# another comment", ("#",), 0),
+        ("import os\nx = 1", ("#",), 2),
+        ("import os\n# comment\nx = 1\n\ny=2 # inline comment", ("#",), 3),
+        ("// rust comment\nlet x = 1;\nlet y = 2;\n", ("//",), 2),
+        ("# python comment\nx = 1\ny = 2\n", ("#",), 2),
+        ("-- lua comment\nprint('hi')\n", ("--",), 1),
+        ("// mixed\n# both\nreal_code = 1\n", ("//", "#"), 1),
+        ("code_only\n", ("//",), 1),
+        ("// only comments\n// and more\n", ("//",), 0),
+        ("# retained without prefixes\n", (), 1),
+        (b"valid = 1\n\xff", ("#",), 0),
     ],
 )
-def test_count_lines(tmp_path: Path, file_content: str, expected_lines: int) -> None:
-    """Test count_lines function with various file contents."""
-    test_file = tmp_path / "test.py"
-    test_file.write_text(file_content)
-    assert pmv.treemap.py_pkg.count_lines(str(test_file)) == expected_lines
+def test_count_lines(
+    tmp_path: Path,
+    file_content: str | bytes,
+    prefixes: tuple[str, ...],
+    expected_lines: int,
+) -> None:
+    """Count source lines across comment syntaxes, blank files, and invalid UTF-8."""
+    test_file = tmp_path / "test.src"
+    test_file.write_bytes(
+        file_content.encode() if isinstance(file_content, str) else file_content
+    )
+    assert pmv.treemap.py_pkg.count_lines(str(test_file), prefixes) == expected_lines
 
 
 def test_count_lines_non_existent(tmp_path: Path) -> None:
@@ -1086,29 +1101,6 @@ def test_collect_coverage_data_from_url() -> None:
         "https://example.com/coverage.json", timeout=15
     )
     assert coverage_map == {"pkg/module.py": 88.5, "pkg/empty.py": 0.0}
-
-
-# === count_lines with comment_prefixes ===
-
-
-@pytest.mark.parametrize(
-    ("content", "prefixes", "expected"),
-    [
-        ("// rust comment\nlet x = 1;\nlet y = 2;\n", ("//",), 2),
-        ("# python comment\nx = 1\ny = 2\n", ("#",), 2),
-        ("-- lua comment\nprint('hi')\n", ("--",), 1),
-        ("// mixed\n# both\nreal_code = 1\n", ("//", "#"), 1),
-        ("code_only\n", ("//",), 1),
-        ("// only comments\n// and more\n", ("//",), 0),
-    ],
-)
-def test_count_lines_comment_prefixes(
-    tmp_path: Path, content: str, prefixes: tuple[str, ...], expected: int
-) -> None:
-    """count_lines strips comments based on the given prefix strings."""
-    test_file = tmp_path / "test.src"
-    test_file.write_text(content)
-    assert pmv.treemap.py_pkg.count_lines(str(test_file), prefixes) == expected
 
 
 # === parse_lcov_file ===

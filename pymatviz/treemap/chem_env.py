@@ -67,7 +67,7 @@ def chem_env_treemap(
             Analysis method.
             - "crystal_nn" (default): Use CrystalNN (faster)
             - "chemenv": Use ChemEnv module (slower)
-            - dict: Custom ChemEnv settings (original behavior)
+            - dict: Custom ChemEnv settings
         max_cells_cn (int | None): Maximum CN cells to show. Defaults to None.
         max_cells_ce (int | None): Maximum CE cells per CN to show. Defaults to None.
         normalize (bool): Whether to normalize counts per structure. Defaults to False.
@@ -105,8 +105,6 @@ def chem_env_treemap(
         >>> fig2 = pmv.chem_env_treemap(structures, max_cells_cn=5, max_cells_ce=3)
         >>> # Normalize counts per structure
         >>> fig3 = pmv.chem_env_treemap(structures, normalize=True)
-        >>> # Use faster CrystalNN analysis
-        >>> fig4 = pmv.chem_env_treemap(structures, chem_env_settings="crystal_nn")
     """
     structs = normalize_structures(structures).values()
 
@@ -117,7 +115,7 @@ def chem_env_treemap(
         chem_env_data = chem_env.collect_coord_envs_crystal_nn(
             structs, normalize=normalize
         )
-    else:  # "chemenv" (legacy default) or custom ChemEnv settings dict
+    else:  # "chemenv" or custom settings
         settings = {} if chem_env_settings == "chemenv" else chem_env_settings
         chem_env_data = chem_env.collect_coord_envs_chemenv(
             structs, chem_env_settings=settings, normalize=normalize

@@ -113,9 +113,6 @@ def rainclouds(
         if isinstance(data_frame, pd.DataFrame) and isinstance(column, str):
             df_i, col = data_frame, column
             values = df_i[col]
-            # NOTE: don't inject col into hover_data here. The primary column
-            # value is always added to hover_text below; injecting it would
-            # duplicate it and accumulate columns across loop iterations.
         else:
             values = data_itm
 
@@ -136,18 +133,6 @@ def rainclouds(
                 # normalize by max so all violins have equal max width
                 y_range /= y_range.max()
 
-            common_violin_kwargs = dict(
-                fill="toself",
-                fillcolor=rgba_color,
-                line=dict(color="rgba(255,255,255,0)"),
-                showlegend=True,  # Show in legend as the group representative
-                name=label,
-                legendgroup=label,
-                hoverinfo="x+y",
-                hoverlabel=dict(namelength=-1),
-                hovertemplate=(f"{label}<br>%{{x:.3g}}<br>%{{y:.3g}}<extra></extra>"),
-            )
-
             x_data = np.concatenate([x_range, x_range[::-1]])
             y_data = np.concatenate(
                 [
@@ -159,11 +144,21 @@ def rainclouds(
             fig.add_scatter(
                 x=x_data if orientation == "h" else y_data,
                 y=y_data if orientation == "h" else x_data,
-                **common_violin_kwargs,
+                fill="toself",
+                fillcolor=rgba_color,
+                line=dict(color="rgba(255,255,255,0)"),
+                showlegend=True,  # Show in legend as the group representative
+                name=label,
+                legendgroup=label,
+                hoverinfo="x+y",
+                hoverlabel=dict(namelength=-1),
+                hovertemplate=(f"{label}<br>%{{x:.3g}}<br>%{{y:.3g}}<extra></extra>"),
             )
 
         if show_box:  # the umbrella
-            common_box_kwargs = dict(
+            fig.add_box(
+                x=values if orientation == "h" else [pos - offset / 2] * len(values),
+                y=[pos - offset / 2] * len(values) if orientation == "h" else values,
                 name=label,
                 boxpoints=False,
                 width=width_box,
@@ -172,11 +167,6 @@ def rainclouds(
                 orientation=orientation,
                 showlegend=False,
                 legendgroup=label,
-            )
-            fig.add_box(
-                x=values if orientation == "h" else [pos - offset / 2] * len(values),
-                y=[pos - offset / 2] * len(values) if orientation == "h" else values,
-                **common_box_kwargs,
             )
 
         if show_points:  # the rain
@@ -223,7 +213,9 @@ def rainclouds(
                             for val_idx, val in enumerate(df_i[hover_col]):
                                 hover_text[val_idx] += f"<br>{hover_col}: {val}"
 
-            common_scatter_kwargs = dict(
+            fig.add_scatter(
+                x=values if orientation == "h" else pos + rain_offset + jitter_values,
+                y=pos + rain_offset + jitter_values if orientation == "h" else values,
                 mode="markers",
                 marker=dict(color=color, size=point_size, opacity=0.5),
                 showlegend=False,
@@ -233,29 +225,21 @@ def rainclouds(
                 hovertext=hover_text,
             )
 
-            fig.add_scatter(
-                x=values if orientation == "h" else pos + rain_offset + jitter_values,
-                y=pos + rain_offset + jitter_values if orientation == "h" else values,
-                **common_scatter_kwargs,
-            )
-
-    # Determine if labels should be horizontal or vertical
     labels = list(data)
     max_label_len = max(len(label) for label in labels)
-    label_orientation = "v" if max_label_len > 10 else "h"
 
     if orientation == "h":
         fig.update_yaxes(
             ticktext=labels,
             tickvals=positions,
-            tickangle=0 if label_orientation == "h" else -90,
+            tickangle=-90 if max_label_len > 10 else 0,
         )
         fig.update_xaxes(zeroline=False)
     else:
         fig.update_xaxes(
             ticktext=labels,
             tickvals=positions,
-            tickangle=0 if label_orientation == "h" else -90,
+            tickangle=-90 if max_label_len > 10 else 0,
         )
         fig.update_yaxes(zeroline=False)
 

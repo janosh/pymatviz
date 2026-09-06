@@ -88,7 +88,7 @@ def coordination_hist(
                 own subplot, but elements are colored differently within each structure.
         bar_mode ("group" | "stack"): How to arrange bars at the same
             coordination number. Can be one of:
-            "group": Bars are stacked and grouped side by side.
+            "group": Bars are grouped side by side.
             "stack": Bars are stacked on top of each other.
         hover_data (Sequence[str] | dict[str, str] | None): Sequence of keys or dict
             mapping keys to pretty labels for additional data to be shown in the hover
@@ -402,7 +402,6 @@ def coordination_vs_cutoff_line(
             single structure or a dictionary or sequence of structures.
         strategy (tuple[float, float] | NearNeighbors | type[NearNeighbors]):
             Neighbor-finding strategy. Can be one of:
-            - float: Single cutoff distance for neighbor search in Angstroms.
             - tuple[float, float]: (min_cutoff, max_cutoff) range in Angstroms.
             - NearNeighbors: An instance of a NearNeighbors subclass.
             - Type[NearNeighbors]: A NearNeighbors subclass (will be instantiated).

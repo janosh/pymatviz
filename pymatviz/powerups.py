@@ -329,7 +329,6 @@ def add_best_fit_line(
     if not isinstance(fig, go.Figure):
         raise TypeError(f"{fig=} must be instance of go.Figure")
 
-    # Determine styling
     default_color = "navy" if luminance(get_font_color(fig)) < 0.7 else "lightskyblue"
     line_color = kwargs.pop(
         "color",
@@ -338,27 +337,19 @@ def add_best_fit_line(
         else default_color,
     )
 
-    # Clear existing LS fit annotations
+    # Continue annotation offsets; combined mode replaces previous fit labels.
     annotation_count = 0
-    if (
-        hasattr(fig.layout, "annotations")
-        and fig.layout.annotations
-        and any("LS fit: y =" in anno.text for anno in fig.layout.annotations)
-        and annotation_mode != "none"
-    ):
-        # Count existing annotations
+    if annotation_mode != "none":
         annotation_count = sum(
             "LS fit: y =" in anno.text for anno in fig.layout.annotations
         )
-        if annotation_mode == "combined":
-            # Remove all existing annotations when in combined mode
+        if annotation_count and annotation_mode == "combined":
             fig.layout.annotations = [
                 anno
                 for anno in fig.layout.annotations
                 if "LS fit: y =" not in anno.text
             ]
 
-    # Function to add best fit line with annotation
     def add_fit_line(
         data_xs: ArrayLike,
         data_ys: ArrayLike,
@@ -366,14 +357,12 @@ def add_best_fit_line(
         xref: str = "x",
         yref: str = "y",
     ) -> None:
-        # Convert to numpy arrays for array operations
+        """Fit the selected data and add its line and optional label."""
         arr_xs, arr_ys = np.asarray(data_xs), np.asarray(data_ys)
-        # Calculate line parameters
         slope, intercept = np.polyfit(arr_xs, arr_ys, 1)
         x_min, x_max = float(arr_xs.min()), float(arr_xs.max())
         y0, y1 = slope * x_min + intercept, slope * x_max + intercept
 
-        # Add line
         plotly_line_defaults = dict(color=color, width=2, dash="dash")
         if line_kwargs:
             plotly_line_defaults.update(line_kwargs)
@@ -388,21 +377,19 @@ def add_best_fit_line(
             line=plotly_line_defaults,
         )
 
-        # Add annotation if requested
         if not annotate_params or annotation_mode == "none":
             return
 
         sign = "+" if intercept >= 0 else "-"
         text = f"LS fit: y = {slope:.2g}x {sign} {abs(intercept):.2g}"
 
-        # Calculate annotation position
-        nonlocal annotation_count  # Use outer variable to track annotation count
+        nonlocal annotation_count
         y_offset = 0.05 * annotation_count
-        annotation_count += 1  # Increment for the next annotation
+        annotation_count += 1
 
         plotly_anno_defaults = dict(
             x=0.98,
-            y=0.02 + y_offset,  # Use cumulative offset
+            y=0.02 + y_offset,
             xanchor="right",
             yanchor="bottom",
             showarrow=False,
@@ -416,11 +403,6 @@ def add_best_fit_line(
 
         if isinstance(annotate_params, dict):
             plotly_anno_defaults.update(annotate_params)
-            # Update y-position after applying custom parameters
-            if "y" not in annotate_params:
-                plotly_anno_defaults["y"] = 0.02 + y_offset
-
-            # Ensure font color is properly set
             if "color" in annotate_params:
                 font = plotly_anno_defaults.get("font")
                 if not isinstance(font, dict):
@@ -452,19 +434,14 @@ def add_best_fit_line(
     # CASE 2A: Faceted plotly plot
     if is_faceted:
         # Group traces by subplot
-        subplot_groups: dict[str, list[int]] = {}
+        first_traces: dict[str, Any] = {}
         for idx in valid_traces:
             trace = fig.data[idx]
-            subplot = trace.xaxis if hasattr(trace, "xaxis") and trace.xaxis else "x"
-            if subplot not in subplot_groups:
-                subplot_groups[subplot] = []
-            subplot_groups[subplot].append(idx)
+            subplot = getattr(trace, "xaxis", None) or "x"
+            first_traces.setdefault(subplot, trace)
 
-        # Process each subplot
-        for subplot, traces_in_subplot in subplot_groups.items():
-            trace = fig.data[traces_in_subplot[0]]
-            subplot_idx_str = subplot[1:] if len(subplot) > 1 else ""
-            xref, yref = subplot, f"y{subplot_idx_str}" if subplot_idx_str else "y"
+        for subplot, trace in first_traces.items():
+            xref, yref = subplot, f"y{subplot[1:]}"
             color = _get_trace_color(trace, "navy")
             add_fit_line(trace.x, trace.y, color, xref, yref)
 
@@ -474,21 +451,12 @@ def add_best_fit_line(
     if annotation_mode == "combined":
         all_xs = np.concatenate([fig.data[idx].x for idx in valid_traces])
         all_ys = np.concatenate([fig.data[idx].y for idx in valid_traces])
-        color = (
-            _get_trace_color(fig.data[valid_traces[0]], line_color)
-            if valid_traces
-            else line_color
-        )
+        color = _get_trace_color(fig.data[valid_traces[0]], line_color)
         add_fit_line(all_xs, all_ys, color)
         return fig
 
     # CASE 2C: Per-trace annotation mode for plotly
-    processed_traces: set[int] = set()
-    for trace_idx in valid_traces:
-        if trace_idx in processed_traces:
-            continue
-        processed_traces.add(trace_idx)
-
+    for trace_idx in dict.fromkeys(valid_traces):
         trace = fig.data[trace_idx]
         if len(trace.x) < 2 or len(trace.y) < 2:
             continue
@@ -558,71 +526,31 @@ def enhance_parity_plot(
     ):
         return fig
 
-    # Case 1: Data provided directly
-    if len(xs_arr) > 0 and len(ys_arr) > 0:
-        # If best_fit_line is None, determine whether to add it based on R²
-        if best_fit_line is None:
-            r2 = r2_score(xs_arr, ys_arr)
-            best_fit_line = r2 > 0.3
+    has_data = len(xs_arr) > 0 and len(ys_arr) > 0
+    if not has_data:
+        if not isinstance(fig, go.Figure):
+            raise TypeError(
+                "this powerup can only get x/y data from the figure directly "
+                "for plotly figures."
+            )
+        valid_traces = _get_valid_traces(fig, traces, None)
+        if annotation_mode == "combined":
+            xs_arr = np.concatenate([fig.data[idx].x for idx in valid_traces])
+            ys_arr = np.concatenate([fig.data[idx].y for idx in valid_traces])
 
-        # Add best fit line if requested
+    if has_data or annotation_mode == "combined":
+        if best_fit_line is None:
+            best_fit_line = r2_score(xs_arr, ys_arr) > 0.3
         if best_fit_line and fig is not None:
-            direct_best_fit_kwargs = (
-                {} if isinstance(best_fit_line, bool) else best_fit_line
-            )
-            add_best_fit_line(fig, xs=xs_arr, ys=ys_arr, **direct_best_fit_kwargs)
-
-        # Add stats annotation if requested
+            fit_kwargs = {} if isinstance(best_fit_line, bool) else best_fit_line
+            add_best_fit_line(fig, xs=xs_arr, ys=ys_arr, **fit_kwargs)
         if stats and annotation_mode != "none" and fig is not None:
-            direct_stats_kwargs = {} if isinstance(stats, bool) else stats
-            annotate_metrics(xs_arr, ys_arr, fig=fig, **direct_stats_kwargs)
-
+            stats_kwargs = {} if isinstance(stats, bool) else stats
+            annotate_metrics(xs_arr, ys_arr, fig=fig, **stats_kwargs)
         return fig
 
-    # Case 2: Need to extract data from figure
-    if not isinstance(fig, go.Figure):
-        raise TypeError(
-            "this powerup can only get x/y data from the figure directly for plotly "
-            "figures."
-        )
-
-    # Get valid traces
-    valid_traces = _get_valid_traces(fig, traces, None)
-
-    # Handle different annotation modes
-    if annotation_mode == "combined":
-        # Combine data from all selected traces
-        all_xs = np.concatenate([fig.data[idx].x for idx in valid_traces])
-        all_ys = np.concatenate([fig.data[idx].y for idx in valid_traces])
-
-        # Add overall best-fit line if requested
-        if best_fit_line is None:
-            r2 = r2_score(all_xs, all_ys)
-            best_fit_line = r2 > 0.3
-
-        if best_fit_line:
-            combined_best_fit_kwargs = (
-                {} if isinstance(best_fit_line, bool) else best_fit_line
-            )
-            add_best_fit_line(fig, xs=all_xs, ys=all_ys, **combined_best_fit_kwargs)
-
-        # Add combined stats annotation if requested
-        if stats:
-            combined_stats_kwargs = {} if isinstance(stats, bool) else stats
-            annotate_metrics(all_xs, all_ys, fig=fig, **combined_stats_kwargs)
-
-        return fig
-
-    if annotation_mode == "per_trace":
-        all_traced_processed: set[int] = (
-            set()
-        )  # Keep track of processed traces to avoid duplicates
-
-        for trace_idx in valid_traces:
-            if trace_idx in all_traced_processed:
-                continue
-            all_traced_processed.add(trace_idx)
-
+    if annotation_mode == "per_trace" and fig is not None:
+        for trace_idx in dict.fromkeys(valid_traces):
             # Get data for this trace
             trace = fig.data[trace_idx]
             trace_xs = np.array(trace.x)
