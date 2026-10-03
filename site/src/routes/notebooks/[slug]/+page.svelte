@@ -1,8 +1,9 @@
 <script lang="ts">
   import { page } from '$app/state'
-  import { PrevNext, type LinkItem } from 'svelte-widgets'
+  import { PrevNext } from 'svelte-widgets'
+  import type { PageProps } from './$types'
 
-  let { data }: { data: { html: string; items: LinkItem[] } } = $props()
+  let { data }: PageProps = $props()
 </script>
 
 {@html data.html}

@@ -2,7 +2,7 @@ import {
   notebook_entries,
   notebook_prev_next,
   read_notebook_html,
-} from '$lib/server/notebooks'
+} from '#lib/server/notebooks.js'
 import { error } from '@sveltejs/kit'
 import type { EntryGenerator, PageServerLoad } from './$types'
 

@@ -1,9 +1,7 @@
 <script lang="ts">
   import { afterNavigate, goto } from '$app/navigation'
-  import { asset } from '$app/paths'
   import { page } from '$app/state'
-  import { repository } from '$site/package.json'
-  import type { Snippet } from 'svelte'
+  import { repository } from '#site/package.json'
   import {
     CopyButton,
     Footer,
@@ -18,9 +16,9 @@
   import { heading_anchors } from 'svelte-widgets/heading-anchors'
   // oxlint-disable-next-line import/no-unassigned-import -- global app styles
   import '../app.css'
+  import type { LayoutProps } from './$types'
 
-  let { children, data }: { children?: Snippet; data: { notebook_routes: string[] } } =
-    $props()
+  let { children, data }: LayoutProps = $props()
   let page_search_query = $state(``)
 
   const toc_headings: Record<string, string> = {
@@ -69,7 +67,6 @@
     queueMicrotask(() => (page_search_query = query))
   }}
   strip_html_suffix
-  pagefind_path={asset(`/pagefind/pagefind.js`)}
 />
 
 <CopyButton global global_selector="pre:not(li > pre) > code" style="position: static" />
@@ -77,7 +74,7 @@
 <Nav
   class="site-nav"
   routes={Object.entries(nav_labels).map(([href, label]) => ({ href, label }))}
-  {page}
+  pathname={page.url.pathname}
 />
 
 <GitHubCorner href={repository} />
@@ -88,7 +85,7 @@
     {@attach heading_anchors()}
     {@attach highlight_matches({ query: page_search_query, duration_ms: 8000 })}
   >
-    {@render children?.()}
+    {@render children()}
   </main>
   <Toc
     heading_selector={`main :is(${toc_headings[page.url.pathname] ?? `h2`})`}
