@@ -2,7 +2,7 @@ default_install_hook_types: [pre-commit, commit-msg]
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.4
+    rev: v0.16.6
     hooks:
       - id: ruff-check
         args: [--fix]
@@ -11,7 +11,7 @@ repos:
         types_or: [python, jupyter]
 
   - repo: https://github.com/astral-sh/ty-pre-commit
-    rev: v0.0.74
+    rev: v0.0.79
     hooks:
       - id: ty
         # Isolated extras in a temp env. Override shell UV_FROZEN=1 / UV_NO_SYNC=1 or that env stays empty.
