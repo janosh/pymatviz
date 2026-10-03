@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    uses: janosh/workflows/.github/workflows/nodejs-gh-pages.yml@deploy-only-from-main
+    uses: janosh/workflows/.github/workflows/nodejs-gh-pages.yml@main
     with:
       node-version: 24
       # svelte-widgets comes from GitHub and builds on install: pnpm blocks dependency builds by

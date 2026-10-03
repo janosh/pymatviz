@@ -24,7 +24,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         split: [1, 2, 3, 4]
-    uses: janosh/workflows/.github/workflows/pytest.yml@deploy-only-from-main
+    uses: janosh/workflows/.github/workflows/pytest.yml@main
     secrets: inherit
     with:
       runs-on: ${{ matrix.os }}
