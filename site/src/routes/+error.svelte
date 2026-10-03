@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from '$app/state'
-  import { homepage, name } from '$site/package.json'
+  import { homepage, name } from '#site/package.json'
 
   let online = $state(globalThis.navigator?.onLine ?? true)
 </script>

@@ -5,7 +5,7 @@
 
   // Vite 8 SSR glob values are namespaces; `.default` is the URL string.
   const figs: PlotFig[] = Object.entries(
-    import.meta.glob<{ default: string }>(`$root/assets/svg/*.svg`, {
+    import.meta.glob<{ default: string }>(`#root/assets/svg/*.svg`, {
       eager: true,
       query: `?url`,
     }),

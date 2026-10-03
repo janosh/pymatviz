@@ -1,4 +1,4 @@
-import type { LinkItem } from 'svelte-widgets'
+import type { LinkItem, Subpage } from 'svelte-widgets'
 import { readdirSync, readFileSync } from 'node:fs'
 
 const examples_dir = new URL(`../examples/`, `file://${process.cwd()}/`)
@@ -9,22 +9,20 @@ const slugs = (extension: string) =>
     .toSorted()
     .map((file_name) => file_name.slice(0, -extension.length))
 
-const notebook_href = (slug: string) => `/notebooks/${slug}`
+const notebook_link = (slug: string): LinkItem => ({
+  href: `/notebooks/${slug}`,
+  label: slug.replaceAll(`_`, ` `),
+})
 
-export const notebook_subpages = (): [string, string, string][] =>
-  slugs(`.ipynb`).map((slug) => [
-    slug.replaceAll(`_`, ` `),
-    notebook_href(slug),
-    `${slug}.ipynb`,
-  ])
-
-export const notebook_routes = () => slugs(`.ipynb`).map(notebook_href)
-
-export const notebook_prev_next = (): LinkItem[] =>
-  slugs(`.html`).map((slug) => ({
-    href: notebook_href(slug),
-    label: slug.replaceAll(`_`, ` `),
+export const notebook_subpages = (): Subpage[] =>
+  slugs(`.ipynb`).map((slug) => ({
+    ...notebook_link(slug),
+    description: `${slug}.ipynb`,
   }))
+
+export const notebook_routes = () => notebook_subpages().map(({ href }) => href)
+
+export const notebook_prev_next = (): LinkItem[] => slugs(`.html`).map(notebook_link)
 
 export const notebook_entries = () => slugs(`.html`).map((slug) => ({ slug }))
 

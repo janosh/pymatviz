@@ -1,8 +1,9 @@
 <script lang="ts">
   import { SubpageGrid } from 'svelte-widgets'
   import { Code } from 'svelte-widgets/icons'
+  import type { PageProps } from './$types'
 
-  let { data }: { data: { subpages: [string, string, string][] } } = $props()
+  let { data }: PageProps = $props()
 </script>
 
 <SubpageGrid
