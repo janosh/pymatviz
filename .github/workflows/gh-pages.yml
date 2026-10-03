@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    uses: janosh/workflows/.github/workflows/nodejs-gh-pages.yml@main
+    uses: janosh/workflows/.github/workflows/nodejs-gh-pages.yml@deploy-only-from-main
     with:
       node-version: 24
       # svelte-widgets comes from GitHub and builds on install: pnpm blocks dependency builds by
@@ -17,6 +17,6 @@ jobs:
       install-cmd: corepack enable && NPM_CONFIG_LEGACY_PEER_DEPS=true pnpm install --config.dangerously-allow-all-builds=true
       python-version: "3.12"
       working-directory: site
-      pre-build: |
+      pre-build-cmd: |
         pip install -e '..[gh-pages]'
         python ../site/make_docs.py
