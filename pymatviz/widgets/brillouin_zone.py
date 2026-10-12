@@ -6,6 +6,7 @@ from typing import Any
 
 import traitlets as tl
 
+from pymatviz.widgets._traits import optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -37,15 +38,15 @@ class BrillouinZoneWidget(MatterVizWidget):
     bz_data = tl.Dict(allow_none=True).tag(sync=True)
 
     # Display options
-    surface_color = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
-    surface_opacity = tl.Float(allow_none=True, default_value=None).tag(sync=True)
-    edge_color = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
-    edge_width = tl.Float(allow_none=True, default_value=None).tag(sync=True)
-    show_vectors = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
-    show_ibz = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
-    ibz_color = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
-    ibz_opacity = tl.Float(allow_none=True, default_value=None).tag(sync=True)
-    camera_projection = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
+    surface_color = optional_trait(tl.Unicode)
+    surface_opacity = optional_trait(tl.Float)
+    edge_color = optional_trait(tl.Unicode)
+    edge_width = optional_trait(tl.Float)
+    show_vectors = optional_trait(tl.Bool)
+    show_ibz = optional_trait(tl.Bool)
+    ibz_color = optional_trait(tl.Unicode)
+    ibz_opacity = optional_trait(tl.Float)
+    camera_projection = optional_trait(tl.Unicode)
 
     def __init__(
         self,
@@ -56,19 +57,17 @@ class BrillouinZoneWidget(MatterVizWidget):
         """Initialize the BrillouinZoneWidget.
 
         Args:
-            structure: A pymatgen Structure, ASE Atoms, or structure dict. The BZ
-                is computed by the matterviz frontend from the lattice.
+            structure: A pymatgen Structure, ASE Atoms, PhonopyAtoms or structure
+                dict (see ``structure_to_dict``). The BZ is computed by the matterviz
+                frontend from the lattice.
             bz_data: Pre-computed BZ data with vertices, faces, and edges.
             **kwargs: Additional widget properties.
         """
-        from pymatviz.widgets._normalize import (
-            normalize_plot_json,
-            normalize_structure_for_bz,
-        )
+        from pymatviz.widgets._normalize import normalize_plot_json, structure_to_dict
 
         super().__init__(
             widget_type="brillouin_zone",
-            structure=normalize_structure_for_bz(structure),
+            structure=structure_to_dict(structure),
             bz_data=normalize_plot_json(bz_data, "bz_data"),
             **kwargs,
         )

@@ -21,7 +21,8 @@ class HistogramWidget(PlotControlsTraits, MatterVizWidget):
     mode = tl.CaselessStrEnum(values=["single", "overlay"], default_value="single").tag(
         sync=True
     )
-    selected_property = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
+    # Two-way synced index of the active series in single-mode controls
+    selected_series_idx = tl.Int(default_value=0).tag(sync=True)
     show_legend = tl.Bool(default_value=True).tag(sync=True)
     x_axis = tl.Dict(allow_none=True).tag(sync=True)
     y_axis = tl.Dict(allow_none=True).tag(sync=True)
@@ -44,7 +45,7 @@ class HistogramWidget(PlotControlsTraits, MatterVizWidget):
         *,
         bins: int = 100,
         mode: str = "single",
-        selected_property: str | None = None,
+        selected_series_idx: int = 0,
         show_legend: bool = True,
         x_axis: dict[str, Any] | None = None,
         y_axis: dict[str, Any] | None = None,
@@ -69,7 +70,7 @@ class HistogramWidget(PlotControlsTraits, MatterVizWidget):
                 the raw samples in ``values``.
             bins: Number of bins.
             mode: Histogram mode (``single`` or ``overlay``).
-            selected_property: Active series label in single-mode controls.
+            selected_series_idx: Index of the active series in single-mode controls.
             show_legend: Whether to render the legend.
             x_axis: X axis configuration.
             y_axis: Primary Y axis configuration.
@@ -95,7 +96,7 @@ class HistogramWidget(PlotControlsTraits, MatterVizWidget):
             ),
             bins=bins,
             mode=mode,
-            selected_property=selected_property,
+            selected_series_idx=selected_series_idx,
             show_legend=show_legend,
             **normalize_plot_json(
                 dict(

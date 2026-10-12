@@ -10,28 +10,12 @@ import pytest
 import traitlets as tl
 
 from pymatviz import TrajectoryWidget
-from tests.widgets.conftest import (
-    assert_widget_build_files,
-    assert_widget_notebook_integration,
-)
 
 
 if TYPE_CHECKING:
     from typing import Any
 
     from pymatgen.core import Structure
-
-
-def test_widget_build_files_and_display_trajectory() -> None:
-    """Widget must load build files and display properly."""
-    widget = TrajectoryWidget()
-    assert_widget_build_files(widget)
-
-
-def test_widget_notebook_integration() -> None:
-    """Widget must integrate properly with notebook environments."""
-    widget = TrajectoryWidget()
-    assert_widget_notebook_integration(widget)
 
 
 def test_widget_creates_view_model(multi_frame_trajectory: dict[str, Any]) -> None:
@@ -46,6 +30,8 @@ def test_widget_creates_view_model(multi_frame_trajectory: dict[str, Any]) -> No
         "current_step_idx",
         "layout",
         "display_mode",
+        "plot_type",
+        "distribution_property",
         "show_controls",
     ):
         trait = class_traits[trait_name]
@@ -54,10 +40,10 @@ def test_widget_creates_view_model(multi_frame_trajectory: dict[str, Any]) -> No
     assert widget.trajectory == json.loads(json.dumps(multi_frame_trajectory))
     assert widget.current_step_idx == 0
     assert widget.layout == "auto"
-    assert widget.display_mode == "structure+scatter"
+    assert widget.display_mode == "auto"
+    assert widget.plot_type == "time-series"
+    assert widget.distribution_property is None
     assert widget.show_controls is True
-
-    json.dumps(widget.trajectory)
 
 
 @pytest.mark.parametrize("input_format", ["dict", "list", "tuple", "structure"])
@@ -123,6 +109,8 @@ def test_widget_complete_lifecycle(
         show_controls=False,
         layout="horizontal",
         display_mode="structure",
+        plot_type="distribution",
+        distribution_property="energy",
     )
 
     assert widget.trajectory == json.loads(json.dumps(multi_frame_trajectory))
@@ -131,6 +119,8 @@ def test_widget_complete_lifecycle(
     assert widget.show_controls is False
     assert widget.layout == "horizontal"
     assert widget.display_mode == "structure"
+    assert widget.plot_type == "distribution"
+    assert widget.distribution_property == "energy"
 
     widget.current_step_idx = 2
     assert widget.current_step_idx == 2
@@ -149,6 +139,8 @@ def test_widget_complete_lifecycle(
         "show_controls": widget.show_controls,
         "layout": widget.layout,
         "display_mode": widget.display_mode,
+        "plot_type": widget.plot_type,
+        "distribution_property": widget.distribution_property,
     }
 
     restored_widget = TrajectoryWidget(**state)
@@ -161,11 +153,7 @@ def test_widget_complete_lifecycle(
     ("trajectory_input", "expected_frames", "expected_properties"),
     [
         # Basic properties
-        (
-            [{"structure": "struct1", "energy": -1.23, "force": [0.1, 0.2, 0.3]}],
-            1,
-            {"energy": -1.23, "force": [0.1, 0.2, 0.3]},
-        ),
+        ([{"structure": "struct1", "energy": -1.23}], 1, {"energy": -1.23}),
         # Complex properties
         (
             [
@@ -233,7 +221,7 @@ def test_trajectory_widget_property_extraction(
     [0, 1, 3],
 )
 def test_trajectory_widget_structure_sequence(n_frames: int) -> None:
-    """Test TrajectoryWidget handles list of structures."""
+    """Test TrajectoryWidget handles lists of structures and pymatgen Trajectory."""
     from pymatgen.core import Lattice, Structure
 
     structures = [
@@ -252,24 +240,19 @@ def test_trajectory_widget_structure_sequence(n_frames: int) -> None:
     assert all(
         frame["step"] == idx for idx, frame in enumerate(widget.trajectory["frames"])
     )
-
     assert set(widget.trajectory) == {"frames", "metadata"}
+    assert widget.trajectory["metadata"] == {}
 
+    if n_frames:  # pymatgen Trajectory (or its dict) goes to matterviz's own parser
+        from pymatgen.core.trajectory import Trajectory
 
-@pytest.mark.parametrize(
-    ("trajectory_input", "expected_result"),
-    [
-        (None, None),
-        ([], {"frames": [], "metadata": {}}),
-    ],
-)
-def test_trajectory_widget_edge_cases(
-    trajectory_input: Any,
-    expected_result: dict[str, list[dict[str, Any]] | dict[str, Any]] | None,
-) -> None:
-    """Test TrajectoryWidget handles edge cases correctly."""
-    result = TrajectoryWidget(trajectory=trajectory_input).trajectory
-    assert result == expected_result
+        from pymatviz.widgets._normalize import normalize_plot_json
+
+        traj = Trajectory.from_structures(structures, constant_lattice=False)
+        expected = normalize_plot_json(traj.as_dict(), "trajectory")
+        assert expected["@class"] == "Trajectory"
+        for traj_input in (traj, traj.as_dict()):
+            assert TrajectoryWidget(trajectory=traj_input).trajectory == expected
 
 
 _CUBIC = {"matrix": [[4, 0, 0], [0, 4, 0], [0, 0, 4]]}
@@ -303,7 +286,7 @@ def test_trajectory_widget_completes_only_non_derivable_fields(
     }
     steps = ({"step": 500}, {}, {"step": 2.5}, {"step": np.int64(3000)})
     frames = [{"structure": structure, **step} for step in steps]
-    frames[0]["metadata"] = {"forces": np.zeros((1, 3))}
+    frames[0]["metadata"] = {"forces": np.zeros((1, 3)), "force_max": 0.5}
     widget = TrajectoryWidget(
         trajectory={"frames": frames, "metadata": {"temperature": np.int64(300)}}
     )
@@ -311,7 +294,8 @@ def test_trajectory_widget_completes_only_non_derivable_fields(
     exported = json.loads(json.dumps(widget.to_dict()))["trajectory"]
     assert exported["metadata"]["temperature"] == 300
     assert exported["frames"][3]["step"] == 3000
-    assert exported["frames"][0]["metadata"]["forces"] == [[0.0, 0.0, 0.0]]
+    # per-atom forces move to the sites; an explicit force_max is kept
+    assert exported["frames"][0]["metadata"] == {"force_max": 0.5, "force_norm": 0.0}
     frame = widget.trajectory["frames"][0]
     lattice = frame["structure"]["lattice"]
     assert set(lattice) == {"matrix", *lattice_input}  # no a/b/c/.../volume/pbc added
@@ -324,29 +308,26 @@ def test_trajectory_widget_completes_only_non_derivable_fields(
             "species": expected_species or species,
             coord_key: coords,
             "label": "Si1",
-            "properties": {},
+            "properties": {"force": [0.0, 0.0, 0.0]},
         }
     ]
-
-
-def test_trajectory_string_input_raises_error() -> None:
-    """Test that passing string to trajectory parameter raises error."""
-    with pytest.raises(TypeError, match="Unsupported trajectory type"):
-        TrajectoryWidget(trajectory="just a string")
+    assert widget.trajectory["frames"][1]["structure"]["sites"][0]["properties"] == {}
 
 
 @pytest.mark.parametrize(
     ("metadata_field", "metadata_value"),
     [
         pytest.param(None, {}, id="no-metadata"),
-        ("properties", {"energy": -1.23, "forces": [[0.1, 0.2, 0.3]]}),
+        ("properties", {"energy": -1.23, "forces": [[0.0, 0.3, 0.4], [0.0, 0.0, 0.0]]}),
         ("info", {"temperature": 300, "pressure": 1.0}),
     ],
 )
 def test_trajectory_widget_with_structure_metadata(
     metadata_field: str | None, metadata_value: dict[str, Any]
 ) -> None:
-    """TrajectoryWidget forwards structure properties/info to frame metadata."""
+    """TrajectoryWidget forwards structure properties/info to frame metadata, per-atom
+    forces to the sites.
+    """
     from pymatgen.core import Lattice, Structure
 
     structure = Structure(
@@ -368,6 +349,16 @@ def test_trajectory_widget_with_structure_metadata(
     assert set(widget.trajectory) == {"frames", "metadata"}
     if metadata_field is None:
         assert "metadata" not in frame
+    elif "forces" in metadata_value:
+        assert frame["metadata"] == {
+            "energy": -1.23,
+            "force_max": pytest.approx(0.5, rel=1e-15),
+            "force_norm": pytest.approx(0.5 / np.sqrt(2), rel=1e-15),
+        }
+        site_forces = [
+            site["properties"]["force"] for site in frame["structure"]["sites"]
+        ]
+        assert site_forces == metadata_value["forces"]
     else:
         assert frame["metadata"] == metadata_value
 
@@ -386,26 +377,28 @@ def test_trajectory_widget_with_structure_metadata(
 def test_trajectory_widget_with_ase_atoms(
     symbols: str, positions: list[list[float]], cell: list[int] | None, energy: float
 ) -> None:
-    """ASE frames preserve metadata with and without a simulation cell."""
+    """ASE frames keep info and calculator results (which AseAtomsAdaptor drops) with
+    and without a simulation cell; calculator forces become site vectors.
+    """
     atoms_cls = pytest.importorskip("ase").Atoms
+    from ase.calculators.singlepoint import SinglePointCalculator
+
     atoms = atoms_cls(symbols, positions=positions, cell=cell)
-    atoms.info = {"energy": energy}
+    atoms.info = {"temperature": 300}
+    forces = np.zeros((len(atoms), 3))
+    forces[0] = [0.0, 0.0, 2.0]
+    atoms.calc = SinglePointCalculator(atoms, energy=energy, forces=forces)
     widget = TrajectoryWidget(trajectory=atoms)
     (frame,) = widget.trajectory["frames"]
     assert frame["step"] == 0
-    assert frame["metadata"] == {"energy": energy}
-
-
-def test_trajectory_widget_vector_configs_trait() -> None:
-    """TrajectoryWidget vector_configs trait round-trips correctly."""
-    configs = {
-        "force_DFT": {"visible": True, "color": "#e74c3c", "scale": None},
-        "force_MLFF": {"visible": False, "color": "#3498db", "scale": 2.0},
+    assert frame["metadata"] == {
+        "temperature": 300,
+        "energy": energy,
+        "force_max": 2.0,
+        "force_norm": pytest.approx(2 / np.sqrt(len(atoms)), rel=1e-15),
     }
-    widget = TrajectoryWidget(vector_configs=configs, vector_scale=0.5)
-    assert widget.vector_configs == configs
-    assert widget.vector_scale == 0.5
-    assert TrajectoryWidget().vector_configs is None
+    sites = frame["structure"]["sites"]
+    assert [site["properties"]["force"] for site in sites] == forces.tolist()
 
 
 def test_trajectory_widget_atom_type_mapping_trait() -> None:
@@ -424,16 +417,28 @@ def test_trajectory_widget_atom_type_mapping_trait() -> None:
 def test_trajectory_widget_normalization_regressions(
     fe3co4_disordered: Structure,
 ) -> None:
-    """Numpy metadata serializes as numeric lists (not stringified reprs), the
-    layout trait survives to_dict(), and inputs are not mutated (regressions).
+    """Numpy forces become per-site numeric lists (matterviz 0.8 ignores vectors in
+    frame metadata) plus force_max/force_norm, malformed forces raise, the layout trait
+    survives to_dict(), and inputs are not mutated (regressions).
     """
     forces = np.array([[1.0, 0.0, 0.0], [0.0, 2.0, 0.0]])
     frames = [{"structure": fe3co4_disordered, "forces": forces, "energy": -1.5}]
     widget = TrajectoryWidget(trajectory=frames, layout="horizontal")
 
-    metadata = widget.trajectory["frames"][0]["metadata"]
-    assert metadata["forces"] == [[1.0, 0.0, 0.0], [0.0, 2.0, 0.0]]
-    assert metadata["energy"] == -1.5
+    (frame,) = widget.trajectory["frames"]
+    assert frame["metadata"] == {
+        "energy": -1.5,
+        "force_max": 2.0,
+        "force_norm": pytest.approx(np.sqrt(2.5), rel=1e-15),
+    }
+    site_forces = [site["properties"]["force"] for site in frame["structure"]["sites"]]
+    assert site_forces == [[1.0, 0.0, 0.0], [0.0, 2.0, 0.0]]
+    for bad_frame, match in (
+        ({"force": [0.1, 0.2, 0.3]}, r"frame 0 'force' must be per-atom.*\(3,\)"),
+        ({"forces": forces, "force": forces}, "both 'force' and 'forces'"),
+    ):
+        with pytest.raises(ValueError, match=match):
+            TrajectoryWidget(trajectory=[{"structure": fe3co4_disordered, **bad_frame}])
     json.dumps(widget.trajectory)  # round-trips as standard JSON
     # layout used to be filtered from to_dict() by _EXCLUDED_TRAITS, so headless
     # to_img/to_html exports silently ignored it
@@ -446,3 +451,10 @@ def test_trajectory_widget_normalization_regressions(
     lattice_before = {**struct_dict["lattice"]}
     TrajectoryWidget(trajectory={"frames": [{"structure": struct_dict}]})
     assert struct_dict["lattice"] == lattice_before
+    sites_before = json.dumps(struct_dict["sites"])
+    TrajectoryWidget(
+        trajectory={
+            "frames": [{"structure": struct_dict, "metadata": {"forces": forces}}]
+        }
+    )
+    assert json.dumps(struct_dict["sites"]) == sites_before

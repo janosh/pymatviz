@@ -7,7 +7,7 @@ from typing import Any
 import traitlets as tl
 
 from pymatviz.widgets._normalize import _to_dict
-from pymatviz.widgets._traits import PlotControlsTraits
+from pymatviz.widgets._traits import PlotControlsTraits, optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -37,11 +37,10 @@ class BandStructureWidget(PlotControlsTraits, MatterVizWidget):
     band_structs = tl.Dict(allow_none=True).tag(sync=True)
 
     # Display options
-    band_type = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
-    show_legend = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
-    fermi_level = tl.Float(allow_none=True, default_value=None).tag(sync=True)
+    show_legend = optional_trait(tl.Bool)
+    fermi_level = optional_trait(tl.Float)
     # Horizontal reference line in the data unit (THz for phonons, eV for electrons)
-    reference_frequency = tl.Float(allow_none=True, default_value=None).tag(sync=True)
+    reference_frequency = optional_trait(tl.Float)
 
     def __init__(self, band_structs: Any | None = None, **kwargs: Any) -> None:
         """Initialize the BandStructureWidget.

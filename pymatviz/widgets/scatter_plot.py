@@ -7,7 +7,7 @@ from typing import Any
 import traitlets as tl
 
 from pymatviz.widgets._normalize import normalize_plot_json, normalize_plot_series
-from pymatviz.widgets._traits import PlotControlsTraits
+from pymatviz.widgets._traits import PlotControlsTraits, optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -29,13 +29,13 @@ class ScatterPlotWidget(PlotControlsTraits, MatterVizWidget):
     ref_lines = tl.List(allow_none=True).tag(sync=True)
     fill_regions = tl.List(allow_none=True).tag(sync=True)
     error_bands = tl.List(allow_none=True).tag(sync=True)
-    show_legend = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    show_legend = optional_trait(tl.Bool)
     # auto picks canvas above the dense-point threshold, svg below
-    marker_renderer = tl.CaselessStrEnum(
-        values=["auto", "svg", "canvas"], allow_none=True, default_value=None
-    ).tag(sync=True)
+    marker_renderer = optional_trait(
+        tl.CaselessStrEnum, values=["auto", "svg", "canvas"]
+    )
     padding = tl.Dict(allow_none=True).tag(sync=True)
-    range_padding = tl.Float(allow_none=True, default_value=None).tag(sync=True)
+    range_padding = optional_trait(tl.Float)
     x2_axis = tl.Dict(allow_none=True).tag(sync=True)
     x_range = tl.List(allow_none=True).tag(sync=True)
     x2_range = tl.List(allow_none=True).tag(sync=True)
@@ -56,9 +56,9 @@ class ScatterPlotWidget(PlotControlsTraits, MatterVizWidget):
     # event_id (monotonically increasing per widget instance) so re-clicking
     # the same point is still observed as a distinct event:
     # {"series_idx", "point_idx", "x", "y", "event_id"}.
-    selected_point = tl.Dict(allow_none=True, default_value=None).tag(sync=True)
-    active_point = tl.Dict(allow_none=True, default_value=None).tag(sync=True)
-    hovered_point = tl.Dict(allow_none=True, default_value=None).tag(sync=True)
+    selected_point = optional_trait(tl.Dict)
+    active_point = optional_trait(tl.Dict)
+    hovered_point = optional_trait(tl.Dict)
 
     def __init__(
         self,

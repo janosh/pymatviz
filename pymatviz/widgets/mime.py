@@ -77,8 +77,7 @@ def create_widget(obj: Any) -> Any:
     Raises:
         ValueError: If no widget is registered for the given object type.
     """
-    if not _AUTO_DISPLAY:
-        register_matterviz_widgets()
+    register_matterviz_widgets()  # no-op once registered
 
     # MRO-based lookup: walks the inheritance chain for exact or parent match
     for cls in type(obj).__mro__:

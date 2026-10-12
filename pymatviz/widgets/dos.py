@@ -7,7 +7,7 @@ from typing import Any
 import traitlets as tl
 
 from pymatviz.widgets._normalize import _to_dict
-from pymatviz.widgets._traits import PlotControlsTraits
+from pymatviz.widgets._traits import PlotControlsTraits, optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -36,15 +36,15 @@ class DosWidget(PlotControlsTraits, MatterVizWidget):
     doses = tl.Dict(allow_none=True).tag(sync=True)
 
     # Display options
-    stack = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    stack = optional_trait(tl.Bool)
     # Gaussian smearing width in the data unit: THz for phonon DOS (pymatgen PhononDos
     # frequencies), eV for electronic DOS. matterviz reads sigma in the data unit
     # whatever frequency unit the plot displays.
-    sigma = tl.Float(allow_none=True, default_value=None, min=0.0).tag(sync=True)
-    normalize = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
-    orientation = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
-    show_legend = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
-    spin_mode = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
+    sigma = optional_trait(tl.Float, min=0.0)
+    normalize = optional_trait(tl.Unicode)
+    orientation = optional_trait(tl.Unicode)
+    show_legend = optional_trait(tl.Bool)
+    spin_mode = optional_trait(tl.Unicode)
 
     def __init__(self, doses: Any | None = None, **kwargs: Any) -> None:
         """Initialize the DosWidget.

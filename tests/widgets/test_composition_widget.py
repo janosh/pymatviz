@@ -9,11 +9,7 @@ import pytest
 from pymatgen.core import Composition
 
 from pymatviz.widgets.composition import CompositionWidget
-from tests.widgets.conftest import (
-    assert_widget_build_files,
-    assert_widget_notebook_integration,
-    assert_widget_property_sync,
-)
+from tests.widgets.conftest import assert_widget_property_sync
 
 
 @pytest.mark.parametrize(
@@ -75,51 +71,6 @@ def test_widget_property_sync_composition(
 
     for test_value in test_values:
         assert_widget_property_sync(widget, property_name, test_value)
-
-
-def test_widget_build_files_and_display_composition() -> None:
-    """Widget must load build files and display properly."""
-    widget = CompositionWidget(composition="Fe2O3")
-    assert_widget_build_files(widget)
-
-    # Test composition is JSON serializable
-    json.dumps(widget.composition)
-
-
-def test_widget_notebook_integration_composition() -> None:
-    """Widget must integrate properly with notebook environments."""
-    widget = CompositionWidget(composition="Fe2O3")
-    assert_widget_notebook_integration(widget)
-
-
-def test_widget_complete_lifecycle() -> None:
-    """Test complete widget lifecycle including state persistence."""
-    widget = CompositionWidget(
-        composition="Fe2O3",
-        show_percentages=True,
-        color_scheme="Pastel",
-        mode="bar",
-        style="width: 800px; height: 600px",
-    )
-
-    assert widget.composition == Composition("Fe2O3").as_dict()
-    assert widget.show_percentages is True
-    assert widget.color_scheme == "Pastel"
-    assert widget.mode == "bar"
-    assert widget.style == "width: 800px; height: 600px"
-
-    state = {
-        "composition": widget.composition,
-        "show_percentages": widget.show_percentages,
-        "color_scheme": widget.color_scheme,
-        "mode": widget.mode,
-        "style": widget.style,
-    }
-
-    restored_widget = CompositionWidget(**state)
-
-    for key, value in state.items():
-        assert getattr(restored_widget, key) == value
 
 
 def test_composition_widget_pymatgen_kwargs() -> None:

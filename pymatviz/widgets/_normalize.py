@@ -24,21 +24,21 @@ def _normalize_ferrox_hkls(hkls_data: Any) -> Any:
         to `[[{"hkl": [h, k, l]}], ...]`. Unrecognized structures are returned
         unchanged.
     """
-    if not isinstance(hkls_data, list):
+    if not isinstance(hkls_data, list) or not hkls_data:
         return hkls_data
-    if hkls_data and all(
-        isinstance(hkl_entry, list)
-        and len(hkl_entry) == 3
-        and all(isinstance(value, int) for value in hkl_entry)
-        for hkl_entry in hkls_data
-    ):
+
+    def is_miller(value: Any) -> bool:
+        """Whether value is a ``[h, k, l]`` list of ints."""
+        return (
+            isinstance(value, list)
+            and len(value) == 3
+            and all(isinstance(idx, int) for idx in value)
+        )
+
+    if all(is_miller(hkl_entry) for hkl_entry in hkls_data):
         return [[{"hkl": hkl_entry}] for hkl_entry in hkls_data]
-    if hkls_data and all(
-        isinstance(hkl_group, list)
-        and hkl_group
-        and isinstance(hkl_group[0], list)
-        and len(hkl_group[0]) == 3
-        and all(isinstance(value, int) for value in hkl_group[0])
+    if all(
+        isinstance(hkl_group, list) and hkl_group and is_miller(hkl_group[0])
         for hkl_group in hkls_data
     ):
         return [[{"hkl": hkl_group[0]}] for hkl_group in hkls_data]
@@ -212,21 +212,52 @@ def normalize_plot_series(
     return normalized_series
 
 
-def normalize_structure_for_bz(obj: Any) -> dict[str, Any] | None:
-    """Normalize a pymatgen Structure or ASE Atoms to a dict for BZ visualization."""
-    if obj is None or isinstance(obj, dict) or hasattr(obj, "as_dict"):
-        return _to_dict(obj, "Brillouin zone structure")
+def structure_to_dict(structure: Any) -> dict[str, Any] | None:
+    """Convert one structure-like object to the dict structure widgets sync to JS.
 
-    # Handle ASE Atoms (no .as_dict but has .get_chemical_symbols)
-    if hasattr(obj, "get_chemical_symbols"):
-        from pymatviz.process_data import normalize_structures
+    Shared by ``StructureWidget``, ``BrillouinZoneWidget`` and ``link_selection``.
 
-        return next(iter(normalize_structures(obj).values())).as_dict()
+    Args:
+        structure: ``None`` (passed through), a structure dict with a ``sites`` list
+            (passed through unchanged, schema errors are reported by the renderer),
+            or a single pymatgen ``Structure``/``Molecule``, ASE ``Atoms`` or
+            ``PhonopyAtoms`` (converted via ``normalize_structures(...).as_dict()``).
 
-    raise TypeError(
-        f"Unsupported type for Brillouin zone structure: {type(obj)}. "
-        "Expected dict, pymatgen Structure, or ASE Atoms."
+    Returns:
+        The structure dict, or None if structure is None.
+
+    Raises:
+        TypeError: If a dict has no ``sites`` list, or for any other type (including
+            sequences of structures).
+    """
+    if structure is None:
+        return None
+    if isinstance(structure, dict):
+        if not isinstance(structure.get("sites"), list):
+            raise TypeError(
+                "structure dicts need a 'sites' list (e.g. from Structure.as_dict()), "
+                f"got keys={sorted(structure)}"
+            )
+        return structure
+
+    from pymatgen.core import IMolecule, IStructure
+
+    from pymatviz.process_data import (
+        is_ase_atoms,
+        is_phonopy_atoms,
+        normalize_structures,
     )
+
+    if not (
+        isinstance(structure, (IStructure, IMolecule))
+        or is_ase_atoms(structure)
+        or is_phonopy_atoms(structure)
+    ):
+        raise TypeError(
+            "structure must be a dict, pymatgen Structure/Molecule, ASE Atoms or "
+            f"PhonopyAtoms, got {type(structure).__name__}"
+        )
+    return next(iter(normalize_structures(structure).values())).as_dict()
 
 
 def _parse_formula_to_dict(formula: str) -> dict[str, float]:
@@ -289,26 +320,23 @@ def normalize_convex_hull_entries(obj: Any) -> list[dict[str, Any]] | None:
     if isinstance(obj, (list, tuple)):
         return _normalize_entry_compositions(obj)
 
-    try:
-        from pymatgen.analysis.phase_diagram import PhaseDiagram
+    from pymatgen.analysis.phase_diagram import PhaseDiagram
 
-        if isinstance(obj, PhaseDiagram):
-            entries = []
-            for entry in obj.all_entries:
-                entry_dict: dict[str, Any] = {
-                    "composition": entry.composition.as_dict(),
-                    "energy": entry.energy,
-                    "energy_per_atom": entry.energy_per_atom,
-                }
-                try:
-                    entry_dict["e_above_hull"] = obj.get_e_above_hull(entry)
-                    entry_dict["is_stable"] = entry in obj.stable_entries
-                except (ValueError, KeyError):
-                    pass
-                entries.append(entry_dict)
-            return entries
-    except ImportError:
-        pass
+    if isinstance(obj, PhaseDiagram):
+        entries = []
+        for entry in obj.all_entries:
+            entry_dict: dict[str, Any] = {
+                "composition": entry.composition.as_dict(),
+                "energy": entry.energy,
+                "energy_per_atom": entry.energy_per_atom,
+            }
+            try:
+                entry_dict["e_above_hull"] = obj.get_e_above_hull(entry)
+                entry_dict["is_stable"] = entry in obj.stable_entries
+            except (ValueError, KeyError):
+                pass
+            entries.append(entry_dict)
+        return entries
 
     raise TypeError(
         f"Unsupported type for convex hull entries: {type(obj)}. "
@@ -368,12 +396,7 @@ def _xrd_pattern_to_dict(obj: Any) -> dict[str, Any]:
         XRD pattern dict with x, y, and optional hkls, d_hkls keys.
     """
     if isinstance(obj, dict):
-        has_canonical_keys = all(key in obj for key in ("x", "y"))
-        has_ferrox_keys = all(key in obj for key in ("two_theta", "intensities"))
-        has_partial_canonical = any(key in obj for key in ("x", "y"))
-        has_partial_ferrox = any(key in obj for key in ("two_theta", "intensities"))
-
-        if has_canonical_keys:
+        if all(key in obj for key in ("x", "y")):
             if len(obj["x"]) != len(obj["y"]):
                 raise ValueError(
                     "XRD pattern dict has mismatched canonical lengths: "
@@ -381,7 +404,7 @@ def _xrd_pattern_to_dict(obj: Any) -> dict[str, Any]:
                 )
             return obj
 
-        if has_ferrox_keys:
+        if all(key in obj for key in ("two_theta", "intensities")):
             if len(obj["two_theta"]) != len(obj["intensities"]):
                 raise ValueError(
                     "XRD pattern dict has mismatched Ferrox lengths: "
@@ -403,21 +426,16 @@ def _xrd_pattern_to_dict(obj: Any) -> dict[str, Any]:
 
             return normalized
 
-        if has_partial_canonical:
-            missing_keys = [key for key in ("x", "y") if key not in obj]
-            raise ValueError(
-                "XRD pattern dict missing required key(s) for canonical schema: "
-                f"{missing_keys}. Expected keys: ['x', 'y']."
-            )
-
-        if has_partial_ferrox:
-            missing_keys = [
-                key for key in ("two_theta", "intensities") if key not in obj
-            ]
-            raise ValueError(
-                "XRD pattern dict missing required key(s) for Ferrox schema: "
-                f"{missing_keys}. Expected keys: ['two_theta', 'intensities']."
-            )
+        for schema, keys in (
+            ("canonical", ["x", "y"]),
+            ("Ferrox", ["two_theta", "intensities"]),
+        ):
+            if any(key in obj for key in keys):
+                missing_keys = [key for key in keys if key not in obj]
+                raise ValueError(
+                    f"XRD pattern dict missing required key(s) for {schema} schema: "
+                    f"{missing_keys}. Expected keys: {keys}."
+                )
 
         available_keys = sorted(str(key) for key in obj)
         raise ValueError(
@@ -426,31 +444,28 @@ def _xrd_pattern_to_dict(obj: Any) -> dict[str, Any]:
             f"keys: {available_keys}."
         )
 
-    try:
-        from pymatgen.analysis.diffraction.xrd import DiffractionPattern
+    from pymatgen.analysis.diffraction.xrd import DiffractionPattern
 
-        if isinstance(obj, DiffractionPattern):
-            result: dict[str, Any] = {"x": obj.x.tolist(), "y": obj.y.tolist()}
-            if obj.hkls is not None:
-                result["hkls"] = [
-                    [
-                        {
-                            key: list(val) if key == "hkl" else val
-                            for key, val in hkl_entry.items()
-                        }
-                        for hkl_entry in hkl_list
-                    ]
-                    for hkl_list in obj.hkls
+    if isinstance(obj, DiffractionPattern):
+        result: dict[str, Any] = {"x": obj.x.tolist(), "y": obj.y.tolist()}
+        if obj.hkls is not None:
+            result["hkls"] = [
+                [
+                    {
+                        key: list(val) if key == "hkl" else val
+                        for key, val in hkl_entry.items()
+                    }
+                    for hkl_entry in hkl_list
                 ]
-            if obj.d_hkls is not None:
-                result["d_hkls"] = (
-                    obj.d_hkls.tolist()
-                    if hasattr(obj.d_hkls, "tolist")
-                    else list(obj.d_hkls)
-                )
-            return result
-    except ImportError:
-        pass
+                for hkl_list in obj.hkls
+            ]
+        if obj.d_hkls is not None:
+            result["d_hkls"] = (
+                obj.d_hkls.tolist()
+                if hasattr(obj.d_hkls, "tolist")
+                else list(obj.d_hkls)
+            )
+        return result
 
     raise TypeError(
         f"Unsupported type for XRD pattern: {type(obj)}. "

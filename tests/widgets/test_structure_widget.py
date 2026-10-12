@@ -6,14 +6,9 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pytest
-import traitlets as tl
 
 from pymatviz import StructureWidget
-from tests.widgets.conftest import (
-    assert_widget_build_files,
-    assert_widget_notebook_integration,
-    assert_widget_property_sync,
-)
+from tests.widgets.conftest import assert_widget_property_sync
 
 
 if TYPE_CHECKING:
@@ -22,6 +17,7 @@ if TYPE_CHECKING:
 
 # minimal flat matterviz VolumetricData payload (2x1x1 grid)
 _VOLUME: dict[str, Any] = {
+    "id": "chg",
     "values": [0.1, 0.2],
     "dims": [2, 1, 1],
     "lattice": [[4.0, 0.0, 0.0], [0.0, 4.0, 0.0], [0.0, 0.0, 4.0]],
@@ -56,6 +52,7 @@ def test_widget_structure_inputs(
 
         # Test structure assignment and update
         widget = StructureWidget()
+        assert widget.structure is None
         widget.structure = structure_dict
         assert widget.structure == structure_dict
 
@@ -91,37 +88,6 @@ def test_widget_property_sync_structure(
         assert_widget_property_sync(widget, property_name, test_value)
 
 
-def test_widget_build_files_and_display_structure() -> None:
-    """Widget must load build files and display properly."""
-    widget = StructureWidget()
-    assert_widget_build_files(widget)
-
-
-def test_widget_notebook_integration_structure(
-    structures: tuple[Structure, Structure],
-) -> None:
-    """Widget must integrate properly with notebook environments."""
-    widget = StructureWidget(structure=structures[0])
-    assert_widget_notebook_integration(widget)
-
-
-def test_widget_state_restoration(structures: tuple[Structure, Structure]) -> None:
-    """Widget constructed from another widget's state preserves all values."""
-    state = {
-        "structure": structures[0].as_dict(),
-        "atom_radius": 1.5,
-        "show_bonds": True,
-        "color_scheme": "Jmol",
-        "style": "width: 800px; height: 600px",
-        "show_controls": False,
-    }
-    original = StructureWidget(**state)
-    restored = StructureWidget(**{k: getattr(original, k) for k in state})
-
-    for key, value in state.items():
-        assert getattr(restored, key) == value
-
-
 def test_widget_handles_large_structures(
     structures: tuple[Structure, Structure],
 ) -> None:
@@ -130,51 +96,54 @@ def test_widget_handles_large_structures(
     assert len(widget.structure["sites"]) == 2000
 
 
-def test_widget_no_structure_default() -> None:
-    """Widget constructed with no args defaults structure to None."""
-    widget = StructureWidget()
-    assert widget.structure is None
+_MULTI_VECTOR_PROPS = {
+    "force_DFT": [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+    "force_MLFF": [[0.9, 0.1, 0.0], [0.1, 0.9, 0.0]],
+}
 
 
-def test_widget_preserves_disordered_site_properties(
-    fe3co4_disordered_with_props: Structure,
+@pytest.mark.parametrize(
+    ("structure_fixture", "site_properties", "expected_keys"),
+    [
+        ("fe3co4_disordered_with_props", None, {"magmom", "force"}),
+        ("fe3co4_disordered", _MULTI_VECTOR_PROPS, {"force_DFT", "force_MLFF"}),
+    ],
+    ids=["magmom-force", "multi-vector"],
+)
+def test_widget_preserves_site_properties(
+    structure_fixture: str,
+    site_properties: dict[str, list[list[float]]] | None,
+    expected_keys: set[str],
+    request: pytest.FixtureRequest,
 ) -> None:
-    """Widget preserves magmom/force site properties from disordered structures."""
-    widget = StructureWidget(structure=fe3co4_disordered_with_props)
-    uniq_prop_keys = {
-        key for site in widget.structure["sites"] for key in site.get("properties", {})
-    }
-    assert uniq_prop_keys == {"magmom", "force"}
-
-
-def test_widget_preserves_multi_vector_site_properties(
-    fe3co4_disordered: Structure,
-) -> None:
-    """Widget serialization preserves multiple vector site property keys."""
-    struct = fe3co4_disordered.copy(
-        site_properties={
-            "force_DFT": [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
-            "force_MLFF": [[0.9, 0.1, 0.0], [0.1, 0.9, 0.0]],
-        }
-    )
+    """Disordered-structure site properties (incl. multiple vector keys) survive
+    serialization.
+    """
+    struct = request.getfixturevalue(structure_fixture)
+    if site_properties:
+        struct = struct.copy(site_properties=site_properties)
     widget = StructureWidget(structure=struct)
     uniq_prop_keys = {
         key for site in widget.structure["sites"] for key in site.get("properties", {})
     }
-    assert uniq_prop_keys == {"force_DFT", "force_MLFF"}
+    assert uniq_prop_keys == expected_keys
 
 
 def test_widget_volumetric_data_trait() -> None:
-    """volumetric_data defaults to [], keeps flat payloads as-is (dropping keys the
-    renderer recomputes), flattens legacy nested grid[ix][iy][iz] dicts to z-fastest
-    values + dims and supports mutation.
+    """volumetric_data defaults to a fresh [], keeps flat payloads as-is (dropping keys
+    the renderer recomputes), flattens legacy nested grid[ix][iy][iz] dicts to z-fastest
+    values + dims, uses a dict's label as missing id, prefixes ids/labels of mapping
+    inputs and supports mutation.
     """
-    assert StructureWidget().volumetric_data == []
+    default_widget = StructureWidget()
+    assert default_widget.volumetric_data == []
+    assert default_widget.volumetric_data is not StructureWidget().volumetric_data
     vol = {**_VOLUME, "label": "chg"}
     widget = StructureWidget(volumetric_data=[vol])
     assert widget.to_dict()["volumetric_data"] == [vol]
-    widget.volumetric_data = [vol, {**_VOLUME, "periodic": False, "label": "elf"}]
-    assert widget.volumetric_data == [vol, {**vol, "periodic": False, "label": "elf"}]
+    elf = {**_VOLUME, "id": "elf", "periodic": False, "label": "elf"}
+    widget.volumetric_data = [vol, elf]
+    assert widget.volumetric_data == [vol, elf]
 
     grid = np.random.default_rng(seed=0).random((2, 3, 4))
     meta = {k: v for k, v in vol.items() if k not in ("values", "dims")}
@@ -183,6 +152,25 @@ def test_widget_volumetric_data_trait() -> None:
     # z fastest: index (ix * ny + iy) * nz + iz == numpy C-order ravel
     assert payload == {**meta, "values": grid.ravel().tolist(), "dims": [2, 3, 4]}
     assert payload["values"][(1 * 3 + 2) * 4 + 3] == grid[1, 2, 3]
+
+    # id defaults to label (like matterviz's parsers name volumes by block label)
+    unnamed = {key: val for key, val in _VOLUME.items() if key != "id"}
+    (labeled,) = StructureWidget(
+        volumetric_data=[{**unnamed, "label": "charge density"}]
+    ).volumetric_data
+    assert (labeled["id"], labeled["label"]) == ("charge density", "charge density")
+    # an explicit id wins over the label
+    widget.volumetric_data = ({**_VOLUME, "label": "rho"},)
+    assert [(pl["id"], pl["label"]) for pl in widget.volumetric_data] == [
+        ("chg", "rho")
+    ]
+    # {prefix: volume} mappings namespace ids (and labels if present)
+    widget.volumetric_data = {"a": _VOLUME, "b": {**unnamed, "label": "chg"}}
+    assert [(pl["id"], pl.get("label")) for pl in widget.volumetric_data] == [
+        ("a/chg", None),
+        ("b/chg", "b/chg"),
+    ]
+    assert isinstance(widget.to_dict()["volumetric_data"], list)
 
 
 def test_widget_volumetric_data_from_pymatgen() -> None:
@@ -198,8 +186,9 @@ def test_widget_volumetric_data_from_pymatgen() -> None:
     total, diff = StructureWidget(
         volumetric_data=[Chgcar(struct, data)]
     ).volumetric_data
-    assert diff["label"] == "diff"
+    assert (diff["id"], diff["label"]) == ("diff", "diff")
     assert total == {
+        "id": "total",
         "values": pytest.approx((data["total"] / 8.0).ravel().tolist(), rel=1e-15),
         "dims": [2, 2, 3],
         "lattice": struct.lattice.matrix.tolist(),
@@ -212,28 +201,44 @@ def test_widget_volumetric_data_from_pymatgen() -> None:
     (raw,) = StructureWidget(volumetric_data=[volume]).volumetric_data
     assert raw["values"] == data["total"].ravel().tolist()
 
+    # colliding data keys ("total" twice) load side by side via a prefix mapping
+    payloads = StructureWidget(
+        volumetric_data={"relaxed": Chgcar(struct, data), "initial": volume}
+    ).volumetric_data
+    assert [(pl["id"], pl["label"]) for pl in payloads] == [
+        ("relaxed/total", "relaxed/total"),
+        ("relaxed/diff", "relaxed/diff"),
+        ("initial/total", "initial/total"),
+    ]
+    assert payloads[0]["values"] == total["values"]
+    with pytest.raises(ValueError, match=r"duplicates \['total'\].*prefix: volume"):
+        StructureWidget(volumetric_data=[Chgcar(struct, data), volume])
 
-@pytest.mark.parametrize("bad_input", ["not_a_list", ["not_a_dict"], [42]])
-def test_widget_volumetric_data_rejects_invalid(bad_input: Any) -> None:
-    """volumetric_data rejects non-lists and elements that are neither dicts nor
-    pymatgen VolumetricData (shape errors are left to the renderer).
+
+@pytest.mark.parametrize(
+    ("bad_input", "err_cls", "match"),
+    [
+        ("not_a_list", TypeError, "list of volumes or a {prefix: volume} mapping"),
+        (42, TypeError, "got int"),
+        (["not_a_dict"], TypeError, "volumetric_data entries"),
+        ([42], TypeError, "volumetric_data entries"),
+        ({"a": 42}, TypeError, "volumetric_data entries"),
+        ({"": _VOLUME}, TypeError, "nonempty strings"),
+        ({1: _VOLUME}, TypeError, "nonempty strings"),
+        ([{k: v for k, v in _VOLUME.items() if k != "id"}], ValueError, "'id' or"),
+        ([{**_VOLUME, "id": " "}], ValueError, "'id' or 'label'"),
+        ([{**_VOLUME, "id": 1, "label": "chg"}], ValueError, "'id' or 'label'"),
+        ([_VOLUME, {**_VOLUME, "label": "copy"}], ValueError, r"duplicates \['chg'\]"),
+        ([_VOLUME, {"label": "chg", "values": []}], ValueError, r"duplicates"),
+    ],
+)
+def test_widget_volumetric_data_rejects_invalid(
+    bad_input: Any, err_cls: type[Exception], match: str
+) -> None:
+    """volumetric_data rejects non-list/non-mapping values, entries that are neither
+    dicts nor pymatgen VolumetricData, non-string mapping prefixes, and missing or
+    duplicate volume ids (layers pick volumes by id). Shape errors are left to the
+    renderer.
     """
-    with pytest.raises((tl.TraitError, TypeError), match="volumetric_data"):
+    with pytest.raises(err_cls, match=match):
         StructureWidget(volumetric_data=bad_input)
-
-
-def test_widget_vector_configs_trait() -> None:
-    """Test vector_configs trait round-trips, updates, and defaults."""
-    configs = {
-        "force_DFT": {"visible": True, "color": "#e74c3c", "scale": None},
-        "force_MLFF": {"visible": True, "color": "#3498db", "scale": 1.5},
-    }
-    widget = StructureWidget(vector_configs=configs)
-    assert widget.vector_configs == configs
-
-    updated = {**configs, "force_MLFF": {**configs["force_MLFF"], "visible": False}}
-    widget.vector_configs = updated
-    assert widget.vector_configs["force_MLFF"]["visible"] is False
-
-    assert StructureWidget().vector_configs is None
-    assert StructureWidget(vector_configs={}).vector_configs == {}

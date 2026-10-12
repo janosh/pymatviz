@@ -5,10 +5,7 @@ from typing import Any
 import pytest
 from pymatgen.core import Structure
 
-from pymatviz.widgets.composition import CompositionWidget
-from pymatviz.widgets.matterviz import fetch_widget_asset
-from pymatviz.widgets.structure import StructureWidget
-from pymatviz.widgets.trajectory import TrajectoryWidget
+from pymatviz.widgets.matterviz import MatterVizWidget, fetch_widget_asset
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -37,60 +34,8 @@ def multi_frame_trajectory(fe3co4_disordered: Structure) -> dict[str, Any]:
     return {"frames": frames}
 
 
-def assert_widget_build_files(
-    widget: CompositionWidget | StructureWidget | TrajectoryWidget,
-) -> None:
-    """Test that widget loads build files correctly."""
-    assert hasattr(widget, "_esm"), "Widget missing JavaScript code"
-    assert hasattr(widget, "_css"), "Widget missing CSS code"
-    assert len(widget._esm) > 1000, "JavaScript code suspiciously short"
-    assert len(widget._css) > 100, "CSS code suspiciously short"
-
-    required_attrs = ["_model_name", "_view_name", "_model_module", "_view_module"]
-    for attr in required_attrs:
-        assert hasattr(widget, attr)
-
-
-def assert_widget_notebook_integration(
-    widget: CompositionWidget | StructureWidget | TrajectoryWidget,
-) -> None:
-    """Validate that a widget renders correctly in notebook environments."""
-    # MIME bundle (accept dict or (data, metadata)). ty mis-resolves
-    # _repr_mimebundle_ over the widget-class union as unbound; bound at runtime.
-    mime = widget._repr_mimebundle_()  # ty: ignore[missing-argument]
-    if isinstance(mime, tuple):
-        assert len(mime) == 2
-        mime_data, metadata = mime
-        assert isinstance(metadata, dict)
-    else:
-        mime_data = mime
-    assert isinstance(mime_data, dict)
-
-    view_key = "application/vnd.jupyter.widget-view+json"
-    assert view_key in mime_data
-    assert "text/plain" in mime_data
-    view = mime_data[view_key]
-    assert isinstance(view, dict)
-    assert isinstance(view.get("model_id"), str)
-    assert bool(view["model_id"]) is True
-    assert isinstance(view.get("version_major"), int)
-    assert type(widget).__name__ in str(mime_data["text/plain"])
-
-    for attr_name in ("_model_name", "_view_name", "_model_module", "_view_module"):
-        assert hasattr(widget, attr_name)
-
-    # Anywidget ESM/CSS sanity
-    esm, css = widget._esm, widget._css
-    assert len(esm) > 1000
-    assert len(css) > 100
-    assert "export default" in esm or " as default" in esm
-    assert "render" in esm
-
-
 def assert_widget_property_sync(
-    widget: CompositionWidget | StructureWidget | TrajectoryWidget,
-    property_name: str,
-    test_value: Any,
+    widget: MatterVizWidget, property_name: str, test_value: Any
 ) -> None:
     """Test that widget properties sync correctly."""
     setattr(widget, property_name, test_value)

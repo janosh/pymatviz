@@ -6,6 +6,7 @@ from typing import Any
 
 import pytest
 from pymatgen.analysis.diffraction.xrd import DiffractionPattern
+from pymatgen.analysis.phase_diagram import PDEntry, PhaseDiagram
 from pymatgen.core import Composition, Lattice, Structure
 
 from pymatviz.widgets.band_structure import BandStructureWidget
@@ -26,7 +27,33 @@ from pymatviz.widgets.xrd import XrdWidget
             "XrdWidget",
             "xrd",
         ),
+        (
+            lambda: PhaseDiagram(
+                [
+                    PDEntry(Composition("Li"), -1.9),
+                    PDEntry(Composition("O"), -4.2),
+                    PDEntry(Composition("Li2O"), -14.3),
+                ]
+            ),
+            "ConvexHullWidget",
+            "convex_hull",
+        ),
+        # trajectory fallback for a list of frame dicts
+        (
+            lambda: (
+                [
+                    {
+                        "structure": Structure(Lattice.cubic(3), ["Fe"], [[0, 0, 0]]),
+                        "energy": -1.0,
+                    }
+                ]
+                * 2
+            ),
+            "TrajectoryWidget",
+            "trajectory",
+        ),
     ],
+    ids=["composition", "xrd", "phase_diagram", "trajectory_dicts"],
 )
 def test_create_widget(
     obj_factory: Any, expected_widget: str, expected_type: str
@@ -37,34 +64,6 @@ def test_create_widget(
     widget = create_widget(obj_factory())
     assert type(widget).__name__ == expected_widget
     assert widget.widget_type == expected_type
-
-
-def test_create_widget_phase_diagram_to_convex_hull() -> None:
-    """create_widget maps PhaseDiagram -> ConvexHullWidget."""
-    pytest.importorskip("pymatgen.analysis.phase_diagram")
-    from pymatgen.analysis.phase_diagram import PDEntry, PhaseDiagram
-
-    from pymatviz.widgets.mime import create_widget
-
-    widget = create_widget(
-        PhaseDiagram(
-            [
-                PDEntry(Composition("Li"), -1.9),
-                PDEntry(Composition("O"), -4.2),
-                PDEntry(Composition("Li2O"), -14.3),
-            ]
-        )
-    )
-    assert type(widget).__name__ == "ConvexHullWidget"
-
-
-def test_create_widget_trajectory_list_of_dicts() -> None:
-    """create_widget trajectory fallback for list of dicts."""
-    from pymatviz.widgets.mime import create_widget
-
-    struct = Structure(Lattice.cubic(3), ["Fe"], [[0, 0, 0]])
-    widget = create_widget([{"structure": struct, "energy": -1.0}] * 2)
-    assert type(widget).__name__ == "TrajectoryWidget"
 
 
 @pytest.mark.parametrize(
@@ -101,9 +100,6 @@ def test_auto_display_registry(
     """_AUTO_DISPLAY maps pymatgen classes to correct widgets."""
     from pymatviz.widgets.mime import _AUTO_DISPLAY
 
-    if class_name == "PhaseDiagram":  # registration silently skips missing modules
-        pytest.importorskip("pymatgen.analysis.phase_diagram")
-
     registered = {
         cls.__name__: (widget, param) for cls, (widget, param) in _AUTO_DISPLAY.items()
     }
@@ -127,4 +123,3 @@ def test_marimo_display_registered() -> None:
     expected_widget = create_widget(composition_obj)
     assert widget.widget_type == expected_widget.widget_type
     assert widget.composition == expected_widget.composition
-    assert widget.widget_type == "composition"

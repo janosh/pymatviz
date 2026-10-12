@@ -20,8 +20,8 @@ from pymatviz.widgets._normalize import (
     normalize_convex_hull_entries,
     normalize_plot_json,
     normalize_plot_series,
-    normalize_structure_for_bz,
     normalize_xrd_pattern,
+    structure_to_dict,
 )
 
 
@@ -130,7 +130,6 @@ def test_normalize_convex_hull_entries_passthrough() -> None:
 
 def test_normalize_convex_hull_entries_from_phase_diagram() -> None:
     """Test conversion from pymatgen PhaseDiagram extracts correct fields."""
-    pytest.importorskip("pymatgen.analysis.phase_diagram")
     from pymatgen.analysis.phase_diagram import PDEntry, PhaseDiagram
 
     phase_diag = PhaseDiagram(
@@ -334,14 +333,14 @@ def test_normalize_xrd_pattern_unsupported_type() -> None:
         normalize_xrd_pattern(42)
 
 
-# === normalize_structure_for_bz ===
+# === structure_to_dict ===
 
 
-def test_normalize_structure_for_bz_passthrough() -> None:
-    """Test None and dict passthrough."""
-    assert normalize_structure_for_bz(None) is None
+def test_structure_to_dict_passthrough() -> None:
+    """None and dicts with a sites list pass through unchanged."""
+    assert structure_to_dict(None) is None
     test_dict = {"sites": [], "lattice": {}}
-    assert normalize_structure_for_bz(test_dict) is test_dict
+    assert structure_to_dict(test_dict) is test_dict
 
 
 @pytest.mark.parametrize(
@@ -363,18 +362,30 @@ def test_normalize_structure_for_bz_passthrough() -> None:
         ),
     ],
 )
-def test_normalize_structure_for_bz_objects(label: str, make_obj: Any) -> None:  # noqa: ARG001
+def test_structure_to_dict_objects(label: str, make_obj: Any) -> None:  # noqa: ARG001
     """Test conversion from pymatgen Structure and ASE Atoms."""
-    result = normalize_structure_for_bz(make_obj())
+    result = structure_to_dict(make_obj())
     assert isinstance(result, dict)
     assert "lattice" in result
     assert "sites" in result
 
 
-def test_normalize_structure_for_bz_unsupported_type() -> None:
-    """Test TypeError for unsupported types."""
-    with pytest.raises(TypeError, match="Unsupported type for Brillouin zone"):
-        normalize_structure_for_bz(42)
+@pytest.mark.parametrize(
+    ("bad_input", "err_cls", "match"),
+    [
+        (42, TypeError, "got int"),
+        (Lattice.cubic(3), TypeError, "got Lattice"),  # MSONable but not a structure
+        ([Structure(Lattice.cubic(3), ["Si"], [[0, 0, 0]])], TypeError, "got list"),
+        ({"lattice": {}}, TypeError, r"'sites' list.*keys=\['lattice'\]"),
+        ({"sites": "Si"}, TypeError, "'sites' list"),
+    ],
+)
+def test_structure_to_dict_rejects_invalid(
+    bad_input: Any, err_cls: type[Exception], match: str
+) -> None:
+    """Non-structure objects, sequences and dicts without a sites list raise."""
+    with pytest.raises(err_cls, match=match):
+        structure_to_dict(bad_input)
 
 
 # === normalize_plot_series ===

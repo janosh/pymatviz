@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
 import traitlets as tl
 
 from pymatviz.structure.helpers import add_vacuum_if_needed
-from pymatviz.widgets._traits import StructureVizTraits
+from pymatviz.widgets._traits import StructureVizTraits, optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -26,17 +27,22 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
         >>> widget = TrajectoryWidget(trajectory=trajectory_data)
         >>> widget
 
-        With properties in dict format:
+        With per-frame properties (scalars are plotted; per-atom ``forces`` of shape
+        (n_sites, 3) are drawn as vectors with their max/RMS norms plotted):
         >>> trajectory_with_props = [
-        ...     {"structure": struct1, "energy": -1.23, "force": [0.1, 0.2, 0.3]},
-        ...     {"structure": struct2, "energy": -1.25, "force": [0.05, 0.15, 0.25]},
+        ...     {"structure": struct1, "energy": -1.23, "forces": forces1},
+        ...     {"structure": struct2, "energy": -1.25, "forces": forces2},
         ... ]
         >>> widget = TrajectoryWidget(trajectory=trajectory_with_props)
+
+        A pymatgen ``Trajectory`` (or its ``as_dict()``) is parsed by the frontend:
+        >>> widget = TrajectoryWidget(trajectory=Trajectory.from_file("XDATCAR"))
 
         With custom visualization options:
         >>> widget = TrajectoryWidget(
         ...     trajectory=trajectory_data,
-        ...     display_mode="structure+scatter",
+        ...     display_mode="structure+plot",
+        ...     plot_type="distribution",
         ...     layout="horizontal",
         ...     show_controls=True,
         ...     auto_play=True,
@@ -60,21 +66,21 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
     layout = tl.CaselessStrEnum(
         ["auto", "horizontal", "vertical"], default_value="auto"
     ).tag(sync=True)
+    # Visible panes; "auto" hides visually flat plots. Two-way synced.
     display_mode = tl.CaselessStrEnum(
-        [
-            "structure+scatter",
-            "structure",
-            "scatter",
-            "histogram",
-            "structure+histogram",
-        ],
-        default_value="structure+scatter",
+        ["auto", "structure+plot", "structure", "plot"], default_value="auto"
     ).tag(sync=True)
-    auto_play = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    # Plot pane content, independent of display_mode. Two-way synced.
+    plot_type = tl.CaselessStrEnum(
+        ["time-series", "distribution"], default_value="time-series"
+    ).tag(sync=True)
+    # Property shown in the distribution plot (None = highest-priority property)
+    distribution_property = optional_trait(tl.Unicode)
+    auto_play = optional_trait(tl.Bool)
     # {atom type: element} for LAMMPS dumps loaded from data_url, e.g. {1: "Si", 2: "O"}
-    atom_type_mapping = tl.Dict(allow_none=True, default_value=None).tag(sync=True)
+    atom_type_mapping = optional_trait(tl.Dict)
 
-    show_image_atoms = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    show_image_atoms = optional_trait(tl.Bool)
 
     # Plot
     step_labels = tl.Union(
@@ -88,10 +94,15 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
         Args:
             trajectory: Trajectory data in one of these formats:
                 - dict with 'frames' key (matterviz format)
+                - pymatgen ``Trajectory`` or its ``as_dict()`` (parsed by matterviz)
                 - list of structures (pymatgen Structure, ASE Atoms, PhonopyAtoms, etc.)
                 - list of dicts with properties: [
                     {"structure": struct, "energy": 1.23, ...}, ...
                 ]
+                Per-atom forces under a frame's ``force``/``forces`` key (or an ASE
+                calculator's results) move to site ``properties.force`` and add
+                ``force_max``/``force_norm`` to the frame metadata, the layout
+                matterviz's own parsers produce.
             **kwargs: Additional widget properties
         """
         super().__init__(widget_type="trajectory", trajectory=trajectory, **kwargs)
@@ -109,12 +120,11 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
         """Convert structure-like input to dict and metadata source object."""
         from pymatviz.process_data import normalize_structures
 
-        structure_obj = structure_input
-        if hasattr(structure_obj, "as_dict"):
-            return structure_obj.as_dict(), structure_obj
+        if hasattr(structure_input, "as_dict"):
+            return structure_input.as_dict(), structure_input
 
         # Handle ASE Atoms-like objects that may not define a full cell.
-        structure_obj = add_vacuum_if_needed(structure_obj)
+        structure_obj = add_vacuum_if_needed(structure_input)
         normalized_structures = normalize_structures(structure_obj)
         if len(normalized_structures) != 1:
             raise ValueError(
@@ -122,15 +132,73 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
                 f"{len(normalized_structures)}"
             )
         structure_dict = next(iter(normalized_structures.values())).as_dict()
-        return structure_dict, structure_obj
+        # metadata from the original: Atoms.copy() in add_vacuum_if_needed drops calc
+        return structure_dict, structure_input
 
     def _extract_object_metadata(self, structure_input: Any) -> dict[str, Any]:
-        """Extract metadata from structure-like object properties/info."""
-        if hasattr(structure_input, "properties") and structure_input.properties:
-            return dict(structure_input.properties)
-        if hasattr(structure_input, "info") and structure_input.info:
-            return dict(structure_input.info)
-        return {}
+        """Extract metadata from structure-like object properties/info, plus ASE
+        calculator results (energy, forces, stress, ...) which pymatgen's
+        ``AseAtomsAdaptor`` drops.
+        """
+        metadata = dict(
+            getattr(structure_input, "properties", None)
+            or getattr(structure_input, "info", None)
+            or {}
+        )
+        calc = getattr(structure_input, "calc", None)
+        return metadata | dict(getattr(calc, "results", None) or {})
+
+    @staticmethod
+    def _attach_forces(frame: dict[str, Any], frame_idx: int) -> dict[str, Any]:
+        """Move per-atom forces from frame metadata (``force`` or ``forces``) to each
+        site's ``properties.force`` (matterviz 0.8 ignores vectors in frame metadata)
+        and record ``force_max``/``force_norm`` (max and RMS of the per-atom force
+        norms, like matterviz's parsers) from the sites' ``force``/``forces`` vectors
+        unless the metadata already has them. Returns a new frame; inputs are not
+        mutated.
+
+        Raises:
+            ValueError: If both ``force`` and ``forces`` are given, or the forces are
+                not an (n_sites, 3) array.
+        """
+        metadata = dict(frame.get("metadata") or {})
+        sites = frame["structure"].get("sites", [])
+        if "force" in metadata and "forces" in metadata:
+            raise ValueError(
+                f"trajectory frame {frame_idx} metadata has both 'force' and "
+                "'forces'; keep one"
+            )
+        if (force_key := "forces" if "forces" in metadata else "force") in metadata:
+            raw_forces = metadata.pop(force_key)
+            forces = np.asarray(raw_forces, dtype=float)
+            if forces.shape != (len(sites), 3):
+                raise ValueError(
+                    f"trajectory frame {frame_idx} {force_key!r} must be per-atom with "
+                    f"shape (n_sites, 3) = ({len(sites)}, 3), got {forces.shape}"
+                )
+            sites = [
+                {**site, "properties": {**site.get("properties", {}), "force": vec}}
+                for site, vec in zip(sites, forces.tolist(), strict=True)
+            ]
+            frame = {**frame, "structure": {**frame["structure"], "sites": sites}}
+
+        for key in ("force", "forces"):
+            site_vectors = [site.get("properties", {}).get(key) for site in sites]
+            if not sites or any(vec is None for vec in site_vectors):
+                continue
+            vectors = np.asarray(site_vectors, dtype=float)
+            if vectors.shape != (len(sites), 3):
+                raise ValueError(
+                    f"trajectory frame {frame_idx} site property {key!r} must be one "
+                    f"3-vector per site, got shape {vectors.shape}"
+                )
+            norms = np.linalg.norm(vectors, axis=1)
+            metadata.setdefault("force_max", float(norms.max()))
+            metadata.setdefault("force_norm", float(np.sqrt(np.mean(norms**2))))
+            break
+        if metadata:
+            return {**frame, "metadata": metadata}
+        return {key: val for key, val in frame.items() if key != "metadata"}
 
     @staticmethod
     def _complete_structure_fields(structure: dict[str, Any]) -> dict[str, Any]:
@@ -148,7 +216,9 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
         ):
             from pymatgen.core.lattice import Lattice
 
-            matrix = Lattice.from_parameters(*(float(lattice[k]) for k in cell_params))
+            matrix = Lattice.from_parameters(
+                *(float(lattice[key]) for key in cell_params)
+            )
             completed["lattice"] = {**lattice, "matrix": matrix.matrix.tolist()}
         sites = []
         for site_idx, site in enumerate(structure.get("sites", [])):
@@ -159,7 +229,9 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
                 for sp in site.get("species", [])
             ]
             coords = {
-                k: [float(c) for c in site[k]] for k in ("abc", "xyz") if k in site
+                key: [float(coord) for coord in site[key]]
+                for key in ("abc", "xyz")
+                if key in site
             }
             element = species[0].get("element", "X") if species else "X"
             defaults = {"label": f"{element}{site_idx + 1}", "properties": {}}
@@ -173,21 +245,54 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
         dict; ``step`` (x axis of the property plots) defaults to the frame index.
         """
         frames = [
-            {
-                **frame,
-                "step": frame.get("step", frame_idx),
-                "structure": self._complete_structure_fields(frame["structure"]),
-            }
+            self._attach_forces(
+                {
+                    **frame,
+                    "step": frame.get("step", frame_idx),
+                    "structure": self._complete_structure_fields(frame["structure"]),
+                },
+                frame_idx,
+            )
             for frame_idx, frame in enumerate(trajectory_data["frames"])
         ]
         return {**trajectory_data, "frames": frames}
+
+    def _normalize_frames(self, items: list[Any] | tuple[Any, ...]) -> dict[str, Any]:
+        """Convert a sequence of structures or ``{"structure", **props}`` dicts to a
+        matterviz trajectory dict with one frame per item.
+        """
+        frames: list[dict[str, Any]] = []
+        for step_idx, item in enumerate(items):
+            if isinstance(item, dict):
+                structure = item.get("structure", item)
+                properties = {
+                    key: val for key, val in item.items() if key != "structure"
+                }
+            else:
+                structure, properties = item, {}
+
+            structure_dict, metadata_source = self._to_structure_dict(structure)
+            frame: dict[str, Any] = {"structure": structure_dict, "step": step_idx}
+            if metadata := properties or self._extract_object_metadata(metadata_source):
+                frame["metadata"] = metadata
+            frames.append(self._attach_forces(frame, step_idx))
+        return {"frames": frames, "metadata": {}}
 
     def _normalize_trajectory(self, trajectory: Any) -> dict[str, Any] | None:
         """Convert trajectory to matterviz format."""
         if trajectory is None:
             return None
 
+        from pymatgen.core.trajectory import Trajectory
+
         from pymatviz.process_data import is_structure_like
+
+        if isinstance(trajectory, Trajectory):
+            trajectory = trajectory.as_dict()
+        if isinstance(trajectory, dict) and trajectory.get("@class") == "Trajectory":
+            # matterviz parses pymatgen Trajectory dicts itself, moving
+            # frame_properties forces to sites and their stats into frame metadata
+            return trajectory
 
         if isinstance(trajectory, dict):
             frames_data = trajectory.get("frames")
@@ -196,39 +301,19 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
                 and frames_data
                 and all(is_structure_like(frame) for frame in frames_data)
             ):
-                normalized_trajectory = self._normalize_trajectory(frames_data)
-                if isinstance(normalized_trajectory, dict):
-                    input_metadata = trajectory.get("metadata")
-                    if isinstance(input_metadata, dict):
-                        normalized_trajectory["metadata"] = input_metadata
+                normalized_trajectory = self._normalize_frames(frames_data)
+                if isinstance(input_metadata := trajectory.get("metadata"), dict):
+                    normalized_trajectory["metadata"] = input_metadata
                 return normalized_trajectory
             return self._complete_trajectory_dict(trajectory)
 
         if isinstance(trajectory, (list, tuple)):
-            frames: list[dict[str, Any]] = []
-            for step_idx, item in enumerate(trajectory):
-                if isinstance(item, dict):
-                    structure = item.get("structure", item)
-                    properties = {k: v for k, v in item.items() if k != "structure"}
-                else:
-                    structure = item
-                    properties = {}
-
-                structure_dict, metadata_source = self._to_structure_dict(structure)
-                frame: dict[str, Any] = {"structure": structure_dict, "step": step_idx}
-
-                metadata = properties or self._extract_object_metadata(metadata_source)
-                if metadata:
-                    frame["metadata"] = metadata
-
-                frames.append(frame)
-
-            return {"frames": frames, "metadata": {}}
+            return self._normalize_frames(trajectory)
 
         if hasattr(trajectory, "as_dict") or hasattr(
             trajectory, "get_chemical_symbols"
         ):
-            return self._normalize_trajectory([trajectory])
+            return self._normalize_frames([trajectory])
 
         raise TypeError(
             f"Unsupported trajectory type: {type(trajectory)}. "

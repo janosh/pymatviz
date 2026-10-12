@@ -35,11 +35,11 @@ class BandsAndDosWidget(PlotControlsTraits, MatterVizWidget):
     band_structs = tl.Dict(allow_none=True).tag(sync=True)
     doses = tl.Dict(allow_none=True).tag(sync=True)
 
-    # Config forwarded to the embedded Bands (band_type, show_legend) and Dos
-    # (stack, sigma, normalize, spin_mode) panels; the control-pane traits reach both.
-    # fermi_level/reference_frequency and dos orientation are controlled internally
-    # by the combined view.
-    band_type = optional_trait(tl.CaselessStrEnum, values=["phonon", "electronic"])
+    # Shared electronic reference energy for both panels (None = dataset metadata)
+    fermi_level = optional_trait(tl.Float)
+    # Config forwarded to the embedded Bands (show_legend) and Dos (stack, sigma,
+    # normalize, spin_mode) panels; the control-pane traits reach both. Hover
+    # frequency and DOS orientation are controlled internally by the combined view.
     show_legend = optional_trait(tl.Bool)
     stack = optional_trait(tl.Bool)
     # DOS smearing width in the data unit: THz for phonons, eV for electrons
@@ -63,10 +63,10 @@ class BandsAndDosWidget(PlotControlsTraits, MatterVizWidget):
                 ``{label: band_structure}`` dict of those.
             doses: DOS data -- a pymatgen Dos, CompleteDos, PhononDos, a dict, or a
                 ``{label: dos}`` dict of those.
-            **kwargs: Additional widget properties, e.g. ``band_type`` and
-                ``show_legend`` for the bands panel, or ``stack``, ``sigma`` (THz for
-                phonons, eV for electrons), ``normalize``, and ``spin_mode`` for the
-                DOS panel.
+            **kwargs: Additional widget properties, e.g. ``fermi_level`` for both
+                panels, ``show_legend`` for the bands panel, or ``stack``, ``sigma``
+                (THz for phonons, eV for electrons), ``normalize``, and ``spin_mode``
+                for the DOS panel.
         """
         super().__init__(
             widget_type="bands_and_dos",
