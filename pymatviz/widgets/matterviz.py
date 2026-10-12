@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 # Pin a published npm bundle matching the Python traits (test_js_prop_parity.py).
 # Users without MATTERVIZ_ANYWIDGET_DIR fetch this version from jsDelivr.
-MATTERVIZ_ANYWIDGET_VERSION = "0.6.0"
+MATTERVIZ_ANYWIDGET_VERSION = "0.8.0"
 _ANYWIDGET_CDN = "https://cdn.jsdelivr.net/npm/matterviz-anywidget"
 # expanded at call time (not import time) so tests can patch os.path.expanduser
 _CACHE_ROOT = "~/.cache/pymatviz"
@@ -46,10 +46,7 @@ def _cache_dir(version: str) -> str:
 def _in_marimo_runtime() -> bool:
     """Return whether execution is inside a live marimo runtime context."""
     try:
-        from marimo._runtime.context import (  # ty: ignore[unresolved-import]
-            ContextNotInitializedError,
-            get_context,
-        )
+        from marimo._runtime.context import ContextNotInitializedError, get_context  # ty: ignore[unresolved-import]
     except ImportError:
         return False
     try:
@@ -175,12 +172,8 @@ def configure_assets(
         css_content = fetch_widget_asset("matterviz.css", version)
         cls._export_esm_url = _cdn_url(version)
     else:
-        if esm_src is None:
-            raise ValueError(
-                "configure_assets() requires 'esm_src' when no version is provided."
-            )
-        if css_src is None:
-            raise ValueError("configure_assets() requires or derives 'css_src'.")
+        if esm_src is None or css_src is None:  # unreachable, narrows types for ty
+            raise ValueError(f"configure_assets() got {esm_src=}, {css_src=}")
         esm_content = _read_asset_source(esm_src)
         css_content = _read_asset_source(css_src)
         cls._export_esm_url = esm_src
@@ -286,8 +279,10 @@ class MatterVizWidget(AnyWidget):
     show_controls = tl.Bool(default_value=True).tag(sync=True)
 
     @classmethod
-    def _set_class_assets(cls) -> None:
-        """Load and cache default widget assets on the class, not instances."""
+    def _set_class_assets(cls) -> tuple[str, str]:
+        """Load and cache default widget assets on the class (not instances) and
+        return them as ``(esm_content, css_content)``.
+        """
         if "default" not in cls._asset_cache:
             cls._asset_cache["default"] = (
                 fetch_widget_asset("matterviz.js"),
@@ -297,6 +292,7 @@ class MatterVizWidget(AnyWidget):
         if not isinstance(default_assets, tuple):
             raise TypeError("Default widget assets were not initialized correctly.")
         cls._esm, cls._css = default_assets
+        return default_assets
 
     def __init__(self, version_override: str | None = None, **kwargs: Any) -> None:
         """Initialize with lazy-loaded widget assets.
@@ -504,13 +500,7 @@ class MatterVizWidget(AnyWidget):
         inst_css = self.__dict__.get("_css")
         if isinstance(inst_esm, str) and isinstance(inst_css, str):
             return inst_esm, inst_css
-
-        cls = type(self)
-        cls._set_class_assets()
-        default_assets = cls._asset_cache["default"]
-        if not isinstance(default_assets, tuple):
-            raise TypeError("Default widget assets were not initialized correctly.")
-        return default_assets
+        return type(self)._set_class_assets()
 
     def describe(self) -> dict[str, Any]:
         """Return structured, machine-parseable facts about this widget's data.

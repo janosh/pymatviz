@@ -33,8 +33,7 @@ from pymatviz.utils.plotting import PLOTLY_LINE_STYLES
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
-    from typing import Any
+    from collections.abc import Sequence
 
     from phonopy.phonon.band_structure import BandStructure as PhonopyBandStructure
     from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
@@ -111,18 +110,25 @@ def phonon_bands(
     if isinstance(branches, str):
         branches = [branches]
 
-    # Strict keys include branch position to preserve order and repeated segments.
+    def segment_key(
+        band_struct: PhononBands, branch_idx: int, branch: dict[str, Any]
+    ) -> tuple[int, str | None, str | None]:
+        """Key a branch by its end labels. Strict keys include branch position to
+        preserve order and repeated segments.
+        """
+        return (
+            branch_idx if path_mode == SET_STRICT else 0,
+            band_struct.qpoints[branch["start_index"]].label,
+            band_struct.qpoints[branch["end_index"]].label,
+        )
+
     segment_lengths: dict[tuple[int, str | None, str | None], float] = {}
     segment_sets: list[set[tuple[int, str | None, str | None]]] = []
     for band_struct in bs_dict.values():
         these_segments = set()
         for branch_idx, branch in enumerate(band_struct.branches):
             start_idx, end_idx = branch["start_index"], branch["end_index"]
-            segment = (
-                branch_idx if path_mode == SET_STRICT else 0,
-                band_struct.qpoints[start_idx].label,
-                band_struct.qpoints[end_idx].label,
-            )
+            segment = segment_key(band_struct, branch_idx, branch)
             # Use the first structure's length to align shared segments.
             segment_lengths.setdefault(
                 segment, band_struct.distance[end_idx] - band_struct.distance[start_idx]
@@ -152,17 +158,12 @@ def phonon_bands(
 
     # find common branches by normalized branch names
     if branches:
-        common_branches: set[str] = set()
-        for idx, band_struct in enumerate(bs_dict.values()):
-            bs_branches = {branch["name"] for branch in band_struct.branches}
-            common_branches = (
-                bs_branches
-                if idx == 0
-                # calc set union/intersect (& or |) depending on path_mode
-                else common_branches & bs_branches
-                if path_mode in (SET_INTERSECTION, SET_STRICT)
-                else common_branches | bs_branches  # path_mode == SET_UNION
-            )
+        branch_names = [
+            {branch["name"] for branch in band_struct.branches}
+            for band_struct in bs_dict.values()
+        ]
+        combine = set.union if path_mode == SET_UNION else set.intersection
+        common_branches: set[str] = combine(*branch_names)
         missing_branches = set(branches) - common_branches
         avail_branches = "\n- ".join(common_branches)
         common_branches &= set(branches)
@@ -172,11 +173,7 @@ def phonon_bands(
                 file=sys.stderr,
             )
         segments_to_plot &= {
-            (
-                branch_idx if path_mode == SET_STRICT else 0,
-                band_struct.qpoints[branch["start_index"]].label,
-                band_struct.qpoints[branch["end_index"]].label,
-            )
+            segment_key(band_struct, branch_idx, branch)
             for band_struct in bs_dict.values()
             for branch_idx, branch in enumerate(band_struct.branches)
             if branch["name"] in common_branches
@@ -194,26 +191,17 @@ def phonon_bands(
 
     # Now plot each band structure's segments at the correct x positions
     colors = px.colors.qualitative.Plotly
-    line_styles = PLOTLY_LINE_STYLES
 
     seen_names: set[str] = set()
     for bs_idx, (label, band_struct) in enumerate(bs_dict.items()):
         color = colors[bs_idx % len(colors)]
-        line_style = line_styles[bs_idx % len(line_styles)]
+        line_style = PLOTLY_LINE_STYLES[bs_idx % len(PLOTLY_LINE_STYLES)]
 
         for branch_idx, branch in enumerate(band_struct.branches):
             start_idx = branch["start_index"]
             end_idx = branch["end_index"] + 1
 
-            # Get the x-axis position for this segment
-            start_label = band_struct.qpoints[start_idx].label
-            end_label = band_struct.qpoints[end_idx - 1].label
-            segment = (
-                branch_idx if path_mode == SET_STRICT else 0,
-                start_label,
-                end_label,
-            )
-
+            segment = segment_key(band_struct, branch_idx, branch)
             if segment not in segments_to_plot:
                 continue  # Skip segments not in the segments_to_plot set
 
@@ -381,9 +369,8 @@ def phonon_dos(
     )
 
     dos_dict: dict[str, PhononDos] = {}
-    stack_group_by_trace: dict[str, str] | None = (
-        {} if stack and project is not None else None
-    )
+    # projected traces stack separately per input label
+    stack_group_by_trace: dict[str, str] = {}
     total_overlay_dict: dict[str, PhononDos] = {}
     for label, raw_dos in raw_doses.items():
         label_prefix = f"{label} - " if label else ""
@@ -422,8 +409,7 @@ def phonon_dos(
         for key, dos in projected_dos.items():
             trace_name = f"{label_prefix}{key}"
             dos_dict[trace_name] = dos
-            if stack_group_by_trace is not None:
-                stack_group_by_trace[trace_name] = label
+            stack_group_by_trace[trace_name] = label
         if show_total:
             total_overlay_dict[f"{label_prefix}Total"] = PhononDos(
                 raw_dos.frequencies, raw_dos.densities
@@ -442,9 +428,9 @@ def phonon_dos(
         if normalize in ("max", "sum"):
             density_norm = densities.max() if normalize == "max" else densities.sum()
             if density_norm == 0:
-                msg_key = "max density" if normalize == "max" else "sum density"
                 raise ValueError(
-                    f"Cannot normalize DOS with mode={normalize!r}: {msg_key} is 0."
+                    f"Cannot normalize DOS with mode={normalize!r}: {normalize} "
+                    "density is 0."
                 )
             densities = densities / density_norm
         elif normalize == "integral":
@@ -473,11 +459,7 @@ def phonon_dos(
         frequencies, densities = _prepare_dos(dos_obj)
         scatter_kwargs: dict[str, Any] = {"mode": "lines"}
         if stack:
-            stack_group = (
-                stack_group_by_trace.get(dos_name, "")
-                if project is not None and stack_group_by_trace
-                else ""
-            )
+            stack_group = stack_group_by_trace.get(dos_name, "")
             previous = stack_state.get(stack_group)
             if previous is not None and not np.array_equal(frequencies, previous[0]):
                 raise ValueError(
@@ -493,17 +475,16 @@ def phonon_dos(
             x=frequencies, y=densities, name=dos_name, **scatter_kwargs | kwargs
         )
 
-    if project is not None and show_total:
-        for total_name, total_dos in total_overlay_dict.items():
-            frequencies, densities = _prepare_dos(total_dos)
-            fig.add_scatter(
-                x=frequencies,
-                y=densities,
-                name=total_name,
-                mode="lines",
-                line=dict(dash="dash", color="gray", width=1.5),
-                showlegend=True,
-            )
+    for total_name, total_dos in total_overlay_dict.items():
+        frequencies, densities = _prepare_dos(total_dos)
+        fig.add_scatter(
+            x=frequencies,
+            y=densities,
+            name=total_name,
+            mode="lines",
+            line=dict(dash="dash", color="gray", width=1.5),
+            showlegend=True,
+        )
 
     fig.layout.xaxis.update(title=f"Frequency ({units})")
     fig.layout.yaxis.update(title="Density of States", rangemode="tozero")

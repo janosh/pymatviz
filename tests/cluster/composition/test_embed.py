@@ -1,9 +1,12 @@
 """Tests for chemical composition embedding functions."""
 
+from collections.abc import Callable
+from typing import Any
+
 import numpy as np
 import pandas as pd
 import pytest
-from pymatgen.core import Composition
+from pymatgen.core import Composition, Element
 
 from pymatviz.cluster.composition import matminer_featurize, one_hot_encode
 from pymatviz.cluster.composition.embed import MatminerElementPropertyPreset
@@ -38,32 +41,39 @@ def test_one_hot_encode_oxidation_states(normalize: bool) -> None:
     """Oxidation states do not change elemental fractions or normalized embeddings."""
     result = one_hot_encode(
         ["Fe2O3", Composition({"Fe3+": 2, "O2-": 3})],
-        elements=["Fe", "O"],
+        elements=[Element.Fe, "O"],  # Element objects and strings
         normalize=normalize,
     )
     np.testing.assert_array_equal(result[0], result[1])
     if not normalize:
         np.testing.assert_array_equal(result, [[0.4, 0.6], [0.4, 0.6]])
+    with pytest.raises(ValueError, match=r"contains \['Al'\]"):
+        one_hot_encode(["Fe2O3Al"], elements=["Fe", "O"])
+    with pytest.raises(ValueError, match="duplicate entries"):
+        one_hot_encode(["FeO"], elements=["Fe", "O", "Fe"])
 
 
-def test_one_hot_encode_invalid_input() -> None:
-    """Test one-hot encoding with invalid input."""
+@pytest.mark.parametrize("embed_func", [one_hot_encode, matminer_featurize])
+@pytest.mark.parametrize("compositions", [[1, 2, 3], [["H2O"]]])
+def test_embed_invalid_input(
+    embed_func: Callable[..., np.ndarray], compositions: list[Any]
+) -> None:
+    """Non-composition inputs raise a ValueError naming the bad composition."""
+    if embed_func is matminer_featurize:
+        pytest.importorskip("matminer")
     with pytest.raises(ValueError, match="Invalid composition="):
-        one_hot_encode([1, 2, 3])  # ty: ignore[invalid-argument-type]
-
-    with pytest.raises(ValueError, match="Invalid composition="):
-        one_hot_encode([["H2O"]])  # ty: ignore[invalid-argument-type]
+        embed_func(compositions)
 
 
 @pytest.mark.parametrize(
     "preset", ["magpie", "deml", "matminer", "matscholar_el", "megnet_el"]
 )
 def test_matminer_featurize(preset: MatminerElementPropertyPreset) -> None:
-    """Test matminer featurization with different presets."""
+    """Featurize a Series with each preset, with and without a feature subset."""
     pytest.importorskip("matminer")
     from matminer.featurizers.composition import ElementProperty
 
-    compositions = ("H2O", "CO2", "NaCl")
+    compositions = pd.Series(["H2O", "CO2", "NaCl"])
 
     # Test basic functionality
     result = matminer_featurize(compositions, preset=preset, normalize=True)
@@ -74,8 +84,11 @@ def test_matminer_featurize(preset: MatminerElementPropertyPreset) -> None:
     assert result.shape[0] == len(compositions)
     assert not np.isnan(result).any()
 
-    # Check normalization
+    # Check normalization: opt-in, raw features by default
     assert np.allclose(np.linalg.norm(result, axis=1), 1.0)
+    raw = matminer_featurize(compositions, preset=preset)
+    assert not np.allclose(np.linalg.norm(raw, axis=1), 1.0)
+    np.testing.assert_allclose(raw / np.linalg.norm(raw, axis=1)[:, None], result)
 
     # Test with a feature subset
     result_subset = matminer_featurize(
@@ -84,27 +97,6 @@ def test_matminer_featurize(preset: MatminerElementPropertyPreset) -> None:
 
     # Check that the subset has the right shape
     assert result_subset.shape == (len(compositions), len(subset))
-
-
-def test_matminer_featurize_pandas_input() -> None:
-    """Test matminer featurization with pandas Series input."""
-    pytest.importorskip("matminer")
-    compositions = pd.Series(["H2O", "CO2", "NaCl"])
-    result = matminer_featurize(compositions)
-
-    # Check shape and no NaN values
-    assert result.shape[0] == len(compositions)
-    assert not np.isnan(result).any()
-
-
-def test_matminer_featurize_invalid_input() -> None:
-    """Test matminer featurization with invalid input."""
-    pytest.importorskip("matminer")
-    with pytest.raises(ValueError, match="Invalid composition="):
-        matminer_featurize([1, 2, 3])  # ty: ignore[invalid-argument-type]
-
-    with pytest.raises(ValueError, match="Invalid composition="):
-        matminer_featurize([["H2O"]])  # ty: ignore[invalid-argument-type]
 
 
 def test_matminer_featurize_invalid_feature_subset() -> None:

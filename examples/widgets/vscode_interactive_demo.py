@@ -221,7 +221,7 @@ for idx in range(n_steps := 20):
 
 trajectory_widget = pmv.TrajectoryWidget(
     trajectory=trajectory,
-    display_mode="structure+scatter",
+    display_mode="structure+plot",
     style="height: 600px;",
 )
 trajectory_widget.show()
@@ -426,7 +426,7 @@ matterviz_traj_dir_url: Final = (
 file_name = "Cr0.25Fe0.25Co0.25Ni0.25-mace-omat-qha.xyz.gz"
 ase_traj_widget = pmv.TrajectoryWidget(
     data_url=f"{matterviz_traj_dir_url}/{file_name}",
-    display_mode="structure+scatter",
+    display_mode="structure+plot",
     vector_scale=0.5,
     vector_color="#ff4444",
     show_bonds=True,
@@ -455,7 +455,7 @@ if not os.path.isfile(local_path):
 
 traj_widget = pmv.TrajectoryWidget(
     data_url=local_path,
-    display_mode="structure+scatter",
+    display_mode="structure+plot",
 )
 traj_widget.show()
 
@@ -472,9 +472,15 @@ matterviz_iso_dir_url: Final = (
 )
 
 
-def iso_settings(isovalue: float, opacity: float, *, show_negative: bool) -> dict:
-    """Layers-only matterviz IsosurfaceSettings: one blue (+) / red (-) layer."""
+def iso_settings(
+    volume_id: str, isovalue: float, opacity: float, *, show_negative: bool
+) -> dict:
+    """Layers-only matterviz IsosurfaceSettings: one blue (+) / red (-) layer on the
+    volume named volume_id (matterviz names CHGCAR blocks "charge density", .cube
+    grids "scalar").
+    """
     layer = dict(isovalue=isovalue, color="#3b82f6", opacity=opacity, visible=True)
+    layer |= dict(volume_id=volume_id)
     layer |= dict(show_negative=show_negative, negative_color="#ef4444")
     return {"layers": [layer], "wireframe": False, "halo": 0}
 
@@ -482,7 +488,7 @@ def iso_settings(isovalue: float, opacity: float, *, show_negative: bool) -> dic
 # %% Isosurface — Si charge density from CHGCAR
 iso_widget = pmv.StructureWidget(
     data_url=f"{matterviz_iso_dir_url}/Si-CHGCAR.gz",
-    isosurface_settings=iso_settings(0.05, 0.6, show_negative=False),
+    isosurface_settings=iso_settings("charge density", 0.05, 0.6, show_negative=False),
     style="height: 500px;",
 )
 iso_widget.show()
@@ -496,7 +502,7 @@ iso_widget.show()
 # %% Isosurface — caffeine HOMO
 orbital_widget = pmv.StructureWidget(
     data_url=f"{matterviz_iso_dir_url}/caffeine-HOMO.cube.gz",
-    isosurface_settings=iso_settings(0.02, 0.7, show_negative=True),
+    isosurface_settings=iso_settings("scalar", 0.02, 0.7, show_negative=True),
     show_bonds=True,
     style="height: 500px;",
 )

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import tempfile
 import urllib.request
 from typing import TYPE_CHECKING
@@ -51,9 +52,8 @@ def test_save_fig(
         assert '"scrollZoom": true' in html
 
     if ext == "svelte":
-        # plotly may add attrs to the div (e.g. style="..." since 6.8), so the
-        # injected {...$$props} is followed by ">" or " <attr>"
-        assert html.startswith("<div {...$$props}")
+        # injected {...$$props} precedes plotly's own div attributes
+        assert html.startswith("<div {...$$props} style=")
     else:
         assert html.startswith("<div")
 
@@ -141,10 +141,23 @@ def test_df_to_html(
     assert str(df_mixed.iloc[0, 0].round(6)) in html_text
 
 
-def test_save_fig_type_error(tmp_path: Path) -> None:
-    """save_fig raises TypeError for non-Figure input."""
-    with pytest.raises(TypeError, match=r"Unsupported figure type.*expected plotly"):
-        pmv.save_fig("not a figure", f"{tmp_path}/dummy.html", env_disable=[])  # ty: ignore[invalid-argument-type]
+@pytest.mark.parametrize(
+    ("save_func", "kwargs", "err_msg"),
+    [
+        (
+            pmv.save_fig,
+            {"env_disable": []},
+            r"Unsupported figure type.*expected plotly",
+        ),
+        (pmv.io.save_and_compress_svg, {}, "fig must be a plotly Figure"),
+    ],
+)
+def test_save_non_figure_raises(
+    tmp_path: Path, save_func: Callable[..., None], kwargs: dict[str, Any], err_msg: str
+) -> None:
+    """Figure savers raise TypeError for non-Figure input."""
+    with pytest.raises(TypeError, match=err_msg):
+        save_func("not a figure", f"{tmp_path}/dummy.html", **kwargs)
 
 
 @pytest.mark.parametrize("dtype", [float, np.float32])
@@ -171,17 +184,24 @@ def test_save_fig_prec_rounds_floats(tmp_path: Path, dtype: type) -> None:
     assert fig.data[1]["values"] == (1, 2)
 
 
-def test_save_fig_style_param(tmp_path: Path) -> None:
-    """save_fig injects style attribute into HTML div."""
+@pytest.mark.parametrize("full_html", [False, True])
+def test_save_fig_style_param(tmp_path: Path, full_html: bool) -> None:
+    """save_fig merges style into the outer plot div, also behind <html><head>."""
     fig = go.Figure()
     fig.add_scatter(x=[1, 2], y=[3, 4])
 
     path = f"{tmp_path}/fig_style.html"
-    pmv.save_fig(fig, path, style="color: red;", env_disable=[])
+    pmv.save_fig(fig, path, style="color: red;", env_disable=[], full_html=full_html)
 
     with open(path) as file:
         html = file.read()
-    assert "style='color: red;'" in html
+    assert ("<html>" in html) is full_html
+    div_match = re.search(r"<div\b[^>]*", html)
+    assert div_match is not None
+    div_tag = div_match[0]
+    # one merged attribute (browsers drop duplicates), user style last so it wins
+    assert div_tag.count("style=") == 1
+    assert div_tag.endswith('; color: red;"')
 
 
 @patch("pymatviz.io.sleep")
@@ -222,12 +242,6 @@ def test_save_fig_restores_pdf_mutations_on_write_error(tmp_path: Path) -> None:
 
     assert fig.layout.template == orig_template
     assert fig.data[0].visible == "legendonly"
-
-
-def test_save_and_compress_svg_type_error() -> None:
-    """save_and_compress_svg raises TypeError for non-Figure."""
-    with pytest.raises(TypeError, match="fig must be a plotly Figure"):
-        pmv.io.save_and_compress_svg("not a figure", "test")  # ty: ignore[invalid-argument-type]
 
 
 @pytest.mark.parametrize(

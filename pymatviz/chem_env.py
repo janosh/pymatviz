@@ -6,14 +6,33 @@ using pymatgen's ChemEnv and local environment modules.
 
 from __future__ import annotations
 
+import textwrap
 import warnings
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Final, Literal, get_args
+
+import pandas as pd
+import plotly.graph_objects as go
+
+from pymatviz.process_data import normalize_structures
+from pymatviz.typing import ShowCounts
 
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Sequence
 
     from pymatgen.core import IStructure, Structure
+
+    from pymatviz.typing import AnyStructure
+
+ChemEnvSettings = dict[str, Any] | Literal["chemenv", "crystal_nn"]
+
+# Cell/slice text templates shared by chem_env_sunburst and chem_env_treemap
+CHEM_ENV_TEXT_TEMPLATES: Final[dict[str | bool, str]] = {
+    "value": "%{label}: %{value:.2f}",
+    "percent": "%{label}: %{percentParent:.1%}",
+    "value+percent": "%{label}: %{value:.2f} (%{percentParent:.1%})",
+    False: "%{label}",
+}
 
 
 def get_cn_from_symbol(ce_symbol: str, symbol_cn_mapping: dict[str, int]) -> int:
@@ -35,7 +54,7 @@ def get_cn_from_symbol(ce_symbol: str, symbol_cn_mapping: dict[str, int]) -> int
     if ce_symbol.startswith("M:"):
         try:
             cn_val = int(ce_symbol.split(":")[1])
-        except (ValueError, IndexError):
+        except ValueError:
             return 0
         return max(0, cn_val)
 
@@ -61,10 +80,13 @@ def classify_local_env_with_order_params(
     from pymatgen.analysis import local_env
     from pymatgen.core import Structure
 
+    if not 0 <= site_idx < len(structure):
+        raise IndexError(
+            f"{site_idx=} out of range for structure with {len(structure)} sites"
+        )
+
     try:
         analysis_structure = Structure.from_sites(structure)
-        if not 0 <= site_idx < len(analysis_structure):
-            return f"CN:{cn_val}"
 
         # Check if we have order parameters for this coordination number
         cn_params = local_env.CN_OPT_PARAMS.get(cn_val)
@@ -116,10 +138,9 @@ def classify_local_env_with_order_params(
         if best_value > 0.5:  # Only use if reasonably good match
             return f"{names[best_match_idx]}:{cn_val}"
 
-    except (ImportError, RuntimeError, ValueError, IndexError):
-        # Fallback to generic CN-based label
-        pass
-    return f"CN:{cn_val}"  # Fallback to generic CN label
+    except (RuntimeError, ValueError, IndexError):
+        pass  # order params unavailable for this site, use generic CN label
+    return f"CN:{cn_val}"  # no confident geometry match, use generic CN label
 
 
 def collect_coord_envs_chemenv(
@@ -145,58 +166,46 @@ def collect_coord_envs_chemenv(
     import pymatgen.analysis.chemenv.coordination_environments.structure_environments as struct_envs  # noqa: E501
     from pymatgen.analysis.chemenv.coordination_environments import chemenv_strategies
 
+    # setup failures (e.g. invalid chem_env_settings) propagate to the caller
+    lgf = coord_finder.LocalGeometryFinder()
+    lgf.setup_parameters(**(chem_env_settings or {}))
+    strategy = chemenv_strategies.SimplestChemenvStrategy()
+    symbol_cn_mapping = coord_geoms.AllCoordinationGeometries().get_symbol_cn_mapping()
+
     chem_env_data: list[dict[str, Any]] = []
+    for struct_idx, structure in enumerate(structures):
+        try:
+            lgf.setup_structure(structure=structure)
+            structure_environments = lgf.compute_structure_environments()
+            lse = struct_envs.LightStructureEnvironments.from_structure_environments(
+                strategy, structure_environments
+            )
+        except (RuntimeError, KeyError) as exc:
+            warnings.warn(
+                f"ChemEnv analysis failed for structure {struct_idx}, skipping it: "
+                f"{exc!r}",
+                UserWarning,
+                stacklevel=2,
+            )
+            continue
 
-    try:
-        lgf = coord_finder.LocalGeometryFinder()
-        lgf.setup_parameters(**(chem_env_settings or {}))
-        strategy = chemenv_strategies.SimplestChemenvStrategy()
-        all_coord_geoms = coord_geoms.AllCoordinationGeometries()
-        symbol_cn_mapping = all_coord_geoms.get_symbol_cn_mapping()
+        coord_envs_dict: dict[tuple[int, str], float] = {}
+        for env_list in lse.coordination_environments or []:
+            for coord_env in env_list or []:
+                ce_symbol = coord_env["ce_symbol"]
+                cn_val = get_cn_from_symbol(ce_symbol, symbol_cn_mapping)
+                key = (cn_val, ce_symbol)
+                coord_envs_dict[key] = coord_envs_dict.get(key, 0) + 1
 
-        for structure in structures:
-            try:
-                lgf.setup_structure(structure=structure)
-                structure_environments = lgf.compute_structure_environments()
-                lse = (
-                    struct_envs.LightStructureEnvironments.from_structure_environments(
-                        strategy, structure_environments
-                    )
-                )
-
-                coord_envs_dict: dict[tuple[int, str], float] = {}
-
-                for env_list in lse.coordination_environments or []:
-                    for coord_env in env_list or []:
-                        ce_symbol = coord_env["ce_symbol"]
-                        cn_val = get_cn_from_symbol(ce_symbol, symbol_cn_mapping)
-                        key = (cn_val, ce_symbol)
-                        coord_envs_dict[key] = coord_envs_dict.get(key, 0) + 1
-
-                total = sum(coord_envs_dict.values())
-                for (cn_val, ce_symbol), env_count in coord_envs_dict.items():
-                    final_count = env_count
-                    if normalize and total > 0:
-                        final_count = env_count / total
-
-                    chem_env_data += [
-                        dict(
-                            coord_num=cn_val,
-                            chem_env_symbol=ce_symbol,
-                            count=final_count,
-                        )
-                    ]
-
-            except (ImportError, RuntimeError, KeyError) as exc:
-                warnings.warn(
-                    f"ChemEnv analysis failed for structure: {exc}",
-                    UserWarning,
-                    stacklevel=2,
-                )
-                continue
-
-    except (ImportError, RuntimeError) as exc:
-        warnings.warn(f"ChemEnv setup failed: {exc}", UserWarning, stacklevel=2)
+        total = sum(coord_envs_dict.values())
+        chem_env_data += [
+            dict(
+                coord_num=cn_val,
+                chem_env_symbol=ce_symbol,
+                count=env_count / total if normalize else env_count,
+            )
+            for (cn_val, ce_symbol), env_count in coord_envs_dict.items()
+        ]
 
     return chem_env_data
 
@@ -222,41 +231,106 @@ def collect_coord_envs_crystal_nn(
     chem_env_data: list[dict[str, Any]] = []
     crystal_nn = CrystalNN()
 
-    try:
-        for structure in structures:
-            try:
-                # Get coordination info for each site
-                for site_idx in range(len(structure)):
-                    # Get coordination number
-                    nn_info = crystal_nn.get_nn_info(structure, site_idx)
-                    cn_val = len(nn_info)
-
-                    # Get best matching coordination environment using order parameters
-                    ce_symbol = classify_local_env_with_order_params(
-                        structure, site_idx, cn_val
-                    )
-
-                    final_count = 1.0
-                    if normalize:
-                        final_count = 1.0 / len(structure)  # Normalize per structure
-
-                    chem_env_data += [
-                        dict(
-                            coord_num=cn_val,
-                            chem_env_symbol=ce_symbol,
-                            count=final_count,
-                        )
-                    ]
-
-            except (ImportError, RuntimeError, ValueError) as exc:
-                warnings.warn(
-                    f"CrystalNN analysis failed for structure: {exc}",
-                    UserWarning,
-                    stacklevel=2,
+    for struct_idx, structure in enumerate(structures):
+        site_count = 1.0 / len(structure) if normalize else 1.0
+        # collect per structure so a failure midway doesn't leave partial rows
+        struct_rows: list[dict[str, Any]] = []
+        try:
+            for site_idx in range(len(structure)):
+                cn_val = len(crystal_nn.get_nn_info(structure, site_idx))
+                # Get best matching coordination environment using order parameters
+                ce_symbol = classify_local_env_with_order_params(
+                    structure, site_idx, cn_val
                 )
-                continue
-
-    except (ImportError, RuntimeError) as exc:
-        warnings.warn(f"CrystalNN setup failed: {exc}", UserWarning, stacklevel=2)
+                struct_rows.append(
+                    dict(coord_num=cn_val, chem_env_symbol=ce_symbol, count=site_count)
+                )
+        except (RuntimeError, ValueError) as exc:
+            warnings.warn(
+                f"CrystalNN analysis failed for structure {struct_idx}, skipping it: "
+                f"{exc!r}",
+                UserWarning,
+                stacklevel=2,
+            )
+            continue
+        chem_env_data += struct_rows
 
     return chem_env_data
+
+
+def collect_chem_env_data(
+    structures: AnyStructure | Sequence[AnyStructure],
+    *,
+    chem_env_settings: ChemEnvSettings,
+    normalize: bool,
+    show_counts: ShowCounts,
+) -> list[dict[str, Any]]:
+    """Validate shared chem_env plot options and collect CN/CE counts.
+
+    Shared setup of chem_env_sunburst and chem_env_treemap.
+
+    Args:
+        structures (AnyStructure | Sequence[AnyStructure]): Structures to analyze.
+        chem_env_settings (dict[str, Any] | "chemenv" | "crystal_nn"): "crystal_nn"
+            uses CrystalNN + order params, "chemenv" uses ChemEnv with default
+            settings and a dict uses ChemEnv with custom LocalGeometryFinder settings.
+        normalize (bool): Whether to normalize counts per structure.
+        show_counts ("value" | "percent" | "value+percent" | False): Text display
+            mode, only validated here.
+
+    Returns:
+        list[dict[str, Any]]: Rows with keys coord_num, chem_env_symbol, count.
+
+    Raises:
+        ValueError: For invalid show_counts or chem_env_settings.
+    """
+    if show_counts not in get_args(ShowCounts):
+        raise ValueError(
+            f"Invalid {show_counts=}, must be one of {get_args(ShowCounts)}"
+        )
+    valid_methods = ("chemenv", "crystal_nn")
+    if not isinstance(chem_env_settings, dict) and (
+        chem_env_settings not in valid_methods
+    ):
+        raise ValueError(
+            f"Invalid {chem_env_settings=}, must be one of {valid_methods} or a dict "
+            "of ChemEnv settings"
+        )
+
+    structs = normalize_structures(structures).values()
+    if chem_env_settings == "crystal_nn":
+        return collect_coord_envs_crystal_nn(structs, normalize=normalize)
+    settings = {} if chem_env_settings == "chemenv" else chem_env_settings
+    return collect_coord_envs_chemenv(
+        structs, chem_env_settings=settings, normalize=normalize
+    )
+
+
+def empty_chem_env_figure() -> go.Figure:
+    """Return the placeholder figure shown when there is no CN/CE data."""
+    fig = go.Figure()
+    fig.layout.title = dict(text="No CN/CE data to display", x=0.5, font_size=16)
+    return fig
+
+
+def aggregate_chem_env_data(chem_env_data: list[dict[str, Any]]) -> pd.DataFrame:
+    """Sum counts per (coord_num, chem_env_symbol) pair.
+
+    Args:
+        chem_env_data (list[dict[str, Any]]): Rows with keys coord_num,
+            chem_env_symbol, count.
+
+    Returns:
+        pd.DataFrame: with columns coord_num, chem_env_symbol, count.
+    """
+    df_chem_env = pd.DataFrame(chem_env_data)
+    return df_chem_env.groupby(["coord_num", "chem_env_symbol"], as_index=False)[
+        "count"
+    ].sum()
+
+
+def wrap_chem_env_label(text: str) -> str:
+    """Wrap long CE labels with <br> so plots can use larger fonts in small cells."""
+    return "<br>".join(
+        textwrap.wrap(text, width=15, break_long_words=True, break_on_hyphens=True)
+    )

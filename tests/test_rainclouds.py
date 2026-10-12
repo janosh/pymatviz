@@ -64,21 +64,15 @@ def test_rainclouds_style_options(sample_data: dict[str, np.ndarray]) -> None:
     ("data_input", "expected_traces"),
     [
         ({"A": [1, 2, 3], "B": [4, 5, 6]}, 6),  # 2 groups, 3 traces each
-        ({"X": [1], "Y": [2], "Z": [3]}, 9),  # 3 groups, 3 traces each
         ({"A": [1, 2, 3, 10]}, 3),  # 1 group, 3 traces
     ],
 )
 def test_rainclouds_data_shapes(
     data_input: dict[str, Sequence[float]], expected_traces: int
 ) -> None:
-    if any(len(vals) < 2 for vals in data_input.values()):
-        with pytest.raises(
-            ValueError, match="`dataset` input should have multiple elements"
-        ):
-            pmv.rainclouds(data_input)
-    else:
-        fig = pmv.rainclouds(data_input)
-        assert len(fig.data) == expected_traces
+    """Each group adds a violin, box and strip trace."""
+    fig = pmv.rainclouds(data_input)
+    assert len(fig.data) == expected_traces
 
 
 def test_rainclouds_with_dataframe(sample_dataframe: pd.DataFrame) -> None:
@@ -118,18 +112,15 @@ def test_rainclouds_orientation(
 
 
 @pytest.mark.parametrize(
-    ("scale", "expected_range"),
-    [
-        ("area", (0, 1)),
-        ("count", None),
-        ("width", (0, 1)),
-    ],
+    ("scale", "expected_max"),
+    [("area", None), ("count", 100 * 0.3), ("width", 0.3)],
 )
 def test_rainclouds_scale(
     sample_data: dict[str, np.ndarray],
     scale: Literal["area", "count", "width"],
-    expected_range: tuple[float, float] | None,
+    expected_max: float | None,
 ) -> None:
+    """Violin widths scale by area, sample count (100 points) or unit max width."""
     fig = pmv.rainclouds(sample_data, scale=scale)
     violin_trace = next(
         trace
@@ -137,9 +128,11 @@ def test_rainclouds_scale(
         if trace.type == "scatter" and trace.fill == "toself"
     )
     y_range = np.array(violin_trace.y)
-    if expected_range is not None:
-        assert np.min(y_range) >= expected_range[0]
-        assert np.max(y_range) <= expected_range[1]
+    assert y_range.min() == 0  # first violin sits at position 0
+    if expected_max is None:
+        assert y_range.max() <= 1
+    else:  # rescaling by max is exact up to a few float64 ulps
+        np.testing.assert_allclose(y_range.max(), expected_max, rtol=1e-14, atol=0)
 
 
 @pytest.mark.parametrize(
@@ -176,6 +169,7 @@ def test_rainclouds_hover_data(
     ("data_input", "expected_msg"),
     [
         ({"A": "not a sequence"}, "`dataset` input should have multiple elements"),
+        ({"X": [1], "Y": [2]}, "`dataset` input should have multiple elements"),
         (
             {},
             "max() iterable argument is empty"

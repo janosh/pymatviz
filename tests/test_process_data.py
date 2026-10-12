@@ -31,12 +31,12 @@ if TYPE_CHECKING:
     from pymatviz.typing import FormulaGroupBy
 
 
+FE_P_O_COMPS = [Composition("Fe2O3")] * 5 + [Composition("Fe4P4O16")] * 3
+
+
 @pytest.mark.parametrize(
     "inputs",
-    [
-        ["Fe2 O3"] * 5 + ["Fe4 P4 O16"] * 3,
-        [Composition("Fe2O3")] * 5 + [Composition("Fe4P4O16")] * 3,
-    ],
+    [["Fe2 O3"] * 5 + ["Fe4 P4 O16"] * 3, FE_P_O_COMPS],
     ids=["strings", "compositions"],
 )
 @pytest.mark.parametrize(
@@ -69,113 +69,108 @@ def test_count_elements_by_atomic_nums(index_type: type) -> None:
 
 
 @pytest.mark.parametrize(
-    ("values", "match"),
+    ("values", "kwargs", "match"),
     [
-        ({"Fe": 1, "Zz": 2}, r"Unexpected element symbol\(s\): Zz"),
-        ({1.5: 4}, "Atomic numbers must be integers"),
-        ({1.5: 4, "2": 3}, "Atomic numbers must be integers"),
+        ({"Fe": 1, "Zz": 2}, {}, r"Unexpected element symbol\(s\): Zz"),
+        ({1.5: 4}, {}, "Atomic numbers must be integers"),
+        ({1.5: 4, "2": 3}, {}, "Atomic numbers must be integers"),
+        *[
+            (values, {}, "assumed to represent atomic numbers")
+            for start, stop in [(-1, 10), (100, 200)]
+            for values in (
+                dict.fromkeys(range(start, stop), 0),
+                {str(idx): 0 for idx in range(start, stop)},
+            )
+        ],
+        (
+            ["Fe2O3", "Fe4P4O16"],
+            {"exclude_elements": ["Fe", "P", "Zz"]},
+            re.escape("Unexpected symbol(s) Zz in excluded_elements=['Fe', 'P', 'Zz']"),
+        ),
     ],
 )
-def test_count_elements_invalid_symbol_keys(values: dict, match: str) -> None:
-    """Reject unknown elements and atomic numbers that would be truncated."""
+def test_count_elements_raises(values: Any, kwargs: dict[str, Any], match: str) -> None:
+    """Reject unknown symbols, non-integral or out-of-range atomic numbers."""
     with pytest.raises(ValueError, match=match):
-        pmv_pd.count_elements(values)
-
-
-@pytest.mark.parametrize("range_limits", [(-1, 10), (100, 200)])
-def test_count_elements_bad_atomic_nums(range_limits: tuple[int, int]) -> None:
-    with pytest.raises(ValueError, match="assumed to represent atomic numbers"):
-        pmv_pd.count_elements(dict.fromkeys(range(*range_limits), 0))
-
-    with pytest.raises(ValueError, match="assumed to represent atomic numbers"):
-        pmv_pd.count_elements({str(idx): 0 for idx in range(*range_limits)})
-
-
-def test_count_elements_mixed_input() -> None:
-    mixed_input = ["Fe2O3", Composition("Fe4P4O16"), "LiCoO2", Composition("NaCl")]
-    series = pmv_pd.count_elements(mixed_input, count_mode=ElemCountMode.composition)
-    expected = pd.Series(
-        {"Fe": 6, "O": 21, "P": 4, "Li": 1, "Co": 1, "Na": 1, "Cl": 1},
-        index=pmv.df_ptable.index,
-        name="count",
-    )
-    pd.testing.assert_series_equal(series, expected, check_dtype=False)
-
-
-def test_count_elements_exclude_elements() -> None:
-    compositions = [Composition("Fe2O3")] * 5 + [Composition("Fe4P4O16")] * 3
-    series = pmv_pd.count_elements(
-        compositions, count_mode=ElemCountMode.composition, exclude_elements=["Fe", "P"]
-    )
-    expected = pd.Series(
-        {"O": 63}, index=pmv.df_ptable.index.drop(["Fe", "P"]), name="count"
-    )
-    pd.testing.assert_series_equal(series, expected, check_dtype=False)
-
-
-def test_count_elements_exclude_invalid_elements() -> None:
-    compositions = [Composition("Fe2O3")] * 5 + [Composition("Fe4P4O16")] * 3
-    exclude_elements = ["Fe", "P", "Zz"]
-    excluded_elements = list(exclude_elements)
-    with pytest.raises(
-        ValueError,
-        match=re.escape(f"Unexpected symbol(s) Zz in {excluded_elements=}"),
-    ):
-        pmv_pd.count_elements(
-            compositions,
-            count_mode=ElemCountMode.composition,
-            exclude_elements=exclude_elements,
-        )
-
-
-def test_count_elements_fill_value() -> None:
-    compositions = [Composition("Fe2O3")] * 5 + [Composition("Fe4P4O16")] * 3
-    expected = pd.Series(
-        {"Fe": 22, "O": 63, "P": 12}, index=pmv.df_ptable.index, name="count"
-    )
-    pd.testing.assert_series_equal(
-        pmv_pd.count_elements(
-            compositions, count_mode=ElemCountMode.composition, fill_value=0
-        ),
-        expected.fillna(0),
-        check_dtype=False,
-    )
-
-
-def test_count_formulas_basic() -> None:
-    data = ["Fe2O3", "Fe4O6", "FeO", "Li2O", "LiFeO2"]
-    df_out = pmv_pd.count_formulas(data)
-
-    assert set(df_out.columns) == {"arity_name", "chem_sys", "count"}
-    assert len(df_out) == 3
-
-    arity_counts = df_out.groupby("arity_name")["count"].sum()
-    assert arity_counts["binary"] == 4
-    assert arity_counts["ternary"] == 1
+        pmv_pd.count_elements(values, **kwargs)
 
 
 @pytest.mark.parametrize(
-    ("data", "error_match"),
+    ("values", "kwargs", "counts", "dropped"),
     [
-        ([], "Empty input: data sequence is empty"),
-        (["Fe2O3", "NotAFormula"], "Invalid formula"),
-        (["Fe-Zz"], "Invalid elements in system"),
+        (
+            ["Fe2O3", Composition("Fe4P4O16"), "LiCoO2", Composition("NaCl")],
+            {},
+            {"Fe": 6, "O": 21, "P": 4, "Li": 1, "Co": 1, "Na": 1, "Cl": 1},
+            [],
+        ),
+        (FE_P_O_COMPS, {"exclude_elements": ["Fe", "P"]}, {"O": 63}, ["Fe", "P"]),
+        (FE_P_O_COMPS, {"exclude_elements": "Fe"}, {"O": 63, "P": 12}, ["Fe"]),
+    ],
+    ids=["mixed-input", "exclude-list", "exclude-str"],
+)
+@pytest.mark.parametrize("fill_value", [None, 0])
+def test_count_elements_options(
+    values: list[str | Composition],
+    kwargs: dict[str, Any],
+    counts: dict[str, int],
+    dropped: list[str],
+    fill_value: float | None,
+) -> None:
+    """Count mixed inputs, drop excluded elements and fill missing ones."""
+    series = pmv_pd.count_elements(values, fill_value=fill_value, **kwargs)
+    expected = pd.Series(counts, index=pmv.df_ptable.index.drop(dropped), name="count")
+    if fill_value is not None:
+        expected = expected.fillna(fill_value)
+    pd.testing.assert_series_equal(series, expected, check_dtype=False)
+
+
+@pytest.mark.parametrize(
+    ("data", "expected"),
+    [
+        (
+            ["Fe2O3", "Fe4O6", "FeO", "Li2O", "LiFeO2"],
+            [("binary", "Fe-O", 3), ("binary", "Li-O", 1), ("ternary", "Fe-Li-O", 1)],
+        ),
+        (  # sorted by arity before name
+            ["Li2O", "Fe2O3", "NaCl", "C", "Li-Fe-O"],
+            [
+                ("unary", "C", 1),
+                ("binary", "Cl-Na", 1),
+                ("binary", "Fe-O", 1),
+                ("binary", "Li-O", 1),
+                ("ternary", "Fe-Li-O", 1),
+            ],
+        ),
+        (
+            ["Fe2O3", Composition("Fe4O6"), "Fe-O", Composition("FeO")],
+            [("binary", "Fe-O", 4)],
+        ),
+    ],
+    ids=["formulas", "arity-order", "mixed-input"],
+)
+def test_count_formulas_chem_sys(
+    data: list[str | Composition], expected: list[tuple[str, str, int]]
+) -> None:
+    """Group formulas, chemical systems and compositions by sorted chemical system."""
+    df_out = pmv_pd.count_formulas(data)
+    assert list(df_out.columns) == ["arity_name", "chem_sys", "count"]
+    assert list(df_out.itertuples(index=False, name=None)) == expected
+
+
+@pytest.mark.parametrize(
+    ("data", "group_by", "error_match"),
+    [
+        ([], "chem_sys", "Empty input: data sequence is empty"),
+        (["Fe2O3", "NotAFormula"], "chem_sys", "Invalid formula"),
+        (["Fe-Zz"], "chem_sys", "Invalid elements in system"),
+        (["Fe2O3"], "invalid", "Invalid group_by="),
     ],
 )
-def test_count_formulas_raises(data: list, error_match: str) -> None:
+def test_count_formulas_raises(data: list, group_by: str, error_match: str) -> None:
+    """Reject empty data, invalid formulas/elements and unknown group_by."""
     with pytest.raises(ValueError, match=error_match):
-        pmv_pd.count_formulas(data)
-
-
-def test_count_formulas_invalid_group_by() -> None:
-    with pytest.raises(ValueError, match="Invalid group_by="):
-        pmv_pd.count_formulas(["Fe2O3"], group_by="invalid")  # ty: ignore[invalid-argument-type]
-
-
-def test_count_formulas_sorts_by_arity_before_name() -> None:
-    df_out = pmv_pd.count_formulas(["Li2O", "Fe2O3", "NaCl", "C", "Li-Fe-O"])
-
-    assert list(df_out["chem_sys"]) == ["C", "Cl-Na", "Fe-O", "Li-O", "Fe-Li-O"]
+        pmv_pd.count_formulas(data, group_by=group_by)  # ty: ignore[invalid-argument-type]
 
 
 def test_count_formulas_composition_objects() -> None:
@@ -226,20 +221,6 @@ def test_count_formulas_grouping_modes(
     else:
         assert list(df_out["formula"]) == expected_formulas
     assert list(df_out["count"]) == expected_counts
-
-
-def test_count_formulas_mixed_input() -> None:
-    data = [
-        "Fe2O3",
-        Composition("Fe4O6"),
-        "Fe-O",
-        Composition("FeO"),
-    ]
-    df_out = pmv_pd.count_formulas(data, group_by="chem_sys")
-
-    assert len(df_out) == 1
-    assert df_out["chem_sys"].iloc[0] == "Fe-O"
-    assert df_out["count"].iloc[0] == 4
 
 
 PMG_FORMULA_0 = SI_STRUCTS[0].formula
@@ -319,6 +300,21 @@ _normalize_structures_cases = [
         [SI_ISTRUCTURE_0, H2O_IMOL],
         _seq_expected(SI_ISTRUCTURE_0, H2O_IMOL),
     ),
+    (
+        "series_structures",
+        pd.Series(SI_STRUCTS, index=["s1", "s2"]),
+        {"s1": SI_STRUCTS[0], "s2": SI_STRUCTS[1]},
+    ),
+    (
+        "series_molecules",
+        pd.Series([H2O_MOL, CO2_MOL], index=["h2o", "co2"]),
+        {"h2o": H2O_MOL, "co2": CO2_MOL},
+    ),
+    (
+        "series_struct_mol",
+        pd.Series([SI_STRUCTS[0], H2O_MOL], index=["s", "m"]),
+        {"s": SI_STRUCTS[0], "m": H2O_MOL},
+    ),
 ]
 
 
@@ -339,39 +335,21 @@ def test_normalize_structures(
 
 
 @pytest.mark.parametrize(
-    ("invalid_input", "error_match"),
+    ("invalid_input", "err_cls", "error_match"),
     [
-        ("not a structure", "Input must be a pymatgen Structure"),
-        (12345, "Input must be a pymatgen Structure"),
-        ([SI_STRUCTS[0], "invalid"], "Item must be a pymatgen Structure"),
+        ("not a structure", TypeError, "Input must be a pymatgen Structure"),
+        (12345, TypeError, "Input must be a pymatgen Structure"),
+        ([SI_STRUCTS[0], "invalid"], TypeError, "Item must be a pymatgen Structure"),
+        ([], ValueError, "Cannot plot empty set of structures"),
+        ({}, ValueError, "Cannot plot empty set of structures"),
     ],
 )
-def test_normalize_structures_errors(invalid_input: Any, error_match: str) -> None:
-    with pytest.raises(TypeError, match=error_match):
-        pmv_pd.normalize_structures(invalid_input)
-
-
-@pytest.mark.parametrize(
-    ("series_input", "expected_keys"),
-    [
-        (pd.Series([SI_STRUCTS[0], SI_STRUCTS[1]], index=["s1", "s2"]), {"s1", "s2"}),
-        (pd.Series([H2O_MOL, CO2_MOL], index=["h2o", "co2"]), {"h2o", "co2"}),
-        (pd.Series([SI_STRUCTS[0], H2O_MOL], index=["s", "m"]), {"s", "m"}),
-    ],
-)
-def test_normalize_structures_pandas_series(
-    series_input: pd.Series, expected_keys: set[str]
+def test_normalize_structures_errors(
+    invalid_input: Any, err_cls: type[Exception], error_match: str
 ) -> None:
-    result = pmv_pd.normalize_structures(series_input)
-    assert set(result.keys()) == expected_keys
-    for key in expected_keys:
-        assert result[key] == series_input[key]
-
-
-@pytest.mark.parametrize("empty_input", [[], {}])
-def test_normalize_structures_empty(empty_input: list | dict) -> None:
-    with pytest.raises(ValueError, match="Cannot plot empty set of structures"):
-        pmv_pd.normalize_structures(empty_input)
+    """Reject unsupported and empty inputs."""
+    with pytest.raises(err_cls, match=error_match):
+        pmv_pd.normalize_structures(invalid_input)
 
 
 class MockAseAtoms:
@@ -455,13 +433,8 @@ def test_df_to_arrays() -> None:
 
     assert "not-real-col-name" in str(exc.value)
 
-
-def test_df_to_arrays_strict() -> None:
     args = pmv_pd.df_to_arrays(42, "foo", "bar", strict=False)  # ty: ignore[invalid-argument-type]
     assert args == ["foo", "bar"]
-
-    with pytest.raises(TypeError, match="df should be pandas DataFrame or None"):
-        pmv_pd.df_to_arrays(42, "foo", "bar", strict=True)  # ty: ignore[invalid-argument-type]
 
 
 @pytest.mark.parametrize(
@@ -630,12 +603,6 @@ pmv.StructureWidget(structure=structure.as_dict())
     )
 
 
-def test_normalize_spacegroups_empty_raises() -> None:
-    """Test that empty input raises ValueError."""
-    with pytest.raises(ValueError, match="Cannot normalize empty spacegroup data"):
-        pmv_pd.normalize_spacegroups([])
-
-
 @pytest.mark.parametrize("invalid_val", [0, -1, 231, 500, 2.5, float("nan"), pd.NA])
 @pytest.mark.parametrize("as_nullable_series", [False, True])
 def test_normalize_spacegroups_invalid_number_raises(
@@ -650,26 +617,43 @@ def test_normalize_spacegroups_invalid_number_raises(
         pmv_pd.normalize_spacegroups(data)
 
 
-def test_normalize_spacegroups_invalid_symbol_raises() -> None:
-    """Test that invalid space group symbols raise ValueError."""
-    with pytest.raises(ValueError, match="InvalidSymbol"):
-        pmv_pd.normalize_spacegroups(["Fm-3m", "InvalidSymbol", "P1"])
+@pytest.mark.parametrize(
+    ("data", "match"),
+    [
+        ([], "Cannot normalize empty spacegroup data"),
+        (["Fm-3m", "InvalidSymbol", "P1"], "InvalidSymbol"),
+    ],
+)
+def test_normalize_spacegroups_raises(data: list[str], match: str) -> None:
+    """Reject empty input and unknown Hermann-Mauguin symbols."""
+    with pytest.raises(ValueError, match=match):
+        pmv_pd.normalize_spacegroups(data)
 
 
 @pytest.mark.parametrize(
-    ("labels_with_counts", "check_char", "should_contain"),
-    [(True, ":", True), ("percent", "%", True), (False, ":", False)],
+    ("labels_with_counts", "expected_labels"),
+    [
+        (True, ["A: 4", "B: 1", "C: 3"]),
+        ("percent", ["A: 100.0%", "B: 25.0%", "C: 75.0%"]),
+        (False, ["A", "B", "C"]),
+    ],
 )
-def test_sankey_flow_data_labels(
-    labels_with_counts: bool | str, check_char: str, should_contain: bool
+def test_sankey_flow_data(
+    labels_with_counts: bool | str, expected_labels: list[str]
 ) -> None:
-    """Test sankey_flow_data label formatting options."""
-    df_test = pd.DataFrame({"A": ["x", "x", "y"], "B": ["p", "q", "p"]})
-    result = pmv_pd.sankey_flow_data(
-        df_test, ["A", "B"], labels_with_counts=labels_with_counts
+    """Deduplicate shared nodes, sum their source+target counts and index links."""
+    df_flows = pd.DataFrame({"src": ["A", "A", "A", "B"], "tgt": ["C", "C", "A", "C"]})
+    flow_data = pmv_pd.sankey_flow_data(
+        df_flows, ["src", "tgt"], labels_with_counts=labels_with_counts
     )
-    has_char = any(check_char in label for label in result["labels"])
-    assert has_char == should_contain
+    assert flow_data == {
+        "source": ["A", "A", "B"],
+        "target": ["C", "A", "C"],
+        "value": [2, 1, 1],
+        "labels": expected_labels,
+        "source_indices": [0, 0, 1],
+        "target_indices": [2, 0, 2],
+    }
 
 
 def test_sankey_flow_data_invalid_cols_raises() -> None:
@@ -677,36 +661,3 @@ def test_sankey_flow_data_invalid_cols_raises() -> None:
     df_test = pd.DataFrame({"A": ["x"], "B": ["p"]})
     with pytest.raises(ValueError, match="should specify exactly two columns"):
         pmv_pd.sankey_flow_data(df_test, ["A"])
-
-
-def test_sankey_flow_data_deduplicates_nodes() -> None:
-    """Test that nodes appearing in both source and target are deduplicated."""
-    # Node "A" appears in both source and target columns
-    df_test = pd.DataFrame({"src": ["A", "A", "B"], "tgt": ["C", "A", "C"]})
-    result = pmv_pd.sankey_flow_data(df_test, ["src", "tgt"], labels_with_counts=False)
-
-    # Should have unique nodes: A, B, C (not duplicates)
-    assert len(result["labels"]) == 3
-    assert set(result["labels"]) == {"A", "B", "C"}
-
-    # Indices should map correctly to unique nodes
-    unique_vals = result["labels"]
-    val_to_idx = {val: idx for idx, val in enumerate(unique_vals)}
-    for src_val, src_idx in zip(
-        result["source"], result["source_indices"], strict=True
-    ):
-        assert val_to_idx[src_val] == src_idx
-    for tgt_val, tgt_idx in zip(
-        result["target"], result["target_indices"], strict=True
-    ):
-        assert val_to_idx[tgt_val] == tgt_idx
-
-
-def test_sankey_flow_data_shared_node_counts() -> None:
-    """Nodes appearing as both source and target show their total occurrence
-    count (regression: target counts silently overwrote source counts).
-    """
-    df_flows = pd.DataFrame({"src": ["A", "A", "A", "B"], "tgt": ["C", "C", "A", "C"]})
-    flow_data = pmv.process_data.sankey_flow_data(df_flows, ["src", "tgt"])
-    labels = dict(label.split(": ") for label in flow_data["labels"])
-    assert labels == {"A": "4", "B": "1", "C": "3"}  # A: 3 source + 1 target

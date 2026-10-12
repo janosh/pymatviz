@@ -58,17 +58,11 @@ def normalize_get_neighbors(
     strategy: float | NearNeighbors | type[NearNeighbors],
 ) -> Callable[[Site, Any], list[Any]]:
     """Normalize get_neighbors function."""
-    # Prepare the neighbor-finding strategy
     if isinstance(strategy, int | float):
-        cutoff = strategy
-        return lambda site, structure: structure.get_neighbors(site, r=cutoff)
-    if isinstance(strategy, NearNeighbors):
-        return lambda site, structure: strategy.get_nn_info(
-            structure, structure.index(site)
-        )
-
-    if isclass(strategy) and issubclass(strategy, NearNeighbors):
-        nn_instance = strategy()
+        return lambda site, structure: structure.get_neighbors(site, r=strategy)
+    is_nn_class = isclass(strategy) and issubclass(strategy, NearNeighbors)
+    nn_instance = strategy() if is_nn_class else strategy
+    if isinstance(nn_instance, NearNeighbors):
         return lambda site, structure: nn_instance.get_nn_info(
             structure, structure.index(site)
         )

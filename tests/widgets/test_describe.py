@@ -127,6 +127,10 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
             pmv.DosWidget(doses={"energies": {"up": [-1], "down": [0]}}),
             {"n_energies": None},
         ),
+        # empty/None data is tolerated
+        (pmv.ScatterPlotWidget(), {"n_series": 0, "n_points": 0, "x_range": None}),
+        (pmv.PeriodicTableWidget(), {"n_elements": 0, "value_range": None}),
+        (pmv.HeatmapMatrixWidget(), {"shape": [0, 0], "value_range": None}),
     ],
 )
 def test_describe_widget(widget: Any, expected: dict[str, Any]) -> None:
@@ -138,16 +142,6 @@ def test_describe_widget(widget: Any, expected: dict[str, Any]) -> None:
             assert key not in report
         else:
             assert report[key] == value, f"{key}: {report.get(key)!r} != {value!r}"
-
-
-@pytest.mark.parametrize(
-    "widget",
-    [pmv.ScatterPlotWidget(), pmv.PeriodicTableWidget(), pmv.HeatmapMatrixWidget()],
-)
-def test_describe_handles_empty_data(widget: Any) -> None:
-    """describe() tolerates empty/None data without raising."""
-    report = widget.describe()
-    assert report["widget_type"] == widget.widget_type
 
 
 @pytest.mark.parametrize(

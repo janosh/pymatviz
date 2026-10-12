@@ -2,28 +2,29 @@
 
 from __future__ import annotations
 
-import textwrap
-from typing import TYPE_CHECKING, Literal, get_args
+from typing import TYPE_CHECKING, Literal
 
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 
 from pymatviz import chem_env
-from pymatviz.process_data import normalize_structures
-from pymatviz.sunburst.helpers import _limit_slices
-from pymatviz.typing import AnyStructure, ShowCounts
+from pymatviz.sunburst.helpers import _limit_slices, _limit_slices_per_group
 
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from typing import Any
 
+    import plotly.graph_objects as go
+
+    from pymatviz.chem_env import ChemEnvSettings
+    from pymatviz.typing import AnyStructure, ShowCounts
+
 
 def chem_env_sunburst(
     structures: AnyStructure | Sequence[AnyStructure],
     *,
-    chem_env_settings: dict[str, Any] | Literal["chemenv", "crystal_nn"] = "crystal_nn",
+    chem_env_settings: ChemEnvSettings = "crystal_nn",
     max_slices_cn: int | None = None,
     max_slices_ce: int | None = None,
     max_slices_mode: Literal["other", "drop"] = "other",
@@ -52,22 +53,16 @@ def chem_env_sunburst(
         Plotly Figure with sunburst plot
 
     Raises:
-        ValueError: For invalid inputs
+        ValueError: For invalid show_counts, chem_env_settings or max_slices_mode.
     """
-    structs = normalize_structures(structures).values()
-
-    if show_counts not in get_args(ShowCounts):
-        raise ValueError(f"Invalid {show_counts=}")
-
-    if chem_env_settings == "crystal_nn":
-        chem_env_data = chem_env.collect_coord_envs_crystal_nn(
-            structs, normalize=normalize
-        )
-    else:  # "chemenv" or custom settings
-        settings = {} if chem_env_settings == "chemenv" else chem_env_settings
-        chem_env_data = chem_env.collect_coord_envs_chemenv(
-            structs, chem_env_settings=settings, normalize=normalize
-        )
+    if max_slices_mode not in ("other", "drop"):
+        raise ValueError(f"Invalid {max_slices_mode=}, must be 'other' or 'drop'")
+    chem_env_data = chem_env.collect_chem_env_data(
+        structures,
+        chem_env_settings=chem_env_settings,
+        normalize=normalize,
+        show_counts=show_counts,
+    )
 
     return _process_chem_env_data_sunburst(
         chem_env_data=chem_env_data,
@@ -87,18 +82,9 @@ def _process_chem_env_data_sunburst(
 ) -> go.Figure:
     """Process chem env data and create sunburst plot."""
     if not chem_env_data:
-        fig = go.Figure()
-        fig.layout.title = dict(
-            text="No CN/CE data to display",
-            x=0.5,
-            font_size=16,
-        )
-        return fig
+        return chem_env.empty_chem_env_figure()
 
-    df_chem_env = pd.DataFrame(chem_env_data)
-    df_chem_env = df_chem_env.groupby(["coord_num", "chem_env_symbol"], as_index=False)[
-        "count"
-    ].sum()
+    df_chem_env = chem_env.aggregate_chem_env_data(chem_env_data)
 
     # Limit CN slices
     if max_slices_cn:
@@ -144,45 +130,26 @@ def _process_chem_env_data_sunburst(
                     ignore_index=True,
                 )
 
-    # Limit CE slices within each CN
-    if max_slices_ce:
-        df_ce_limited = []
-        for cn_val in df_chem_env["coord_num"].unique():
-            df_cn_subset = df_chem_env[df_chem_env["coord_num"] == cn_val]
-            df_cn_subset = _limit_slices(
-                df_cn_subset,
-                group_col="chem_env_symbol",
-                count_col="count",
-                max_slices=max_slices_ce,
-                max_slices_mode=max_slices_mode,
-                other_label="Other CEs",
-                child_col_for_other_label="chem_env_symbol",
-            )
-            df_cn_subset["coord_num"] = cn_val
-            df_ce_limited.append(df_cn_subset)
-        df_chem_env = pd.concat(df_ce_limited, ignore_index=True)
-
-    # Apply text wrapping to chem env symbols to allow for larger font in small cells
-    df_chem_env["chem_env_symbol"] = df_chem_env["chem_env_symbol"].map(
-        lambda text: "<br>".join(
-            textwrap.wrap(text, width=15, break_long_words=True, break_on_hyphens=True)
+    if max_slices_ce:  # Limit CE slices within each CN
+        df_chem_env = _limit_slices_per_group(
+            df_chem_env,
+            group_col="coord_num",
+            count_col="count",
+            max_slices=max_slices_ce,
+            max_slices_mode=max_slices_mode,
+            other_label="Other CEs",
+            child_col_for_other_label="chem_env_symbol",
         )
+
+    df_chem_env["chem_env_symbol"] = df_chem_env["chem_env_symbol"].map(
+        chem_env.wrap_chem_env_label
     )
 
     fig = px.sunburst(
         df_chem_env, path=["coord_num", "chem_env_symbol"], values="count"
     )
-
-    # Apply text formatting
-    text_templates = {
-        "value": "%{label}: %{value:.2f}",
-        "percent": "%{label}: %{percentParent:.1%}",
-        "value+percent": "%{label}: %{value:.2f} (%{percentParent:.1%})",
-        False: "%{label}",
-    }
-
     fig.data[0].update(
-        texttemplate=text_templates[show_counts],
+        texttemplate=chem_env.CHEM_ENV_TEXT_TEMPLATES[show_counts],
         textinfo="none",
         marker=dict(line=dict(color="white")),
     )

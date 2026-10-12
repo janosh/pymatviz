@@ -7,6 +7,7 @@ techniques.
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -35,7 +36,9 @@ def project_vectors(
             method to use (see ProjectionMethod enum)
         n_components (int): Projection dimensions (2 or 3) (default: 2)
         random_state (int | None): Random seed for reproducibility
-        scale_data (bool): Whether to scale data before projection
+        scale_data (bool): Whether to standardize input columns before projection
+            and rescale the projected coordinates to zero mean and unit overall
+            variance (one shared factor for all axes, so aspect ratios are kept)
         **kwargs: Additional arguments passed to the projection method
 
     Returns:
@@ -55,7 +58,8 @@ def project_vectors(
     if n_components < 2:
         raise ValueError("n_components must be at least 2")
 
-    if data.shape[0] < n_components:
+    n_samples = data.shape[0]
+    if n_samples < n_components:
         raise ValueError("Not enough samples")
 
     def standardize(arr: np.ndarray) -> np.ndarray:
@@ -71,13 +75,17 @@ def project_vectors(
         data = np.nan_to_num(standardize(data), nan=0.0)
 
     if method == "pca":
-        reducer = PCA(n_components=n_components, random_state=random_state, **kwargs)
+        # Exact SVD by default: svd_solver="auto" silently switches to randomized SVD
+        # for e.g. 636x118 inputs, which rotates near-degenerate components.
+        pca_kwargs = {"svd_solver": "full"} | kwargs
+        reducer = PCA(
+            n_components=n_components, random_state=random_state, **pca_kwargs
+        )
 
     elif method == "tsne":
         if n_components > 3:
             raise ValueError("t-SNE visualization typically uses 2 or 3 components")
         # Adjust perplexity for small datasets
-        n_samples = data.shape[0]
         default_perplexity = min(30, n_samples / 3)  # t-SNE default is 30
         tsne_kwargs = {
             "n_components": n_components,
@@ -95,6 +103,11 @@ def project_vectors(
             raise ImportError(
                 "UMAP requires the 'umap-learn' package: pip install umap-learn"
             ) from None
+        if n_samples < n_components + 2:
+            raise ValueError(
+                f"UMAP needs at least n_components + 2 = {n_components + 2} samples, "
+                f"got {n_samples}"
+            )
         reducer = UMAP(
             n_components=n_components,
             random_state=random_state,
@@ -103,11 +116,15 @@ def project_vectors(
 
     elif method == "isomap":
         # Adjust n_neighbors for small datasets
-        n_samples = data.shape[0]
         n_neighbors = kwargs.pop("n_neighbors", 5)
         if n_samples < 10 and n_neighbors > n_samples / 2:
-            n_neighbors = max(2, int(n_samples / 2))
-            print(f"Warning: Adjusted to {n_neighbors=} due to small dataset size")  # noqa: T201
+            # Isomap needs n_neighbors < n_samples
+            n_neighbors = min(max(2, int(n_samples / 2)), n_samples - 1)
+            warnings.warn(
+                f"Isomap: adjusted to {n_neighbors=} for {n_samples=}",
+                UserWarning,
+                stacklevel=2,
+            )
         reducer = Isomap(
             n_components=n_components,
             n_neighbors=n_neighbors,
@@ -126,5 +143,9 @@ def project_vectors(
 
     projected_data = reducer.fit_transform(data)
     if scale_data:
-        projected_data = standardize(projected_data)
+        # One scale for all axes: per-axis standardization would stretch e.g. PC2 to
+        # look as spread out as PC1.
+        projected_data = projected_data - projected_data.mean(axis=0)
+        scale = np.sqrt(np.mean(projected_data**2))
+        projected_data = projected_data / (scale if scale > 0 else 1)
     return projected_data, reducer

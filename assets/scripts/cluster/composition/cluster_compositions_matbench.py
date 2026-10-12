@@ -171,21 +171,15 @@ def process_dataset(
     # Update title and margins
     title = f"{dataset_name} - {embed_method} + {projection} ({n_components}D)"
     fig.layout.update(title=dict(text=title, x=0.5), margin_t=50)
-    # format compositions and coordinates in hover tooltip
-    custom_data = [
-        [format_composition(comp) if dataset_name == "matbench_steels" else comp]
-        for comp in compositions
-    ]
-    fig.update_traces(
-        hovertemplate=(
-            "%{customdata[0]}<br>"  # Formatted composition
-            f"{projection} 1: %{{x:.2f}}<br>"  # First projection coordinate
-            f"{projection} 2: %{{y:.2f}}<br>"  # Second projection coordinate
-            + (f"{projection} 3: %{{z:.2f}}<br>" if n_components == 3 else "")
-            + f"{target_label}: %{{marker.color:.2f}}"  # Property value
-        ),
-        customdata=custom_data,
-    )
+    # The library hover text already shows composition, coordinates and the raw
+    # property; only long steel compositions get a 2-column layout. Edit each trace's
+    # own customdata (composition, hover text): points are sorted by property.
+    if dataset_name == "matbench_steels":
+        for trace in fig.data:
+            trace.customdata = [
+                [comp, hover.replace(comp, format_composition(comp), 1)]
+                for comp, hover in trace.customdata
+            ]
 
     return fig
 

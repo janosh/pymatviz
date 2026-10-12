@@ -28,6 +28,7 @@ from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pymatviz.enums import ElemColorScheme, Key, SiteCoords
 from pymatviz.process_data import get_spacegroup_number
 from pymatviz.utils import df_ptable, pick_max_contrast_color
+from pymatviz.utils.plotting import rgb_components
 
 
 if TYPE_CHECKING:
@@ -63,32 +64,17 @@ def resolve_per_struct_params(
             struct_elem_colors = elem_colors.get(struct_key, ElemColorScheme.jmol)
     elem_colors_i = get_elem_colors(struct_elem_colors)
 
-    cell_boundary_tol_i = get_struct_prop(
-        raw_struct, struct_key, "cell_boundary_tol", cell_boundary_tol
-    )
-    if cell_boundary_tol_i is None:
-        cell_boundary_tol_i = 0.0
-
-    atomic_radii_i = get_struct_prop(
-        raw_struct, struct_key, "atomic_radii", atomic_radii
-    )
-    if atomic_radii_i is None:
-        atomic_radii_i = atomic_radii
-
-    atom_size_i = get_struct_prop(raw_struct, struct_key, "atom_size", atom_size)
-    if atom_size_i is None:
-        atom_size_i = atom_size
-
-    scale_i = get_struct_prop(raw_struct, struct_key, "scale", scale)
-    if scale_i is None:
-        scale_i = scale
+    def struct_prop(name: str, param: Any, default: Any) -> Any:
+        """Struct property > param (looked up by struct_key if dict) > default."""
+        value = get_struct_prop(raw_struct, struct_key, name, param)
+        return default if value is None else value
 
     return (
         elem_colors_i,
-        cell_boundary_tol_i,
-        get_atomic_radii(atomic_radii_i),
-        atom_size_i,
-        scale_i,
+        struct_prop("cell_boundary_tol", cell_boundary_tol, 0.0),
+        get_atomic_radii(struct_prop("atomic_radii", atomic_radii, atomic_radii)),
+        struct_prop("atom_size", atom_size, atom_size),
+        struct_prop("scale", scale, scale),
     )
 
 
@@ -113,6 +99,19 @@ def resolve_nn_obj(
     if not isinstance(nn_obj, NearNeighbors):
         raise TypeError(f"Expected NearNeighbors, got {type(nn_obj)}")
     return nn_obj
+
+
+def resolve_show_cell(
+    show_cell: bool | Mapping[Any, Any],  # noqa: FBT001
+    struct_key: Hashable,
+) -> bool | dict[str, Any]:
+    """Resolve show_cell for one structure: a bool, a draw_cell style dict (only
+    "edge"/"node" keys) applied to every structure, or a mapping of struct_key to
+    bool | style dict. Structures missing from such a mapping get the default cell.
+    """
+    if not isinstance(show_cell, Mapping) or set(show_cell) <= {"edge", "node"}:
+        return show_cell if isinstance(show_cell, bool) else dict(show_cell)
+    return show_cell.get(struct_key, True)
 
 
 def _coerce_vector(value: Any) -> np.ndarray:
@@ -141,14 +140,25 @@ def _get_site_vector(
     site_idx: int,
     vector_prop: str,
 ) -> np.ndarray | None:
-    """Get vector property for a site, checking site then structure properties."""
+    """Get vector property for a site, checking site then structure properties.
+
+    Structure-level vector properties must hold one 3D vector per site, i.e. have
+    shape (n_sites, 3), else a ValueError is raised.
+    """
     if vector_prop in site.properties:
         return _coerce_vector(site.properties[vector_prop])
-    if vector_prop in struct.properties and site_idx < len(
-        struct.properties[vector_prop]
-    ):
-        return _coerce_vector(struct.properties[vector_prop][site_idx])
-    return None
+    if vector_prop not in struct.properties:
+        return None
+    struct_vectors = struct.properties[vector_prop]
+    n_vectors = len(struct_vectors) if hasattr(struct_vectors, "__len__") else 0
+    vector = _coerce_vector(struct_vectors[site_idx]) if n_vectors > site_idx else None
+    if n_vectors != len(struct) or vector is None or vector.shape != (3,):
+        raise ValueError(
+            f"struct.properties[{vector_prop!r}] must hold one 3D vector per site, "
+            f"i.e. shape ({len(struct)}, 3), got {n_vectors} entries with "
+            f"entry {site_idx} = {None if vector is None else vector.tolist()}"
+        )
+    return vector
 
 
 def get_struct_prop(
@@ -236,21 +246,8 @@ def get_site_symbol(site: Site) -> str:
 
     if isinstance(species, Composition):
         el_amt_dict = species.get_el_amt_dict()
-        if el_amt_dict:
-            return max(el_amt_dict, key=el_amt_dict.__getitem__)
-        if species.elements:
-            return species.elements[0].symbol
-        return "X"
-
-    if hasattr(species, "symbol"):
-        return species.symbol
-    if hasattr(species, "element") and isinstance(species.element, Element):
-        return species.element.symbol
-
-    try:
-        return site.species_string
-    except AttributeError:
-        return "X"
+        return max(el_amt_dict, key=el_amt_dict.__getitem__) if el_amt_dict else "X"
+    return species.symbol
 
 
 def _angles_to_rotation_matrix(
@@ -276,9 +273,20 @@ def _angles_to_rotation_matrix(
         return rot_matrix.copy()
 
     for angle in angles.split(","):
-        radians = math.radians(float(angle[:-1]))
-        xyz = angle[-1]
-        dim = "xyz".index(xyz)
+        axis = angle.strip()[-1:]
+        try:
+            radians = math.radians(float(angle.strip()[:-1]))
+        except ValueError as exc:
+            raise ValueError(
+                f"Invalid rotation {angle=} in {angles=}, expected comma-separated "
+                "degrees with x/y/z axis suffix like '10x,-5y,3z'"
+            ) from exc
+        if axis not in ("x", "y", "z"):
+            raise ValueError(
+                f"Invalid rotation axis {axis!r} in {angle=} of {angles=}, expected "
+                "one of x, y, z"
+            )
+        dim = "xyz".index(axis)
         sin = math.sin(radians)
         cos = math.cos(radians)
         if dim == 0:
@@ -364,6 +372,21 @@ def get_atomic_radii(atomic_radii: float | dict[str, float] | None) -> dict[str,
     return {str(elem): float(radius) * scale for elem, radius in covalent_radii.items()}
 
 
+def get_elem_radius(atomic_radii: Mapping[str, float], elem_symbol: str) -> float:
+    """Look up an element's radius, raising an informative KeyError if a custom
+    atomic_radii dict doesn't cover it. Dummy species (e.g. "X", no physical radius)
+    missing from atomic_radii get missing_covalent_radius.
+    """
+    if elem_symbol not in atomic_radii and elem_symbol not in Element.__members__:
+        return missing_covalent_radius
+    if elem_symbol not in atomic_radii:
+        raise KeyError(
+            f"No radius for {elem_symbol=} in atomic_radii, which has keys "
+            f"{sorted(atomic_radii)}. Pass radii for all elements in the structure."
+        )
+    return atomic_radii[elem_symbol]
+
+
 def generate_site_label(
     site_labels: Literal["symbol", "species", "legend", False]
     | dict[str, str]
@@ -383,29 +406,36 @@ def generate_site_label(
 
     Returns:
         str | None: The generated label or None if no label should be shown.
-    """
-    if site_labels in (False, "legend"):
-        return None
 
+    Raises:
+        ValueError: If site_labels is an unknown option or a sequence too short to
+            label site_idx.
+    """
+    if site_labels is False or site_labels == "legend":
+        return None
     if site_labels == "symbol":
         return get_site_symbol(site)
     if site_labels == "species":
         return site.species_string  # Use full species string for disordered
 
-    label_text = ""
     symbol = get_site_symbol(site)  # Majority element symbol of site
-
     if isinstance(site_labels, dict):
-        # Use provided label for symbol, else symbol itself, or empty if not found &
-        # not True-like
+        # Use provided label for symbol, else symbol itself, or empty if dict is empty
         label_dict = cast("dict[str, str]", site_labels)
-        label_text = label_dict.get(symbol, symbol if site_labels else "")
-    elif isinstance(site_labels, Sequence) and not isinstance(
+        return label_dict.get(symbol, symbol if site_labels else "")
+    if isinstance(site_labels, Sequence) and not isinstance(
         site_labels, (str, bytes, Mapping)
     ):
-        label_text = site_labels[site_idx] if site_idx < len(site_labels) else symbol
-
-    return label_text
+        if site_idx >= len(site_labels):
+            raise ValueError(
+                f"site_labels sequence has {len(site_labels)} labels but needs one "
+                f"per site, got {site_idx=}"
+            )
+        return site_labels[site_idx]
+    raise ValueError(
+        f"Invalid {site_labels=}, must be 'symbol', 'species', 'legend', False, a "
+        "dict mapping element symbols to labels or a sequence of per-site labels"
+    )
 
 
 def get_subplot_title(
@@ -464,9 +494,8 @@ def get_site_hover_text(
 
     def format_coord(coord_val: float) -> str:
         """Format a coordinate value using the specified formatter."""
-        if isinstance(float_fmt, Callable):
-            float_formatter = cast("Callable[[float], str]", float_fmt)
-            return float_formatter(coord_val)
+        if callable(float_fmt):
+            return cast("Callable[[float], str]", float_fmt)(coord_val)
         # Convert to float to handle int coordinates properly
         formatted = f"{float(coord_val):{float_fmt}}"
         # For ints, remove unnecessary decimal places (guard NaN/inf which can't
@@ -506,29 +535,34 @@ def normalize_elem_color(raw_color_from_map: ColorType) -> str:
     """Process a color from the element color map into a consistent RGB string format.
 
     Args:
-        raw_color_from_map (ColorType): Color value from the element color map (tuple
-            or string).
+        raw_color_from_map (ColorType): Color value from the element color map (CSS
+            color string or RGB tuple/list). RGB channels are treated as 0-1 floats
+            unless any channel exceeds 1, in which case all are 0-255 (same rule as
+            pymatviz.utils.plotting.rgb_components).
 
     Returns:
-        str: Color in RGB format like "rgb(128,128,128)"
+        str: Color string. RGB tuples become "rgb(r,g,b)", strings pass through.
+
+    Raises:
+        ValueError: If the color is neither a string nor a 3-channel numeric RGB.
     """
-    if (
-        isinstance(raw_color_from_map, tuple)
-        and len(raw_color_from_map) == 3
-        and all(isinstance(c, (float, int)) for c in raw_color_from_map)
-    ):
-        red, green, blue = raw_color_from_map
-        rgb = [
-            int(channel * 255)
-            if isinstance(channel, float) and 0 <= channel <= 1
-            else int(channel)
-            for channel in (red, green, blue)
-        ]
-        r, g, b = rgb
-        return f"rgb({r},{g},{b})"
     if isinstance(raw_color_from_map, str):
         return raw_color_from_map
-    return "rgb(128,128,128)"  # Fallback gray for unexpected color types
+    if (
+        isinstance(raw_color_from_map, (tuple, list))
+        and len(raw_color_from_map) == 3
+        and all(
+            isinstance(channel, (float, int)) and not isinstance(channel, bool)
+            for channel in raw_color_from_map
+        )
+    ):
+        multiplier = 1 if any(channel > 1 for channel in raw_color_from_map) else 255
+        channels = (int(channel * multiplier) for channel in raw_color_from_map)
+        return f"rgb({','.join(map(str, channels))})"
+    raise ValueError(
+        f"Unsupported element color {raw_color_from_map!r}, expected a color string "
+        "or a 3-channel RGB tuple"
+    )
 
 
 def draw_site(
@@ -621,10 +655,8 @@ def draw_site(
     )
     if not isinstance(majority_species, Species):
         majority_species = Species(str(majority_species))
-        # could add Species(get_site_symbol(site)) fallback for
-        # unexpected/placeholder Species(symbol)
 
-    site_radius = atomic_radii[majority_species.symbol] * scale
+    site_radius = get_elem_radius(atomic_radii, majority_species.symbol) * scale
     raw_color_from_map = elem_colors.get(majority_species.symbol, "gray")
 
     # Process the color from the map into a string format
@@ -755,15 +787,18 @@ def draw_disordered_site(
     """
     species = get_site_species(site)
     if not isinstance(species, Composition) or len(species) <= 1:
-        return
+        raise ValueError(
+            f"draw_disordered_site needs a site with multiple species, got "
+            f"{site.species_string!r} at {site_idx=}"
+        )
 
     sorted_species = sorted(species.items(), key=lambda item: item[1], reverse=True)
     legend_name = get_disordered_site_legend_name(sorted_species, is_image=is_image)
     if legendgroup is None:
         legendgroup = f"disordered_site_{site_idx}"
-    should_show_labels = site_labels not in ("legend", False)
+    should_show_labels = site_labels is not False and site_labels != "legend"
     max_base_radius = max(
-        atomic_radii.get(elem_spec.symbol, missing_covalent_radius) * scale
+        get_elem_radius(atomic_radii, elem_spec.symbol) * scale
         for elem_spec, _occupancy in sorted_species
     )
     current_angle = 0.0
@@ -1079,7 +1114,8 @@ def draw_cell(
     Args:
         fig (go.Figure): The plotly figure to add the cell to.
         structure (Structure): The pymatgen structure.
-        cell_kwargs (dict[str, Any]): Keyword arguments for cell styling.
+        cell_kwargs (dict[str, Any]): Cell styling with optional keys "edge" (plotly
+            line kwargs) and "node" (plotly marker kwargs). Other keys raise.
         is_3d (bool): Whether this is a 3D plot. Defaults to True.
         row (int | None): Row for subplot. Defaults to None.
         col (int | None): Column for subplot. Defaults to None.
@@ -1087,12 +1123,24 @@ def draw_cell(
         rotation_matrix (np.ndarray | None): Rotation matrix for 2D projections.
             Defaults to None.
         show_faces (bool | dict[str, Any]): Whether to show transparent cell
-            surfaces. If a dict, will be used to customize surface appearance.
-            Defaults to False.
+            surfaces. If a dict, customizes surface appearance with keys "color" and
+            (3D only) "showscale". Other keys raise. Defaults to False.
 
     Returns:
         go.Figure: The updated plotly figure.
     """
+    if unknown_keys := set(cell_kwargs) - {"edge", "node"}:
+        raise ValueError(
+            f"Unknown cell style keys {sorted(unknown_keys)}, show_cell dicts take "
+            f"'edge' (line kwargs) and/or 'node' (marker kwargs), got {cell_kwargs=}"
+        )
+    if isinstance(show_faces, dict) and (
+        unknown_keys := set(show_faces) - {"color", "showscale"}
+    ):
+        raise ValueError(
+            f"Unknown cell face style keys {sorted(unknown_keys)}, expected 'color' "
+            f"and/or 'showscale', got {show_faces=}"
+        )
     corners = np.array(list(itertools.product((0, 1), (0, 1), (0, 1))))
     lattice = structure.lattice
     cart_corners = lattice.get_cartesian_coords(corners)
@@ -1146,7 +1194,7 @@ def draw_cell(
     node_defaults = dict(size=3, color="black")
     node_kwargs = node_defaults | cell_kwargs.get("node", {})
     for idx, (frac_coord, cart_coord) in enumerate(
-        zip(corners, cart_corners, strict=True)
+        zip(corners.tolist(), np.asarray(cart_corners).tolist(), strict=True)
     ):
         hover_text = (
             f"({', '.join(f'{c:.3g}' for c in cart_coord)}) "
@@ -1197,8 +1245,8 @@ def draw_cell(
                         j=[1],
                         k=[2],
                         opacity=0.2,
-                        color=surface_kwargs.get("color", "rgba(255,255,255,0.01)"),
-                        showscale=surface_kwargs.get("showscale", False),
+                        color=surface_kwargs["color"],
+                        showscale=surface_kwargs["showscale"],
                         hoverinfo="skip",
                         name=f"surface-face{face_idx}-tri{tri_idx}",
                         showlegend=False,
@@ -1221,7 +1269,7 @@ def draw_cell(
                 y=hull_y,
                 mode="lines",
                 fill="toself",
-                fillcolor=surface_kwargs.get("color", "rgba(255,255,255,0.1)"),
+                fillcolor=surface_kwargs["color"],
                 line=dict(width=0),  # No outline
                 hoverinfo="skip",
                 name="cell-face",
@@ -1308,13 +1356,15 @@ def draw_bonds(
             coloring if color=True
         plotted_sites_coords (set[Xyz] | None): Optional set of (x, y, z) tuples for
             sites that are actually plotted. If provided, bonds will only be drawn if
-            both end points are in this set. Coordinates are expected to be rounded.
+            both end points are in this set. Coordinates are expected to be unrotated
+            Cartesian coordinates rounded to 5 decimals.
+
+    Each bond is drawn once even though nn.get_nn_info reports it from both ends.
     """
-    default_bond_kwargs: dict[str, Any] = dict(color=True, width=4)
     # User-provided bond_kwargs override defaults
-    effective_bond_kwargs = default_bond_kwargs.copy()
-    if bond_kwargs:
-        effective_bond_kwargs.update(bond_kwargs)
+    effective_bond_kwargs: dict[str, Any] = dict(color=True, width=4) | (
+        bond_kwargs or {}
+    )
     if effective_bond_kwargs.get("color") is False:
         # color=False means "no element-color gradient", use solid darkgray
         # (as rgb string since plotly color validation rejects CSS color names)
@@ -1323,14 +1373,14 @@ def draw_bonds(
     _elem_colors = elem_colors or get_elem_colors(ElemColorScheme.jmol)
     lattice = structure.lattice
 
-    def parse_color(color_val: Any) -> str:
-        """Convert various color formats to RGB string."""
-        try:  # validate_colors returns a list of colors. We request 'rgb' type to get a
-            # string 'rgb(r,g,b)'
-            return pcolors.validate_colors([color_val], colortype="rgb")[0]
-        except (ValueError, IndexError):
-            return "rgb(128,128,128)"  # Fallback to gray if parsing fails
+    def parse_color(color_val: ColorType) -> str:
+        """Convert a CSS name, hex, rgb(a) string or RGB tuple to 'rgb(r, g, b)'.
+        find_intermediate_color needs rgb strings, plotly's validate_colors passes
+        CSS names through unchanged.
+        """
+        return pcolors.label_rgb(pcolors.convert_to_RGB_255(rgb_components(color_val)))
 
+    drawn_bonds: set[frozenset[tuple[float, ...]]] = set()
     for site_idx, site1 in enumerate(structure):
         try:
             connections = nn.get_nn_info(structure, n=site_idx)
@@ -1346,7 +1396,8 @@ def draw_bonds(
             raise  # Re-raise other ValueErrors
 
         for con_dict in connections:
-            site2 = structure[con_dict["site_index"]]
+            site2_idx = con_dict["site_index"]
+            site2 = structure[site2_idx]
             jimage = con_dict["image"]
 
             coords_from = site1.coords
@@ -1355,99 +1406,78 @@ def draw_bonds(
                 actual_bonded_site_frac_coords
             )
 
+            coords_from_rounded = tuple(np.round(coords_from, 5))
+            cart_coords_to_rounded = tuple(np.round(cart_coords_to, 5))
             # If plotted_sites_coords is provided, check if both bond ends are plotted
-            if plotted_sites_coords is not None:
-                coords_from_rounded = tuple(np.round(coords_from, 5))
-                cart_coords_to_rounded = tuple(np.round(cart_coords_to, 5))
-
-                if (
-                    coords_from_rounded not in plotted_sites_coords
-                    or cart_coords_to_rounded not in plotted_sites_coords
-                ):
-                    continue  # Skip this bond if either end is not a plotted site
-
-            current_bond_color_setting = effective_bond_kwargs["color"]
-            color_for_segment_calc: tuple[str, str] | str
-
-            if current_bond_color_setting is True:
-                # Default gradient: use element colors of bonded sites
-                elem1_symbol = get_site_symbol(site1)
-                elem2_symbol = get_site_symbol(site2)
-                color1_rgb_str = parse_color(_elem_colors.get(elem1_symbol, "gray"))
-                color2_rgb_str = parse_color(_elem_colors.get(elem2_symbol, "gray"))
-                color_for_segment_calc = (color1_rgb_str, color2_rgb_str)
-            elif (
-                isinstance(current_bond_color_setting, (list, tuple))
-                and len(current_bond_color_setting) == 2
+            if plotted_sites_coords is not None and (
+                coords_from_rounded not in plotted_sites_coords
+                or cart_coords_to_rounded not in plotted_sites_coords
             ):
-                # User-defined gradient: tuple of two colors
-                color1_rgb_str = parse_color(current_bond_color_setting[0])
-                color2_rgb_str = parse_color(current_bond_color_setting[1])
-                color_for_segment_calc = (color1_rgb_str, color2_rgb_str)
-            else:  # Solid color
-                color_for_segment_calc = parse_color(current_bond_color_setting)
+                continue  # Skip this bond if either end is not a plotted site
+            # nn.get_nn_info reports each bond from both ends, draw it only once
+            bond_key = frozenset((coords_from_rounded, cart_coords_to_rounded))
+            if bond_key in drawn_bonds:
+                continue
+            drawn_bonds.add(bond_key)
 
-            n_segments = 1
-            if isinstance(color_for_segment_calc, tuple):
-                n_segments = 10  # Use more segments for gradients
+            bond_color = effective_bond_kwargs["color"]
+            color_pair: Sequence[Any] | None = None
+            if bond_color is True:  # Default gradient: element colors of bonded sites
+                color_pair = [
+                    _elem_colors.get(get_site_symbol(site), "gray")
+                    for site in (site1, site2)
+                ]
+            elif isinstance(bond_color, (list, tuple)) and len(bond_color) == 2:
+                color_pair = bond_color  # User-defined gradient: tuple of two colors
 
-            for segment_idx in range(n_segments):
-                frac_start, frac_end = (
-                    segment_idx / n_segments,
-                    (segment_idx + 1) / n_segments,
-                )
-                current_segment_start = coords_from + frac_start * (
-                    cart_coords_to - coords_from
-                )
-                current_segment_end = coords_from + frac_end * (
-                    cart_coords_to - coords_from
-                )
-
-                segment_color_str: str
-                if isinstance(color_for_segment_calc, tuple):
-                    # Gradient calculation
-                    segment_color_str = pcolors.find_intermediate_color(
-                        color_for_segment_calc[0],
-                        color_for_segment_calc[1],
-                        (frac_start + frac_end) / 2,
+            if color_pair is None:  # Solid color
+                segment_colors = [parse_color(bond_color)]
+            else:  # Use more segments for gradients
+                start_color, end_color = map(parse_color, color_pair)
+                n_segments = 10
+                segment_colors = [
+                    pcolors.find_intermediate_color(
+                        start_color,
+                        end_color,
+                        (idx / n_segments + (idx + 1) / n_segments) / 2,
                         colortype="rgb",
                     )
-                else:  # Solid color
-                    segment_color_str = parse_color(color_for_segment_calc)
+                    for idx in range(n_segments)
+                ]
 
-                name = f"bond {site_idx}-{con_dict['site_index']} segment {segment_idx}"
+            n_segments = len(segment_colors)
+            bond_vector = cart_coords_to - coords_from
+            for segment_idx, segment_color in enumerate(segment_colors):
+                segment_start = coords_from + segment_idx / n_segments * bond_vector
+                segment_end = coords_from + (segment_idx + 1) / n_segments * bond_vector
+
                 trace_kwargs = dict(
                     mode="lines",
                     line=dict(
-                        width=effective_bond_kwargs.get("width", 2),
-                        color=segment_color_str,
+                        width=effective_bond_kwargs["width"],
+                        color=segment_color,
                         dash=effective_bond_kwargs.get("dash"),
                     ),
                     showlegend=False,
                     hoverinfo="skip",
-                    name=name,
+                    name=f"bond {site_idx}-{site2_idx} segment {segment_idx}",
                 )
 
                 if is_3d:
                     fig.add_scatter3d(
-                        x=[current_segment_start[0], current_segment_end[0]],
-                        y=[current_segment_start[1], current_segment_end[1]],
-                        z=[current_segment_start[2], current_segment_end[2]],
+                        x=[segment_start[0], segment_end[0]],
+                        y=[segment_start[1], segment_end[1]],
+                        z=[segment_start[2], segment_end[2]],
                         scene=scene,
                         **trace_kwargs,
                     )
                 else:
-                    plot_segment_start = current_segment_start
-                    plot_segment_end = current_segment_end
                     if rotation_matrix is not None:
-                        plot_segment_start = np.dot(
-                            current_segment_start, rotation_matrix
-                        )
-                        plot_segment_end = np.dot(current_segment_end, rotation_matrix)
-
+                        segment_start = np.dot(segment_start, rotation_matrix)
+                        segment_end = np.dot(segment_end, rotation_matrix)
                     fig.add_scatter(
-                        x=[plot_segment_start[0], plot_segment_end[0]],
-                        y=[plot_segment_start[1], plot_segment_end[1]],
+                        x=[segment_start[0], segment_end[0]],
+                        y=[segment_start[1], segment_end[1]],
                         row=row,
                         col=col,
                         **trace_kwargs,
@@ -1457,15 +1487,23 @@ def draw_bonds(
 def _standardize_struct(
     struct_i: Structure | IStructure, *, standardize_struct: bool | None
 ) -> Structure | IStructure:
-    """Standardize the structure if needed."""
+    """Convert to the conventional standard cell if requested (None means only when
+    any site has negative fractional coordinates). Site properties (forces, magmoms,
+    ...) are carried over. Warns with NO_SYM_MSG and returns the input unchanged if
+    spglib can't determine the symmetry.
+    """
     if standardize_struct is None:
         standardize_struct = any(any(site.frac_coords < 0) for site in struct_i)
     if standardize_struct:
         try:
             spg_analyzer = SpacegroupAnalyzer(struct_i)
-            return spg_analyzer.get_conventional_standard_structure()
-        except ValueError:
-            warnings.warn(NO_SYM_MSG, UserWarning, stacklevel=2)
+            return spg_analyzer.get_conventional_standard_structure(
+                keep_site_properties=True
+            )
+        except ValueError as exc:
+            warnings.warn(
+                f"{NO_SYM_MSG} for {struct_i.formula}: {exc}", UserWarning, stacklevel=2
+            )
     return struct_i
 
 
@@ -1474,15 +1512,20 @@ def _prep_augmented_structure_for_bonding(
     *,
     show_image_sites: bool | dict[str, Any],
     cell_boundary_tol: float = 0,
-) -> Structure:  # Always returns Structure from Structure.from_sites()
+) -> tuple[Structure, list[int]]:
     """Prepare an augmented structure including primary and optionally image sites for
     bonding.
 
     Args:
-        struct_i (Structure | IStructure | IMolecule): Structure to prepare.
+        struct_i (Structure | IStructure): Structure to prepare.
         show_image_sites: Whether to include image sites.
         cell_boundary_tol (float): Distance beyond unit cell boundaries within which
             image atoms are included.
+
+    Returns:
+        tuple[Structure, list[int]]: Augmented structure (primary sites first, then
+            image sites with properties["is_image"] = True) and the index of each
+            augmented site's primary site in struct_i.
     """
     lattice = struct_i.lattice
     all_sites_for_bonding = [
@@ -1495,10 +1538,11 @@ def _prep_augmented_structure_for_bonding(
         )
         for site_in_cell in struct_i
     ]
+    parent_indices = list(range(len(struct_i)))
 
     if show_image_sites:  # True or a dict implies true for this purpose
         processed_image_coords: set[Xyz] = set()
-        for site_in_cell in struct_i:
+        for parent_idx, site_in_cell in enumerate(struct_i):
             image_cart_coords_arrays = get_image_sites(
                 site_in_cell, lattice, cell_boundary_tol=cell_boundary_tol
             )
@@ -1516,11 +1560,13 @@ def _prep_augmented_structure_for_bonding(
                         coords_are_cartesian=False,
                     )
                     all_sites_for_bonding.append(image_periodic_site)
+                    parent_indices.append(parent_idx)
                     processed_image_coords.add(coord_tuple_key)
 
-    return Structure.from_sites(
+    augmented_struct = Structure.from_sites(
         all_sites_for_bonding, validate_proximity=False, to_unit_cell=False
     )
+    return augmented_struct, parent_indices
 
 
 def configure_subplot_legends(
@@ -1533,37 +1579,33 @@ def configure_subplot_legends(
     n_rows: int,
 ) -> None:
     """Configure legends for each subplot if site_labels is 'legend'."""
-    if site_labels == "legend":
-        for idx in range(1, n_structs + 1):
-            row = (idx - 1) // n_cols + 1
-            col = (idx - 1) % n_cols + 1
+    if site_labels != "legend":
+        return
+    for idx in range(1, n_structs + 1):
+        row = (idx - 1) // n_cols + 1
+        col = (idx - 1) % n_cols + 1
 
-            # Calculate position within each subplot (bottom right)
-            x_start = (col - 1) / n_cols
-            x_end = col / n_cols
-            y_start = 1 - row / n_rows
-            y_end = 1 - (row - 1) / n_rows
+        # Calculate position within each subplot (bottom right)
+        x_start = (col - 1) / n_cols
+        x_end = col / n_cols
+        y_start = 1 - row / n_rows
+        y_end = 1 - (row - 1) / n_rows
 
-            # Position legend much closer to bottom right of subplot
-            legend_x = x_start + 0.98 * (x_end - x_start)
-            legend_y = y_start + 0.02 * (y_end - y_start)
-
-            legend_key = "legend" if idx == 1 else f"legend{idx}"
-            legend_config = dict(
-                x=legend_x,
-                y=legend_y,
-                xref="paper",
-                yref="paper",
-                xanchor="right",
-                yanchor="bottom",
-                bgcolor="rgba(0,0,0,0)",  # Transparent background
-                borderwidth=0,  # Remove border
-                font=dict(size=12, weight="bold"),  # Larger and bold font
-                itemsizing="constant",  # Keep legend symbols same size
-                itemwidth=30,  # Min allowed
-                tracegroupgap=2,  # Reduce vertical space between legend items
-            )
-            fig.layout[legend_key] = legend_config
+        # Position legend much closer to bottom right of subplot
+        fig.layout["legend" if idx == 1 else f"legend{idx}"] = dict(
+            x=x_start + 0.98 * (x_end - x_start),
+            y=y_start + 0.02 * (y_end - y_start),
+            xref="paper",
+            yref="paper",
+            xanchor="right",
+            yanchor="bottom",
+            bgcolor="rgba(0,0,0,0)",  # Transparent background
+            borderwidth=0,  # Remove border
+            font=dict(size=12, weight="bold"),  # Larger and bold font
+            itemsizing="constant",  # Keep legend symbols same size
+            itemwidth=30,  # Min allowed
+            tracegroupgap=2,  # Reduce vertical space between legend items
+        )
 
 
 def add_vacuum_if_needed(struct: Any) -> Any:

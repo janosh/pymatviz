@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from plotly.subplots import make_subplots
+from pymatgen.core import PeriodicSite
 
 from pymatviz.enums import ElemColorScheme, SiteCoords
 from pymatviz.process_data import normalize_periodic_structures
@@ -19,9 +20,20 @@ if TYPE_CHECKING:
     import pandas as pd
     import plotly.graph_objects as go
     from pymatgen.analysis.local_env import NearNeighbors
-    from pymatgen.core import PeriodicSite
+    from pymatgen.core import Structure
 
     from pymatviz.typing import AnyStructure, ColorType
+
+
+def _plotted_sites_coords(
+    augmented_structure: Structure, *, show_sites: bool | dict[str, Any]
+) -> set[tuple[float, float, float]]:
+    """Rounded coordinates of rendered sites used to filter bonds (empty set if sites
+    are hidden so that no bonds are drawn).
+    """
+    if not show_sites:
+        return set()
+    return {tuple(np.round(site.coords, 5)) for site in augmented_structure}
 
 
 def structure_2d(
@@ -35,7 +47,7 @@ def structure_2d(
     atom_size: float = 30,
     elem_colors: ElemColorScheme | dict[str, ColorType] = ElemColorScheme.jmol,
     scale: float = 1,
-    show_cell: bool | dict[str, Any] = True,
+    show_cell: bool | Mapping[Any, Any] = True,
     show_cell_faces: bool | dict[str, Any] = True,
     show_sites: bool | dict[str, Any] = True,
     show_image_sites: bool | dict[str, Any] = True,
@@ -47,6 +59,7 @@ def structure_2d(
     standardize_struct: bool | None = None,
     n_cols: int = 3,
     subplot_title: Callable[[AnyStructure, Hashable], str | dict[str, Any]]
+    | Literal[False]
     | None = None,
     show_site_vectors: str | Sequence[str] = ("force", "magmom"),
     show_image_vectors: bool = True,
@@ -69,9 +82,10 @@ def structure_2d(
         elem_colors (ElemColorScheme | dict[str, ColorType], optional): Element color
             scheme or custom color map. Defaults to ElemColorScheme.jmol.
         scale (float, optional): Scaling of the plotted atoms and lines. Defaults to 1.
-        show_cell (bool | dict[str, Any], optional): Whether to render the cell. If
-            a dict, will be used to customize cell appearance. The dict should have
-            a "node"/"edge" key to customize node/edge appearance. Defaults to True.
+        show_cell (bool | dict[str, Any], optional): Whether to render the cell. A
+            dict with "node"/"edge" keys customizes node/edge appearance. A dict keyed
+            by structure keys sets bool | style per structure (missing keys get the
+            default cell). Defaults to True.
         show_cell_faces (bool | dict[str, Any], optional): Whether to show transparent
             cell faces. If a dict, will  customize surfaces style. Defaults to True.
         show_sites (bool | dict[str, Any], optional): Whether to plot atomic sites. If
@@ -163,9 +177,6 @@ def structure_2d(
         filter_callback=lambda _prop, val: helpers._is_3d_vector(val),
     )
 
-    # Track seen elements per subplot for legend management
-    seen_elements_per_subplot: dict[int, set[str]] = {}
-
     for idx, (struct_key, raw_struct_i) in enumerate(structures.items(), start=1):
         row = (idx - 1) // n_cols + 1
         col = (idx - 1) % n_cols + 1
@@ -183,8 +194,9 @@ def structure_2d(
             )
         )
 
-        # Initialize seen elements for this subplot
-        seen_elements_per_subplot[idx] = set()
+        # Track elements already shown in this subplot's legend
+        seen_elements: set[str] = set()
+        legend_key = "legend" if idx == 1 else f"legend{idx}"
 
         struct_i = helpers._standardize_struct(
             raw_struct_i, standardize_struct=standardize_struct
@@ -195,27 +207,20 @@ def structure_2d(
 
         # For bonding, consider primary and image sites if show_image_sites is active
         # The actual plotting of image sites is handled later by draw_site if show_sites
-        augmented_structure = helpers._prep_augmented_structure_for_bonding(
+        augmented_structure, _ = helpers._prep_augmented_structure_for_bonding(
             struct_i,
             show_image_sites=show_image_sites and show_sites,
             cell_boundary_tol=cell_boundary_tol_i,
         )
 
-        # Collect plotted site coordinates for bond filtering
-        plotted_sites_coords: set[tuple[float, float, float]] | None = None
-
         if show_sites:  # Plot atoms, vectors, and image sites
-            # Initialize set to collect coordinates of rendered sites
-            plotted_sites_coords = {
-                tuple(np.round(site.coords, 5)) for site in augmented_structure
-            }
             lattice = struct_i.lattice
             vector_arrow_kwargs = (
                 (vector_kwargs or {}).get(vector_prop, {}) if vector_prop else {}
             )
 
             for site_idx_loop, (site, rotated_site_coords_3d) in enumerate(
-                zip(struct_i, rotated_coords_all_sites, strict=False)
+                zip(struct_i, rotated_coords_all_sites, strict=True)
             ):
                 # Determine legend parameters for primary sites
                 symbol = helpers.get_site_symbol(site)
@@ -223,9 +228,8 @@ def structure_2d(
                 showlegend = False
                 if site_labels == "legend":
                     legendgroup = f"{idx}-{symbol}"  # Unique per subplot
-                    if symbol not in seen_elements_per_subplot[idx]:
-                        showlegend = True
-                        seen_elements_per_subplot[idx].add(symbol)
+                    showlegend = symbol not in seen_elements
+                    seen_elements.add(symbol)
 
                 helpers.draw_site(  # Draw primary site
                     fig=fig,
@@ -246,7 +250,7 @@ def structure_2d(
                     float_fmt=hover_float_fmt,
                     legendgroup=legendgroup,
                     showlegend=showlegend,
-                    legend=f"legend{idx}" if idx > 1 and n_structs > 1 else "legend",
+                    legend=legend_key,
                 )
 
                 rotated_vector = None
@@ -280,12 +284,26 @@ def structure_2d(
                         rotated_image_atoms_coords_3d_list = np.dot(
                             image_cart_coords_arrays, rotation_matrix
                         )
-                        for image_idx, current_rotated_image_coords_3d in enumerate(
-                            rotated_image_atoms_coords_3d_list
+                        for image_idx, (
+                            image_cart_coords,
+                            current_rotated_image_coords_3d,
+                        ) in enumerate(
+                            zip(
+                                image_cart_coords_arrays,
+                                rotated_image_atoms_coords_3d_list,
+                                strict=True,
+                            )
                         ):
+                            image_site = PeriodicSite(
+                                site.species,
+                                image_cart_coords,
+                                lattice,
+                                coords_are_cartesian=True,
+                                properties=site.properties | dict(is_image=True),
+                            )
                             helpers.draw_site(
                                 fig=fig,
-                                site=site,
+                                site=image_site,
                                 coords=current_rotated_image_coords_3d,
                                 site_idx=site_idx_loop,
                                 site_labels=site_labels,
@@ -301,12 +319,11 @@ def structure_2d(
                                 row=row,
                                 col=col,
                                 name=f"image-{struct_key}-{site_idx_loop}-{image_idx}",
+                                hover_text=hover_text,
                                 float_fmt=hover_float_fmt,
                                 legendgroup=legendgroup,  # Same as primary site
                                 showlegend=False,  # Only primary sites show in legend
-                                legend=f"legend{idx}"
-                                if idx > 1 and n_structs > 1
-                                else "legend",
+                                legend=legend_key,
                             )
 
                             # Reuse vector/rotated_vector from primary site above
@@ -321,9 +338,6 @@ def structure_2d(
                                     col=col,
                                     name=f"vector-{struct_key}-img-{site_idx_loop}-{image_idx}",
                                 )
-        else:
-            # If no sites are being rendered, set empty set to filter out all bonds
-            plotted_sites_coords = set()
 
         # Draw bonds after sites are processed to ensure proper filtering
         if show_bonds and (nn_obj := helpers.resolve_nn_obj(show_bonds, struct_key)):
@@ -337,14 +351,16 @@ def structure_2d(
                 col=col,
                 rotation_matrix=rotation_matrix,
                 elem_colors=_elem_colors,
-                plotted_sites_coords=plotted_sites_coords,
+                plotted_sites_coords=_plotted_sites_coords(
+                    augmented_structure, show_sites=show_sites
+                ),
             )
 
-        if show_cell:
+        if struct_show_cell := helpers.resolve_show_cell(show_cell, struct_key):
             helpers.draw_cell(
                 fig,
                 struct_i,
-                cell_kwargs={} if show_cell is True else show_cell,
+                cell_kwargs={} if struct_show_cell is True else struct_show_cell,
                 is_3d=False,
                 row=row,
                 col=col,
@@ -352,12 +368,12 @@ def structure_2d(
                 show_faces=show_cell_faces,
             )
 
-        # Set subplot titles
-        anno = helpers.get_subplot_title(struct_i, struct_key, idx, subplot_title)
-        subtitle_y_pos = 1 - (row - 1) / n_rows - 0.02
-        fig.layout.annotations[idx - 1].update(
-            **dict(y=subtitle_y_pos, yanchor="top") | anno
-        )
+        if subplot_title is not False:  # Set subplot titles
+            anno = helpers.get_subplot_title(struct_i, struct_key, idx, subplot_title)
+            subtitle_y_pos = 1 - (row - 1) / n_rows - 0.02
+            fig.layout.annotations[idx - 1].update(
+                **dict(y=subtitle_y_pos, yanchor="top") | anno
+            )
 
     # Update layout
     fig.layout.height = 300 * n_rows
@@ -399,7 +415,7 @@ def structure_3d(
     atom_size: float = 20,
     elem_colors: ElemColorScheme | dict[str, ColorType] = ElemColorScheme.jmol,
     scale: float = 1,
-    show_cell: bool | dict[str, Any] = True,
+    show_cell: bool | Mapping[Any, Any] = True,
     show_cell_faces: bool | dict[str, Any] = True,
     show_sites: bool | dict[str, Any] = True,
     show_image_sites: bool | dict[str, Any] = True,
@@ -432,9 +448,10 @@ def structure_3d(
         elem_colors (ElemColorScheme | dict[str, str], optional): Element color scheme
             or custom color map. Defaults to ElemColorScheme.jmol.
         scale (float, optional): Scaling of the plotted atoms and lines. Defaults to 1.
-        show_cell (bool | dict[str, Any], optional): Whether to render cell. If
-            a dict, will be used to customize cell appearance. The dict should have
-            a "node"/"edge" key to customize node/edge appearance. Defaults to True.
+        show_cell (bool | dict[str, Any], optional): Whether to render the cell. A
+            dict with "node"/"edge" keys customizes node/edge appearance. A dict keyed
+            by structure keys sets bool | style per structure (missing keys get the
+            default cell). Defaults to True.
         show_cell_faces (bool | dict[str, Any], optional): Whether to show transparent
             cell faces. If a dict, will  customize surfaces style. Defaults to True.
         show_sites (bool | dict[str, Any], optional): Whether to plot atomic sites. If
@@ -524,9 +541,6 @@ def structure_3d(
         filter_callback=lambda _prop, val: helpers._is_3d_vector(val),
     )
 
-    # Track seen elements per subplot for legend management
-    seen_elements_per_subplot: dict[int, set[str]] = {}
-
     for idx, (struct_key, raw_struct_i) in enumerate(structures.items(), start=1):
         struct_i = helpers._standardize_struct(
             raw_struct_i, standardize_struct=standardize_struct
@@ -545,17 +559,20 @@ def structure_3d(
             )
         )
 
-        # Initialize seen elements for this subplot
-        seen_elements_per_subplot[idx] = set()
+        # Track elements already shown in this subplot's legend
+        seen_elements: set[str] = set()
+        legend_key = "legend" if idx == 1 else f"legend{idx}"
         scene_name = "scene" if idx == 1 else f"scene{idx}"
 
         # Prepare augmented structure: original + image sites for consistent processing
         # This augmented_structure is used for collecting all site data for the single
         # 3D trace and for bond calculations.
-        augmented_structure = helpers._prep_augmented_structure_for_bonding(
-            struct_i,
-            show_image_sites=show_image_sites and show_sites,
-            cell_boundary_tol=cell_boundary_tol_i,
+        augmented_structure, parent_indices = (
+            helpers._prep_augmented_structure_for_bonding(
+                struct_i,
+                show_image_sites=show_image_sites and show_sites,
+                cell_boundary_tol=cell_boundary_tol_i,
+            )
         )
 
         # Plot atoms and vectors
@@ -563,26 +580,21 @@ def structure_3d(
             # For 3D, need to handle disordered sites properly by drawing each site
             # individually instead of grouping by element symbol
             for site_idx_loop, site in enumerate(augmented_structure):
-                # Determine if this is primary site (from orig structure) or image site
+                # Primary sites come first in augmented_structure, then image sites
                 is_image_site = site_idx_loop >= len(struct_i)
-
-                # For primary sites, use original index; for image sites, use modulo
-                original_site_idx = (
-                    site_idx_loop
-                    if not is_image_site
-                    else site_idx_loop % len(struct_i)
-                )
+                original_site_idx = parent_indices[site_idx_loop]
 
                 symbol = helpers.get_site_symbol(site)
 
-                # Determine legend parameters for primary sites only
+                # Image sites share their primary's legend group but only primary
+                # sites get legend entries
                 legendgroup = None
                 showlegend = False
-                if site_labels == "legend" and not is_image_site:
+                if site_labels == "legend":
                     legendgroup = f"{idx}-{symbol}"  # Unique per subplot
-                    if symbol not in seen_elements_per_subplot[idx]:
-                        showlegend = True
-                        seen_elements_per_subplot[idx].add(symbol)
+                    showlegend = not is_image_site and symbol not in seen_elements
+                    if not is_image_site:
+                        seen_elements.add(symbol)
 
                 # Use the new draw_site helper which handles disordered sites
                 helpers.draw_site(
@@ -603,7 +615,7 @@ def structure_3d(
                     float_fmt=hover_float_fmt,
                     legendgroup=legendgroup,
                     showlegend=showlegend,
-                    legend=f"legend{idx}" if idx > 1 and n_structs > 1 else "legend",
+                    legend=legend_key,
                     name=f"Image of {symbol}" if is_image_site else symbol,
                 )
 
@@ -611,7 +623,6 @@ def structure_3d(
             if vector_prop:
                 vector_arrow_kwargs = (vector_kwargs or {}).get(vector_prop, {})
                 show_image_site_vectors = show_image_vectors and show_image_sites
-                lattice = struct_i.lattice if show_image_site_vectors else None
                 for site_idx_loop, site_in_original_struct in enumerate(struct_i):
                     vector = helpers._get_site_vector(
                         site_in_original_struct,
@@ -633,10 +644,10 @@ def structure_3d(
                     )
 
                     # Also draw vectors at image site positions
-                    if show_image_site_vectors and lattice is not None:
+                    if show_image_site_vectors:
                         image_cart_coords = helpers.get_image_sites(
                             site_in_original_struct,
-                            lattice,
+                            struct_i.lattice,
                             cell_boundary_tol=cell_boundary_tol_i,
                         )
                         for img_idx, img_coords in enumerate(image_cart_coords):
@@ -652,16 +663,6 @@ def structure_3d(
 
         # Draw bonds using the augmented structure after sites are processed
         if show_bonds and (nn_obj := helpers.resolve_nn_obj(show_bonds, struct_key)):
-            plotted_sites_coords: set[tuple[float, float, float]]
-            if show_sites:  # Only consider plotted sites for bonds
-                # Get all plotted site coordinates from the augmented structure
-                plotted_sites_coords = {
-                    tuple(np.round(site.coords, 5)) for site in augmented_structure
-                }
-            else:
-                # If no sites are rendered, set empty set to filter out all bonds
-                plotted_sites_coords = set()
-
             helpers.draw_bonds(
                 fig=fig,
                 structure=augmented_structure,  # Pass the augmented structure
@@ -670,14 +671,16 @@ def structure_3d(
                 bond_kwargs=bond_kwargs,
                 scene=scene_name,
                 elem_colors=_elem_colors,
-                plotted_sites_coords=plotted_sites_coords,
+                plotted_sites_coords=_plotted_sites_coords(
+                    augmented_structure, show_sites=show_sites
+                ),
             )
 
-        if show_cell:
+        if struct_show_cell := helpers.resolve_show_cell(show_cell, struct_key):
             helpers.draw_cell(
                 fig,
                 struct_i,
-                cell_kwargs={} if show_cell is True else show_cell,
+                cell_kwargs={} if struct_show_cell is True else struct_show_cell,
                 is_3d=True,
                 scene=scene_name,
                 show_faces=show_cell_faces,
@@ -686,13 +689,11 @@ def structure_3d(
         # Set subplot titles
         if subplot_title is not False:
             anno = helpers.get_subplot_title(struct_i, struct_key, idx, subplot_title)
-            if "y" not in anno:
-                row = (idx - 1) // n_cols + 1
-                subtitle_y_pos = 1 - (row - 1) / n_rows - 0.02
-                anno["y"] = subtitle_y_pos
-            if "yanchor" not in anno:
-                anno["yanchor"] = "top"
-            fig.layout.annotations[idx - 1].update(anno)
+            row = (idx - 1) // n_cols + 1
+            subtitle_y_pos = 1 - (row - 1) / n_rows - 0.02
+            fig.layout.annotations[idx - 1].update(
+                dict(y=subtitle_y_pos, yanchor="top") | anno
+            )
 
     # Update 3D scene properties
     no_axes_kwargs = dict(

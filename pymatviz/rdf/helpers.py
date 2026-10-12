@@ -7,9 +7,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 # compiled cython module, has no type stubs
-from pymatgen.optimization.neighbors import (  # ty: ignore[unresolved-import]
-    find_points_in_spheres,
-)
+from pymatgen.optimization.neighbors import find_points_in_spheres  # ty: ignore[unresolved-import]
 
 from pymatviz.process_data import normalize_periodic_structures
 
@@ -66,32 +64,23 @@ def calculate_rdf(
 
     bin_size = cutoff / n_bins
     radii = np.linspace(0, cutoff, n_bins + 1)[1:]
-    rdf = np.zeros_like(radii)
 
     # Import here to avoid circular import
     from pymatviz.structure.helpers import get_site_elements
 
-    # Get indices of center and neighbor species
-    if center_species:
-        center_indices = [
+    def species_indices(species: str | None) -> list[int]:
+        """Indices of sites containing species (all sites if species is None)."""
+        return [
             idx
             for idx, site in enumerate(struct)
-            if center_species in get_site_elements(site)
+            if not species or species in get_site_elements(site)
         ]
-    else:
-        center_indices = list(range(len(struct)))
 
-    if neighbor_species:
-        neighbor_indices = [
-            idx
-            for idx, site in enumerate(struct)
-            if neighbor_species in get_site_elements(site)
-        ]
-    else:
-        neighbor_indices = list(range(len(struct)))
+    center_indices = species_indices(center_species)
+    neighbor_indices = species_indices(neighbor_species)
 
     if not center_indices or not neighbor_indices:
-        return radii, rdf
+        return radii, np.zeros_like(radii)
 
     center_neighbors = find_points_in_spheres(
         all_coords=struct.cart_coords,

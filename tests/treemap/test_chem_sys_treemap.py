@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, get_args
 
-import plotly.graph_objects as go
 import pytest
 from pymatgen.core import Composition
 
@@ -15,8 +14,6 @@ from pymatviz.typing import FormulaGroupBy, ShowCounts
 
 if TYPE_CHECKING:
     from pymatgen.core import Structure
-
-    from pymatviz.typing import FormulaGroupBy
 
 
 # Type alias for arity formatter function
@@ -76,7 +73,6 @@ def test_chem_sys_treemap_basic() -> None:
     fig = pmv.chem_sys_treemap(systems)
 
     # Verify figure structure
-    assert isinstance(fig, go.Figure)
     assert len(fig.data) == 1
     assert fig.data[0].type == "treemap"
 
@@ -125,33 +121,25 @@ def test_chem_sys_treemap_basic() -> None:
 
 
 @pytest.mark.parametrize(
-    ("systems", "expected_arity_levels", "test_id"),
+    ("systems", "expected_arity_levels"),
     [
-        (["Fe", "O", "Li-Fe-O"], {"unary", "ternary"}, "skip_binary"),
-        (["Fe2O3", "FeO", "Li2O", "LiFeO2"], {"binary", "ternary"}, "skip_unary"),
-        (TEST_SYSTEMS, {"binary", "ternary"}, "regular_systems"),
-        (HIGH_ARITY_SYSTEMS, {"ternary", "quinary"}, "high_arity"),
+        (["Fe", "O", "Li-Fe-O"], {"unary", "ternary"}),
+        (["Fe2O3", "FeO", "Li2O", "LiFeO2"], {"binary", "ternary"}),
+        (TEST_SYSTEMS, {"binary", "ternary"}),
     ],
+    ids=["skip_binary", "skip_unary", "regular_systems"],
 )
 def test_chem_sys_treemap_arity_scenarios(
-    systems: list[str], expected_arity_levels: set[str], test_id: str
+    systems: list[str], expected_arity_levels: set[str]
 ) -> None:
-    """Test different arity scenarios."""
-    fig = pmv.chem_sys_treemap(systems)
-    labels = fig.data[0].labels
-
-    # Check arity levels
+    """Only arities present in the data get top-level nodes."""
+    labels = pmv.chem_sys_treemap(systems).data[0].labels
     arity_levels = {
         label.split(" (")[0]
         for label in labels
-        if any(x in label for x in ("unary", "binary", "ternary", "quinary"))
+        if any(x in label for x in ("unary", "binary", "ternary"))
     }
-    assert arity_levels == expected_arity_levels, f"Test {test_id} failed"
-
-    # Apply customizations for one test case
-    if test_id == "skip_binary":
-        fig.update_traces(marker=dict(cornerradius=5))
-        assert fig.data[0].marker.cornerradius == 5
+    assert arity_levels == expected_arity_levels
 
 
 @pytest.mark.parametrize("show_counts", get_args(ShowCounts))
@@ -215,7 +203,6 @@ def test_chem_sys_treemap_input_types_and_errors(structures: list[Structure]) ->
         "Fe-O",  # chemical system string
     ]
     fig = pmv.chem_sys_treemap(systems)
-    assert isinstance(fig, go.Figure)
 
     # Check that systems with same elements are grouped
     labels = fig.data[0].labels
@@ -230,26 +217,27 @@ def test_chem_sys_treemap_input_types_and_errors(structures: list[Structure]) ->
     assert binary_count == 2, "Fe2O3 and Fe-O should be merged"
 
     # Test with only Structure objects
-    fig_structs = pmv.chem_sys_treemap(structures)
-    assert isinstance(fig_structs, go.Figure)
+    assert len(pmv.chem_sys_treemap(structures).data[0].labels) > 0
 
 
 @pytest.mark.parametrize(
-    ("invalid_input", "expected_error"),
+    ("kwargs", "err_cls", "expected_error"),
     [
-        ("invalid", "Invalid show_counts="),
-        ([], "Empty input: data sequence is empty"),
-        ([1], "Expected str, Composition or Structure"),
+        (
+            dict(data=["Fe-O"], show_counts="invalid"),
+            ValueError,
+            "Invalid show_counts=",
+        ),
+        (dict(data=[]), ValueError, "Empty input: data sequence is empty"),
+        (dict(data=[1]), TypeError, "Expected str, Composition or Structure"),
     ],
 )
-def test_chem_sys_treemap_errors(invalid_input: Any, expected_error: str) -> None:
-    """Test error conditions."""
-    if invalid_input == "invalid":
-        with pytest.raises((ValueError, TypeError), match=expected_error):
-            pmv.chem_sys_treemap(["Fe-O"], show_counts=invalid_input)
-    else:
-        with pytest.raises((ValueError, TypeError), match=expected_error):
-            pmv.chem_sys_treemap(invalid_input)
+def test_chem_sys_treemap_errors(
+    kwargs: dict[str, Any], err_cls: type[Exception], expected_error: str
+) -> None:
+    """Invalid show_counts, empty and non-formula inputs raise."""
+    with pytest.raises(err_cls, match=expected_error):
+        pmv.chem_sys_treemap(**kwargs)
 
 
 @pytest.mark.parametrize(

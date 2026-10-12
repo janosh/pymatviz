@@ -14,15 +14,12 @@ from pymatviz.utils.plotting import (
     get_font_color,
     luminance,
     pick_max_contrast_color,
+    rgb_components,
 )
 
 
 PKG_DIR: str = os.path.dirname(os.path.dirname(__file__))
 ROOT: str = os.path.dirname(PKG_DIR)
-
-
-class ExperimentalWarning(Warning):
-    """Warning for experimental features."""
 
 
 from pymatviz.utils.data import (

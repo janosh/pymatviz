@@ -37,15 +37,24 @@ if TYPE_CHECKING:
 def _resolve_element_colors(
     element_color_scheme: ElemColorScheme | dict[str, str],
 ) -> dict[str, Any]:
-    """Resolve element colors from a scheme enum or custom dict (merged over Jmol)."""
+    """Resolve element colors from a scheme enum or custom dict (merged over Jmol)
+    with RGB tuples converted to plotly 'rgb(r, g, b)' strings.
+    """
     if isinstance(element_color_scheme, dict):
-        return ELEM_COLORS_JMOL | element_color_scheme
-    if isinstance(element_color_scheme, ElemColorScheme):
-        return element_color_scheme.color_map
-    raise TypeError(
-        f"Invalid {element_color_scheme=}. Must be {', '.join(ElemColorScheme)} "
-        "or a custom dict."
-    )
+        color_map = ELEM_COLORS_JMOL | element_color_scheme
+    elif isinstance(element_color_scheme, ElemColorScheme):
+        color_map = element_color_scheme.color_map
+    else:
+        raise TypeError(
+            f"Invalid {element_color_scheme=}. Must be {', '.join(ElemColorScheme)} "
+            "or a custom dict."
+        )
+    return {
+        elem: label_rgb(color)
+        if isinstance(color, tuple) and len(color) == 3
+        else color
+        for elem, color in color_map.items()
+    }
 
 
 def coordination_hist(
@@ -116,12 +125,15 @@ def coordination_hist(
     coord_data: dict[Hashable, dict[str, Any]] = {}
     min_cn, max_cn = float("inf"), 0  # will be updated in the loop below
 
-    # Process hover_data
+    # Map hover_data keys to their display labels
+    hover_labels: dict[str, str]
     if isinstance(hover_data, Sequence):
-        hover_data = {key: key for key in hover_data}
+        hover_labels = {key: key for key in hover_data}
     elif hover_data is None:
-        hover_data = {}
-    elif not isinstance(hover_data, dict):
+        hover_labels = {}
+    elif isinstance(hover_data, dict):
+        hover_labels = hover_data
+    else:
         raise TypeError(f"Invalid {hover_data=}")
 
     get_neighbors = normalize_get_neighbors(strategy)
@@ -132,14 +144,12 @@ def coordination_hist(
             cn = len(get_neighbors(site, structure))
             min_cn = min(min_cn, cn)
             max_cn = max(max_cn, cn)
-            elem_symbol = get_site_symbol(site)
-            if elem_symbol not in coord_data[struct_key]:
-                coord_data[struct_key][elem_symbol] = {"cn": [], "hover_data": {}}
-            coord_data[struct_key][elem_symbol]["cn"].append(cn)
-            for key in hover_data or ():
-                if key not in coord_data[struct_key][elem_symbol]["hover_data"]:
-                    coord_data[struct_key][elem_symbol]["hover_data"][key] = []
-                coord_data[struct_key][elem_symbol]["hover_data"][key].append(
+            elem_data = coord_data[struct_key].setdefault(
+                get_site_symbol(site), {"cn": [], "hover_data": {}}
+            )
+            elem_data["cn"].append(cn)
+            for key in hover_labels:
+                elem_data["hover_data"].setdefault(key, []).append(
                     structure.site_properties.get(key, [None] * len(structure))[idx]
                 )
 
@@ -185,173 +195,96 @@ def coordination_hist(
         bar_kwargs or {}
     )
 
+    def histogram_bar(
+        struct_key: Hashable, elem_symbol: str, data: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Bar counts per CN in x_range with matching hover texts."""
+        counts = Counter(data["cn"])
+        y_vals = [counts.get(cn, 0) for cn in x_range]
+        hover_text = [
+            create_hover_text(
+                struct_key=struct_key,
+                elem_symbol=elem_symbol,
+                cn=cn,
+                count=count,
+                hover_data=hover_labels,
+                data=data,
+                is_single_structure=is_single_structure,
+            )
+            for cn, count in zip(x_range, y_vals, strict=True)
+        ]
+        return dict(
+            x=x_range,
+            y=y_vals,
+            text=y_vals,
+            textposition="auto",
+            hovertext=hover_text,
+            hoverinfo="text",
+        )
+
     # Show each element once in the legend across structures.
     legend_elements_shown = set()
 
     for struct_key, struct_data in coord_data.items():
-        if split_mode == CnSplitMode.by_element:
-            for elem_symbol in elements:
-                if elem_symbol not in struct_data:
-                    continue
-                data = struct_data[elem_symbol]
-                counts = Counter(data["cn"])
-                y = [counts.get(idx, 0) for idx in x_range]
-
-                hover_text = [
-                    create_hover_text(
-                        struct_key=struct_key,
-                        elem_symbol=elem_symbol,
-                        cn=cn,
-                        count=count,
-                        hover_data=hover_data,
-                        data=data,
-                        is_single_structure=is_single_structure,
-                    )
-                    for cn, count in zip(x_range, y, strict=False)
-                ]
-
-                bar_color = element_colors.get(elem_symbol)
-                if isinstance(bar_color, tuple) and len(bar_color) == 3:
-                    bar_color = label_rgb(bar_color)
-
-                trace = go.Bar(
-                    x=x_range,
-                    y=y,
-                    name=f"{struct_key} - {elem_symbol}",
-                    text=y,
-                    textposition="auto",
-                    hovertext=hover_text,
-                    hoverinfo="text",
-                    marker_color=bar_color,
-                    legendgroup=struct_key,
-                    legendgrouptitle_text=struct_key,
-                    **bar_kwargs,
-                )
-                subplot_idx = elements.index(elem_symbol) + 1
-                row = (subplot_idx - 1) // n_cols + 1
-                col = (subplot_idx - 1) % n_cols + 1
-                if annotate_bars is not False:
-                    trace.update(text=elem_symbol, textfont=annotate_bars)
-
-                fig.add_trace(trace, row=row, col=col)
-
-        elif split_mode == CnSplitMode.by_structure:
-            all_cn = [
-                cn for elem_data in struct_data.values() for cn in elem_data["cn"]
-            ]
+        if split_mode == CnSplitMode.by_structure:
             combined_data = {
-                "cn": all_cn,
+                "cn": [
+                    cn for elem_data in struct_data.values() for cn in elem_data["cn"]
+                ],
                 "hover_data": {
                     key: [
                         value
                         for elem_data in struct_data.values()
                         for value in elem_data["hover_data"][key]
                     ]
-                    for key in hover_data
+                    for key in hover_labels
                 },
             }
-            counts = Counter(all_cn)
-            y = [counts.get(idx, 0) for idx in x_range]
-
-            hover_text = [
-                create_hover_text(
-                    struct_key=struct_key,
-                    elem_symbol="",
-                    cn=cn,
-                    count=count,
-                    hover_data=hover_data,
-                    data=combined_data,
-                    is_single_structure=is_single_structure,
-                )
-                for cn, count in zip(x_range, y, strict=False)
-            ]
-
-            trace = go.Bar(
-                x=x_range,
-                y=y,
+            fig.add_bar(
+                **histogram_bar(struct_key, "", combined_data),
                 name=struct_key,
-                text=y,
-                textposition="auto",
-                hovertext=hover_text,
-                hoverinfo="text",
                 **bar_kwargs,
+                row=row,
+                col=col,
             )
-            fig.add_trace(trace, row=row, col=col)
-        elif split_mode == CnSplitMode.by_structure_and_element:
-            for elem_symbol, data in struct_data.items():
-                counts = Counter(data["cn"])
-                y = [counts.get(idx, 0) for idx in x_range]
-
-                hover_text = [
-                    create_hover_text(
-                        struct_key=struct_key,
-                        elem_symbol=elem_symbol,
-                        cn=cn,
-                        count=count,
-                        hover_data=hover_data,
-                        data=data,
-                        is_single_structure=is_single_structure,
-                    )
-                    for cn, count in zip(x_range, y, strict=False)
+        else:
+            if split_mode == CnSplitMode.by_element:
+                elem_items = [
+                    (elem, struct_data[elem])
+                    for elem in elements
+                    if elem in struct_data
                 ]
-
-                bar_color = element_colors.get(elem_symbol)
-                if isinstance(bar_color, tuple) and len(bar_color) == 3:
-                    bar_color = label_rgb(bar_color)
-
-                trace = go.Bar(
-                    x=x_range,
-                    y=y,
-                    name=elem_symbol,  # Name for the legend item
-                    text=y,
-                    textposition="auto",
-                    hovertext=hover_text,
-                    hoverinfo="text",
-                    marker_color=bar_color,
-                    legendgroup=elem_symbol,  # Group by element symbol
-                    showlegend=elem_symbol not in legend_elements_shown,
-                    legendgrouptitle_text=None,
-                    **bar_kwargs,
+            else:
+                elem_items = list(struct_data.items())
+            for elem_symbol, data in elem_items:
+                trace_kwargs = histogram_bar(struct_key, elem_symbol, data) | dict(
+                    marker_color=element_colors.get(elem_symbol)
                 )
-
-                legend_elements_shown.add(elem_symbol)
-
-                if annotate_bars is not False:
-                    trace.update(text=elem_symbol, textfont=annotate_bars)
-
-                fig.add_trace(trace, row=row, col=col)
-        else:  # No split
-            for elem_symbol, data in struct_data.items():
-                counts = Counter(data["cn"])
-                y = [counts.get(idx, 0) for idx in x_range]
-
-                hover_text = [
-                    create_hover_text(
-                        struct_key=struct_key,
-                        elem_symbol=elem_symbol,
-                        cn=cn,
-                        count=count,
-                        hover_data=hover_data,
-                        data=data,
-                        is_single_structure=is_single_structure,
+                if split_mode == CnSplitMode.by_element:
+                    subplot_row, subplot_col = divmod(
+                        elements.index(elem_symbol), n_cols
                     )
-                    for cn, count in zip(x_range, y, strict=False)
-                ]
-
-                bar_color = element_colors.get(elem_symbol)
-                if isinstance(bar_color, tuple) and len(bar_color) == 3:
-                    bar_color = label_rgb(bar_color)
-                fig.add_bar(
-                    x=x_range,
-                    y=y,
-                    name=f"{struct_key} - {elem_symbol}",
-                    text=y,
-                    textposition="auto",
-                    hovertext=hover_text,
-                    hoverinfo="text",
-                    marker_color=bar_color,
-                    **bar_kwargs,
-                )
+                    trace_kwargs |= dict(
+                        name=f"{struct_key} - {elem_symbol}",
+                        legendgroup=struct_key,
+                        legendgrouptitle_text=struct_key,
+                        row=subplot_row + 1,
+                        col=subplot_col + 1,
+                    )
+                elif split_mode == CnSplitMode.by_structure_and_element:
+                    trace_kwargs |= dict(
+                        name=elem_symbol,
+                        legendgroup=elem_symbol,
+                        showlegend=elem_symbol not in legend_elements_shown,
+                        row=row,
+                        col=col,
+                    )
+                    legend_elements_shown.add(elem_symbol)
+                else:  # No split
+                    trace_kwargs["name"] = f"{struct_key} - {elem_symbol}"
+                if annotate_bars is not False and split_mode != CnSplitMode.none:
+                    trace_kwargs |= dict(text=elem_symbol, textfont=annotate_bars)
+                fig.add_bar(**trace_kwargs, **bar_kwargs)
 
         if split_mode in (
             CnSplitMode.by_structure,
@@ -489,16 +422,12 @@ def coordination_vs_cutoff_line(
                 for get_neighbors_fn in neighbor_fns
             ]
 
-            color = element_colors.get(element)
-            if isinstance(color, tuple) and len(color) == 3:
-                color = label_rgb(color)
-
             fig.add_scatter(
                 x=cutoffs,
                 y=coord_numbers,
                 mode="lines",
                 name=element,
-                line=dict(color=color),
+                line=dict(color=element_colors.get(element)),
                 legendgroup=struct_name,
                 legendgrouptitle_text=struct_name,
                 row=(idx - 1) // n_cols + 1,

@@ -35,19 +35,13 @@ def test_ptable_hists_basic(
     log: bool,
     colorscale: str,
 ) -> None:
+    """One histogram per element sharing bin edges derived from all values."""
     fig = pmv.ptable_hists(
         elem_data, bins=bins, x_range=x_range, log=log, colorscale=colorscale
     )
-    assert isinstance(fig, go.Figure)
     # Count only histogram traces (exclude colorbar trace)
     n_hist_traces = sum(isinstance(trace, go.Histogram) for trace in fig.data)
-    if isinstance(elem_data, dict):
-        n_elements = len(elem_data)
-    elif isinstance(elem_data, pd.DataFrame):
-        n_elements = len(elem_data.columns)
-    else:
-        raise TypeError(f"unexpected {type(elem_data)=}")
-    assert n_hist_traces == n_elements
+    assert n_hist_traces == len(elem_data.keys())
     values = np.asarray(
         list(elem_data.values()) if isinstance(elem_data, dict) else elem_data
     ).ravel()
@@ -68,6 +62,7 @@ def test_ptable_hists_basic(
 
 
 def test_ptable_hists_annotations() -> None:
+    """Dict and callable annotations can each add multiple annotations per tile."""
     data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
     anno_kwargs: dict[str, str | int] = {"font_size": 14, "font_color": "red"}
 
@@ -115,6 +110,7 @@ def test_ptable_hists_annotations() -> None:
 
 
 def test_ptable_hists_error_cases() -> None:
+    """Invalid color strategy, scale and bins raise."""
     data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
 
     # Test invalid color_elem_strategy
@@ -134,6 +130,7 @@ def test_ptable_hists_error_cases() -> None:
 
 
 def test_ptable_hists_subplot_kwargs() -> None:
+    """subplot_kwargs are forwarded to make_subplots."""
     data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
     sub_titles = ["Iron", "Oxygen"]
     subplot_kwargs = {
@@ -185,15 +182,13 @@ def test_ptable_hists_hover_tooltips() -> None:
 def test_ptable_hists_colorbar(
     colorbar: dict[str, Any] | Literal[False] | None,
 ) -> None:
-    """Test colorbar customization in pmv.ptable_hists including range and
-    visibility.
-    """
+    """Test colorbar customization in ptable_hists including range and visibility."""
     data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
     x_range = (-1, 5)  # Test custom range
     fig = pmv.ptable_hists(data, colorbar=colorbar, x_range=x_range)
 
     if colorbar is False:
-        assert all(not hasattr(trace, "colorbar") for trace in fig.data)
+        assert not any(trace.marker.showscale for trace in fig.data)
         return
 
     # Find the scatter trace with the colorbar (should be last trace)

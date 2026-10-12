@@ -138,8 +138,7 @@ def _describe_periodic_table(data: Mapping[str, Any]) -> dict[str, Any]:
     if not isinstance(values, (Mapping, list, tuple)):
         return {"n_elements": 0}
     facts: dict[str, Any] = {"n_elements": len(values)}
-    value_range = _minmax(values)
-    if value_range is not None:
+    if (value_range := _minmax(values)) is not None:
         facts["value_range"] = value_range
     return facts
 
@@ -149,8 +148,7 @@ def _describe_heatmap_matrix(data: Mapping[str, Any]) -> dict[str, Any]:
     facts: dict[str, Any] = {
         "shape": [len(data.get("x_items") or []), len(data.get("y_items") or [])]
     }
-    value_range = _minmax(data.get("values"))
-    if value_range is not None:
+    if (value_range := _minmax(data.get("values"))) is not None:
         facts["value_range"] = value_range
     return facts
 
@@ -173,8 +171,7 @@ def _describe_xrd(data: Mapping[str, Any]) -> dict[str, Any]:
     patterns = data.get("patterns")
     two_theta = patterns.get("x") if isinstance(patterns, Mapping) else None
     facts: dict[str, Any] = {"n_peaks": len(two_theta or [])}
-    two_theta_range = _minmax(two_theta)
-    if two_theta_range is not None:
+    if (two_theta_range := _minmax(two_theta)) is not None:
         facts["two_theta_range"] = two_theta_range
     return facts
 

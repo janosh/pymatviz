@@ -22,7 +22,7 @@ class TreemapWidget(PlotControlsTraits, MatterVizWidget):
 
     Data is a nested node dict (or list of root nodes) with plotly-like
     semantics: ``{"label": ..., "value": ..., "children": [...]}`` plus
-    optional ``id``, ``color``, ``hatch``, and ``metadata`` keys. Clicking a
+    optional ``id``, ``color``, ``pattern``, and ``metadata`` keys. Clicking a
     cell zooms into it (breadcrumb pathbar zooms back out); ``zoom_root_id``
     syncs both ways: zooming in the UI notifies Python and setting it from
     Python re-roots the view (None = data root).
@@ -40,6 +40,8 @@ class TreemapWidget(PlotControlsTraits, MatterVizWidget):
     level_lighten = _optional(tl.Float)
     # group siblings below this fraction of the total into one "Other" cell (0 = off)
     min_fraction = _optional(tl.Float)
+    # keep the N largest children per parent, bucketing the rest into "Other" (0 = all)
+    max_children = _optional(tl.Int, min=0)
     other_label = _optional(tl.Unicode)  # label for the aggregated "Other" cell
     max_depth = _optional(tl.Int)  # levels shown below the zoom root (0 = all)
     padding_inner = _optional(tl.Float)  # px gap between sibling cells
@@ -64,7 +66,7 @@ class TreemapWidget(PlotControlsTraits, MatterVizWidget):
     export_filename = _optional(tl.Unicode)
     fullscreen_toggle = _optional(tl.Bool)
     # two-way synced zoom state: id of the cell the view is rooted on
-    zoom_root_id = tl.Any(allow_none=True, default_value=None).tag(sync=True)
+    zoom_root_id = _optional(tl.Any)
 
     def __init__(
         self, data: dict[str, Any] | list[dict[str, Any]] | None = None, **kwargs: Any
@@ -75,7 +77,7 @@ class TreemapWidget(PlotControlsTraits, MatterVizWidget):
             data: Hierarchy as a nested node dict or list of root nodes. Each
                 node supports ``label``, ``value`` (required on leaves unless
                 ``value_mode="total"``), ``color``, ``children``, ``id``,
-                ``hatch``, and ``metadata`` keys.
+                ``pattern``, and ``metadata`` keys.
             **kwargs: Config traits (see class-level trait comments) and
                 additional base widget keyword arguments.
         """

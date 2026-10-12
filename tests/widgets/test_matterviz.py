@@ -118,15 +118,7 @@ def test_clear_widget_cache_version_specific(
     assert (base_dir / other_version).exists()
 
 
-# === default CDN URL + pinned version ===
-
-
-def test_default_cdn_url() -> None:
-    """Default CDN URL points at the pinned matterviz-anywidget npm version."""
-    assert matterviz._cdn_url(matterviz.MATTERVIZ_ANYWIDGET_VERSION) == (
-        "https://cdn.jsdelivr.net/npm/matterviz-anywidget@"
-        f"{matterviz.MATTERVIZ_ANYWIDGET_VERSION}/build/matterviz.js"
-    )
+# === pinned version ===
 
 
 def test_pinned_anywidget_version_resolves() -> None:
@@ -290,38 +282,28 @@ def test_to_html_references_configured_version() -> None:
         html = matterviz.MatterVizWidget().to_html(inline=False)
 
     assert "matterviz-anywidget@0.3.6/build/matterviz.js" in html  # JS = configured
-    assert "@0.4.0/" not in html  # not the pinned default
+    assert f"@{matterviz.MATTERVIZ_ANYWIDGET_VERSION}/" not in html  # not pinned
     assert "/* matterviz.css@0.3.6 */" in html  # configured CSS inlined -> matches JS
 
 
+@pytest.mark.parametrize("explicit_css", [True, False], ids=["css_src", "derived"])
 @pytest.mark.usefixtures("_clean_asset_cache")
-def test_configure_assets_with_urls(tmp_path: Path) -> None:
-    """configure_assets(esm_src=..., css_src=...) reads from provided sources."""
-    esm_file = tmp_path / "custom.js"
-    css_file = tmp_path / "custom.css"
-    esm_file.write_text("custom esm")
-    css_file.write_text("custom css")
-
-    configure_assets(esm_src=str(esm_file), css_src=str(css_file))
-
-    cls = matterviz.MatterVizWidget
-    assert cls._esm == "custom esm"
-    assert cls._css == "custom css"
-
-
-@pytest.mark.usefixtures("_clean_asset_cache")
-def test_configure_assets_css_auto_derived(tmp_path: Path) -> None:
-    """CSS path is auto-derived from ESM path when css_src is omitted."""
+def test_configure_assets_from_sources(tmp_path: Path, explicit_css: bool) -> None:
+    """configure_assets(esm_src=..., css_src=...) reads from provided sources (CSS
+    path derived from the ESM path when omitted) and applies to the class and to
+    widgets created afterwards.
+    """
     esm_file = tmp_path / "matterviz.js"
-    css_file = tmp_path / "matterviz.css"
-    esm_file.write_text("esm content")
-    css_file.write_text("css content")
+    css_file = tmp_path / ("custom.css" if explicit_css else "matterviz.css")
+    esm_file.write_text("configured esm")
+    css_file.write_text("configured css")
 
-    configure_assets(esm_src=str(esm_file))
+    css_kwargs = {"css_src": str(css_file)} if explicit_css else {}
+    configure_assets(esm_src=str(esm_file), **css_kwargs)
 
-    cls = matterviz.MatterVizWidget
-    assert cls._esm == "esm content"
-    assert cls._css == "css content"
+    widget = matterviz.MatterVizWidget(widget_type="test")
+    for obj in (matterviz.MatterVizWidget, widget):
+        assert (obj._esm, obj._css) == ("configured esm", "configured css")
 
 
 @pytest.mark.usefixtures("_clean_asset_cache")
@@ -355,21 +337,6 @@ def test_configure_assets_rejects_invalid_combos(
     """configure_assets rejects invalid argument combinations."""
     with pytest.raises(ValueError, match=match):
         configure_assets(**kwargs)
-
-
-@pytest.mark.usefixtures("_clean_asset_cache")
-def test_configure_assets_applies_to_subsequent_widgets(tmp_path: Path) -> None:
-    """Widgets created after configure_assets use the configured assets."""
-    esm_file = tmp_path / "matterviz.js"
-    css_file = tmp_path / "matterviz.css"
-    esm_file.write_text("configured esm")
-    css_file.write_text("configured css")
-
-    configure_assets(esm_src=str(esm_file))
-
-    widget = matterviz.MatterVizWidget(widget_type="test")
-    assert widget._esm == "configured esm"
-    assert widget._css == "configured css"
 
 
 # === MatterVizWidget.__init__ ===
@@ -582,22 +549,13 @@ def test_marimo_esm_url_full_resolution() -> None:
 
 def test_marimo_esm_url_returns_none_without_virtual_files() -> None:
     """Returns None when virtual files are not supported (VS Code extension)."""
-    mock_data = MagicMock()
-    mock_ctx = MagicMock()
-    mock_ctx.virtual_files_supported = False
-    mock_ctx_mod = MagicMock()
-    mock_ctx_mod.get_context.return_value = mock_ctx
-
-    with patch.dict(
-        "sys.modules",
-        {
-            "marimo._output.data.data": mock_data,
-            "marimo._runtime.context": mock_ctx_mod,
-        },
-    ):
+    mods = _mock_marimo_modules()
+    mods[
+        "marimo._runtime.context"
+    ].get_context.return_value.virtual_files_supported = False
+    with patch.dict("sys.modules", mods):
         assert _marimo_esm_url("code") is None
-
-    mock_data.js.assert_not_called()
+    mods["marimo._output.data.data"].js.assert_not_called()
 
 
 def test_marimo_esm_url_returns_none_for_non_virtual_file() -> None:

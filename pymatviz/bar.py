@@ -99,9 +99,8 @@ def spacegroup_bar(
         **kwargs,
     )
     # add vertical lines between crystal systems and fill area with color
-    x0 = x1 = x_range[0]
+    x0, prev_width = x_range[0], 0
     for idx, (crys_sys, count, width, color) in enumerate(crys_sys_counts.itertuples()):
-        prev_width = x1 - x0 if idx > 0 else 0
         x1 = x0 + width
         anno = dict(
             text=crys_sys, font_size=14, x=(x0 + x1) / 2, textangle=90, xanchor="center"
@@ -127,7 +126,7 @@ def spacegroup_bar(
                 yref="paper",
                 yanchor="bottom",
             )
-        x0 += width
+        x0, prev_width = x1, width
 
     fig.layout.showlegend = False
     fig.layout.title = dict(text=fig_title, x=0.5)

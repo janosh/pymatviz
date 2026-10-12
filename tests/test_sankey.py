@@ -3,54 +3,55 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pandas as pd
-import plotly.graph_objects as go
 import pytest
 
 import pymatviz as pmv
 
 
 if TYPE_CHECKING:
-    from typing import Literal
+    from typing import Any, Literal
 
 
-@pytest.mark.parametrize("labels_with_counts", [True, False, "percent"])
+@pytest.mark.parametrize(
+    ("labels_with_counts", "annotate_columns", "expected_xshift", "expected_font_size"),
+    [
+        (True, True, 35, 20),
+        ("percent", {"font_size": 14, "xshift": 25}, 25, 14),
+        (False, False, None, None),
+    ],
+)
 def test_sankey_from_2_df_cols(
-    df_float: pd.DataFrame, labels_with_counts: bool | Literal["percent"]
+    df_float: pd.DataFrame,
+    labels_with_counts: bool | Literal["percent"],
+    annotate_columns: bool | dict[str, Any],
+    expected_xshift: int | None,
+    expected_font_size: int | None,
 ) -> None:
-    """Test basic functionality with random data."""
-    fig = pmv.sankey_from_2_df_cols(
-        df_float, ["A", "B"], labels_with_counts=labels_with_counts
+    """Column annotations flank the diagram and can be customized or disabled."""
+    anno_kwargs_orig = (
+        dict(annotate_columns) if isinstance(annotate_columns, dict) else None
     )
-    assert isinstance(fig, go.Figure)
-    assert len(fig.layout.annotations) == 2
-    assert [anno.text for anno in fig.layout.annotations] == ["<b>A</b>", "<b>B</b>"]
-
-
-def test_sankey_annotate_columns_dict(df_float: pd.DataFrame) -> None:
-    """Test annotate_columns with custom dictionary settings."""
-    anno_kwargs = {"font_size": 20, "xshift": (xshift := 25)}
-
-    fig = pmv.sankey_from_2_df_cols(df_float, ["A", "B"], annotate_columns=anno_kwargs)
-
-    assert anno_kwargs == {"font_size": 20, "xshift": xshift}
-    assert isinstance(fig, go.Figure)
-    # Check if annotations are present in layout
-    assert len(fig.layout.annotations) == 2
-    # Verify annotation properties
-    for anno in fig.layout.annotations:
-        assert anno.font.size == 20
-        assert abs(anno.xshift) == xshift
-        assert anno.text in ["<b>A</b>", "<b>B</b>"]
-
-
-def test_sankey_annotate_columns_false(df_float: pd.DataFrame) -> None:
-    """annotate_columns=False suppresses default column labels."""
     fig = pmv.sankey_from_2_df_cols(
         df_float,
         ["A", "B"],
-        annotate_columns=False,
+        labels_with_counts=labels_with_counts,
+        annotate_columns=annotate_columns,
     )
-    assert len(fig.layout.annotations) == 0
+    flow_data = pmv.sankey_flow_data(
+        df_float, ["A", "B"], labels_with_counts=labels_with_counts
+    )
+    assert list(fig.data[0].node.label) == flow_data["labels"]
+    if isinstance(annotate_columns, dict):  # caller's dict is not mutated
+        assert annotate_columns == anno_kwargs_orig
+    if expected_xshift is None:
+        assert len(fig.layout.annotations) == 0
+        return
+    assert [anno.text for anno in fig.layout.annotations] == ["<b>A</b>", "<b>B</b>"]
+    assert [anno.xshift for anno in fig.layout.annotations] == [
+        -expected_xshift,
+        expected_xshift,
+    ]
+    assert {anno.font.size for anno in fig.layout.annotations} == {expected_font_size}
 
 
 def test_sankey_with_invalid_columns() -> None:

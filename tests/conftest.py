@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, TypedDict, cast
 
 import numpy as np
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 import pytest
 from monty.io import zopen
@@ -32,11 +31,6 @@ xs = np_rng.random(100)
 y_pred = xs + 0.1 * np_rng.normal(size=100)
 y_true = xs + 0.1 * np_rng.normal(size=100)
 
-# random classification data
-y_binary = np_rng.choice([0, 1], 100)
-y_proba = np.clip(y_binary - 0.1 * np_rng.normal(scale=5, size=100), 0.2, 0.9)
-
-
 df_regr = pd.DataFrame(dict(y_true=y_true, y_pred=y_pred))  # regression
 DfOrArrays = tuple[pd.DataFrame | None, str | np.ndarray, str | np.ndarray]
 
@@ -44,10 +38,6 @@ DfOrArrays = tuple[pd.DataFrame | None, str | np.ndarray, str | np.ndarray]
 @pytest.fixture(params=[(None, y_true, y_pred), (df_regr, *df_regr.columns[:2])])
 def df_or_arrays(request: pytest.FixtureRequest) -> DfOrArrays:
     return request.param
-
-
-df_clf = pd.DataFrame(dict(y_binary=y_binary, y_proba=y_proba))
-df_x_y_clf = [(None, y_binary, y_proba), (df_clf, *df_clf.columns[:2])]
 
 
 @pytest.fixture
@@ -63,7 +53,6 @@ SI2_STRUCT = Structure(
     coords=[[0, 0, 0], [0.75, 0.5, 0.75]],
 )
 
-lattice = Lattice.tetragonal(4.192, 6.88)
 si2_ru2_pr2_struct = Structure(
     lattice=Lattice.tetragonal(4.192, 6.88),
     species=["Si", "Si", "Ru", "Ru", "Pr", "Pr"],
@@ -93,14 +82,6 @@ def structures() -> tuple[Structure, Structure]:
 def ase_atoms() -> tuple[ase.Atoms, ase.Atoms]:
     atoms1, atoms2 = SI_ATOMS
     return copy.copy(atoms1), copy.copy(atoms2)
-
-
-@pytest.fixture
-def plotly_scatter_two_ys() -> go.Figure:
-    xs = np.arange(7)
-    y1 = xs**2
-    y2 = xs**0.5
-    return px.scatter(x=xs, y=[y1, y2])
 
 
 @pytest.fixture
@@ -199,13 +180,6 @@ def phonon_bands_doses_mp_2758() -> BandsDoses:
     bands = {"DFT": getattr(dft_doc, bs_key), "MACE": getattr(ml_doc, bs_key)}
     doses = {"DFT": getattr(dft_doc, dos_key), "MACE": getattr(ml_doc, dos_key)}
     return {"bands": bands, "doses": doses}
-
-
-@pytest.fixture
-def phonon_bands_doses_mp_2667() -> BandsDoses:
-    # with zopen(f"{TEST_FILES}/phonons/mp-2691-Cd4Se4-pbe.json.xz", "rt") as file:
-    with zopen(f"{TEST_FILES}/phonons/mp-2667-Cs1Au1-pbe.json.xz", "rt") as file:
-        return json.loads(file.read(), cls=MontyDecoder)
 
 
 @pytest.fixture

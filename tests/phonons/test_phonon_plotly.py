@@ -1,18 +1,24 @@
 from __future__ import annotations
 
 import copy
+import importlib.util
 import re
 from itertools import pairwise
 from typing import TYPE_CHECKING
 
 import numpy as np
-import plotly.graph_objects as go
 import pytest
 from pymatgen.phonon.dos import PhononDos
 
 import pymatviz as pmv
 from pymatviz.phonons.figures import convert_frequencies
 from pymatviz.typing import SET_INTERSECTION, SET_MODE, SET_STRICT, SET_UNION
+
+
+# skipif, not pytest.importorskip: the phonopy_nacl fixture imports phonopy at setup
+needs_phonopy = pytest.mark.skipif(
+    importlib.util.find_spec("phonopy") is None, reason="phonopy not installed"
+)
 
 
 def test_set_mode_literal_args() -> None:
@@ -22,8 +28,9 @@ def test_set_mode_literal_args() -> None:
 
 
 if TYPE_CHECKING:
-    from typing import Literal
+    from typing import Any, Literal
 
+    import plotly.graph_objects as go
     from phonopy import Phonopy
     from pymatgen.phonon.dos import CompletePhononDos
 
@@ -60,7 +67,6 @@ def test_phonon_dos(
         last_peak_anno=last_peak_anno,
     )
 
-    assert isinstance(fig, go.Figure)
     assert fig.layout.xaxis.title.text == f"Frequency ({units})"
     assert fig.layout.yaxis.title.text == "Density of States"
     assert fig.layout.font.size == 16
@@ -80,7 +86,7 @@ def test_phonon_dos(
         units=units,
         last_peak_anno=last_peak_anno,
     )
-    assert isinstance(fig, go.Figure)
+    assert [trace.name for trace in fig.data] == [""]
 
 
 def test_phonon_dos_raises(phonon_bands_doses_mp_2758: BandsDoses) -> None:
@@ -150,7 +156,6 @@ def test_phonon_bands_and_dos(
     # test dicts
     fig = pmv.phonon_bands_and_dos(bands, doses, dos_kwargs=dos_kwargs)
 
-    assert isinstance(fig, go.Figure)
     assert fig.layout.xaxis.title.text == "Wave Vector"
     assert fig.layout.yaxis.title.text == f"Frequency ({units})"
     assert fig.layout.xaxis2.title.text == "DOS"
@@ -180,7 +185,7 @@ def test_phonon_bands_and_dos(
     )
 
     fig = pmv.phonon_bands_and_dos(bands["DFT"], doses["DFT"])
-    assert isinstance(fig, go.Figure)
+    assert {trace.xaxis for trace in fig.data} == {"x", "x2"}
 
     band_keys, dos_keys = set(bands), set(phonon_doses)
     with pytest.raises(
@@ -253,13 +258,7 @@ def test_phonon_bands_path_modes(
 def test_phonon_bands_path_mode_raises(
     phonon_bands_doses_mp_2758: BandsDoses, change: str
 ) -> None:
-    """Test error cases for path_mode parameter."""
-    with pytest.raises(ValueError, match="Invalid path_mode='invalid'"):
-        pmv.phonon_bands(
-            phonon_bands_doses_mp_2758["bands"]["DFT"],
-            path_mode="invalid",  # ty: ignore[invalid-argument-type]
-        )
-
+    """Strict path mode rejects reordered or repeated branches."""
     bands = copy.deepcopy(phonon_bands_doses_mp_2758["bands"])
     if change == "reverse":
         bands["MACE"].branches.reverse()
@@ -340,38 +339,15 @@ def test_phonon_bands_and_dos_path_modes(
             ValueError, match="Band structures have different q-point paths"
         ):
             pmv.phonon_bands_and_dos(modified_bands, doses, path_mode=path_mode)
+        with pytest.raises(ValueError, match="Invalid path_mode='invalid'"):
+            pmv.phonon_bands_and_dos(bands, doses, path_mode="invalid")  # ty: ignore[invalid-argument-type]
         return
 
     fig = pmv.phonon_bands_and_dos(bands, doses, path_mode=path_mode)
-    assert isinstance(fig, go.Figure)
-
-    # Check that band structure subplot exists
-    assert fig.layout.xaxis.title.text == "Wave Vector"
-    # Check that DOS subplot exists
-    assert fig.layout.xaxis2.title.text == "DOS"
-
-    # Verify the number of traces matches expectations
-    n_traces = len(fig.data)
-    assert n_traces > 0  # Should have at least some traces
-
-    # Check that the legend contains each model name (only once)
-    legend_entries = {trace.name for trace in fig.data}
-    assert legend_entries == {"DFT", "MACE"}
+    assert {trace.name for trace in fig.data} == {"DFT", "MACE"}
 
 
-def test_phonon_bands_and_dos_path_mode_raises(
-    phonon_bands_doses_mp_2758: BandsDoses,
-) -> None:
-    """Test error handling for invalid path_mode in phonon_bands_and_dos."""
-    with pytest.raises(ValueError, match="Invalid path_mode='invalid'"):
-        pmv.phonon_bands_and_dos(
-            phonon_bands_doses_mp_2758["bands"],
-            phonon_bands_doses_mp_2758["doses"],
-            path_mode="invalid",  # ty: ignore[invalid-argument-type]
-        )
-
-
-@pytest.mark.importorskip("phonopy")
+@needs_phonopy
 def test_phonon_dos_with_phonopy(phonopy_nacl: Phonopy) -> None:
     """Test that phonon_dos works with phonopy TotalDos objects."""
     phonopy_nacl.run_mesh([5, 5, 5])
@@ -387,18 +363,16 @@ def test_phonon_dos_with_phonopy(phonopy_nacl: Phonopy) -> None:
         normalize="max",
         units="THz",
     )
-    assert isinstance(fig, go.Figure)
     assert fig.layout.xaxis.title.text == "Frequency (THz)"
     assert fig.layout.yaxis.title.text == "Density of States"
 
     # Test dictionary of TotalDos objects
     dos_dict = {"DFT": total_dos, "ML": total_dos}
     fig = pmv.phonon_dos(dos_dict, stack=True, sigma=0.1, normalize="max", units="THz")
-    assert isinstance(fig, go.Figure)
     assert {trace.name for trace in fig.data} == {"DFT", "ML"}
 
 
-@pytest.mark.importorskip("phonopy")
+@needs_phonopy
 def test_phonon_bands_with_phonopy(phonopy_nacl: Phonopy) -> None:
     """Test plotting phonon bands from phonopy band structure."""
     bands = {  # Define q-points path
@@ -416,7 +390,6 @@ def test_phonon_bands_with_phonopy(phonopy_nacl: Phonopy) -> None:
 
     # Test single band structure
     fig = pmv.phonon_bands(band_structure)
-    assert isinstance(fig, go.Figure)
     assert len(fig.data) == 6
 
     # Test multiple band structures in dict
@@ -425,7 +398,6 @@ def test_phonon_bands_with_phonopy(phonopy_nacl: Phonopy) -> None:
         "DFT": band_structure,
     }
     fig = pmv.phonon_bands(bands_dict)
-    assert isinstance(fig, go.Figure)
     assert len(fig.data) == 6 * len(bands_dict)
 
 
@@ -573,75 +545,52 @@ def test_phonon_dos_projection_raises(
         pmv.phonon_dos(complete_phonon_dos, project="invalid")  # ty: ignore[invalid-argument-type]
 
 
-def test_phonon_dos_projection_unit_conversion(
+def test_phonon_dos_projection_transforms(
     complete_phonon_dos: CompletePhononDos,
 ) -> None:
-    """Test that unit conversion is applied to projected traces."""
-    fig_thz = pmv.phonon_dos(complete_phonon_dos, project="element", show_total=False)
-    fig_ev = pmv.phonon_dos(
-        complete_phonon_dos, project="element", show_total=False, units="eV"
-    )
+    """Units, max normalization and smearing apply to projected traces."""
+
+    def projected_dos(**kwargs: Any) -> go.Figure:
+        """Element-projected DOS figure without the total overlay."""
+        return pmv.phonon_dos(
+            complete_phonon_dos, project="element", show_total=False, **kwargs
+        )
+
+    fig_thz = projected_dos()
+    fig_ev = projected_dos(units="eV")
     assert max(fig_ev.data[0].x) < max(fig_thz.data[0].x)
     assert fig_ev.layout.xaxis.title.text == "Frequency (eV)"
-
-
-def test_phonon_dos_projection_normalization_values(
-    complete_phonon_dos: CompletePhononDos,
-) -> None:
-    """Test that max normalization produces peak=1.0 for each trace."""
-    fig = pmv.phonon_dos(
-        complete_phonon_dos, project="element", normalize="max", show_total=False
-    )
-    for trace in fig.data:
+    for trace in projected_dos(normalize="max").data:
         assert max(trace.y) == pytest.approx(1.0)
+    assert max(projected_dos(sigma=0.5).data[0].y) < max(fig_thz.data[0].y)
 
 
-def test_phonon_dos_projection_sigma_smearing(
-    complete_phonon_dos: CompletePhononDos,
-) -> None:
-    """Test that sigma smearing lowers peak height in projected traces."""
-    fig_raw = pmv.phonon_dos(
-        complete_phonon_dos, project="element", sigma=0, show_total=False
-    )
-    fig_smooth = pmv.phonon_dos(
-        complete_phonon_dos, project="element", sigma=0.5, show_total=False
-    )
-    assert max(fig_smooth.data[0].y) < max(fig_raw.data[0].y)
-
-
-@pytest.mark.parametrize("normalize_mode", ["max", "sum", "integral"])
-def test_phonon_dos_normalize_zero_density_raises(
+@pytest.mark.parametrize(
+    ("densities", "normalize_mode", "err_msg"),
+    [
+        (np.zeros(100), "max", "mode='max': max density is 0"),
+        (np.zeros(100), "sum", "mode='sum': sum density is 0"),
+        (np.zeros(100), "integral", "mode='integral': sum density is 0"),
+        (np.ones(1), "integral", "need >=2 frequency points"),
+    ],
+)
+def test_phonon_dos_normalize_raises(
+    densities: np.ndarray,
     normalize_mode: Literal["max", "sum", "integral"],
+    err_msg: str,
 ) -> None:
-    """Test normalization raises on all-zero DOS."""
-    frequencies = np.linspace(0, 10, 100)
-    zero_dos = PhononDos(frequencies, np.zeros_like(frequencies))
-    with pytest.raises(ValueError, match=f"mode='{normalize_mode}'"):
-        pmv.phonon_dos(zero_dos, normalize=normalize_mode)
+    """Normalization rejects all-zero DOS and single-point integral grids."""
+    dos = PhononDos(np.linspace(0, 10, len(densities)), densities)
+    with pytest.raises(ValueError, match=re.escape(err_msg)):
+        pmv.phonon_dos(dos, normalize=normalize_mode)
 
 
-def test_phonon_dos_integral_normalize_requires_two_frequency_points() -> None:
-    """Test integral normalization raises for a single frequency point."""
-    single_point_dos = PhononDos(np.array([1.0]), np.array([1.0]))
-    with pytest.raises(ValueError, match="need >=2 frequency points"):
-        pmv.phonon_dos(single_point_dos, normalize="integral")
-
-
-def test_phonon_dos_show_total_ignored_without_project(
-    phonon_bands_doses_mp_2758: BandsDoses,
-) -> None:
-    """Test that show_total has no effect when project is None."""
-    dos = phonon_bands_doses_mp_2758["doses"]["DFT"]
-    fig_a = pmv.phonon_dos(dos)
-    fig_b = pmv.phonon_dos(dos, show_total=False)
-    assert [t.name for t in fig_a.data] == [t.name for t in fig_b.data]
-
-
+@pytest.mark.parametrize("show_total", [True, False])
 def test_phonon_dos_complete_dos_without_projection(
-    complete_phonon_dos: CompletePhononDos,
+    complete_phonon_dos: CompletePhononDos, show_total: bool
 ) -> None:
-    """Test CompletePhononDos defaults to total DOS when project is None."""
-    fig = pmv.phonon_dos(complete_phonon_dos)
+    """CompletePhononDos plots only the total DOS when project is None."""
+    fig = pmv.phonon_dos(complete_phonon_dos, show_total=show_total)
     assert len(fig.data) == 1
     trace = fig.data[0]
     assert np.allclose(trace.x, complete_phonon_dos.frequencies)

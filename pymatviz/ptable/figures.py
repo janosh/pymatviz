@@ -9,9 +9,12 @@ from typing import Any, Literal, cast
 
 import numpy as np
 import pandas as pd
+import plotly.colors
 import plotly.express as px
 import plotly.graph_objects as go
+import plotly.io as pio
 from plotly.subplots import make_subplots
+from plotly.validator_cache import ValidatorCache
 from pymatgen.core import Element
 
 from pymatviz.colors import ELEM_TYPE_COLORS
@@ -25,7 +28,7 @@ from pymatviz.typing import (
 )
 from pymatviz.utils import df_ptable
 from pymatviz.utils.data import si_fmt
-from pymatviz.utils.plotting import _rgb_components, annotated_heatmap, luminance
+from pymatviz.utils.plotting import annotated_heatmap, luminance, rgb_components
 
 
 type ColorScale = (
@@ -183,6 +186,23 @@ def ptable_heatmap(
     else:
         heat_value_element_map = values
 
+    hover_prop_labels: dict[str, str] = {}
+    if hover_props is not None:
+        if unsupported_keys := set(hover_props) - set(df_ptable):
+            raise ValueError(
+                f"Unsupported hover_props: {', '.join(unsupported_keys)}. Available"
+                f" keys are: {', '.join(df_ptable)}.\nNote that some keys have "
+                "missing values."
+            )
+        if isinstance(hover_props, dict):
+            hover_prop_labels = hover_props
+        elif isinstance(hover_props, list | tuple):
+            hover_prop_labels = {col_name: col_name for col_name in hover_props}
+        else:
+            raise ValueError(
+                f"hover_props must be dict or sequence of str, got {hover_props}"
+            )
+
     n_rows, n_columns = 10, 18
     # initialize tile text and hover tooltips to empty strings
     tile_texts, hover_texts = np.full([2, n_rows, n_columns], "", dtype=object)
@@ -250,25 +270,9 @@ def ptable_heatmap(
         if hover_data is not None and symbol in hover_data:
             hover_text += f"<br>{hover_data[symbol]}"
 
-        if hover_props is not None:
-            if unsupported_keys := set(hover_props) - set(df_ptable):
-                raise ValueError(
-                    f"Unsupported hover_props: {', '.join(unsupported_keys)}. Available"
-                    f" keys are: {', '.join(df_ptable)}.\nNote that some keys have "
-                    "missing values."
-                )
-            df_row = df_ptable.loc[symbol]
-            if isinstance(hover_props, dict):
-                for col_name, col_label in hover_props.items():
-                    hover_text += f"<br>{col_label} = {df_row[col_name]}"
-            elif isinstance(hover_props, list | tuple):
-                hover_text += "<br>" + "<br>".join(
-                    f"{col_name} = {df_row[col_name]}" for col_name in hover_props
-                )
-            else:
-                raise ValueError(
-                    f"hover_props must be dict or sequence of str, got {hover_props}"
-                )
+        df_row = df_ptable.loc[symbol]
+        for col_name, col_label in hover_prop_labels.items():
+            hover_text += f"<br>{col_label} = {df_row[col_name]}"
 
         hover_texts[row][col] = hover_text
 
@@ -356,18 +360,8 @@ def ptable_heatmap(
     )
 
     horizontal_cbar = colorbar.get("orientation") == "h"
-    if horizontal_cbar:
-        defaults = dict(
-            x=0.4,
-            y=0.72,
-            title_side="top",
-            len=0.4,
-            title_font_size=scale * 1.2 * (font_size or 12),
-        )
-        colorbar = defaults | colorbar
-    else:  # make title vertical
-        defaults = dict(title_side="right", len=0.87)
-        colorbar = defaults | colorbar
+    if horizontal_cbar:  # other orientation defaults come from _get_colorbar_settings
+        colorbar = dict(y=0.72) | colorbar
 
     if title := colorbar.get("title"):
         # <br> to increase title standoff
@@ -431,6 +425,22 @@ def _row_7_is_empty(symbols: Collection[str]) -> bool:
     """Whether period-7 elements (Fr, Ra, Z 104-118) are all absent from the data."""
     period_7 = {el.symbol for el in Element if el.Z in (87, 88, *range(104, 119))}
     return not (set(symbols) & period_7)
+
+
+def _subplot_xy_ref(row: int, col: int, n_cols: int, *, domain: bool) -> dict[str, str]:
+    """Plotly xref/yref for the 0-indexed subplot (row, col) of a ptable grid.
+
+    domain=True gives domain-relative refs (0-1 spans the whole tile).
+    """
+    subplot_idx = row * n_cols + col + 1
+    subplot_key = subplot_idx if subplot_idx != 1 else ""
+    suffix = " domain" if domain else ""
+    return dict(xref=f"x{subplot_key}{suffix}", yref=f"y{subplot_key}{suffix}")
+
+
+def _template_line_color() -> str:
+    """Axis line color of the current default plotly template."""
+    return pio.templates[pio.templates.default].layout.xaxis.linecolor
 
 
 def _resolve_elem_type_colors(
@@ -576,6 +586,8 @@ def ptable_hists(
     tile_annotations: list[dict[str, Any]] = []
     tile_shapes: list[dict[str, Any]] = []
 
+    bar_colors = px.colors.sample_colorscale(colorscale, bins)
+
     # Create histograms for each element
     for symbol, period, group, *_ in df_ptable.itertuples():
         row, col = period - 1, group - 1  # row, col are 0-indexed
@@ -586,9 +598,7 @@ def ptable_hists(
         if row_7_is_empty and row >= 6:
             row -= 1
 
-        subplot_idx = row * n_cols + col + 1
-        subplot_key = subplot_idx if subplot_idx != 1 else ""
-        xy_ref = dict(xref=f"x{subplot_key} domain", yref=f"y{subplot_key} domain")
+        xy_ref = _subplot_xy_ref(row, col, n_cols, domain=True)
 
         # Add element type background
         elem_type = df_ptable.loc[symbol].get("type", None)
@@ -604,10 +614,7 @@ def ptable_hists(
         values = np.asarray(data[symbol])
         values = values[~np.isnan(values)]
 
-        if element_symbol_map is not None:
-            display_symbol = element_symbol_map.get(symbol, symbol)
-        else:
-            display_symbol = symbol
+        display_symbol = (element_symbol_map or {}).get(symbol, symbol)
 
         hover_template = (
             f"<b>{display_symbol}</b>"
@@ -618,7 +625,7 @@ def ptable_hists(
         fig.add_histogram(
             x=values,
             xbins=dict(start=bin_start, end=bin_end, size=(bin_end - bin_start) / bins),
-            marker_color=px.colors.sample_colorscale(colorscale, bins),
+            marker_color=bar_colors,
             showlegend=False,
             hovertemplate=hover_template,
             row=row + 1,
@@ -680,10 +687,7 @@ def ptable_hists(
     fig.layout.width = 900 * scale
     fig.layout.height = 500 * scale
 
-    # get current plotly template line colors
-    import plotly.io as pio
-
-    template_line_color = pio.templates[pio.templates.default].layout.xaxis.linecolor
+    template_line_color = _template_line_color()
 
     y_axis_kwargs = dict(
         showticklabels=False,
@@ -713,17 +717,8 @@ def ptable_hists(
     ) | (x_axis_kwargs or {})
     fig.update_xaxes(**x_axis_kwargs)
 
-    if colorbar is not False:
-        cbar_settings = _get_colorbar_settings(
-            colorbar or {}, font_size=font_size, scale=scale
-        )
-
-        for trace in fig.data:
-            if hasattr(trace, "marker") and hasattr(trace.marker, "colorbar"):
-                trace.marker.colorbar = cbar_settings
-
-        if log:
-            fig.update_xaxes(tickformat=".4s")
+    if colorbar is not False and log:
+        fig.update_xaxes(tickformat=".4s")
 
     return fig
 
@@ -776,50 +771,35 @@ def _make_custom_annotations(
     fig.layout.annotations update (adding one at a time via fig.add_annotation is
     O(n^2) since plotly re-validates the whole array on each call).
     """
-    if annotations is None:
-        return []
     if isinstance(annotations, dict):
         annotation = cast("dict[str, Any]", annotations).get(symbol, "")
     elif callable(annotations):
         annotation = annotations(elem_values)
     else:
-        annotation = ""
+        return []
 
-    anno_list = _normalize_annotation(annotation) if annotation else None
-    result: list[dict[str, Any]] = []
-    for anno in anno_list or ():
-        anno_dict = anno if isinstance(anno, dict) else {"text": anno}
-        anno_defaults: dict[str, Any] = {
-            "font_size": (font_size or 8) * scale,
-            "x": 0.95,
-            "y": 0.95,
-            "showarrow": False,
-            "xanchor": "right",
-            "yanchor": "top",
-        } | (extra_defaults or {})
-        result.append(anno_defaults | xy_ref | anno_dict)
-    return result
-
-
-def _normalize_annotation(
-    annotation: Any,
-) -> list[str | dict[str, Any]] | None:
-    """Normalize annotation input to a list of annotation dicts/strings.
-
-    Args:
-        annotation: Single annotation string, dict, or list of these.
-
-    Returns:
-        List of annotations, or None if input is not a recognized type.
-    """
+    # annotation can be str | dict | list thereof, anything else is ignored
+    if not annotation:
+        return []
     if isinstance(annotation, str | dict):
-        return [annotation]
-    if isinstance(annotation, list):
-        # Validate list elements are str or dict
-        if not all(isinstance(item, str | dict) for item in annotation):
-            return None
-        return annotation
-    return None
+        annotation = [annotation]
+    elif not isinstance(annotation, list) or not all(
+        isinstance(item, str | dict) for item in annotation
+    ):
+        return []
+
+    anno_defaults: dict[str, Any] = {
+        "font_size": (font_size or 8) * scale,
+        "x": 0.95,
+        "y": 0.95,
+        "showarrow": False,
+        "xanchor": "right",
+        "yanchor": "top",
+    } | (extra_defaults or {})
+    return [
+        anno_defaults | xy_ref | (anno if isinstance(anno, dict) else {"text": anno})
+        for anno in annotation
+    ]
 
 
 def _extend_layout_items(
@@ -857,34 +837,28 @@ def _add_colorbar_trace(
             (1, color_fn("", cmax, split_idx)),
         ]
 
-    # Ensure tickformat is included in colorbar settings
-    if "tickformat" not in colorbar:
-        colorbar["tickformat"] = ".4s"  # SI suffix (k=1000, M=1e6, G=1e9, etc.)
-
-    marker: dict[str, Any] = dict(
-        size=0,
-        color=[cmin, cmax],
-        colorscale=colorscale,
-        showscale=True,
-        cmin=cmin,
-        cmax=cmax,
-        colorbar=colorbar,
-    )
-    scatter_kwargs: dict[str, Any] = {
-        "x": [None],
-        "y": [None],
-        "mode": "markers",
-        "marker": marker,
-        "showlegend": False,
-        "hoverinfo": "none",
-    }
     if row is not None and col is not None:
-        scatter_kwargs["row"] = row
-        scatter_kwargs["col"] = col
         # Hide the axes for the invisible scatter trace
         fig.update_xaxes(visible=False, row=row, col=col)
         fig.update_yaxes(visible=False, row=row, col=col)
-    fig.add_scatter(**scatter_kwargs)
+    fig.add_scatter(
+        x=[None],
+        y=[None],
+        mode="markers",
+        marker=dict(
+            size=0,
+            color=[cmin, cmax],
+            colorscale=colorscale,
+            showscale=True,
+            cmin=cmin,
+            cmax=cmax,
+            colorbar=colorbar,
+        ),
+        showlegend=False,
+        hoverinfo="none",
+        row=row,
+        col=col,
+    )
 
 
 def _get_colorbar_settings(
@@ -926,6 +900,129 @@ def _get_colorbar_settings(
         cbar_settings["title"] = dict(text=split_name)
 
     return cbar_settings
+
+
+def _is_multi_colorscale(obj: object) -> bool:
+    """Distinguish per-split scales from color tokens and positioned stops."""
+    if not isinstance(obj, Sequence) or isinstance(obj, str):
+        return False
+    names = set(plotly.colors.named_colorscales())
+    return all(
+        callable(item)
+        or (isinstance(item, str) and item.lower().removesuffix("_r") in names)
+        or (
+            isinstance(item, Sequence)
+            and not isinstance(item, str)
+            and not (len(item) == 2 and isinstance(item[0], Real))
+        )
+        for item in obj
+    )
+
+
+def _split_section_coords(
+    n_splits: int,
+    orientation: PTableSplitOrientation,
+) -> list[tuple[list[float], list[float]]]:
+    """Generate x,y coordinates to split a unit square into n equal sections."""
+    if orientation == "grid":
+        if n_splits != 4:
+            raise ValueError(
+                f"{orientation=} is only supported for n_splits=4, got {n_splits=}"
+            )
+        return [  # Split into 2x2 grid of squares (y=1 is the tile top)
+            ([0, 0.5, 0.5, 0], [0.5, 0.5, 1, 1]),  # top-left
+            ([0.5, 1, 1, 0.5], [0.5, 0.5, 1, 1]),  # top-right
+            ([0, 0.5, 0.5, 0], [0, 0, 0.5, 0.5]),  # bottom-left
+            ([0.5, 1, 1, 0.5], [0, 0, 0.5, 0.5]),  # bottom-right
+        ]
+
+    if orientation == "horizontal":
+        # Split into equal horizontal strips
+        height = 1 / n_splits
+        return [
+            (
+                [0.0, 1.0, 1.0, 0.0],  # x-coordinates
+                [ii * height, ii * height, (ii + 1) * height, (ii + 1) * height],
+            )
+            for ii in range(n_splits)
+        ][::-1]  # reverse to maintain top-to-bottom order
+
+    if orientation == "vertical":
+        # Split into equal vertical strips
+        width = 1 / n_splits
+        return [
+            (
+                [ii * width, (ii + 1) * width, (ii + 1) * width, ii * width],
+                [0.0, 0.0, 1.0, 1.0],  # y-coordinates
+            )
+            for ii in range(n_splits)
+        ]
+
+    # orientation == "diagonal"
+    if n_splits == 2:
+        return [
+            ([0, 0, 1, 0], [0, 1, 1, 0]),  # top-left triangle
+            ([0, 1, 1, 0], [0, 0, 1, 0]),  # bottom-right triangle
+        ]
+    mid = 0.5
+    if n_splits == 3:
+        return [  # upside-down Y-shaped split
+            ([0, 1, 1, mid, 0, 0], [0, 0, 0.3, mid, 0.3, 0]),  # bottom
+            ([0, mid, mid, 0, 0, 0], [1, 1, mid, 0.3, 0, 1]),  # top-left
+            ([1, mid, mid, 1, 1, 1], [1, 1, mid, 0.3, 1, 1]),  # top-right
+        ]
+    # n_splits == 4, diagonal orientation
+    return [  # split square into 4 equal triangles whose tips meet at center
+        ([0, 1, mid, 0], [0, 0, mid, 0]),  # bottom
+        ([0, 0, mid, 0], [0, 1, mid, 0]),  # left
+        ([1, 1, mid, 1], [0, 1, mid, 0]),  # right
+        ([0, 1, mid, 0], [1, 1, mid, 1]),  # top
+    ]
+
+
+def _split_label_position(
+    orientation: PTableSplitOrientation, n_splits: int, idx: int
+) -> dict[str, Any]:
+    """Position and anchors of the value label for split idx inside a unit tile.
+
+    Matches the section order of _split_section_coords.
+    """
+    strip_size = 1 / n_splits
+    if orientation == "horizontal":  # top-left of each strip, strips top to bottom
+        y_pos = 1 - idx * strip_size - 0.05
+        return dict(x=0.05, y=y_pos, xanchor="left", yanchor="top")
+    if orientation == "vertical":  # top-left of each strip, strips left to right
+        x_pos = idx * strip_size + 0.05
+        return dict(x=x_pos, y=0.95, xanchor="left", yanchor="top")
+    if orientation == "grid":  # reading order, n_splits must be 4
+        return dict(
+            x=(0.05, 0.95)[idx % 2],
+            y=(0.95, 0.05)[idx // 2],
+            xanchor=("left", "right")[idx % 2],
+            yanchor=("top", "bottom")[idx // 2],
+        )
+    # diagonal
+    if n_splits == 2:  # top-left, bottom-right
+        return dict(
+            x=(0, 1)[idx],
+            y=(1, 0)[idx],
+            xanchor=("left", "right")[idx],
+            yanchor=("top", "bottom")[idx],
+        )
+    if n_splits == 3:  # bottom, top-left, top-right
+        return dict(
+            x=(0.5, 0.05, 0.95)[idx],
+            y=(0.05, 0.95, 0.95)[idx],
+            xanchor=("center", "left", "right")[idx],
+            yanchor=("bottom", "top", "top")[idx],
+        )
+    # n_splits == 4: bottom, left, right, top
+    return dict(
+        x=(0.5, 0.05, 0.95, 0.5)[idx],
+        y=(0.05, 0.5, 0.5, 0.95)[idx],
+        xanchor=("center", "left", "right", "center")[idx],
+        yanchor=("bottom", "middle", "middle", "top")[idx],
+    )
 
 
 def ptable_heatmap_splits(
@@ -1058,10 +1155,6 @@ def ptable_heatmap_splits(
     Raises:
         ValueError: If n_splits not in {2, 3, 4} or orientation="grid" with n_splits!=4
     """
-    import plotly.colors
-    from plotly.validator_cache import ValidatorCache
-    from pymatgen.core import Element
-
     # Get split names if data is a DataFrame
     split_labels: list[str] = []
     if isinstance(data, pd.DataFrame):
@@ -1105,23 +1198,7 @@ def ptable_heatmap_splits(
                 f"{symbol}: split values must be finite or NaN, got {values}"
             )
 
-    def is_multi_colorscale(obj: object) -> bool:
-        """Distinguish per-split scales from color tokens and positioned stops."""
-        if not isinstance(obj, Sequence) or isinstance(obj, str):
-            return False
-        names = set(plotly.colors.named_colorscales())
-        return all(
-            callable(item)
-            or (isinstance(item, str) and item.lower().removesuffix("_r") in names)
-            or (
-                isinstance(item, Sequence)
-                and not isinstance(item, str)
-                and not (len(item) == 2 and isinstance(item[0], Real))
-            )
-            for item in obj
-        )
-
-    multiple_scales = is_multi_colorscale(colorscale)
+    multiple_scales = _is_multi_colorscale(colorscale)
     use_multiple_cbar = (
         bool(split_labels) or multiple_scales or isinstance(colorbar, Sequence)
     )
@@ -1172,7 +1249,7 @@ def ptable_heatmap_splits(
             ):
                 continue
             stop[1] = plotly.colors.label_rgb(
-                tuple(channel * 255 for channel in _rgb_components(stop[1]))
+                tuple(channel * 255 for channel in rgb_components(stop[1]))
             )
         colorscales[idx] = normalized_scale
 
@@ -1201,71 +1278,17 @@ def ptable_heatmap_splits(
             stacklevel=2,
         )
 
-    def create_section_coords(
-        n_splits: int,
-        orientation: PTableSplitOrientation,
-    ) -> list[tuple[list[float], list[float]]]:
-        """Generate x,y coordinates to split a unit square into n equal sections."""
-        if orientation == "grid":
-            if n_splits != 4:
-                raise ValueError(
-                    f"{orientation=} is only supported for n_splits=4, got {n_splits=}"
-                )
-            return [  # Split into 2x2 grid of squares (y=1 is the tile top)
-                ([0, 0.5, 0.5, 0], [0.5, 0.5, 1, 1]),  # top-left
-                ([0.5, 1, 1, 0.5], [0.5, 0.5, 1, 1]),  # top-right
-                ([0, 0.5, 0.5, 0], [0, 0, 0.5, 0.5]),  # bottom-left
-                ([0.5, 1, 1, 0.5], [0, 0, 0.5, 0.5]),  # bottom-right
-            ]
-
-        if orientation == "horizontal":
-            # Split into equal horizontal strips
-            height = 1 / n_splits
-            return [
-                (
-                    [0.0, 1.0, 1.0, 0.0],  # x-coordinates
-                    [ii * height, ii * height, (ii + 1) * height, (ii + 1) * height],
-                )
-                for ii in range(n_splits)
-            ][::-1]  # reverse to maintain top-to-bottom order
-
-        if orientation == "vertical":
-            # Split into equal vertical strips
-            width = 1 / n_splits
-            return [
-                (
-                    [ii * width, (ii + 1) * width, (ii + 1) * width, ii * width],
-                    [0.0, 0.0, 1.0, 1.0],  # y-coordinates
-                )
-                for ii in range(n_splits)
-            ]
-
-        # orientation == "diagonal"
-        if n_splits == 2:
-            return [
-                ([0, 0, 1, 0], [0, 1, 1, 0]),  # top-left triangle
-                ([0, 1, 1, 0], [0, 0, 1, 0]),  # bottom-right triangle
-            ]
-        mid = 0.5
-        if n_splits == 3:
-            return [  # upside-down Y-shaped split
-                ([0, 1, 1, mid, 0, 0], [0, 0, 0.3, mid, 0.3, 0]),  # bottom
-                ([0, mid, mid, 0, 0, 0], [1, 1, mid, 0.3, 0, 1]),  # top-left
-                ([1, mid, mid, 1, 1, 1], [1, 1, mid, 0.3, 1, 1]),  # top-right
-            ]
-        # n_splits == 4, diagonal orientation
-        return [  # split square into 4 equal triangles whose tips meet at center
-            ([0, 1, mid, 0], [0, 0, mid, 0]),  # bottom
-            ([0, 0, mid, 0], [0, 1, mid, 0]),  # left
-            ([1, 1, mid, 1], [0, 1, mid, 0]),  # right
-            ([0, 1, mid, 0], [1, 1, mid, 1]),  # top
-        ]
-
     # If row 7 is empty, pull all rows below it up by one.
     row_7_is_empty = _row_7_is_empty(data)
 
     tile_annotations: list[dict[str, Any]] = []
-    sections = create_section_coords(n_splits, orientation)
+    sections = _split_section_coords(n_splits, orientation)
+
+    def format_hover(val: float) -> str:
+        """Format a split value for the hover tooltip."""
+        if isinstance(hover_fmt, str):
+            return f"{val:{hover_fmt}}"
+        return hover_fmt(val)
 
     # Process data and create shapes for each element
     for symbol, period, group, _name, *_ in df_ptable.itertuples():
@@ -1282,9 +1305,7 @@ def ptable_heatmap_splits(
         if row_7_is_empty and row > 6:
             row -= 1
 
-        subplot_idx = row * n_cols + col + 1
-        subplot_key = subplot_idx if subplot_idx != 1 else ""
-        xy_ref = dict(xref=f"x{subplot_key}", yref=f"y{subplot_key}")
+        xy_ref = _subplot_xy_ref(row, col, n_cols, domain=False)
 
         # Get values and colors
         values = np.asarray(data.get(symbol, np.full(n_splits, np.nan)), dtype=float)
@@ -1336,70 +1357,7 @@ def ptable_heatmap_splits(
                 )
                 anno_text = f"{values[idx]:{current_fmt}}"
 
-                # Determine annotation position and anchors
-                pos_config = {  # Default centered, should be overridden
-                    "x": 0.5,
-                    "y": 0.5,
-                    "xanchor": "center",
-                    "yanchor": "middle",
-                }
-                n_s = len(values)  # Use actual n_splits for the element
-
-                if orientation == "diagonal":
-                    if n_s == 2:
-                        # idx map: 0 -> top-left, 1 -> bottom-right
-                        pos_config = {
-                            "x": (0, 1)[idx],
-                            "y": (1, 0)[idx],
-                            "xanchor": ("left", "right")[idx],
-                            "yanchor": ("top", "bottom")[idx],
-                        }
-                    elif n_s == 3:
-                        # idx map: 0 -> bottom, 1 -> top-left, 2 -> top-right
-                        pos_config = {
-                            "x": (0.5, 0.05, 0.95)[idx],
-                            "y": (0.05, 0.95, 0.95)[idx],
-                            "xanchor": ("center", "left", "right")[idx],
-                            "yanchor": ("bottom", "top", "top")[idx],
-                        }
-                    elif n_s == 4:  # Order: bottom, left, right, top
-                        # idx map: 0 -> bottom, 1 -> left, 2 -> right, 3 -> top
-                        pos_config = {
-                            "x": (0.5, 0.05, 0.95, 0.5)[idx],
-                            "y": (0.05, 0.5, 0.5, 0.95)[idx],
-                            "xanchor": ("center", "left", "right", "center")[idx],
-                            "yanchor": ("bottom", "middle", "middle", "top")[idx],
-                        }
-
-                elif orientation == "horizontal":
-                    # Sections are ordered from top to bottom in create_section_coords
-                    strip_height = 1 / n_s
-                    # Place at top-left of each strip
-                    pos_config = {
-                        "x": 0.05,
-                        "y": (1 - idx * strip_height) - 0.05,
-                        "xanchor": "left",
-                        "yanchor": "top",
-                    }
-
-                elif orientation == "vertical":
-                    # Sections are ordered from left to right
-                    strip_width = 1 / n_s
-                    # Place at top-left of each strip
-                    pos_config = {
-                        "x": (idx * strip_width) + 0.05,
-                        "y": 0.95,
-                        "xanchor": "left",
-                        "yanchor": "top",
-                    }
-
-                elif orientation == "grid":  # n_splits must be 4
-                    pos_config = {
-                        "x": (0.05, 0.95)[idx % 2],
-                        "y": (0.95, 0.05)[idx // 2],
-                        "xanchor": ("left", "right")[idx % 2],
-                        "yanchor": ("top", "bottom")[idx // 2],
-                    }
+                pos_config = _split_label_position(orientation, n_splits, idx)
 
                 section_luminance = luminance(color)
                 anno_font_color = "black" if section_luminance > 0.55 else "white"
@@ -1415,10 +1373,7 @@ def ptable_heatmap_splits(
                     )
                 )
 
-        if element_symbol_map is not None:
-            display_symbol = element_symbol_map.get(symbol, symbol)
-        else:
-            display_symbol = symbol
+        display_symbol = (element_symbol_map or {}).get(symbol, symbol)
 
         # Calculate text color based on background color
         mean_luminance = sum(luminance(color) for color in split_colors) / len(
@@ -1442,41 +1397,27 @@ def ptable_heatmap_splits(
 
         # Add hover data
         elem_name = df_ptable.loc[symbol, "name"]
-        split_name: str | None  # for mypy
+        split_hovers = [
+            (split_labels[idx], format_hover(val))
+            for idx, val in enumerate(values)
+            if not np.isnan(val)
+        ]
         if hover_template is not None:
-            # Use custom hover template
-            split_values = []
-            for idx, val in enumerate(values):
-                if not np.isnan(val):
-                    split_name = split_labels[idx]
-                    formatted_val = (
-                        cast("Callable[[float], str]", hover_fmt)(val)
-                        if isinstance(hover_fmt, Callable)
-                        else f"{val:{hover_fmt}}"
-                    )
-                    split_values.append(
-                        hover_template.format(
-                            name=elem_name,
-                            symbol=symbol,
-                            split_name=split_name,
-                            value=formatted_val,
-                            hover_data=hover_data.get(symbol, "") if hover_data else "",
-                        )
-                    )
-            hover_text = "<br>".join(map(str, split_values))
+            hover_text = "<br>".join(
+                hover_template.format(
+                    name=elem_name,
+                    symbol=symbol,
+                    split_name=split_name,
+                    value=formatted_val,
+                    hover_data=hover_data.get(symbol, "") if hover_data else "",
+                )
+                for split_name, formatted_val in split_hovers
+            )
         else:
-            # Use default hover template
-            hover_text = f"<b>{elem_name}</b>"
-            for idx, val in enumerate(values):
-                if not np.isnan(val):
-                    split_name = split_labels[idx]
-                    formatted_val = (
-                        cast("Callable[[float], str]", hover_fmt)(val)
-                        if isinstance(hover_fmt, Callable)
-                        else f"{val:{hover_fmt}}"
-                    )
-                    hover_text += f"<br>{split_name}: {formatted_val}"
-
+            hover_text = f"<b>{elem_name}</b>" + "".join(
+                f"<br>{split_name}: {formatted_val}"
+                for split_name, formatted_val in split_hovers
+            )
             if hover_data and symbol in hover_data:
                 hover_text += f"<br>{hover_data[symbol]}"
 
@@ -1531,26 +1472,22 @@ def ptable_heatmap_splits(
         scaleratio=1,  # ensure square tiles
     )
 
-    # Add colorbar
-    if colorbar is not False:
-        for split_idx, cscale in enumerate(colorscales):
-            if not use_multiple_cbar and split_idx > 0:
-                continue  # Skip if not using multiple colorbars and not first split
-
-            cbar = colorbars[split_idx if use_multiple_cbar else 0]
-            cmin, cmax = split_ranges[split_idx]
-
-            # Get colorbar settings with consistent positioning
+    if colorbar is not False:  # one colorbar per split or a single shared one
+        for split_idx, cbar in enumerate(colorbars):
             cbar_settings = _get_colorbar_settings(
                 cbar,
                 split_idx=split_idx,
-                n_splits=n_splits if use_multiple_cbar else 1,
+                n_splits=len(colorbars),
                 split_name=split_labels[split_idx] if use_multiple_cbar else None,
                 font_size=font_size,
                 scale=scale,
             )
             _add_colorbar_trace(
-                fig, cscale, cmin, cmax, cbar_settings, split_idx=split_idx
+                fig,
+                colorscales[split_idx],
+                *split_ranges[split_idx],
+                cbar_settings,
+                split_idx=split_idx,
             )
 
     return fig
@@ -1690,49 +1627,40 @@ def ptable_scatter(
     ) | (subplot_kwargs or {})
     fig = make_subplots(**subplot_kwargs)
 
-    # get current plotly template line colors
-    import plotly.io as pio
+    template_line_color = _template_line_color()
 
-    template_line_color = pio.templates[pio.templates.default].layout.xaxis.linecolor
+    # normalize single (x, y[, color]) tuples to {"": tuple} like multi-line data
+    elem_lines: dict[str, Mapping[str, LineData]] = {
+        symbol: cast(
+            "Mapping[str, LineData]",
+            elem_data if isinstance(elem_data, Mapping) else {"": elem_data},
+        )
+        for symbol, elem_data in data.items()
+    }
+    all_lines = [line for lines in elem_lines.values() for line in lines.values()]
 
     # Get global x and y ranges if not provided
-    if x_range is None or y_range is None:
-        all_x_vals: list[float] = []
-        all_y_vals: list[float] = []
-        # _* to ignore optional color data
-        for elem_data in data.values():
-            line_data = cast(
-                "Mapping[str, LineData]",
-                elem_data if isinstance(elem_data, Mapping) else {"": elem_data},
-            )
-            for item in line_data.values():
-                all_x_vals.extend(item[0])
-                all_y_vals.extend(item[1])
-
-        if x_range is None:
-            x_range = (min(all_x_vals), max(all_x_vals))
-        if y_range is None:
-            y_range = (min(all_y_vals), max(all_y_vals))
+    if x_range is None:
+        all_x_vals = [x_val for line in all_lines for x_val in line[0]]
+        x_range = (min(all_x_vals), max(all_x_vals))
+    if y_range is None:
+        all_y_vals = [y_val for line in all_lines for y_val in line[1]]
+        y_range = (min(all_y_vals), max(all_y_vals))
 
     # Get default marker and line settings
-    marker_defaults = dict(
+    marker_defaults: dict[str, Any] = dict(
         size=6 * scale, color=template_line_color, line=dict(width=0)
     )
-    line_defaults = dict(width=1 * scale, color=template_line_color)
+    line_defaults: dict[str, Any] = dict(width=1 * scale, color=template_line_color)
 
     # Find global color range if any numeric color values exist
     cbar_min, cbar_max = float("inf"), float("-inf")
-    for elem_values in data.values():
-        line_data = cast(
-            "Mapping[str, LineData]",
-            elem_values if isinstance(elem_values, Mapping) else {"": elem_values},
-        )
-        for elem_data in line_data.values():
-            if len(elem_data) > 2:  # Has color data
-                color_vals = elem_data[2]  # ty: ignore[index-out-of-bounds]
-                if all(isinstance(val, int | float) for val in color_vals):
-                    cbar_min = min(cbar_min, *color_vals)
-                    cbar_max = max(cbar_max, *color_vals)
+    for line in all_lines:
+        if len(line) > 2:  # Has color data
+            color_vals = line[2]  # ty: ignore[index-out-of-bounds]
+            if all(isinstance(val, int | float) for val in color_vals):
+                cbar_min = min(cbar_min, *color_vals)
+                cbar_max = max(cbar_max, *color_vals)
 
     has_numeric_colors = cbar_min != float("inf")
 
@@ -1753,8 +1681,6 @@ def ptable_scatter(
             if isinstance(key, str)
         }
         # Create color map for line names
-        import plotly.express as px
-
         color_sequence = px.colors.qualitative.Set2
         line_colors = {
             name: color_sequence[idx % len(color_sequence)]
@@ -1774,9 +1700,7 @@ def ptable_scatter(
         if hide_f_block in ("auto", True) and row_7_is_empty and row >= 6:
             continue
 
-        subplot_idx = row * n_cols + col + 1
-        subplot_key = subplot_idx if subplot_idx != 1 else ""
-        xy_ref = dict(xref=f"x{subplot_key} domain", yref=f"y{subplot_key} domain")
+        xy_ref = _subplot_xy_ref(row, col, n_cols, domain=True)
 
         # Add element type background
         elem_type = df_ptable.loc[symbol].get("type", None)
@@ -1785,24 +1709,13 @@ def ptable_scatter(
         ):
             tile_shapes.append(bg_shape)
 
-        symbol_data = data[symbol]
-        # Add line plot if data exists for this element
-        elem_data = cast(
-            "Mapping[str, LineData]",
-            symbol_data if isinstance(symbol_data, Mapping) else {"": symbol_data},
-        )
-        for line_name, elem_vals in elem_data.items():
+        for line_name, elem_vals in elem_lines[symbol].items():
             x_vals, y_vals, *rest = elem_vals
             color_vals = rest[0] if rest else None  # if 3-tuple, first entry is color
 
+            # 1. Start with default colors (template line color)
             line_props = line_defaults.copy()
             marker_props = marker_defaults.copy()
-
-            # 1. Start with default colors
-            if "markers" in mode:
-                marker_props["color"] = template_line_color
-            if "lines" in mode:
-                line_props["color"] = template_line_color
 
             # 2. Apply element type colors if enabled
             if color_elem_strategy in {"symbol", "both"}:
@@ -1863,11 +1776,7 @@ def ptable_scatter(
             fig.add_scatter(**scatter_kwargs)
 
         # Add element symbol
-        if element_symbol_map is not None:
-            display_symbol = element_symbol_map.get(symbol, symbol)
-        else:
-            display_symbol = symbol
-
+        display_symbol = (element_symbol_map or {}).get(symbol, symbol)
         font = dict(
             color=elem_type_colors.get(elem_type, template_line_color)
             if color_elem_strategy in {"symbol", "both"}
@@ -1886,7 +1795,7 @@ def ptable_scatter(
         tile_annotations += _make_custom_annotations(
             annotations,
             symbol=symbol,
-            elem_values=symbol_data,
+            elem_values=data[symbol],
             xy_ref=xy_ref,
             font_size=font_size,
             scale=scale,
@@ -1941,22 +1850,10 @@ def ptable_scatter(
         )
 
     if has_numeric_colors and colorbar is not False:
-        colorbar = dict(orientation="h", lenmode="fraction", thickness=15) | (
-            colorbar or {}
-        )
+        colorbar = dict(orientation="h") | (colorbar or {})
         horizontal_cbar = colorbar.get("orientation") == "h"
-        if horizontal_cbar:
-            h_defaults = dict(
-                x=0.4,
-                y=0.74,
-                title_side="top",
-                len=0.4,
-                title_font_size=scale * 1.2 * (font_size or 12),
-            )
-            colorbar = h_defaults | colorbar
-        else:  # make title vertical
-            v_defaults = dict(title_side="right", len=0.87)
-            colorbar = v_defaults | colorbar
+        if horizontal_cbar:  # other orientation defaults come from
+            colorbar = dict(y=0.74) | colorbar  # _get_colorbar_settings
 
         if title := colorbar.get("title"):
             # <br> to increase title standoff
@@ -1971,20 +1868,12 @@ def ptable_scatter(
                 showscale=True,
                 cmin=cbar_min,
                 cmax=cbar_max,
-                colorbar=colorbar,
+                colorbar=_get_colorbar_settings(
+                    colorbar, font_size=font_size, scale=scale
+                ),
             ),
             hoverinfo="none",
             showlegend=False,
         )
-
-    # Apply colorbar settings
-    if colorbar is not False and has_numeric_colors:
-        cbar_settings = _get_colorbar_settings(
-            colorbar or {}, font_size=font_size, scale=scale
-        )
-
-        for trace in fig.data:
-            if hasattr(trace, "marker") and hasattr(trace.marker, "colorbar"):
-                trace.marker.colorbar = cbar_settings
 
     return fig

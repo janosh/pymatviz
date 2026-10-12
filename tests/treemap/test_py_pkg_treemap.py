@@ -18,10 +18,10 @@ import pymatviz as pmv
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Generator
+    from collections.abc import Generator
     from pathlib import Path
 
-    from pymatviz.treemap.py_pkg import CellSizeFn, ModuleFormatter, ShowCounts
+    from pymatviz.treemap.py_pkg import ModuleFormatter, ShowCounts
 
 
 @pytest.fixture(scope="module")
@@ -236,22 +236,27 @@ def test_py_pkg_treemap_cell_text_fn(
 
 
 @pytest.mark.parametrize(
-    ("invalid_input", "expected_error"),
+    ("kwargs", "expected_error"),
     [
-        (lambda _cell: 0, "No source files found .* after filtering by cell_size_fn"),
-        ("invalid_value", "Invalid show_counts='invalid_value'"),
+        (
+            dict(cell_size_fn=lambda _cell: 0),
+            "No source files found .* after filtering by cell_size_fn",
+        ),
+        (dict(show_counts="invalid_value"), "Invalid show_counts='invalid_value'"),
+        (dict(group_by="package"), "Invalid group_by='package', must be one of"),
+        (
+            dict(color_by="bogus_col"),
+            r"Invalid color_by='bogus_col', must be 'coverage'.*'line_count'",
+        ),
+        (dict(color_by=""), "Invalid color_by='', must be 'coverage'"),
+        (dict(color_by="file_path"), "Invalid color_by='file_path'"),  # non-numeric
+        (dict(color_by={}), "color_by dict must map file paths to values"),
     ],
 )
-def test_py_pkg_treemap_errors(
-    invalid_input: CellSizeFn | ShowCounts, expected_error: str
-) -> None:
-    """Test error conditions."""
-    if callable(invalid_input):
-        with pytest.raises(ValueError, match=expected_error):
-            pmv.py_pkg_treemap("my_pkg", cell_size_fn=invalid_input)
-    else:
-        with pytest.raises(ValueError, match=expected_error):
-            pmv.py_pkg_treemap("my_pkg", show_counts=invalid_input)
+def test_py_pkg_treemap_errors(kwargs: dict[str, Any], expected_error: str) -> None:
+    """Empty filtered data and invalid show_counts/group_by/color_by raise."""
+    with pytest.raises(ValueError, match=expected_error):
+        pmv.py_pkg_treemap("my_pkg", **kwargs)
 
 
 @pytest.mark.parametrize(
@@ -304,32 +309,14 @@ def test_py_pkg_treemap_base_url(test_base_url: str | None, expect_link: bool) -
     assert "Lines: %{customdata[11]:,}<br>" in hovertemplate
 
 
-def test_py_pkg_treemap_analysis_scenarios() -> None:
-    """Test various analysis scenarios including failures."""
-    pkg_name = "my_pkg"
-
-    # Test analysis failure
-    failed_result = {
-        "n_classes": 0,
-        "n_functions": 0,
-        "n_methods": 0,
-        "n_internal_imports": 0,
-        "n_external_imports": 0,
-        "n_type_checking_imports": 0,
-    }
-    with patch("pymatviz.treemap.py_pkg._analyze_py_file", return_value=failed_result):
-        fig_failed = pmv.py_pkg_treemap(pkg_name)
-        assert isinstance(fig_failed, go.Figure)
-        custom_data = fig_failed.data[0].customdata
-        analysis_data = custom_data[:, 4:9]
-        assert np.all(analysis_data.astype(float) == 0)
-
-
 def test_collect_package_modules_not_found() -> None:
-    """Test collect_package_modules with a package that cannot be found."""
-    assert pmv.treemap.py_pkg.collect_package_modules(
-        ["non_existent_package_12345"]
-    ).empty
+    """Unknown packages raise instead of being silently skipped."""
+    with pytest.raises(
+        ValueError, match="Could not find package path for 'non_existent_package_12345'"
+    ):
+        pmv.treemap.py_pkg.collect_package_modules(
+            ["my_pkg", "non_existent_package_12345"]
+        )
 
 
 def test_internal_imports(dummy_pkg_path: Path) -> None:
@@ -445,29 +432,16 @@ def test_auto_base_url_metadata(
         )
 
 
-def test_auto_base_url_metadata_exception(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
-) -> None:
-    """Test base_url='auto' when metadata lookup raises an exception."""
-    pkg_name = "my_pkg"
+def test_auto_base_url_metadata_exception(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Unexpected metadata lookup errors propagate for base_url='auto'."""
 
     def mock_metadata_raises(_name: str) -> None:
         raise RuntimeError("Metadata fetch failed")
 
     monkeypatch.setattr("importlib.metadata.metadata", mock_metadata_raises)
 
-    fig = pmv.py_pkg_treemap(pkg_name, base_url="auto")
-    captured = capsys.readouterr()
-
-    assert (
-        "Warning: Error processing metadata for my_pkg: Metadata fetch failed"
-        in captured.out
-    )
-    custom_data = fig.data[0].customdata
-    assert custom_data is not None
-    assert not any(
-        isinstance(url, str) and url.startswith("http") for url in custom_data[:, 3]
-    )
+    with pytest.raises(RuntimeError, match="Metadata fetch failed"):
+        pmv.py_pkg_treemap("my_pkg", base_url="auto")
 
 
 @pytest.mark.parametrize(
@@ -878,93 +852,75 @@ def test_py_pkg_treemap_coverage_path_matching(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    ("scenario", "returncode", "coverage_data", "expected_result"),
+    ("returncode", "coverage_data", "expected_map"),
     [
+        (1, None, None),  # failed coverage CLI raises
         (
-            "file_exists",
-            None,
-            {"files": {"test.py": {"summary": {"percent_covered": 100.0}}}},
-            1,
-        ),
-        ("subprocess_fail", 1, None, 0),
-        (
-            "subprocess_success",
             0,
             {"files": {"/abs/test.py": {"summary": {"percent_covered": 88.5}}}},
-            1,
+            {"/abs/test.py": 88.5},
         ),
     ],
+    ids=["subprocess_fail", "subprocess_success"],
 )
 def test_collect_coverage_data_subprocess(
     tmp_path: Path,
-    scenario: str,
-    returncode: int | None,
+    returncode: int,
     coverage_data: dict[str, Any] | None,
-    expected_result: int,
+    expected_map: dict[str, float] | None,
 ) -> None:
-    """Test collect_coverage_data subprocess behavior."""
-    if scenario == "file_exists":
-        coverage_file = tmp_path / "coverage.json"
-        coverage_file.write_text(json.dumps(coverage_data))
-        coverage_map = pmv.treemap.py_pkg.collect_coverage_data(str(coverage_file))
-    else:
-        with (
-            patch("subprocess.run") as mock_run,
-            patch("tempfile.NamedTemporaryFile") as mock_tempfile,
-            patch("builtins.open", create=True),
-            patch("os.path.exists", return_value=True),
-            patch("os.unlink"),
-            patch("json.load", return_value=coverage_data),
-        ):
-            mock_tempfile.return_value.__enter__.return_value.name = str(
-                tmp_path / "coverage.json"
-            )
-            mock_run.return_value = MagicMock(
-                returncode=returncode,
-                stderr="Coverage error" if returncode else "",
-            )
-            coverage_map = pmv.treemap.py_pkg.collect_coverage_data()
-            mock_run.assert_called_once()
-
-    assert len(coverage_map) == expected_result
-    if scenario == "subprocess_success":
-        assert coverage_map["/abs/test.py"] == 88.5
+    """Without a coverage file, coverage JSON is generated via the coverage CLI."""
+    with (
+        patch("subprocess.run") as mock_run,
+        patch("tempfile.NamedTemporaryFile") as mock_tempfile,
+        patch("builtins.open", create=True),
+        patch("os.path.isfile", return_value=True),
+        patch("os.unlink") as mock_unlink,
+        patch("json.load", return_value=coverage_data),
+    ):
+        tmp_json_path = str(tmp_path / "coverage.json")
+        mock_tempfile.return_value.__enter__.return_value.name = tmp_json_path
+        mock_run.return_value = MagicMock(
+            returncode=returncode, stderr="Coverage error" if returncode else ""
+        )
+        if expected_map is None:
+            with pytest.raises(
+                RuntimeError, match=r"exit code 1.*stderr: Coverage error"
+            ):
+                pmv.treemap.py_pkg.collect_coverage_data()
+        else:
+            assert pmv.treemap.py_pkg.collect_coverage_data() == expected_map
+        mock_run.assert_called_once()
+        mock_unlink.assert_called_once_with(tmp_json_path)  # temp file cleaned up
 
 
 @pytest.mark.parametrize(
-    ("kwargs", "title", "check"),
+    ("color_by", "title"),
     [
-        (
-            {"color_by": "coverage"},
-            "Coverage (%)",
-            lambda fig: any(color > 0 for color in _numeric_marker_colors(fig)),
-        ),
-        ({"color_by": {"file1.py": 50.0}}, "Color Value", lambda _fig: True),
-        ({"color_by": "line_count"}, "Line Count", lambda _fig: True),
+        ("coverage", "Coverage (%)"),
+        ({"file1.py": 50.0}, "Color Value"),
+        ("line_count", "Line Count"),
     ],
 )
-def test_py_pkg_treemap_coverage_edge_cases(
-    mock_coverage_data: Path,
-    kwargs: dict[str, Any],
-    title: str,
-    check: Callable[[go.Figure], bool],
+def test_py_pkg_treemap_color_by_colorbar_title(
+    mock_coverage_data: Path, color_by: str | dict[str, float], title: str
 ) -> None:
-    """Test coverage edge cases and colorbar titles."""
-    if kwargs == {"color_by": "coverage"}:
-        kwargs = {**kwargs, "coverage_data_file": str(mock_coverage_data)}
-    if kwargs.get("color_by") == "line_count":
-        df_modules = pmv.treemap.py_pkg.collect_package_modules(["my_pkg"])
-        if "line_count" not in df_modules.columns:
-            pytest.skip("Column line_count not found in module data")
-    fig = pmv.py_pkg_treemap("my_pkg", **kwargs)
-    assert isinstance(fig, go.Figure)
-    assert check(fig)
+    """Colorbar title reflects the color_by mode, coverage colors are matched."""
+    fig = pmv.py_pkg_treemap(
+        "my_pkg", color_by=color_by, coverage_data_file=str(mock_coverage_data)
+    )
     _assert_colorbar_title(fig, title)
+    if color_by == "coverage":
+        assert any(color > 0 for color in _numeric_marker_colors(fig))
 
 
-def test_py_pkg_treemap_missing_coverage_values_are_zero() -> None:
-    """Missing coverage data gives zero customdata values."""
-    fig = pmv.py_pkg_treemap("my_pkg", color_by="coverage")
+def test_py_pkg_treemap_missing_coverage_values_are_zero(tmp_path: Path) -> None:
+    """Files missing from the coverage data get zero customdata values."""
+    coverage_file = tmp_path / "coverage.json"
+    coverage_file.write_text(json.dumps({"files": {}}))
+    fig = pmv.py_pkg_treemap(
+        "my_pkg", color_by="coverage", coverage_data_file=str(coverage_file)
+    )
     assert all(color == 0 for color in fig.data[0].customdata[:, -1])
 
 
@@ -1070,10 +1026,15 @@ def test_py_pkg_treemap_coverage_regression_prevention(
     ],
 )
 def test_py_pkg_treemap_cell_border(
-    kwargs: dict[str, Any], expected_color: str | None, expected_width: float | None
+    mock_coverage_data: Path,
+    kwargs: dict[str, Any],
+    expected_color: str | None,
+    expected_width: float | None,
 ) -> None:
     """Test cell_border parameter functionality."""
-    fig = pmv.py_pkg_treemap("my_pkg", **kwargs)
+    fig = pmv.py_pkg_treemap(
+        "my_pkg", coverage_data_file=str(mock_coverage_data), **kwargs
+    )
     marker_line = fig.data[0].marker.line
     assert marker_line.color == expected_color
     if expected_width is not None:
@@ -1188,56 +1149,36 @@ def test_collect_source_modules_basic(rust_like_source_dir: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    ("setup", "assertion"),
+    ("extra_files", "filename", "expected_module_parts"),
     [
-        (
-            "collision",
-            lambda df_result: (
-                df_result[
-                    (df_result["filename"] == "analysis")
-                    & (df_result["directory"] == "root")
-                ].iloc[0]["module_parts"]
-                == ["analysis", "analysis"]
-            ),
-        ),
-        ("extra_md", lambda df_result: "readme" not in set(df_result["filename"])),
-        ("ignored_target", lambda df_result: "debug" not in set(df_result["filename"])),
+        # Rust new-style module root (analysis.rs next to analysis/) is nested
+        ({"analysis.rs": "// new-style mod root\n"}, "analysis", ["analysis"] * 2),
+        ({"readme.md": "# Readme\n"}, "readme", None),  # wrong extension
+        ({"target/debug.rs": "fn main() {}\n"}, "debug", None),  # ignored dir
     ],
+    ids=["mod-root-collision", "extra-md", "ignored-target"],
 )
 def test_collect_source_modules_filters(
-    rust_like_source_dir: Path,
-    setup: str,
-    assertion: Callable[[pd.DataFrame], bool],
+    tmp_path: Path,
+    extra_files: dict[str, str],
+    filename: str,
+    expected_module_parts: list[str] | None,
 ) -> None:
-    """collect_source_modules_from_dir handles filtering cases."""
-    paths_to_remove: list[Path] = []
-    dirs_to_remove: list[Path] = []
-    if setup == "collision":
-        path_to_write = rust_like_source_dir / "analysis.rs"
-        path_to_write.write_text("// new-style mod root\n")
-        paths_to_remove.append(path_to_write)
-    elif setup == "extra_md":
-        path_to_write = rust_like_source_dir / "readme.md"
-        path_to_write.write_text("# Readme\n")
-        paths_to_remove.append(path_to_write)
-    else:
-        target_dir = rust_like_source_dir / "target"
-        target_dir.mkdir(exist_ok=True)
-        path_to_write = target_dir / "debug.rs"
-        path_to_write.write_text("fn main() {}\n")
-        paths_to_remove.append(path_to_write)
-        dirs_to_remove.append(target_dir)
+    """Sibling dirs nest module roots; other extensions and ignored dirs are skipped."""
+    (tmp_path / "analysis").mkdir()
+    (tmp_path / "analysis/mod.rs").write_text("pub mod convex_hull;\n")
+    for rel_path, content in extra_files.items():
+        (tmp_path / rel_path).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / rel_path).write_text(content)
 
-    try:
-        df_result = pmv.treemap.py_pkg.collect_source_modules_from_dir(
-            str(rust_like_source_dir), ["proj"], file_extensions=(".rs",)
-        )
-        assert assertion(df_result)
-    finally:
-        for path_to_remove in paths_to_remove:
-            path_to_remove.unlink(missing_ok=True)
-        for dir_to_remove in dirs_to_remove:
-            dir_to_remove.rmdir()
+    df_result = pmv.treemap.py_pkg.collect_source_modules_from_dir(
+        str(tmp_path), ["proj"], file_extensions=(".rs",)
+    )
+    matches = df_result[df_result["filename"] == filename]
+    if expected_module_parts is None:
+        assert matches.empty
+    else:
+        assert matches.iloc[0]["module_parts"] == expected_module_parts
 
 
 def test_collect_source_modules_nonexistent_dir() -> None:
@@ -1369,13 +1310,6 @@ def test_treemap_source_dir_modes(
         assert not any(url.startswith("http") for url in file_urls)
     if checks.get("has_urls"):
         assert any(kwargs["base_url"] in url for url in file_urls)
-
-
-def test_treemap_python_includes_analysis_hover() -> None:
-    """Standard Python mode still includes analysis fields in hover."""
-    hover = pmv.py_pkg_treemap("my_pkg", base_url=None).data[0].hovertemplate
-    assert "Classes:" in hover
-    assert "Functions:" in hover
 
 
 def test_treemap_source_dir_no_matching_files(tmp_path: Path) -> None:

@@ -8,6 +8,7 @@ Available functions:
     - get_fig_xy_range: Get the x and y range of a plotly figure.
     - luminance: Compute the luminance of a color.
     - pick_max_contrast_color: Choose black or white text color for contrast.
+    - rgb_components: Normalize a color to RGB channels in [0, 1].
 """
 
 from __future__ import annotations
@@ -16,7 +17,6 @@ import re
 from typing import TYPE_CHECKING, Final, cast
 
 import numpy as np
-import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
 
@@ -50,7 +50,8 @@ def annotate(text: str | Sequence[str], fig: go.Figure, **kwargs: Any) -> go.Fig
 
     Args:
         text (str): The text to use for annotation. If fig is plotly faceted, text can
-            be a list of strings to annotate each subplot.
+            be a list of strings, one per trace (empty strings are skipped). Several
+            annotations in the same subplot are stacked downwards.
         fig (go.Figure): The plotly Figure to annotate.
         **kwargs: Additional arguments to pass to plotly's fig.add_annotation().
 
@@ -65,25 +66,34 @@ def annotate(text: str | Sequence[str], fig: go.Figure, **kwargs: Any) -> go.Fig
 
     color = kwargs.pop("color", get_font_color(fig))
 
+    top_y = 0.96
     text_defaults = dict(
-        x=0.02, y=0.96, showarrow=False, font=dict(size=16, color=color), align="left"
+        x=0.02, y=top_y, showarrow=False, font=dict(size=16, color=color), align="left"
     )
 
     # Annotate all subplots or main plot if not faceted (i.e. if any trace is
     # assigned to an x-axis other than the primary "x")
     if any(getattr(trace, "xaxis", None) not in (None, "x") for trace in fig.data):
+        n_per_subplot: dict[str, int] = {}
         for idx, trace in enumerate(fig.data):
             sub_text = text if isinstance(text, str) else text[idx]
             # skip traces for which no annotations were provided
             if not sub_text:
                 continue
 
-            subplot_idx = trace.xaxis[1:]  # e.g. 'x2' -> '2', 'x' -> ''
-            xref = f"x{subplot_idx} domain"
-            yref = f"y{subplot_idx} domain"
+            subplot_idx = (trace.xaxis or "x")[1:]  # e.g. 'x2' -> '2', 'x' -> ''
+            n_prev = n_per_subplot.get(subplot_idx, 0)
+            n_per_subplot[subplot_idx] = n_prev + 1
+            # stack annotations of several traces in the same subplot
+            offset = dict(y=top_y - 0.12 * n_prev) if n_prev else {}
             fig.add_annotation(
                 text=sub_text,
-                **(dict(xref=xref, yref=yref) | text_defaults | kwargs),
+                **(
+                    dict(xref=f"x{subplot_idx} domain", yref=f"y{subplot_idx} domain")
+                    | text_defaults
+                    | offset
+                    | kwargs
+                ),
             )
     else:  # Non-faceted plot
         if not isinstance(text, str):
@@ -125,8 +135,20 @@ def get_font_color(fig: go.Figure) -> str:
     return "black"
 
 
-def _rgb_components(color: ColorType) -> tuple[float, float, float]:
-    """Normalize RGB(A) tuples, CSS names, hex, and rgb/rgba byte channels."""
+def rgb_components(color: ColorType) -> tuple[float, float, float]:
+    """Normalize a color to its red, green and blue channels in [0, 1].
+
+    Args:
+        color (ColorType): RGB(A) tuple or list with channels in [0, 1] or [0, 255]
+            (any channel > 1 means bytes), CSS color name, 3/6-digit hex string, or
+            rgb()/rgba() string with byte channels. Alpha is dropped.
+
+    Returns:
+        tuple[float, float, float]: Red, green and blue channels in [0, 1].
+
+    Raises:
+        ValueError: If the color format is unsupported or channels are out of range.
+    """
     if isinstance(color, str):
         color = color.strip().lower()
         color = _CSS_NAMED_COLORS.get(color, color)
@@ -151,7 +173,7 @@ def _rgb_components(color: ColorType) -> tuple[float, float, float]:
             channels = tuple(value / 255 for value in values[:3])
         else:
             raise ValueError(f"Unsupported color format: {color}")
-    elif isinstance(color, tuple) and len(color) in (3, 4):
+    elif isinstance(color, (tuple, list)) and len(color) in (3, 4):
         try:
             channels = tuple(float(cast("Any", channel)) for channel in color[:3])
         except (TypeError, ValueError) as exc:
@@ -180,7 +202,7 @@ def luminance(color: ColorType) -> float:
     """
     red, green, blue = (
         channel / 12.92 if channel <= 0.03928 else ((channel + 0.055) / 1.055) ** 2.4
-        for channel in _rgb_components(color)
+        for channel in rgb_components(color)
     )
     return 0.2126 * red + 0.7152 * green + 0.0722 * blue
 
@@ -197,13 +219,7 @@ def contrast_ratio(color1: ColorType, color2: ColorType) -> float:
     Returns:
         float: Contrast ratio between the two colors, ranging from 1:1 to 21:1.
     """
-    lum1 = luminance(color1)
-    lum2 = luminance(color2)
-
-    # Ensure lighter color is first for the formula
-    lighter = max(lum1, lum2)
-    darker = min(lum1, lum2)
-
+    darker, lighter = sorted((luminance(color1), luminance(color2)))
     # Calculate contrast ratio: (L1 + 0.05) / (L2 + 0.05)
     return (lighter + 0.05) / (darker + 0.05)
 
@@ -247,8 +263,16 @@ def pick_max_contrast_color(
 def get_fig_xy_range(
     fig: go.Figure,
     traces: int | slice | Sequence[int] | Callable[[go.Scatter], bool] = 0,
+    pad_frac: float = 0.05,
 ) -> tuple[tuple[float, float], tuple[float, float]]:
-    """Get the x and y range of a plotly figure.
+    """Get the x and y range of a plotly figure from its trace data.
+
+    Computed without rendering (no Kaleido). Approximates Plotly's autorange by padding
+    the finite data bounds of the selected traces by pad_frac of their span on each
+    side (in log10 space for log axes, ignoring non-positive values there). Axis
+    bounds fixed via layout.xaxis.range/yaxis.range take precedence. Axis type and
+    fixed range are read from the axes of the first selected trace, so traces spread
+    over subplots (e.g. facets) share one combined range.
 
     Args:
         fig (go.Figure): plotly figure.
@@ -258,9 +282,18 @@ def get_fig_xy_range(
             - slice: A slice object to select a range of traces
             - list[int]: A list of specific trace indices
             - Callable: A function that takes a trace and returns True/False
+            Selected traces without both non-empty x and y data are ignored.
+        pad_frac (float, optional): Fraction of the data span to pad on each side
+            of auto-ranged axes. A zero-width span is padded by 1 (1 decade on log
+            axes). Defaults to 0.05.
 
     Returns:
         tuple: The axis ranges as ((x_min, x_max), (y_min, y_max)).
+
+    Raises:
+        TypeError: If fig is not a plotly Figure.
+        ValueError: If no selected trace has x and y data, the selected traces span
+            axes of different types, or an axis has no finite (positive for log) data.
     """
     if not isinstance(fig, go.Figure):
         raise TypeError(f"Expected plotly Figure, got {type(fig)}")
@@ -274,53 +307,60 @@ def get_fig_xy_range(
         selected = [trace for trace in fig.data if trace_predicate(trace)]
     else:
         selected = [fig.data[idx] for idx in traces]
+    selected = [
+        trace
+        for trace in selected
+        if all(
+            (values := getattr(trace, axis, None)) is not None and len(values) > 0
+            for axis in ("x", "y")
+        )
+    ]
     if not selected:
         raise ValueError(f"No valid traces with required data found for {traces=}")
 
-    # Without Kaleido, use data bounds; these omit Plotly's autorange padding.
-    try:
-        selected_fig = go.Figure(data=selected, layout=fig.layout)
-        dev_fig = selected_fig.full_figure_for_development(warn=False)
-        x_axis_type = dev_fig.layout.xaxis.type
-        y_axis_type = dev_fig.layout.yaxis.type
+    ranges: list[tuple[float, float]] = []
+    for axis in ("x", "y"):
+        # trace.xaxis is e.g. 'x' or 'x2', the matching layout key 'xaxis' or 'xaxis2'
+        axis_names = [
+            f"{axis}axis{(getattr(trace, f'{axis}axis', None) or axis)[1:]}"
+            for trace in selected
+        ]
+        axis_types = {name: fig.layout[name].type for name in axis_names}
+        if len(set(axis_types.values())) > 1:
+            raise ValueError(
+                f"Selected traces span {axis}-axes of different types: {axis_types}"
+            )
+        layout_axis = fig.layout[axis_names[0]]
+        is_log = layout_axis.type == "log"
+        try:
+            values = np.concatenate(
+                [np.asarray(trace[axis], dtype=float) for trace in selected]
+            )
+        except ValueError as exc:
+            raise ValueError(
+                f"Non-numeric {axis} data can't be ranged without rendering: {exc}"
+            ) from exc
+        keep = np.isfinite(values)
+        if is_log:
+            keep &= values > 0
+        values = values[keep]
+        if values.size == 0:
+            positive = " positive" if is_log else ""
+            raise ValueError(f"No finite{positive} data for {axis}-axis")
 
-        x_range: tuple[float, float] = dev_fig.layout.xaxis.range
-        y_range: tuple[float, float] = dev_fig.layout.yaxis.range
+        if is_log:
+            values = np.log10(values)
+        low, high = float(values.min()), float(values.max())
+        pad = pad_frac * (high - low) if high > low else 1
+        bounds = [low - pad, high + pad]
+        for bound_idx, fixed in enumerate(layout_axis.range or (None, None)):
+            if fixed is not None:  # fixed bounds are already in log10 for log axes
+                bounds[bound_idx] = fixed
+        if is_log:
+            bounds = [10**bound for bound in bounds]
+        ranges.append((bounds[0], bounds[1]))
 
-        # Convert log range to linear if necessary
-        if x_axis_type == "log":
-            x_range = (10 ** x_range[0], 10 ** x_range[1])
-        if y_axis_type == "log":
-            y_range = (10 ** y_range[0], 10 ** y_range[1])
-
-    except ValueError:
-        df_xy = pd.concat(
-            [pd.DataFrame({"x": trace.x, "y": trace.y}) for trace in selected]
-        ).dropna()
-        if df_xy.empty:
-            raise ValueError("No valid traces with required data found") from None
-
-        ranges = []
-        for axis in ("x", "y"):
-            layout_axis = fig.layout[f"{axis}axis"]
-            values = df_xy[axis]
-            if layout_axis.type == "log":
-                values = values[values > 0]
-            if values.empty:
-                raise ValueError(f"No valid data for {axis}-axis") from None
-            bounds = (values.min(), values.max())
-            if layout_axis.range is not None:
-                bounds = tuple(
-                    auto
-                    if bound is None
-                    else 10**bound
-                    if layout_axis.type == "log"
-                    else bound
-                    for auto, bound in zip(bounds, layout_axis.range, strict=True)
-                )
-            ranges.append(bounds)
-        x_range, y_range = ranges
-
+    x_range, y_range = ranges
     return x_range, y_range
 
 
@@ -409,21 +449,10 @@ def annotated_heatmap(
         for col_idx, val in enumerate(row)
     ]
 
-    axis_extra = {} if labelled else dict(showticklabels=False)
+    axis_extra = dict(dtick=1) if labelled else dict(showticklabels=False)
     layout = dict(
         annotations=annotations,
-        xaxis=dict(
-            ticks="",
-            side="top",
-            gridcolor="rgb(0, 0, 0)",
-            **({"dtick": 1} if labelled else {}),
-            **axis_extra,
-        ),
-        yaxis=dict(
-            ticks="",
-            ticksuffix="  ",
-            **({"dtick": 1} if labelled else {}),
-            **axis_extra,
-        ),
+        xaxis=dict(ticks="", side="top", gridcolor="rgb(0, 0, 0)", **axis_extra),
+        yaxis=dict(ticks="", ticksuffix="  ", **axis_extra),
     )
     return go.Figure(data=[trace], layout=layout)

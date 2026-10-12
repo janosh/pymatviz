@@ -7,6 +7,7 @@ from typing import Any
 import traitlets as tl
 
 from pymatviz.widgets._normalize import normalize_plot_json
+from pymatviz.widgets._traits import optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -41,13 +42,13 @@ class FermiSurfaceWidget(MatterVizWidget):
     band_data = tl.Dict(allow_none=True).tag(sync=True)
 
     # Display options
-    mu = tl.Float(allow_none=True, default_value=None).tag(sync=True)
-    representation = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
-    surface_opacity = tl.Float(allow_none=True, default_value=None).tag(sync=True)
-    show_bz = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
-    bz_opacity = tl.Float(allow_none=True, default_value=None).tag(sync=True)
-    show_vectors = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
-    camera_projection = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
+    mu = optional_trait(tl.Float)
+    representation = optional_trait(tl.Unicode)
+    surface_opacity = optional_trait(tl.Float)
+    show_bz = optional_trait(tl.Bool)
+    bz_opacity = optional_trait(tl.Float)
+    show_vectors = optional_trait(tl.Bool)
+    camera_projection = optional_trait(tl.Unicode)
 
     def __init__(
         self,

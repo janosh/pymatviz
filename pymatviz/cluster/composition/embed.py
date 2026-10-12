@@ -35,7 +35,7 @@ def matminer_featurize(
     compositions: Sequence[str | Composition] | pd.Series,
     preset: MatminerElementPropertyPreset = "magpie",
     *,
-    normalize: bool = True,
+    normalize: bool = False,
     feature_subset: list[str] | None = None,
     n_jobs: int | None = 1,  # Disable multiprocessing by default
 ) -> np.ndarray:
@@ -49,7 +49,11 @@ def matminer_featurize(
             formulas as strings or pymatgen Composition objects.
         preset (str): Matminer preset to use. Options: "magpie", "deml", "matminer",
             "matscholar_el", "megnet_el" (default: "magpie").
-        normalize (bool): If True (default), normalize the feature vectors to unit norm.
+        normalize (bool): If True, L2-normalize each feature vector (default: False).
+            Magpie-style features mix units (e.g. kelvin and eV), so a row norm is
+            dominated by the largest-magnitude ones (melting temperature) and divides
+            every feature by it; column standardization in project_vectors already
+            puts features on a common scale.
         feature_subset (list[str] | None): List of specific features to use from the
             full feature set. If None (default), all available features will be used.
         n_jobs (int | None): Number of jobs to run in parallel. Set to 1 to disable
@@ -98,7 +102,7 @@ def one_hot_encode(
     compositions: Sequence[str | Composition] | pd.Series,
     *,
     normalize: bool = True,
-    elements: Sequence[str] | None = None,
+    elements: Sequence[str | Element] | None = None,
 ) -> np.ndarray:
     """One-hot encode chemical formulas or compositions.
 
@@ -107,28 +111,31 @@ def one_hot_encode(
             formulas as strings or pymatgen Composition objects.
         normalize (bool): Whether to normalize the feature vectors to unit norm
             (default: True)
-        elements (Sequence[str] | None): Elements to include in the one-hot encoding.
-            If None (default), all elements in the periodic table will be used.
+        elements (Sequence[str | Element] | None): Elements to include in the one-hot
+            encoding. If None (default), all elements in the periodic table will be
+            used. Compositions with elements outside this list raise ValueError.
 
     Returns:
         np.ndarray: Array of shape (n_compositions, n_elements) with one-hot encoded
             compositions where each row corresponds to a composition and each column
             to an element's fraction in that composition.
     """
-    if elements is None:
-        elements = list(map(str, Element))
+    elements = list(map(str, Element if elements is None else elements))
+    column_of = {element: idx for idx, element in enumerate(elements)}
+    if len(column_of) != len(elements):
+        raise ValueError(f"duplicate entries in {elements=}")
 
     comp_objs = [try_composition(comp) for comp in compositions]
-    n_compositions = len(comp_objs)
-    n_elements = len(elements)
-    features = np.zeros((n_compositions, n_elements))
+    features = np.zeros((len(comp_objs), len(elements)))
 
     for idx, comp in enumerate(comp_objs):
         comp_dict = comp.element_composition.fractional_composition.as_dict()
+        if missing := sorted(set(comp_dict) - set(column_of)):
+            raise ValueError(
+                f"{comp.formula} contains {missing}, which are not in {elements=}"
+            )
         for element, fraction in comp_dict.items():
-            if element in elements:
-                element_idx = elements.index(element)
-                features[idx, element_idx] = fraction
+            features[idx, column_of[element]] = fraction
 
     if normalize:
         features = sklearn.preprocessing.normalize(features, norm="l2", axis=1)

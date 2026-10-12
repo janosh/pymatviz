@@ -28,31 +28,19 @@ def test_objects(
     structures: tuple[Structure, Structure], ase_atoms: tuple[Any, Any]
 ) -> dict[str, Any]:
     """Create test objects for all supported types using existing fixtures."""
-    objects: dict[str, Any] = {"structure": structures[0]}
+    from pymatgen.analysis.diffraction.xrd import DiffractionPattern
 
-    if ase_atoms is not None:
-        objects["ase_atoms"] = ase_atoms[0]
-    else:
-        try:
-            from ase.build import bulk
-
-            objects["ase_atoms"] = bulk("Si", "diamond", a=5.43)
-        except ImportError:
-            objects["ase_atoms"] = None
-
-    try:
-        from pymatgen.analysis.diffraction.xrd import DiffractionPattern
-
-        objects["diffraction_pattern"] = DiffractionPattern(
-            x=[10, 20, 30],
-            y=[100, 50, 75],
-            hkls=[[{"hkl": (1, 0, 0)}], [{"hkl": (1, 1, 0)}], [{"hkl": (1, 1, 1)}]],
-            d_hkls=[2.5, 2.0, 1.8],
-        )
-    except ImportError:
-        objects["diffraction_pattern"] = None
-
-    return objects
+    diffraction_pattern = DiffractionPattern(
+        x=[10, 20, 30],
+        y=[100, 50, 75],
+        hkls=[[{"hkl": (1, 0, 0)}], [{"hkl": (1, 1, 0)}], [{"hkl": (1, 1, 1)}]],
+        d_hkls=[2.5, 2.0, 1.8],
+    )
+    return {
+        "structure": structures[0],
+        "ase_atoms": ase_atoms[0],
+        "diffraction_pattern": diffraction_pattern,
+    }
 
 
 @pytest.mark.parametrize("enable", [True, False])
@@ -111,21 +99,12 @@ def test_notebook_mode_preserves_external_hooks(
         pmv.notebook_mode(on=False)
 
 
-@pytest.mark.parametrize(
-    ("obj_name", "should_skip"),
-    [("structure", False), ("ase_atoms", True), ("diffraction_pattern", True)],
-)
+@pytest.mark.parametrize("obj_name", ["structure", "ase_atoms", "diffraction_pattern"])
 def test_object_notebook_display(
-    test_objects: dict[str, Any],
-    obj_name: str,
-    should_skip: bool,
-    monkeypatch: pytest.MonkeyPatch,
+    test_objects: dict[str, Any], obj_name: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Test _ipython_display_ and _repr_mimebundle_ for supported types."""
     obj = test_objects[obj_name]
-    if should_skip and obj is None:
-        pytest.skip(f"{obj_name} not available")
-
     pmv.notebook_mode(on=True)
     published_data: list[dict[str, str]] = []
     monkeypatch.setattr(
@@ -147,37 +126,36 @@ def test_object_notebook_display(
         pmv.notebook_mode(on=False)
 
 
-def test_widget_mime_bundle() -> None:
-    """Test _widget_mime_bundle produces widget MIME for registered types."""
-    struct = Structure(Lattice.cubic(3), ["Fe", "Fe"], [[0, 0, 0], [0.5, 0.5, 0.5]])
-    result = notebook._widget_mime_bundle(struct)
+class UnknownType:
+    """Type without a registered MatterViz widget."""
+
+
+@pytest.mark.parametrize(
+    ("obj", "has_widget"),
+    [
+        (Structure(Lattice.cubic(3), ["Fe", "Fe"], [[0, 0, 0], [0.5] * 3]), True),
+        (UnknownType(), False),
+    ],
+)
+def test_widget_mime_bundle(obj: object, has_widget: bool) -> None:
+    """Registered types get widget MIME, others fall back to plain text."""
+    result = notebook._widget_mime_bundle(obj)
     assert "text/plain" in result
-    assert "application/vnd.jupyter.widget-view+json" in result
+    assert ("application/vnd.jupyter.widget-view+json" in result) is has_widget
+    if not has_widget:
+        assert result == {"text/plain": repr(obj)}
 
 
-def test_widget_mime_bundle_unregistered() -> None:
-    """Test _widget_mime_bundle falls back for unregistered types."""
-
-    class UnknownType:
-        pass
-
-    result = notebook._widget_mime_bundle(UnknownType())
-    assert list(result.keys()) == ["text/plain"]
-    assert "UnknownType" in result["text/plain"]
-
-
-def test_fallback_without_pymatviz(
+def test_fallback_without_widgets(
     structures: tuple[Structure, Structure], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Test graceful fallback when pymatviz import fails."""
+    """Fall back to plain text when the widget module fails to import."""
     original_import = __import__
 
     def mock_import(name: str, *args: Any, **kwargs: Any) -> Any:
-        if name == "pymatviz":
-            raise ImportError("No module named 'pymatviz'")
+        if name.startswith("pymatviz.widgets"):
+            raise ImportError(f"No module named {name!r}")
         return original_import(name, *args, **kwargs)
-
-    monkeypatch.setattr("builtins.__import__", mock_import)
 
     published_data: list[dict[str, str]] = []
     monkeypatch.setattr(
@@ -186,14 +164,14 @@ def test_fallback_without_pymatviz(
     )
 
     pmv.notebook_mode(on=True)
+    monkeypatch.setattr("builtins.__import__", mock_import)
     try:
+        expected = {"text/plain": repr(structures[0])}
         structures[0]._ipython_display_()  # ty: ignore[unresolved-attribute]
-        assert len(published_data) == 1
-        assert "text/plain" in published_data[0]
-
-        mime = structures[0]._repr_mimebundle_()  # ty: ignore[unresolved-attribute]
-        assert "text/plain" in mime
+        assert published_data == [expected]
+        assert structures[0]._repr_mimebundle_() == expected  # ty: ignore[unresolved-attribute]
     finally:
+        monkeypatch.undo()
         pmv.notebook_mode(on=False)
 
 

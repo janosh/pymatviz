@@ -117,44 +117,23 @@ def chem_sys_treemap(
 
     # Limit the number of systems per arity if requested
     if max_cells is not None and max_cells > 0:
-        # Group by arity and sort by count
-        grouped = df_counts.groupby("arity_name")
         limited_dfs = []
-
-        for arity_name, group in grouped:
-            # Sort by count in descending order
+        for arity_name, group in df_counts.groupby("arity_name"):
             sorted_group = group.sort_values(Key.count, ascending=False)
-
-            # If the group has more systems than the limit
             if len(sorted_group) > max_cells:
-                # Take the top N systems
-                top_systems = sorted_group.iloc[:max_cells]
-
-                # Create an "Other" entry for the remaining systems
-                other_systems = sorted_group.iloc[max_cells:]
-                other_count = other_systems[Key.count].sum()
-                num_omitted = len(other_systems)
-
-                # Create "Other" entry for combines the count of the omitted cells
+                # Keep the top N systems, combine the rest into an "Other" entry
+                other_label = f"Other ({len(sorted_group) - max_cells} more not shown)"
                 other_entry = pd.DataFrame(
                     {
                         "arity_name": [arity_name],
-                        Key.chem_sys: [f"Other ({num_omitted} more not shown)"],
-                        Key.count: [other_count],
+                        Key.chem_sys: [other_label],
+                        Key.count: [sorted_group[Key.count].iloc[max_cells:].sum()],
                     }
                 )
-
                 if group_by != Key.chem_sys:
-                    other_entry[Key.formula] = f"Other ({num_omitted} more not shown)"
-
-                # Combine top systems with the "Other" entry
-                limited_group = pd.concat([top_systems, other_entry])
-                limited_dfs.append(limited_group)
-            else:
-                # If the group has fewer systems than the limit, keep all of them
-                limited_dfs.append(sorted_group)
-
-        # Combine all the limited groups
+                    other_entry[Key.formula] = other_label
+                sorted_group = pd.concat([sorted_group.iloc[:max_cells], other_entry])
+            limited_dfs.append(sorted_group)
         df_counts = pd.concat(limited_dfs)
 
     treemap_defaults = dict(
@@ -195,17 +174,12 @@ def chem_sys_treemap(
 
     # Apply custom styling for "Other" entries to make them visually distinct
     if max_cells is not None and max_cells > 0:
-        other_indices = [  # Find all "Other" entries in the treemap
-            idx
-            for idx, label in enumerate(fig.data[0].labels)
-            if "Other" in label and "more not shown" in label
+        is_other = [
+            "Other" in label and "more not shown" in label
+            for label in fig.data[0].labels
         ]
-
-        if other_indices:  # Create list of colors where "Other" entries are lightgray
-            colors = [
-                "rgba(255,255,255,0.1)" if idx in other_indices else None
-                for idx in range(len(fig.data[0].labels))
-            ]
+        if any(is_other):  # "Other" entries get a faint translucent fill
+            colors = ["rgba(255,255,255,0.1)" if flag else None for flag in is_other]
             fig.update_traces(marker=dict(colors=colors))
 
     return fig

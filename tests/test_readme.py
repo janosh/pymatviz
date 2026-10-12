@@ -4,9 +4,6 @@ import importlib
 import inspect
 import os
 import re
-from glob import glob
-
-import pytest
 
 
 def test_no_missing_images() -> None:
@@ -21,14 +18,8 @@ def test_no_missing_images() -> None:
 
 
 def get_function_names_from_file(file_path: str) -> set[str]:
-    """Extract function names from a Python file using inspect."""
-    try:
-        module = importlib.import_module(
-            file_path.replace("/", ".").replace("\\", ".").replace(".py", "")
-        )
-    except ImportError:
-        return set()
-
+    """Extract public function names defined in a Python file using inspect."""
+    module = importlib.import_module(file_path.removesuffix(".py").replace("/", "."))
     return {
         name
         for name, obj in inspect.getmembers(module, inspect.isfunction)
@@ -81,35 +72,25 @@ def get_function_names_from_readme() -> dict[str, set[str]]:
                 category = file_path.split("/")[2]
                 source_path = f"pymatviz/{category}.py"
         else:
-            source_path = file_path.split("(")[0].strip()
+            # strip optional line anchors like pymatviz/bar.py#L24
+            source_path = file_path.split("(")[0].strip().split("#")[0]
             if not source_path.startswith("pymatviz/"):
                 continue
 
-        if source_path not in file_to_funcs:
-            file_to_funcs[source_path] = set()
-        file_to_funcs[source_path].add(func_name)
+        file_to_funcs.setdefault(source_path, set()).add(func_name)
 
     return file_to_funcs
 
 
-# Get all Python files in the package, excluding tests and __init__.py
-package_files = [
-    path
-    for path in glob("pymatviz/**/*.py", recursive=True)
-    if not path.startswith("pymatviz/tests/") and not path.endswith("__init__.py")
-]
-
-
-@pytest.mark.parametrize("file_path", package_files)
-def test_readme_function_names(file_path: str) -> None:
-    """Test that functions mentioned in readme exist in source files."""
+def test_readme_function_names() -> None:
+    """Functions linked in the readme exist in the linked source files."""
     readme_funcs = get_function_names_from_readme()
-    source_funcs = get_function_names_from_file(file_path)
-
-    if file_path not in readme_funcs:
-        # No functions from {file_path} mentioned in readme
-        return
-    missing_funcs = readme_funcs[file_path] - source_funcs
-    assert not missing_funcs, (
-        f"Functions mentioned in readme but missing in {file_path}: {missing_funcs}"
-    )
+    py_files = {path for path in readme_funcs if path.endswith(".py")}
+    assert len(py_files) > 10, f"too few readme source links found: {py_files}"
+    for file_path in py_files:
+        missing_funcs = readme_funcs[file_path] - get_function_names_from_file(
+            file_path
+        )
+        assert not missing_funcs, (
+            f"Functions mentioned in readme but missing in {file_path}: {missing_funcs}"
+        )

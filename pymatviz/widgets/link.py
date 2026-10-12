@@ -17,8 +17,9 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING, Any
 
+from pymatviz.widgets._normalize import structure_to_dict
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
-from pymatviz.widgets.structure import StructureWidget, structure_to_dict
+from pymatviz.widgets.structure import StructureWidget
 from pymatviz.widgets.trajectory import TrajectoryWidget
 
 

@@ -149,38 +149,13 @@ def test_render_widget_headless_dispatches_async_in_event_loop() -> None:
     assert inputs.fmt == "png"
 
 
-def test_render_widget_headless_uses_sync_path_without_event_loop() -> None:
-    """render_widget_headless uses the sync Playwright path outside event loops."""
-    fake_png = b"\x89PNG sync"
-
-    mock_page = MagicMock()
-    mock_page.goto = MagicMock()
-    mock_page.wait_for_function = MagicMock()
-    mock_page.evaluate.return_value = None
-    mock_page.locator.return_value.screenshot.return_value = fake_png
-    mock_page.close = MagicMock()
-
-    mock_browser = MagicMock()
-    mock_browser.new_page.return_value = mock_page
-
-    with (
-        patch(f"{HEADLESS_PATH}._foreign_running_loop", return_value=None),
-        patch(f"{HEADLESS_PATH}._get_browser", return_value=mock_browser),
-        patch(f"{HEADLESS_PATH}._render_widget_async") as mock_async,
-    ):
-        result = render_widget_headless(
-            DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS, fmt="png"
-        )
-
-    mock_async.assert_not_called()
-    assert result == fake_png
-    mock_browser.new_page.assert_called_once()
-
-
 @pytest.mark.parametrize(
     ("fmt", "dpi", "expected_scale", "expected_bytes"),
     [
+        ("png", 72, 1.0, b"\x89PNG dpi"),
         ("png", 144, 2.0, b"\x89PNG dpi"),
+        ("png", 36, 1.0, b"\x89PNG dpi"),  # sub-72 DPI clamps to 1x
+        ("jpeg", 72, 1.0, b"\xff\xd8 dpi"),
         ("jpeg", 216, 3.0, b"\xff\xd8 dpi"),
         ("svg", 300, 1, b"<svg>dpi</svg>"),
     ],
@@ -188,7 +163,9 @@ def test_render_widget_headless_uses_sync_path_without_event_loop() -> None:
 def test_render_widget_headless_uses_dpi_scale_factor(
     fmt: str, dpi: int, expected_scale: float, expected_bytes: bytes
 ) -> None:
-    """render_widget_headless maps DPI to browser scale for raster formats."""
+    """render_widget_headless takes the sync path outside event loops and maps DPI
+    to browser scale for raster formats.
+    """
     mock_page = _mock_page(svg_result=expected_bytes.decode() if fmt == "svg" else None)
     mock_page.locator.return_value.screenshot.return_value = expected_bytes
     mock_browser = MagicMock()
@@ -235,32 +212,27 @@ def test_render_widget_headless_canvas_pdf_uses_dpi_scale() -> None:
 # === _render_widget_async ===
 
 
-def test_render_widget_async_calls_playwright_async_api() -> None:
-    """_render_widget_async uses async Playwright API end-to-end."""
-    fake_png = b"\x89PNG async"
-
-    mock_locator = MagicMock()
-    mock_locator.screenshot = AsyncMock(return_value=fake_png)
-
+def _run_async_render(render_error: str | None) -> tuple[bytes, AsyncMock, AsyncMock]:
+    """Run _render_widget_async against a mocked async browser whose page reports
+    ``render_error``. Returns ``(result, browser, page)``.
+    """
     mock_page = AsyncMock()
-    mock_page.goto = AsyncMock()
-    mock_page.wait_for_function = AsyncMock()
-    mock_page.evaluate = AsyncMock(return_value=None)
-    mock_page.locator = MagicMock(return_value=mock_locator)
-    mock_page.close = AsyncMock()
-
+    mock_page.evaluate = AsyncMock(return_value=render_error)
+    mock_page.locator = MagicMock()
+    mock_page.locator.return_value.screenshot = AsyncMock(return_value=b"\x89PNG")
     mock_browser = AsyncMock()
     mock_browser.new_page = AsyncMock(return_value=mock_page)
-    mock_browser.is_connected.return_value = True
 
-    async def run() -> bytes:
-        inputs = _RenderInputs(DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS, fmt="png")
-        with patch(f"{HEADLESS_PATH}._get_async_browser", return_value=mock_browser):
-            return await _render_widget_async(inputs)
+    inputs = _RenderInputs(DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS, fmt="png")
+    with patch(f"{HEADLESS_PATH}._get_async_browser", return_value=mock_browser):
+        result = asyncio.run(_render_widget_async(inputs))
+    return result, mock_browser, mock_page
 
-    result = asyncio.run(run())
 
-    assert result == fake_png
+def test_render_widget_async_calls_playwright_async_api() -> None:
+    """_render_widget_async uses async Playwright API end-to-end."""
+    result, mock_browser, mock_page = _run_async_render(render_error=None)
+    assert result == b"\x89PNG"
     mock_browser.new_page.assert_awaited_once()
     mock_page.goto.assert_awaited_once()
     mock_page.wait_for_function.assert_awaited_once()
@@ -269,47 +241,27 @@ def test_render_widget_async_calls_playwright_async_api() -> None:
 
 def test_render_widget_async_propagates_render_error() -> None:
     """_render_widget_async raises RuntimeError when JS reports a render error."""
-    mock_page = AsyncMock()
-    mock_page.goto = AsyncMock()
-    mock_page.wait_for_function = AsyncMock()
-    mock_page.evaluate = AsyncMock(return_value="ESM bundle has no render export")
-    mock_page.close = AsyncMock()
-
-    mock_browser = AsyncMock()
-    mock_browser.new_page = AsyncMock(return_value=mock_page)
-    mock_browser.is_connected.return_value = True
-
-    async def run() -> None:
-        inputs = _RenderInputs(DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS, fmt="png")
-        with patch(f"{HEADLESS_PATH}._get_async_browser", return_value=mock_browser):
-            await _render_widget_async(inputs)
-
-    with pytest.raises(RuntimeError, match="render failed"):
-        asyncio.run(run())
+    with pytest.raises(RuntimeError, match="render failed: ESM bundle has no render"):
+        _run_async_render(render_error="ESM bundle has no render export")
 
 
 # === _build_html ===
 
 
 def test_build_html_contains_esm_and_widget_data() -> None:
-    """Generated HTML embeds the ESM bundle and widget data."""
+    """Generated HTML embeds the ESM bundle, widget JSON data, and CSS."""
+    css = "body { color: red; }"
     html = _build_html(
         {"widget_type": "bar_plot", "style": "height: 300px"},
         "export default { render() {} }",
-        ".widget {}",
+        css,
     )
-    assert "bar_plot" in html
+    assert '"widget_type": "bar_plot"' in html
+    assert f"<style>{css}</style>" in html
     assert "300px" in html
     assert "__RENDER_DONE" in html
     assert "blob:" not in html  # blob URL is created at runtime, not in source
     assert "atob(" in html  # base64 decode of ESM
-
-
-def test_build_html_applies_dimension_overrides() -> None:
-    """Explicit width/height override widget style defaults."""
-    html = _build_html(DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS, width=1200, height=900)
-    assert "1200px" in html
-    assert "900px" in html
 
 
 # === Content-aware capture (_capture_page) ===

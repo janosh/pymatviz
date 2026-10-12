@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from importlib.metadata import PackageNotFoundError, version
 from typing import TYPE_CHECKING
 
 import plotly.express as px
@@ -15,11 +14,6 @@ if TYPE_CHECKING:
 
 
 PKG_NAME = "pymatviz"
-try:
-    __version__ = version(PKG_NAME)
-except PackageNotFoundError:
-    pass  # package not installed
-
 
 # activate the pymatviz white/dark templates by setting
 # `pio.templates.default = "pymatviz_white|pymatviz_dark"`

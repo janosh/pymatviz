@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -133,6 +133,18 @@ from pymatviz.widgets.xrd import XrdWidget
             "heatmap_matrix",
             "values",
         ),
+        (
+            PeriodicTableWidget,
+            {"heatmap_values": [1.0, 4.0, 6.9]},
+            "periodic_table",
+            "heatmap_values",
+        ),
+        (
+            HeatmapMatrixWidget,
+            {"values": {"Fe": {"Fe": 1.0, "O": 0.5}, "O": {"Fe": 0.5, "O": 1.0}}},
+            "heatmap_matrix",
+            "values",
+        ),
         (PeriodicTableWidget, {"log": True}, "periodic_table", "log"),
         (
             HeatmapMatrixWidget,
@@ -165,6 +177,32 @@ def test_widget_construction_and_type(
     widget = widget_cls(**kwargs)
     assert widget.widget_type == expected_type
     assert getattr(widget, state_key) == kwargs[state_key]
+
+
+@pytest.mark.parametrize(
+    "widget_cls", [CompositionWidget, StructureWidget, TrajectoryWidget]
+)
+def test_widget_notebook_integration(widget_cls: type[MatterVizWidget]) -> None:
+    """Widgets expose a Jupyter widget-view MIME bundle backed by the real ESM/CSS."""
+    widget = widget_cls()
+    # ty mis-resolves _repr_mimebundle_ as unbound; it is bound at runtime
+    mime = widget._repr_mimebundle_()  # ty: ignore[missing-argument]
+    assert mime is not None
+    # accept dict or (data, metadata)
+    mime_data, metadata = mime if isinstance(mime, tuple) else (mime, {})
+    assert isinstance(metadata, dict)
+    view = mime_data["application/vnd.jupyter.widget-view+json"]
+    assert isinstance(view["model_id"], str)
+    assert view["model_id"]
+    assert isinstance(view["version_major"], int)
+    assert widget_cls.__name__ in str(mime_data["text/plain"])
+
+    for attr_name in ("_model_name", "_view_name", "_model_module", "_view_module"):
+        assert hasattr(widget, attr_name)
+    assert len(widget._esm) > 1000
+    assert len(widget._css) > 100
+    assert "export default" in widget._esm or " as default" in widget._esm
+    assert "render" in widget._esm
 
 
 # === to_dict auto-discovery ===
@@ -211,11 +249,13 @@ def test_to_dict_reflects_constructor_values() -> None:
         series=[{"values": [2, 3], "label": "h"}],
         bins=25,
         mode="overlay",
+        selected_series_idx=1,
         x_axis={"label": "Value"},
     )
     state = widget.to_dict()
     assert state["bins"] == 25
     assert state["mode"] == "overlay"
+    assert state["selected_series_idx"] == 1
     assert state["series"] == [{"values": [2.0, 3.0], "label": "h"}]
     assert state["x_axis"] == {"label": "Value"}
 
@@ -235,17 +275,10 @@ def test_to_dict_reflects_runtime_mutations() -> None:
 # === Traitlet defaults ===
 
 
-_MINIMAL_KWARGS: dict[type, dict[str, Any]] = {
-    BarPlotWidget: {"series": [{"x": [0, 1], "y": [1, 2]}]},
-    HistogramWidget: {"series": [{"values": [1, 2]}]},
-    HeatmapMatrixWidget: {"x_items": ["A"], "y_items": ["B"]},
-    SpacegroupBarPlotWidget: {"data": [225]},
-}
-
-
 @pytest.mark.parametrize(
     ("widget_cls", "attr", "expected"),
     [
+        (BarPlotWidget, "series", None),
         (BarPlotWidget, "orientation", "vertical"),
         (BarPlotWidget, "mode", "overlay"),
         (HistogramWidget, "bins", 100),
@@ -257,10 +290,14 @@ _MINIMAL_KWARGS: dict[type, dict[str, Any]] = {
         (PeriodicTableWidget, "missing", None),
         (HeatmapMatrixWidget, "log", False),
         (HeatmapMatrixWidget, "missing", None),
+        (HeatmapMatrixWidget, "values", None),  # None, not an empty list
+        (HeatmapMatrixWidget, "x_items", []),
+        (ChemPotDiagramWidget, "entries", []),
         (ScatterPlot3DWidget, "camera_projection", "perspective"),
         (HeatmapMatrixWidget, "color_scale", "interpolateViridis"),
         (HeatmapMatrixWidget, "tile_size", "50px"),
         (HeatmapMatrixWidget, "gap", "0px"),
+        (SpacegroupBarPlotWidget, "data", []),
         (SpacegroupBarPlotWidget, "show_counts", True),
         (SpacegroupBarPlotWidget, "show_legend", False),
         (SpacegroupBarPlotWidget, "orientation", "vertical"),
@@ -270,9 +307,8 @@ _MINIMAL_KWARGS: dict[type, dict[str, Any]] = {
     ],
 )
 def test_widget_traitlet_defaults(widget_cls: type, attr: str, expected: Any) -> None:
-    """Widgets expose correct default traitlet values."""
-    widget = widget_cls(**_MINIMAL_KWARGS.get(widget_cls, {}))
-    assert getattr(widget, attr) == expected
+    """Widgets construct without data and expose correct default traitlet values."""
+    assert widget_cls().to_dict()[attr] == expected
 
 
 def test_treemap_widget_all_config_traits_default_to_none() -> None:
@@ -306,17 +342,29 @@ def test_histogram_widget_delegates_series_validation() -> None:
 def test_structure_widget_isosurface_settings() -> None:
     """StructureWidget passes layers-only isosurface_settings through to_dict."""
     layer = dict(isovalue=0.05, color="#3b82f6", opacity=0.6, visible=True)
-    layer |= dict(show_negative=False, negative_color="#ef4444")
+    layer |= dict(show_negative=False, negative_color="#ef4444", volume_id="total")
     iso_settings = {"layers": [layer], "wireframe": False, "halo": 0}
-    state = StructureWidget(isosurface_settings=iso_settings).to_dict()
+    state = StructureWidget(
+        isosurface_settings=iso_settings, active_volume_id="total"
+    ).to_dict()
     assert state["isosurface_settings"] == iso_settings
+    assert state["active_volume_id"] == "total"
+    assert StructureWidget().active_volume_id is None
     assert state["widget_type"] == "structure"
 
 
-def test_structure_widget_vector_props() -> None:
-    """StructureWidget exposes vector_configs and all vector props."""
-    configs = {"force": {"visible": True, "color": "#e74c3c", "scale": None}}
-    widget = StructureWidget(
+@pytest.mark.parametrize("widget_cls", [StructureWidget, TrajectoryWidget])
+def test_structure_viz_vector_props(
+    widget_cls: type[StructureWidget | TrajectoryWidget],
+) -> None:
+    """Structure widgets sync vector_configs and all vector props; configs default to
+    None (frontend auto-detects from site properties) and update after construction.
+    """
+    configs = {
+        "force_DFT": {"visible": True, "color": "#e74c3c", "scale": None},
+        "force_MLFF": {"visible": True, "color": "#3498db", "scale": 1.5},
+    }
+    vector_props: dict[str, Any] = dict(
         vector_configs=configs,
         vector_scale=3.0,
         vector_color="#00ff00",
@@ -324,41 +372,13 @@ def test_structure_widget_vector_props() -> None:
         vector_uniform_thickness=True,
         vector_origin_gap=0.25,
     )
-    state = widget.to_dict()
-    assert state["vector_configs"] == configs
-    assert state["vector_scale"] == 3.0
-    assert state["vector_color"] == "#00ff00"
-    assert state["vector_normalize"] is True
-    assert state["vector_uniform_thickness"] is True
-    assert state["vector_origin_gap"] == 0.25
+    widget = widget_cls(**vector_props)
+    assert {key: widget.to_dict()[key] for key in vector_props} == vector_props
 
-
-def test_periodic_table_accepts_list_input() -> None:
-    """PeriodicTableWidget accepts list of values (not just dict)."""
-    widget = PeriodicTableWidget(heatmap_values=[1.0, 4.0, 6.9])
-    assert widget.heatmap_values == [1.0, 4.0, 6.9]
-    assert widget.widget_type == "periodic_table"
-
-
-@pytest.mark.parametrize(
-    ("widget_cls", "kwargs", "expected_type"),
-    [
-        (PeriodicTableWidget, {}, "periodic_table"),
-        (RdfPlotWidget, {}, "rdf_plot"),
-        (ScatterPlot3DWidget, {}, "scatter_plot_3d"),
-        (ChemPotDiagramWidget, {}, "chem_pot_diagram"),
-        (HeatmapMatrixWidget, {}, "heatmap_matrix"),
-        (SpacegroupBarPlotWidget, {}, "spacegroup_bar"),
-        (TreemapWidget, {}, "treemap"),
-    ],
-)
-def test_new_widgets_construct_with_no_data(
-    widget_cls: type, kwargs: dict[str, Any], expected_type: str
-) -> None:
-    """New widgets construct successfully with empty/no data."""
-    widget = widget_cls(**kwargs)
-    assert widget.widget_type == expected_type
-    assert isinstance(widget.to_dict(), dict)
+    widget.vector_configs = {**configs, "force_MLFF": {"visible": False}}
+    assert widget.to_dict()["vector_configs"]["force_MLFF"] == {"visible": False}
+    assert widget_cls().vector_configs is None
+    assert widget_cls(vector_configs={}).vector_configs == {}
 
 
 @pytest.mark.parametrize(
@@ -443,6 +463,7 @@ def test_treemap_widget_traits_and_validation() -> None:
         "label_min_font_size": 7,
         "label_max_font_size": 14,
         "parent_label_font_size": 16,
+        "max_children": 3,
         "zoom_root_id": "root/a",
     }
     widget = TreemapWidget(data=data, **config)
@@ -460,6 +481,8 @@ def test_treemap_widget_traits_and_validation() -> None:
     for bad_key in ("value_mode", "label_text", "label_fit"):
         with pytest.raises(tl.TraitError):
             TreemapWidget(data=data, **{bad_key: "not-an-option"})
+    with pytest.raises(tl.TraitError):
+        TreemapWidget(data=data, max_children=-1)
 
     # forest input: list of root nodes passes through unchanged
     roots = [{"label": "x", "value": 1}, {"label": "y", "value": 2}]
@@ -527,24 +550,6 @@ def test_dos_sigma_in_data_unit(
         assert widget_cls(sigma=sigma).to_dict()["sigma"] == expected
 
 
-def test_heatmap_matrix_values_none_passthrough() -> None:
-    """HeatmapMatrixWidget passes None values through as None (not empty list)."""
-    widget = HeatmapMatrixWidget(x_items=["A"], y_items=["B"])
-    assert widget.values is None
-    assert widget.to_dict()["values"] is None
-
-
-def test_heatmap_matrix_accepts_nested_dict_values() -> None:
-    """HeatmapMatrixWidget accepts dict-of-dicts as values."""
-    widget = HeatmapMatrixWidget(
-        x_items=["Fe", "O"],
-        y_items=["Fe", "O"],
-        values={"Fe": {"Fe": 1.0, "O": 0.5}, "O": {"Fe": 0.5, "O": 1.0}},
-    )
-    assert isinstance(widget.values, dict)
-    assert widget.values["Fe"]["O"] == 0.5
-
-
 def test_heatmap_matrix_scalar_string_axis_items() -> None:
     """HeatmapMatrixWidget treats scalar string axis items as one label."""
     widget = HeatmapMatrixWidget(x_items="Fe", y_items="O")
@@ -588,12 +593,6 @@ def test_scatter_plot_3d_rejects_invalid_series(
 # === FermiSurfaceWidget input validation ===
 
 
-def test_fermi_surface_widget_dual_input() -> None:
-    """FermiSurfaceWidget accepts exactly one data source."""
-    assert FermiSurfaceWidget(fermi_data={"iso": []}).band_data is None
-    assert FermiSurfaceWidget(band_data={"e": []}).fermi_data is None
-
-
 @pytest.mark.parametrize(
     ("fermi_data", "band_data"),
     [
@@ -616,13 +615,8 @@ def test_fermi_surface_widget_invalid_input_combo(
 def test_show_not_shadowed_by_display_traitlet(widget_cls: type) -> None:
     """show() remains callable on widgets that define a 'display' traitlet."""
     widget = widget_cls(display={"x_grid": True})
-    assert callable(widget.show)
-    assert isinstance(widget.display, dict)
-
     with patch("IPython.display.display") as mock_display:
-        result = widget.show()
-
-    assert result is None
+        assert widget.show() is None
     mock_display.assert_called_once_with(widget)
 
 
@@ -692,44 +686,28 @@ def test_to_img_writes_file(tmp_path: Any, path_suffix: str) -> None:
         assert fh.read() == _FAKE_PNG
 
 
-def test_to_img_passes_pdf_format_directly() -> None:
-    """to_img passes fmt='pdf' directly to the headless renderer."""
+@pytest.mark.parametrize(
+    "img_kwargs",
+    [
+        {"fmt": "pdf", "dpi": 200},
+        {"fmt": "jpeg", "quality": 75},
+        {"fmt": "png", "width": 1200, "height": None},
+        {"fmt": "png", "width": None, "height": 900},
+        {"fmt": "png", "width": 1200, "height": 900},
+    ],
+    ids=["pdf-dpi", "jpeg-quality", "width", "height", "width-height"],
+)
+def test_to_img_forwards_render_kwargs(img_kwargs: dict[str, Any]) -> None:
+    """to_img forwards fmt/dpi/quality/width/height to the headless renderer and
+    returns its bytes unchanged.
+    """
     widget = _make_widget()
     with patch(
         f"{_HEADLESS}.render_widget_headless", return_value=b"%PDF-fake"
     ) as mock_render:
-        result = widget.to_img(fmt="pdf", dpi=200)
-
-    assert mock_render.call_args.kwargs["fmt"] == "pdf"
-    assert mock_render.call_args.kwargs["dpi"] == 200
-    assert result == b"%PDF-fake"
-
-
-def test_to_img_passes_quality() -> None:
-    """to_img forwards quality parameter to the headless renderer."""
-    widget = _make_widget()
-    with patch(
-        f"{_HEADLESS}.render_widget_headless", return_value=_FAKE_PNG
-    ) as mock_render:
-        widget.to_img(fmt="jpeg", quality=75)
-
-    assert mock_render.call_args.kwargs["quality"] == 75
-
-
-@pytest.mark.parametrize(
-    ("width", "height"),
-    [(1200, None), (None, 900), (1200, 900)],
-)
-def test_to_img_passes_width_height(width: int | None, height: int | None) -> None:
-    """to_img forwards width/height overrides to the headless renderer."""
-    widget = _make_widget()
-    with patch(
-        f"{_HEADLESS}.render_widget_headless", return_value=_FAKE_PNG
-    ) as mock_render:
-        widget.to_img(fmt="png", width=width, height=height)
-
-    assert mock_render.call_args.kwargs["width"] == width
-    assert mock_render.call_args.kwargs["height"] == height
+        assert widget.to_img(**img_kwargs) == b"%PDF-fake"
+    for key, value in img_kwargs.items():
+        assert mock_render.call_args.kwargs[key] == value
 
 
 def test_to_img_falls_back_from_marimo_url() -> None:
@@ -809,17 +787,6 @@ def test_build_html_width_height_override(
         assert substr in html, f"expected {substr!r} in HTML"
 
 
-def test_build_html_embeds_data_and_css() -> None:
-    """_build_html injects widget JSON data and CSS into the page."""
-    from pymatviz.widgets._headless import _build_html
-
-    data = {"widget_type": "scatter_plot", "series": [{"x": [1]}]}
-    css = "body { color: red; }"
-    html = _build_html(data, "// esm", css)
-    assert '"widget_type": "scatter_plot"' in html
-    assert f"<style>{css}</style>" in html
-
-
 def test_shutdown_browser_tolerates_none() -> None:
     """_shutdown_browser handles _browser/_pw/_pw_cm all None without error."""
     import pymatviz.widgets._headless as headless_mod
@@ -850,14 +817,6 @@ def test_get_browser_import_error() -> None:
         headless_mod._browser = original
 
 
-def test_html_widget_types_frozenset() -> None:
-    """_HTML_WIDGET_TYPES holds the widgets that render plain HTML (no chart)."""
-    from pymatviz.widgets._headless import _HTML_WIDGET_TYPES
-
-    expected = {"periodic_table", "heatmap_matrix"}
-    assert expected == _HTML_WIDGET_TYPES
-
-
 @pytest.mark.parametrize(
     ("widget_type", "expect_html_fallback", "expect_worker_shim"),
     [
@@ -879,51 +838,6 @@ def test_build_html_render_gates(
     assert ("globalThis.Worker = undefined" in html) is expect_worker_shim
     # Spinner guard is always present so loading states are never captured
     assert '.spinner[role="status"]' in html
-
-
-@pytest.mark.parametrize(
-    ("fmt", "dpi", "expected_scale"),
-    [
-        ("png", 72, 1.0),
-        ("png", 144, 2.0),
-        ("png", 216, 3.0),
-        ("png", 36, 1.0),
-        ("jpeg", 72, 1.0),
-        ("jpeg", 144, 2.0),
-        ("svg", 300, 1),
-    ],
-)
-def test_render_widget_headless_dpi_to_scale(
-    fmt: str,
-    dpi: int,
-    expected_scale: float,
-) -> None:
-    """render_widget_headless maps DPI to device_scale_factor correctly."""
-    fake_svg = '<?xml version="1.0"?>\n<svg xmlns="http://www.w3.org/2000/svg"/>'
-    mock_page = MagicMock()
-    mock_page.evaluate = MagicMock(side_effect=[None, fake_svg])
-    mock_page.locator.return_value.screenshot = MagicMock(return_value=b"\x89PNG")
-
-    mock_browser = MagicMock()
-    mock_browser.new_page = MagicMock(return_value=mock_page)
-
-    # pin the sync path: a real sync-Playwright launch earlier in the session
-    # leaves an asyncio loop running, which would route down the unmocked async path
-    with (
-        patch(f"{_HEADLESS}._get_browser", return_value=mock_browser),
-        patch(f"{_HEADLESS}._foreign_running_loop", return_value=None),
-    ):
-        from pymatviz.widgets._headless import render_widget_headless
-
-        render_widget_headless(
-            {"widget_type": "bar_plot"},
-            "// esm",
-            "/* css */",
-            fmt=fmt,
-            dpi=dpi,
-        )
-    scale = mock_browser.new_page.call_args.kwargs["device_scale_factor"]
-    assert scale == expected_scale
 
 
 # === Headless integration tests (require playwright + chromium) ===
@@ -970,43 +884,35 @@ def test_headless_bar_plot_svg(bar_plot_widget: BarPlotWidget) -> None:
 
 
 @_skip_no_playwright
-def test_headless_bar_plot_jpeg(bar_plot_widget: BarPlotWidget) -> None:
-    """BarPlotWidget.to_img(fmt='jpeg') produces a valid JPEG."""
-    jpeg_bytes = bar_plot_widget.to_img(fmt="jpeg", dpi=72)
-    assert jpeg_bytes[:2] == b"\xff\xd8"  # JPEG SOI marker
-    assert len(jpeg_bytes) > 1000
-
-
-@_skip_no_playwright
-def test_headless_bar_plot_jpeg_from_jpg_extension(
-    bar_plot_widget: BarPlotWidget,
-    tmp_path: Any,
+@pytest.mark.parametrize(
+    ("fmt", "magic"), [("jpeg", b"\xff\xd8"), ("pdf", b"%PDF-")]
+)  # JPEG SOI marker, PDF header
+def test_headless_bar_plot_binary_formats(
+    bar_plot_widget: BarPlotWidget, fmt: str, magic: bytes
 ) -> None:
-    """to_img infers JPEG format from .jpg extension."""
-    out_path = f"{tmp_path}/bar.jpg"
-    result = bar_plot_widget.to_img(filename=out_path, dpi=72)
-    assert result[:2] == b"\xff\xd8"
-    with open(out_path, "rb") as fh:
-        assert fh.read() == result
+    """BarPlotWidget.to_img produces a valid, non-trivial JPEG/PDF."""
+    img_bytes = bar_plot_widget.to_img(fmt=fmt, dpi=72)  # ty: ignore[invalid-argument-type]
+    assert img_bytes.startswith(magic)
+    assert len(img_bytes) > 1000
 
 
 @_skip_no_playwright
-def test_headless_bar_plot_pdf(bar_plot_widget: BarPlotWidget) -> None:
-    """BarPlotWidget.to_img(fmt='pdf') produces valid PDF."""
-    pdf_bytes = bar_plot_widget.to_img(fmt="pdf")
-    assert pdf_bytes[:5] == b"%PDF-"
-    assert len(pdf_bytes) > 1000
-
-
-@_skip_no_playwright
+@pytest.mark.parametrize(
+    ("filename", "fmt", "magic"),
+    [("bar.jpg", None, b"\xff\xd8"), ("bar.png", "png", b"\x89PNG")],
+    ids=["jpeg-from-jpg-extension", "explicit-png"],
+)
 def test_headless_bar_plot_writes_file(
     bar_plot_widget: BarPlotWidget,
     tmp_path: Any,
+    filename: str,
+    fmt: str | None,
+    magic: bytes,
 ) -> None:
-    """to_img writes headless-captured PNG to disk."""
-    out_path = f"{tmp_path}/bar.png"
-    result = bar_plot_widget.to_img(filename=out_path, fmt="png", dpi=72)
-    assert result[:4] == b"\x89PNG"
+    """to_img writes the headless capture to disk, inferring JPEG from .jpg."""
+    out_path = f"{tmp_path}/{filename}"
+    result = bar_plot_widget.to_img(filename=out_path, fmt=fmt, dpi=72)  # ty: ignore[invalid-argument-type]
+    assert result.startswith(magic)
     with open(out_path, "rb") as fh:
         assert fh.read() == result
 

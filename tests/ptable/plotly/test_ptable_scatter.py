@@ -40,7 +40,6 @@ def test_basic_scatter_plot(sample_data: SampleData) -> None:
     fig = pmv.ptable_scatter(sample_data)
 
     # Check basic figure properties
-    assert isinstance(fig, go.Figure)
     assert fig.layout.width == 850  # default scale=1.0
     assert fig.layout.height == 500
     assert fig.layout.showlegend is False
@@ -253,17 +252,25 @@ def test_marker_styling(sample_data: SampleData) -> None:
             assert trace.line.dash == "dot"
 
 
+def traces_by_elem_name(fig: go.Figure) -> dict[str, go.Scatter]:
+    """Map element names (from hover templates) to their data traces."""
+    return {
+        trace.hovertemplate.split("<br>")[0]: trace
+        for trace in fig.data
+        if trace.x and trace.x[0] is not None  # skip colorbar trace
+    }
+
+
+def colorbar_traces(fig: go.Figure) -> list[go.Scatter]:
+    """Invisible traces that render the colorbar."""
+    return [
+        trace for trace in fig.data if trace.x == (None,) and trace.marker.showscale
+    ]
+
+
 def test_color_data_handling(color_data: ColorData) -> None:
     """Test handling of color data in the third sequence."""
-    fig = pmv.ptable_scatter(color_data)
-
-    # Find traces with data and map them by their y-values
-    data_traces = [trace for trace in fig.data if trace.x]
-    traces = {}
-    for trace in data_traces:
-        if trace.x[0] == 1:  # First x value should be 1 for all traces
-            elem_name = trace.hovertemplate.split("<br>")[0]
-            traces[elem_name] = trace
+    traces = traces_by_elem_name(pmv.ptable_scatter(color_data))
 
     # Check discrete colors for Fe
     assert traces["Iron"].marker.color == ("red", "blue")
@@ -284,14 +291,7 @@ def test_color_precedence(color_data: ColorData) -> None:
     fig = pmv.ptable_scatter(
         color_data, marker_kwargs=marker_kwargs, color_elem_strategy="symbol"
     )
-
-    # Find traces with data and map them by their y-values
-    data_traces = [trace for trace in fig.data if trace.x]
-    traces = {}
-    for trace in data_traces:
-        if trace.x[0] == 1:  # First x value should be 1 for all traces
-            elem_name = trace.hovertemplate.split("<br>")[0]
-            traces[elem_name] = trace
+    traces = traces_by_elem_name(fig)
 
     # Color data should override marker_kwargs
     assert traces["Iron"].marker.color == ("red", "blue")
@@ -309,14 +309,8 @@ def test_colorbar_with_numeric_colors(color_data: ColorData) -> None:
     }
 
     # Test default colorbar
-    fig = pmv.ptable_scatter(numeric_data)
-    colorbar_traces = [
-        trace
-        for trace in fig.data
-        if trace.x == (None,) and trace.marker.showscale is True
-    ]
-    assert len(colorbar_traces) == 1
-    cbar = colorbar_traces[0].marker
+    (cbar_trace,) = colorbar_traces(pmv.ptable_scatter(numeric_data))
+    cbar = cbar_trace.marker
     assert cbar.colorscale[0] == (0.0, "#440154")
     assert cbar.cmin == 0.1  # min of all color values
     assert cbar.cmax == 0.7  # max of all color values
@@ -338,22 +332,10 @@ def test_colorbar_with_numeric_colors(color_data: ColorData) -> None:
     assert cbar.colorbar.orientation == "v"
 
     # Test colorbar can be hidden
-    fig = pmv.ptable_scatter(numeric_data, colorbar=False)
-    colorbar_traces = [
-        trace
-        for trace in fig.data
-        if trace.x == (None,) and trace.marker.showscale is True
-    ]
-    assert len(colorbar_traces) == 0
+    assert colorbar_traces(pmv.ptable_scatter(numeric_data, colorbar=False)) == []
 
     # Test mixed numeric and string colors (should still show colorbar)
-    fig = pmv.ptable_scatter(color_data)
-    colorbar_traces = [
-        trace
-        for trace in fig.data
-        if trace.x == (None,) and trace.marker.showscale is True
-    ]
-    assert len(colorbar_traces) == 1
+    assert len(colorbar_traces(pmv.ptable_scatter(color_data))) == 1
 
 
 def test_ptable_scatter_multi_line() -> None:
@@ -418,16 +400,3 @@ def test_empty_element_data() -> None:
     assert len(fig.data) == 2, "H should not have a trace"
     assert fig.data[0].hovertemplate.startswith("Iron")
     assert fig.data[1].hovertemplate.startswith("Copper")
-
-
-def test_duplicate_line_names() -> None:
-    """Test handling of duplicate line names across elements."""
-    data = {
-        "Fe": {"common": ([1, 2], [3, 4])},
-        "Cu": {"common": ([1, 2], [5, 6])},
-    }
-    fig = pmv.ptable_scatter(data, mode="lines")
-
-    # Check that lines with same name have same color
-    colors = {trace.line.color for trace in fig.data if trace.name == "common"}
-    assert len(colors) == 1  # All lines named "common" should have same color

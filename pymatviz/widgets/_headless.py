@@ -26,7 +26,7 @@ from typing import TYPE_CHECKING, Any
 
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Iterator, Mapping
+    from collections.abc import AsyncGenerator, Generator, Mapping
 
     from playwright.async_api import Browser as AsyncBrowser
     from playwright.async_api import Page as AsyncPage
@@ -47,6 +47,12 @@ _async_browser: AsyncBrowser | None = None
 _async_atexit_registered = False
 _async_browser_lock: asyncio.Lock | None = None
 
+_LAUNCH_ARGS = ("--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage")
+_PLAYWRIGHT_MISSING = (
+    "playwright is required for headless widget export.\n"
+    "Install it with:  uv pip install playwright && playwright install chromium"
+)
+
 
 def _get_browser() -> Browser:
     """Return a cached headless Chromium browser, launching one if needed.
@@ -65,22 +71,15 @@ def _get_browser() -> Browser:
         try:
             from playwright.sync_api import sync_playwright
         except ImportError:
-            raise ImportError(
-                "playwright is required for headless widget export.\n"
-                "Install it with:  uv pip install playwright"
-                " && playwright install chromium"
-            ) from None
+            raise ImportError(_PLAYWRIGHT_MISSING) from None
 
         pw_cm = sync_playwright()
         pw = pw_cm.start()
         try:
-            launch_args = ["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage"]
-            browser = pw.chromium.launch(headless=True, args=launch_args)
+            browser = pw.chromium.launch(headless=True, args=list(_LAUNCH_ARGS))
         except Exception:
-            try:
+            with contextlib.suppress(OSError, RuntimeError):
                 pw.stop()
-            except (OSError, RuntimeError):
-                pass
             raise
         _pw_cm = pw_cm
         _pw = pw
@@ -94,17 +93,13 @@ def _get_browser() -> Browser:
 def _shutdown_browser() -> None:
     """Clean up the browser and Playwright on interpreter exit."""
     global _pw_cm, _pw, _browser  # noqa: PLW0603
-    try:
-        if _browser is not None:
+    if _browser is not None:
+        with contextlib.suppress(OSError, RuntimeError):
             _browser.close()
-    except (OSError, RuntimeError):
-        pass
     _browser = None
-    try:
-        if _pw is not None:
+    if _pw is not None:
+        with contextlib.suppress(OSError, RuntimeError):
             _pw.stop()
-    except (OSError, RuntimeError):
-        pass
     _pw = None
     _pw_cm = None
 
@@ -128,25 +123,14 @@ async def _get_async_browser() -> AsyncBrowser:
         try:
             from playwright.async_api import async_playwright
         except ImportError:
-            raise ImportError(
-                "playwright is required for headless widget export.\n"
-                "Install it with:  uv pip install playwright"
-                " && playwright install chromium"
-            ) from None
+            raise ImportError(_PLAYWRIGHT_MISSING) from None
 
         pw = await async_playwright().start()
         try:
-            launch_args = [
-                "--no-sandbox",
-                "--disable-gpu",
-                "--disable-dev-shm-usage",
-            ]
-            browser = await pw.chromium.launch(headless=True, args=launch_args)
+            browser = await pw.chromium.launch(headless=True, args=list(_LAUNCH_ARGS))
         except Exception:
-            try:
+            with contextlib.suppress(OSError, RuntimeError):
                 await pw.stop()
-            except (OSError, RuntimeError):
-                pass
             raise
         _async_pw = pw
         _async_browser = browser
@@ -280,7 +264,7 @@ def _raise_if_timeout(exc: BaseException, timeout: float) -> None:
 @contextlib.contextmanager
 def _rendered_page(
     browser: Browser, inputs: _RenderInputs
-) -> Iterator[tuple[Page, str | None, float]]:
+) -> Generator[tuple[Page, str | None, float], None, None]:
     """Yield ``(page, render_error, scale_factor)`` for a fully loaded widget page.
 
     Builds the capture HTML, opens it in a new page, and waits for the JS side
@@ -302,20 +286,16 @@ def _rendered_page(
         yield page, page.evaluate("() => window.__RENDER_ERROR"), scale_factor
     finally:
         if page is not None:
-            try:
+            with contextlib.suppress(OSError, RuntimeError):
                 page.close()
-            except (OSError, RuntimeError):
-                pass
-        try:
+        with contextlib.suppress(OSError):
             os.unlink(tmp_path)
-        except OSError:
-            pass
 
 
 @contextlib.asynccontextmanager
 async def _rendered_page_async(
     browser: AsyncBrowser, inputs: _RenderInputs
-) -> AsyncIterator[tuple[AsyncPage, str | None, float]]:
+) -> AsyncGenerator[tuple[AsyncPage, str | None, float], None]:
     """Async twin of ``_rendered_page`` for event-loop (Jupyter) contexts."""
     tmp_path, timeout_ms, scale_factor = _prepare_render(inputs)
     page: AsyncPage | None = None
@@ -332,14 +312,10 @@ async def _rendered_page_async(
         yield page, await page.evaluate("() => window.__RENDER_ERROR"), scale_factor
     finally:
         if page is not None:
-            try:
+            with contextlib.suppress(OSError, RuntimeError):
                 await page.close()
-            except (OSError, RuntimeError):
-                pass
-        try:
+        with contextlib.suppress(OSError):
             os.unlink(tmp_path)
-        except OSError:
-            pass
 
 
 async def _render_widget_async(inputs: _RenderInputs, quality: int = 90) -> bytes:

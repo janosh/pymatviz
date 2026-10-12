@@ -45,31 +45,16 @@ def test_normalize_get_neighbors_invalid_input() -> None:
         normalize_get_neighbors(strategy="invalid")  # ty: ignore[invalid-argument-type]
 
 
-def test_calculate_average_cn() -> None:
-    """Test calculate_average_cn function."""
-    # Create a simple cubic structure where Na should have 6 neighbors
-    lattice = Lattice.cubic(4.0)
+@pytest.mark.parametrize(("element", "expected_cn"), [("Na", 6.0), ("K", 0)])
+def test_calculate_average_cn(element: str, expected_cn: float) -> None:
+    """Average CN per element, 0 for elements absent from the structure."""
     struct = Structure(
-        lattice,
+        Lattice.cubic(4.0),
         ["Na", "Na", "Cl", "Cl"],
         [[0, 0, 0], [0.5, 0, 0], [0.5, 0.5, 0.5], [0, 0.5, 0.5]],
     )
-
     get_neighbors = normalize_get_neighbors(strategy=3.0)
-    avg_cn = calculate_average_cn(struct, "Na", get_neighbors)
-
-    assert avg_cn == 6.0  # Each Na should have 6 neighbors in simple cubic
-
-
-def test_calculate_average_cn_empty_element() -> None:
-    """Test calculate_average_cn with non-existent element."""
-    lattice = Lattice.cubic(4.0)
-    structure = Structure(lattice, ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]])
-
-    get_neighbors = normalize_get_neighbors(strategy=3.0)
-    avg_cn = calculate_average_cn(structure, "K", get_neighbors)
-
-    assert avg_cn == 0  # No K atoms in structure
+    assert calculate_average_cn(struct, element, get_neighbors) == expected_cn
 
 
 @pytest.mark.parametrize(

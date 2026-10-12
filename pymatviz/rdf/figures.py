@@ -14,13 +14,37 @@ from pymatviz.utils.plotting import PLOTLY_LINE_STYLES
 
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
+    from collections.abc import Hashable, Mapping, Sequence
     from typing import Any
 
     import numpy as np
     import pandas as pd
+    from pymatgen.core import IStructure
 
     from pymatviz.typing import AnyStructure
+
+
+def _resolve_n_bins(
+    struct_dict: Mapping[Hashable, IStructure],
+    cutoff: float,
+    n_bins: int,
+    bin_size: float | None,
+) -> int:
+    """Check structures have sites and that n_bins and bin_size aren't both set.
+    Returns n_bins, derived from bin_size if given.
+    """
+    for key, struct in struct_dict.items():
+        if len(struct) == 0:
+            raise ValueError(
+                f"input structure{f' {key}' if key else ''} contains no sites"
+            )
+    if bin_size is None:
+        return n_bins
+    if n_bins != 75:
+        raise ValueError(
+            f"Cannot specify both {n_bins=} and {bin_size=}. Pick one or the other."
+        )
+    return int(cutoff / bin_size)
 
 
 def element_pair_rdfs(
@@ -80,12 +104,6 @@ def element_pair_rdfs(
     """
     struct_dict = normalize_periodic_structures(structures)
 
-    for key, struct in struct_dict.items():
-        if len(struct) == 0:
-            raise ValueError(
-                f"input structure{f' {key}' if key else ''} contains no sites"
-            )
-
     # Calculate dynamic cutoff if not specified or negative
     max_cell_len = max(max(struct.lattice.abc) for struct in struct_dict.values())
     if cutoff is None:
@@ -95,10 +113,7 @@ def element_pair_rdfs(
     if not isinstance(cutoff, int | float):
         raise TypeError(f"Invalid {cutoff=}")
 
-    if n_bins != 75 and bin_size is not None:
-        raise ValueError(
-            f"Cannot specify both {n_bins=} and {bin_size=}. Pick one or the other."
-        )
+    n_bins = _resolve_n_bins(struct_dict, cutoff, n_bins, bin_size)
 
     # Determine all unique elements across all structures
     all_elements = set.union(
@@ -121,9 +136,6 @@ def element_pair_rdfs(
     element_pairs = sorted(element_pairs)
 
     # Calculate pairwise RDFs for all structures
-    if bin_size is not None:
-        n_bins = int(cutoff / bin_size)
-
     elem_pair_rdfs: dict[tuple[str, str], list[tuple[np.ndarray, np.ndarray]]] = {
         pair: [
             calculate_rdf(struct, pair[0], pair[1], cutoff=cutoff, n_bins=n_bins)
@@ -154,7 +166,7 @@ def element_pair_rdfs(
     labels = list(struct_dict)
 
     # Add RDF traces to the figure
-    for subplot_idx, (_elem_pair, rdfs) in enumerate(elem_pair_rdfs.items()):
+    for subplot_idx, rdfs in enumerate(elem_pair_rdfs.values()):
         row, col = divmod(subplot_idx, actual_cols)
 
         for trace_idx, (radii, rdf) in enumerate(rdfs):
@@ -244,22 +256,9 @@ def full_rdf(
             or if both n_bins and bin_size are specified.
     """
     struct_dict = normalize_periodic_structures(structures)
-
-    for key, struct in struct_dict.items():
-        if len(struct) == 0:
-            raise ValueError(
-                f"input structure{f' {key}' if key else ''} contains no sites"
-            )
-
-    if n_bins != 75 and bin_size is not None:
-        raise ValueError(
-            f"Cannot specify both {n_bins=} and {bin_size=}. Pick one or the other."
-        )
+    n_bins = _resolve_n_bins(struct_dict, cutoff, n_bins, bin_size)
 
     # Calculate full RDFs for all structures
-    if bin_size is not None:
-        n_bins = int(cutoff / bin_size)
-
     rdfs = {
         label: calculate_rdf(struct, cutoff=cutoff, n_bins=n_bins)
         for label, struct in struct_dict.items()

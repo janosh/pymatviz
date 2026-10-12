@@ -7,7 +7,7 @@ from typing import Any
 import traitlets as tl
 
 from pymatviz.widgets._normalize import normalize_plot_json, normalize_plot_series
-from pymatviz.widgets._traits import PlotControlsTraits
+from pymatviz.widgets._traits import PlotControlsTraits, optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -30,8 +30,8 @@ class BarPlotWidget(PlotControlsTraits, MatterVizWidget):
     line = tl.Dict(allow_none=True).tag(sync=True)
     ref_lines = tl.List(allow_none=True).tag(sync=True)
     padding = tl.Dict(allow_none=True).tag(sync=True)
-    range_padding = tl.Float(allow_none=True, default_value=None).tag(sync=True)
-    show_legend = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    range_padding = optional_trait(tl.Float)
+    show_legend = optional_trait(tl.Bool)
     x2_axis = tl.Dict(allow_none=True).tag(sync=True)
     x_range = tl.List(allow_none=True).tag(sync=True)
     x2_range = tl.List(allow_none=True).tag(sync=True)

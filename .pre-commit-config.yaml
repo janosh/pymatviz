@@ -2,7 +2,7 @@ default_install_hook_types: [pre-commit, commit-msg]
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.6
+    rev: v0.17.0
     hooks:
       - id: ruff-check
         args: [--fix]
@@ -11,7 +11,7 @@ repos:
         types_or: [python, jupyter]
 
   - repo: https://github.com/astral-sh/ty-pre-commit
-    rev: v0.0.79
+    rev: v0.0.86
     hooks:
       - id: ty
         # Isolated extras in a temp env. Override shell UV_FROZEN=1 / UV_NO_SYNC=1 or that env stays empty.
@@ -80,7 +80,7 @@ repos:
         stages: [pre-commit]
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.38.0
+    rev: 0.38.2
     hooks:
       - id: check-jsonschema
         files: ^pymatviz/keys\.yml$

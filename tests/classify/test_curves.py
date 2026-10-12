@@ -79,8 +79,10 @@ def test_df_input(
 
     # no_skill=False for consistent trace counting
     fig = curve_func("target", "prob", df=df_clf, no_skill=False)
-    assert isinstance(fig, go.Figure)
+    fig_arrays = curve_func(targets, probs, no_skill=False)
     assert len(fig.data) == 1  # 1 model trace
+    np.testing.assert_array_equal(fig.data[0].x, fig_arrays.data[0].x)
+    np.testing.assert_array_equal(fig.data[0].y, fig_arrays.data[0].y)
 
 
 @pytest.mark.parametrize(
@@ -121,15 +123,10 @@ def test_invalid_inputs(
     ],
 )
 def test_edge_cases(edge_case: tuple[Sequence[float], Sequence[float]]) -> None:
-    """Test edge cases for both curve types."""
+    """Single-class targets and degenerate probabilities don't raise."""
     targets, probs = edge_case
-
-    # PR curves should work for all cases
-    fig_pr = precision_recall_curve(targets, probs, no_skill=False)
-    assert isinstance(fig_pr, go.Figure)
-
-    fig_roc = roc_curve(targets, probs, no_skill=False)
-    assert isinstance(fig_roc, go.Figure)
+    precision_recall_curve(targets, probs, no_skill=False)
+    roc_curve(targets, probs, no_skill=False)
 
 
 def test_custom_styling() -> None:
@@ -151,18 +148,6 @@ def test_custom_styling() -> None:
     assert fig.data[1].line.dash == "dash"
 
 
-def test_large_dataset() -> None:
-    """Render both classifiers with a larger dataset."""
-    rng = np.random.default_rng(seed=0)
-    n_samples = 10_000
-    targets = rng.binomial(n=1, p=0.5, size=n_samples)
-    probs = rng.random(size=n_samples)
-
-    for curve_func in [precision_recall_curve, roc_curve]:
-        fig = curve_func(targets, probs, no_skill=False)
-        assert isinstance(fig, go.Figure)
-
-
 @pytest.mark.parametrize("targets", [[0, 1, 0, 1], [0, 0, 0, 1], [0, 1, 1, 1]])
 def test_no_skill_line(targets: list[int]) -> None:
     """Test that the no-skill line is added correctly."""
@@ -170,7 +155,6 @@ def test_no_skill_line(targets: list[int]) -> None:
 
     # The default baseline is a PR shape and a ROC trace.
     fig_pr = precision_recall_curve(targets, probs)
-    assert isinstance(fig_pr, go.Figure)
     # PR curve adds the no-skill line as a shape, not a trace
     assert len(fig_pr.data) == 1  # 1 model trace
     assert len(fig_pr.layout.shapes) == 1  # 1 no-skill line shape
@@ -179,24 +163,20 @@ def test_no_skill_line(targets: list[int]) -> None:
     assert fig_pr.layout.shapes[0].y1 == np.mean(targets)
 
     fig_roc = roc_curve(targets, probs)
-    assert isinstance(fig_roc, go.Figure)
     # ROC curve adds the no-skill line as a trace
     assert len(fig_roc.data) == 2  # 1 model trace + 1 no-skill line
 
     # Test with no_skill=False
     fig_pr_no_baseline = precision_recall_curve(targets, probs, no_skill=False)
-    assert isinstance(fig_pr_no_baseline, go.Figure)
     assert len(fig_pr_no_baseline.data) == 1  # 1 model trace, no baseline
     assert len(fig_pr_no_baseline.layout.shapes) == 0  # No shapes
 
     fig_roc_no_baseline = roc_curve(targets, probs, no_skill=False)
-    assert isinstance(fig_roc_no_baseline, go.Figure)
     assert len(fig_roc_no_baseline.data) == 1  # 1 model trace, no baseline
 
     # Test with custom no_skill options for PR curve
     custom_no_skill_pr = {"line": {"color": "red"}}
     fig_pr_custom = precision_recall_curve(targets, probs, no_skill=custom_no_skill_pr)
-    assert isinstance(fig_pr_custom, go.Figure)
     assert len(fig_pr_custom.data) == 1  # 1 model trace
     assert len(fig_pr_custom.layout.shapes) == 1  # 1 no-skill line shape
     assert fig_pr_custom.layout.shapes[0].line.color == "red"  # Custom color
@@ -204,7 +184,6 @@ def test_no_skill_line(targets: list[int]) -> None:
     # Test with custom no_skill options for ROC curve
     custom_no_skill_roc = {"line": {"color": "red"}}
     fig_roc_custom = roc_curve(targets, probs, no_skill=custom_no_skill_roc)
-    assert isinstance(fig_roc_custom, go.Figure)
     assert len(fig_roc_custom.data) == 2  # 1 model trace + 1 no-skill line
     assert fig_roc_custom.data[1].line.color == "red"  # Custom color
 

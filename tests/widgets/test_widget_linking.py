@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 from pymatgen.core import Lattice, Structure
 
@@ -23,19 +25,35 @@ def _frames(n_frames: int = 4) -> list[Structure]:
 
 
 @pytest.mark.parametrize(
-    ("trait_name", "value"),
+    ("widget_cls", "trait_name", "value", "default"),
     [
-        ("selected_point", {"series_idx": 0, "point_idx": 3}),
-        ("active_point", {"series_idx": 1, "point_idx": 2, "x": 1.0, "y": 2.0}),
-        ("hovered_point", {"series_idx": 0, "point_idx": 0, "x": 0.0, "y": 0.0}),
+        (ScatterPlotWidget, "selected_point", {"series_idx": 0, "point_idx": 3}, None),
+        (
+            ScatterPlotWidget,
+            "active_point",
+            {"series_idx": 1, "point_idx": 2, "x": 1.0, "y": 2.0},
+            None,
+        ),
+        (
+            ScatterPlotWidget,
+            "hovered_point",
+            {"series_idx": 0, "point_idx": 0, "x": 0.0, "y": 0.0},
+            None,
+        ),
+        (StructureWidget, "selected_sites", [1, 2], []),
+        (StructureWidget, "highlighted_sites", [0], []),
+        (StructureWidget, "hovered_site_idx", 3, None),
     ],
 )
-def test_scatter_interaction_traits_sync(
-    trait_name: str, value: dict[str, float]
+def test_interaction_traits_sync(
+    widget_cls: type[ScatterPlotWidget | StructureWidget],
+    trait_name: str,
+    value: object,
+    default: object,
 ) -> None:
-    """Scatter interaction traits round-trip and are tagged for frontend sync."""
-    widget = ScatterPlotWidget(series=[{"x": [0, 1], "y": [1, 2]}])
-    assert getattr(widget, trait_name) is None  # default
+    """Interaction traits default correctly, round-trip, and sync to the frontend."""
+    widget = widget_cls()
+    assert getattr(widget, trait_name) == default
     setattr(widget, trait_name, value)
     assert getattr(widget, trait_name) == value
     assert widget.class_traits()[trait_name].metadata.get("sync") is True
@@ -46,25 +64,6 @@ def test_scatter_selected_point_via_constructor() -> None:
     point = {"series_idx": 0, "point_idx": 5}
     widget = ScatterPlotWidget(series=[{"x": [0], "y": [0]}], selected_point=point)
     assert widget.selected_point == point
-
-
-@pytest.mark.parametrize(
-    ("trait_name", "value", "default"),
-    [
-        ("selected_sites", [1, 2], []),
-        ("highlighted_sites", [0], []),
-        ("hovered_site_idx", 3, None),
-    ],
-)
-def test_structure_interaction_traits_sync(
-    trait_name: str, value: object, default: object
-) -> None:
-    """Structure interaction traits round-trip and are tagged for frontend sync."""
-    widget = StructureWidget()
-    assert getattr(widget, trait_name) == default
-    setattr(widget, trait_name, value)
-    assert getattr(widget, trait_name) == value
-    assert widget.class_traits()[trait_name].metadata.get("sync") is True
 
 
 def test_link_selection_requires_two_widgets() -> None:
@@ -123,37 +122,21 @@ def test_link_scatter_click_highlights_source_scatter() -> None:
     assert scatter_b.selected_point == {"series_idx": 0, "point_idx": 2}
 
 
-def test_link_trajectory_step_drives_scatter_highlight() -> None:
-    """Stepping a trajectory highlights the matching scatter point."""
-    frames = _frames()
-    traj = TrajectoryWidget(trajectory=frames)
+@pytest.mark.parametrize(
+    ("link_kwargs", "series_idx"), [({}, 0), ({"series_idx": 2}, 2)]
+)
+def test_link_trajectory_step_drives_scatter_highlight(
+    link_kwargs: dict[str, Any], series_idx: int
+) -> None:
+    """Stepping a trajectory highlights the matching scatter point in the configured
+    series (default 0).
+    """
+    traj = TrajectoryWidget(trajectory=_frames())
     scatter = ScatterPlotWidget(series=[{"x": list(range(4)), "y": list(range(4))}])
 
-    link_selection(traj, scatter)
+    link_selection(traj, scatter, **link_kwargs)
     traj.current_step_idx = 3
-    assert scatter.selected_point == {"series_idx": 0, "point_idx": 3}
-
-
-def test_link_scatter_click_drives_trajectory_step() -> None:
-    """Clicking a scatter point steps a linked trajectory (two-way)."""
-    frames = _frames()
-    traj = TrajectoryWidget(trajectory=frames)
-    scatter = ScatterPlotWidget(series=[{"x": list(range(4)), "y": list(range(4))}])
-
-    link_selection(traj, scatter)
-    scatter.active_point = {"series_idx": 0, "point_idx": 1}
-    assert traj.current_step_idx == 1
-
-
-def test_link_series_idx_used_for_highlight() -> None:
-    """The configured series_idx is written into scatter selected_point."""
-    frames = _frames()
-    traj = TrajectoryWidget(trajectory=frames)
-    scatter = ScatterPlotWidget(series=[{"x": [0, 1], "y": [0, 1]}])
-
-    link_selection(traj, scatter, series_idx=2)
-    traj.current_step_idx = 1
-    assert scatter.selected_point == {"series_idx": 2, "point_idx": 1}
+    assert scatter.selected_point == {"series_idx": series_idx, "point_idx": 3}
 
 
 def test_link_no_infinite_loop_between_two_trajectories() -> None:
@@ -179,7 +162,7 @@ def test_link_ignores_null_scatter_point() -> None:
     scatter.active_point = {"series_idx": 0, "point_idx": 2}
     assert structure.structure == frames[2].as_dict()
 
-    scatter.active_point = None  # hover-off  # ty: ignore[invalid-assignment]
+    scatter.active_point = None  # hover-off
     assert structure.structure == frames[2].as_dict()  # unchanged
 
 
@@ -235,17 +218,6 @@ def test_link_does_not_emit_synthetic_active_point() -> None:
 
     assert seen == [{"series_idx": 0, "point_idx": 2, "event_id": 1}]
     assert scatter.active_point is not None  # trait keeps the click value
-
-
-def test_link_ignores_event_id_for_selection() -> None:
-    """Selection uses point_idx only; event_id does not affect which frame shows."""
-    frames = _frames()
-    structure = StructureWidget(structure=frames[0])
-    scatter = ScatterPlotWidget(series=[{"x": list(range(4)), "y": list(range(4))}])
-    link_selection(scatter, structure, structures=frames)
-
-    scatter.active_point = {"series_idx": 0, "point_idx": 3, "event_id": 99}
-    assert structure.structure == frames[3].as_dict()
 
 
 def test_link_out_of_range_index_warns_and_keeps_structure() -> None:

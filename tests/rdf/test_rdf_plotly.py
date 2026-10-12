@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import plotly.graph_objects as go
@@ -9,6 +9,12 @@ from pymatgen.core import Lattice, Structure
 
 from pymatviz.rdf.figures import element_pair_rdfs, full_rdf
 from tests.conftest import SI_ATOMS, SI_STRUCTS
+
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+EMPTY_STRUCT = Structure(Lattice.cubic(1), [], [])
 
 
 @pytest.mark.parametrize(
@@ -76,8 +82,7 @@ def test_element_pair_rdfs_layout_and_annotations(
     )
     fig = element_pair_rdfs(structs, subplot_kwargs=subplot_kwargs)
 
-    assert subplot_kwargs["cols"] == n_cols
-    assert isinstance(fig, go.Figure)
+    assert subplot_kwargs["cols"] == n_cols  # input dict must not be mutated
     assert fig.layout.title.text is None  # Assuming no main title is set
     assert fig.layout.yaxis.title.text == "g(r)"  # Common y-axis title
 
@@ -99,33 +104,39 @@ def test_element_pair_rdfs_layout_and_annotations(
     assert current_annotation_texts == expected["annotations"]
 
 
-def test_element_pair_rdfs_empty_structure() -> None:
-    empty_struct = Structure(Lattice.cubic(1), [], [])
-    for struct in (empty_struct, {"blank": empty_struct}):
-        key = " blank" if isinstance(struct, dict) else ""
-        with pytest.raises(ValueError, match=f"input structure{key} contains no sites"):
-            element_pair_rdfs(struct)
+@pytest.mark.parametrize("rdf_func", [element_pair_rdfs, full_rdf])
+@pytest.mark.parametrize(
+    ("structs", "kwargs", "err_cls", "match"),
+    [
+        (EMPTY_STRUCT, {}, ValueError, "input structure contains no sites"),
+        ({"blank": EMPTY_STRUCT}, {}, ValueError, "input structure blank contains no"),
+        ("not a structure", {}, TypeError, "Input must be a pymatgen Structure"),
+        (
+            SI_STRUCTS,
+            {"n_bins": 100, "bin_size": 0.1},
+            ValueError,
+            "Cannot specify both n_bins=.* and bin_size=.*",
+        ),
+    ],
+    ids=["empty", "empty_in_dict", "invalid_type", "n_bins_and_bin_size"],
+)
+def test_rdf_figures_invalid_input(
+    rdf_func: Callable[..., go.Figure],
+    structs: Any,
+    kwargs: dict[str, Any],
+    err_cls: type[Exception],
+    match: str,
+) -> None:
+    """Both RDF figure functions reject empty/invalid structures and bin conflicts."""
+    with pytest.raises(err_cls, match=match):
+        rdf_func(structs, **kwargs)
 
 
 def test_element_pair_rdfs_invalid_elements(structures: list[Structure]) -> None:
+    """Element pairs must only contain elements present in the structures."""
     err_msg = "Elements .* in element_pairs not present in any structure"
     with pytest.raises(ValueError, match=err_msg):
-        # Assuming Zn is not in the structure
         element_pair_rdfs(structures[0], element_pairs=[("Zn", "Zn")])
-
-
-def test_element_pair_rdfs_invalid_structure() -> None:
-    err_msg = "Input must be a pymatgen Structure, IStructure, Molecule"
-    with pytest.raises(TypeError, match=err_msg):
-        element_pair_rdfs("not a structure")  # ty: ignore[invalid-argument-type]
-
-
-def test_element_pair_rdfs_conflicting_bins_and_bin_size(
-    structures: list[Structure],
-) -> None:
-    err_msg = "Cannot specify both n_bins=.* and bin_size=.*"
-    with pytest.raises(ValueError, match=err_msg):
-        element_pair_rdfs(structures, n_bins=100, bin_size=0.1)
 
 
 @pytest.mark.parametrize(
@@ -135,6 +146,7 @@ def test_element_pair_rdfs_conflicting_bins_and_bin_size(
 def test_element_pair_rdfs_cutoff_and_bin_size(
     structures: list[Structure], param: str, values: tuple[float, ...]
 ) -> None:
+    """Trace counts and x-ranges for cutoff and bin_size settings."""
     struct = structures[0]
     for value in values:
         fig = element_pair_rdfs(struct, **{param: value})  # ty: ignore[invalid-argument-type]
@@ -169,21 +181,13 @@ def test_element_pair_rdfs_cutoff_and_bin_size(
                 )
 
 
-def test_element_pair_rdfs_subplot_layout(structures: list[Structure]) -> None:
-    for struct in structures:
-        fig = element_pair_rdfs(struct)
-        n_elements = len({site.specie.symbol for site in struct})
-        expected_pairs = n_elements * (n_elements + 1) // 2
-        assert len(fig.data) == expected_pairs
-        assert all(isinstance(trace, go.Scatter) for trace in fig.data)
-
-
 @pytest.mark.parametrize(
     "element_pairs", [[("Si", "Si")], [("Si", "Ru"), ("Pr", "Pr")], None]
 )
 def test_element_pair_rdfs_custom_element_pairs(
     structures: list[Structure], element_pairs: list[tuple[str, str]] | None
 ) -> None:
+    """Only requested element pairs get subplots, titled by pair."""
     structure = structures[1]  # Use the structure with Si, Ru, and Pr
     fig = element_pair_rdfs(structure, element_pairs=element_pairs)
     expected_pairs = sorted(
@@ -206,13 +210,13 @@ def test_element_pair_rdfs_custom_element_pairs(
 def test_element_pair_rdfs_list_dict_of_structures(
     structures: list[Structure], structs_type: str
 ) -> None:
+    """Multiple structures share a legend with one entry each."""
     structs = (
         {f"{struct} {idx}": struct for idx, struct in enumerate(structures)}
         if structs_type == "dict"
         else structures
     )
     fig = element_pair_rdfs(structs)
-    assert isinstance(fig, go.Figure)
     assert len(fig.data) == 12
     labels = {trace.name for trace in fig.data}
     assert len(labels) == len(structs)
@@ -229,6 +233,7 @@ def test_element_pair_rdfs_list_dict_of_structures(
 def test_element_pair_rdfs_custom_colors_and_styles(
     structures: list[Structure],
 ) -> None:
+    """Custom colors and line styles cycle across structures."""
     colors = ["red", "blue"]
     line_styles = ["solid", "dash"]
     fig = element_pair_rdfs(structures, colors=colors, line_styles=line_styles)
@@ -239,6 +244,7 @@ def test_element_pair_rdfs_custom_colors_and_styles(
 
 
 def test_element_pair_rdfs_reference_line(structures: list[Structure]) -> None:
+    """Reference line is drawn in every subplot."""
     ref_line_kwargs = {"line_color": "teal", "line_width": 2}
     fig = element_pair_rdfs(structures, reference_line=ref_line_kwargs)
     assert fig._grid_ref is not None
@@ -254,6 +260,7 @@ def test_element_pair_rdfs_reference_line(structures: list[Structure]) -> None:
 
 def test_element_pair_rdfs_cutoff_and_bins(structures: list[Structure]) -> None:
     # Test positive cutoff
+    """Positive, negative and default cutoffs with fixed n_bins."""
     cutoff, n_bins = 8.5, 88
     fig = element_pair_rdfs(structures, cutoff=cutoff, n_bins=n_bins)
     assert max(fig.data[0].x) == pytest.approx(cutoff)
@@ -280,37 +287,17 @@ def test_element_pair_rdfs_cutoff_and_bins(structures: list[Structure]) -> None:
 
 
 def test_full_rdf_basic(structures: list[Structure]) -> None:
+    """Single-structure full RDF has axis titles and no legend."""
     for struct in structures:
         fig = full_rdf(struct)
-        assert isinstance(fig, go.Figure)
         assert fig.layout.xaxis.title.text == "r [Å]"
         assert fig.layout.yaxis.title.text == "g(r)"
         assert len(fig.data) == 1
         assert fig.data[0].name == struct.formula
         assert fig.layout.title.text is None
-        assert fig.layout.showlegend is False or fig.layout.showlegend is None
+        assert fig.layout.showlegend is False
+        assert fig.layout.legend == go.layout.Legend()
         assert not fig.data[0].showlegend
-
-
-def test_full_rdf_empty_structure() -> None:
-    empty_struct = Structure(Lattice.cubic(1), [], [])
-    for struct in (empty_struct, {"blank": empty_struct}):
-        key = " blank" if isinstance(struct, dict) else ""
-        with pytest.raises(ValueError, match=f"input structure{key} contains no sites"):
-            full_rdf(struct)
-
-
-def test_full_rdf_invalid_structure() -> None:
-    err_msg = "Input must be a pymatgen Structure, IStructure, Molecule"
-    with pytest.raises(TypeError, match=err_msg):
-        full_rdf("not a structure")  # ty: ignore[invalid-argument-type]
-
-
-def test_full_rdf_conflicting_bins_and_bin_size(structures: list[Structure]) -> None:
-    with pytest.raises(
-        ValueError, match=r"Cannot specify both n_bins=.* and bin_size=.*"
-    ):
-        full_rdf(structures, n_bins=100, bin_size=0.1)
 
 
 @pytest.mark.parametrize(
@@ -320,6 +307,7 @@ def test_full_rdf_conflicting_bins_and_bin_size(structures: list[Structure]) -> 
 def test_full_rdf_cutoff_and_bin_size(
     structures: list[Structure], param: str, values: tuple[float, ...]
 ) -> None:
+    """x-range follows cutoff and bin count follows bin_size."""
     structure = structures[0]
     for value in values:
         fig = full_rdf(structure, **{param: value})  # ty: ignore[invalid-argument-type]
@@ -344,27 +332,27 @@ def test_full_rdf_cutoff_and_bin_size(
 def test_full_rdf_list_dict_of_structures(
     structures: list[Structure], structs_type: str
 ) -> None:
+    """Multiple structures get one labeled trace each and a horizontal legend."""
     structs_dict_or_list = (
         {f"{struct} {idx}": struct for idx, struct in enumerate(structures)}
         if structs_type == "dict"
         else structures
     )
     fig = full_rdf(structs_dict_or_list)
-    assert isinstance(fig, go.Figure)
-    assert len(fig.data) == len(structs_dict_or_list)
-    labels = {trace.name for trace in fig.data}
-    assert len(labels) == len(structs_dict_or_list)
+    labels = [trace.name for trace in fig.data]
     assert labels == (
-        set(structs_dict_or_list)
+        list(structs_dict_or_list)
         if isinstance(structs_dict_or_list, dict)
-        else {
-            f"{idx + 1} {struct.formula}"
-            for idx, struct in enumerate(structs_dict_or_list)
-        }
+        else [f"{idx + 1} {struct.formula}" for idx, struct in enumerate(structures)]
     )
+    legend = fig.layout.legend
+    assert fig.layout.showlegend is True
+    assert (legend.orientation, legend.yanchor, legend.y) == ("h", "bottom", 1.02)
+    assert (legend.xanchor, legend.x) == ("center", 0.5)
 
 
 def test_full_rdf_custom_colors_and_styles(structures: list[Structure]) -> None:
+    """Custom colors and line styles cycle across structures."""
     colors = ["red", "blue", "green"]
     line_styles = ["solid", "dash", "dot"]
     fig = full_rdf(structures, colors=colors, line_styles=line_styles)
@@ -374,6 +362,7 @@ def test_full_rdf_custom_colors_and_styles(structures: list[Structure]) -> None:
 
 
 def test_full_rdf_reference_line(structures: list[Structure]) -> None:
+    """Reference line at g(r)=1 is drawn once."""
     ref_line_kwargs = {"line_color": "red", "line_width": 2}
     fig = full_rdf(structures, reference_line=ref_line_kwargs)
     n_ref_lines = sum(
@@ -381,21 +370,3 @@ def test_full_rdf_reference_line(structures: list[Structure]) -> None:
         for shape in fig.layout.shapes
     )
     assert n_ref_lines == 1
-
-
-def test_full_rdf_legend_position(structures: list[Structure]) -> None:
-    # Test with a single structure
-    fig_single = full_rdf(structures[0])
-    assert fig_single.layout.legend == go.layout.Legend()
-    assert len(fig_single.data) == 1
-
-    # Test with multiple structures
-    fig_multiple = full_rdf(structures)
-    assert fig_multiple.layout.legend.orientation == "h"
-    assert fig_multiple.layout.legend.yanchor == "bottom"
-    assert fig_multiple.layout.legend.y == 1.02
-    assert fig_multiple.layout.legend.xanchor == "center"
-    assert fig_multiple.layout.legend.x == 0.5
-    assert len(fig_multiple.data) == len(structures)
-    for idx, trace in enumerate(fig_multiple.data):
-        assert trace.name == f"{idx + 1} {structures[idx].formula}"

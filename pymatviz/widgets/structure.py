@@ -8,36 +8,37 @@ from typing import Any
 import numpy as np
 import traitlets as tl
 
-from pymatviz.widgets._traits import StructureVizTraits
+from pymatviz.widgets._normalize import structure_to_dict
+from pymatviz.widgets._traits import StructureVizTraits, optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
-
-
-def structure_to_dict(structure: Any) -> dict[str, Any] | None:
-    """Convert a structure-like object (or dict, or None) to a widget structure dict.
-
-    Passes dicts and ``None`` through unchanged; converts pymatgen ``Structure`` /
-    ASE ``Atoms`` (and other ``normalize_structures`` inputs) via ``.as_dict()``.
-    """
-    if structure is None or isinstance(structure, dict):
-        return structure
-
-    from pymatviz.process_data import normalize_structures
-
-    return next(iter(normalize_structures(structure).values())).as_dict()
 
 
 def volume_to_dicts(volume: Any) -> list[dict[str, Any]]:
     """Convert a volumetric dict (flat ``values`` + ``dims`` or nested ``grid``) or a
     pymatgen ``VolumetricData`` (one payload per ``data`` key, ``Chgcar`` divided by the
     cell volume to e/Å³ like matterviz's CHGCAR parser) to flat z-fastest matterviz
-    payloads. Shape errors (dims, lattice, origin, periodic) are reported by the
-    renderer.
+    payloads. Each payload carries the ``id`` that isosurface layers reference via
+    ``volume_id``: dicts use their ``id``, else their ``label`` (like matterviz's file
+    parsers), pymatgen volumes use their ``data`` key (e.g. ``"total"``, ``"diff"``).
+    Shape errors (dims, lattice, origin, periodic) are reported by the renderer.
+
+    Raises:
+        ValueError: If a dict has neither a nonempty string ``id`` nor ``label``.
+        TypeError: If volume is neither a dict nor a pymatgen ``VolumetricData``.
     """
     if isinstance(volume, Mapping):
+        vol_id = volume.get("id", volume.get("label"))
+        if not isinstance(vol_id, str) or not vol_id.strip():
+            raise ValueError(
+                "volumetric_data dicts need a nonempty string 'id' or 'label' "
+                f"(referenced by isosurface layers' volume_id), got {vol_id=}, "
+                f"keys={sorted(volume)}"
+            )
         nested = "grid" in volume
         arr = np.asarray(volume["grid"] if nested else volume.get("values", []), float)
         payload = {"values": arr.ravel().tolist()}
         payload["dims"] = list(arr.shape) if nested else volume.get("dims")
+        payload["id"] = vol_id
         for key in (
             "lattice",
             "origin",
@@ -60,6 +61,7 @@ def volume_to_dicts(volume: Any) -> list[dict[str, Any]]:
     scale = 1 / structure.volume if type(volume).__name__ == "Chgcar" else 1
     return [
         {
+            "id": str(key),
             "values": (np.asarray(grid, dtype=float) * scale).ravel().tolist(),
             "dims": list(np.shape(grid)),
             "lattice": structure.lattice.matrix.tolist(),
@@ -69,6 +71,33 @@ def volume_to_dicts(volume: Any) -> list[dict[str, Any]]:
         }
         for key, grid in data.items()
     ]
+
+
+def check_layer_volume_ids(
+    isosurface_settings: Mapping[str, Any] | None, volumes: list[dict[str, Any]]
+) -> None:
+    """Raise if an isosurface layer lacks a ``volume_id`` or, for volumes passed from
+    Python, references a ``volume_id``/``color_volume_id`` matching no volume
+    (matterviz silently drops such layers). Volumes loaded from ``data_url`` are
+    parsed in the browser, so their layers are only checked for a ``volume_id``.
+
+    Raises:
+        traitlets.TraitError: For a missing or dangling volume reference.
+    """
+    vol_ids = {volume["id"] for volume in volumes}
+    for layer_idx, layer in enumerate((isosurface_settings or {}).get("layers") or []):
+        if not isinstance(vol_id := layer.get("volume_id"), str) or not vol_id:
+            raise tl.TraitError(
+                f"isosurface_settings layer {layer_idx} needs a nonempty string "
+                f"volume_id, got {vol_id=}"
+            )
+        for key in ("volume_id", "color_volume_id") if vol_ids else ():
+            if (ref := layer.get(key)) is not None and ref not in vol_ids:
+                raise tl.TraitError(
+                    f"isosurface_settings layer {layer_idx} {key}={ref!r} matches no "
+                    f"volumetric_data id {sorted(vol_ids)}. Swap volumes and layers "
+                    "together inside widget.hold_trait_notifications()."
+                )
 
 
 class StructureWidget(StructureVizTraits, MatterVizWidget):
@@ -105,28 +134,43 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
         >>> StructureWidget(structure=struct, vector_normalize=True)  # direction only
 
         Isosurfaces: pymatgen ``VolumetricData`` objects or dicts plus explicit layers
-        (``isovalue`` in the volume's units, e/Å³ for CHGCAR):
+        (``isovalue`` in the volume's units, e/Å³ for CHGCAR) that pick their volume by
+        ``volume_id`` (a pymatgen ``data`` key, or a dict's ``id``/``label``):
         >>> layer = dict(isovalue=0.05, color="#3b82f6", opacity=0.6, visible=True)
+        >>> layer |= dict(volume_id="total")
         >>> StructureWidget(
         ...     volumetric_data=[Chgcar.from_file("CHGCAR")],
         ...     isosurface_settings={"layers": [layer], "wireframe": False, "halo": 0},
+        ... )
+
+        Several pymatgen volumes share ``data`` keys (every ``Chgcar`` has ``"total"``),
+        so pass a ``{prefix: volume}`` mapping to namespace ids (and labels) as
+        ``"prefix/key"``:
+        >>> volumes = {"relaxed": chgcar_relaxed, "initial": chgcar_initial}
+        >>> layer |= dict(volume_id="relaxed/total")
+        >>> StructureWidget(
+        ...     volumetric_data=volumes, isosurface_settings={"layers": [layer]}
         ... )
     """
 
     # display options shared with TrajectoryWidget live in StructureVizTraits
 
     structure = tl.Dict(allow_none=True).tag(sync=True)
-    structure_string = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
+    structure_string = optional_trait(tl.Unicode)
 
     show_image_atoms = tl.Bool(default_value=True).tag(sync=True)
 
-    # Isosurface: pymatgen VolumetricData objects or dicts (see volume_to_dicts) and
-    # matterviz IsosurfaceSettings {layers: [{isovalue, color, opacity, visible,
-    # show_negative, negative_color}], wireframe, halo, display_range?}
-    volumetric_data = tl.List(default_value=[]).tag(sync=True)
+    # Isosurface: a list of pymatgen VolumetricData objects or dicts (see
+    # volume_to_dicts), or a {prefix: volume} mapping namespacing ids as "prefix/id".
+    # Synced as a list of flat payloads (Any, not List, so mappings reach the
+    # validator). Layers follow matterviz IsosurfaceSettings {layers: [{volume_id,
+    # isovalue, color, opacity, visible, show_negative, negative_color}], wireframe,
+    # halo, display_range?}
+    volumetric_data = tl.Any().tag(sync=True)
     isosurface_settings = tl.Dict(allow_none=True).tag(sync=True)
-    # Two-way synced isosurface view state (active volume, structure/slice view, plane)
-    active_volume_idx = tl.Int(default_value=0).tag(sync=True)
+    # Two-way synced isosurface view state (active volume id, structure/slice view,
+    # plane). None selects the first volume.
+    active_volume_id = optional_trait(tl.Unicode)
     display_mode = tl.CaselessStrEnum(
         ["structure", "slice"], default_value="structure"
     ).tag(sync=True)
@@ -134,7 +178,7 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
 
     # UI controls
     enable_info_pane = tl.Bool(default_value=True).tag(sync=True)
-    png_dpi = tl.Int(allow_none=True, default_value=None).tag(sync=True)
+    png_dpi = optional_trait(tl.Int)
 
     # Interaction state (two-way synced with the frontend for ipywidgets linking).
     # selected_sites (clicked atoms) and hovered_site_idx (hovered atom) are
@@ -143,12 +187,66 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
     # input (e.g. from a linked plot).
     selected_sites = tl.List(tl.Int(), default_value=[]).tag(sync=True)
     highlighted_sites = tl.List(tl.Int(), default_value=[]).tag(sync=True)
-    hovered_site_idx = tl.Int(allow_none=True, default_value=None).tag(sync=True)
+    hovered_site_idx = optional_trait(tl.Int)
+
+    @tl.default("volumetric_data")
+    def _default_volumetric_data(self) -> list[dict[str, Any]]:
+        """Fresh empty volume list per instance."""
+        return []
 
     @tl.validate("volumetric_data")
     def _normalize_volumetric_data(self, proposal: dict) -> list[dict[str, Any]]:
-        """Flatten every volume (dict or pymatgen VolumetricData) on assignment."""
-        return [pl for vol in proposal["value"] for pl in volume_to_dicts(vol)]
+        """Flatten every volume (dict or pymatgen VolumetricData) on assignment.
+
+        A ``{prefix: volume}`` mapping prefixes each payload's ``id`` and ``label``
+        with ``"prefix/"`` so volumes with colliding keys can be loaded together.
+
+        Raises:
+            TypeError: If the value is neither a list/tuple nor a mapping, or a
+                mapping key is not a nonempty string.
+            ValueError: If payload ids are not unique.
+        """
+        value = proposal["value"]
+        if isinstance(value, Mapping):
+            payloads = []
+            for prefix, volume in value.items():
+                if not isinstance(prefix, str) or not prefix.strip():
+                    raise TypeError(
+                        "volumetric_data mapping keys must be nonempty strings (id "
+                        f"prefixes), got {prefix=}"
+                    )
+                for payload in volume_to_dicts(volume):
+                    payload["id"] = f"{prefix}/{payload['id']}"
+                    if "label" in payload:
+                        payload["label"] = f"{prefix}/{payload['label']}"
+                    payloads.append(payload)
+        elif isinstance(value, (list, tuple)):
+            payloads = [pl for vol in value for pl in volume_to_dicts(vol)]
+        else:
+            raise TypeError(
+                "volumetric_data must be a list of volumes or a {prefix: volume} "
+                f"mapping, got {type(value).__name__}"
+            )
+        ids = [payload["id"] for payload in payloads]
+        if dupes := sorted({vol_id for vol_id in ids if ids.count(vol_id) > 1}):
+            raise ValueError(
+                f"volumetric_data ids must be unique, got duplicates {dupes} in {ids}. "
+                "Pass a {prefix: volume} mapping (e.g. {'relaxed': chgcar_1, "
+                "'initial': chgcar_2}) to namespace ids as 'prefix/id', or give dict "
+                "volumes distinct 'id's."
+            )
+        check_layer_volume_ids(self.isosurface_settings, payloads)
+        return payloads
+
+    @tl.validate("isosurface_settings")
+    def _validate_isosurface_settings(
+        self, proposal: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        """Check that layers reference loaded volumes (cross-validated at the end of
+        __init__/hold_trait_notifications, so trait order doesn't matter).
+        """
+        check_layer_volume_ids(proposal["value"], self.volumetric_data)
+        return proposal["value"]
 
     def __init__(
         self, structure: dict[str, Any] | Any | None = None, **kwargs: Any

@@ -59,12 +59,10 @@ def elements_hist(
 
     non_zero_values = non_zero.to_numpy()
     text_labels = None
-    if show_values is not None:
-        if show_values == "percent":
-            sum_elements = non_zero.sum()
-            text_labels = [f"{el / sum_elements:.0%}" for el in non_zero_values]
-        else:
-            text_labels = [str(int(val)) for val in non_zero_values]
+    if show_values == "percent":
+        text_labels = [f"{val / non_zero.sum():.0%}" for val in non_zero_values]
+    elif show_values is not None:
+        text_labels = [str(int(val)) for val in non_zero_values]
 
     fig = go.Figure(**fig_kwargs or {})
     fig.add_bar(
@@ -137,16 +135,11 @@ def histogram(
             )
 
     all_values = np.concatenate(list(data_arrays.values()))
-    global_min = np.min(all_values)
-    global_max = np.max(all_values)
-
-    if x_range is None:
-        x_range = (global_min, global_max)
-    else:
-        x_range = (
-            global_min if x_range[0] is None else x_range[0],
-            global_max if x_range[1] is None else x_range[1],
-        )
+    x_min, x_max = (None, None) if x_range is None else x_range
+    x_range = (
+        np.min(all_values) if x_min is None else x_min,
+        np.max(all_values) if x_max is None else x_max,
+    )
 
     bin_edges = np.histogram_bin_edges(all_values, bins=bins, range=x_range)
     widths = np.diff(bin_edges)

@@ -6,6 +6,7 @@ from typing import Any
 
 import traitlets as tl
 
+from pymatviz.widgets._traits import optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -46,18 +47,14 @@ class ConvexHullWidget(MatterVizWidget):
     show_stable = tl.Bool(default_value=True).tag(sync=True)
     show_unstable = tl.Bool(default_value=True).tag(sync=True)
     show_hull_faces = tl.Bool(default_value=True).tag(sync=True)
-    hull_face_opacity = tl.Float(allow_none=True, default_value=None).tag(sync=True)
-    show_stable_labels = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
-    show_unstable_labels = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
-    max_hull_dist_show_labels = tl.Float(allow_none=True, default_value=None).tag(
-        sync=True
-    )
-    max_hull_dist_show_phases = tl.Float(allow_none=True, default_value=None).tag(
-        sync=True
-    )
+    hull_face_opacity = optional_trait(tl.Float)
+    show_stable_labels = optional_trait(tl.Bool)
+    show_unstable_labels = optional_trait(tl.Bool)
+    max_hull_dist_show_labels = optional_trait(tl.Float)
+    max_hull_dist_show_phases = optional_trait(tl.Float)
 
     # Temperature
-    temperature = tl.Float(allow_none=True, default_value=None).tag(sync=True)
+    temperature = optional_trait(tl.Float)
 
     def __init__(self, entries: Any | None = None, **kwargs: Any) -> None:
         """Initialize the ConvexHullWidget.

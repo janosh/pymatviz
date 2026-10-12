@@ -15,23 +15,27 @@ from pymatgen.core import (
     Species,
     Structure,
 )
+from pymatgen.electronic_structure.core import Magmom
 
 from pymatviz.enums import ElemColorScheme, SiteCoords
+from pymatviz.structure import helpers
 from pymatviz.structure.helpers import (
-    CELL_EDGES,
     NO_SYM_MSG,
     _angles_to_rotation_matrix,
     _coerce_vector,
     _get_site_vector,
     _is_3d_vector,
+    _standardize_struct,
     draw_bonds,
     draw_cell,
     draw_disordered_site,
     draw_site,
     draw_vector,
+    generate_site_label,
     get_atomic_radii,
     get_disordered_site_legend_name,
     get_elem_colors,
+    get_elem_radius,
     get_first_matching_site_prop,
     get_image_sites,
     get_site_elements,
@@ -39,12 +43,17 @@ from pymatviz.structure.helpers import (
     get_site_species,
     get_struct_prop,
     get_subplot_title,
+    missing_covalent_radius,
+    normalize_elem_color,
+    resolve_per_struct_params,
 )
 from pymatviz.typing import AnyStructure, RgbColorType, Xyz
 
 
 @pytest.fixture
 def mock_figure() -> Any:
+    """Figure stub recording the last trace kwargs."""
+
     class MockFigure:
         def __init__(self) -> None:
             self.last_trace_kwargs: dict[str, Any] = {}
@@ -86,45 +95,39 @@ def test_get_site_species_and_elements(
     assert elements_result == expected_elements
 
 
-def test_get_site_elements_on_disordered_struct(fe3co4_disordered: Structure) -> None:
-    """Test get_site_elements returns valid symbols for disordered structure."""
-    for site in fe3co4_disordered:
-        elements = get_site_elements(site)
-        assert isinstance(elements, set)
-        assert len(elements) >= 1
-        assert all(isinstance(e, str) and e[0].isupper() for e in elements)
-
-
-@pytest.mark.parametrize(
-    ("angles", "expected_shape"),
-    [("10x,8y,3z", (3, 3)), ("30x,45y,60z", (3, 3))],
-)
-def test_angles_to_rotation_matrix(
-    angles: str, expected_shape: tuple[int, int]
-) -> None:
+@pytest.mark.parametrize("angles", ["10x,8y,3z", "30x,45y,60z"])
+def test_angles_to_rotation_matrix(angles: str) -> None:
+    """Euler angles give a proper 3x3 rotation matrix."""
     rot_matrix = _angles_to_rotation_matrix(angles)
-    assert rot_matrix.shape == expected_shape
+    assert rot_matrix.shape == (3, 3)
     assert_allclose(np.linalg.det(rot_matrix), 1.0)
 
 
-def test_angles_to_rotation_matrix_invalid_input() -> None:
-    with pytest.raises(ValueError, match="could not convert string to float: "):
-        _angles_to_rotation_matrix("invalid_input")
+@pytest.mark.parametrize(
+    ("angles", "err_msg"),
+    [
+        ("invalid_input", "Invalid rotation angle='invalid_input'"),
+        ("10x,abcy", "Invalid rotation angle='abcy'"),
+        ("10x,20w", "Invalid rotation axis 'w' in angle='20w'"),
+        ("10", "Invalid rotation axis '0' in angle='10'"),
+    ],
+)
+def test_angles_to_rotation_matrix_invalid_input(angles: str, err_msg: str) -> None:
+    """Malformed angles or unknown axes raise ValueError naming the bad term."""
+    with pytest.raises(ValueError, match=re.escape(err_msg)):
+        _angles_to_rotation_matrix(angles)
 
 
 @pytest.mark.parametrize(
-    ("elem_colors", "expected_result"),
-    [
-        (ElemColorScheme.jmol, dict),
-        (ElemColorScheme.vesta, dict),
-        ({"Si": "#FF0000", "O": "#00FF00"}, dict),
-    ],
+    "elem_colors",
+    [ElemColorScheme.jmol, ElemColorScheme.vesta, {"Si": "#FF0000", "O": "#00FF00"}],
 )
 def test_get_elem_colors(
-    elem_colors: ElemColorScheme | dict[str, RgbColorType], expected_result: type
+    elem_colors: ElemColorScheme | dict[str, RgbColorType],
 ) -> None:
+    """Color schemes resolve to element maps and custom dicts pass through."""
     colors = get_elem_colors(elem_colors)
-    assert isinstance(colors, expected_result)
+    assert isinstance(colors, dict)
     if isinstance(elem_colors, dict):
         assert colors == elem_colors
     else:
@@ -133,20 +136,17 @@ def test_get_elem_colors(
 
 
 def test_get_elem_colors_invalid_input() -> None:
+    """Unknown color schemes raise ValueError."""
     err_msg = f"colors must be a dict or one of ('{', '.join(ElemColorScheme)}')"
     with pytest.raises(ValueError, match=re.escape(err_msg)):
         get_elem_colors("invalid_input")  # ty: ignore[invalid-argument-type]
 
 
-@pytest.mark.parametrize(
-    ("atomic_radii", "expected_type"),
-    [(None, dict), (1.5, dict), ({"Si": 0.3, "O": 0.2}, dict)],
-)
-def test_get_atomic_radii(
-    atomic_radii: float | dict[str, float] | None, expected_type: type
-) -> None:
+@pytest.mark.parametrize("atomic_radii", [None, 1.5, {"Si": 0.3, "O": 0.2}])
+def test_get_atomic_radii(atomic_radii: float | dict[str, float] | None) -> None:
+    """Radii default to covalent radii, scale with floats, pass through dicts."""
     radii = get_atomic_radii(atomic_radii)
-    assert isinstance(radii, expected_type)
+    assert isinstance(radii, dict)
 
     if atomic_radii is None or isinstance(atomic_radii, float):
         assert "Si" in radii
@@ -155,26 +155,12 @@ def test_get_atomic_radii(
             assert radii["Si"] == pytest.approx(1.11 * atomic_radii)
     elif isinstance(atomic_radii, dict):
         assert radii == atomic_radii
-
-
-def test_get_image_sites(structures: list[Structure]) -> None:
-    structure = structures[0]
-    site = structure[0]
-    lattice = structure.lattice
-
-    # Test with default tolerance
-    image_atoms = get_image_sites(site, lattice)
-    assert isinstance(image_atoms, np.ndarray)
-    assert image_atoms.ndim in (1, 2)  # Allow both 1D and 2D arrays
-    if image_atoms.size > 0:
-        assert image_atoms.shape[1] == 3  # Each image atom should have 3 coordinates
-
-    # Test with custom tolerance
-    image_atoms = get_image_sites(site, lattice, cell_boundary_tol=0.1)
-    assert isinstance(image_atoms, np.ndarray)
-    assert image_atoms.ndim in (1, 2)
-    if image_atoms.size > 0:
-        assert image_atoms.shape[1] == 3
+        assert get_elem_radius(radii, "Si") == 0.3
+        with pytest.raises(KeyError, match="No radius for elem_symbol='Fe'"):
+            get_elem_radius(radii, "Fe")
+        # dummy species (no physical radius) get the fallback, also in default radii
+        assert get_elem_radius(radii, "X") == missing_covalent_radius
+        assert get_elem_radius(get_atomic_radii(None), "X") == missing_covalent_radius
 
 
 @pytest.mark.parametrize(
@@ -191,6 +177,7 @@ def test_get_image_sites(structures: list[Structure]) -> None:
 def test_get_image_sites_lattices(
     lattice: Lattice, site_coords: list[float], expected_images: int
 ) -> None:
+    """Image site counts for corner, edge and face sites in various lattices."""
     site = PeriodicSite("Si", site_coords, lattice)
     image_atoms = get_image_sites(site, lattice)
     assert len(image_atoms) == expected_images
@@ -343,10 +330,9 @@ def test_get_subplot_title(
     subplot_title: Callable[[AnyStructure, Hashable], str | dict[str, Any]] | None,
     expected_text: str,
 ) -> None:
+    """Default and custom (str or dict) subplot titles."""
     structure = structures[0]
     title = get_subplot_title(structure, struct_key, 1, subplot_title)
-    assert isinstance(title, dict)
-    assert "text" in title
     assert expected_text in title["text"]
 
     if callable(subplot_title) and isinstance(
@@ -354,14 +340,6 @@ def test_get_subplot_title(
     ):
         assert "font" in title
         assert title["font"]["size"] == 14
-
-
-def test_constants() -> None:
-    assert isinstance(NO_SYM_MSG, str)
-    assert NO_SYM_MSG.startswith("Symmetry could not be determined")
-    assert isinstance(CELL_EDGES, tuple)
-    assert len(CELL_EDGES) == 12
-    assert all(isinstance(edge, tuple) and len(edge) == 2 for edge in CELL_EDGES)
 
 
 @pytest.mark.parametrize(
@@ -525,6 +503,7 @@ def test_get_first_matching_site_prop_edge_cases() -> None:
 
     # Test with complex filter
     def complex_filter(prop: str, value: Any) -> bool:
+        """Accept large forces and small velocities."""
         if prop == "force":
             return all(abs(v) > 0.5 for v in value)
         if prop == "velocity":
@@ -678,6 +657,30 @@ def test_draw_cell(
                 assert getattr(trace.marker, key) == value
 
 
+@pytest.mark.parametrize(
+    ("cell_kwargs", "show_faces", "err_msg"),
+    [
+        # top-level line kwargs and per-structure dicts used to be silently ignored
+        (
+            {"color": "red", "width": 2},
+            False,
+            "Unknown cell style keys ['color', 'width']",
+        ),
+        ({"struct1": {"edge": {}}}, False, "Unknown cell style keys ['struct1']"),
+        ({}, {"opacity": 0.5}, "Unknown cell face style keys ['opacity']"),
+    ],
+)
+def test_draw_cell_invalid_style_keys(
+    structures: list[Structure],
+    cell_kwargs: dict[str, Any],
+    show_faces: bool | dict[str, Any],
+    err_msg: str,
+) -> None:
+    """Unknown show_cell/show_cell_faces style keys raise instead of being ignored."""
+    with pytest.raises(ValueError, match=re.escape(err_msg)):
+        draw_cell(go.Figure(), structures[0], cell_kwargs, show_faces=show_faces)
+
+
 def test_draw_cell_hover_text(structures: list[Structure]) -> None:
     """Test hover text for cell elements."""
     structure = structures[0]
@@ -756,189 +759,106 @@ def test_draw_cell_faces(
 
 @pytest.fixture
 def bond_test_structure() -> Structure:
-    """Simple cubic structure for bond tests."""
+    """BCC Si (a=3 A) where CrystalNN gives each site 8 neighbors."""
     lattice = Lattice.cubic(3.0)
     return Structure(lattice, ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5]])
 
 
-@pytest.fixture
-def bond_test_structure_extended() -> Structure:
-    """Structure with atoms closer to the cell boundary."""
-    lattice = Lattice.cubic(3.0)
-    return Structure(lattice, ["Si", "Si"], [[0, 0, 0], [0.9, 0.9, 0.9]])
+BCC_PRIMARY_COORDS: set[Xyz] = {(0.0, 0.0, 0.0), (1.5, 1.5, 1.5)}
 
 
-# TODO figure out why n_traces is 0 for some cases
+# 8 bonds from the corner site + 8 from the body center, minus the shared in-cell
+# bond (get_nn_info reports every bond from both ends, draw_bonds dedupes) = 15.
+# plotted_sites_coords keeps only bonds with both ends plotted. draw_bonds only
+# starts bonds at sites of the passed structure (structure_2d/3d pass one augmented
+# with image sites), so filter sets lacking those sites legitimately yield 0 bonds.
 @pytest.mark.parametrize(
-    ("is_3d", "bond_kwargs", "plotted_sites_coords_param", "n_traces"),
+    ("is_3d", "rotation", "bond_kwargs", "plotted_sites_coords", "n_bonds"),
     [
-        (True, None, None, 160),
-        (True, {"color": "rgb(0, 0, 255)", "width": 0.2}, {(1, 1, 1)}, 0),
-        (False, {"color": "rgb(255, 0, 0)", "width": 2}, {(3.0, 3.0, 3.0)}, 0),
+        (True, None, None, None, 15),
+        (False, None, {"color": "rgb(0, 128, 0)", "width": 1}, None, 15),
+        (False, "30z", None, None, 15),
+        # only the in-cell bond between the two primary sites
         (
             True,
+            None,
             {"color": "rgb(0, 0, 255)", "width": 3, "dash": "dot"},
-            {(3.0, 3.0, 3.0), (-3.0, -3.0, -3.0)},
-            0,
+            BCC_PRIMARY_COORDS,
+            1,
         ),
-        (False, {"color": "rgb(0, 128, 0)", "width": 1}, None, 16),
+        # plus the bond from the body center to the (3, 3, 3) corner image
+        (
+            False,
+            "30z,10x",
+            {"color": "rgb(255, 0, 0)", "width": 2},
+            BCC_PRIMARY_COORDS | {(3.0, 3.0, 3.0)},
+            2,
+        ),
+        (True, None, None, BCC_PRIMARY_COORDS | {(3.0, 3.0, 3.0)}, 2),
+        # (0,0,0) and (3,3,3) aren't bonded and the body center isn't plotted
+        (True, None, {"color": "rgb(9, 9, 9)"}, {(0.0, 0.0, 0.0), (3.0, 3.0, 3.0)}, 0),
+        (False, None, None, set(), 0),  # hidden sites -> no bonds
     ],
 )
 def test_draw_bonds(
     bond_test_structure: Structure,
     is_3d: bool,
+    rotation: str | None,
     bond_kwargs: dict[str, Any] | None,
-    plotted_sites_coords_param: set[Xyz] | None,
-    n_traces: int,
+    plotted_sites_coords: set[Xyz] | None,
+    n_bonds: int,
 ) -> None:
-    """Test basic bond drawing functionality with various parameters."""
+    """Bonds are deduped, filtered to plotted sites, rotated and styled."""
     fig = go.Figure()
-    nn_strategy = CrystalNN()
-
+    rotation_matrix = None if rotation is None else _angles_to_rotation_matrix(rotation)
     draw_bonds(
         fig=fig,
         structure=bond_test_structure,
-        nn=nn_strategy,
+        nn=CrystalNN(),
         is_3d=is_3d,
         bond_kwargs=bond_kwargs,
-        plotted_sites_coords=plotted_sites_coords_param,
-    )
-
-    # Verify bonds were created with correct properties
-    assert len(fig.data) == n_traces
-    expected_trace_type = go.Scatter3d if is_3d else go.Scatter
-    assert all(isinstance(trace, expected_trace_type) for trace in fig.data)
-
-    if bond_kwargs:  # Check custom bond styling
-        for trace in fig.data:
-            for key, value in bond_kwargs.items():
-                assert getattr(trace.line, key) == value
-
-    # Check bonds to image atoms
-    if plotted_sites_coords_param and len(fig.data) > 0:
-        if is_3d:
-            max_coords = max(
-                max(list(trace.x) + list(trace.y) + list(trace.z)) for trace in fig.data
-            )
-        else:
-            max_coords = max(max(list(trace.x) + list(trace.y)) for trace in fig.data)
-        assert max_coords >= 1.5
-        assert len(fig.data) > 1  # More than just central bond
-
-    for trace in fig.data:  # Verify trace properties
-        assert trace.mode == "lines"
-        assert trace.showlegend is False
-        assert trace.hoverinfo == "skip"
-
-
-# TODO figure out why n_traces is 0 for some cases
-@pytest.mark.parametrize(
-    (
-        "test_case",
-        "is_3d",
-        "rotation_angle",
-        "image_coords",
-        "check_outside_cell",
-        "n_traces",
-    ),
-    [
-        ("rotation_only", False, np.pi / 4, None, False, 160),
-        ("image_filtering", True, None, (3.0, 3.0, 3.0), True, 0),
-        ("rotation_with_image", False, np.pi / 6, (3.0, 3.0, 3.0), True, 0),
-        ("no_image_atoms", True, None, None, False, 0),
-    ],
-)
-def test_draw_bonds_advanced(
-    bond_test_structure: Structure,
-    bond_test_structure_extended: Structure,
-    test_case: str,
-    is_3d: bool,
-    rotation_angle: float | None,
-    image_coords: Xyz | None,
-    check_outside_cell: bool,
-    n_traces: int,
-) -> None:
-    """Test advanced bond drawing scenarios with rotation and image atoms."""
-    fig = go.Figure()
-    nn_strategy = CrystalNN()
-
-    # Use extended structure for cases that need to check bonds to image atoms
-    structure = (
-        bond_test_structure_extended if check_outside_cell else bond_test_structure
-    )
-
-    # Setup rotation matrix if needed
-    rotation_matrix = None
-    if rotation_angle is not None:
-        rotation_matrix = [
-            [np.cos(rotation_angle), -np.sin(rotation_angle), 0],
-            [np.sin(rotation_angle), np.cos(rotation_angle), 0],
-            [0, 0, 1],
-        ]
-
-    # Setup visible image atoms
-    plotted_sites_coords = None
-    if image_coords is not None:
-        if rotation_matrix is not None and rotation_angle is not None:
-            # Apply rotation to image coordinates
-            rotated_coords = np.dot(np.array(image_coords), rotation_matrix)
-            plotted_sites_coords = {tuple(rotated_coords)}
-        else:
-            plotted_sites_coords = {image_coords}
-    elif test_case == "no_image_atoms":
-        plotted_sites_coords = set()  # Empty set
-
-    draw_bonds(
-        fig=fig,
-        structure=structure,
-        nn=nn_strategy,
-        is_3d=is_3d,
-        rotation_matrix=np.array(rotation_matrix)
-        if rotation_matrix is not None
-        else None,
+        rotation_matrix=rotation_matrix,
         plotted_sites_coords=plotted_sites_coords,
     )
 
-    assert len(fig.data) == n_traces
+    is_gradient = (bond_kwargs or {}).get("color", True) is True
+    segments_per_bond = 10 if is_gradient else 1
+    assert len(fig.data) == n_bonds * segments_per_bond
     expected_trace_type = go.Scatter3d if is_3d else go.Scatter
     assert all(isinstance(trace, expected_trace_type) for trace in fig.data)
+    for trace in fig.data:
+        assert trace.mode == "lines"
+        assert trace.showlegend is False
+        assert trace.hoverinfo == "skip"
+        for key, value in (bond_kwargs or {}).items():
+            assert getattr(trace.line, key) == value
 
-    if test_case == "rotation_only":  # Check rotation was applied
-        original_x, original_y = structure[0].coords[0], structure[0].coords[1]
-        for trace in fig.data:
-            assert not all(x == original_x for x in trace.x)
-            assert not all(y == original_y for y in trace.y)
+    n_dims = 3 if is_3d else 2
 
-    elif test_case == "image_filtering" and image_coords is not None:
-        # Check bonds only go to specified image atoms
-        for trace in fig.data:
-            max_x, max_y, max_z = max(trace.x), max(trace.y), max(trace.z)
-            if max_x > 3.0 or max_y > 3.0 or max_z > 3.0:
-                assert any(
-                    abs(x - image_coords[0]) < 0.01
-                    and abs(y - image_coords[1]) < 0.01
-                    and abs(z - image_coords[2]) < 0.01
-                    for x, y, z in zip(trace.x, trace.y, trace.z, strict=False)
-                )
+    def trace_point(trace: Any, point_idx: int) -> tuple[float, ...]:
+        """Rounded (x, y[, z]) of a trace's start (0) or end (-1) point."""
+        axes = (trace.x, trace.y, trace.z) if is_3d else (trace.x, trace.y)
+        return tuple(round(float(axis[point_idx]), 5) for axis in axes)
 
-    elif test_case == "rotation_with_image":
-        # Check bonds are rotated and only go to visible image atoms
-        if rotation_matrix is None or image_coords is None:
-            return
-        rotated_coords = tuple(np.dot(np.array(image_coords), rotation_matrix))
-        for trace in fig.data:
-            if max(trace.x) > 3.0 or max(trace.y) > 3.0:
-                assert any(
-                    abs(x - rotated_coords[0]) < 0.01
-                    and abs(y - rotated_coords[1]) < 0.01
-                    for x, y in zip(trace.x, trace.y, strict=False)
-                )
+    bond_ends = [
+        frozenset((trace_point(segments[0], 0), trace_point(segments[-1], -1)))
+        for segments in (
+            fig.data[idx : idx + segments_per_bond]
+            for idx in range(0, len(fig.data), segments_per_bond)
+        )
+    ]
+    if is_3d:  # no bond drawn twice (2D projections of distinct bonds can overlap)
+        assert len(set(bond_ends)) == n_bonds
 
-    elif test_case == "no_image_atoms":  # Check no bonds go outside cell
-        for trace in fig.data:
-            assert max(trace.x) <= 3.1
-            assert max(trace.y) <= 3.1
-            assert max(trace.z) <= 3.1
+    if plotted_sites_coords is not None:  # both ends at (rotated) plotted sites
+        plotted_points = np.array(sorted(plotted_sites_coords)).reshape(-1, 3)
+        if rotation_matrix is not None:
+            plotted_points = plotted_points @ rotation_matrix
+        allowed_ends = {
+            tuple(round(float(val), 5) for val in point[:n_dims])
+            for point in plotted_points
+        }
+        assert {end for ends in bond_ends for end in ends} <= allowed_ends
 
 
 def test_get_struct_prop(fe3co4_disordered: Structure) -> None:
@@ -975,8 +895,6 @@ def test_get_struct_prop(fe3co4_disordered: Structure) -> None:
 
     # Test 6: falsy struct properties like 0.0 take precedence in
     # resolve_per_struct_params (regression: `or` fallbacks discarded them)
-    from pymatviz.structure.helpers import resolve_per_struct_params
-
     struct.properties["cell_boundary_tol"] = 0.0
     _, cell_boundary_tol, *_ = resolve_per_struct_params(
         struct, "key", ElemColorScheme.jmol, 0.5, None, 30, 1.0
@@ -985,108 +903,101 @@ def test_get_struct_prop(fe3co4_disordered: Structure) -> None:
     assert reference_structure.properties == reference_properties
 
 
-def test_draw_disordered_site_legend_functionality() -> None:
-    """Test the draw_disordered_site function with legend mode functionality."""
-    # Create a structure with a disordered site
-    lattice = Lattice.cubic(5.0)
-    species = [Composition({"Fe": 0.75, "Ni": 0.25}), "O"]
-    coords = [[0, 0, 0], [0.5, 0.5, 0.5]]
-    structure = Structure(lattice, species, coords)
-
-    # Test 2D case
-    fig_2d = go.Figure()
-    disordered_site = structure[0]  # First site is disordered
-    coords_2d = [0, 0, 0]
-
-    elem_colors = get_elem_colors(ElemColorScheme.jmol)
-    atomic_radii = get_atomic_radii(None)
-
+@pytest.mark.parametrize("is_3d", [True, False])
+def test_draw_disordered_site_legend_functionality(is_3d: bool) -> None:
+    """Disordered site draws one combined legend entry grouped per site."""
+    structure = Structure(
+        Lattice.cubic(5.0),
+        [Composition({"Fe": 0.75, "Ni": 0.25}), "O"],
+        [[0, 0, 0], [0.5, 0.5, 0.5]],
+    )
+    fig = go.Figure()
     draw_disordered_site(
-        fig=fig_2d,
-        site=disordered_site,
-        coords=np.array(coords_2d),
+        fig=fig,
+        site=structure[0],
+        coords=np.zeros(3),
         site_idx=0,
         site_labels="legend",
-        elem_colors=elem_colors,
-        atomic_radii=atomic_radii,
+        elem_colors=get_elem_colors(ElemColorScheme.jmol),
+        atomic_radii=get_atomic_radii(None),
         atom_size=30,
         scale=1.0,
         site_kwargs={},
         is_image=False,
-        is_3d=False,
+        is_3d=is_3d,
         showlegend=True,
         legend="legend",
         legendgroup=None,
     )
 
-    # Check that legend trace was created
-    legend_traces_2d = [trace for trace in fig_2d.data if trace.showlegend]
-    assert len(legend_traces_2d) > 0, "Should have legend traces"
+    assert [trace.name for trace in fig.data if trace.showlegend] == ["Fe₀.₇₅Ni₀.₂₅"]
+    assert {trace.legendgroup for trace in fig.data} == {"disordered_site_0"}
 
-    # Check legend name format
-    legend_names = {trace.name for trace in legend_traces_2d}
-    assert "Fe₀.₇₅Ni₀.₂₅" in legend_names
-
-    # Test 3D case
-    fig_3d = go.Figure()
-    coords_3d = [0, 0, 0]
-
-    draw_disordered_site(
-        fig=fig_3d,
-        site=disordered_site,
-        coords=np.array(coords_3d),
-        site_idx=0,
-        site_labels="legend",
-        elem_colors=elem_colors,
-        atomic_radii=atomic_radii,
-        atom_size=30,
-        scale=1.0,
-        site_kwargs={},
-        is_image=False,
-        is_3d=True,
-        showlegend=True,
-        legend="legend",
-        legendgroup=None,
-    )
-
-    # Check that legend trace was created
-    legend_traces_3d = [trace for trace in fig_3d.data if trace.showlegend]
-    assert len(legend_traces_3d) > 0, "Should have legend traces"
-
-    # Check legend name format
-    legend_names_3d = {trace.name for trace in legend_traces_3d}
-    assert "Fe₀.₇₅Ni₀.₂₅" in legend_names_3d
-
-    # Check that traces have correct legendgroup
-    for trace in fig_3d.data:
-        if hasattr(trace, "legendgroup"):
-            assert trace.legendgroup == "disordered_site_0"
+    # ordered sites used to silently draw nothing
+    with pytest.raises(ValueError, match="needs a site with multiple species, got 'O'"):
+        draw_disordered_site(
+            fig=fig,
+            site=structure[1],
+            coords=np.zeros(3),
+            site_idx=1,
+            site_labels="legend",
+            elem_colors=get_elem_colors(ElemColorScheme.jmol),
+            atomic_radii=get_atomic_radii(None),
+            atom_size=30,
+            scale=1.0,
+            site_kwargs={},
+            is_3d=is_3d,
+        )
 
 
-def testget_disordered_site_legend_name() -> None:
-    """Test the get_disordered_site_legend_name helper function."""
-    # Test binary composition
-    sorted_species = [(Species("Fe"), 0.6), (Species("Ni"), 0.4)]
-    result = get_disordered_site_legend_name(sorted_species, is_image=False)
-    assert result == "Fe₀.₆Ni₀.₄"
+@pytest.mark.parametrize(
+    ("sorted_species", "is_image", "expected"),
+    [
+        ([(Species("Fe"), 0.6), (Species("Ni"), 0.4)], False, "Fe₀.₆Ni₀.₄"),
+        ([(Species("Fe"), 0.75), (Species("C"), 0.25)], False, "Fe₀.₇₅C₀.₂₅"),
+        ([(Species("Fe"), 0.5), (Species("Ni"), 0.5)], False, "Fe₀.₅Ni₀.₅"),
+        (
+            [(Species("Fe"), 0.5), (Species("Ni"), 0.3), (Species("Cr"), 0.2)],
+            False,
+            "Fe₀.₅Ni₀.₃Cr₀.₂",
+        ),
+        ([(Species("Fe"), 0.8), (Species("Co"), 0.2)], True, "Image of Fe₀.₈Co₀.₂"),
+        ([(Species("Ni"), 0.666667), (Species("Fe"), 0.333333)], False, "Ni₀.₆₇Fe₀.₃₃"),
+    ],
+    ids=["binary", "quarters", "equal", "ternary", "image", "rounding"],
+)
+def test_get_disordered_site_legend_name(
+    sorted_species: list[tuple[Species, float]], is_image: bool, expected: str
+) -> None:
+    """Legend names list species with subscript occupancies in the given order."""
+    legend_name = get_disordered_site_legend_name(sorted_species, is_image=is_image)
+    assert legend_name == expected
 
-    # Test ternary composition
-    sorted_species = [(Species("Fe"), 0.5), (Species("Ni"), 0.3), (Species("Cr"), 0.2)]
-    result = get_disordered_site_legend_name(sorted_species, is_image=False)
-    assert result == "Fe₀.₅Ni₀.₃Cr₀.₂"
 
-    # Test image site (should have same format)
-    sorted_species = [(Species("Fe"), 0.8), (Species("Co"), 0.2)]
-    result = get_disordered_site_legend_name(sorted_species, is_image=True)
-    assert result == "Image of Fe₀.₈Co₀.₂"  # Image sites have "Image of " prefix
-
-    # Test rounding behavior
-    sorted_species = [
-        (Species("Ni"), 0.666667),
-        (Species("Fe"), 0.333333),
-    ]  # Already sorted by occupancy
-    result = get_disordered_site_legend_name(sorted_species, is_image=False)
-    assert result == "Ni₀.₆₇Fe₀.₃₃"  # Should be sorted by occupancy and rounded
+@pytest.mark.parametrize(
+    ("raw_color", "expected"),
+    [
+        ((1.0, 0.5, 0.0), "rgb(255,127,0)"),  # RGB tuple (0-1 range)
+        ((255, 127, 0), "rgb(255,127,0)"),  # RGB tuple (0-255 range)
+        ("red", "red"),
+        ("rgb(100,200,50)", "rgb(100,200,50)"),
+        ([1.0, 0.5, 0.0], "rgb(255,127,0)"),  # RGB list
+        ((1, 0.5, 0), "rgb(255,127,0)"),  # mixed int/float 0-1 channels
+        ((1, 1, 1), "rgb(255,255,255)"),  # int 0-1 channels (was near-black)
+        ((1, 2), ValueError),  # wrong tuple length used to fall back to gray
+        (["red"], ValueError),
+        (None, ValueError),
+        (123, ValueError),
+        ((True, False, True), ValueError),
+    ],
+)
+def test_normalize_elem_color(raw_color: Any, expected: str | type[Exception]) -> None:
+    """Element colors normalize to rgb strings, unsupported values raise."""
+    if isinstance(expected, str):
+        assert normalize_elem_color(raw_color) == expected
+        return
+    with pytest.raises(expected, match="Unsupported element color"):
+        normalize_elem_color(raw_color)
 
 
 @pytest.mark.parametrize(
@@ -1094,32 +1005,15 @@ def testget_disordered_site_legend_name() -> None:
     [
         ([1, 2, 3], [1, 2, 3]),
         (np.array([0.1, 0.2, 0.3]), [0.1, 0.2, 0.3]),
+        (Magmom([0, 0, 0.5]), [0, 0, 0.5]),
+        (Magmom([0, 0, 0]), [0, 0, 0]),
+        (Magmom([1.5, -0.5, 2.0]), [1.5, -0.5, 2.0]),
     ],
-    ids=["list", "ndarray"],
+    ids=["list", "ndarray", "magmom_collinear", "magmom_zero", "magmom_non_collinear"],
 )
-def test_coerce_vector_array_like(
-    input_val: list[float] | np.ndarray, expected: list[float]
-) -> None:
-    """Test _coerce_vector with plain array-like inputs."""
+def test_coerce_vector(input_val: Any, expected: list[float]) -> None:
+    """Array-likes pass through and Magmom objects yield their global moment."""
     result = _coerce_vector(input_val)
-    assert_allclose(result, expected)
-    assert result.shape == (3,)
-
-
-@pytest.mark.parametrize(
-    ("moment", "expected"),
-    [
-        ([0, 0, 0.5], [0, 0, 0.5]),
-        ([0, 0, 0], [0, 0, 0]),
-        ([1.5, -0.5, 2.0], [1.5, -0.5, 2.0]),
-    ],
-    ids=["collinear", "zero", "non_collinear"],
-)
-def test_coerce_vector_magmom(moment: list[float], expected: list[float]) -> None:
-    """Test _coerce_vector extracts global_moment from Magmom objects."""
-    from pymatgen.electronic_structure.core import Magmom
-
-    result = _coerce_vector(Magmom(moment))
     assert result.shape == (3,)
     assert_allclose(result, expected)
 
@@ -1139,6 +1033,8 @@ def test_coerce_vector_magmom(moment: list[float], expected: list[float]) -> Non
         (np.ones((3, 2)), False),
         (np.zeros((2, 3, 4)), False),
         ([], False),
+        (Magmom([0, 0, 1]), True),
+        (Magmom([0, 0, 0]), True),
     ],
     ids=[
         "vec_3",
@@ -1150,19 +1046,13 @@ def test_coerce_vector_magmom(moment: list[float], expected: list[float]) -> Non
         "3xN_matrix",
         "3d_tensor",
         "empty",
+        "magmom",
+        "zero_magmom",
     ],
 )
 def test_is_3d_vector(value: Any, expected: bool) -> None:
     """Test _is_3d_vector with various inputs."""
     assert _is_3d_vector(value) is expected
-
-
-def test_is_3d_vector_magmom() -> None:
-    """Test _is_3d_vector recognizes Magmom objects as 3D vectors."""
-    from pymatgen.electronic_structure.core import Magmom
-
-    assert _is_3d_vector(Magmom([0, 0, 1])) is True
-    assert _is_3d_vector(Magmom([0, 0, 0])) is True
 
 
 # === _get_site_vector ===
@@ -1189,21 +1079,24 @@ def test_get_site_vector_lookup(use_site_prop: bool, expected: list[float]) -> N
     assert result.shape == (3,)
 
 
-def test_get_site_vector_returns_none() -> None:
-    """Test _get_site_vector returns None for missing or OOB properties."""
+@pytest.mark.parametrize(
+    "struct_force",
+    [[[1, 0, 0]], [1, 0, 0], [[1, 0], [0, 1]], 5.0],
+    ids=["too_few_vectors", "single_vector", "2d_vectors", "scalar"],
+)
+def test_get_site_vector_missing_or_malformed(struct_force: Any) -> None:
+    """Missing props give None, struct props not shaped (n_sites, 3) raise."""
     lattice = Lattice.cubic(4.0)
     struct = Structure(lattice, ["Fe", "Fe"], [[0, 0, 0], [0.5, 0.5, 0.5]])
-    # No property at all
     assert _get_site_vector(struct[0], struct, 0, "nonexistent") is None
-    # Struct property exists but site_idx out of bounds
-    struct.properties["force"] = [[1, 0, 0]]
-    assert _get_site_vector(struct[1], struct, 1, "force") is None
+    # used to silently return None (or scalar entries) for malformed struct props
+    struct.properties["force"] = struct_force
+    with pytest.raises(ValueError, match=r"must hold one 3D vector per site"):
+        _get_site_vector(struct[1], struct, 1, "force")
 
 
 def test_get_site_vector_with_magmom() -> None:
     """Test _get_site_vector coerces Magmom objects to (3,) arrays."""
-    from pymatgen.electronic_structure.core import Magmom
-
     lattice = Lattice.cubic(4.0)
     struct = Structure(lattice, ["Fe", "Fe"], [[0, 0, 0], [0.5, 0.5, 0.5]])
     struct.add_site_property("magmom", [Magmom([0, 0, 3]), Magmom([0, 0, -3])])
@@ -1233,8 +1126,6 @@ def test_get_first_matching_site_prop_with_3d_filter(
     use_site_prop: bool,
 ) -> None:
     """Test get_first_matching_site_prop with _is_3d_vector filter."""
-    from pymatgen.electronic_structure.core import Magmom
-
     lattice = Lattice.cubic(4.0)
     struct = Structure(lattice, ["Fe", "Fe"], [[0, 0, 0], [0.5, 0.5, 0.5]])
     if use_site_prop:
@@ -1253,17 +1144,115 @@ def test_get_first_matching_site_prop_with_3d_filter(
     assert result == prop_key
 
 
-def test_draw_bonds_color_false(bond_test_structure: Structure) -> None:
-    """color=False disables the element-color gradient and falls back to solid
-    gray (regression: False leaked into plotly color validation -> TypeError).
-    """
+@pytest.mark.parametrize(
+    ("bond_color", "expected_colors"),
+    [
+        # False leaked into plotly color validation -> TypeError
+        (False, {"rgb(169, 169, 169)"}),
+        # CSS names crashed find_intermediate_color, 3-digit hex was misparsed
+        ("red", {"rgb(255, 0, 0)"}),
+        ("#abc", {"rgb(170, 187, 204)"}),
+        ((255, 0, 0), {"rgb(255, 0, 0)"}),
+        ([0.0, 0.0, 1.0], {"rgb(0, 0, 255)"}),  # RGB lists like elem_colors accepts
+        (("red", "blue"), None),
+        ("not-a-color", ValueError),
+    ],
+)
+def test_draw_bonds_colors(
+    bond_test_structure: Structure,
+    bond_color: Any,
+    expected_colors: set[str] | type[ValueError] | None,
+) -> None:
+    """Bond colors accept False, CSS names, hex and RGB tuples, solid or gradient."""
     fig = go.Figure()
+    if expected_colors is ValueError:
+        with pytest.raises(ValueError, match="Unsupported color format"):
+            draw_bonds(
+                fig=fig,
+                structure=bond_test_structure,
+                nn=CrystalNN(),
+                bond_kwargs={"color": bond_color},
+            )
+        return
     draw_bonds(
         fig=fig,
         structure=bond_test_structure,
         nn=CrystalNN(),
         is_3d=True,
-        bond_kwargs={"color": False},
+        bond_kwargs={"color": bond_color},
     )
+    colors = {trace.line.color for trace in fig.data}
     assert len(fig.data) > 0
-    assert all(trace.line.color == "rgb(169, 169, 169)" for trace in fig.data)
+    if expected_colors is None:  # 10-segment red -> blue gradient
+        assert len(colors) == 10
+        assert "rgb(242.25, 0.0, 12.75)" in colors  # first segment midpoint t=0.05
+    else:
+        assert colors == expected_colors
+
+
+@pytest.mark.parametrize(
+    ("site_labels", "site_idx", "expected"),
+    [
+        ("symbol", 0, "Fe"),
+        ("species", 0, "Fe:0.75, C:0.25"),
+        ("legend", 0, None),
+        (False, 0, None),
+        ({"Fe": "Iron"}, 0, "Iron"),
+        ({"Ni": "Nickel"}, 1, "O"),  # unmapped elements keep their symbol
+        ({}, 1, ""),
+        (["A", "B"], 1, "B"),
+        (("A", "B"), 0, "A"),
+        # used to silently return the symbol or an empty label
+        (["A"], 1, "site_labels sequence has 1 labels but needs one per site"),
+        ("symbols", 0, "Invalid site_labels='symbols'"),
+        (True, 0, "Invalid site_labels=True"),
+        (None, 0, "Invalid site_labels=None"),
+    ],
+)
+def test_generate_site_label(
+    fe3co4_disordered: Structure, site_labels: Any, site_idx: int, expected: str | None
+) -> None:
+    """Site labels follow the labeling strategy and unknown strategies raise."""
+    site = fe3co4_disordered[site_idx]
+    if isinstance(expected, str) and expected.startswith(("Invalid", "site_labels")):
+        with pytest.raises(ValueError, match=re.escape(expected)):
+            generate_site_label(site_labels, site_idx, site)
+        return
+    assert generate_site_label(site_labels, site_idx, site) == expected
+
+
+@pytest.mark.parametrize("standardize_struct", [True, None, False])
+def test_standardize_struct(
+    standardize_struct: bool | None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Standardization keeps site properties and warns if symmetry is undetermined."""
+    # negative frac coords trigger auto-standardization for standardize_struct=None
+    struct = Structure(Lattice.cubic(4), ["Fe", "O"], [[-0.1, 0, 0], [0.5, 0.5, 0.5]])
+    struct.add_site_property("force", [[1, 0, 0], [0, 1, 0]])
+
+    std_struct = _standardize_struct(struct, standardize_struct=standardize_struct)
+    if standardize_struct is False:
+        assert std_struct is struct
+        return
+    assert std_struct is not struct
+    assert all(site.frac_coords.min() >= 0 for site in std_struct)
+    # site properties used to be dropped, silently removing force/magmom vectors
+    assert sorted(map(tuple, std_struct.site_properties["force"])) == [
+        (0, 1, 0),
+        (1, 0, 0),
+    ]
+
+    class FailingSpacegroupAnalyzer:
+        """Stand-in for SpacegroupAnalyzer when spglib can't find symmetry."""
+
+        def __init__(self, _struct: Structure) -> None:
+            raise ValueError("Unable to determine symmetry")
+
+    monkeypatch.setattr(helpers, "SpacegroupAnalyzer", FailingSpacegroupAnalyzer)
+    with pytest.warns(
+        UserWarning, match=f"{NO_SYM_MSG} for Fe1 O1: Unable to determine symmetry"
+    ):
+        no_sym_struct = _standardize_struct(
+            struct, standardize_struct=standardize_struct
+        )
+    assert no_sym_struct is struct

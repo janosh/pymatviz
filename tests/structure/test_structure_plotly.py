@@ -1,32 +1,20 @@
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Any, Final
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import pytest
-from pymatgen.core import (
-    Composition,
-    IMolecule,
-    IStructure,
-    Lattice,
-    Species,
-    Structure,
-)
+from pymatgen.core import Composition, IMolecule, IStructure, Lattice, Structure
+from pymatgen.electronic_structure.core import Magmom
 
 import pymatviz as pmv
 from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
 from pymatviz.enums import ElemColorScheme, Key, SiteCoords
 from pymatviz.structure.helpers import (
-    LABEL_OFFSET_2D_FACTOR,
-    LABEL_OFFSET_3D_FACTOR,
-    MAX_3D_WEDGE_RESOLUTION_PHI,
-    MAX_3D_WEDGE_RESOLUTION_THETA,
-    MIN_3D_WEDGE_RESOLUTION_PHI,
-    MIN_3D_WEDGE_RESOLUTION_THETA,
     get_disordered_site_legend_name,
-    get_image_sites,
     get_site_symbol,
     get_spherical_wedge_mesh,
     normalize_elem_color,
@@ -60,62 +48,6 @@ def normalize_rgb_color(color_str: str) -> str:
             return color_str
 
     return color_str
-
-
-def _get_all_rendered_site_info(
-    structure: Structure, show_image_sites: bool
-) -> list[dict[str, Any]]:
-    """Return a list of dicts, each representing a site (primary or image).
-
-    Each dict contains "symbol" (effective symbol for coloring/sizing),
-    "is_image", "primary_site_idx", and "primary_site_species_string".
-
-    For color and size, images inherit from parent.
-    For labels, it's more complex based on site_labels kwarg.
-    """
-    all_site_infos: list[dict[str, Any]] = []
-    primary_sites_symbols = []
-
-    for site_primary in structure:
-        if hasattr(site_primary.species, "elements"):  # Disordered
-            el_amt_dict = site_primary.species.get_el_amt_dict()
-            symbol = (
-                max(el_amt_dict, key=el_amt_dict.__getitem__) if el_amt_dict else "X"
-            )
-        elif hasattr(site_primary.species, "symbol"):  # Element
-            symbol = site_primary.species.symbol
-        elif hasattr(site_primary.species, "element"):  # Specie
-            symbol = site_primary.species.element.symbol
-        else:
-            try:
-                symbol = site_primary.species_string
-            except AttributeError:
-                symbol = "X"  # Fallback
-        primary_sites_symbols.append(symbol)
-        site_info = {
-            "symbol": symbol,
-            "is_image": False,
-            "primary_site_idx": len(all_site_infos),
-            "primary_site_species_string": site_primary.species_string,
-            "site_obj": site_primary,
-        }
-        all_site_infos.append(site_info)
-
-    if show_image_sites:
-        for idx_primary, site_primary in enumerate(structure):
-            parent_symbol = primary_sites_symbols[idx_primary]
-            image_coords_list = get_image_sites(site_primary, structure.lattice)
-            all_site_infos += [
-                {
-                    "symbol": parent_symbol,
-                    "is_image": True,
-                    "primary_site_idx": idx_primary,
-                    "primary_site_species_string": site_primary.species_string,
-                    "site_obj": site_primary,  # Image sites use the primary site object
-                }
-            ] * len(image_coords_list)
-
-    return all_site_infos
 
 
 # Helper function to resolve expected color string for tests
@@ -188,189 +120,101 @@ def _compare_colors(
         assert normed_actual == normed_expected
 
 
+STRUCTURE_2D_KWARGS: Final[dict[str, dict[str, Any]]] = {
+    "basic_jmol_colors": {
+        "rotation": "0x,0y,0z",
+        "atomic_radii": None,
+        "atom_size": 30,
+        "elem_colors": ElemColorScheme.jmol,
+        "scale": 1,
+        "show_cell": True,
+        "show_sites": True,
+        "site_labels": "symbol",
+        "standardize_struct": None,
+        "n_cols": 2,
+        "show_site_vectors": "magmom",
+    },
+    "vesta_colors_no_sites": {
+        "rotation": "10x,-10y,0z",
+        "atomic_radii": 0.5,
+        "atom_size": 50,
+        "elem_colors": ElemColorScheme.vesta,
+        "scale": 1.5,
+        "show_cell": False,
+        "show_sites": False,
+        "standardize_struct": True,
+        "n_cols": 4,
+        "show_site_vectors": ("magmom", "force"),
+    },
+    "custom_colors_dict": {
+        "rotation": "5x,5y,5z",
+        "atomic_radii": {"Fe": 0.5, "O": 0.3, "C": 0.4},
+        "atom_size": 40,
+        "elem_colors": {"Fe": "red", "O": "blue"},
+        "scale": 1.2,
+        "show_cell": {"edge": {"color": "red", "width": 2}},
+        "show_sites": {"line": {"width": 1, "color": "black"}},
+        "site_labels": {"Fe": "Iron"},
+        "standardize_struct": False,
+        "n_cols": 3,
+        "show_site_vectors": (),
+    },
+    "legend_mode": {
+        "rotation": "15x,0y,10z",
+        "atomic_radii": 0.8,
+        "atom_size": 35,
+        "elem_colors": ElemColorScheme.jmol,
+        "scale": 0.9,
+        "show_cell": True,
+        "show_sites": True,
+        "site_labels": "legend",
+        "standardize_struct": None,
+        "n_cols": 2,
+    },
+    "no_labels_custom_cell": {
+        "rotation": "0x,20y,0z",
+        "atomic_radii": None,
+        "atom_size": 45,
+        "elem_colors": ElemColorScheme.vesta,
+        "scale": 1.1,
+        "show_cell": {"edge": {"color": "blue", "width": 1, "dash": "dot"}},
+        "show_sites": True,
+        "site_labels": False,
+        "standardize_struct": True,
+        "n_cols": 4,
+    },
+    "custom_site_styling": {
+        "rotation": "30x,-15y,5z",
+        "atomic_radii": 0.6,
+        "atom_size": 55,
+        "elem_colors": {"Fe": "green", "O": "yellow"},
+        "scale": 0.8,
+        "show_cell": True,
+        "show_sites": {"line": {"width": 2, "color": "red"}},
+        "standardize_struct": False,
+        "n_cols": 3,
+    },
+    "cell_boundary_tol": {
+        "cell_boundary_tol": 0.1,
+        "show_image_sites": True,
+        "site_labels": "symbol",
+    },
+}
+
+
 @pytest.mark.parametrize(
-    ("test_scenario", "kwargs"),
-    [
-        # Basic functionality tests
-        (
-            "basic_jmol_colors",
-            {
-                "rotation": "0x,0y,0z",
-                "atomic_radii": None,
-                "atom_size": 30,
-                "elem_colors": ElemColorScheme.jmol,
-                "scale": 1,
-                "show_cell": True,
-                "show_sites": True,
-                "site_labels": "symbol",
-                "standardize_struct": None,
-                "n_cols": 2,
-                "show_site_vectors": "magmom",
-            },
-        ),
-        (
-            "vesta_colors_no_sites",
-            {
-                "rotation": "10x,-10y,0z",
-                "atomic_radii": 0.5,
-                "atom_size": 50,
-                "elem_colors": ElemColorScheme.vesta,
-                "scale": 1.5,
-                "show_cell": False,
-                "show_sites": False,
-                "standardize_struct": True,
-                "n_cols": 4,
-                "show_site_vectors": ("magmom", "force"),
-            },
-        ),
-        (
-            "custom_colors_dict",
-            {
-                "rotation": "5x,5y,5z",
-                "atomic_radii": {"Fe": 0.5, "O": 0.3},
-                "atom_size": 40,
-                "elem_colors": {"Fe": "red", "O": "blue"},
-                "scale": 1.2,
-                "show_cell": {"color": "red", "width": 2},
-                "show_sites": {"line": {"width": 1, "color": "black"}},
-                "site_labels": {"Fe": "Iron"},
-                "standardize_struct": False,
-                "n_cols": 3,
-                "show_site_vectors": (),
-            },
-        ),
-        (
-            "legend_mode",
-            {
-                "rotation": "15x,0y,10z",
-                "atomic_radii": 0.8,
-                "atom_size": 35,
-                "elem_colors": ElemColorScheme.jmol,
-                "scale": 0.9,
-                "show_cell": True,
-                "show_sites": True,
-                "site_labels": "legend",
-                "standardize_struct": None,
-                "n_cols": 2,
-            },
-        ),
-        (
-            "no_labels_custom_cell",
-            {
-                "rotation": "0x,20y,0z",
-                "atomic_radii": None,
-                "atom_size": 45,
-                "elem_colors": ElemColorScheme.vesta,
-                "scale": 1.1,
-                "show_cell": {"color": "blue", "width": 1, "dash": "dot"},
-                "show_sites": True,
-                "site_labels": False,
-                "standardize_struct": True,
-                "n_cols": 4,
-            },
-        ),
-        (
-            "custom_site_styling",
-            {
-                "rotation": "30x,-15y,5z",
-                "atomic_radii": 0.6,
-                "atom_size": 55,
-                "elem_colors": {"Fe": "green", "O": "yellow"},
-                "scale": 0.8,
-                "show_cell": True,
-                "show_sites": {"line": {"width": 2, "color": "red"}},
-                "standardize_struct": False,
-                "n_cols": 3,
-            },
-        ),
-        # New test scenarios for show_cell_faces
-        (
-            "cell_faces_default",
-            {
-                "rotation": "0x,0y,0z",
-                "show_cell": True,
-                "show_cell_faces": True,
-                "show_sites": True,
-                "site_labels": "symbol",
-            },
-        ),
-        (
-            "cell_faces_custom_color",
-            {
-                "rotation": "10x,10y,10z",
-                "show_cell": True,
-                "show_cell_faces": {"color": "rgba(255,0,0,0.2)"},
-                "show_sites": True,
-                "site_labels": "legend",
-            },
-        ),
-        (
-            "cell_faces_disabled",
-            {
-                "rotation": "5x,5y,5z",
-                "show_cell": True,
-                "show_cell_faces": False,
-                "show_sites": True,
-                "site_labels": "symbol",
-            },
-        ),
-        (
-            "no_cell_no_faces",
-            {
-                "rotation": "0x,0y,0z",
-                "show_cell": False,
-                "show_cell_faces": True,  # Should be ignored when show_cell=False
-                "show_sites": True,
-                "site_labels": "symbol",
-            },
-        ),
-        # Coverage-specific scenarios
-        (
-            "struct_key_elem_colors",
-            {
-                "elem_colors": {
-                    "struct1": ElemColorScheme.jmol,
-                    "struct2": ElemColorScheme.vesta,
-                },
-                "site_labels": "symbol",
-            },
-        ),
-        ("site_vector_properties", {"show_site_vectors": "force"}),
-        (  # Test cell_boundary_tol
-            "cell_boundary_tol",
-            dict(cell_boundary_tol=0.1, show_image_sites=True, site_labels="symbol"),
-        ),
-    ],
+    "kwargs", STRUCTURE_2D_KWARGS.values(), ids=STRUCTURE_2D_KWARGS.keys()
 )
-def test_structure_2d_comprehensive(
-    test_scenario: str,
-    kwargs: dict[str, Any],
-    fe3co4_disordered_with_props: Structure,
+def test_structure_2d_layout(
+    kwargs: dict[str, Any], fe3co4_disordered_with_props: IStructure
 ) -> None:
-    """Test structure_2d with various parameter combos."""
-    # Handle multi-structure scenarios for coverage
-    if test_scenario in ("struct_key_elem_colors", "site_vector_properties"):
-        struct1 = fe3co4_disordered_with_props.copy()
-        struct1.add_site_property("force", [[0.1, 0.2, 0.3]] * len(struct1))
-        struct2 = fe3co4_disordered_with_props.copy()
-        structures_input = {"struct1": struct1, "struct2": struct2}
-    else:
-        structures_input = fe3co4_disordered_with_props
+    """Any kwarg combo gives 2D scatter traces and the standard subplot layout."""
+    fig = pmv.structure_2d(fe3co4_disordered_with_props, **kwargs)
 
-    fig = pmv.structure_2d(structures_input, **kwargs)
-    assert isinstance(fig, go.Figure)
-
-    # Check that all traces are Scatter (2D)
     assert {*map(type, fig.data)} in ({go.Scatter}, set())
-
-    # Verify layout properties based on site_labels
-    site_labels_kwarg = kwargs.get("site_labels", "legend")  # Default from function
-    expected_showlegend = site_labels_kwarg == "legend"
-    assert fig.layout.showlegend is expected_showlegend
+    assert fig.layout.showlegend is (kwargs.get("site_labels", "legend") == "legend")
     assert fig.layout.paper_bgcolor == "rgba(0,0,0,0)"
     assert fig.layout.plot_bgcolor == "rgba(0,0,0,0)"
-
-    # Check that axes are properly configured
     for axis in fig.layout.xaxis, fig.layout.yaxis:
         assert axis.showticklabels is False
         assert axis.showgrid is False
@@ -378,160 +222,83 @@ def test_structure_2d_comprehensive(
         assert axis.scaleratio == 1
         assert axis.constrain == "domain"
 
-    # Test scenario-specific validations
-    if isinstance(structures_input, dict):
-        structure = next(iter(structures_input.values()))
-    else:
-        structure = structures_input
-    if isinstance(structure, Structure):
-        _validate_2d_scenario_specifics(test_scenario, kwargs, fig, structure)
+
+def test_structure_2d_no_sites(fe3co4_disordered_with_props: IStructure) -> None:
+    """show_sites=False draws no site markers, wedges, labels or vectors."""
+    fig = pmv.structure_2d(
+        fe3co4_disordered_with_props,
+        show_sites=False,
+        show_site_vectors=("magmom", "force"),
+    )
+    trace_names = [trace.name or "" for trace in fig.data]
+    assert trace_names  # cell edges, nodes and faces
+    assert all(name.startswith(("edge", "node", "cell-face")) for name in trace_names)
 
 
-def _validate_2d_scenario_specifics(
-    test_scenario: str,
-    kwargs: dict[str, Any],
-    fig: go.Figure,
-    structure: Structure,
+def test_structure_2d_custom_styling(fe3co4_disordered: IStructure) -> None:
+    """Element color, site marker, label and cell edge overrides are applied."""
+    fig = pmv.structure_2d(
+        fe3co4_disordered,
+        elem_colors={"Fe": "red", "O": "blue", "C": "green"},
+        show_sites={"line": {"width": 1, "color": "black"}},
+        site_labels={"Fe": "Iron"},
+        atomic_radii={"Fe": 0.5, "O": 0.3, "C": 0.4},
+        show_cell={"edge": {"color": "red", "width": 2}},
+        show_image_sites=False,
+    )
+    (o_site,) = [trace for trace in fig.data if trace.mode == "markers+text"]
+    assert o_site.marker.color == "blue"
+    assert o_site.marker.line.to_plotly_json() == {"width": 1, "color": "black"}
+    assert o_site.text == "O"  # unmapped elements keep their symbol
+    wedge_colors = {trace.fillcolor for trace in fig.data if trace.fill == "toself"}
+    assert wedge_colors == {"red", "green", "rgba(255,255,255,0.1)"}  # + cell face
+    assert {trace.text for trace in fig.data if trace.mode == "text"} == {"Iron", "C"}
+    edge_lines = [
+        trace.line for trace in fig.data if (trace.name or "").startswith("edge")
+    ]
+    assert len(edge_lines) == 12
+    assert {(line.color, line.width, line.dash) for line in edge_lines} == {
+        ("red", 2, "dash")
+    }
+
+
+def test_structure_2d_per_struct_elem_colors(
+    fe3co4_disordered_with_props: IStructure,
 ) -> None:
-    """Validate scenario-specific aspects of 2D plots."""
-    show_sites = kwargs.get("show_sites", True)
-    show_cell = kwargs.get("show_cell", True)
-    show_cell_faces = kwargs.get("show_cell_faces", True)
-
-    if test_scenario == "vesta_colors_no_sites":
-        # When show_sites=False, no site traces should exist
-        site_traces = [
-            trace
-            for trace in fig.data
-            if getattr(trace, "mode", None) in ("markers", "markers+text")
-        ]
-        assert len(site_traces) == 0
-
-    elif test_scenario == "legend_mode":
-        # Test legend functionality - updated to handle disordered sites correctly
-        assert fig.layout.showlegend is True
-        legend_traces = [trace for trace in fig.data if trace.showlegend]
-
-        # disordered sites have combined legend names, not individual elements
-        expected_legend_names = set()  # get expected legend names from structure
-        for site in structure:
-            species = getattr(site, "specie", site.species)
-            if isinstance(species, Composition) and len(species) > 1:
-                # This is a disordered site - should appear as combined name
-                sorted_species = sorted(
-                    species.items(), key=lambda x: x[1], reverse=True
-                )
-                legend_name = get_disordered_site_legend_name(
-                    sorted_species, is_image=False
-                )
-                expected_legend_names.add(legend_name)
-            else:
-                # This is an ordered site - should appear as element symbol
-                expected_legend_names.add(get_site_symbol(site))
-
-        legend_trace_names = {trace.name for trace in legend_traces}
-        for expected_name in expected_legend_names:
-            assert expected_name in legend_trace_names
-
-    elif test_scenario == "custom_colors_dict":
-        # Test custom color application
-        elem_colors_kwarg = kwargs.get("elem_colors")
-        if show_sites and isinstance(elem_colors_kwarg, dict):
-            site_traces = [
-                trace
-                for trace in fig.data
-                if getattr(trace, "mode", None) in ("markers", "markers+text")
-                and not (trace.name and trace.name.startswith(("node", "edge")))
-            ]
-            for trace in site_traces:
-                if trace.name in elem_colors_kwarg:
-                    actual_color = normalize_rgb_color(str(trace.marker.color))
-                    expected_color = _resolve_expected_color_str(
-                        trace.name, elem_colors_kwarg, normalize_rgb_color
-                    )
-                    _compare_colors(actual_color, expected_color, normalize_rgb_color)
-
-    elif test_scenario == "no_labels_custom_cell":
-        # Test custom cell styling
-        cell_kwargs = kwargs.get("show_cell")
-        if isinstance(cell_kwargs, dict):
-            cell_traces = [trace for trace in fig.data if trace.mode == "lines"]
-            assert len(cell_traces) > 0
-
-    elif test_scenario == "cell_faces_default":
-        # Test default cell faces functionality
-        if show_cell and show_cell_faces:
-            # For 2D plots, cell faces are shown as filled polygons
-            surface_traces = [
-                trace
-                for trace in fig.data
-                if trace.name == "cell-face" and trace.fill == "toself"
-            ]
-            assert len(surface_traces) == 1, "Expected 1 cell face trace in 2D"
-
-    elif test_scenario == "cell_faces_custom_color":
-        # Test custom cell faces color
-        if show_cell and isinstance(show_cell_faces, dict):
-            surface_traces = [
-                trace
-                for trace in fig.data
-                if trace.name == "cell-face" and trace.fill == "toself"
-            ]
-            assert len(surface_traces) == 1
-            expected_color = show_cell_faces.get("color", "rgba(255,255,255,0.1)")
-            assert surface_traces[0].fillcolor == expected_color
-
-    elif test_scenario == "cell_faces_disabled":
-        # Test that no cell faces are shown when disabled
-        surface_traces = [trace for trace in fig.data if trace.name == "cell-face"]
-        assert len(surface_traces) == 0
-
-    elif test_scenario == "no_cell_no_faces":
-        # Test that no cell faces are shown when show_cell=False
-        surface_traces = [trace for trace in fig.data if trace.name == "cell-face"]
-        assert len(surface_traces) == 0
-
-    # Skip validation for multi-structure scenarios as they have different trace counts
-    if show_sites is not False and test_scenario not in (
-        "struct_key_elem_colors",
-        "site_vector_properties",
-        "cell_faces_default",
-        "cell_faces_custom_color",
-        "cell_faces_disabled",
-        "no_cell_no_faces",
-    ):
-        _validate_common_site_properties(kwargs, fig, structure)
+    """elem_colors keyed by structure key apply a color scheme per subplot."""
+    structs = {
+        "struct1": fe3co4_disordered_with_props.copy(),
+        "struct2": fe3co4_disordered_with_props.copy(),
+    }
+    fig = pmv.structure_2d(
+        structs,
+        elem_colors={"struct1": ElemColorScheme.jmol, "struct2": ElemColorScheme.vesta},
+        site_labels="symbol",
+        show_image_sites=False,
+    )
+    o_colors = {trace.name: trace.marker.color for trace in fig.data}
+    assert o_colors["site-struct1-1"] == normalize_elem_color(ELEM_COLORS_JMOL["O"])
+    assert o_colors["site-struct2-1"] == normalize_elem_color(ELEM_COLORS_VESTA["O"])
+    assert o_colors["site-struct1-1"] != o_colors["site-struct2-1"]
 
 
-def _validate_common_site_properties(
-    kwargs: dict[str, Any], fig: go.Figure, structure: Structure
-) -> None:
-    """Validate common site properties across all test scenarios."""
-    site_labels_kwarg = kwargs.get("site_labels", "legend")  # Default is "legend"
-
-    if site_labels_kwarg == "legend":
-        # Check legend traces
-        legend_traces = [trace for trace in fig.data if trace.showlegend]
-        unique_elements = {get_site_symbol(s) for s in structure}
-        assert len(legend_traces) == len(unique_elements)
-
-        # Verify each element has correct number of points
-        for trace in legend_traces:
-            if trace.showlegend and trace.name in unique_elements:
-                expected_points = sum(
-                    1 for site in structure if get_site_symbol(site) == trace.name
-                )
-                actual_points = len(trace.x) if hasattr(trace, "x") else 0
-                assert actual_points == expected_points
-    else:
-        # Non-legend modes should have site traces
-        site_traces = [
-            trace
-            for trace in fig.data
-            if (trace.name or "").startswith("site") and "markers" in (trace.mode or "")
-        ]
-        if site_labels_kwarg is not False:
-            assert len(site_traces) > 0
+def test_structure_2d_site_vectors(fe3co4_disordered_with_props: IStructure) -> None:
+    """Site vectors are drawn at primary and image sites of every subplot."""
+    struct1 = fe3co4_disordered_with_props.copy(
+        site_properties={"force": [[0.1, 0.2, 0.3]] * 2}
+    )
+    structs = {"struct1": struct1, "struct2": fe3co4_disordered_with_props}
+    fig = pmv.structure_2d(structs, show_site_vectors="force")
+    vector_names = {
+        trace.name for trace in fig.data if (trace.name or "").startswith("vector")
+    }
+    assert {name for name in vector_names if "-img-" not in name} == {
+        f"vector-{key}-{site_idx}" for key in structs for site_idx in range(2)
+    }
+    # Fe/C site at the origin has 7 corner images in each subplot
+    assert {name for name in vector_names if "-img-" in name} == {
+        f"vector-{key}-img-0-{img_idx}" for key in structs for img_idx in range(7)
+    }
 
 
 @pytest.mark.parametrize(
@@ -661,35 +428,23 @@ def test_structure_2d_legend_and_colors(
 
 
 @pytest.mark.parametrize(
-    ("show_sites", "show_bonds", "expected_bond_traces"),
+    ("show_sites", "show_bonds", "expect_bonds"),
     [
-        (False, True, 0),  # No bonds when no sites rendered
-        (True, False, 0),  # No bonds when show_bonds=False
-        (True, True, "variable"),  # Bonds may exist when both True
+        (False, True, False),  # No bonds when no sites rendered
+        (True, False, False),  # No bonds when show_bonds=False
+        (True, True, True),
     ],
 )
 def test_structure_2d_bonds_and_sites(
-    show_sites: bool, show_bonds: bool, expected_bond_traces: int | str
+    show_sites: bool, show_bonds: bool, expect_bonds: bool
 ) -> None:
     """Test bond rendering behavior with different site visibility settings."""
-    lattice = Lattice.cubic(3.0)
-    struct = Structure(lattice, ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5]])
-
+    struct = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5]])
     fig = pmv.structure_2d(
-        struct,
-        show_sites=show_sites,
-        show_bonds=show_bonds,
-        show_image_sites=False,  # Simplify test
+        struct, show_sites=show_sites, show_bonds=show_bonds, show_image_sites=False
     )
-
-    bond_traces = [
-        trace for trace in fig.data if getattr(trace, "name", "").startswith("bond")
-    ]
-
-    if expected_bond_traces == 0:
-        assert len(bond_traces) == 0
-    # For "variable", we just check that the function doesn't crash
-    # and that bonds are only present when sites are also present
+    has_bonds = any((trace.name or "").startswith("bond") for trace in fig.data)
+    assert has_bonds is expect_bonds
 
 
 def test_structure_2d_invalid_input() -> None:
@@ -703,26 +458,8 @@ def test_structure_2d_invalid_input() -> None:
 
     # Test with invalid rotation string
     struct = Structure(lattice_cubic, ["Fe", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
-    with pytest.raises(ValueError, match="could not convert string to float"):
+    with pytest.raises(ValueError, match="Invalid rotation angle='invalid_rotation'"):
         pmv.structure_2d(struct, rotation="invalid_rotation")
-
-
-def test_structure_plotly_site_vector_coverage() -> None:
-    """Test site vector property coverage for both 2D and 3D functions."""
-    lattice = Lattice.cubic(4.0)
-    struct = Structure(lattice, ["Li", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
-
-    # Add vector property to individual sites (covers line 259 in 2D, similar in 3D)
-    struct[0].properties["force"] = [0.1, 0.2, 0.3]
-    struct[1].properties["force"] = [0.2, 0.3, 0.4]
-
-    # Test 2D with site-level vector properties
-    fig_2d = pmv.structure_2d(struct, show_site_vectors="force")
-    assert isinstance(fig_2d, go.Figure)
-
-    # Test 3D with site-level vector properties
-    fig_3d = pmv.structure_3d(struct, show_site_vectors="force")
-    assert isinstance(fig_3d, go.Figure)
 
 
 @pytest.mark.parametrize(
@@ -755,7 +492,7 @@ def test_structure_plotly_site_vector_coverage() -> None:
             "show_site_vectors": ("magmom", "force"),
         },
         {
-            "atomic_radii": {"Fe": 0.8, "O": 0.6},
+            "atomic_radii": {"Fe": 0.8, "O": 0.6, "C": 0.7},
             "atom_size": 25,
             "elem_colors": {"Fe": "red", "O": "blue"},
             "scale": 0.9,
@@ -859,6 +596,7 @@ def test_structure_3d(
     kwargs: dict[str, Any], fe3co4_disordered_with_props: Structure
 ) -> None:
     # Handle multi-structure scenarios for coverage
+    """Test structure_3d layout, cell faces and site traces for various kwargs."""
     if "struct1" in str(kwargs.get("elem_colors", {})) or "struct1" in str(
         kwargs.get("show_bonds", {})
     ):
@@ -902,40 +640,16 @@ def test_structure_3d(
     show_cell = kwargs.get("show_cell", True)
     show_cell_faces = kwargs.get("show_cell_faces", True)
 
-    if show_cell and show_cell_faces:
-        # For 3D plots, cell faces are shown as mesh3d traces
-        surface_traces = [
-            trace
-            for trace in fig.data
-            if trace.type == "mesh3d" and trace.name.startswith("surface-face")
-        ]
-        if isinstance(show_cell_faces, dict):
-            # When custom styling is provided, check that surfaces exist
-            assert len(surface_traces) > 0
-            # Check custom color if specified
-            if "color" in show_cell_faces:
-                expected_color = show_cell_faces["color"]
-                for trace in surface_traces:
-                    assert trace.color == expected_color
-        elif show_cell_faces is True:
-            # When show_cell_faces=True, surfaces should exist
-            assert len(surface_traces) > 0
-    elif show_cell and show_cell_faces is False:
-        # When show_cell_faces=False, no surface traces should exist
-        surface_traces = [
-            trace
-            for trace in fig.data
-            if trace.type == "mesh3d" and trace.name.startswith("surface-face")
-        ]
-        assert len(surface_traces) == 0
-    elif not show_cell:  # When show_cell=False, no surface traces should exist
-        # regardless of show_cell_faces
-        surface_traces = [
-            trace
-            for trace in fig.data
-            if trace.type == "mesh3d" and trace.name.startswith("surface-face")
-        ]
-        assert len(surface_traces) == 0
+    # For 3D plots, cell faces are mesh3d traces (only drawn if show_cell is on)
+    surface_traces = [
+        trace
+        for trace in fig.data
+        if trace.type == "mesh3d" and trace.name.startswith("surface-face")
+    ]
+    assert (len(surface_traces) > 0) is bool(show_cell and show_cell_faces)
+    if isinstance(show_cell_faces, dict) and "color" in show_cell_faces:
+        for trace in surface_traces:
+            assert trace.color == show_cell_faces["color"]
 
     if kwargs.get("show_sites"):
         # For 3D plots, site traces include both scatter3d and mesh3d traces
@@ -1042,6 +756,7 @@ def test_structure_3d(
 
 
 def test_structure_3d_multiple() -> None:
+    """Test structure_3d trace counts and titles for dict/Series/list inputs."""
     struct1 = Structure(lattice_cubic, ["Fe", "O"], COORDS)
     struct1.properties = {"id": "struct1"}
     struct2 = Structure(lattice_cubic, ["Co", "O"], COORDS)
@@ -1132,6 +847,7 @@ def test_structure_3d_multiple() -> None:
 
     # Test subplot_title and its interaction with legend annotations
     def custom_subplot_title_func(struct: AnyStructure, key: Hashable) -> str:
+        """Title from structure key and formula."""
         assert isinstance(struct, (IStructure, IMolecule))  # narrow for ty
         return f"{key} - {struct.formula}"
 
@@ -1146,90 +862,52 @@ def test_structure_3d_multiple() -> None:
         assert expected_title in title_texts
 
 
-def test_structure_plotly_coverage_improvements() -> None:
-    """Test specific scenarios to improve coverage for missing lines."""
-    lattice = Lattice.cubic(4.0)
-    struct = Structure(lattice, ["Li", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
-
-    # Test vector property in site properties (line 259)
-    struct[0].properties["force"] = [0.1, 0.2, 0.3]
-    struct[1].properties["force"] = [0.2, 0.3, 0.4]
-
-    # Test 2D with site-level vector properties
-    fig_2d = pmv.structure_2d(struct, show_site_vectors="force")
-    assert isinstance(fig_2d, go.Figure)
-
-    # Test 3D with site-level vector properties
-    fig_3d = pmv.structure_3d(struct, show_site_vectors="force")
-    assert isinstance(fig_3d, go.Figure)
-
-    # Test bond drawing with dict show_bonds (line 320)
-    struct_dict = {"struct1": struct, "struct2": struct.copy()}
-    fig_2d_bonds = pmv.structure_2d(
-        struct_dict, show_bonds={"struct1": True, "struct2": False}
-    )
-    assert isinstance(fig_2d_bonds, go.Figure)
-
-    # Test 3D subplot title handling when subplot_title is not False (lines 657-660)
-    fig_3d_title = pmv.structure_3d(
-        struct_dict,
-        subplot_title=lambda _struct, idx: {"text": f"Custom {idx}", "x": 0.5},
-    )
-    assert isinstance(fig_3d_title, go.Figure)
-
-    # Test legend configuration (lines 676-692)
-    fig_3d_legend = pmv.structure_3d(struct_dict, site_labels="legend", n_cols=2)
-    assert isinstance(fig_3d_legend, go.Figure)
-    assert fig_3d_legend.layout.showlegend is True
-
-
-def test_structure_plotly_bonds_coverage() -> None:
-    """Test bond drawing scenarios for coverage."""
-    lattice = Lattice.cubic(3.0)
-    struct = Structure(lattice, ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5]])
-
-    # Test 2D bonds with dict show_bonds
-    fig_2d = pmv.structure_2d(
+@pytest.mark.parametrize("plot_func", [pmv.structure_2d, pmv.structure_3d])
+def test_structure_plotly_per_struct_show_bonds(plot_func: Callable) -> None:
+    """show_bonds dict draws bonds only for structures mapped to True."""
+    struct = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+    fig = plot_func(
         {"struct1": struct, "struct2": struct.copy()},
         show_bonds={"struct1": True, "struct2": False},
-        show_sites=True,
     )
-    assert isinstance(fig_2d, go.Figure)
-
-    # Test 3D bonds with dict show_bonds
-    fig_3d = pmv.structure_3d(
-        {"struct1": struct, "struct2": struct.copy()},
-        show_bonds={"struct1": True, "struct2": False},
-        show_sites=True,
-    )
-    assert isinstance(fig_3d, go.Figure)
+    bond_traces = [trace for trace in fig.data if (trace.name or "").startswith("bond")]
+    assert len(bond_traces) > 0
+    subplot_ids = {
+        trace.scene if plot_func is pmv.structure_3d else trace.xaxis
+        for trace in bond_traces
+    }
+    assert subplot_ids == {"scene" if plot_func is pmv.structure_3d else "x"}
 
 
-def test_structure_3d_subplot_title_coverage() -> None:
-    """Test 3D subplot title scenarios for coverage."""
+@pytest.mark.parametrize("plot_func", [pmv.structure_2d, pmv.structure_3d])
+def test_structure_plotly_subplot_title(plot_func: Callable) -> None:
+    """Subplot titles accept positioned dicts and False hides them."""
     lattice = Lattice.cubic(4.0)
     struct1 = Structure(lattice, ["Li", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
     struct2 = Structure(lattice, ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]])
 
-    # Test with custom subplot_title function that returns dict with y and yanchor
     def custom_title_with_position(
-        _struct: AnyStructure, k: Hashable
+        _struct: AnyStructure, key: Hashable
     ) -> dict[str, Any]:
-        return {"text": f"Structure {k}", "x": 0.5, "y": 0.95, "yanchor": "top"}
+        """Title dict with explicit position."""
+        return {"text": f"Structure {key}", "x": 0.5, "y": 0.95, "yanchor": "top"}
 
-    fig = pmv.structure_3d(
+    fig = plot_func(
         {"struct1": struct1, "struct2": struct2},
         subplot_title=custom_title_with_position,
         n_cols=2,
     )
-    assert isinstance(fig, go.Figure)
-    assert len(fig.layout.annotations) == 2
+    assert [anno.text for anno in fig.layout.annotations] == [
+        "Structure struct1",
+        "Structure struct2",
+    ]
+    assert {anno.y for anno in fig.layout.annotations} == {0.95}
 
-    # Test with subplot_title=False to cover that branch
-    fig_no_title = pmv.structure_3d(
+    # 2D used to ignore subplot_title=False and render default titles
+    fig_no_title = plot_func(
         {"struct1": struct1, "struct2": struct2}, subplot_title=False, n_cols=2
     )
-    assert isinstance(fig_no_title, go.Figure)
+    assert [anno.text for anno in fig_no_title.layout.annotations] == [" ", " "]
 
 
 @pytest.mark.parametrize(
@@ -1263,8 +941,6 @@ def test_structure_plotly_cell_faces(
         show_sites=True,
         site_labels="symbol",
     )
-
-    assert isinstance(fig, go.Figure)
 
     if is_3d:  # For 3D plots, check mesh3d traces with surface-face names
         surface_traces = [
@@ -1330,24 +1006,28 @@ def test_structure_plotly_cell_faces_no_cell() -> None:
     assert len(surface_traces_3d) == 0
 
 
-def test_structure_plotly_cell_faces_multiple_structures() -> None:
-    """Test cell faces with multiple structures."""
+@pytest.mark.parametrize(
+    ("plot_func", "face_name", "faces_per_struct"),
+    [(pmv.structure_2d, "cell-face", 1), (pmv.structure_3d, "surface-face", 12)],
+)
+def test_structure_plotly_cell_faces_multiple_structures(
+    plot_func: Callable, face_name: str, faces_per_struct: int
+) -> None:
+    """Every subplot gets its own cell faces."""
     structures = {
         "struct1": Structure(Lattice.cubic(3), ["Li"], [[0, 0, 0]]),
         "struct2": Structure(Lattice.cubic(4), ["Na"], [[0, 0, 0]]),
     }
+    fig = plot_func(structures, show_cell=True, show_cell_faces=True, n_cols=2)
+    n_faces = sum((trace.name or "").startswith(face_name) for trace in fig.data)
+    assert n_faces == faces_per_struct * len(structures)
 
-    # Test 2D
-    fig_2d = pmv.structure_2d(
-        structures, show_cell=True, show_cell_faces=True, n_cols=2
-    )
-    assert isinstance(fig_2d, go.Figure)
-
-    # Test 3D
-    fig_3d = pmv.structure_3d(
-        structures, show_cell=True, show_cell_faces=True, n_cols=2
-    )
-    assert isinstance(fig_3d, go.Figure)
+    # per-structure show_cell: style struct1's cell, hide struct2's
+    red_edge = {"edge": dict(color="red", width=3)}
+    fig = plot_func(structures, show_cell={"struct1": red_edge, "struct2": False})
+    edges = [trace for trace in fig.data if (trace.name or "").startswith("edge")]
+    assert len(edges) == 12  # one cell
+    assert {trace.line.color for trace in edges} == {"red"}
 
 
 @pytest.mark.parametrize("is_3d", [True, False])
@@ -1380,6 +1060,7 @@ def test_structure_plotly_multiple_properties_precedence(is_3d: bool) -> None:
 
     # Get site traces from both figures
     def get_site_traces(fig: go.Figure) -> list[Any]:
+        """Site marker traces excluding cell and image traces."""
         return [
             trace
             for trace in fig.data
@@ -1392,6 +1073,7 @@ def test_structure_plotly_multiple_properties_precedence(is_3d: bool) -> None:
         ]
 
     def extract_size(marker_size: Any) -> float:
+        """Marker size as float."""
         if isinstance(marker_size, (tuple, list)):
             return float(marker_size[0]) if marker_size else 0.0
         return float(marker_size) if marker_size is not None else 0.0
@@ -1432,215 +1114,65 @@ def test_structure_plotly_multiple_properties_precedence(is_3d: bool) -> None:
     assert cl_size1 > na_size1
 
 
+@pytest.mark.parametrize("plot_func", [pmv.structure_2d, pmv.structure_3d])
 @pytest.mark.parametrize(
-    ("site_labels", "is_3d", "expected_behavior"),
+    ("site_labels", "expected_labels"),
     [
-        (
-            "symbol",
-            False,
-            "all_species_labeled",
-        ),  # 2D with symbols: all species labeled
-        ("symbol", True, "all_species_labeled"),  # 3D with symbols: all species labeled
-        (
-            "species",
-            False,
-            "all_species_labeled",
-        ),  # 2D with species: all species labeled
-        (
-            "species",
-            True,
-            "all_species_labeled",
-        ),  # 3D with species: all species labeled
-        ("legend", False, "no_labels"),  # 2D legend mode: no labels
-        ("legend", True, "no_labels"),  # 3D legend mode: no labels
-        (False, False, "no_labels"),  # 2D with False: no labels
-        (False, True, "no_labels"),  # 3D with False: no labels
-        ({"Fe": "Iron", "C": "Carbon"}, False, "all_species_labeled"),  # 2D custom dict
-        ({"Fe": "Iron", "C": "Carbon"}, True, "all_species_labeled"),  # 3D custom dict
+        ("symbol", {"Fe", "C"}),
+        ("species", {"Fe", "C"}),
+        ("legend", set()),
+        (False, set()),
+        ({"Fe": "Iron", "C": "Carbon"}, {"Iron", "Carbon"}),
     ],
 )
 def test_disordered_site_labeling_behavior(
+    plot_func: Callable,
     site_labels: Any,
-    is_3d: bool,
-    expected_behavior: str,
+    expected_labels: set[str],
     fe3co4_disordered: Structure,
 ) -> None:
-    """Test that disordered sites either label all species or none (in legend mode).
+    """Disordered sites label all species unless in legend mode or labels are off."""
+    fig = plot_func(
+        fe3co4_disordered,
+        site_labels=site_labels,
+        show_cell=False,
+        show_image_sites=False,
+        atom_size=50,
+    )
+    label_traces = [
+        trace for trace in fig.data if getattr(trace, "mode", None) == "text"
+    ]
+    labels = {trace.text for trace in label_traces}
+    if not expected_labels:
+        assert labels == set()
+        return
+    assert expected_labels <= labels
 
-    For disordered sites, we should either:
-    - Label all species present at the site (when site_labels != "legend" and != False)
-    - Label no species (when site_labels == "legend" or == False)
-
-    The structure has a disordered site with Fe (75%) and C (25%).
-    """
-    # Add the structure function based on dimensionality
-    if is_3d:
-        fig = pmv.structure_3d(
-            fe3co4_disordered,
-            site_labels=site_labels,
-            show_cell=False,
-            show_image_sites=False,  # Simplify for focused test
-            atom_size=50,  # Large enough to see clearly
-        )
-    else:
-        fig = pmv.structure_2d(
-            fe3co4_disordered,
-            site_labels=site_labels,
-            show_cell=False,
-            show_image_sites=False,  # Simplify for focused test
-            atom_size=50,  # Large enough to see clearly
-        )
-
-    # Count distinct text labels for the disordered site
-    all_text_labels = []
-    if is_3d:
-        # For 3D: Look for scatter3d traces with mode="text"
-        text_traces = [
-            trace
-            for trace in fig.data
-            if hasattr(trace, "type")
-            and trace.type == "scatter3d"
-            and hasattr(trace, "mode")
-            and trace.mode == "text"
-        ]
-    else:
-        # For 2D: Look for scatter traces with mode="text"
-        text_traces = [
-            trace
-            for trace in fig.data
-            if hasattr(trace, "mode") and trace.mode == "text"
-        ]
-
-    for trace in text_traces:
-        if hasattr(trace, "text") and trace.text:
-            if isinstance(trace.text, list):
-                all_text_labels.extend([t for t in trace.text if t])
-            elif isinstance(trace.text, str):
-                all_text_labels.append(trace.text)
-
-    if expected_behavior == "no_labels":
-        # In legend mode or False, should have no text labels for disordered sites
-        assert len(all_text_labels) == 0, (
-            f"Expected no labels but found: {all_text_labels}"
-        )
-
-    elif expected_behavior == "all_species_labeled":
-        # Should have labels for both Fe and C (the species in disordered site)
-        # Note: O site might also be labeled, but we focus on disordered site species
-        expected_labels = {"Fe", "C"}  # Both species should be labeled
-
-        if site_labels == "species":
-            expected_labels = {
-                "Fe",
-                "C",
-            }  # Species strings should be element symbols for this case
-        elif isinstance(site_labels, dict):
-            expected_labels = {"Iron", "Carbon"}  # Custom labels from dict
-
-        # Check that we have labels for disordered site species
-        labeled_species = set(all_text_labels)
-        disordered_species_labeled = labeled_species.intersection(expected_labels)
-
-        assert len(disordered_species_labeled) >= 2
-
-    # Additional check for 3D: labels should be positioned outside the spherical wedges
-    if is_3d and expected_behavior == "all_species_labeled":
-        # Find scatter3d traces with text mode (these are the labels)
-        label_traces = [
-            trace
-            for trace in fig.data
-            if hasattr(trace, "type")
-            and trace.type == "scatter3d"
-            and hasattr(trace, "mode")
-            and trace.mode == "text"
-            and hasattr(trace, "text")
-            and trace.text
-        ]
-
-        # Should have multiple label traces for disordered site (one per species)
-        assert len(label_traces) >= 2, (
-            f"Expected at least 2 label traces for disordered site species, "
-            f"but found {len(label_traces)}"
-        )
-
-        # Check that labels are positioned away from origin (center of site)
-        # The disordered site is at [0, 0, 0], so labels should be offset
+    if plot_func is pmv.structure_3d:
+        # Labels sit outside the spherical wedges centered on the origin site
         for trace in label_traces:
-            if trace.x and trace.y and trace.z:
-                x, y, z = trace.x[0], trace.y[0], trace.z[0]
-                distance_from_origin = np.sqrt(x**2 + y**2 + z**2)
-                assert distance_from_origin > 0.1, (
-                    f"Label at ({x}, {y}, {z}) too close to site center. "
-                    f"Distance: {distance_from_origin}"
-                )
+            label_pos = np.array([trace.x[0], trace.y[0], trace.z[0]])
+            assert np.linalg.norm(label_pos) > 0.1, f"{label_pos=} too close to site"
 
 
-def test_disordered_site_edge_cases(fe3co4_disordered: Structure) -> None:
-    """Test edge cases for disordered site handling."""
-    import copy
-
-    # Test with empty composition (should not crash)
-    struct_copy = copy.deepcopy(fe3co4_disordered)
-
-    # Test 2D with minimal occupancy
+@pytest.mark.parametrize("plot_func", [pmv.structure_2d, pmv.structure_3d])
+def test_disordered_site_low_occupancy(plot_func: Callable) -> None:
+    """Species with 1% occupancy still get drawn and labeled."""
     minimal_disordered = Structure(
-        lattice=struct_copy.lattice,
-        species=[
-            {"Fe": 0.99, "C": 0.01},  # Very low occupancy
-            "O",
-            "O",
-            "O",
-        ],
+        lattice=Lattice.cubic(5),
+        species=[{"Fe": 0.99, "C": 0.01}, "O", "O", "O"],
         coords=[(0, 0, 0), (0.5, 0.5, 0), (0.5, 0, 0.5), (0, 0.5, 0.5)],
     )
-
-    fig_2d = pmv.structure_2d(
+    fig = plot_func(
         minimal_disordered,
         site_labels="symbol",
         show_cell=False,
         show_image_sites=False,
     )
-    assert fig_2d is not None
-
-    # Test 3D with maximal occupancy
-    fig_3d = pmv.structure_3d(
-        minimal_disordered,
-        site_labels="symbol",
-        show_cell=False,
-        show_image_sites=False,
-    )
-    assert fig_3d is not None
-
-
-def test_color_processing_edge_cases() -> None:
-    """Test edge cases in color processing."""
-    # Test various color formats
-    test_cases = [
-        ((1.0, 0.5, 0.0), "rgb(255,127,0)"),  # RGB tuple (0-1 range)
-        ((255, 127, 0), "rgb(255,127,0)"),  # RGB tuple (0-255 range)
-        ("red", "red"),  # Valid string
-        ("rgb(100,200,50)", "rgb(100,200,50)"),
-        # Edge cases that should fallback to gray
-        ((1, 2), "rgb(128,128,128)"),  # Wrong tuple length
-        (["red"], "rgb(128,128,128)"),  # Wrong type
-        (None, "rgb(128,128,128)"),  # None
-        (123, "rgb(128,128,128)"),  # Number
-    ]
-
-    for input_color, expected in test_cases:
-        result = normalize_elem_color(input_color)  # ty: ignore[invalid-argument-type]
-        assert result == expected
-
-
-def test_disordered_site_constants() -> None:
-    """Test that disordered site rendering constants are reasonable."""
-    # Check that constants are reasonable
-    assert 0 < LABEL_OFFSET_3D_FACTOR < 1
-    assert 0 < LABEL_OFFSET_2D_FACTOR < 1
-    assert MIN_3D_WEDGE_RESOLUTION_THETA > 0
-    assert MIN_3D_WEDGE_RESOLUTION_PHI > 0
-    assert MAX_3D_WEDGE_RESOLUTION_THETA >= MIN_3D_WEDGE_RESOLUTION_THETA
-    assert MAX_3D_WEDGE_RESOLUTION_PHI >= MIN_3D_WEDGE_RESOLUTION_PHI
+    labels = {
+        trace.text for trace in fig.data if getattr(trace, "mode", None) == "text"
+    }
+    assert {"Fe", "C"} <= labels
 
 
 @pytest.mark.parametrize(
@@ -1697,192 +1229,80 @@ def test_spherical_wedge_mesh_generation(
     )
 
 
+@pytest.mark.parametrize("plot_func", [pmv.structure_2d, pmv.structure_3d])
 @pytest.mark.parametrize(
-    "malformed_elem_colors",
+    ("elem_colors", "err_msg"),
     [
-        {"Fe": [1, 2, 3, 4]},  # Wrong tuple length
-        {"Fe": "red"},  # Valid color name, should work
-        {"Fe": None},  # None fallback
+        ({"Fe": "red"}, None),
+        ({"Fe": [1, 0.5, 0]}, None),
+        # malformed colors used to silently render gray
+        ({"Fe": [1, 2, 3, 4]}, "Unsupported element color [1, 2, 3, 4]"),
+        ({"Fe": None}, "Unsupported element color None"),
     ],
 )
 def test_structure_plotly_malformed_elem_colors(
-    malformed_elem_colors: dict[str, Any], fe3co4_disordered: Structure
+    plot_func: Callable,
+    elem_colors: dict[str, Any],
+    err_msg: str | None,
+    fe3co4_disordered: Structure,
 ) -> None:
-    """Test that malformed element colors are handled gracefully."""
-    # Should not crash with malformed colors
-    fig_2d = pmv.structure_2d(
+    """Valid custom element colors render, malformed ones raise."""
+    kwargs = dict(show_cell=False, show_image_sites=False, site_labels="symbol")
+    if err_msg is None:
+        fig = plot_func(fe3co4_disordered, elem_colors=elem_colors, **kwargs)
+        assert len(fig.data) > 0
+        return
+    with pytest.raises(ValueError, match=re.escape(err_msg)):
+        plot_func(fe3co4_disordered, elem_colors=elem_colors, **kwargs)
+
+
+@pytest.mark.parametrize("plot_func", [pmv.structure_2d, pmv.structure_3d])
+def test_disordered_site_hover_text_formatting(
+    plot_func: Callable, fe3co4_disordered: Structure
+) -> None:
+    """Disordered site hover text lists each species with its occupancy."""
+    fig = plot_func(
         fe3co4_disordered,
-        elem_colors=malformed_elem_colors,
+        site_labels="symbol",
         show_cell=False,
         show_image_sites=False,
-        site_labels="symbol",
+        hover_text=SiteCoords.cartesian_fractional,
     )
-    assert fig_2d is not None
-
-    fig_3d = pmv.structure_3d(
-        fe3co4_disordered,
-        elem_colors=malformed_elem_colors,
-        show_cell=False,
-        show_image_sites=False,
-        site_labels="symbol",
-    )
-    assert fig_3d is not None
-
-
-def test_disordered_site_hover_text_formatting(fe3co4_disordered: Structure) -> None:
-    """Test that hover text is properly formatted for disordered sites."""
-    # Test both 2D and 3D
-    for is_3d in [False, True]:
-        plot_func = pmv.structure_3d if is_3d else pmv.structure_2d
-        fig = plot_func(
-            fe3co4_disordered,
-            site_labels="symbol",
-            show_cell=False,
-            show_image_sites=False,
-            hover_text=SiteCoords.cartesian_fractional,
+    hover_texts = [
+        text
+        for trace in fig.data
+        for text in (
+            [trace.hovertext] if isinstance(trace.hovertext, str) else trace.hovertext
+        )
+        or ()
+        if text
+    ]
+    for species in ("Fe (0.75)", "C (0.25)"):
+        assert any(
+            "Site:" in text and f"Species: {species}" in text for text in hover_texts
         )
 
-        # Look for traces with hover text containing species information
-        hover_texts: list[str] = []
-        for trace in fig.data:
-            if hasattr(trace, "hovertext") and trace.hovertext:
-                if isinstance(trace.hovertext, str):
-                    hover_texts.append(trace.hovertext)
-                elif isinstance(trace.hovertext, list):
-                    hover_texts.extend(trace.hovertext)
 
-        # Should have hover text for disordered sites
-        disordered_hover_found = any(
-            "Site:" in text
-            and "Species:" in text
-            and "0." in text  # Check for occupancy
-            for text in hover_texts
-            if text
-        )
-        assert disordered_hover_found, "No disordered site hover text found"
-
-
-def test_disordered_site_legend_functionality(fe3co4_disordered: Structure) -> None:
-    """Test that disordered sites appear correctly in legends for both 2D and 3D plots.
-
-    This test verifies:
-    1. Disordered sites combine all elements into a single legend entry
-    2. The legend entry format shows fractional occupancies
-    3. Clicking the legend toggles all parts of the disordered site
-    4. Multiple structures place legends in correct subplots
+@pytest.mark.parametrize("plot_func", [pmv.structure_2d, pmv.structure_3d])
+def test_disordered_site_legend_functionality(
+    plot_func: Callable, fe3co4_disordered: Structure
+) -> None:
+    """Disordered sites get one combined legend entry and multi-structure plots get
+    one legend per subplot.
     """
-    # Test 2D plot
-    fig_2d = pmv.structure_2d(fe3co4_disordered, site_labels="legend")
-    assert isinstance(fig_2d, go.Figure)
-    assert fig_2d.layout.showlegend is True
+    fig = plot_func(fe3co4_disordered, site_labels="legend")
+    assert fig.layout.showlegend is True
+    legend_names = {trace.name for trace in fig.data if trace.showlegend}
+    assert legend_names == {"Fe₀.₇₅C₀.₂₅", "O"}
+    assert any(trace.legendgroup == "1-Fe" for trace in fig.data)
 
-    # Find legend traces
-    legend_traces_2d = [trace for trace in fig_2d.data if trace.showlegend]
-    legend_names_2d = {trace.name for trace in legend_traces_2d}
-
-    # Should have "Fe₀.₇₅C₀.₂₅" (disordered) and "O" (ordered)
-    assert "Fe₀.₇₅C₀.₂₅" in legend_names_2d
-    assert "O" in legend_names_2d
-    assert len(legend_names_2d) == 2
-
-    # Check that disordered site traces share the same legendgroup
-    disordered_traces_2d = [
-        trace
-        for trace in fig_2d.data
-        if hasattr(trace, "legendgroup")
-        and trace.legendgroup == "1-Fe"  # Updated to actual format
-    ]
-    assert len(disordered_traces_2d) > 0
-
-    # Test 3D plot
-    fig_3d = pmv.structure_3d(fe3co4_disordered, site_labels="legend")
-    assert isinstance(fig_3d, go.Figure)
-    assert fig_3d.layout.showlegend is True
-
-    # Find legend traces
-    legend_traces_3d = [trace for trace in fig_3d.data if trace.showlegend]
-    legend_names_3d = {trace.name for trace in legend_traces_3d}
-
-    # Should have "Fe₀.₇₅C₀.₂₅" (disordered) and "O" (ordered)
-    assert "Fe₀.₇₅C₀.₂₅" in legend_names_3d
-    assert "O" in legend_names_3d
-    assert len(legend_names_3d) == 2
-
-    # Check that disordered site traces share the same legendgroup
-    disordered_traces_3d = [
-        trace
-        for trace in fig_3d.data
-        if hasattr(trace, "legendgroup")
-        and trace.legendgroup == "1-Fe"  # Updated to actual format
-    ]
-    assert len(disordered_traces_3d) > 0
-
-    # Test multiple structures (legend placement)
     multi_structs = {
         "struct1": fe3co4_disordered.copy(),
         "struct2": fe3co4_disordered.copy(),
     }
-
-    # Test 2D multi-structure
-    fig_2d_multi = pmv.structure_2d(multi_structs, site_labels="legend", n_cols=2)
-    legend_traces_multi_2d = [trace for trace in fig_2d_multi.data if trace.showlegend]
-
-    # Check that each structure has its own legend
-    legend1_traces = [
-        trace
-        for trace in legend_traces_multi_2d
-        if getattr(trace, "legend", "legend") == "legend"
-    ]
-    legend2_traces = [
-        trace
-        for trace in legend_traces_multi_2d
-        if getattr(trace, "legend", "legend") == "legend2"
-    ]
-
-    assert len(legend1_traces) > 0, "Should have traces in first legend"
-    assert len(legend2_traces) > 0, "Should have traces in second legend"
-
-    # Test 3D multi-structure
-    fig_3d_multi = pmv.structure_3d(multi_structs, site_labels="legend", n_cols=2)
-    legend_traces_multi_3d = [trace for trace in fig_3d_multi.data if trace.showlegend]
-
-    # Check that each structure has its own legend
-    legend1_traces_3d = [
-        trace
-        for trace in legend_traces_multi_3d
-        if getattr(trace, "legend", "legend") == "legend"
-    ]
-    legend2_traces_3d = [
-        trace
-        for trace in legend_traces_multi_3d
-        if getattr(trace, "legend", "legend") == "legend2"
-    ]
-
-    assert len(legend1_traces_3d) > 0, "Should have traces in first legend"
-    assert len(legend2_traces_3d) > 0, "Should have traces in second legend"
-
-
-def test_disordered_site_legend_name_formatting() -> None:
-    """Test that legend name formatting works correctly for different compositions."""
-    # Test simple binary disordered site
-    sorted_species = [(Species("Fe"), 0.75), (Species("C"), 0.25)]
-    legend_name = get_disordered_site_legend_name(sorted_species, is_image=False)
-    assert legend_name == "Fe₀.₇₅C₀.₂₅"
-
-    # Test ternary disordered site
-    sorted_species = [(Species("Fe"), 0.6), (Species("Ni"), 0.3), (Species("Cr"), 0.1)]
-    legend_name = get_disordered_site_legend_name(sorted_species, is_image=False)
-    assert legend_name == "Fe₀.₆Ni₀.₃Cr₀.₁"
-
-    # Test image site (should have same format)
-    sorted_species = [(Species("Fe"), 0.75), (Species("C"), 0.25)]
-    legend_name = get_disordered_site_legend_name(sorted_species, is_image=True)
-    assert legend_name == "Image of Fe₀.₇₅C₀.₂₅"  # Image sites have "Image of " prefix
-
-    # Test equal occupancies
-    sorted_species = [(Species("Fe"), 0.5), (Species("Ni"), 0.5)]
-    legend_name = get_disordered_site_legend_name(sorted_species, is_image=False)
-    assert legend_name == "Fe₀.₅Ni₀.₅"
+    fig_multi = plot_func(multi_structs, site_labels="legend", n_cols=2)
+    legend_keys = {trace.legend for trace in fig_multi.data if trace.showlegend}
+    assert legend_keys == {"legend", "legend2"}
 
 
 @pytest.mark.parametrize("plot_func", [pmv.structure_2d, pmv.structure_3d])
@@ -1895,14 +1315,11 @@ def test_structure_with_magmom_objects(
     plot_func: Callable, moments: list[int], expect_vectors: bool
 ) -> None:
     """Regression: Magmom objects crashed or produced wrong vectors."""
-    from pymatgen.electronic_structure.core import Magmom
-
     lattice = Lattice.cubic(4.0)
     struct = Structure(lattice, ["Fe", "Fe"], [[0, 0, 0], [0.5, 0.5, 0.5]])
     struct.add_site_property("magmom", [Magmom([0, 0, mom]) for mom in moments])
 
     fig = plot_func(struct, show_site_vectors="magmom")
-    assert isinstance(fig, go.Figure)
 
     vector_traces = [tr for tr in fig.data if (tr.name or "").startswith("vector")]
     if expect_vectors:
@@ -1939,7 +1356,6 @@ def test_show_image_vectors(
         show_image_sites=show_image_sites,
         show_image_vectors=show_image_vectors,
     )
-    assert isinstance(fig, go.Figure)
 
     # Image vector traces contain "img" in their name
     has_image_vector_traces = any(
@@ -1954,3 +1370,50 @@ def test_show_image_vectors(
 
     assert has_primary_vector_traces, "Should always have primary site vectors"
     assert has_image_vector_traces is expect_image_vectors
+
+
+@pytest.mark.parametrize("plot_func", [pmv.structure_2d, pmv.structure_3d])
+def test_image_site_hover_labels_and_legend(plot_func: Callable) -> None:
+    """Image sites show their own coords, their primary's label and legend group."""
+    # Li corner site has 7 images, O edge site 3
+    struct = Structure(Lattice.cubic(4.0), ["Li", "O"], [[0, 0, 0], [0.5, 0, 0]])
+    fig = plot_func(struct, site_labels=["A", "B"], hover_text=SiteCoords.fractional)
+    site_traces = [
+        trace
+        for trace in fig.data
+        if "markers" in (getattr(trace, "mode", None) or "")
+        and not (trace.name or "").startswith("node")
+    ]
+    image_traces = [trace for trace in site_traces if "Image of" in trace.hovertext]
+    assert len(site_traces) == 2 + 7 + 3
+    assert len(image_traces) == 7 + 3
+    # 2D image hover used to show the primary site's coords and default template
+    image_hovers = {trace.hovertext for trace in image_traces}
+    assert "<b>Image of Li</b><br>Coordinates [1, 1, 1]" in image_hovers
+    assert "<b>Image of O</b><br>Coordinates [0.5, 1, 1]" in image_hovers
+    # 3D image labels used to come from site_labels[augmented_idx % n_sites]
+    labels = {
+        (trace.hovertext.split("</b>")[0].removeprefix("<b>"), trace.text)
+        for trace in site_traces
+    }
+    assert labels == {
+        ("Site: Li", "A"),
+        ("Site: O", "B"),
+        ("Image of Li", "A"),
+        ("Image of O", "B"),
+    }
+
+    # 3D image sites used to have no legendgroup, so legend clicks left them visible
+    legend_fig = plot_func(struct, site_labels="legend")
+    legend_groups = {
+        trace.hovertext.split("</b>")[0].removeprefix("<b>"): trace.legendgroup
+        for trace in legend_fig.data
+        if "markers" in (getattr(trace, "mode", None) or "")
+        and trace.hovertext.startswith("<b>")
+    }
+    assert legend_groups == {
+        "Site: Li": "1-Li",
+        "Site: O": "1-O",
+        "Image of Li": "1-Li",
+        "Image of O": "1-O",
+    }

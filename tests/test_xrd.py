@@ -54,7 +54,6 @@ ORDERED_XRD_INPUT = OrderedDict(
 )
 def test_xrd_pattern_input_types(input_data: Any, expected_traces: int) -> None:
     fig = pmv.xrd_pattern(input_data)
-    assert isinstance(fig, go.Figure)
     assert len(fig.data) == expected_traces
     assert all(isinstance(trace, go.Bar) for trace in fig.data)
 
@@ -98,39 +97,6 @@ def test_xrd_pattern_annotate_peaks(
         axis_texts = {anno.text for anno in annotations if not anno.arrowhead}
         assert "2θ (degrees)" in axis_texts
         assert "Intensity (a.u.)" in axis_texts
-
-
-def test_xrd_pattern_hover_data() -> None:
-    fig = pmv.xrd_pattern(MOCK_DIFFRACTION_PATTERN)
-    assert len(fig.data[0].hovertext) == len(MOCK_DIFFRACTION_PATTERN.x)
-    assert all(
-        all(key in text for key in ["2θ", "Intensity", "hkl", "d"])
-        for text in fig.data[0].hovertext
-    )
-
-
-def test_xrd_pattern_layout_and_range() -> None:
-    fig = pmv.xrd_pattern(MOCK_DIFFRACTION_PATTERN)
-    # Axis titles are now annotations
-    axes_annotations = [
-        anno
-        for anno in fig.layout.annotations
-        if anno.text in ("2θ (degrees)", "Intensity (a.u.)")
-    ]
-    assert len(axes_annotations) == 2
-    x_axis_anno = next(anno for anno in axes_annotations if anno.text == "2θ (degrees)")
-    y_axis_anno = next(
-        anno for anno in axes_annotations if anno.text == "Intensity (a.u.)"
-    )
-
-    assert x_axis_anno.xref == "paper"
-    assert x_axis_anno.yref == "paper"
-    assert y_axis_anno.xref == "paper"
-    assert y_axis_anno.yref == "paper"
-    assert y_axis_anno.textangle == -90
-
-    assert fig.layout.hovermode == "x"
-    # Axis ranges are no longer explicitly set in xrd.py; relying on Plotly defaults.
 
 
 @pytest.mark.parametrize(
@@ -203,11 +169,10 @@ def test_xrd_pattern_empty_input() -> None:
 
 
 def test_xrd_pattern_intensity_normalization() -> None:
-    original_max = max(MOCK_DIFFRACTION_PATTERN.y)
+    """Intensities scale to a max of 100 and invalid intensities raise."""
     fig = pmv.xrd_pattern(MOCK_DIFFRACTION_PATTERN)
-    normalized_max = max(fig.data[0].y)
-    assert normalized_max == 100
-    assert normalized_max / original_max == pytest.approx(100 / original_max)
+    original_y = np.asarray(MOCK_DIFFRACTION_PATTERN.y)
+    np.testing.assert_array_equal(fig.data[0].y, original_y / original_y.max() * 100)
 
     zero_pattern = DiffractionPattern([10], [0], [[{"hkl": (1, 0, 0)}]], [1])
     combined = pmv.xrd_pattern(
@@ -220,50 +185,40 @@ def test_xrd_pattern_intensity_normalization() -> None:
             pmv.xrd_pattern(pattern)
 
 
-@pytest.mark.parametrize("wavelength", [cu_k_alpha_wavelength, 0.7093])
-def test_xrd_pattern_wavelength(wavelength: float) -> None:
-    fig = pmv.xrd_pattern(BI2_ZR2_O7_STRUCT, wavelength=wavelength)
-    first_peak_position = fig.data[0].x[0]
-    reference_fig = pmv.xrd_pattern(BI2_ZR2_O7_STRUCT, wavelength=cu_k_alpha_wavelength)
-    reference_first_peak = reference_fig.data[0].x[0]
-    if wavelength != cu_k_alpha_wavelength:
-        assert first_peak_position != reference_first_peak
-    else:
-        assert first_peak_position == reference_first_peak
+def test_xrd_pattern_wavelength() -> None:
+    """Default wavelength is Cu K-alpha and peaks shift per Bragg's law."""
+    default_peaks = pmv.xrd_pattern(BI2_ZR2_O7_STRUCT).data[0].x
+    first_peaks = {
+        wavelength: pmv.xrd_pattern(BI2_ZR2_O7_STRUCT, wavelength=wavelength)
+        .data[0]
+        .x[0]
+        for wavelength in (cu_k_alpha_wavelength, 0.7093)
+    }
+    assert default_peaks[0] == first_peaks[cu_k_alpha_wavelength]
+    # same lattice plane d = λ / (2 sin θ) for both wavelengths
+    d_spacings = [
+        wavelength / (2 * np.sin(np.radians(two_theta / 2)))
+        for wavelength, two_theta in first_peaks.items()
+    ]
+    # observed rel. difference ~3e-16 (1.5 eps)
+    assert d_spacings[0] == pytest.approx(d_spacings[1], rel=1e-12)
 
 
-def test_xrd_pattern_tooltip_content() -> None:
+def test_xrd_pattern_tooltips() -> None:
+    """Tooltips show label, angle, intensity, hkl and d regardless of annotations."""
     patterns = {
         "Pattern 1": MOCK_DIFFRACTION_PATTERN,
         "Pattern 2": MOCK_DIFFRACTION_PATTERN,
     }
     fig = pmv.xrd_pattern(patterns, show_angles=False, hkl_format=None)
 
+    assert len(fig.data) == 2
     for trace in fig.data:
-        assert len(trace.hovertext) > 0
+        assert len(trace.hovertext) == len(MOCK_DIFFRACTION_PATTERN.x)
         for hover_text in trace.hovertext:
+            assert hover_text.startswith(f"<b>{trace.name}</b>")
             assert all(key in hover_text for key in ["2θ", "Intensity", "hkl", "d"])
             assert "°" in hover_text  # Angles should always be in tooltips
-
-
-def test_xrd_pattern_tooltip_label() -> None:
-    patterns = {
-        "Pattern 1": MOCK_DIFFRACTION_PATTERN,
-        "Pattern 2": MOCK_DIFFRACTION_PATTERN,
-    }
-    fig = pmv.xrd_pattern(patterns)
-
-    assert len(fig.data) == 2
-
-    for trace in fig.data:
-        assert all(
-            hover_text.startswith(f"<b>{trace.name}</b>")
-            for hover_text in trace.hovertext
-        )
-        assert all(
-            all(key in hover_text for key in ["2θ", "Intensity", "hkl", "d"])
-            for hover_text in trace.hovertext
-        )
 
 
 @pytest.mark.parametrize(
@@ -301,7 +256,6 @@ def test_xrd_pattern_stack_and_kwargs(
         subtitle_kwargs=subtitle_kwargs,
     )
 
-    assert isinstance(fig, go.Figure)
     assert len(fig.data) == 2
     assert trace_kwargs == {"marker_color": "red"}
 
@@ -351,53 +305,27 @@ def test_xrd_pattern_stack_and_kwargs(
             assert trace.yaxis is None, f"{trace.yaxis=}"
 
 
-def test_xrd_pattern_axis_kwargs() -> None:
-    """Test custom axis_kwargs."""
-    custom_style = {"font_size": 18, "font_color": "blue"}
-    fig = pmv.xrd_pattern(MOCK_DIFFRACTION_PATTERN, axis_title_kwargs=custom_style)
+@pytest.mark.parametrize(
+    ("axis_title_kwargs", "font_size", "font_color"),
+    [
+        (None, 12, None),
+        ({}, 12, None),
+        ({"font_color": "green"}, 12, "green"),
+        ({"font_size": 18, "font_color": "blue"}, 18, "blue"),
+    ],
+)
+def test_xrd_pattern_axis_titles(
+    axis_title_kwargs: dict[str, Any] | None, font_size: int, font_color: str | None
+) -> None:
+    """Axis titles are paper-positioned annotations styled by axis_title_kwargs."""
+    fig = pmv.xrd_pattern(MOCK_DIFFRACTION_PATTERN, axis_title_kwargs=axis_title_kwargs)
+    annos = {anno.text: anno for anno in fig.layout.annotations}
+    x_title, y_title = annos["2θ (degrees)"], annos["Intensity (a.u.)"]
 
-    x_axis_anno = next(
-        anno for anno in fig.layout.annotations if anno.text == "2θ (degrees)"
-    )
-    y_axis_anno = next(
-        anno for anno in fig.layout.annotations if anno.text == "Intensity (a.u.)"
-    )
-
-    assert x_axis_anno.font.size == custom_style["font_size"]
-    assert x_axis_anno.font.color == custom_style["font_color"]
-    assert y_axis_anno.font.size == custom_style["font_size"]
-    assert y_axis_anno.font.color == custom_style["font_color"]
-    assert x_axis_anno.xref == "paper"
-    assert y_axis_anno.textangle == -90
-    assert x_axis_anno.x == 0.5
-    assert y_axis_anno.x < 0  # Default is -0.07 in xrd.py
-
-    # Ensure axis titles appear with empty axis_kwargs.
-    fig_empty_kwargs = pmv.xrd_pattern(MOCK_DIFFRACTION_PATTERN, axis_title_kwargs={})
-    assert any(
-        anno.text == "2θ (degrees)" for anno in fig_empty_kwargs.layout.annotations
-    )
-    assert any(
-        anno.text == "Intensity (a.u.)" for anno in fig_empty_kwargs.layout.annotations
-    )
-    # Check default font size (12) with empty kwargs.
-    default_x_title = next(
-        anno
-        for anno in fig_empty_kwargs.layout.annotations
-        if anno.text == "2θ (degrees)"
-    )
-    assert default_x_title.font.size == 12
-
-    # Check default font_size (12) used when not in axis_kwargs, while other props apply
-    # (Note: x/y in axis_kwargs would cause TypeError due to xrd.py structure).
-    fig_custom_color = pmv.xrd_pattern(
-        MOCK_DIFFRACTION_PATTERN, axis_title_kwargs={"font_color": "green"}
-    )
-    x_custom_color_anno = next(
-        anno
-        for anno in fig_custom_color.layout.annotations
-        if anno.text == "2θ (degrees)"
-    )
-    assert x_custom_color_anno.font.size == 12  # Default size from xrd.py
-    assert x_custom_color_anno.font.color == "green"
-    assert x_custom_color_anno.x == 0.5  # Default x position from xrd.py
+    for anno in (x_title, y_title):
+        assert (anno.xref, anno.yref) == ("paper", "paper")
+        assert anno.font.size == font_size
+        assert anno.font.color == font_color
+    assert (x_title.x, y_title.x) == (0.5, -0.07)
+    assert y_title.textangle == -90
+    assert fig.layout.hovermode == "x"

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
@@ -105,16 +105,15 @@ def rainclouds(
         pos = positions[idx]
         df_i: pd.DataFrame | None = None
         col: str | None = None
-        if isinstance(data_itm, tuple) and len(data_itm) == 2:
-            data_frame, column = data_itm
-        else:
-            data_frame, column = None, None
-
-        if isinstance(data_frame, pd.DataFrame) and isinstance(column, str):
-            df_i, col = data_frame, column
+        values = data_itm
+        if (
+            isinstance(data_itm, tuple)
+            and len(data_itm) == 2
+            and isinstance(data_itm[0], pd.DataFrame)
+            and isinstance(data_itm[1], str)
+        ):
+            df_i, col = data_itm
             values = df_i[col]
-        else:
-            values = data_itm
 
         if show_violin:  # the cloud
             kde = stats.gaussian_kde(values, bw_method=bw)
@@ -175,43 +174,30 @@ def rainclouds(
             hover_key = col or "value"
             hover_text = [f"{label}<br>{hover_key}: {val:.3g}" for val in values]
 
-            if hover_data is not None:
-                extra_hover = (
-                    cast(
-                        "Mapping[str, Sequence[str] | Mapping[str, Sequence[object]]]",
-                        hover_data,
-                    ).get(label)
-                    if isinstance(hover_data, Mapping)
-                    else None
-                )
-                if isinstance(extra_hover, Mapping):
-                    for hover_col, col_data in extra_hover.items():
-                        if isinstance(col_data, (str, bytes)):
-                            continue
-                        col_values = list(cast("Sequence[object]", col_data))
-                        if len(col_values) != len(hover_text):
-                            warnings.warn(
-                                f"Skipping hover column {hover_col!r}: "
-                                f"{len(col_values)=} != {len(hover_text)=}",
-                                stacklevel=2,
-                            )
-                            continue
-                        for val_idx, val in enumerate(col_values):
+            # per-label hover spec for mappings, shared column names otherwise
+            extra_hover = (
+                hover_data.get(label) if isinstance(hover_data, Mapping) else hover_data
+            )
+            if isinstance(extra_hover, Mapping):
+                for hover_col, col_data in extra_hover.items():
+                    if isinstance(col_data, (str, bytes)):
+                        continue
+                    col_values = list(col_data)
+                    if len(col_values) != len(hover_text):
+                        warnings.warn(
+                            f"Skipping hover column {hover_col!r}: "
+                            f"{len(col_values)=} != {len(hover_text)=}",
+                            stacklevel=2,
+                        )
+                        continue
+                    for val_idx, val in enumerate(col_values):
+                        hover_text[val_idx] += f"<br>{hover_col}: {val}"
+            elif df_i is not None and extra_hover and not isinstance(extra_hover, str):
+                for hover_col in extra_hover:
+                    # skip the primary column, its value is already shown
+                    if hover_col in df_i and hover_col != col:
+                        for val_idx, val in enumerate(df_i[hover_col]):
                             hover_text[val_idx] += f"<br>{hover_col}: {val}"
-                elif (
-                    df_i is not None
-                    and (
-                        cols_to_show := extra_hover
-                        if isinstance(hover_data, Mapping)
-                        else hover_data
-                    )
-                    and not isinstance(cols_to_show, str)
-                ):
-                    for hover_col in cols_to_show:
-                        # skip the primary column, its value is already shown
-                        if hover_col in df_i and hover_col != col:
-                            for val_idx, val in enumerate(df_i[hover_col]):
-                                hover_text[val_idx] += f"<br>{hover_col}: {val}"
 
             fig.add_scatter(
                 x=values if orientation == "h" else pos + rain_offset + jitter_values,
