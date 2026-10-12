@@ -22,44 +22,44 @@ classifiers = [
 urls = { Homepage = "https://github.com/janosh/pymatviz" }
 requires-python = ">=3.12"
 dependencies = [
-  "anywidget>=0.9.18",
-  "moyopy>=0.8",
-  "numpy>=2",
-  "pandas[output-formatting,xml]>=2.2", # output-formatting needed for pandas Stylers,
-  # see https://github.com/pandas-dev/pandas/blob/-/pyproject.toml
-  "plotly>=6.4",
-  "pymatgen>=2025.10.7",
-  "pyyaml>=6",
-  "scikit-learn>=1.5",
-  "scipy>=1.14",
+  "anywidget>=0.11",
+  "moyopy>=0.21",
+  "numpy>=2.5",
+  "pandas[output-formatting,xml]>=2.3", # output-formatting needed for pandas Stylers,
+  # see https://github.com/pandas-dev/pandas/blob/-/pyproject.toml. Not pandas 3 yet:
+  # matminer (clustering/make-assets extras) still requires pandas<3
+  "plotly>=7.1",
+  "pymatgen>=2026.9.24",
+  "pyyaml>=6.0.3",
+  "scikit-learn>=1.9",
+  "scipy>=1.18",
 ]
 
 [project.optional-dependencies]
-# kaleido: the asset scripts render figures, and plotly 7 requires it separately for
-# static export and full_figure_for_development (plotly 6 did not)
+# kaleido: plotly needs it for static export and full_figure_for_development
 # moyopy[interface]: pymatgen's get_symmetry_dataset (used by the spacegroup scripts) needs
 # moyopy's ase-based structure interface
-make-assets = ["kaleido>=1.2.0", "matminer>=0.9", "moyopy[interface]>=0.8"]
-gh-pages = ["jupyter>=1.1", "lazydocs>=0.4", "nbconvert>=7.16"]
-phonons = ["phonopy>=2.31"] # only needed if user passes in phonopy objects
+make-assets = ["kaleido>=1.5", "matminer>=0.10.1", "moyopy[interface]>=0.21"]
+gh-pages = ["jupyter>=1.1.1", "lazydocs>=0.4.8", "nbconvert>=7.17"]
+phonons = ["phonopy>=4.8"] # only needed if user passes in phonopy objects
 test = [
-  "ase>=3.23",
-  "kaleido>=1.2.0",
+  "ase>=3.29",
+  "kaleido>=1.5",
   "pymatviz[clustering, phonons]",
-  "pytest-cov>=6",
-  "pytest-split>=0.9",
-  "pytest>=8",
+  "pytest-cov>=7.1",
+  "pytest-split>=0.11",
+  "pytest>=9.1",
 ]
-export = ["kaleido>=1.2.0", "nest-asyncio>=1.6", "playwright>=1.40"]
-brillouin = ["seekpath>=2.1"]
+export = ["kaleido>=1.5", "nest-asyncio>=1.6", "playwright>=1.63"]
+brillouin = ["seekpath>=2.2.2"]
 clustering = [
-  "matminer>=0.9",
+  "matminer>=0.10.1",
   "umap-learn>=0.5.12",
   "pynndescent>=0.6", # keeps numba/llvmlite on Python 3.12+ compatible releases
 ]
 
 [build-system]
-requires = ["uv_build>=0.11.8"]
+requires = ["uv_build>=0.13"]
 build-backend = "uv_build"
 
 [tool.uv.build-backend]

@@ -151,19 +151,16 @@ def save_fig(
             if is_svelte:
                 # Forward Svelte props to the outer div, preserving Plotly's attributes.
                 text = re.sub(r"<div\b", "<div {...$$props}", text, count=1) + "\n"
-            if style:  # merge into the outer div's style: browsers drop duplicate
-                # attrs and plotly>=6.8 sets one. User style goes last to win.
-                style = html_mod.escape(style)
-                # first <div>, not first tag: full_html=True starts with <html>
-                if (div_match := re.search(r"<div\b[^>]*>", text)) is None:
-                    raise ValueError(f"No <div> in plotly HTML written to {path}")
-                div_tag = div_match[0][:-1]
-                if match := re.search(r'style="([^"]*)"', div_tag):
-                    merged = f'style="{match[1].rstrip("; ")}; {style}"'
-                    div_tag = div_tag.replace(match[0], merged)
-                else:
-                    div_tag += f' style="{style}"'
-                text = f"{text[: div_match.start()]}{div_tag}>{text[div_match.end() :]}"
+            if style:  # merge into plotly's outer div style (browsers drop duplicate
+                # attrs), user style last to win. First <div>, not first tag:
+                # full_html=True starts with <html>.
+                match = re.search(r'<div\b[^>]*?style="([^"]*)"', text)
+                if match is None:
+                    raise ValueError(
+                        f"No styled <div> in plotly HTML written to {path}"
+                    )
+                merged = f"{match[1].rstrip('; ')}; {html_mod.escape(style)}"
+                text = f"{text[: match.start(1)]}{merged}{text[match.end(1) :]}"
             with open(path, mode="w", encoding="utf-8") as file:
                 file.write(text)
     else:
