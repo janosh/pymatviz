@@ -1131,14 +1131,15 @@ def py_pkg_treemap(
                 lambda pkg: cell_text_fn(pkg, package_totals.get(pkg, 0), total_lines)
             )
 
-    # Calculate full file URLs for linking
-    def _get_file_url(row: pd.Series) -> str | None:
+    # Calculate full file URLs for linking ("" without a base URL: plotly>=7 casts
+    # customdata to str before aggregating parents, NaN then breaks max())
+    def _get_file_url(row: pd.Series) -> str:
         pkg_name = row["package_name_raw"]
         base = package_base_urls.get(pkg_name)
         if base:
             # Use repo_path_segment which includes src/ prefix if needed
             return f"{base}/{row['repo_path_segment']}"
-        return None
+        return ""
 
     df_treemap["file_url"] = df_treemap.apply(_get_file_url, axis=1)
 
@@ -1175,9 +1176,6 @@ def py_pkg_treemap(
             df_treemap["color_value"].fillna(0).infer_objects(copy=False)
         )
 
-    # Prepare custom_data array
-    customdata = df_treemap[custom_data_cols]
-
     treemap_defaults = dict(
         color_discrete_sequence=px.colors.qualitative.Set3,
     )
@@ -1187,7 +1185,7 @@ def py_pkg_treemap(
         "data_frame": df_treemap,
         "path": path_definition,
         "values": "cell_value",
-        "custom_data": customdata,
+        "custom_data": df_treemap[custom_data_cols],
         "branchvalues": "total",  # proper aggregation for parent nodes
         **treemap_defaults,
         **kwargs,
@@ -1202,6 +1200,11 @@ def py_pkg_treemap(
         # Colorbar title will be set after figure creation
         # Remove discrete color sequence when using continuous colors
         treemap_params.pop("color_discrete_sequence", None)
+
+    # None marks rows that end above the deepest level. plotly>=7 casts path columns
+    # to str and max()es them, so object columns mixing str and None (-> NaN) raise;
+    # pandas' string dtype keeps the gaps as <NA>.
+    df_treemap[path_definition] = df_treemap[path_definition].astype("string")
 
     # Create the treemap
     fig = px.treemap(**treemap_params)

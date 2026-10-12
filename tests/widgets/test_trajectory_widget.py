@@ -374,14 +374,23 @@ def test_trajectory_widget_with_structure_metadata(
         ),
     ],
 )
+@pytest.mark.parametrize("mson_atoms", [False, True], ids=["Atoms", "MSONAtoms"])
 def test_trajectory_widget_with_ase_atoms(
-    symbols: str, positions: list[list[float]], cell: list[int] | None, energy: float
+    symbols: str,
+    positions: list[list[float]],
+    cell: list[int] | None,
+    energy: float,
+    mson_atoms: bool,
 ) -> None:
-    """ASE frames keep info and calculator results (which AseAtomsAdaptor drops) with
-    and without a simulation cell; calculator forces become site vectors.
+    """ASE frames (incl. pymatgen MSONAtoms, whose as_dict() is not a structure dict)
+    keep info and calculator results (which AseAtomsAdaptor drops) with and without a
+    simulation cell; calculator forces become site vectors.
     """
-    atoms_cls = pytest.importorskip("ase").Atoms
+    ase_atoms = pytest.importorskip("ase").Atoms
     from ase.calculators.singlepoint import SinglePointCalculator
+    from pymatgen.io.ase import MSONAtoms
+
+    atoms_cls = MSONAtoms if mson_atoms else ase_atoms
 
     atoms = atoms_cls(symbols, positions=positions, cell=cell)
     atoms.info = {"temperature": 300}

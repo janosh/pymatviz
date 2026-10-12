@@ -116,7 +116,9 @@ def brillouin_zone_3d(
         bz_vertices = set()
         bz_edges = []
 
-        for pid, rid in zip(voronoi.ridge_points, voronoi.ridge_vertices, strict=False):
+        # tolist: iterating 2D arrays types rows as scalars under numpy>=2.5 stubs
+        ridge_points = voronoi.ridge_points.tolist()
+        for pid, rid in zip(ridge_points, voronoi.ridge_vertices, strict=False):
             if pid[0] == center_index or (
                 pid[1] == center_index and -1 not in rid
             ):  # Skip ridges with vertices at infinity

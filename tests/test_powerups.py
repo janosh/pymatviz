@@ -35,16 +35,39 @@ def test_powerups_custom_metrics_and_font_preservation() -> None:
     with pytest.raises(ValueError, match=re.escape("Unrecognized metrics: {'bogus'}")):
         powerups.annotate_metrics([1], [1], fig=go.Figure(), metrics={"B": "bogus"})
 
-    # faceted figures take one array per subplot, a flat array can't be attributed
+    # faceted figures take one array (or None) per trace, a flat array can't be
+    # attributed to subplots
     facet_fig = px.scatter(x=[1, 2, 3, 4], y=[1, 2, 4, 3], facet_col=[0, 0, 1, 1])
-    powerups.annotate_metrics([[1, 2], [3, 4]], [[1, 2], [4, 3]], fig=facet_fig)
-    assert [anno.xref for anno in facet_fig.layout.annotations[-2:]] == [
+    n_annos = len(facet_fig.layout.annotations)  # facet titles
+    powerups.annotate_metrics([[1, 2], None], [[1, 2], None], fig=facet_fig)
+    (stats_anno,) = facet_fig.layout.annotations[n_annos:]
+    assert (stats_anno.xref, stats_anno.text) == (
         "x domain",
-        "x2 domain",
-    ]
-    assert "MAE = 0.0" in facet_fig.layout.annotations[-2].text
-    with pytest.raises(ValueError, match="one xs/ys array per subplot"):
+        "MAE = 0.0<br>R<sup>2</sup> = 1.0<br>",
+    )
+    with pytest.raises(
+        ValueError, match=re.escape("one xs/ys array (or None) per trace")
+    ):
         powerups.annotate_metrics([1, 2, 3, 4], [1, 2, 4, 3], fig=facet_fig)
+
+    # per_trace mode on facets with 2 traces each: stats stack inside each subplot
+    multi_fig = px.scatter(
+        x=[1, 2, 3, 4] * 2,
+        y=[1, 2, 4, 3] * 2,
+        facet_col=[0, 0, 1, 1] * 2,
+        color=["a"] * 4 + ["b"] * 4,
+    )
+    n_annos = len(multi_fig.layout.annotations)
+    powerups.enhance_parity_plot(
+        multi_fig, annotation_mode="per_trace", best_fit_line=False
+    )
+    stats_annos = multi_fig.layout.annotations[n_annos:]
+    assert sorted((anno.xref, round(anno.y, 2)) for anno in stats_annos) == [
+        ("x domain", 0.84),
+        ("x domain", 0.96),
+        ("x2 domain", 0.84),
+        ("x2 domain", 0.96),
+    ]
 
     fit_fig = powerups.add_best_fit_line(
         go.Figure(),

@@ -223,7 +223,8 @@ def density_scatter(
         y=y,
         color=color_vals,
         facet_col=facet_col,
-        custom_data=[bin_counts_col],
+        # facet value at customdata[1] maps traces to facets (see below)
+        custom_data=[bin_counts_col, *([facet_col] if facet_col else [])],
         **kwargs,
     )
 
@@ -266,15 +267,20 @@ def density_scatter(
         )
         return fig
 
-    # Fit and annotate each facet on its raw (unbinned) points. df_plot concatenates
-    # the groups in groupby order, so px puts facet idx on fig.data[idx].
+    # Fit and annotate each facet once on its raw (unbinned) points. Traces are
+    # matched to facets by value, not order (category_orders, facet_col_wrap and
+    # trace-splitting kwargs like symbol= reorder or multiply traces per facet).
     pmv.powerups.enhance_parity_plot(
         fig, identity_line=identity_line, best_fit_line=False, stats=False
     )
-    facet_dfs = [group_df for _, group_df in df_data.groupby(facet_col)]
+    facet_dfs = dict(list(df_data.groupby(facet_col)))
+    facet_traces: dict[Any, Any] = {}  # facet value -> first trace in that facet
+    for trace in fig.data:
+        facet_traces.setdefault(trace.customdata[0][1], trace)
     if best_fit_line:
         fit_kwargs = best_fit_line if isinstance(best_fit_line, dict) else {}
-        for facet_df, trace in zip(facet_dfs, fig.data, strict=True):
+        for facet_val, facet_df in facet_dfs.items():
+            trace = facet_traces[facet_val]
             pmv.powerups.add_best_fit_line(
                 fig,
                 xs=facet_df[x],
@@ -285,9 +291,12 @@ def density_scatter(
             )
     if stats:
         stats_kwargs = stats if isinstance(stats, dict) else {}
+        # one stats box per facet, on the facet's first trace (None skips the rest)
+        first_in_facet = {id(trace): val for val, trace in facet_traces.items()}
+        facet_of_trace = [first_in_facet.get(id(trace)) for trace in fig.data]
         pmv.powerups.annotate_metrics(
-            [facet_df[x] for facet_df in facet_dfs],
-            [facet_df[y] for facet_df in facet_dfs],
+            [None if val is None else facet_dfs[val][x] for val in facet_of_trace],
+            [None if val is None else facet_dfs[val][y] for val in facet_of_trace],
             fig=fig,
             **stats_kwargs,
         )

@@ -118,9 +118,12 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
 
     def _to_structure_dict(self, structure_input: Any) -> tuple[dict[str, Any], Any]:
         """Convert structure-like input to dict and metadata source object."""
+        from pymatgen.core import SiteCollection
+
         from pymatviz.process_data import normalize_structures
 
-        if hasattr(structure_input, "as_dict"):
+        # only pymatgen structures: MSONAtoms.as_dict() is an ASE (not site) dict
+        if isinstance(structure_input, SiteCollection):
             return structure_input.as_dict(), structure_input
 
         # Handle ASE Atoms-like objects that may not define a full cell.

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import tempfile
 import urllib.request
 from typing import TYPE_CHECKING
@@ -184,17 +185,21 @@ def test_save_fig_prec_rounds_floats(tmp_path: Path, dtype: type) -> None:
     assert fig.data[1]["values"] == (1, 2)
 
 
-def test_save_fig_style_param(tmp_path: Path) -> None:
-    """save_fig injects style attribute into HTML div."""
+@pytest.mark.parametrize("full_html", [False, True])
+def test_save_fig_style_param(tmp_path: Path, full_html: bool) -> None:
+    """save_fig merges style into the outer plot div, also behind <html><head>."""
     fig = go.Figure()
     fig.add_scatter(x=[1, 2], y=[3, 4])
 
     path = f"{tmp_path}/fig_style.html"
-    pmv.save_fig(fig, path, style="color: red;", env_disable=[])
+    pmv.save_fig(fig, path, style="color: red;", env_disable=[], full_html=full_html)
 
     with open(path) as file:
         html = file.read()
-    div_tag = html.split(">", 1)[0]
+    assert ("<html>" in html) is full_html
+    div_match = re.search(r"<div\b[^>]*", html)
+    assert div_match is not None
+    div_tag = div_match[0]
     # one merged attribute (browsers drop duplicates), user style last so it wins
     assert div_tag.count("style=") == 1
     assert div_tag.endswith('; color: red;"')

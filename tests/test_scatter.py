@@ -303,6 +303,14 @@ def test_density_scatter_empty_dataframe() -> None:
         ("time", {"log_density": True, "n_bins": 5}, ["log_colorbar"]),
         ("time", {"stats": True, "n_bins": 10}, ["stats_annotations"]),
         ("time", {"best_fit_line": True, "n_bins": 5}, ["fit_lines"]),
+        # facet order differs from groupby order
+        (
+            "time",
+            {"n_bins": 5, "category_orders": {"time": ["Lunch", "Dinner"]}},
+            ["fit_lines", "stats_annotations"],
+        ),
+        # several traces per facet still get one fit and one stats box per facet
+        ("time", {"n_bins": 5, "symbol": "sex"}, ["fit_lines", "stats_annotations"]),
         ("day", {"n_bins": 3}, []),  # more than two categories
     ],
 )
@@ -321,7 +329,7 @@ def test_density_scatter_facet_variations(
         df=DF_TIPS, x="total_bill", y="tip", facet_col=facet_col, **kwargs
     )
     # one subplot per facet value
-    assert len(fig.data) == DF_TIPS[facet_col].nunique()
+    assert len({trace.xaxis for trace in fig.data}) == DF_TIPS[facet_col].nunique()
     assert "xaxis2" in fig.layout
 
     # Check log density colorbar
@@ -341,7 +349,10 @@ def test_density_scatter_facet_variations(
             for ann in fig.layout.annotations
             if any(metric in ann.text for metric in ("MAE", "RMSE", "R<sup>2</sup>"))
         ]
-        assert [ann.xref for ann in stats_annotations] == ["x domain", "x2 domain"]
+        assert sorted(ann.xref for ann in stats_annotations) == [
+            "x domain",
+            "x2 domain",
+        ]
         assert all(0 <= ann.x <= 1 and 0 <= ann.y <= 1 for ann in stats_annotations)
 
     # Check fit lines
@@ -354,11 +365,10 @@ def test_density_scatter_facet_variations(
         assert line_traces == []
         # one least-squares fit per facet on its own axes, fitted to raw facet data
         fit_shapes = [shape for shape in fig.layout.shapes if shape.line.width == 2]
-        facet_dfs = [group for _, group in DF_TIPS.groupby(facet_col)]
-        assert [shape.xref for shape in fit_shapes] == [
-            trace.xaxis for trace in fig.data
-        ]
-        for shape, facet_df in zip(fit_shapes, facet_dfs, strict=True):
+        facet_of_axis = {trace.xaxis: trace.customdata[0][1] for trace in fig.data}
+        assert sorted(shape.xref for shape in fit_shapes) == sorted(facet_of_axis)
+        for shape in fit_shapes:
+            facet_df = DF_TIPS[DF_TIPS[facet_col] == facet_of_axis[shape.xref]]
             slope = np.polyfit(facet_df["total_bill"], facet_df["tip"], 1)[0]
             fit_slope = (shape.y1 - shape.y0) / (shape.x1 - shape.x0)
             np.testing.assert_allclose(fit_slope, slope, rtol=1e-9, atol=0)

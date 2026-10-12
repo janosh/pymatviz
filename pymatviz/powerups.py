@@ -46,8 +46,8 @@ def annotate_metrics(
     coefficient of determination.
 
     Args:
-        xs (array): x values. For faceted figures, either one array per subplot or
-            empty to use each subplot's trace data.
+        xs (array): x values. For faceted figures, either one array (or None to
+            skip) per trace, or empty to use each trace's data.
         ys (array): y values, same shape as xs.
         fig (go.Figure | None, optional): plotly Figure on which to add the annotation.
             Defaults to None.
@@ -126,24 +126,27 @@ def annotate_metrics(
             text += f"{PRETTY_LABELS.get(label, label)} = {float(value):{fmt}}<br>"
         return text + suffix
 
-    if _is_faceted(fig):  # one annotation per subplot
-        n_subplots = len(fig.data)
-        if (  # one array per subplot
+    if _is_faceted(fig):  # one annotation per trace, placed in the trace's subplot
+        n_traces = len(fig.data)
+        if (  # one array (or None to skip) per trace
             isinstance(xs, (list, tuple))
             and isinstance(ys, (list, tuple))
-            and len(xs) == len(ys) == n_subplots
-            and all(np.ndim(sub_xs) == 1 for sub_xs in xs)
+            and len(xs) == len(ys) == n_traces
+            and all(sub_xs is None or np.ndim(sub_xs) == 1 for sub_xs in xs)
         ):
-            subplot_data = list(zip(xs, ys, strict=True))
+            trace_data = list(zip(xs, ys, strict=True))
         elif all(isinstance(vals, Sized) and len(vals) == 0 for vals in (xs, ys)):
-            # empty xs/ys: use each subplot's trace data
-            subplot_data = [(trace.x, trace.y) for trace in fig.data]
+            # empty xs/ys: use each trace's data
+            trace_data = [(trace.x, trace.y) for trace in fig.data]
         else:
             raise ValueError(
-                f"Faceted figures need one xs/ys array per subplot ({n_subplots} "
+                f"Faceted figures need one xs/ys array (or None) per trace ({n_traces} "
                 f"traces) or empty xs/ys to use trace data, got {type(xs).__name__} xs"
             )
-        texts = [calculate_metrics(sub_xs, sub_ys) for sub_xs, sub_ys in subplot_data]
+        texts = [
+            "" if sub_xs is None else calculate_metrics(sub_xs, sub_ys)
+            for sub_xs, sub_ys in trace_data
+        ]
         return annotate(texts, fig, **kwargs)
 
     return annotate(calculate_metrics(xs, ys), fig, **kwargs)
@@ -577,6 +580,12 @@ def enhance_parity_plot(
         return fig
 
     if annotation_mode == "per_trace" and fig is not None:
+        # faceted figures get all per-trace stats in one call, so annotate() places
+        # each in its trace's subplot (stacked if a subplot has several traces)
+        faceted_stats: list[tuple[Any, Any]] | None = (
+            [(None, None)] * len(fig.data) if _is_faceted(fig) else None
+        )
+        per_trace_stats_kwargs = {} if isinstance(stats, bool) else stats or {}
         for trace_idx in dict.fromkeys(valid_traces):
             # Get data for this trace
             trace = fig.data[trace_idx]
@@ -598,9 +607,16 @@ def enhance_parity_plot(
                 add_best_fit_line(fig, xs=trace_xs, ys=trace_ys, line_kwargs=line_style)
 
             # Add stats annotation if requested
-            if stats:
-                per_trace_stats_kwargs = {} if isinstance(stats, bool) else stats
+            if stats and faceted_stats is not None:
+                faceted_stats[trace_idx] = (trace_xs, trace_ys)
+            elif stats:
                 annotate_metrics(trace_xs, trace_ys, fig=fig, **per_trace_stats_kwargs)
+
+        if stats and faceted_stats is not None:
+            stat_xs, stat_ys = zip(*faceted_stats, strict=True)
+            annotate_metrics(
+                list(stat_xs), list(stat_ys), fig=fig, **per_trace_stats_kwargs
+            )
 
         return fig
 

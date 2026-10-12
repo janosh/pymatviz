@@ -1194,7 +1194,7 @@ def draw_cell(
     node_defaults = dict(size=3, color="black")
     node_kwargs = node_defaults | cell_kwargs.get("node", {})
     for idx, (frac_coord, cart_coord) in enumerate(
-        zip(corners, cart_corners, strict=True)
+        zip(corners.tolist(), np.asarray(cart_corners).tolist(), strict=True)
     ):
         hover_text = (
             f"({', '.join(f'{c:.3g}' for c in cart_coord)}) "

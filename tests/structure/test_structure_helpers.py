@@ -1153,6 +1153,7 @@ def test_get_first_matching_site_prop_with_3d_filter(
         ("red", {"rgb(255, 0, 0)"}),
         ("#abc", {"rgb(170, 187, 204)"}),
         ((255, 0, 0), {"rgb(255, 0, 0)"}),
+        ([0.0, 0.0, 1.0], {"rgb(0, 0, 255)"}),  # RGB lists like elem_colors accepts
         (("red", "blue"), None),
         ("not-a-color", ValueError),
     ],

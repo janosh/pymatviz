@@ -154,13 +154,16 @@ def save_fig(
             if style:  # merge into the outer div's style: browsers drop duplicate
                 # attrs and plotly>=6.8 sets one. User style goes last to win.
                 style = html_mod.escape(style)
-                div_tag, rest = text.split(">", 1)
+                # first <div>, not first tag: full_html=True starts with <html>
+                if (div_match := re.search(r"<div\b[^>]*>", text)) is None:
+                    raise ValueError(f"No <div> in plotly HTML written to {path}")
+                div_tag = div_match[0][:-1]
                 if match := re.search(r'style="([^"]*)"', div_tag):
                     merged = f'style="{match[1].rstrip("; ")}; {style}"'
                     div_tag = div_tag.replace(match[0], merged)
                 else:
                     div_tag += f' style="{style}"'
-                text = f"{div_tag}>{rest}"
+                text = f"{text[: div_match.start()]}{div_tag}>{text[div_match.end() :]}"
             with open(path, mode="w", encoding="utf-8") as file:
                 file.write(text)
     else:

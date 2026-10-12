@@ -50,7 +50,8 @@ def annotate(text: str | Sequence[str], fig: go.Figure, **kwargs: Any) -> go.Fig
 
     Args:
         text (str): The text to use for annotation. If fig is plotly faceted, text can
-            be a list of strings to annotate each subplot.
+            be a list of strings, one per trace (empty strings are skipped). Several
+            annotations in the same subplot are stacked downwards.
         fig (go.Figure): The plotly Figure to annotate.
         **kwargs: Additional arguments to pass to plotly's fig.add_annotation().
 
@@ -65,25 +66,34 @@ def annotate(text: str | Sequence[str], fig: go.Figure, **kwargs: Any) -> go.Fig
 
     color = kwargs.pop("color", get_font_color(fig))
 
+    top_y = 0.96
     text_defaults = dict(
-        x=0.02, y=0.96, showarrow=False, font=dict(size=16, color=color), align="left"
+        x=0.02, y=top_y, showarrow=False, font=dict(size=16, color=color), align="left"
     )
 
     # Annotate all subplots or main plot if not faceted (i.e. if any trace is
     # assigned to an x-axis other than the primary "x")
     if any(getattr(trace, "xaxis", None) not in (None, "x") for trace in fig.data):
+        n_per_subplot: dict[str, int] = {}
         for idx, trace in enumerate(fig.data):
             sub_text = text if isinstance(text, str) else text[idx]
             # skip traces for which no annotations were provided
             if not sub_text:
                 continue
 
-            subplot_idx = trace.xaxis[1:]  # e.g. 'x2' -> '2', 'x' -> ''
-            xref = f"x{subplot_idx} domain"
-            yref = f"y{subplot_idx} domain"
+            subplot_idx = (trace.xaxis or "x")[1:]  # e.g. 'x2' -> '2', 'x' -> ''
+            n_prev = n_per_subplot.get(subplot_idx, 0)
+            n_per_subplot[subplot_idx] = n_prev + 1
+            # stack annotations of several traces in the same subplot
+            offset = dict(y=top_y - 0.12 * n_prev) if n_prev else {}
             fig.add_annotation(
                 text=sub_text,
-                **(dict(xref=xref, yref=yref) | text_defaults | kwargs),
+                **(
+                    dict(xref=f"x{subplot_idx} domain", yref=f"y{subplot_idx} domain")
+                    | text_defaults
+                    | offset
+                    | kwargs
+                ),
             )
     else:  # Non-faceted plot
         if not isinstance(text, str):
@@ -129,8 +139,8 @@ def rgb_components(color: ColorType) -> tuple[float, float, float]:
     """Normalize a color to its red, green and blue channels in [0, 1].
 
     Args:
-        color (ColorType): RGB(A) tuple with channels in [0, 1] or [0, 255] (any
-            channel > 1 means bytes), CSS color name, 3/6-digit hex string, or
+        color (ColorType): RGB(A) tuple or list with channels in [0, 1] or [0, 255]
+            (any channel > 1 means bytes), CSS color name, 3/6-digit hex string, or
             rgb()/rgba() string with byte channels. Alpha is dropped.
 
     Returns:
@@ -163,7 +173,7 @@ def rgb_components(color: ColorType) -> tuple[float, float, float]:
             channels = tuple(value / 255 for value in values[:3])
         else:
             raise ValueError(f"Unsupported color format: {color}")
-    elif isinstance(color, tuple) and len(color) in (3, 4):
+    elif isinstance(color, (tuple, list)) and len(color) in (3, 4):
         try:
             channels = tuple(float(cast("Any", channel)) for channel in color[:3])
         except (TypeError, ValueError) as exc:
