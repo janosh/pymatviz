@@ -119,11 +119,19 @@ def xrd_pattern(  # noqa: D417
     if not patterns:
         raise ValueError("patterns must not be empty")
 
-    # Determine show_angles based on number of patterns
-    if show_angles is None:
-        show_angles = len(patterns) <= 2
-
     n_patterns = len(patterns)
+    if show_angles is None:
+        show_angles = n_patterns <= 2
+
+    def subplot_cell(trace_idx: int) -> dict[str, int]:
+        """Row and column of a pattern's subplot when stacking, else empty."""
+        if not stack:
+            return {}
+        return dict(
+            row=trace_idx + 1 if stack == "vertical" else 1,
+            col=trace_idx + 1 if stack == "horizontal" else 1,
+        )
+
     if stack:
         rows, cols = (n_patterns, 1) if stack == "vertical" else (1, n_patterns)
         subplot_defaults = dict(
@@ -193,11 +201,6 @@ def xrd_pattern(  # noqa: D417
             for x, y, hkl, d in zip(two_theta, intensities, hkls, d_hkls, strict=True)
         ]
 
-        if stack:
-            row = trace_idx + 1 if stack == "vertical" else 1
-            col = trace_idx + 1 if stack == "horizontal" else 1
-            trace_kwargs.setdefault("row", row)
-            trace_kwargs.setdefault("col", col)
         fig.add_bar(
             x=two_theta,
             y=intensities,
@@ -205,7 +208,7 @@ def xrd_pattern(  # noqa: D417
             name=label,
             hovertext=tooltips,
             hoverinfo="text",
-            **trace_kwargs,
+            **subplot_cell(trace_idx) | trace_kwargs,
         )
 
     if max_intensity == 0:
@@ -243,7 +246,7 @@ def xrd_pattern(  # noqa: D417
                 continue  # Skip annotation if neither hkl nor angle is shown
 
             # Determine annotation direction
-            ax, ay = (20, -20) if trace_idx % 2 == 0 else (-20, -20)
+            ax, ay = (20 if trace_idx % 2 == 0 else -20), -20
 
             # Adjust position for edges of the plot
             if x_pos > max_two_theta * 0.9:
@@ -251,7 +254,7 @@ def xrd_pattern(  # noqa: D417
             elif y_pos > 90:
                 ay = abs(ay)
 
-            anno_kwargs = dict(
+            fig.add_annotation(
                 x=x_pos,
                 y=y_pos,
                 text=annotation_text,
@@ -262,19 +265,11 @@ def xrd_pattern(  # noqa: D417
                 ay=ay,
                 xanchor="left" if ax > 0 else "right",
                 yanchor="bottom" if ay < 0 else "top",
+                **subplot_cell(trace_idx),
             )
-
-            if stack:
-                row = trace_idx + 1 if stack == "vertical" else 1
-                col = trace_idx + 1 if stack == "horizontal" else 1
-                anno_kwargs.setdefault("row", row)
-                anno_kwargs.setdefault("col", col)
-            fig.add_annotation(**anno_kwargs)
 
         if stack:
             # Add trace name annotation at the top of each subplot
-            row = trace_idx + 1 if stack == "vertical" else 1
-            col = trace_idx + 1 if stack == "horizontal" else 1
             subtitle_defaults = dict(
                 x=1, y=1, showarrow=False, font_size=12, xanchor="right", yanchor="top"
             )
@@ -282,7 +277,11 @@ def xrd_pattern(  # noqa: D417
             xref = f"x{trace_idx + 1} domain".replace("x1 ", "x ")
             yref = f"y{trace_idx + 1} domain".replace("y1 ", "y ")
             fig.add_annotation(
-                text=trace.name, xref=xref, yref=yref, row=row, col=col, **kwargs
+                text=trace.name,
+                xref=xref,
+                yref=yref,
+                **subplot_cell(trace_idx),
+                **kwargs,
             )
 
     # Add axis titles (not using plotly's built-in axis titles because they don't
@@ -299,7 +298,7 @@ def xrd_pattern(  # noqa: D417
     fig.layout.margin.update(l=50, b=50)  # add bottom/left margin to fit axes titles
 
     fig.layout.update(hovermode="x", barmode="overlay")
-    fig.layout.showlegend = stack is None and len(patterns) > 1
+    fig.layout.showlegend = stack is None and n_patterns > 1
     fig.layout.legend.update(x=1, y=1, xanchor="right", yanchor="top")
 
     # move tick marks inside

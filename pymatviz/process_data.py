@@ -79,7 +79,6 @@ def count_elements(
 
     if is_numeric_dtype(srs):
         pass
-
     elif is_string_dtype(srs) or {*map(type, srs)} <= {str, Composition}:
         # all items are formula strings or Composition objects
         if count_mode == "occurrence":
@@ -141,10 +140,11 @@ def count_elements(
     srs = srs.reindex(df_ptable.index, fill_value=fill_value).rename("count")
 
     if len(exclude_elements) > 0:
-        if isinstance(exclude_elements, str):
-            excluded_elements = [exclude_elements]
-        else:
-            excluded_elements = list(exclude_elements)
+        excluded_elements = (
+            [exclude_elements]
+            if isinstance(exclude_elements, str)
+            else list(exclude_elements)
+        )
         try:
             srs = srs.drop(excluded_elements)
         except KeyError as exc:
@@ -207,45 +207,34 @@ def count_formulas(
 
     # Convert all inputs to chemical systems (sorted tuples of element strings)
     systems: list[tuple[str, ...]] = []
-    formulas: list[str | None] = []  # store formulas if not grouping by chem_sys
+    formulas: list[str] = []  # only used if not grouping by chem_sys
     for item in data:
-        if isinstance(item, Structure | Composition):
-            comp = item.composition if isinstance(item, Structure) else item
-            elems = sorted(comp.chemical_system.split("-"))
-            if group_by == "formula":
-                formula = str(comp)
-            elif group_by == "reduced_formula":
-                formula = comp.reduced_formula
-            else:  # chem_sys
-                formula = None
-        elif isinstance(item, str):
-            if "-" in item:  # already a chemical system string
-                elems = sorted(item.split("-"))
-                formula = item if group_by != Key.chem_sys else None
-            else:  # assume it's a formula string
+        if isinstance(item, str) and "-" in item:  # already a chemical system string
+            elems, formula = item.split("-"), item
+        else:
+            if isinstance(item, str):  # assume it's a formula string
                 try:
                     comp = Composition(item)
-                    elems = sorted(comp.chemical_system.split("-"))
-                    if group_by == "formula":
-                        formula = item  # preserve original formula string
-                    elif group_by == "reduced_formula":
-                        formula = comp.reduced_formula
-                    else:  # chem_sys
-                        formula = None
                 except (ValueError, KeyError) as exc:
                     raise ValueError(f"Invalid formula: {item}") from exc
-        else:
-            raise TypeError(
-                f"Expected str, Composition or Structure, got {type(item)} instead"
-            )
+            elif isinstance(item, Structure | Composition):
+                comp = item.composition if isinstance(item, Structure) else item
+            else:
+                raise TypeError(
+                    f"Expected str, Composition or Structure, got {type(item)} instead"
+                )
+            elems = comp.chemical_system.split("-")
+            if group_by == "reduced_formula":
+                formula = comp.reduced_formula
+            else:  # preserve original formula strings
+                formula = item if isinstance(item, str) else str(comp)
 
         # Remove duplicates and sort elements
         elems = sorted(set(elems))
         if not all(elem in df_ptable.index for elem in elems):
             raise ValueError(f"Invalid elements in system: {item}")
         systems += [tuple(elems)]
-        if group_by != Key.chem_sys:
-            formulas += [formula]
+        formulas += [formula]
 
     # Create a DataFrame with arity and chemical system columns
     df_systems = pd.DataFrame({"system": systems})
@@ -627,8 +616,6 @@ def normalize_phonon_bands(
         TypeError: If input is not a supported band structure type.
         ValueError: If input is an empty mapping.
     """
-    from collections.abc import Mapping
-
     from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
 
     from pymatviz.phonons.helpers import phonopy_to_pymatgen_bands

@@ -164,6 +164,16 @@ _CSS_NAMED_COLORS: Final[dict[str, str]] = {
 }
 
 
+def _normalize_rgb(
+    colors_256: dict[str, Rgb256ColorType],
+) -> dict[str, RgbColorType]:
+    """Scale 0-255 RGB channels of an element color palette to [0, 1]."""
+    return {
+        elem: (red / 255, green / 255, blue / 255)
+        for elem, (red, green, blue) in colors_256.items()
+    }
+
+
 # Element type based colors
 ELEM_TYPE_COLORS: Final = {
     "Diatomic Nonmetal": "green",
@@ -297,11 +307,7 @@ ELEM_COLORS_JMOL_256: dict[str, Rgb256ColorType] = {
     "Mt": (235, 0, 38),
 }
 
-# Scale color value to [0, 1] for matplotlib
-ELEM_COLORS_JMOL: dict[str, RgbColorType] = {
-    elem: (r / 255, g / 255, b / 255)
-    for elem, (r, g, b) in ELEM_COLORS_JMOL_256.items()
-}
+ELEM_COLORS_JMOL = _normalize_rgb(ELEM_COLORS_JMOL_256)
 
 ELEM_COLORS_VESTA_256: dict[str, Rgb256ColorType] = {
     "Ac": (112, 171, 250),
@@ -415,10 +421,7 @@ ELEM_COLORS_VESTA_256: dict[str, Rgb256ColorType] = {
     "Zr": (0, 255, 0),
 }
 
-ELEM_COLORS_VESTA: dict[str, RgbColorType] = {
-    elem: (r / 255, g / 255, b / 255)
-    for elem, (r, g, b) in ELEM_COLORS_VESTA_256.items()
-}
+ELEM_COLORS_VESTA = _normalize_rgb(ELEM_COLORS_VESTA_256)
 
 
 # High-contrast color scheme optimized for metal alloys while preserving some familiar
@@ -469,10 +472,7 @@ ELEM_COLORS_ALLOY_256: dict[str, Rgb256ColorType] = ELEM_COLORS_VESTA_256 | {
     "Au": (131, 143, 93),  # Olive green
 }
 
-ELEM_COLORS_ALLOY: dict[str, RgbColorType] = {
-    elem: (r / 255, g / 255, b / 255)
-    for elem, (r, g, b) in ELEM_COLORS_ALLOY_256.items()
-}
+ELEM_COLORS_ALLOY = _normalize_rgb(ELEM_COLORS_ALLOY_256)
 
 # Pastel color scheme aiming for high contrast between elements.
 # Note: This is a foundational set. For a comprehensive set covering all elements
@@ -540,7 +540,4 @@ ELEM_COLORS_PASTEL_256: dict[str, Rgb256ColorType] = {
     # Add more elements as needed, ensuring colors are pastel and contrast well.
 }
 
-ELEM_COLORS_PASTEL: dict[str, RgbColorType] = {
-    elem: (r / 255, g / 255, b / 255)
-    for elem, (r, g, b) in ELEM_COLORS_PASTEL_256.items()
-}
+ELEM_COLORS_PASTEL = _normalize_rgb(ELEM_COLORS_PASTEL_256)

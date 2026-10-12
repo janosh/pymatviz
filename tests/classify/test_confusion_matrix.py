@@ -40,12 +40,6 @@ def test_confusion_matrix_basic(sample_conf_mat: np.ndarray) -> None:
     assert fig.layout.yaxis.scaleanchor == "x"
     assert fig.layout.font.size == 18
 
-    # Test with raw labels
-    y_true = np.array([0, 0, 0, 0, 1, 1, 1])
-    y_pred = np.array([0, 0, 1, 1, 0, 1, 1])
-    fig = confusion_matrix(y_true=y_true, y_pred=y_pred)
-    assert isinstance(fig, go.Figure)
-
 
 def test_confusion_matrix_color_text_alignment(sample_conf_mat: np.ndarray) -> None:
     """Test that colors and text annotations are properly aligned in the confusion
@@ -171,7 +165,6 @@ def test_confusion_matrix_display_options(
         ({"Acc": ".2%", "MCC": ".3f"}, None, {"Acc", "MCC"}),  # custom formats
         (("Prec", "Rec", "F1"), dict(y=1.1), {"Prec", "Rec", "F1"}),  # multiple metrics
         ([], None, set()),  # no metrics
-        ((), None, {}),  # defaults to accuracy only
     ],
 )
 def test_confusion_matrix_metrics(
@@ -205,6 +198,9 @@ def test_confusion_matrix_metrics(
         # Check that all expected metrics are present in the annotation
         for metric in expected_metrics:
             assert f"{metric}=" in annotation
+        # metrics above the plot need top margin, below the plot bottom margin
+        margin_side = "t" if metrics_kwargs else "b"
+        assert fig.layout.margin[margin_side] == 60
 
 
 def test_confusion_matrix_multi_class(multi_class_conf_mat: np.ndarray) -> None:
@@ -229,26 +225,6 @@ def test_confusion_matrix_multi_class(multi_class_conf_mat: np.ndarray) -> None:
             y_labels=labels,
             metrics={"Prec"},
         )
-
-
-def test_confusion_matrix_hover_text(sample_conf_mat: np.ndarray) -> None:
-    """Test hover text formatting."""
-    fig = confusion_matrix(
-        sample_conf_mat,
-        x_labels=("Negative", "Positive"),
-        normalize=True,
-    )
-
-    hover_text = fig.data[0].text.flatten()
-    for text in hover_text:
-        if not text:  # skip empty hover texts
-            continue
-        assert "True:" in text
-        assert "Pred:" in text
-        assert "Count:" in text
-        assert "Percent:" in text
-        assert "Row %" in text
-        assert "Col %" in text
 
 
 def test_confusion_matrix_error_cases() -> None:
@@ -512,6 +488,9 @@ def test_confusion_matrix_orientation() -> None:
     assert z_vals[y_idx["Pos"], x_idx["Neg"]] == 0
     assert z_vals[y_idx["Pos"], x_idx["Pos"]] == 1
 
-    # hover text must agree with cell position
+    # hover text must agree with cell position (5 of 10 samples, 5/9 row, 5/6 col)
     fp_hover = np.array(heatmap.text)[y_idx["Neg"], x_idx["Pos"]]
-    assert all(s in fp_hover for s in ("True: Neg", "Pred: Pos", "Count: 5"))
+    assert fp_hover == (
+        "True: Neg<br>Pred: Pos<br>Count: 5<br>Percent: 50.0%<br>Row %: 55.6%<br>"
+        "Col %: 83.3%"
+    )

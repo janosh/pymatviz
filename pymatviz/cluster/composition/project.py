@@ -55,7 +55,8 @@ def project_vectors(
     if n_components < 2:
         raise ValueError("n_components must be at least 2")
 
-    if data.shape[0] < n_components:
+    n_samples = data.shape[0]
+    if n_samples < n_components:
         raise ValueError("Not enough samples")
 
     def standardize(arr: np.ndarray) -> np.ndarray:
@@ -77,7 +78,6 @@ def project_vectors(
         if n_components > 3:
             raise ValueError("t-SNE visualization typically uses 2 or 3 components")
         # Adjust perplexity for small datasets
-        n_samples = data.shape[0]
         default_perplexity = min(30, n_samples / 3)  # t-SNE default is 30
         tsne_kwargs = {
             "n_components": n_components,
@@ -103,7 +103,6 @@ def project_vectors(
 
     elif method == "isomap":
         # Adjust n_neighbors for small datasets
-        n_samples = data.shape[0]
         n_neighbors = kwargs.pop("n_neighbors", 5)
         if n_samples < 10 and n_neighbors > n_samples / 2:
             n_neighbors = max(2, int(n_samples / 2))

@@ -1,17 +1,22 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+import re
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
+import plotly.io as pio
 import pytest
+from plotly.subplots import make_subplots
 
 import pymatviz as pmv
 from pymatviz.utils.plotting import annotated_heatmap, contrast_ratio
 
 
 if TYPE_CHECKING:
-    from typing import Literal
+    from collections.abc import Callable
+    from typing import Any, Literal
 
     from pymatviz.typing import ColorType, RgbColorType
 
@@ -73,9 +78,9 @@ def test_css_named_colors(name: str, channels: tuple[int, int, int]) -> None:
     """Support every Plotly CSS name with the standard RGB values."""
     from _plotly_utils.basevalidators import ColorValidator
 
-    from pymatviz.utils.plotting import _rgb_components
+    from pymatviz.utils.plotting import rgb_components
 
-    np.testing.assert_array_equal(_rgb_components(name), np.array(channels) / 255)
+    np.testing.assert_array_equal(rgb_components(name), np.array(channels) / 255)
     for color in ColorValidator.named_colors:
         assert 0 <= pmv.utils.luminance(color) <= 1
 
@@ -116,6 +121,8 @@ def test_css_named_colors(name: str, channels: tuple[int, int, int]) -> None:
         ("rgb(1, 1, 1)", 1 / (255 * 12.92)),
         (" RGB(255,0,0) ", 0.2126),
         ("rgba(255,0,0,0.5)", 0.2126),
+        # NumPy scalar channels
+        ((np.int32(128), np.int32(128), np.int32(128)), 0.21586050011389926),
     ],
 )
 def test_luminance(color: RgbColorType, expected: float) -> None:
@@ -134,34 +141,19 @@ def test_luminance(color: RgbColorType, expected: float) -> None:
         ((1, 0, 0, 0.3), "white"),  # Red with alpha (should be ignored)
         ((0, 1, 0), "black"),  # Green
         ((0, 0, 1.0), "white"),  # Blue
-    ],
-)
-def test_pick_max_contrast_color(
-    color: RgbColorType,
-    expected: Literal["black", "white"],
-) -> None:
-    assert pmv.utils.pick_max_contrast_color(color) == expected
-
-
-def test_text_color_contrast() -> None:
-    """Test that pick_max_contrast_color returns the correct text color for contrast."""
-    test_cases = [
         # Standard color names
-        ("black", "white"),  # Dark color should get white text
-        ("white", "black"),  # Light color should get black text
-        ("red", "white"),  # Red gets white text
-        ("yellow", "black"),  # Light color should get black text
+        ("black", "white"),
+        ("white", "black"),
+        ("red", "white"),
+        ("yellow", "black"),
+        ("green", "white"),
         # Hex colors
-        ("#000000", "white"),  # Black
-        ("#FFFFFF", "black"),  # White
         ("#000080", "white"),  # Navy blue (dark)
         ("#FFFF00", "black"),  # Yellow (light)
         ("#8B0000", "white"),  # Dark red
         ("#90EE90", "black"),  # Light green
         # RGB format
-        ("rgb(0, 0, 0)", "white"),  # Black
         ("rgb(1, 1, 1)", "white"),
-        ("green", "white"),
         ("rgb(255, 255, 255)", "black"),  # White
         ("rgb(128, 0, 0)", "white"),  # Maroon
         ("rgb(0, 128, 0)", "white"),  # Green
@@ -172,11 +164,14 @@ def test_text_color_contrast() -> None:
         # Edge cases near the threshold
         ("rgb(76, 76, 76)", "white"),  # Just below threshold
         ("rgb(77, 77, 77)", "white"),  # Near threshold
-    ]
-
-    for color, expected in test_cases:
-        actual = pmv.utils.pick_max_contrast_color(color)
-        assert actual == expected, f"For {color}, expected {expected}, got {actual}"
+    ],
+)
+def test_pick_max_contrast_color(
+    color: RgbColorType,
+    expected: Literal["black", "white"],
+) -> None:
+    """Dark backgrounds get white text and light backgrounds black text."""
+    assert pmv.utils.pick_max_contrast_color(color) == expected
 
 
 @pytest.mark.parametrize(
@@ -213,53 +208,28 @@ def test_luminance_with_edge_cases(color: ColorType) -> None:
         pmv.utils.luminance(color)
 
 
-def test_luminance_accepts_numpy_scalar_rgb_tuple() -> None:
-    """Luminance accepts NumPy scalar channels in RGB tuples."""
-    color = (np.int32(128), np.int32(128), np.int32(128))
-    assert pmv.utils.luminance(cast("ColorType", color)) == pytest.approx(
-        0.21586, abs=0.001
+@pytest.mark.parametrize(
+    ("bg_color", "colors", "min_contrast_ratio", "expected"),
+    [
+        ("rgb(128, 128, 128)", ("white", "black"), 3.0, "white"),
+        ("rgb(128, 128, 128)", ("white", "black"), 1.0, "white"),
+        ("black", ("red", "blue"), 2.0, "red"),
+        ("black", ("yellow", "green"), 2.0, "yellow"),
+        ("white", ("red", "blue"), 10, "blue"),
+        ("white", ("yellow", "green"), 10, "green"),
+    ],
+)
+def test_pick_max_contrast_color_options(
+    bg_color: str,
+    colors: tuple[str, str],
+    min_contrast_ratio: float,
+    expected: str,
+) -> None:
+    """Custom text colors and contrast thresholds pick the expected color."""
+    picked = pmv.utils.pick_max_contrast_color(
+        bg_color, colors=colors, min_contrast_ratio=min_contrast_ratio
     )
-
-
-def test_pick_max_contrast_color_with_min_contrast_ratio() -> None:
-    """Test pick_max_contrast_color with custom min_contrast_ratio."""
-    # Medium gray
-    color = "rgb(128, 128, 128)"
-
-    # Test with default min_contrast_ratio and custom min_contrast_ratio
-    assert pmv.utils.pick_max_contrast_color(color) == "white"
-    assert pmv.utils.pick_max_contrast_color(color, min_contrast_ratio=3.0) == "white"
-    assert pmv.utils.pick_max_contrast_color(color, min_contrast_ratio=1.0) == "white"
-
-
-def test_pick_max_contrast_color_with_custom_colors() -> None:
-    """Test pick_max_contrast_color with custom contrast colors."""
-    # Dark background tests
-    dark_color = "black"
-    assert pmv.utils.pick_max_contrast_color(dark_color) == "white"
-    assert (
-        pmv.utils.pick_max_contrast_color(dark_color, colors=("red", "blue")) == "red"
-    )
-    assert (
-        pmv.utils.pick_max_contrast_color(dark_color, colors=("yellow", "green"))
-        == "yellow"
-    )
-
-    # Light background tests
-    light_color = "white"
-    assert pmv.utils.pick_max_contrast_color(light_color) == "black"
-    assert (
-        pmv.utils.pick_max_contrast_color(
-            light_color, colors=("red", "blue"), min_contrast_ratio=10
-        )
-        == "blue"
-    )
-    assert (
-        pmv.utils.pick_max_contrast_color(
-            light_color, colors=("yellow", "green"), min_contrast_ratio=10
-        )
-        == "green"
-    )
+    assert picked == expected
 
 
 def test_contrast_ratio() -> None:
@@ -279,3 +249,160 @@ def test_contrast_ratio() -> None:
 
     # Test that order doesn't matter
     assert abs(contrast_ratio("red", "white") - contrast_ratio("white", "red")) < 0.1
+
+
+@pytest.mark.parametrize("color", ["red", "blue", "#FF0000"])
+def test_annotate(color: str, plotly_scatter: go.Figure) -> None:
+    text = "Test annotation"
+
+    fig_plotly = pmv.utils.annotate(text, plotly_scatter, color=color)
+    assert fig_plotly.layout.annotations[-1].text == text
+    assert fig_plotly.layout.annotations[-1].font.color == color
+
+
+@pytest.mark.parametrize(
+    ("func", "kwargs", "err_msg"),
+    [
+        (pmv.utils.annotate, {"text": "test"}, "Expected plotly Figure"),
+        (pmv.utils.get_fig_xy_range, {}, "Expected plotly Figure"),
+        (pmv.utils.get_font_color, {}, "Input must be plotly Figure, got type(fig)="),
+    ],
+)
+def test_non_figure_input_raises(
+    func: Callable[..., Any], kwargs: dict[str, Any], err_msg: str
+) -> None:
+    """Figure helpers reject non-figure input with a TypeError."""
+    with pytest.raises(TypeError, match=re.escape(err_msg)):
+        func(fig="invalid", **kwargs)
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        (["A1", "A2"], [("A1", "x domain"), ("A2", "x2 domain")]),
+        (["A1", ""], [("A1", "x domain")]),  # empty strings skip a facet
+        ("Single", [("Single", "x domain"), ("Single", "x2 domain")]),
+    ],
+    ids=["per-facet", "skip-empty", "broadcast-str"],
+)
+def test_annotate_faceted_plotly(
+    plotly_faceted_scatter: go.Figure,
+    text: str | list[str],
+    expected: list[tuple[str, str]],
+) -> None:
+    """Faceted figures get one annotation per non-empty text in subplot domains."""
+    fig = pmv.utils.annotate(text, plotly_faceted_scatter)
+    assert [(anno.text, anno.xref) for anno in fig.layout.annotations] == expected
+
+
+def test_annotate_non_faceted_plotly_with_list_raises(
+    plotly_scatter: go.Figure,
+) -> None:
+    text = ["Annotation 1", "Annotation 2"]
+    text_type = type(text).__name__
+    with pytest.raises(
+        ValueError,
+        match=re.escape(f"Unexpected {text_type=} for non-faceted plot, must be str"),
+    ):
+        pmv.utils.annotate(text, plotly_scatter)
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"x": 0.5, "y": 0.5},
+        {"font": dict(size=20, color="green")},
+        {"showarrow": True, "arrowhead": 2},
+    ],
+)
+def test_annotate_kwargs(plotly_scatter: go.Figure, kwargs: dict[str, Any]) -> None:
+    fig: go.Figure = pmv.utils.annotate("Test", plotly_scatter, **kwargs)
+
+    for key, val in kwargs.items():
+        if isinstance(val, dict):
+            for sub_key, sub_val in val.items():
+                assert getattr(fig.layout.annotations[-1][key], sub_key) == sub_val
+        else:
+            assert getattr(fig.layout.annotations[-1], key) == val
+
+
+@pytest.mark.parametrize("selector", [[0, 1], slice(None), lambda _trace: True])
+@pytest.mark.parametrize("axis_type", ["linear", "log"])
+def test_get_fig_xy_range(selector: Any, axis_type: str) -> None:
+    """Ranges pad finite data of selected traces; fixed layout ranges win."""
+    fig = go.Figure().add_scatter(x=[1, 10, np.nan], y=[2, 20, 5])
+    fig.add_scatter(x=[100, 1000], y=[np.inf, 200])
+    fig.add_histogram(x=[1e6])  # no y data, so never used for ranges
+    fig.update_xaxes(type=axis_type).update_yaxes(type=axis_type)
+
+    def check(expected: tuple[tuple[float, float], ...], **kwargs: Any) -> None:
+        """Compare get_fig_xy_range output to expected ranges."""
+        actual = pmv.utils.get_fig_xy_range(fig, **kwargs)
+        np.testing.assert_allclose(actual, expected, rtol=1e-12, atol=0)
+
+    if axis_type == "log":  # pad 5% of the log10 span: 3 and 2 decades
+        expected = ((10**-0.15, 10**3.15), (2 * 10**-0.1, 200 * 10**0.1))
+        single = ((10**1.95, 10**3.05), (20, 2000))  # zero span pads 1 decade
+    else:
+        expected = ((1 - 49.95, 1000 + 49.95), (2 - 9.9, 200 + 9.9))
+        single = ((100 - 45, 1000 + 45), (199, 201))  # zero span pads 1
+    check(expected, traces=selector)
+    check(single, traces=1)
+    check(((1, 1000), (2, 200)), traces=selector, pad_frac=0)
+
+    fig.update_xaxes(range=[0, 3])  # log axis ranges are in log10 units
+    fixed_max = 1000 if axis_type == "log" else 3
+    check(((1 if axis_type == "log" else 0, fixed_max), expected[1]), traces=selector)
+    fig.update_xaxes(range=[None, 3])
+    check(((expected[0][0], fixed_max), expected[1]), traces=selector)
+
+    with pytest.raises(ValueError, match="No valid traces with required data found"):
+        pmv.utils.get_fig_xy_range(fig, traces=lambda _trace: False)
+
+
+def test_get_fig_xy_range_subplots_and_errors() -> None:
+    """Subplot traces share one range; mixed axis types and bad data raise."""
+    fig = make_subplots(rows=1, cols=2)
+    fig.add_scatter(x=[1, 2], y=[10, 20], row=1, col=1)
+    fig.add_scatter(x=[3, 5], y=[30, 50], row=1, col=2)
+    ranges = pmv.utils.get_fig_xy_range(fig, traces=slice(None), pad_frac=0)
+    assert ranges == ((1, 5), (10, 50))
+
+    fig.update_xaxes(type="log", row=1, col=2)
+    with pytest.raises(ValueError, match="span x-axes of different types"):
+        pmv.utils.get_fig_xy_range(fig, traces=slice(None))
+
+    fig_neg = go.Figure().add_scatter(x=[1, 2], y=[-1, 0]).update_yaxes(type="log")
+    with pytest.raises(ValueError, match="No finite positive data for y-axis"):
+        pmv.utils.get_fig_xy_range(fig_neg)
+
+    fig_cat = go.Figure().add_scatter(x=["a", "b"], y=[1, 2])
+    with pytest.raises(ValueError, match="Non-numeric x data"):
+        pmv.utils.get_fig_xy_range(fig_cat)
+
+
+@pytest.mark.parametrize(
+    ("layout_color", "template_color", "default_template", "expected"),
+    [
+        ("red", "blue", "plotly", "red"),
+        ("#00FF00", "blue", "plotly", "#00FF00"),
+        ("rgb(0, 0, 255)", "blue", "plotly", "rgb(0, 0, 255)"),
+        (None, "blue", "plotly", "blue"),
+        (None, None, "plotly", "#2a3f5f"),
+        (None, None, "none", "black"),
+    ],
+)
+def test_get_font_color(
+    monkeypatch: pytest.MonkeyPatch,
+    layout_color: str | None,
+    template_color: str | None,
+    default_template: str,
+    expected: str,
+) -> None:
+    """Font colors prefer layout, figure template, then global template."""
+    monkeypatch.setattr(pio.templates, "default", default_template)
+    fig = go.Figure().update_layout(
+        font_color=layout_color,
+        template=go.layout.Template(layout=dict(font_color=template_color)),
+    )
+    assert pmv.utils.get_font_color(fig) == expected

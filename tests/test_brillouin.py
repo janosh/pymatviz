@@ -4,9 +4,9 @@ from glob import glob
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
-import plotly.graph_objects as go
 import pytest
 from pymatgen.core import Structure
+from scipy.spatial import ConvexHull
 
 from pymatviz.brillouin import brillouin_zone_3d
 from pymatviz.process_data import is_ase_atoms
@@ -51,7 +51,6 @@ def test_brillouin_zone_3d_basic(
     inputs.
     """
     fig = brillouin_zone_3d(struct_to_plot, **kwargs)
-    assert isinstance(fig, go.Figure)
 
     trace_types = {trace["type"] for trace in fig.data}
     assert trace_types <= {"scatter3d", "cone", "mesh3d"}, f"{trace_types=}"
@@ -115,68 +114,25 @@ def test_brillouin_zone_3d_high_symm_points(
     assert text_traces[0].text == expected_labels
 
 
-def test_brillouin_zone_3d_different_lattices(structures: list[Structure]) -> None:
-    """Test visualization for different lattice systems."""
-    figs = [brillouin_zone_3d(struct) for struct in structures]
-    assert all(isinstance(fig, go.Figure) for fig in figs)
+@pytest.mark.parametrize("struct_idx", [0, 1])
+def test_brillouin_zone_3d_volume(structures: list[Structure], struct_idx: int) -> None:
+    """BZ mesh and reciprocal vectors span (2π)³ / primitive cell volume."""
+    struct = structures[struct_idx]
+    fig = brillouin_zone_3d(struct)
+    expected_volume = (2 * np.pi) ** 3 / struct.get_primitive_structure().volume
 
-    # Compare volumes to verify different shapes
-    def get_volume(fig: go.Figure) -> float:
-        for trace in fig.data:
-            if trace.type == "mesh3d":
-                x, y, z = trace.x, trace.y, trace.z
-                return np.abs(
-                    np.mean([x.max() - x.min(), y.max() - y.min(), z.max() - z.min()])
-                    ** 3
-                )
-        return 0.0
-
-    volumes = [get_volume(fig) for fig in figs]
-    # Volumes should differ by more than 1%
-    for ii, jj in [(0, 1), (1, 0)]:
-        assert abs(volumes[ii] - volumes[jj]) / max(volumes) > 0.01
-
-
-def test_brillouin_zone_3d_reciprocal_vectors(structures: list[Structure]) -> None:
-    """Test that reciprocal lattice vectors are correctly calculated."""
-    fig = brillouin_zone_3d(structures[0])
-
-    # Get reciprocal lattice vectors
-    recip_latt = structures[0].lattice.reciprocal_lattice
-    expected_vectors = recip_latt.matrix
-
-    vector_traces = [
+    mesh = next(trace for trace in fig.data if trace.type == "mesh3d")
+    hull = ConvexHull(np.column_stack([mesh.x, mesh.y, mesh.z]))
+    # vector shafts are the only scatter3d traces without hover info
+    shafts = [
         trace
         for trace in fig.data
-        if trace.type == "scatter3d"
-        and trace.mode == "lines"
-        and hasattr(trace, "showlegend")
-        and not trace.showlegend
+        if trace.type == "scatter3d" and trace.hoverinfo == "none"
     ]
-
-    assert len(vector_traces) > 0
-    for trace in vector_traces:
-        vector = np.array([trace.x[-1], trace.y[-1], trace.z[-1]])
-        if np.allclose(vector, 0):
-            continue
-
-        vector_norm = np.linalg.norm(vector)
-        assert vector_norm > 0, f"Zero-length vector found: {vector}"
-        scaled_vector = vector / vector_norm
-
-        # Compare with normalized expected vectors
-        expected_directions = [
-            vec / np.linalg.norm(vec)
-            for vec in expected_vectors
-            if not np.allclose(vec, 0)
-        ]
-
-        angles = [
-            np.arccos(np.clip(np.dot(scaled_vector, expected_dir), -1.0, 1.0))
-            for expected_dir in expected_directions
-        ]
-        min_angle = min(angles) if angles else np.pi
-        assert min_angle == pytest.approx(0, abs=2)  # 2 degree tolerance
+    recip_vectors = [[trace.x[1], trace.y[1], trace.z[1]] for trace in shafts]
+    # observed rel. error <5e-16, rtol leaves headroom for primitive-cell finders
+    assert hull.volume == pytest.approx(expected_volume, rel=1e-9)
+    assert abs(np.linalg.det(recip_vectors)) == pytest.approx(expected_volume, rel=1e-9)
 
 
 @pytest.mark.parametrize(
@@ -230,43 +186,23 @@ def test_brillouin_zone_3d_trace_counts(material_id: str) -> None:
 
 
 def test_brillouin_zone_3d_subplot_grid(structures: list[Structure]) -> None:
-    """Test subplot grid functionality for multiple structures."""
-    # Test with list of structures
-    fig = brillouin_zone_3d(structures, n_cols=2)
-    assert isinstance(fig, go.Figure)
-    assert len(fig.layout.annotations) == len(structures)  # subplot titles
-    assert fig._grid_ref is not None
-    assert len(fig._grid_ref) == (len(structures) + 1) // 2  # number of rows
-    assert len(fig._grid_ref[0]) == 2  # number of columns
-
-    # Test with dict of structures
+    """Test subplot layout, scenes and custom titles for multiple structures."""
+    # Test custom subplot titles with dict of structures
     struct_dict = {f"struct_{idx}": struct for idx, struct in enumerate(structures)}
-    fig = brillouin_zone_3d(struct_dict, n_cols=1)
-    assert isinstance(fig, go.Figure)
-    assert len(fig.layout.annotations) == len(struct_dict)
-    assert fig._grid_ref is not None
-    assert len(fig._grid_ref) == len(struct_dict)  # number of rows
-    assert len(fig._grid_ref[0]) == 1  # number of columns
 
-    # Test custom subplot titles
     def subplot_title(struct: AnyStructure, key: Hashable) -> str:
         assert not is_ase_atoms(struct)  # narrow out ase Atoms for ty
         formula = struct.formula
         return f"Custom {key} - {formula}"
 
     fig = brillouin_zone_3d(struct_dict, subplot_title=subplot_title)
-    assert isinstance(fig, go.Figure)
-    for idx, (key, struct) in enumerate(struct_dict.items()):
-        assert fig.layout.annotations[idx].text == f"Custom {key} - {struct.formula}"
+    assert [anno.text for anno in fig.layout.annotations] == [
+        f"Custom {key} - {struct.formula}" for key, struct in struct_dict.items()
+    ]
 
-    # Test subplot spacing and layout
     fig = brillouin_zone_3d(structures, n_cols=2)
-    assert fig.layout.height == 400 * ((len(structures) + 1) // 2)  # height per row
-    assert fig.layout.width == 400 * 2  # width per column
-    assert fig.layout.margin.l == 0
-    assert fig.layout.margin.r == 0
-    assert fig.layout.margin.t == 0
-    assert fig.layout.margin.b == 0
+    assert len(fig.layout.annotations) == len(structures)  # subplot titles
+    assert fig.layout.margin.to_plotly_json() == dict(l=0, r=0, t=0, b=0)
 
     # Test that each subplot has correct scene properties
     for idx in range(1, len(structures) + 1):
@@ -296,37 +232,27 @@ def test_brillouin_zone_3d_subplot_grid_options(structures: list[Structure]) -> 
     """Test different subplot grid configurations and title options."""
     # Test disabling subplot titles
     fig = brillouin_zone_3d(structures, subplot_title=False)
-    assert isinstance(fig, go.Figure)
     assert all(anno.text == " " for anno in fig.layout.annotations)
 
-    # Test different grid configurations
+    # Test different grid configurations, subplot domains and gaps
     n_structs = len(structures)
+    gap = 0.01  # default gap in the function
     for n_cols in range(1, n_structs + 1):
         fig = brillouin_zone_3d(structures, n_cols=n_cols)
-        assert isinstance(fig, go.Figure)
-        expected_rows = (n_structs - 1) // n_cols + 1
+        n_rows = (n_structs - 1) // n_cols + 1
         assert fig._grid_ref is not None
-        assert len(fig._grid_ref) == expected_rows
+        assert len(fig._grid_ref) == n_rows
         assert len(fig._grid_ref[0]) == min(n_cols, n_structs)
-        assert fig.layout.height == 400 * expected_rows
+        assert fig.layout.height == 400 * n_rows
         assert fig.layout.width == 400 * min(n_cols, n_structs)
 
-    # Test subplot domains and gaps
-    fig = brillouin_zone_3d(structures, n_cols=2)
-    gap = 0.01  # default gap in the function
-    for idx in range(1, n_structs + 1):
-        scene = getattr(fig.layout, f"scene{idx}")
-        row = (idx - 1) // 2 + 1
-        col = (idx - 1) % 2 + 1
-
-        # Calculate expected domain coordinates
-        x_start = (col - 1) / 2 + gap / 2
-        x_end = col / 2 - gap / 2
-        y_start = 1 - row / ((n_structs + 1) // 2) + gap / 2
-        y_end = 1 - (row - 1) / ((n_structs + 1) // 2) - gap / 2
-
-        assert scene.domain.x == pytest.approx([x_start, x_end], abs=1e-10)
-        assert scene.domain.y == pytest.approx([y_start, y_end], abs=1e-10)
+        for idx in range(1, n_structs + 1):
+            scene = getattr(fig.layout, f"scene{idx}")
+            row, col = (idx - 1) // n_cols + 1, (idx - 1) % n_cols + 1
+            x_domain = [(col - 1) / n_cols + gap / 2, col / n_cols - gap / 2]
+            y_domain = [1 - row / n_rows + gap / 2, 1 - (row - 1) / n_rows - gap / 2]
+            assert scene.domain.x == pytest.approx(x_domain, abs=1e-10)
+            assert scene.domain.y == pytest.approx(y_domain, abs=1e-10)
 
     # Test custom subplot title with dict return
     def subplot_title(_struct: AnyStructure, key: Hashable) -> dict[str, Any]:
@@ -335,7 +261,6 @@ def test_brillouin_zone_3d_subplot_grid_options(structures: list[Structure]) -> 
         )
 
     fig = brillouin_zone_3d(structures, subplot_title=subplot_title)
-    assert isinstance(fig, go.Figure)
     for idx, struct in enumerate(structures):
         anno = fig.layout.annotations[idx]
         expected_text = f"Custom {idx + 1} {struct.formula}"
@@ -353,7 +278,6 @@ def test_brillouin_zone_3d_axes_vectors(structures: list[Structure]) -> None:
         "cone": {"sizeref": 0.99},
     }
     fig = brillouin_zone_3d(structures[0], axes_vectors=custom_axes)
-    assert isinstance(fig, go.Figure)
     # axes_vectors must not be mutated (pop() used to empty the cone dict, so
     # repeated calls with the same dict silently fell back to defaults)
     assert custom_axes["cone"] == {"sizeref": 0.99}
@@ -380,7 +304,6 @@ def test_brillouin_zone_3d_axes_vectors(structures: list[Structure]) -> None:
 
     # Test disabling axes vectors
     fig = brillouin_zone_3d(structures[0], axes_vectors=False)
-    assert isinstance(fig, go.Figure)
     shaft_traces = [
         trace
         for trace in fig.data

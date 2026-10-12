@@ -167,22 +167,14 @@ def density_scatter(
     # Convert arrays to DataFrame if needed
     if df is None:
         xs, ys = df_to_arrays(df, x, y)
-        if xlabel is None or ylabel is None:
-            auto_xlabel, auto_ylabel = _get_axis_labels(x, y)
-            xlabel = xlabel or auto_xlabel
-            ylabel = ylabel or auto_ylabel
-
-        # Create column names for DataFrame
-        x = xlabel if isinstance(xlabel, str) else "x"
-        y = ylabel if isinstance(ylabel, str) else "y"
+        auto_xlabel, auto_ylabel = _get_axis_labels(x, y)
+        # axis labels double as DataFrame column names
+        x = xlabel = xlabel or auto_xlabel
+        y = ylabel = ylabel or auto_ylabel
         df_data = pd.DataFrame({x: xs, y: ys})
     else:
         df_data = df
         x, y = str(x), str(y)  # x and y are column names when df is provided
-    if xlabel is None or ylabel is None:
-        auto_xlabel, auto_ylabel = _get_axis_labels(x, y, df)
-        xlabel = xlabel or auto_xlabel
-        ylabel = ylabel or auto_ylabel
 
     bin_counts_col = bin_counts_col or "Point<br>Density"
 
@@ -263,14 +255,42 @@ def density_scatter(
             custom_hovertemplate,
         )
 
+    if not facet_col:
+        pmv.powerups.enhance_parity_plot(
+            fig,
+            xs=df_data[x],
+            ys=df_data[y],
+            identity_line=identity_line,
+            best_fit_line=best_fit_line,
+            stats=stats,
+        )
+        return fig
+
+    # Fit and annotate each facet on its raw (unbinned) points. df_plot concatenates
+    # the groups in groupby order, so px puts facet idx on fig.data[idx].
     pmv.powerups.enhance_parity_plot(
-        fig,
-        xs=df_data[x],
-        ys=df_data[y],
-        identity_line=identity_line,
-        best_fit_line=best_fit_line,
-        stats=stats,
+        fig, identity_line=identity_line, best_fit_line=False, stats=False
     )
+    facet_dfs = [group_df for _, group_df in df_data.groupby(facet_col)]
+    if best_fit_line:
+        fit_kwargs = best_fit_line if isinstance(best_fit_line, dict) else {}
+        for facet_df, trace in zip(facet_dfs, fig.data, strict=True):
+            pmv.powerups.add_best_fit_line(
+                fig,
+                xs=facet_df[x],
+                ys=facet_df[y],
+                xref=trace.xaxis,
+                yref=trace.yaxis,
+                **fit_kwargs,
+            )
+    if stats:
+        stats_kwargs = stats if isinstance(stats, dict) else {}
+        pmv.powerups.annotate_metrics(
+            [facet_df[x] for facet_df in facet_dfs],
+            [facet_df[y] for facet_df in facet_dfs],
+            fig=fig,
+            **stats_kwargs,
+        )
     return fig
 
 
@@ -290,17 +310,17 @@ def _bin_and_calculate_density(
         return df_empty
 
     if n_bins:
-        density_col = "bin_counts_kde" if density == "kde" else None
+        density_col = "bin_counts_kde" if density == "kde" else ""
         df_plot = bin_df_cols(
             df,
             bin_by_cols=[x, y],
             n_bins=n_bins,
             bin_counts_col=bin_counts_col,
-            density_col=density_col or "",
+            density_col=density_col,
         ).sort_values(bin_counts_col)
         # sort by counts so densest points are plotted last
 
-        if density_col and density_col in df_plot:
+        if density_col:
             df_plot[bin_counts_col] = df_plot[density_col]
         elif density != "empirical":
             raise ValueError(f"Unknown {density=}")
@@ -362,18 +382,13 @@ def _update_colorbar_for_log_density(
         decades = range(
             int(np.floor(np.log10(actual_min))), int(np.ceil(np.log10(actual_max))) + 1
         )
-        tick_values = [10**decade for decade in decades]
-
-        # Add intermediate values (2x and 5x) for each decade
-        intermediate_ticks = []
-        for power in decades[:-1]:  # Skip the last decade
-            intermediate_ticks.extend([2 * 10**power, 5 * 10**power])
-
-        tick_values.extend(intermediate_ticks)
-        tick_values = sorted(tick_values)
-
-        # Filter out values outside our range
-        tick_values = [v for v in tick_values if actual_min <= v <= actual_max]
+        # Powers of 10 plus intermediate 2x and 5x values, clipped to the data range
+        tick_values = [
+            tick
+            for power in decades
+            for tick in (10**power, 2 * 10**power, 5 * 10**power)
+            if actual_min <= tick <= actual_max
+        ]
     else:
         # For smaller ranges, use more points
         num_ticks = min(
@@ -381,15 +396,12 @@ def _update_colorbar_for_log_density(
         )
         tick_values = np.logspace(np.log10(actual_min), np.log10(actual_max), num_ticks)
 
-    tick_labels = []
-    for val in tick_values:
-        # float precision based on magnitude: small (large) values use 1 (0) decimals
-        formatted = si_fmt(val, fmt=".1f") if val < 10 else si_fmt(val, fmt=".0f")
-
-        # Remove trailing .0 if present
-        formatted = formatted.removesuffix(".0")
-
-        tick_labels.append(formatted)
+    # float precision based on magnitude: small (large) values use 1 (0) decimals,
+    # dropping any trailing .0
+    tick_labels = [
+        si_fmt(val, fmt=".1f" if val < 10 else ".0f").removesuffix(".0")
+        for val in tick_values
+    ]
 
     tick_positions = np.log10(np.array(tick_values) + 1)
 
@@ -403,9 +415,8 @@ def _update_colorbar_for_log_density(
         else custom_hovertemplate
     )
 
-    parts = template.split("<extra>", 1)
-    base = parts[0]
-    extra = f"<extra>{parts[1]}" if len(parts) > 1 else "<extra></extra>"
+    base, sep, extra_rest = template.partition("<extra>")
+    extra = f"<extra>{extra_rest}" if sep else "<extra></extra>"
 
     for trace in fig.data:
         trace.hovertemplate = (
@@ -554,24 +565,20 @@ def _with_marginal_hist(
     main_fig_func is called as main_fig_func(x, y, df=df, xlabel=..., ylabel=...,
     **kwargs) and its traces are placed in a subplot grid with bins-binned
     marginal x/y histograms.
+
+    Raises:
+        TypeError: If kwargs contain plotly express' marginal_x/marginal_y, since
+            the marginals are always histograms whose resolution is set by bins.
     """
-    arrays = df_to_arrays(df, x, y)
-    xs, ys = arrays[0], arrays[1]
-    # Ensure we have numpy arrays
-    if isinstance(xs, dict):
-        xs = next(iter(xs.values()))
-    if isinstance(ys, dict):
-        ys = next(iter(ys.values()))
-    # Convert to numpy arrays
-    xs = np.asarray(xs)
-    ys = np.asarray(ys)
+    if unsupported := {"marginal_x", "marginal_y"} & set(kwargs):
+        raise TypeError(
+            f"{sorted(unsupported)} not supported: marginals are always histograms, "
+            f"use {bins=} to control their resolution"
+        )
+    xs, ys = map(np.asarray, df_to_arrays(df, x, y))
     xlabel, ylabel = _get_axis_labels(x, y, df)
 
-    # Create the main plot
-    main_kwargs = {
-        k: v for k, v in kwargs.items() if k not in ["marginal_x", "marginal_y"]
-    }
-    fig = main_fig_func(x, y, df=df, xlabel=xlabel, ylabel=ylabel, **main_kwargs)
+    fig = main_fig_func(x, y, df=df, xlabel=xlabel, ylabel=ylabel, **kwargs)
 
     # Create subplot with marginals
     subplot_fig = _create_marginal_subplots()
@@ -581,9 +588,7 @@ def _with_marginal_hist(
         subplot_fig.add_trace(trace, row=2, col=1)
     _add_marginal_histograms(subplot_fig, xs, ys, bins, xlabel, ylabel)
 
-    # Copy colorbar settings
-    if hasattr(fig.layout, "coloraxis"):
-        subplot_fig.layout.coloraxis = fig.layout.coloraxis
+    subplot_fig.layout.coloraxis = fig.layout.coloraxis  # copy colorbar settings
 
     # Keep parity lines and statistics anchored to the main panel.
     for items, add_item in (

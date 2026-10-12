@@ -43,29 +43,14 @@ def check_basic_rdf_properties(
     ],
 )
 def test_calculate_rdf(structure_name: str, structure: Any) -> None:
-    """Test basic RDF calculation for various structure types."""
-    # Calculate RDF for the structure
+    """Test full and Si-Si partial RDFs for various structure types."""
     radii, rdf = calculate_rdf(structure, cutoff=10, n_bins=100)
     check_basic_rdf_properties(radii, rdf, 100, structure_name)
 
-    # Get unique elements in the structure
-    if hasattr(structure, "sites"):
-        # For pymatgen Structure/IStructure
-        elements = list({site.specie.symbol for site in structure})
-    else:
-        # For ASE Atoms
-        from pymatgen.io.ase import AseAtomsAdaptor
-
-        temp_struct = AseAtomsAdaptor.get_structure(structure)
-        elements = list({site.specie.symbol for site in temp_struct})
-
-    # Test partial RDFs for element pairs
-    for el1 in elements:
-        for el2 in elements:
-            radii_partial, rdf_partial = calculate_rdf(structure, el1, el2, 10, 100)
-            check_basic_rdf_properties(
-                radii_partial, rdf_partial, 100, f"{structure_name}_{el1}_{el2}"
-            )
+    radii_partial, rdf_partial = calculate_rdf(structure, "Si", "Si", 10, 100)
+    check_basic_rdf_properties(radii_partial, rdf_partial, 100, structure_name)
+    # Si2 has only Si, so the partial RDF equals the full RDF
+    np.testing.assert_array_equal(rdf_partial, rdf)
 
 
 @pytest.mark.parametrize(
@@ -163,31 +148,15 @@ def test_calculate_rdf_pbc_consistency() -> None:
 
 
 def test_calculate_rdf_different_species() -> None:
+    """Same-species RDFs count periodic images and cross-species peaks appear."""
     coords = [[0, 0, 0], [0.5, 0.5, 0.5]]
     structure = Structure(Lattice.cubic(5), ["Si", "Ge"], coords)
-
     cutoff, n_bins = 10, 100
 
-    _radii_si_si, rdf_si_si = calculate_rdf(
-        structure,
-        center_species="Si",
-        neighbor_species="Si",
-        cutoff=cutoff,
-        n_bins=n_bins,
-    )
-    _radii_si_ge, rdf_si_ge = calculate_rdf(
-        structure,
-        center_species="Si",
-        neighbor_species="Ge",
-        cutoff=cutoff,
-        n_bins=n_bins,
-    )
-    _radii_ge_ge, rdf_ge_ge = calculate_rdf(
-        structure,
-        center_species="Ge",
-        neighbor_species="Ge",
-        cutoff=cutoff,
-        n_bins=n_bins,
+    _, rdf_si_si, _, rdf_si_ge, _, rdf_ge_ge = (
+        arr
+        for center, neighbor in (("Si", "Si"), ("Si", "Ge"), ("Ge", "Ge"))
+        for arr in calculate_rdf(structure, center, neighbor, cutoff, n_bins)
     )
 
     # Same-species RDFs must count periodic images of the single atom
@@ -199,8 +168,6 @@ def test_calculate_rdf_different_species() -> None:
     assert np.allclose(rdf_si_si, rdf_ge_ge), (
         "Si-Si and Ge-Ge RDFs should be identical by symmetry"
     )
-    assert np.any(rdf_si_ge > 0), "Si-Ge RDF should have non-zero values"
-
     peak_index = int(4.33 / cutoff * n_bins)
     assert rdf_si_ge[peak_index] > 0, (
         "Expected peak in Si-Ge RDF at sqrt(3)/2 * lattice constant"
@@ -212,6 +179,7 @@ def test_calculate_rdf_different_species() -> None:
     [(4, [0.9, 0.9, 0.9]), (0.1, [0.1, 0.1, 0.1])],
 )
 def test_calculate_rdf_edge_cases(cutoff: float, frac_coords: list[float]) -> None:
+    """RDF is zero when no neighbors lie within the cutoff."""
     # Test with a single atom
     single_atom = Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]])
     _radii, rdf = calculate_rdf(
@@ -233,7 +201,6 @@ def test_calculate_rdf_edge_cases(cutoff: float, frac_coords: list[float]) -> No
         n_bins=30,
         pbc=(0, 0, 0),
     )
-    # get idx of first radial bin that is greater than 3
     assert np.all(rdf == 0), f"{rdf=} should be all zeros"
 
 

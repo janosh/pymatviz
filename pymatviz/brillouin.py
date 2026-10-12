@@ -65,7 +65,7 @@ def brillouin_zone_3d(
     import seekpath
 
     from pymatviz.process_data import normalize_periodic_structures
-    from pymatviz.structure.helpers import get_subplot_title
+    from pymatviz.structure.helpers import get_site_symbol, get_subplot_title
 
     structures = normalize_periodic_structures(struct)
 
@@ -81,15 +81,11 @@ def brillouin_zone_3d(
         subplot_titles=[" " for _ in range(n_structs)],
     )
 
-    from pymatviz.structure.helpers import get_site_symbol
-
     for idx, (struct_key, structure) in enumerate(structures.items(), start=1):
         # Convert pymatgen Structure to seekpath input format
-        lattice = structure.lattice
-        frac_coords = structure.frac_coords
         spglib_atoms = (
-            lattice.matrix,  # cell
-            frac_coords,  # positions
+            structure.lattice.matrix,  # cell
+            structure.frac_coords,  # positions
             [Element(get_site_symbol(site)).number for site in structure],
         )
         # Get primitive structure and symmetry info using seekpath
@@ -116,25 +112,19 @@ def brillouin_zone_3d(
         # Find central point (index 13 corresponds to [0,0,0])
         center_index = 13
 
-        # Get BZ vertices, edges and faces
-        bz_vertices = []
+        # Get BZ vertices and edges
+        bz_vertices = set()
         bz_edges = []
-        bz_faces = []
 
         for pid, rid in zip(voronoi.ridge_points, voronoi.ridge_vertices, strict=False):
             if pid[0] == center_index or (
                 pid[1] == center_index and -1 not in rid
             ):  # Skip ridges with vertices at infinity
-                ridge_vertices = voronoi.vertices[rid]
                 bz_edges.append(voronoi.vertices[np.r_[rid, [rid[0]]]])
-                bz_faces.append(ridge_vertices)
-                bz_vertices.extend(rid)
+                bz_vertices.update(rid)
 
-        # Remove duplicate vertices
-        bz_vertices = list(set(bz_vertices))
-        vertices = voronoi.vertices[bz_vertices]
+        vertices = voronoi.vertices[list(bz_vertices)]
 
-        # Plot reciprocal lattice vectors
         colors = ["red", "green", "blue"]
         labels = ["b₁", "b₂", "b₃"]
 
@@ -206,17 +196,16 @@ def brillouin_zone_3d(
                 )
 
         # Plot BZ faces using convex hull
-        unique_vertices = np.array(vertices)
-        hull = sps.ConvexHull(unique_vertices)
+        hull = sps.ConvexHull(vertices)
 
         # Calculate BZ volume
         bz_volume = hull.volume  # in inverse cubic angstrom
 
         # Plot faces as a single mesh
         fig.add_mesh3d(
-            x=unique_vertices[:, 0],
-            y=unique_vertices[:, 1],
-            z=unique_vertices[:, 2],
+            x=vertices[:, 0],
+            y=vertices[:, 1],
+            z=vertices[:, 2],
             i=hull.simplices[:, 0],
             j=hull.simplices[:, 1],
             k=hull.simplices[:, 2],
@@ -246,29 +235,21 @@ def brillouin_zone_3d(
             )
 
         if point_kwargs is not False:  # Add high symmetry k-points
-            k_points_dict = seekpath_dict[
-                "point_coords"
-            ]  # This is a dict of label: coords
-            k_paths = seekpath_dict["path"]
-
             # Convert fractional k-points to Cartesian coordinates
             cart_kpoints = {
                 label: np.dot(coords, k_space_cell)
-                for label, coords in k_points_dict.items()
+                for label, coords in seekpath_dict["point_coords"].items()
             }
 
             # Plot high symmetry points
-            x_coords, y_coords, z_coords, point_labels = [], [], [], []
-            for label, coords in cart_kpoints.items():
-                x_coords += [coords[0]]
-                y_coords += [coords[1]]
-                z_coords += [coords[2]]
+            point_labels = []
+            for label in cart_kpoints:
                 for text, repl in [("\\Gamma", "Γ"), ("GAMMA", "Γ"), ("DELTA", "Δ")]:
                     label = label.replace(text, repl)  # noqa: PLW2901
                 # use <sub> for subscripts
-                pretty_label = re.sub(r"_(\d+)", r"<sub>\1</sub>", label)
-                point_labels += [pretty_label]
+                point_labels += [re.sub(r"_(\d+)", r"<sub>\1</sub>", label)]
 
+            x_coords, y_coords, z_coords = zip(*cart_kpoints.values(), strict=True)
             fig.add_scatter3d(
                 x=x_coords,
                 y=y_coords,
@@ -284,7 +265,7 @@ def brillouin_zone_3d(
 
             # Add paths between high symmetry points
             if path_kwargs is not False:
-                for path in k_paths:
+                for path in seekpath_dict["path"]:
                     for path_idx in range(len(path) - 1):
                         start_point = cart_kpoints[path[path_idx]]
                         end_point = cart_kpoints[path[path_idx + 1]]
@@ -300,34 +281,30 @@ def brillouin_zone_3d(
                             scene=scene,
                         )
 
-        # Calculate the bounding box of the Brillouin zone vertices
-        vertices = np.array(vertices)
-
         # Set subplot titles
-        if subplot_title is not False:
-            title_func = subplot_title or get_subplot_title
-            if title_func is get_subplot_title:
-                anno = title_func(structure, struct_key, idx, subplot_title)
-            else:
-                anno = title_func(structure, struct_key)
-                if not isinstance(anno, (str, dict)):
-                    raise TypeError("Subplot title must be a string or dict")
-                if isinstance(anno, str):
-                    anno = {"text": anno}
-            fig.layout.annotations[idx - 1].update(anno)
+        if subplot_title is None:
+            fig.layout.annotations[idx - 1].update(
+                get_subplot_title(structure, struct_key, idx, None)
+            )
+        elif subplot_title is not False:
+            anno = subplot_title(structure, struct_key)
+            if not isinstance(anno, (str, dict)):
+                raise TypeError("Subplot title must be a string or dict")
+            fig.layout.annotations[idx - 1].update(
+                {"text": anno} if isinstance(anno, str) else anno
+            )
 
-        # Update 3D scene properties
-        no_axes_kwargs = dict(
-            showticklabels=False, showgrid=False, zeroline=False, visible=False
-        )
-
-        fig.update_scenes(
-            xaxis=no_axes_kwargs,
-            yaxis=no_axes_kwargs,
-            zaxis=no_axes_kwargs,
-            aspectmode="data",
-            bgcolor="rgba(90, 90, 90, 0.01)",  # Transparent background
-        )
+    # Update 3D scene properties
+    no_axes_kwargs = dict(
+        showticklabels=False, showgrid=False, zeroline=False, visible=False
+    )
+    fig.update_scenes(
+        xaxis=no_axes_kwargs,
+        yaxis=no_axes_kwargs,
+        zaxis=no_axes_kwargs,
+        aspectmode="data",
+        bgcolor="rgba(90, 90, 90, 0.01)",  # Transparent background
+    )
 
     # Calculate subplot positions with small gap
     gap = 0.01

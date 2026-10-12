@@ -93,16 +93,23 @@ def confusion_matrix(
     y_labels = y_labels or x_labels
     n_classes = len(x_labels)
 
-    # Create hover text with absolute counts and percentages
+    # Create hover text (and callable annotations) with absolute counts and percentages
     sample_counts = conf_mat_arr.copy()  # retain unnormalized counts for hover text
+    total = sample_counts.sum()
     if normalize:
         conf_mat_arr = conf_mat_arr / conf_mat_arr.sum()
+    annotation_func = (
+        cast("Callable[[int, int, float, float], str]", annotations)
+        if callable(annotations)
+        else None
+    )
     hover_text: list[list[str]] = []
+    callable_annotations: list[list[str]] = []
     for ii, row in enumerate(conf_mat_arr):
-        hover_row = []
+        hover_row, anno_row = [], []
         for jj, val in enumerate(row):
             count = int(sample_counts[ii, jj])
-            pct = val if normalize else val / sample_counts.sum()
+            pct = val if normalize else val / total
             row_sum, col_sum = row.sum(), conf_mat_arr[:, jj].sum()
             row_pct = val / row_sum if row_sum > 0 else 0
             col_pct = val / col_sum if col_sum > 0 else 0
@@ -114,7 +121,10 @@ def confusion_matrix(
                 f"Row %: {row_pct:.1%}<br>"
                 f"Col %: {col_pct:.1%}"
             )
-        hover_text += [hover_row]
+            if annotation_func is not None:
+                anno_row.append(annotation_func(count, total, row_pct, col_pct))
+        hover_text.append(hover_row)
+        callable_annotations.append(anno_row)
 
     # Split long y-labels with line breaks if needed (>15 chars)
     formatted_labels: dict[str, list[str]] = {"x": [], "y": []}
@@ -137,27 +147,8 @@ def confusion_matrix(
     processed_annotations: NDArray[np.str_]
     if annotations is None:
         processed_annotations = fmt_tile_vals
-    elif callable(annotations):  # If annotations is a callable, apply it to each cell
-        annotation_func = cast("Callable[[int, int, float, float], str]", annotations)
-        total = sample_counts.sum()
-        anno_matrix = []
-        for ii in range(len(conf_mat_arr)):
-            row = []
-            for jj in range(len(conf_mat_arr[ii])):
-                count = int(sample_counts[ii, jj])
-                row_pct = (
-                    conf_mat_arr[ii, jj] / conf_mat_arr[ii].sum()
-                    if conf_mat_arr[ii].sum() > 0
-                    else 0
-                )
-                col_pct = (
-                    conf_mat_arr[ii, jj] / conf_mat_arr[:, jj].sum()
-                    if conf_mat_arr[:, jj].sum() > 0
-                    else 0
-                )
-                row += [annotation_func(count, total, row_pct, col_pct)]
-            anno_matrix += [row]
-        processed_annotations = np.array(anno_matrix)
+    elif callable(annotations):  # callable was applied to each cell above
+        processed_annotations = np.array(callable_annotations)
     else:  # When custom annotations provided, append percentage values
         anno_arr = np.asarray(annotations)
         if anno_arr.shape != fmt_tile_vals.shape:
@@ -247,10 +238,10 @@ def confusion_matrix(
             font_size=22,
         ) | (metrics_kwargs or {})
         fig.add_annotation(**metrics_defaults)
-        y_pos = metrics_defaults.get("y", 0)
+        y_pos = metrics_defaults["y"]
         if isinstance(y_pos, (int, float)) and y_pos >= 1:
             fig.layout.margin.t = 60
-        if isinstance(y_pos, (int, float)) and y_pos <= 0:
+        elif isinstance(y_pos, (int, float)) and y_pos <= 0:
             fig.layout.margin.b = 60
 
     # Update axes formatting

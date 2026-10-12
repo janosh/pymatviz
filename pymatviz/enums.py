@@ -96,21 +96,9 @@ class LabelEnum(StrEnum):
         return self.__dict__["desc"]
 
 
-eV_per_atom = html_tag("(eV/atom)", style="small")  # noqa: N816
 eV = html_tag("(eV)", style="small")  # noqa: N816
-eV_per_angstrom = html_tag("(eV/Å)", style="small")  # noqa: N816
-eV_per_kelvin = html_tag("(eV/K)", style="small")  # noqa: N816
-angstrom = html_tag("(Å)", style="small")
 angstrom_per_atom = html_tag("(Å/atom)", style="small")
 cubic_angstrom = html_tag("(Å<sup>3</sup>)", style="small")
-degrees = html_tag("(°)", style="small")
-gram_per_cm3 = html_tag("(g/cm³)", style="small")
-kelvin = html_tag("(K)", style="small")
-pascal = html_tag("(Pa)", style="small")
-giga_pascal = html_tag("(GPa)", style="small")
-joule = html_tag("(J)", style="small")
-joule_per_mol = html_tag("(J/mol)", style="small")
-joule_per_m2 = html_tag("(J/m²)", style="small")
 
 
 @unique
@@ -137,10 +125,7 @@ class Key(StrEnum):
         html_str = ""
         in_super = in_sub = False
 
-        idx = 0
-        while idx < len(unit):
-            char = unit[idx]
-
+        for char in unit:
             # Check if character is superscript
             if new_char := SUPERSCRIPT_MAP.get(char):
                 if not in_super:
@@ -162,7 +147,6 @@ class Key(StrEnum):
                     html_str += "</sub>"
                     in_sub = False
                 html_str += char
-            idx += 1
 
         # Close any remaining open tags
         if in_super:

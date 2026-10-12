@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import pickle
 from typing import TYPE_CHECKING
-from unittest.mock import patch
+from unittest.mock import Mock, call, patch
 
 import pytest
 import requests
@@ -40,10 +40,11 @@ def test_pickle_enum() -> None:
     assert Key.energy.__reduce_ex__(1) == (str, ("energy",))
 
 
-def test_label_enum_new() -> None:
+def test_label_enum_value_and_repr() -> None:
+    """LabelEnum members compare equal to their value and repr as their label."""
     assert DummyEnum.TEST1 == "test1"
-    assert DummyEnum.TEST1.label == "Test Label 1"
-    assert DummyEnum.TEST1.description == "Test Description 1"
+    assert repr(DummyEnum.TEST1) == "Test Label 1"
+    assert DummyEnum.TEST2.description == ""  # description is optional
 
 
 @pytest.mark.parametrize(
@@ -59,10 +60,6 @@ def test_label_enum_attributes_read_only(
     assert getattr(DummyEnum.TEST1, attr_name) == old_value
     with pytest.raises(AttributeError):
         setattr(DummyEnum.TEST1, attr_name, new_value)
-
-
-def test_label_enum_repr() -> None:
-    assert repr(DummyEnum.TEST1) == DummyEnum.TEST1.label == "Test Label 1"
 
 
 @pytest.mark.parametrize(
@@ -141,27 +138,20 @@ def test_label_enum_repr() -> None:
         (Key.fn, "FN"),
         (Key.n_structures, "N<sub>structs</sub>"),
         (Key.n_materials, "N<sub>materials</sub>"),
+        # Keys without symbols
+        (Key.structure, None),
+        (Key.formula, None),
+        (Key.composition, None),
+        (Key.crystal_system, None),
+        (Key.spg_symbol, None),
+        (Key.basis_set, None),
+        (Key.model_name, None),
+        (Key.description, None),
     ],
 )
-def test_key_symbols(key: Key, expected_symbol: str) -> None:
+def test_key_symbols(key: Key, expected_symbol: str | None) -> None:
     """Test Key enum symbols."""
     assert key.symbol == expected_symbol
-
-
-def test_key_symbol_none() -> None:
-    """Test that keys without symbols return None."""
-    keys_without_symbols = [
-        Key.structure,
-        Key.formula,
-        Key.composition,
-        Key.crystal_system,
-        Key.spg_symbol,
-        Key.basis_set,
-        Key.model_name,
-        Key.description,
-    ]
-    for key in keys_without_symbols:
-        assert key.symbol is None, f"Expected {key=} to have no symbol"
 
 
 def test_key_symbol_unit_category_desc() -> None:
@@ -251,6 +241,19 @@ def test_key_units_are_consistent() -> None:
     for key in temperature_keys:
         assert key.unit == "K", f"Expected K unit for {key=}, got {key.unit}"
 
+    valid_ev_units = {
+        "eV",
+        "eV/atom",
+        "eV/K",
+        "eV/Å",
+        "meV",
+        "eV/Å<sup>3</sup>",
+        "states/eV",
+    }
+    for key in Key:
+        if key.unit and "eV" in key.unit:
+            assert key.unit in valid_ev_units, f"Unexpected {key.unit=} for {key=}"
+
 
 def test_key_label_formatting() -> None:
     """Test that all labels are properly formatted."""
@@ -281,16 +284,20 @@ def test_key_value_matches_name() -> None:
 
 
 def test_key_html_validity() -> None:
-    """Test that HTML subscripts in symbols are properly formatted."""
+    """Sub/superscript tags in symbols and units are balanced and not nested."""
     for key in Key:
         for field in ("symbol", "unit"):
-            value = getattr(key, field)
-            if value and "<sub>" in value:
-                # Check matching closing tags
-                n_sub, n_sub_end = value.count("<sub>"), value.count("</sub>")
-                assert n_sub == n_sub_end, f"Mismatched sub tags in {value}"
-                # Check proper nesting
-                assert "</sub>" not in value[: value.index("<sub>")]
+            value = getattr(key, field) or ""
+            for tag in ("sub", "sup"):
+                if f"<{tag}>" in value:
+                    n_open, n_close = value.count(f"<{tag}>"), value.count(f"</{tag}>")
+                    assert n_open == n_close, f"Mismatched {tag} tags in {value}"
+                    assert f"</{tag}>" not in value[: value.index(f"<{tag}>")]
+            if "<sup>" in value and "<sub>" in value:
+                sup_start, sup_end = value.index("<sup>"), value.index("</sup>")
+                sub_start, sub_end = value.index("<sub>"), value.index("</sub>")
+                assert not (sup_start < sub_start < sup_end), f"Nested tags {value}"
+                assert not (sub_start < sup_start < sub_end), f"Nested tags {value}"
 
 
 @pytest.mark.parametrize(
@@ -341,32 +348,6 @@ def test_key_units(key: Key, expected_unit: str | None) -> None:
     assert key.unit == expected_unit
 
 
-def test_unit_html_consistency() -> None:
-    """Test that all units follow consistent HTML formatting rules."""
-    for key in Key:
-        unit = key.unit
-        if unit is None:
-            continue
-
-        # Check proper HTML tag nesting
-        if "<sup>" in unit:
-            assert unit.count("<sup>") == unit.count("</sup>")
-            assert "</sup>" not in unit[: unit.index("<sup>")]
-
-        if "<sub>" in unit:
-            assert unit.count("<sub>") == unit.count("</sub>")
-            assert "</sub>" not in unit[: unit.index("<sub>")]
-
-        # Check no nested tags
-        if "<sup>" in unit and "<sub>" in unit:
-            sup_start = unit.index("<sup>")
-            sup_end = unit.index("</sup>")
-            sub_start = unit.index("<sub>")
-            sub_end = unit.index("</sub>")
-            assert not (sup_start < sub_start < sup_end), "Nested sup/sub tags"
-            assert not (sub_start < sup_start < sub_end), "Nested sub/sup tags"
-
-
 def test_unit_special_characters() -> None:
     """Test that special characters in units are consistently used."""
     for key in Key:
@@ -396,217 +377,102 @@ def test_unit_special_characters() -> None:
             assert "Pa" in unit, f"Use Pa symbol in {unit} of {key}"
 
 
-def test_unit_formatting_consistency() -> None:
-    """Test that similar quantities use consistent unit formatting."""
-    ev_keys = {k for k in Key if k.unit and "eV" in k.unit}
-    valid_units = {
-        "eV",
-        "eV/atom",
-        "eV/K",
-        "eV/Å",
-        "meV",
-        "eV/Å<sup>3</sup>",
-        "states/eV",
-    }
-    for key in ev_keys:
-        unit = key.unit
-        assert unit in valid_units, f"Unexpected {unit=} for {key=}"
-
-
-def test_files_enum(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test error handling and base_dir in Files enum."""
+def test_files_enum(tmp_path: Path) -> None:
+    """Files members expose paths, URLs, labels and lookups relative to base_dir."""
     # The main Files enum from pymatviz.enums has "" as its _base_dir by default
     assert Files._base_dir == ""
 
-    # Test custom base_dir with a local subclass
-    class SubFiles(Files, base_dir="custom_foo_dir"):
-        # EnumMemberName = "path_relative_to_base_dir", "url", "label", "description"
-        sub_file_example = (
-            "data/example.txt",
-            "http://example.com/data.txt",
-            "Example File",
-            "An example file for testing",
-        )
-
-    assert SubFiles._base_dir == "custom_foo_dir"
-    example_member = SubFiles.sub_file_example
-    assert example_member.value == "data/example.txt"
-    assert example_member.rel_path == "data/example.txt"
-
-    # To test the .file_path property without triggering downloads, ensure
-    # _auto_download is False
-    monkeypatch.setattr(SubFiles, "_auto_download", False)
-    assert example_member.file_path == "custom_foo_dir/data/example.txt"
-
-    # Test __repr__ and __str__ methods using SubFiles
-    assert repr(example_member) == "SubFiles.sub_file_example"
-    assert str(example_member) == "sub_file_example"
-
-    # Test invalid label lookup for the main Files enum
-    # This assumes Files has members with labels.
-    invalid_label_to_test = "this-label-does-not-exist-for-sure"
-    with pytest.raises(ValueError, match=f"label='{invalid_label_to_test}' not found"):
-        Files.from_label(invalid_label_to_test)
-
-
-def test_data_files_enum(tmp_path: Path) -> None:
-    """Test Files enum functionality with a local, populated enum."""
-
     class TestDataFiles(Files, base_dir=str(tmp_path), auto_download=False):
+        # member = "path_relative_to_base_dir", "url", "label", "description"
         mp_energies = (
             "mp/2025-02-01-mp-energies.csv.gz",
-            "https://figshare.com/files/789012",  # Example URL
+            "https://figshare.com/files/789012",
             "MP Energies Test",
             "Test description for MP energies",
         )
         wbm_summary = (
             "wbm/2023-12-13-wbm-summary.csv.gz",
-            "https://figshare.com/files/789012",  # Example URL
+            "https://figshare.com/files/345678",
             "WBM Summary Test",
-            "Test description for WBM summary",
         )
 
-    assert repr(TestDataFiles.mp_energies) == "TestDataFiles.mp_energies"
-    assert str(TestDataFiles.mp_energies) == "mp_energies"
-
-    assert TestDataFiles.mp_energies.rel_path == "mp/2025-02-01-mp-energies.csv.gz"
-    assert (
-        TestDataFiles.mp_energies.file_path
-        == f"{tmp_path}/mp/2025-02-01-mp-energies.csv.gz"
+    mp_file = TestDataFiles.mp_energies
+    assert TestDataFiles._base_dir == str(tmp_path)
+    assert mp_file.value == mp_file.rel_path == "mp/2025-02-01-mp-energies.csv.gz"
+    assert mp_file.file_path == f"{tmp_path}/mp/2025-02-01-mp-energies.csv.gz"
+    assert mp_file.url == "https://figshare.com/files/789012"
+    assert (mp_file.label, mp_file.description) == (
+        "MP Energies Test",
+        "Test description for MP energies",
     )
-    assert TestDataFiles.mp_energies.name == "mp_energies"
-    assert TestDataFiles.mp_energies.url == "https://figshare.com/files/789012"
+    assert repr(mp_file) == "TestDataFiles.mp_energies"
+    assert str(mp_file) == mp_file.name == "mp_energies"
+    assert TestDataFiles.wbm_summary.description == ""
+    assert TestDataFiles.from_label("WBM Summary Test") is TestDataFiles.wbm_summary
 
-    assert TestDataFiles.wbm_summary.rel_path == "wbm/2023-12-13-wbm-summary.csv.gz"
-    assert (
-        TestDataFiles.wbm_summary.file_path
-        == f"{tmp_path}/wbm/2023-12-13-wbm-summary.csv.gz"
-    )
-    assert TestDataFiles.wbm_summary.url == "https://figshare.com/files/789012"
+    invalid_label = "this-label-does-not-exist-for-sure"
+    with pytest.raises(ValueError, match=f"label='{invalid_label}' not found"):
+        Files.from_label(invalid_label)
 
 
+EXAMPLE_URL = "https://example.com/file.txt"
+
+
+@pytest.mark.parametrize(
+    ("auto_download", "url", "pre_existing", "response_ok", "expect_download"),
+    [
+        (True, EXAMPLE_URL, False, True, True),
+        (True, EXAMPLE_URL, True, True, False),
+        (False, EXAMPLE_URL, False, True, False),
+        (True, "", False, True, False),
+        (True, EXAMPLE_URL, False, False, True),
+    ],
+    ids=["downloads-missing", "skips-existing", "disabled", "no-url", "http-error"],
+)
 def test_files_enum_auto_download(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture,
+    auto_download: bool,
+    url: str,
+    pre_existing: bool,
+    response_ok: bool,
+    expect_download: bool,
 ) -> None:
-    """Test auto-download behavior in Files class."""
-    # This is the file path RELATIVE to base_dir
-    test_file_rel_path = "test_data/actual_file.txt"
-    test_file_url = "https://example.com/actual_file.txt"
-    test_file_label = "My Test File"
-    test_file_desc = "A file for testing downloads"
+    """file_path downloads missing files only when enabled and a URL is set."""
 
-    # Define a base TestFiles class.
-    # _auto_download will be monkeypatched per test case or set in subclasses.
-    class TestFileEnum(Files, base_dir=str(tmp_path), auto_download=False):
-        actual_test_file = (
-            test_file_rel_path,
-            test_file_url,
-            test_file_label,
-            test_file_desc,
-        )
+    class TestFiles(Files, base_dir=str(tmp_path), auto_download=auto_download):
+        test_file = "data/file.txt", url, "Test File"
 
-    file_to_test = TestFileEnum.actual_test_file
-    expected_abs_path = f"{tmp_path}/{test_file_rel_path}"
+    path = f"{tmp_path}/data/file.txt"
+    os.makedirs(os.path.dirname(path))
+    if pre_existing:
+        with open(path, mode="wb") as file:
+            file.write(b"old content")
 
-    os.makedirs(os.path.dirname(expected_abs_path), exist_ok=True)
+    response = Mock(content=b"new content")
+    if not response_ok:
+        response.raise_for_status.side_effect = requests.HTTPError("HTTP Error: 404")
 
-    # Mock successful request
-    mock_response_content = b"test content for download"
+    with patch("requests.get", return_value=response) as mock_get:
+        if response_ok:
+            assert TestFiles.test_file.file_path == path
+        else:
+            with pytest.raises(requests.HTTPError, match="HTTP Error: 404"):
+                _ = TestFiles.test_file.file_path
 
-    class MockSuccessfulResponse:
-        status_code = 200
-        content = mock_response_content
-
-        def raise_for_status(self) -> None:
-            pass
-
-    # Mock failed request
-    class MockFailedResponse:
-        status_code = 404
-        content = b"not found"
-
-        def raise_for_status(self) -> None:
-            raise requests.HTTPError(f"HTTP Error: {self.status_code}")
-
-    # Test 1: Auto-download enabled, file does NOT exist. Download should happen.
-    if os.path.isfile(expected_abs_path):
-        os.remove(expected_abs_path)
-    monkeypatch.setattr(TestFileEnum, "_auto_download", True)
-
-    with patch("requests.get", return_value=MockSuccessfulResponse()) as mock_get_dl:
-        retrieved_path = file_to_test.file_path  # Access property
-        assert retrieved_path == expected_abs_path
-        mock_get_dl.assert_called_once_with(test_file_url)
-        stdout, _ = capsys.readouterr()
-        assert f"Downloading {test_file_url} to {expected_abs_path}" in stdout
-        assert os.path.isfile(expected_abs_path)
-        with open(expected_abs_path, "rb") as f_handle:
-            assert f_handle.read() == mock_response_content
-
-    # Test 2: Auto-download enabled, file already exists. No download attempt.
-    assert os.path.isfile(expected_abs_path)  # Should exist from Test 1
-    monkeypatch.setattr(TestFileEnum, "_auto_download", True)  # Keep True
-
-    with patch("requests.get") as mock_get_exists:
-        retrieved_path_exists = file_to_test.file_path
-        assert retrieved_path_exists == expected_abs_path
-        mock_get_exists.assert_not_called()
-        stdout_exists, _ = capsys.readouterr()
-        assert "Downloading" not in stdout_exists
-
-    # Test 3: Auto-download disabled, file does NOT exist. No download attempt.
-    if os.path.isfile(expected_abs_path):
-        os.remove(expected_abs_path)
-    monkeypatch.setattr(TestFileEnum, "_auto_download", False)
-
-    with patch("requests.get") as mock_get_disabled:
-        retrieved_path_disabled = file_to_test.file_path
-        assert retrieved_path_disabled == expected_abs_path
-        mock_get_disabled.assert_not_called()
-        assert not os.path.isfile(expected_abs_path)
-        stdout_disabled, _ = capsys.readouterr()
-        assert "Downloading" not in stdout_disabled
-
-    # Test 4: Auto-download enabled, but URL is empty. No download.
-    class TestFileNoUrl(Files, base_dir=str(tmp_path), auto_download=True):
-        no_url_file = "test_data/no_url.txt", "", "No URL File"
-
-    file_no_url = TestFileNoUrl.no_url_file
-    path_no_url = f"{tmp_path}/{file_no_url.value}"  # Construct path from enum value
-    os.makedirs(os.path.dirname(path_no_url), exist_ok=True)
-    if os.path.isfile(path_no_url):
-        os.remove(path_no_url)
-
-    with patch("requests.get") as mock_get_no_url:
-        # _auto_download is True from class definition
-        retrieved_path_no_url = file_no_url.file_path
-        assert retrieved_path_no_url == path_no_url
-        mock_get_no_url.assert_not_called()  # No URL, so no call
-        assert not os.path.isfile(path_no_url)
-        stdout_no_url, _ = capsys.readouterr()
-        assert "Downloading" not in stdout_no_url
-
-    # Test 5: Auto-download enabled, download fails (e.g., 404 error).
-    class TestFileFailDownload(Files, base_dir=str(tmp_path), auto_download=True):
-        fail_dl_file = (
-            "test_data/fail.txt",
-            "https://example.com/will_fail.txt",
-            "Fail DL",
-        )
-
-    file_fail_dl = TestFileFailDownload.fail_dl_file
-    path_fail_dl = f"{tmp_path}/{file_fail_dl.value}"  # Construct path from enum value
-    url_fail_dl = file_fail_dl.url  # Get URL from enum member
-    os.makedirs(os.path.dirname(path_fail_dl), exist_ok=True)
-    if os.path.isfile(path_fail_dl):
-        os.remove(path_fail_dl)
-
-    with patch("requests.get", return_value=MockFailedResponse()) as mock_get_fail:
-        # _auto_download is True from class definition
-        with pytest.raises(requests.HTTPError, match="HTTP Error: 404"):
-            _ = file_fail_dl.file_path  # This will trigger download attempt & fail
-        mock_get_fail.assert_called_once_with(url_fail_dl)
-        assert not os.path.isfile(path_fail_dl)
-        stdout_fail, _ = capsys.readouterr()
-        # The print message includes the URL and the full path
-        assert f"Downloading {url_fail_dl} to {path_fail_dl}" in stdout_fail
+    assert mock_get.call_args_list == ([call(url)] if expect_download else [])
+    stdout = capsys.readouterr().out
+    assert ("Downloading" in stdout) is expect_download
+    assert (f"Downloading {url} to {path}" in stdout) is expect_download
+    expected_content = (
+        b"new content"
+        if expect_download and response_ok
+        else b"old content"
+        if pre_existing
+        else None
+    )
+    if expected_content is None:
+        assert not os.path.isfile(path)
+    else:
+        with open(path, mode="rb") as file:
+            assert file.read() == expected_content

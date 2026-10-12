@@ -96,3 +96,20 @@ def test_spacegroup_bar(
     assert [(shape.x0, shape.x1) for shape in fig.layout.shapes] == list(
         pairwise(edges)
     )
+
+
+@pytest.mark.parametrize(
+    ("data", "expected_yshifts"),
+    [
+        ([1, 2, *range(3, 16)], [0, 0]),  # widths 2 + 13 = 15 leave room
+        ([1, *range(3, 16)], [0, 16]),  # widths 1 + 13 = 14 overlap
+        ([1, 2, 3, 16, *range(17, 75)], [0, 16, 0]),  # 2 + 1 overlap, 59 is wide
+    ],
+)
+def test_spacegroup_bar_count_label_shift(
+    data: list[int], expected_yshifts: list[int]
+) -> None:
+    """Odd crystal systems' count labels shift up if it and the previous are narrow."""
+    fig = spacegroup_bar(data)
+    count_annos = [anno for anno in fig.layout.annotations if "%" in anno.text]
+    assert [anno.yshift for anno in count_annos] == expected_yshifts

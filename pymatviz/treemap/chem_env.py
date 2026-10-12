@@ -2,22 +2,23 @@
 
 from __future__ import annotations
 
-import textwrap
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Literal, get_args
+from typing import TYPE_CHECKING, Literal
 
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 
 from pymatviz import chem_env
-from pymatviz.process_data import normalize_structures
-from pymatviz.typing import AnyStructure, ShowCounts
 
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from typing import Any
+
+    import plotly.graph_objects as go
+
+    from pymatviz.chem_env import ChemEnvSettings
+    from pymatviz.typing import AnyStructure, ShowCounts
 
 
 CnFormatter = Callable[[int | str, int, int], str] | Literal[False] | None
@@ -49,7 +50,7 @@ def default_cn_formatter(coord_num: int | str, count: float, total: float) -> st
 def chem_env_treemap(
     structures: AnyStructure | Sequence[AnyStructure],
     *,
-    chem_env_settings: dict[str, Any] | Literal["chemenv", "crystal_nn"] = "crystal_nn",
+    chem_env_settings: ChemEnvSettings = "crystal_nn",
     max_cells_cn: int | None = None,
     max_cells_ce: int | None = None,
     normalize: bool = False,
@@ -81,7 +82,7 @@ def chem_env_treemap(
         Plotly Figure with treemap plot
 
     Raises:
-        ValueError: For invalid inputs
+        ValueError: For invalid show_counts or chem_env_settings.
 
     Tips and Customization:
     - rounded corners: fig.update_traces(marker=dict(cornerradius=5))
@@ -106,20 +107,12 @@ def chem_env_treemap(
         >>> # Normalize counts per structure
         >>> fig3 = pmv.chem_env_treemap(structures, normalize=True)
     """
-    structs = normalize_structures(structures).values()
-
-    if show_counts not in get_args(ShowCounts):
-        raise ValueError(f"Invalid {show_counts=}")
-
-    if chem_env_settings == "crystal_nn":
-        chem_env_data = chem_env.collect_coord_envs_crystal_nn(
-            structs, normalize=normalize
-        )
-    else:  # "chemenv" or custom settings
-        settings = {} if chem_env_settings == "chemenv" else chem_env_settings
-        chem_env_data = chem_env.collect_coord_envs_chemenv(
-            structs, chem_env_settings=settings, normalize=normalize
-        )
+    chem_env_data = chem_env.collect_chem_env_data(
+        structures,
+        chem_env_settings=chem_env_settings,
+        normalize=normalize,
+        show_counts=show_counts,
+    )
 
     return _process_chem_env_data_treemap(
         chem_env_data=chem_env_data,
@@ -141,27 +134,14 @@ def _process_chem_env_data_treemap(
 ) -> go.Figure:
     """Process chem env data and create treemap plot."""
     if not chem_env_data:
-        fig = go.Figure()
-        fig.layout.title = dict(
-            text="No CN/CE data to display",
-            x=0.5,
-            font_size=16,
-        )
-        return fig
+        return chem_env.empty_chem_env_figure()
 
-    df_chem_env = pd.DataFrame(chem_env_data)
-    df_chem_env = df_chem_env.groupby(["coord_num", "chem_env_symbol"], as_index=False)[
-        "count"
-    ].sum()
+    df_chem_env = chem_env.aggregate_chem_env_data(chem_env_data)
 
     # Add counts and percentages to CN labels if requested
-    if cn_formatter is None and show_counts is not False:
+    if cn_formatter is None:
         cn_formatter = default_cn_formatter
-    if (
-        cn_formatter is not False
-        and cn_formatter is not None
-        and show_counts is not False
-    ):
+    if cn_formatter is not False and show_counts is not False:
         cn_totals = df_chem_env.groupby("coord_num")["count"].sum()
         total_count = cn_totals.sum()
         df_chem_env["coord_num_display"] = df_chem_env["coord_num"].map(
@@ -180,34 +160,20 @@ def _process_chem_env_data_treemap(
         )
 
         if len(cn_totals) > max_cells_cn:
-            # Take the top N CNs
-            top_cns = set(cn_totals.iloc[:max_cells_cn].index)
-
-            # Filter data to keep only top CNs
-            top_cn_data = df_chem_env[df_chem_env["coord_num"].isin(top_cns)]
-
-            # Create "Other CNs" entry for the remaining CNs
-            other_cn_data = df_chem_env[~df_chem_env["coord_num"].isin(top_cns)]
-            if not other_cn_data.empty:
-                other_count = other_cn_data["count"].sum()
-                num_omitted = len(cn_totals) - max_cells_cn
-
-                other_entry = pd.DataFrame(
-                    {
-                        "coord_num": ["Other CNs"],
-                        "coord_num_display": [
-                            f"Other CNs ({num_omitted} more not shown)"
-                        ],
-                        "chem_env_symbol": [
-                            f"Other CNs ({num_omitted} more not shown)"
-                        ],
-                        "count": [other_count],
-                    }
-                )
-
-                df_chem_env = pd.concat([top_cn_data, other_entry], ignore_index=True)
-            else:
-                df_chem_env = top_cn_data
+            # Keep the top N CNs and lump the rest into an "Other CNs" entry
+            is_top_cn = df_chem_env["coord_num"].isin(cn_totals.index[:max_cells_cn])
+            other_label = f"Other CNs ({len(cn_totals) - max_cells_cn} more not shown)"
+            other_entry = pd.DataFrame(
+                {
+                    "coord_num": ["Other CNs"],
+                    "coord_num_display": [other_label],
+                    "chem_env_symbol": [other_label],
+                    "count": [df_chem_env.loc[~is_top_cn, "count"].sum()],
+                }
+            )
+            df_chem_env = pd.concat(
+                [df_chem_env[is_top_cn], other_entry], ignore_index=True
+            )
 
     # Limit the number of CEs within each CN if requested
     if max_cells_ce is not None and max_cells_ce > 0:
@@ -217,70 +183,38 @@ def _process_chem_env_data_treemap(
             cn_subset = df_chem_env[df_chem_env["coord_num"] == cn_val]
 
             if len(cn_subset) > max_cells_ce:
-                # Sort by count and take top CEs
+                # Keep the top CEs and lump the rest into an "Other CEs" entry
                 cn_subset_sorted = cn_subset.sort_values("count", ascending=False)
                 top_ces = cn_subset_sorted.iloc[:max_cells_ce]
-
-                # Create "Other CEs" entry for remaining CEs
-                other_ces = cn_subset_sorted.iloc[max_cells_ce:]
-                if not other_ces.empty:
-                    other_count = other_ces["count"].sum()
-                    num_omitted = len(cn_subset) - max_cells_ce
-
-                    # Get the coord_num_display for this CN
-                    coord_num_display = top_ces["coord_num_display"].iloc[0]
-
-                    other_entry = pd.DataFrame(
-                        {
-                            "coord_num": [cn_val],
-                            "coord_num_display": [coord_num_display],
-                            "chem_env_symbol": [
-                                f"Other CEs ({num_omitted} more not shown)"
-                            ],
-                            "count": [other_count],
-                        }
-                    )
-
-                    df_ce_limited.append(
-                        pd.concat([top_ces, other_entry], ignore_index=True)
-                    )
-                else:
-                    df_ce_limited.append(top_ces)
-            else:
-                df_ce_limited.append(cn_subset)
+                num_omitted = len(cn_subset) - max_cells_ce
+                other_entry = pd.DataFrame(
+                    {
+                        "coord_num": [cn_val],
+                        "coord_num_display": [top_ces["coord_num_display"].iloc[0]],
+                        "chem_env_symbol": [
+                            f"Other CEs ({num_omitted} more not shown)"
+                        ],
+                        "count": [cn_subset_sorted["count"].iloc[max_cells_ce:].sum()],
+                    }
+                )
+                cn_subset = pd.concat([top_ces, other_entry], ignore_index=True)
+            df_ce_limited.append(cn_subset)
 
         df_chem_env = pd.concat(df_ce_limited, ignore_index=True)
 
-    # Apply text wrapping to chem env symbols to allow for larger font in small cells
     df_chem_env["chem_env_symbol"] = df_chem_env["chem_env_symbol"].map(
-        lambda text: "<br>".join(
-            textwrap.wrap(text, width=15, break_long_words=True, break_on_hyphens=True)
-        )
+        chem_env.wrap_chem_env_label
     )
 
-    # Create the treemap
     treemap_kwargs = {
         "path": ["coord_num_display", "chem_env_symbol"],
         "values": "count",
-        **kwargs,
     }
+    fig = px.treemap(df_chem_env, **treemap_kwargs | kwargs)
+    fig.data[0].update(
+        texttemplate=chem_env.CHEM_ENV_TEXT_TEMPLATES[show_counts], textinfo="none"
+    )
 
-    fig = px.treemap(df_chem_env, **treemap_kwargs)
-
-    # Apply cell text formatting according to show_counts
-    text_templates = {
-        "value": "%{label}: %{value:.2f}",
-        "percent": "%{label}: %{percentParent:.1%}",
-        "value+percent": "%{label}: %{value:.2f} (%{percentParent:.1%})",
-        False: "%{label}",
-    }
-    if show_counts not in text_templates:
-        raise ValueError(
-            f"Invalid {show_counts=}, must be one of {list(text_templates)}"
-        )
-    fig.data[0].update(texttemplate=text_templates[show_counts], textinfo="none")
-
-    # Set background color to transparent
     fig.layout.paper_bgcolor = "rgba(0, 0, 0, 0)"
 
     return fig

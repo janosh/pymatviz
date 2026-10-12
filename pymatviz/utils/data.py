@@ -22,20 +22,21 @@ _elements_csv = f"{ROOT}/pymatviz/elements.csv"
 df_ptable: pd.DataFrame = pd.read_csv(_elements_csv, comment="#").set_index("symbol")
 
 
-atomic_numbers: dict[str, int] = {}
-element_symbols: dict[int, str] = {}
-
-for Z, symbol in enumerate(df_ptable.index, start=1):
-    atomic_numbers[symbol] = Z
-    element_symbols[Z] = symbol
+atomic_numbers: dict[str, int] = {
+    symbol: atomic_num for atomic_num, symbol in enumerate(df_ptable.index, start=1)
+}
+element_symbols: dict[int, str] = {
+    atomic_num: symbol for symbol, atomic_num in atomic_numbers.items()
+}
 
 
 # SpaceGroupType(number).hm_short is separated by a space like "F m -3 m"
-hm_symbol_to_spg_num_map = {
+_spaced_hm_symbols = {
     SpaceGroupType(number).hm_short: number for number in range(1, 230 + 1)
 } | {SpaceGroupType(number).hm_full: number for number in range(1, 230 + 1)}
-for spg, val in [*hm_symbol_to_spg_num_map.items()]:
-    hm_symbol_to_spg_num_map[spg.replace(" ", "")] = val
+hm_symbol_to_spg_num_map = _spaced_hm_symbols | {
+    spg.replace(" ", ""): number for spg, number in _spaced_hm_symbols.items()
+}
 
 
 def spg_to_crystal_sys(spg: float | str) -> CrystalSystem:

@@ -146,8 +146,6 @@ px.defaults.labels |= {
 if os.environ.get("CI"):  # Configure Plotly to be silent in CI
     import plotly.graph_objects as go
 
-    _plotly_fig_orig_show = go.Figure.show  # Store original show method
-
     # Replace fig.show() method with a noop version for CI environments to avoid
     # spamming logs with huge HTML strings
     go.Figure.show = lambda *_args, **_kwargs: None  # ty: ignore[invalid-assignment]

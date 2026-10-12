@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import html as html_mod
 import os
 import re
 import subprocess
@@ -37,11 +38,10 @@ class TqdmDownload(tqdm):
         """Sets default values appropriate for file downloads for unit, unit_scale,
         unit_divisor, miniters, desc.
         """
-        for key, val in dict(
+        defaults = dict(
             unit="B", unit_scale=True, unit_divisor=1024, miniters=1, desc="Downloading"
-        ).items():
-            kwargs.setdefault(key, val)
-        super().__init__(*args, **kwargs)
+        )
+        super().__init__(*args, **defaults | kwargs)
 
     def update_to(
         self, n_blocks: int = 1, block_size: int = 1, total_size: int | None = None
@@ -144,17 +144,25 @@ def save_fig(
         config.update(plotly_config or {})
         fig_defaults = dict(include_plotlyjs=False, full_html=False, config=config)
         fig.write_html(path, **fig_defaults | kwargs)
-        if path.lower().endswith(".svelte"):
-            # Forward Svelte props to the outer div, preserving Plotly's attributes.
-            with open(path, encoding="utf-8") as file:
-                text = re.sub(r"<div\b", "<div {...$$props}", file.read(), count=1)
-            with open(path, mode="w", encoding="utf-8") as file:
-                file.write(text + "\n")
-        if style:
+        is_svelte = path.lower().endswith(".svelte")
+        if is_svelte or style:
             with open(path, encoding="utf-8") as file:
                 text = file.read()
+            if is_svelte:
+                # Forward Svelte props to the outer div, preserving Plotly's attributes.
+                text = re.sub(r"<div\b", "<div {...$$props}", text, count=1) + "\n"
+            if style:  # merge into the outer div's style: browsers drop duplicate
+                # attrs and plotly>=6.8 sets one. User style goes last to win.
+                style = html_mod.escape(style)
+                div_tag, rest = text.split(">", 1)
+                if match := re.search(r'style="([^"]*)"', div_tag):
+                    merged = f'style="{match[1].rstrip("; ")}; {style}"'
+                    div_tag = div_tag.replace(match[0], merged)
+                else:
+                    div_tag += f' style="{style}"'
+                text = f"{div_tag}>{rest}"
             with open(path, mode="w", encoding="utf-8") as file:
-                file.write(re.sub(r"<div\b", f"<div {style=}", text, count=1))
+                file.write(text)
     else:
         orig_template = fig.layout.template
         hidden_traces = []

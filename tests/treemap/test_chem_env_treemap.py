@@ -8,7 +8,11 @@ from unittest.mock import MagicMock, patch
 import plotly.graph_objects as go
 import pytest
 
-from pymatviz.treemap.chem_env import chem_env_treemap, default_cn_formatter
+from pymatviz.treemap.chem_env import (
+    _process_chem_env_data_treemap,
+    chem_env_treemap,
+    default_cn_formatter,
+)
 from pymatviz.typing import ShowCounts
 
 
@@ -28,7 +32,7 @@ def mock_structure() -> MagicMock:
 def chemenv_mocks() -> Generator[dict[str, Any], None, None]:
     """Setup common ChemEnv mocks."""
     with (
-        patch("pymatviz.treemap.chem_env.normalize_structures") as mock_norm,
+        patch("pymatviz.chem_env.normalize_structures") as mock_norm,
         patch(
             "pymatgen.analysis.chemenv.coordination_environments.coordination_geometry_finder.LocalGeometryFinder"
         ) as mock_lgf,
@@ -70,27 +74,27 @@ def chemenv_mocks() -> Generator[dict[str, Any], None, None]:
         }
 
 
-def test_default_cn_formatter_edge_cases() -> None:
+@pytest.mark.parametrize(
+    ("coord_num", "count", "total", "expected"),
+    [
+        (4, 2.5, 10, "CN 4 (N=2.5, 25.0%)"),  # float >= 1: 2 decimals, trimmed
+        (4, 0.123456, 10, "CN 4 (N=0.123, 1.2%)"),  # float < 1: 3 decimals
+        (6, 1000, 5000, "CN 6 (N=1,000, 20.0%)"),  # int: thousands separator
+    ],
+)
+def test_default_cn_formatter(
+    coord_num: int, count: float, total: float, expected: str
+) -> None:
     """Format integer, fractional, and non-integral coordination counts."""
-    result = default_cn_formatter(4, 2.5, 10)
-    assert "2.5" in result
-    assert "25.0%" in result
-
-    # Test with float count < 1
-    result = default_cn_formatter(4, 0.123456, 10)
-    assert "0.123" in result
-    assert "1.2%" in result
-
-    # Test with integer count
-    result = default_cn_formatter(6, 1000, 5000)
-    assert "1,000" in result
-    assert "20.0%" in result
+    assert default_cn_formatter(coord_num, count, total) == expected
 
 
-def test_chem_env_treemap_chemenv_import_error(mock_structure: MagicMock) -> None:
-    """Test ChemEnv method handling ImportError during setup."""
+def test_chem_env_treemap_chemenv_setup_error_propagates(
+    mock_structure: MagicMock,
+) -> None:
+    """ChemEnv setup failures raise instead of yielding an empty figure."""
     with (
-        patch("pymatviz.treemap.chem_env.normalize_structures") as mock_norm,
+        patch("pymatviz.chem_env.normalize_structures") as mock_norm,
         patch(
             "pymatgen.analysis.chemenv.coordination_environments.coordination_geometry_finder.LocalGeometryFinder"
         ) as mock_lgf,
@@ -98,166 +102,125 @@ def test_chem_env_treemap_chemenv_import_error(mock_structure: MagicMock) -> Non
         mock_norm.return_value.values.return_value = [mock_structure]
         mock_lgf.side_effect = ImportError("ChemEnv not available")
 
-        fig = chem_env_treemap(mock_structure, chem_env_settings="chemenv")
-        assert isinstance(fig, go.Figure)
-        assert "No CN/CE data to display" in fig.layout.title.text
+        with pytest.raises(ImportError, match="ChemEnv not available"):
+            chem_env_treemap(mock_structure, chem_env_settings="chemenv")
 
 
-def test_chem_env_treemap_crystal_nn_analysis_error() -> None:
-    """Test CrystalNN method handling analysis errors during processing."""
+@pytest.mark.parametrize(
+    ("failing_target", "error"),
+    [
+        ("classify", ValueError("Order parameters not available")),
+        ("get_nn_info", RuntimeError("CrystalNN analysis failed")),
+    ],
+)
+def test_chem_env_treemap_crystal_nn_analysis_error(
+    failing_target: str, error: Exception
+) -> None:
+    """Per-structure CrystalNN failures warn and skip the structure."""
     mock_structure = MagicMock()
     mock_structure.__len__.return_value = 1
-    mock_structure.__iter__.return_value = iter([MagicMock()])
 
     with (
-        patch("pymatviz.treemap.chem_env.normalize_structures") as mock_norm,
+        patch("pymatviz.chem_env.normalize_structures") as mock_norm,
         patch("pymatgen.analysis.local_env.CrystalNN") as mock_crystal_nn,
         patch(
             "pymatviz.chem_env.classify_local_env_with_order_params"
         ) as mock_classify,
     ):
         mock_norm.return_value.values.return_value = [mock_structure]
-        mock_crystal_nn_instance = MagicMock()
-        mock_crystal_nn.return_value = mock_crystal_nn_instance
-
-        # Make classify_local_env_with_order_params raise ImportError
-        mock_classify.side_effect = ImportError("Order parameters not available")
-        mock_crystal_nn_instance.get_nn_info.return_value = [{"site": MagicMock()}]
-
-        # The function should catch the ImportError and return an empty figure
-        with pytest.warns(UserWarning, match="CrystalNN analysis failed"):
-            fig = chem_env_treemap(mock_structure, chem_env_settings="crystal_nn")
-
-        assert isinstance(fig, go.Figure)
-        assert "No CN/CE data to display" in fig.layout.title.text
-
-
-def test_chem_env_treemap_crystal_nn_outer_try_catch() -> None:
-    """Test CrystalNN method handling exceptions in the outer try-except."""
-    mock_structure = MagicMock()
-    mock_structure.__len__.return_value = 1
-
-    with (
-        patch("pymatviz.treemap.chem_env.normalize_structures") as mock_norm,
-        patch("pymatgen.analysis.local_env.CrystalNN") as mock_crystal_nn,
-    ):
-        mock_norm.return_value.values.return_value = [mock_structure]
-        mock_crystal_nn_instance = MagicMock()
-        mock_crystal_nn.return_value = mock_crystal_nn_instance
-
-        # Make get_nn_info raise RuntimeError (inner try-catch coverage)
-        mock_crystal_nn_instance.get_nn_info.side_effect = RuntimeError(
-            "CrystalNN analysis failed"
+        mock_get_nn_info = mock_crystal_nn.return_value.get_nn_info
+        mock_get_nn_info.return_value = [{"site": MagicMock()}]
+        failing_mock = (
+            mock_classify if failing_target == "classify" else mock_get_nn_info
         )
+        failing_mock.side_effect = error
 
-        # The function should catch the RuntimeError and return an empty figure
-        with pytest.warns(UserWarning, match="CrystalNN analysis failed for structure"):
+        with pytest.warns(
+            UserWarning, match=f"CrystalNN analysis failed for structure 0.*{error}"
+        ):
             fig = chem_env_treemap(mock_structure, chem_env_settings="crystal_nn")
 
-        assert isinstance(fig, go.Figure)
-        assert fig.layout.title is not None
-        assert "No CN/CE data to display" in fig.layout.title.text
+    assert fig.layout.title.text == "No CN/CE data to display"
 
 
-def test_chem_env_treemap_max_cells_cn_logic() -> None:
-    """Test max_cells_cn logic with edge cases."""
-    # Create mock data with multiple CNs
-    mock_data = [
-        {"coord_num": 4, "chem_env_symbol": "T:4", "count": 10},
-        {"coord_num": 6, "chem_env_symbol": "O:6", "count": 8},
-        {"coord_num": 8, "chem_env_symbol": "C:8", "count": 6},
-        {"coord_num": 3, "chem_env_symbol": "T:3", "count": 4},
-        {"coord_num": 5, "chem_env_symbol": "SP:5", "count": 2},
-    ]
+CN_DATA = [
+    {"coord_num": 4, "chem_env_symbol": "T:4", "count": 10},
+    {"coord_num": 6, "chem_env_symbol": "O:6", "count": 8},
+    {"coord_num": 8, "chem_env_symbol": "C:8", "count": 6},
+    {"coord_num": 3, "chem_env_symbol": "T:3", "count": 4},
+    {"coord_num": 5, "chem_env_symbol": "SP:5", "count": 2},
+]
+CE_DATA = [
+    {"coord_num": 4, "chem_env_symbol": "T:4", "count": 10},
+    {"coord_num": 4, "chem_env_symbol": "SP:4", "count": 8},
+    {"coord_num": 4, "chem_env_symbol": "SS:4", "count": 6},
+    {"coord_num": 4, "chem_env_symbol": "SQ:4", "count": 4},
+    {"coord_num": 6, "chem_env_symbol": "O:6", "count": 12},
+]
 
-    # Import the function directly to test it
-    from pymatviz.treemap.chem_env import _process_chem_env_data_treemap
 
+@pytest.mark.parametrize(
+    ("chem_env_data", "max_cells_cn", "max_cells_ce", "expected_labels"),
+    [
+        (
+            CN_DATA,
+            3,
+            None,
+            [
+                "T:4",
+                "O:6",
+                "C:8",
+                "Other CNs (2<br>more not shown)",
+                "CN 4",
+                "CN 6",
+                "CN 8",
+                "Other CNs (2 more not shown)",
+            ],
+        ),
+        (
+            CE_DATA,
+            None,
+            2,
+            ["T:4", "SP:4", "Other CEs (2<br>more not shown)", "O:6", "CN 4", "CN 6"],
+        ),
+        (CN_DATA[:2], 10, None, ["T:4", "O:6", "CN 4", "CN 6"]),  # limit > n_cns
+        (CN_DATA[:2], None, 10, ["T:4", "O:6", "CN 4", "CN 6"]),  # limit > n_ces
+        (  # long CE names are wrapped with <br>, short ones untouched
+            [
+                {
+                    "coord_num": 4,
+                    "chem_env_symbol": "rectangular see-saw-like:4",
+                    "count": 10,
+                },
+                {"coord_num": 5, "chem_env_symbol": "short", "count": 5},
+            ],
+            None,
+            None,
+            ["rectangular<br>see-saw-like:4", "short", "CN 4", "CN 5"],
+        ),
+    ],
+    ids=["cn_limit", "ce_limit", "cn_limit_too_large", "ce_limit_too_large", "wrap"],
+)
+def test_process_chem_env_data_treemap_labels(
+    chem_env_data: list[dict[str, Any]],
+    max_cells_cn: int | None,
+    max_cells_ce: int | None,
+    expected_labels: list[str],
+) -> None:
+    """CN/CE cell limits lump excess cells into 'Other' entries; long names wrap."""
     fig = _process_chem_env_data_treemap(
-        chem_env_data=mock_data,
-        max_cells_cn=3,  # Should create "Other CNs" entry
-        max_cells_ce=None,
+        chem_env_data=chem_env_data,
+        max_cells_cn=max_cells_cn,
+        max_cells_ce=max_cells_ce,
         show_counts="value",
-        cn_formatter=None,
+        cn_formatter=False,
     )
-
-    assert isinstance(fig, go.Figure)
-    assert len(fig.data) == 1
-
-    # Check that we have "Other CNs" entry
-    labels = fig.data[0].labels
-    assert any("Other CNs" in str(label) for label in labels)
-    assert any("more not shown" in str(label) for label in labels)
-
-
-def test_chem_env_treemap_max_cells_ce_logic() -> None:
-    """Test max_cells_ce logic with edge cases."""
-    # Create mock data with multiple CEs per CN
-    mock_data = [
-        {"coord_num": 4, "chem_env_symbol": "T:4", "count": 10},
-        {"coord_num": 4, "chem_env_symbol": "SP:4", "count": 8},
-        {"coord_num": 4, "chem_env_symbol": "SS:4", "count": 6},
-        {"coord_num": 4, "chem_env_symbol": "SQ:4", "count": 4},
-        {"coord_num": 6, "chem_env_symbol": "O:6", "count": 12},
-    ]
-
-    # Import the function directly to test it
-    from pymatviz.treemap.chem_env import _process_chem_env_data_treemap
-
-    fig = _process_chem_env_data_treemap(
-        chem_env_data=mock_data,
-        max_cells_cn=None,
-        max_cells_ce=2,  # Should create "Other CEs" entry for CN 4
-        show_counts="value",
-        cn_formatter=None,
-    )
-
-    assert isinstance(fig, go.Figure)
-    assert len(fig.data) == 1
-
-    # Check that we have "Other CEs" entry
-    labels = fig.data[0].labels
-    assert any("Other CEs" in str(label) for label in labels)
-    assert any("more not shown" in str(label) for label in labels)
-
-
-def test_chem_env_treemap_max_cells_edge_cases() -> None:
-    """Test max_cells parameters edge cases."""
-    mock_data = [
-        {"coord_num": 4, "chem_env_symbol": "T:4", "count": 10},
-        {"coord_num": 6, "chem_env_symbol": "O:6", "count": 8},
-    ]
-
-    from pymatviz.treemap.chem_env import _process_chem_env_data_treemap
-
-    # Test with max_cells_cn larger than available CNs (no "Other" should be created)
-    fig = _process_chem_env_data_treemap(
-        chem_env_data=mock_data,
-        max_cells_cn=10,  # More than available CNs
-        max_cells_ce=None,
-        show_counts="value",
-        cn_formatter=None,
-    )
-
-    labels = fig.data[0].labels
-    assert not any("Other CNs" in str(label) for label in labels)
-
-    # Test with max_cells_ce larger than available CEs (no "Other" should be created)
-    fig = _process_chem_env_data_treemap(
-        chem_env_data=mock_data,
-        max_cells_cn=None,
-        max_cells_ce=10,  # More than available CEs
-        show_counts="value",
-        cn_formatter=None,
-    )
-
-    labels = fig.data[0].labels
-    assert not any("Other CEs" in str(label) for label in labels)
+    assert list(fig.data[0].labels) == expected_labels
 
 
 def test_chem_env_treemap_no_data() -> None:
     """Test chem_env_treemap with no data returns empty figure."""
-    with patch("pymatviz.treemap.chem_env.normalize_structures") as mock_norm:
+    with patch("pymatviz.chem_env.normalize_structures") as mock_norm:
         mock_norm.return_value.values.return_value = []
         fig = chem_env_treemap([])
         assert isinstance(fig, go.Figure)
@@ -278,8 +241,8 @@ def test_chem_env_treemap_no_data() -> None:
         # Empty coordination environments
         ("chemenv", None, {}, False),
         ("chemenv", [[]], {}, False),
-        # Invalid settings (silently ignored, won't raise but produce empty results)
-        ({"invalid": "method"}, [[{"ce_symbol": "T:4"}]], {"T:4": 4}, True),
+        # custom settings dicts are forwarded to LocalGeometryFinder
+        ({"custom": "setting"}, [[{"ce_symbol": "T:4"}]], {"T:4": 4}, True),
     ],
 )
 def test_chem_env_treemap_chemenv_scenarios(
@@ -296,6 +259,8 @@ def test_chem_env_treemap_chemenv_scenarios(
 
     fig = chem_env_treemap(mocks["structure"], chem_env_settings=chem_env_settings)
     assert isinstance(fig, go.Figure)
+    expected_settings = {} if chem_env_settings == "chemenv" else chem_env_settings
+    mocks["lgf_instance"].setup_parameters.assert_called_once_with(**expected_settings)
 
     if expected_valid:
         assert len(fig.data) == 1
@@ -350,7 +315,6 @@ def test_chem_env_treemap_show_counts(
     fig = chem_env_treemap(
         mocks["structure"], show_counts=show_counts, chem_env_settings="chemenv"
     )
-    assert isinstance(fig, go.Figure)
     assert len(fig.data) == 1
     assert fig.layout.paper_bgcolor == "rgba(0, 0, 0, 0)"
     assert "values" in fig.data[0]
@@ -365,23 +329,9 @@ def test_chem_env_treemap_show_counts(
         False: "%{label}",
     }.get(show_counts)
 
-    # Specific test for show_counts=False: ensure CN labels don't contain counts
-    if show_counts is False:
-        labels = fig.data[0].labels
-        assert labels is not None
-
-        # Find CN labels (coordination number labels)
-        cn_labels = [label for label in labels if str(label).startswith("CN")]
-
-        if len(cn_labels) > 0:  # Only test if we have CN labels
-            for label in cn_labels:
-                label_str = str(label)
-                # Should not contain count/percentage indicators
-                assert "N=" not in label_str
-                assert "(" not in label_str
-                assert "%" not in label_str
-                # Should be clean format like "CN 4" or "CN:4"
-                assert label_str.startswith(("CN ", "CN:"))
+    # CN labels only carry counts/percentages unless show_counts=False
+    cn_label = next(label for label in fig.data[0].labels if label.startswith("CN"))
+    assert cn_label == ("CN 4" if show_counts is False else "CN 4 (N=1, 100.0%)")
 
 
 @pytest.mark.parametrize(
@@ -429,11 +379,12 @@ def test_chem_env_treemap_formatting_options(
 
 
 def test_chem_env_treemap_failure_handling(chemenv_mocks: dict[str, Any]) -> None:
-    """Test handling of ChemEnv analysis failures."""
+    """Per-structure ChemEnv failures warn and yield an empty figure."""
     mocks = chemenv_mocks
     mocks["lgf_instance"].setup_structure.side_effect = RuntimeError("ChemEnv failed")
 
-    fig = chem_env_treemap(mocks["structure"], chem_env_settings="chemenv")
+    with pytest.warns(UserWarning, match="ChemEnv analysis failed for structure 0"):
+        fig = chem_env_treemap(mocks["structure"], chem_env_settings="chemenv")
     assert isinstance(fig, go.Figure)
     assert "No CN/CE data to display" in fig.layout.title.text
 
@@ -443,7 +394,7 @@ def test_chem_env_treemap_crystal_nn_alias(mock_structure: MagicMock) -> None:
     mock_structure.__len__.return_value = 1
 
     with (
-        patch("pymatviz.treemap.chem_env.normalize_structures") as mock_norm,
+        patch("pymatviz.chem_env.normalize_structures") as mock_norm,
         patch("pymatgen.analysis.local_env.CrystalNN") as mock_crystal_nn,
         patch(
             "pymatviz.chem_env.classify_local_env_with_order_params"
@@ -461,35 +412,19 @@ def test_chem_env_treemap_crystal_nn_alias(mock_structure: MagicMock) -> None:
         mock_crystal_nn.assert_called_once()
 
 
-def test_chem_env_treemap_invalid_show_counts(mock_structure: MagicMock) -> None:
-    """Test invalid show_counts parameter."""
-    with patch("pymatviz.treemap.chem_env.normalize_structures") as mock_norm:
-        mock_norm.return_value.values.return_value = [mock_structure]
-        with pytest.raises(ValueError, match=r"Invalid.*show_counts"):
-            chem_env_treemap(
-                mock_structure,
-                show_counts="invalid",  # ty: ignore[invalid-argument-type]
-                chem_env_settings="chemenv",
-            )
-
-
-def test_text_wrapping_functionality() -> None:
-    """Test that long chemical environment names are wrapped with line breaks."""
-    mock_data = [
-        {"coord_num": 4, "chem_env_symbol": "rectangular see-saw-like:4", "count": 10},
-        {"coord_num": 5, "chem_env_symbol": "short", "count": 5},
-    ]
-
-    from pymatviz.treemap.chem_env import _process_chem_env_data_treemap
-
-    fig = _process_chem_env_data_treemap(
-        chem_env_data=mock_data,
-        max_cells_cn=None,
-        max_cells_ce=None,
-        show_counts="value",
-        cn_formatter=None,
-    )
-
-    labels = fig.data[0].labels
-    assert any("<br>" in str(label) for label in labels)
-    assert any("short" in str(label) and "<br>" not in str(label) for label in labels)
+@pytest.mark.parametrize(
+    ("kwargs", "match"),
+    [
+        (dict(show_counts="invalid"), r"Invalid show_counts='invalid', must be one of"),
+        (
+            dict(chem_env_settings="invalid_method"),
+            r"Invalid chem_env_settings='invalid_method', must be one of",
+        ),
+    ],
+)
+def test_chem_env_treemap_invalid_options(
+    mock_structure: MagicMock, kwargs: dict[str, Any], match: str
+) -> None:
+    """Invalid show_counts or chem_env_settings strings raise ValueError."""
+    with pytest.raises(ValueError, match=match):
+        chem_env_treemap(mock_structure, **kwargs)

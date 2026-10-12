@@ -4,7 +4,6 @@ import re
 from typing import TYPE_CHECKING
 
 import numpy as np
-import plotly.graph_objects as go
 import pytest
 from plotly.exceptions import PlotlyError
 
@@ -14,13 +13,26 @@ from pymatviz.utils import df_ptable
 
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
     from typing import Any, Literal
+
+    import plotly.graph_objects as go
+
+
+def tile_labels(fig: go.Figure) -> dict[str, str]:
+    """Map element symbols to the value label shown below them on each tile."""
+    labels = {}
+    for anno in fig.layout.annotations:
+        if match := re.match(
+            r"<span .*?>(?P<sym>\w+)</span><br>(?P<lbl>.*)", anno.text
+        ):
+            labels[match["sym"]] = match["lbl"]
+    return labels
 
 
 def test_ptable_heatmap(glass_formulas: list[str]) -> None:
+    """Every tile is annotated and the log color scale handles non-positive values."""
     fig = pmv.ptable_heatmap(glass_formulas)
-    assert isinstance(fig, go.Figure)
     assert len(fig.layout.annotations) == 18 * 10, (
         "not all periodic table tiles have annotations"
     )
@@ -38,15 +50,6 @@ def test_ptable_heatmap(glass_formulas: list[str]) -> None:
         glass_formulas,
         hover_data="density = " + df_ptable[Key.density].astype(str) + " g/cm^3",
     )
-    # test label_map as dict
-    fig = pmv.ptable_heatmap(df_ptable[Key.density], fmt=".1f", label_map={"0": "zero"})
-    # test label_map as callable
-    pmv.ptable_heatmap(
-        df_ptable[Key.density],
-        fmt=".1f",
-        label_map=lambda x: "meaning of life" if x == 42 else x,
-    )
-
     pmv.ptable_heatmap(glass_formulas, heat_mode="percent")
 
     # test log color scale with -1, 0, 1 and random negative value
@@ -54,7 +57,6 @@ def test_ptable_heatmap(glass_formulas: list[str]) -> None:
         pmv.ptable_heatmap([f"H{val}", "O2"], log=True)
         df_ptable["tmp"] = val
         fig = pmv.ptable_heatmap(df_ptable["tmp"], log=True)
-        assert isinstance(fig, go.Figure)
         heatmap_trace = fig.data[-1]
         assert heatmap_trace.colorbar.title.text == "tmp"
         c_scale = heatmap_trace.colorscale
@@ -64,16 +66,45 @@ def test_ptable_heatmap(glass_formulas: list[str]) -> None:
         assert isinstance(c_scale[0][1], str)
         assert val <= max(c[0] for c in c_scale)
 
-    with pytest.raises(TypeError, match="should be string, list of strings or list"):
-        # test that bad colorscale raises ValueError
-        pmv.ptable_heatmap(glass_formulas, colorscale=lambda: "bad scale")  # ty: ignore[invalid-argument-type]
 
-    # test that unknown builtin colorscale raises ValueError
-    with pytest.raises(PlotlyError, match="Colorscale foobar is not a built-in scale"):
-        pmv.ptable_heatmap(glass_formulas, colorscale="foobar")
-
-    with pytest.raises(ValueError, match="Combining log color scale and"):
-        pmv.ptable_heatmap(glass_formulas, log=True, heat_mode="percent")
+@pytest.mark.parametrize(
+    ("kwargs", "err_cls", "match"),
+    [
+        (
+            dict(colorscale=lambda: "bad scale"),
+            TypeError,
+            "should be string, list of strings or list",
+        ),
+        (
+            dict(colorscale="foobar"),
+            PlotlyError,
+            "Colorscale foobar is not a built-in scale",
+        ),
+        (dict(log=True, heat_mode="percent"), ValueError, "Combining log color scale"),
+        (
+            dict(cscale_range=(0, 10, 20)),
+            ValueError,
+            re.escape("cscale_range=(0, 10, 20) should have length 2"),
+        ),
+        (
+            dict(log=True, cscale_range=(-1, 50)),
+            ValueError,
+            "must be positive when log=True",
+        ),
+        (
+            dict(hover_props=("atomic_mass", "invalid_prop")),
+            ValueError,
+            "Unsupported hover_props: invalid_prop",
+        ),
+        (dict(hover_props={"atomic_mass"}), ValueError, "must be dict or sequence"),
+    ],
+)
+def test_ptable_heatmap_raises(
+    kwargs: dict[str, Any], err_cls: type[Exception], match: str
+) -> None:
+    """Invalid colorscales, ranges and hover_props raise informative errors."""
+    with pytest.raises(err_cls, match=match):
+        pmv.ptable_heatmap({"Fe": 10, "O": 3}, **kwargs)
 
 
 @pytest.mark.parametrize(
@@ -105,6 +136,7 @@ def test_ptable_heatmap_kwarg_combos(
     font_colors: Sequence[str],
     scale: float,
 ) -> None:
+    """Exclusions, font sizes/colors and scale apply across kwarg combinations."""
     fig = pmv.ptable_heatmap(
         glass_formulas,
         exclude_elements=exclude_elements,
@@ -115,14 +147,9 @@ def test_ptable_heatmap_kwarg_combos(
         font_colors=font_colors,
         scale=scale,
     )
-    assert isinstance(fig, go.Figure)
 
-    # Additional assertions to check if the parameters are correctly applied
     if exclude_elements:
         assert all(elem not in fig.data[-1].z for elem in exclude_elements)
-
-    if font_size:
-        assert fig.layout.font.size == font_size * scale
 
     if len(font_colors) == 2:
         assert all(anno.font.color in font_colors for anno in fig.layout.annotations), (
@@ -133,19 +160,16 @@ def test_ptable_heatmap_kwarg_combos(
             anno.font.color == font_colors[0] for anno in fig.layout.annotations
         ), f"{font_colors=}"
 
-    # Add assertions for scale
     assert fig.layout.width == pytest.approx(900 * scale)
     assert fig.layout.height == pytest.approx(500 * scale)
-    if font_size:
-        assert fig.layout.font.size == pytest.approx(font_size * scale)
-    else:
-        assert fig.layout.font.size == pytest.approx(12 * scale)
+    assert fig.layout.font.size == pytest.approx((font_size or 12) * scale)
 
 
 @pytest.mark.parametrize(
     "c_scale", ["Viridis", "Jet", ("blue", "red"), ((0, "blue"), (1, "red"))]
 )
 def test_ptable_heatmap_colorscale(c_scale: str) -> None:
+    """Named and custom colorscales start at the expected color."""
     values = {"Fe": 2, "O": 3}
     fig = pmv.ptable_heatmap(values, colorscale=c_scale)
     clr_scale_start = fig.data[-1].colorscale[0]
@@ -163,6 +187,7 @@ def test_ptable_heatmap_colorscale(c_scale: str) -> None:
 def test_ptable_heatmap_color_bar(
     glass_formulas: list[str], colorbar: dict[str, Any]
 ) -> None:
+    """Colorbar length and title side follow orientation."""
     fig = pmv.ptable_heatmap(glass_formulas, colorbar=colorbar)
     # check color bar has expected length
     assert fig.data[-1].colorbar.len == colorbar.get("len", 0.4)
@@ -178,6 +203,7 @@ def test_ptable_heatmap_color_bar(
 def test_ptable_heatmap_cscale_range(
     cscale_range: tuple[float | None, float | None],
 ) -> None:
+    """Colorbar range defaults to the data range per unset bound."""
     fig = pmv.ptable_heatmap(df_ptable[Key.density], cscale_range=cscale_range)
     trace = fig.data[-1]
     assert "colorbar" in trace
@@ -196,60 +222,51 @@ def test_ptable_heatmap_cscale_range(
         )
 
 
-def test_ptable_heatmap_cscale_range_raises() -> None:
-    cscale_range = (0, 10, 20)
-    with pytest.raises(
-        ValueError, match=re.escape(f"{cscale_range=} should have length 2")
-    ):
-        pmv.ptable_heatmap(df_ptable[Key.density], cscale_range=cscale_range)  # ty: ignore[invalid-argument-type]
+def test_ptable_heatmap_log_cscale_range() -> None:
+    """Bounds are log10-transformed when log=True.
 
-    with pytest.raises(ValueError, match="must be positive when log=True"):
-        pmv.ptable_heatmap({"Fe": 10}, log=True, cscale_range=(-1, 50))
-
-    # bounds are log10-transformed when log=True (regression: linear bounds in
-    # log space inverted the colorscale)
+    Regression: linear bounds in log space inverted the colorscale.
+    """
     fig = pmv.ptable_heatmap({"Fe": 10, "O": 100}, log=True, cscale_range=(5, 50))
     trace = next(trc for trc in fig.data if getattr(trc, "zmin", None) is not None)
     assert (trace.zmin, trace.zmax) == pytest.approx(np.log10([5, 50]))
 
 
 @pytest.mark.parametrize(
-    "label_map",
-    [None, False, {"1.0": "one", "2.0": "two", "3.0": "three", np.nan: "N/A"}],
+    ("label_map", "expected"),
+    [
+        (None, {"Al": "1.0", "Cr": "2.0", "Fe": "3.0", "Ni": "-"}),
+        (False, {"Al": "1.0", "Cr": "2.0", "Fe": "3.0", "Ni": "nan"}),
+        (
+            {"1.0": "one", "2.0": "two", "3.0": "three", np.nan: "N/A"},
+            {"Al": "one", "Cr": "two", "Fe": "three", "Ni": "nan"},
+        ),
+    ],
 )
 def test_ptable_heatmap_label_map(
-    label_map: dict[str, str] | Literal[False] | None,
+    label_map: dict[str, str] | Literal[False] | None, expected: dict[str, str]
 ) -> None:
+    """Value labels are mapped via label_map, NaN shows as '-' by default."""
     elem_vals = dict(Al=1.0, Cr=2.0, Fe=3.0, Ni=np.nan)
-    fig = pmv.ptable_heatmap(elem_vals, label_map=label_map)
-    assert isinstance(fig, go.Figure)
-
-    # if label_map is not False, ensure mapped labels appear in figure annotations
-    if label_map is not False:
-        if label_map is None:
-            # use default map
-            label_map = dict.fromkeys([np.nan, None, "nan", "nan%"], " ")  # ty: ignore[invalid-assignment]
-        # check for non-empty intersection between label_map values and annotations
-        # we use `val in anno.text` cause the labels are wrapped in non-matching
-        # HTML <span> tags
-        assert isinstance(label_map, dict)
-        assert sum(
-            any(val in anno.text for val in label_map.values())
-            for anno in fig.layout.annotations
-        )
+    labels = tile_labels(pmv.ptable_heatmap(elem_vals, label_map=label_map))
+    assert {elem: labels[elem] for elem in elem_vals} == expected
 
 
 def test_ptable_heatmap_show_values() -> None:
+    """show_values=False keeps element symbols but drops value labels."""
     values = {"Fe": 2, "O": 3}
     fig = pmv.ptable_heatmap(values, show_values=False)
+    anno_texts = [anno.text for anno in fig.layout.annotations if anno.text]
     for text in (
         "<span style='font-weight: bold; font-size: 18.0;'>O</span>",
         "<span style='font-weight: bold; font-size: 18.0;'>Fe</span>",
     ):
-        assert text in [anno.text for anno in fig.layout.annotations if anno.text]
+        assert text in anno_texts
+    assert not any("<br>" in text for text in anno_texts)
 
 
 def test_ptable_heatmap_custom_label_map() -> None:
+    """Callable label_map transforms formatted value labels."""
     values = {"Fe": 2, "O": 3, "H": np.nan}
 
     def label_map(label: str) -> str:
@@ -265,21 +282,11 @@ def test_ptable_heatmap_custom_label_map() -> None:
     assert len(annos) == 2
 
 
-def test_ptable_heatmap_error_cases() -> None:
-    with pytest.raises(
-        ValueError, match=re.escape("cscale_range=(0,) should have length 2")
-    ):
-        pmv.ptable_heatmap({"Fe": 2, "O": 3}, cscale_range=(0,))  # ty: ignore[invalid-argument-type]
-
-    hover_props = ("atomic_mass", bad_hover_prop := "invalid_prop")
-    with pytest.raises(ValueError, match=f"Unsupported hover_props: {bad_hover_prop}"):
-        pmv.ptable_heatmap({"Fe": 2, "O": 3}, hover_props=hover_props)
-
-
 @pytest.mark.parametrize("heat_mode", ["value", "fraction", "percent"])
 def test_ptable_heatmap_color_range(
     heat_mode: Literal["value", "fraction", "percent"],
 ) -> None:
+    """zmin/zmax match the plotted data range in every heat_mode."""
     values = {"Fe": 1, "O": 50, "H": 100}
     fig = pmv.ptable_heatmap(values, heat_mode=heat_mode)
     heatmap_trace = fig.data[-1]
@@ -289,6 +296,7 @@ def test_ptable_heatmap_color_range(
 
 
 def test_ptable_heatmap_all_elements() -> None:
+    """Data covering all elements sets a finite zmax."""
     values = {elem: idx for idx, elem in enumerate(df_ptable.index)}
     fig = pmv.ptable_heatmap(values)
     heatmap_trace = fig.data[-1]
@@ -297,6 +305,7 @@ def test_ptable_heatmap_all_elements() -> None:
 
 
 def test_ptable_heatmap_hover_tooltips() -> None:
+    """Hover texts show values, percentages, hover_props and hover_data."""
     # Test with non-integer values
     float_values = {"Fe": 0.2, "O": 0.3, "H": 0.5}
 
@@ -337,13 +346,16 @@ def test_ptable_heatmap_hover_tooltips() -> None:
                 text for text in hover_texts if text.startswith(elem_name)
             )
 
+            percent = value / sum(int_values.values())
             if heat_mode == "value":
-                expected_hover_text = f"{elem_name} ({elem_symb})<br>Value: {value}"
+                expected_hover_text = (
+                    f"{elem_name} ({elem_symb})<br>Value: {value} ({percent:.2%})"
+                )
             else:
                 expected_hover_text = (
-                    f"{elem_name} ({elem_symb})<br>Percentage: "
-                    f"{value / sum(int_values.values()):.2%} ({value})"
+                    f"{elem_name} ({elem_symb})<br>Percentage: {percent:.2%} ({value})"
                 )
+            assert hover_text == expected_hover_text
 
     # Test with excluded elements
     fig = pmv.ptable_heatmap(int_values, exclude_elements=["O"])
@@ -369,6 +381,7 @@ def test_ptable_heatmap_hover_tooltips() -> None:
 
 
 def test_ptable_heatmap_element_symbol_map() -> None:
+    """Custom symbols replace tile text while hover keeps the real symbol."""
     values = {"Fe": 2, "O": 3, "H": 1}
     element_symbol_map = {"Fe": "Iron", "O": "Oxygen", "H": "Hydrogen"}
     fig = pmv.ptable_heatmap(values, element_symbol_map=element_symbol_map)
@@ -506,10 +519,9 @@ def test_ptable_heatmap_colorbar_log_mode() -> None:
             pmv.ptable_heatmap(data, colorbar={"tickvals": invalid_tickvals}, log=True)
 
 
-def test_ptable_heatmap_value_formatting() -> None:
-    """Test float formatting of value labels in ptable_heatmap."""
-    # Test cases: (values, heat_mode, fmt, expected_labels)
-    test_cases = [
+@pytest.mark.parametrize(
+    ("values", "heat_mode", "fmt", "expected_labels"),
+    [
         # Default fmt with heat_mode="value" (si_fmt with ".1f")
         ({"Fe": 1.234, "O": 56.78}, "value", None, {"Fe": "1.2", "O": "56.8"}),
         ({"H": 0.00123}, "value", None, {"H": "1.2m"}),  # milli
@@ -553,41 +565,18 @@ def test_ptable_heatmap_value_formatting() -> None:
             lambda x: f"{x * 100:.0f} out of 100",
             {"O": "100 out of 100"},
         ),
-    ]
-
-    for values, heat_mode, fmt, expected_labels in test_cases:
-        fig = pmv.ptable_heatmap(
-            values,
-            heat_mode=heat_mode,  # ty: ignore[invalid-argument-type]
-            fmt=fmt,
-            font_size=10,  # smaller font for stable span style
-        )
-        annotations = fig.layout.annotations
-        # Extract symbol and value from annotation text:
-        # "<span style='font-weight: bold; font-size: 15.0;'>SYM</span><br>VALUE"
-        # or "<span style='font-weight: bold; font-size: 15.0;'>SYM</span>" if no value
-        # Need to handle cases where value might be missing or excluded
-        found_labels = {}
-        for anno in annotations:
-            text = anno.text
-            if not text or "<br>" not in text:
-                continue  # Skip empty annotations or those without a value part
-
-            # Extract symbol and value label
-            match = re.match(
-                r"<span .*?>(?P<symbol>[A-Za-z0-9]+)</span><br>(?P<label>.*)", text
-            )
-            if match:
-                symbol = match.group("symbol")
-                label = match.group("label")
-                if symbol in expected_labels:  # Only check elements we provided
-                    found_labels[symbol] = label
-
-        for elem, expected_label in expected_labels.items():
-            assert found_labels.get(elem) == expected_label, (
-                f"Mismatch for {elem} with {values=}, {heat_mode=}, {fmt=}: "
-                f"expected '{expected_label}', got '{found_labels.get(elem)}'"
-            )
+    ],
+)
+def test_ptable_heatmap_value_formatting(
+    values: dict[str, float],
+    heat_mode: Literal["value", "fraction", "percent"],
+    fmt: str | Callable[[float], str] | None,
+    expected_labels: dict[str, str],
+) -> None:
+    """Test float formatting of value labels in ptable_heatmap."""
+    fig = pmv.ptable_heatmap(values, heat_mode=heat_mode, fmt=fmt)
+    labels = tile_labels(fig)
+    assert {elem: labels[elem] for elem in expected_labels} == expected_labels
 
 
 def test_ptable_heatmap_value_edge_cases() -> None:

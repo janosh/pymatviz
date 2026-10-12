@@ -20,41 +20,20 @@ def sample_data() -> np.ndarray:
     return xs
 
 
-def test_project_vectors_basic(sample_data: np.ndarray) -> None:
-    """Test basic functionality of project_vectors."""
-    # Test with default parameters (PCA)
-    result, proj_obj = project_vectors(sample_data)
-
-    # Check shape and type of projected data
-    assert result.shape == (100, 2)
-    assert isinstance(result, np.ndarray)
-
-    # Check projection object
-    assert isinstance(proj_obj, PCA)
-    assert proj_obj.n_components_ == 2
-    assert proj_obj.explained_variance_ratio_.shape == (2,)
-
-    # Check that result is not degenerate
-    assert not np.allclose(result, 0, atol=1e-10)
-    assert not np.any(np.isnan(result))
-    assert not np.any(np.isinf(result))
-
-    # Check that result has reasonable scale
-    # PCA should roughly preserve scale
-    assert np.std(result) == pytest.approx(1.0, rel=0.5)
-    # PCA should center the data
-    assert np.mean(result) == pytest.approx(0.0, abs=1e-10)
-
-
 @pytest.mark.parametrize(
     ("method", "kwargs", "expected_obj_type", "obj_attrs"),
     [
         ("pca", {"whiten": True}, PCA, {"n_components_": 2, "whiten": True}),
         (
             "tsne",
-            {"perplexity": 10.0, "learning_rate": 100.0},
+            {"perplexity": 10.0, "learning_rate": 100.0, "max_iter": 500},
             TSNE,
-            {"n_components": 2, "perplexity": 10.0},
+            {
+                "n_components": 2,
+                "perplexity": 10.0,
+                "learning_rate": 100.0,
+                "max_iter": 500,
+            },
         ),
         (
             "umap",
@@ -126,13 +105,14 @@ def test_project_vectors_methods(
 
 @pytest.mark.parametrize("n_components", [2, 3])
 def test_project_vectors_components(sample_data: np.ndarray, n_components: int) -> None:
-    """Test projecting to different numbers of components."""
+    """Default PCA projection to different numbers of components."""
     result, proj_obj = project_vectors(sample_data, n_components=n_components)
 
     # Check shape matches requested components
     assert result.shape == (100, n_components)
     assert isinstance(proj_obj, PCA)
     assert proj_obj.n_components_ == n_components
+    assert proj_obj.explained_variance_ratio_.shape == (n_components,)
 
     # Check that result is not degenerate
     assert not np.allclose(result, 0, atol=1e-10)
@@ -145,63 +125,6 @@ def test_project_vectors_components(sample_data: np.ndarray, n_components: int) 
 
     # Check that result preserves some structure
     assert np.linalg.matrix_rank(result) == n_components
-
-
-def test_project_vectors_tsne_params(sample_data: np.ndarray) -> None:
-    """Test t-SNE with custom parameters."""
-    result, tsne_obj = project_vectors(
-        sample_data,
-        method=ProjectionMethod.tsne,
-        perplexity=10.0,
-        learning_rate=100.0,
-        max_iter=500,
-    )
-
-    # Check shape and object type
-    assert result.shape == (100, 2)
-    assert isinstance(tsne_obj, TSNE)
-
-    # Check t-SNE specific parameters
-    assert tsne_obj.perplexity == 10.0
-    assert tsne_obj.learning_rate == 100.0
-    assert tsne_obj.max_iter == 500
-
-    # Check that result is not degenerate
-    assert not np.allclose(result, 0, atol=1e-10)
-    assert not np.any(np.isnan(result))
-    assert not np.any(np.isinf(result))
-
-    # Check that result has reasonable scale (not zero or infinite)
-    assert 0.01 < np.std(result) < 100
-
-
-def test_project_vectors_umap_params(sample_data: np.ndarray) -> None:
-    """Test UMAP with custom parameters."""
-    pytest.importorskip("umap")
-    from umap import UMAP
-
-    result, umap_obj = project_vectors(
-        sample_data,
-        method=ProjectionMethod.umap,
-        n_neighbors=10,
-        min_dist=0.05,
-    )
-
-    # Check shape and object type
-    assert result.shape == (100, 2)
-    assert isinstance(umap_obj, UMAP)
-
-    # Check UMAP specific parameters
-    assert umap_obj.n_neighbors == 10
-    assert umap_obj.min_dist == 0.05
-
-    # Check that result is not degenerate
-    assert not np.allclose(result, 0, atol=1e-10)
-    assert not np.any(np.isnan(result))
-    assert not np.any(np.isinf(result))
-
-    # Check that result has reasonable scale (not zero or infinite)
-    assert 0.01 < np.std(result) < 100
 
 
 def test_project_vectors_with_scaling(sample_data: np.ndarray) -> None:
@@ -260,96 +183,46 @@ def test_project_vectors_random_state(sample_data: np.ndarray) -> None:
     assert np.std(result3) == pytest.approx(1.0, rel=0.5)
 
 
-def test_project_vectors_invalid_method(sample_data: np.ndarray) -> None:
-    """Test error handling for invalid method."""
-    with pytest.raises(ValueError, match="Unknown projection method="):
-        project_vectors(sample_data, method="invalid_method")  # ty: ignore[invalid-argument-type]
+@pytest.mark.parametrize(
+    ("n_samples", "kwargs", "match"),
+    [
+        (100, {"method": "invalid_method"}, "Unknown projection method="),
+        (100, {"n_components": 1}, "n_components must be at least 2"),
+        (1, {"n_components": 2}, "Not enough samples"),
+        (
+            100,
+            {"method": ProjectionMethod.tsne, "n_components": 4},
+            "t-SNE visualization typically uses 2 or 3 components",
+        ),
+    ],
+)
+def test_project_vectors_invalid_inputs(
+    sample_data: np.ndarray, n_samples: int, kwargs: dict[str, Any], match: str
+) -> None:
+    """Invalid methods, component counts and too few samples raise ValueError."""
+    with pytest.raises(ValueError, match=match):
+        project_vectors(sample_data[:n_samples], **kwargs)
 
 
-def test_project_vectors_invalid_components(sample_data: np.ndarray) -> None:
-    """Test error handling for invalid number of components."""
-    with pytest.raises(ValueError, match="n_components must be at least 2"):
-        project_vectors(sample_data, n_components=1)
-
-
-def test_project_vectors_not_enough_samples() -> None:
-    """Test error handling for dataset with too few samples."""
-    # Create a dataset with only 1 sample
-    xs = np.random.default_rng(seed=0).random(size=(1, 5))
-
-    # Trying to project to 2 components should fail
-    with pytest.raises(ValueError, match="Not enough samples"):
-        project_vectors(xs, n_components=2)
-
-
-def test_project_vectors_tsne_max_components(sample_data: np.ndarray) -> None:
-    """Test t-SNE with more than 3 components raises an error."""
-    with pytest.raises(
-        ValueError, match="t-SNE visualization typically uses 2 or 3 components"
-    ):
-        project_vectors(sample_data, method=ProjectionMethod.tsne, n_components=4)
-
-
-def test_project_vectors_pca_consistency(sample_data: np.ndarray) -> None:
-    """Test PCA projection consistency with same random state."""
-    result1, pca_obj1 = project_vectors(
-        sample_data, method=ProjectionMethod.pca, random_state=0
-    )
-    result2, pca_obj2 = project_vectors(
-        sample_data, method=ProjectionMethod.pca, random_state=0
-    )
-
-    # PCA should be deterministic with same random state
-    assert np.allclose(result1, result2, atol=1e-10)
-
-    # Also check with different random state (should still be the same for PCA)
-    result3, pca_obj3 = project_vectors(
-        sample_data, method=ProjectionMethod.pca, random_state=1
-    )
-    assert np.allclose(result1, result3, atol=1e-10)
-
-    # Check that results have reasonable scale
-    assert np.std(result1) == pytest.approx(1.0, rel=0.5)
-    assert np.mean(result1) == pytest.approx(0.0, abs=1e-10)
-
-    assert isinstance(pca_obj1, PCA)
-    assert isinstance(pca_obj2, PCA)
-    assert isinstance(pca_obj3, PCA)
-    # Check that all PCA objects have the same explained variance ratios
-    assert np.allclose(
-        pca_obj1.explained_variance_ratio_, pca_obj2.explained_variance_ratio_
-    )
-    assert np.allclose(
-        pca_obj1.explained_variance_ratio_, pca_obj3.explained_variance_ratio_
-    )
-
-
-def test_project_vectors_small_dataset() -> None:
-    """Test handling of small datasets."""
-    # Create a very small dataset
+@pytest.mark.parametrize(
+    ("method", "expected_attrs"),
+    [(ProjectionMethod.tsne, {"perplexity": 20 / 3}), ("umap", {"n_neighbors": 15})],
+)
+def test_project_vectors_small_dataset(
+    method: ProjectionMethod, expected_attrs: dict[str, float]
+) -> None:
+    """t-SNE adjusts perplexity to small datasets, UMAP keeps default n_neighbors."""
+    if method == "umap":
+        pytest.importorskip("umap")
     xs, _ = make_blobs(n_samples=20, n_features=5, centers=2, random_state=0)
 
-    # Test with t-SNE (should adjust perplexity)
-    result_tsne, tsne_obj = project_vectors(xs, method=ProjectionMethod.tsne)
-    assert result_tsne.shape == (len(xs), 2)
-    assert isinstance(tsne_obj, TSNE)
-    assert tsne_obj.perplexity == pytest.approx(min(30, len(xs) / 3))
-    assert not np.allclose(result_tsne, 0, atol=1e-10)
-    assert not np.any(np.isnan(result_tsne))
-    assert not np.any(np.isinf(result_tsne))
-    assert np.std(result_tsne) == pytest.approx(1.0, rel=0.5)
-
-    pytest.importorskip("umap")
-    from umap import UMAP
-
-    result_umap, umap_obj = project_vectors(xs, method=ProjectionMethod.umap)
-    assert result_umap.shape == (len(xs), 2)
-    assert isinstance(umap_obj, UMAP)
-    assert umap_obj.n_neighbors == 15  # Default value
-    assert not np.allclose(result_umap, 0, atol=1e-10)
-    assert not np.any(np.isnan(result_umap))
-    assert not np.any(np.isinf(result_umap))
-    assert np.std(result_umap) == pytest.approx(1.0, rel=0.5)
+    result, proj_obj = project_vectors(xs, method=method)
+    assert result.shape == (len(xs), 2)
+    for attr, value in expected_attrs.items():
+        assert getattr(proj_obj, attr) == pytest.approx(value)
+    assert not np.allclose(result, 0, atol=1e-10)
+    assert np.isfinite(result).all()
+    assert np.std(result) == pytest.approx(1.0, rel=0.5)
 
 
 def test_project_vectors_zero_variance_no_nan() -> None:

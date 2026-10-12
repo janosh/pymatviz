@@ -5,7 +5,6 @@ from dataclasses import fields, replace
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-import plotly.graph_objects as go
 import pytest
 from monty.io import zopen
 from monty.json import MontyDecoder
@@ -110,7 +109,6 @@ def test_phonon_bands(
         branches=branches,
         line_kwargs=line_kwargs,
     )
-    assert isinstance(fig, go.Figure)
     if branches:
         assert (
             len(fig.data)
@@ -166,7 +164,6 @@ def test_phonon_bands(
         branches=branches,
         line_kwargs=line_kwargs,
     )
-    assert isinstance(fig, go.Figure)
     if isinstance(line_kwargs, dict) and "acoustic" in line_kwargs:
         # custom mode names apply to this call too (regression: the first call
         # above used to pop the names out of the caller's line_kwargs, so dict
@@ -192,7 +189,6 @@ def test_phonon_bands(
         line_kwargs=line_kwargs,
         shaded_ys={(0, "y_max"): dict(fillcolor="red", opacity=0.1)},
     )
-    assert isinstance(fig, go.Figure)
     assert any(
         shape.fillcolor == "red" and shape.opacity == 0.1
         for shape in fig.layout.shapes or []

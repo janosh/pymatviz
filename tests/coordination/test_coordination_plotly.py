@@ -127,16 +127,32 @@ def test_coordination_hist_bar_kwargs(structures: Sequence[Structure]) -> None:
         assert trace.width == 0.5
 
 
-def test_coordination_hist_invalid_input() -> None:
-    """Test coordination_hist with invalid input."""
-    with pytest.raises(TypeError):
-        coordination_hist("invalid input")  # ty: ignore[invalid-argument-type]
-
-
-def test_coordination_hist_empty() -> None:
-    """Test coordination_hist with an empty structure."""
-    with pytest.raises(ValueError, match="Cannot plot empty set of structures"):
-        coordination_hist(())
+@pytest.mark.parametrize(
+    ("structs", "kwargs", "err_cls", "match"),
+    [
+        ("invalid input", {}, TypeError, "Input must be a pymatgen Structure"),
+        ((), {}, ValueError, "Cannot plot empty set of structures"),
+        (
+            None,
+            {"element_color_scheme": "invalid"},
+            TypeError,
+            "Invalid.*element_color",
+        ),
+        (None, {"hover_data": 123}, TypeError, "Invalid hover_data"),
+        (None, {"split_mode": "invalid_mode"}, ValueError, "Invalid split_mode="),
+    ],
+    ids=["invalid_struct", "empty", "color_scheme", "hover_data", "split_mode"],
+)
+def test_coordination_hist_invalid_inputs(
+    structures: Sequence[Structure],
+    structs: Any,
+    kwargs: dict[str, Any],
+    err_cls: type[Exception],
+    match: str,
+) -> None:
+    """coordination_hist rejects invalid structures and options."""
+    with pytest.raises(err_cls, match=match):
+        coordination_hist(structures[0] if structs is None else structs, **kwargs)
 
 
 @pytest.mark.parametrize(
@@ -212,28 +228,28 @@ def test_coordination_vs_cutoff_line(
     assert fig_custom_subplot.layout.annotations[1].text == "Custom Title 2"
 
 
-def test_coordination_vs_cutoff_line_invalid_input() -> None:
-    """Test coordination_vs_cutoff_line with invalid input."""
-    # Test empty sequences
-    for inputs in ([], ()):
-        with pytest.raises(ValueError, match="Cannot plot empty set of structures"):
-            coordination_vs_cutoff_line(inputs)  # ty: ignore[invalid-argument-type]
-
-    # Test invalid types
-    for inputs in ("invalid input", None):
-        with pytest.raises(
+@pytest.mark.parametrize(
+    ("structs", "kwargs", "err_cls", "match"),
+    [
+        ([], {}, ValueError, "Cannot plot empty set of structures"),
+        ((), {}, ValueError, "Cannot plot empty set of structures"),
+        ("invalid input", {}, TypeError, "Input must be a pymatgen Structure"),
+        (None, {}, TypeError, "Input must be a pymatgen Structure"),
+        (
+            Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]]),
+            {"strategy": "invalid"},
             TypeError,
-            match="Input must be a pymatgen Structure, IStructure, Molecule, "
-            "IMolecule, ASE Atoms, or PhonopyAtoms object",
-        ):
-            coordination_vs_cutoff_line(inputs)  # ty: ignore[invalid-argument-type]
-
-
-def test_coordination_vs_cutoff_line_invalid_strategy() -> None:
-    """Test coordination_vs_cutoff_line with invalid strategy."""
-    structure = Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]])
-    with pytest.raises(TypeError, match="Invalid strategy="):
-        coordination_vs_cutoff_line(structure, strategy="invalid")  # ty: ignore[invalid-argument-type]
+            "Invalid strategy=",
+        ),
+    ],
+    ids=["empty_list", "empty_tuple", "invalid_str", "none", "invalid_strategy"],
+)
+def test_coordination_vs_cutoff_line_invalid_inputs(
+    structs: Any, kwargs: dict[str, Any], err_cls: type[Exception], match: str
+) -> None:
+    """coordination_vs_cutoff_line rejects invalid structures and strategies."""
+    with pytest.raises(err_cls, match=match):
+        coordination_vs_cutoff_line(structs, **kwargs)
 
 
 @pytest.mark.parametrize("split_mode", list(CnSplitMode))
@@ -347,14 +363,9 @@ def test_coordination_vs_cutoff_line_disordered_structure() -> None:
     """Test coordination_vs_cutoff_line with a disordered structure."""
     from pymatviz.structure import fe3co4_disordered
 
-    # Test with a single disordered structure
+    # Disordered Fe:C (75:25) site contributes Fe and C traces besides O
     fig = coordination_vs_cutoff_line(fe3co4_disordered, strategy=(1, 5))
-    assert len(fig.data) == 3
-
-    # Disordered structure has one site with Fe:C (75:25) and one O site
-    # For the disordered site, we should see both Fe and C contributions
-    # The function uses specie.symbol which should handle disordered sites
-    assert len(fig.data) >= 1, "Should have traces for disordered structure elements"
+    assert {trace.name for trace in fig.data} == {"C", "Fe", "O"}
 
     # Check that traces have valid data
     for trace in fig.data:

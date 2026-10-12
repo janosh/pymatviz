@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 import pytest
 from scipy.stats import norm
 
@@ -27,12 +26,8 @@ def test_error_decay_with_uncert(
 ) -> None:
     """Test error decay with uncertainty plot."""
     df, x, y = df_or_arrays
-    if df is None and isinstance(y_std, str | pd.Index):
-        y_std = y_true - y_pred
-
     fig = error_decay_with_uncert(x, y, y_std, df=df, percentiles=percentiles)
 
-    assert isinstance(fig, go.Figure)
     assert fig.layout.xaxis.title.text == (
         "Excluded samples (%)" if percentiles else "Excluded samples"
     )
@@ -76,12 +71,8 @@ def test_qq_gaussian(
 ) -> None:
     """Test Q-Q gaussian plot."""
     df, x, y = df_or_arrays
-    if df is None and isinstance(y_std, str | pd.Index):
-        y_std = xs
-
     fig = qq_gaussian(x, y, y_std, df=df)
 
-    assert isinstance(fig, go.Figure)
     assert fig.layout.xaxis.title.text == "Theoretical Quantile"
     assert fig.layout.yaxis.title.text == "Observed Quantile"
     assert fig.layout.xaxis.range == (0, 1)
