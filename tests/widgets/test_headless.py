@@ -15,8 +15,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from pymatviz.widgets._headless import (
-    _HAS_CANVAS_JS,
+    _CANVAS_KIND_JS,
     _SVG_EXTRACT_JS,
+    _async_capture_page,
     _build_html,
     _capture_page,
     _diagnose_async,
@@ -157,14 +158,14 @@ def test_render_widget_headless_dispatches_async_in_event_loop() -> None:
         ("png", 36, 1.0, b"\x89PNG dpi"),  # sub-72 DPI clamps to 1x
         ("jpeg", 72, 1.0, b"\xff\xd8 dpi"),
         ("jpeg", 216, 3.0, b"\xff\xd8 dpi"),
-        ("svg", 300, 1, b"<svg>dpi</svg>"),
+        ("svg", 144, 2.0, b"<svg>dpi</svg>"),  # scales canvas layers in SVG
     ],
 )
 def test_render_widget_headless_uses_dpi_scale_factor(
     fmt: str, dpi: int, expected_scale: float, expected_bytes: bytes
 ) -> None:
     """render_widget_headless takes the sync path outside event loops and maps DPI
-    to browser scale for raster formats.
+    to browser scale for every format.
     """
     mock_page = _mock_page(svg_result=expected_bytes.decode() if fmt == "svg" else None)
     mock_page.locator.return_value.screenshot.return_value = expected_bytes
@@ -187,8 +188,8 @@ def test_render_widget_headless_uses_dpi_scale_factor(
 
 
 def test_render_widget_headless_canvas_pdf_uses_dpi_scale() -> None:
-    """Canvas-backed PDF export passes the DPI scale into PDF rasterization."""
-    mock_page = _mock_page(has_canvas=True)
+    """WebGL-backed PDF export passes the DPI scale into PDF rasterization."""
+    mock_page = _mock_page(canvas_kind="webgl")
     mock_browser = MagicMock()
     mock_browser.new_page.return_value = mock_page
 
@@ -267,48 +268,69 @@ def test_build_html_contains_esm_and_widget_data() -> None:
 # === Content-aware capture (_capture_page) ===
 #
 # Capture picks SVG-vs-raster and vector-vs-rasterized PDF from the rendered DOM
-# (_HAS_CANVAS_JS / _SVG_EXTRACT_JS), not a static widget_type list. The async
+# (_CANVAS_KIND_JS / _SVG_EXTRACT_JS), not a static widget_type list. The async
 # twin mirrors this logic and is smoke-tested via _render_widget_async above.
 
 
-def _mock_page(*, svg_result: str | None = None, has_canvas: bool = False) -> MagicMock:
-    """Mock sync Playwright page whose evaluate() answers the SVG/canvas probes."""
-    responses = {_SVG_EXTRACT_JS: svg_result, _HAS_CANVAS_JS: has_canvas}
+def _mock_page(
+    *,
+    svg_result: str | None = None,
+    canvas_kind: str | None = None,
+    is_async: bool = False,
+) -> MagicMock:
+    """Mock Playwright page whose evaluate() answers the SVG/canvas probes."""
+    responses = {_SVG_EXTRACT_JS: svg_result, _CANVAS_KIND_JS: canvas_kind}
     page = MagicMock()
-    page.evaluate = MagicMock(side_effect=responses.get)
+    page.evaluate = (AsyncMock if is_async else MagicMock)(side_effect=responses.get)
     page.locator.return_value.screenshot.return_value = b"PNGDATA"
     page.locator.return_value.bounding_box.return_value = {"width": 100, "height": 80}
     page.pdf.return_value = b"%PDF-vector"
     return page
 
 
-def test_capture_page_svg_returns_chart() -> None:
+@pytest.mark.parametrize("is_async", [False, True])
+def test_capture_page_svg_returns_chart(is_async: bool) -> None:
     """SVG export returns the extracted chart SVG when one is present."""
-    page = _mock_page(svg_result="<svg>x</svg>")
-    assert _capture_page(page, "svg") == b"<svg>x</svg>"
+    page = _mock_page(svg_result="<svg>x</svg>", is_async=is_async)
+    result = (
+        asyncio.run(_async_capture_page(page, "svg"))
+        if is_async
+        else _capture_page(page, "svg")
+    )
+    assert result == b"<svg>x</svg>"
 
 
 @pytest.mark.parametrize(
-    ("has_canvas", "match"), [(True, "WebGL"), (False, "No SVG element")]
+    ("canvas_kind", "match"),
+    [("webgl", "WebGL"), ("2d", "WebGL"), (None, "No SVG element")],
 )
-def test_capture_page_svg_errors(has_canvas: bool, match: str) -> None:
+@pytest.mark.parametrize("is_async", [False, True])
+def test_capture_page_svg_errors(
+    canvas_kind: str | None, match: str, is_async: bool
+) -> None:
     """SVG export of a canvas/HTML-only widget raises a content-tailored error."""
+    page = _mock_page(canvas_kind=canvas_kind, is_async=is_async)
     with pytest.raises(RuntimeError, match=match):
-        _capture_page(_mock_page(has_canvas=has_canvas), "svg")
+        (
+            asyncio.run(_async_capture_page(page, "svg"))
+            if is_async
+            else _capture_page(page, "svg")
+        )
 
 
-def test_capture_page_pdf_canvas_rasterizes() -> None:
-    """Canvas widgets are screenshot-wrapped to PDF (vector page.pdf can't see them)."""
-    page = _mock_page(has_canvas=True)
+def test_capture_page_pdf_webgl_rasterizes() -> None:
+    """WebGL widgets are screenshot-wrapped to PDF (vector page.pdf can't see them)."""
+    page = _mock_page(canvas_kind="webgl")
     with patch(f"{HEADLESS_PATH}._png_to_pdf", return_value=b"%PDF-raster") as mock_pdf:
         assert _capture_page(page, "pdf", scale_factor=2.0) == b"%PDF-raster"
     mock_pdf.assert_called_once_with(b"PNGDATA", scale=2.0)
     page.pdf.assert_not_called()
 
 
-def test_capture_page_pdf_no_canvas_uses_vector() -> None:
-    """SVG/HTML widgets get Chromium's native vector PDF via page.pdf()."""
-    page = _mock_page(has_canvas=False)
+@pytest.mark.parametrize("canvas_kind", [None, "2d"])
+def test_capture_page_pdf_without_webgl_uses_vector(canvas_kind: str | None) -> None:
+    """SVG/HTML/2D-canvas widgets get Chromium's native vector PDF via page.pdf()."""
+    page = _mock_page(canvas_kind=canvas_kind)
     assert _capture_page(page, "pdf") == b"%PDF-vector"
     page.pdf.assert_called_once()
 

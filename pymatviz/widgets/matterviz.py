@@ -394,9 +394,13 @@ class MatterVizWidget(AnyWidget):
         agent workflows -- no notebook frontend required.
 
         Note: SVG export is only available for SVG-based (2D) widgets.
-        Canvas-based widgets (Structure, Trajectory, etc.) always export
-        as PNG/JPEG. PDF export uses Chromium's native PDF generator,
-        producing vector output with selectable text for SVG widgets.
+        Canvas layers inside the SVG chart (e.g. scatter markers with
+        ``marker_renderer="canvas"``, the default above 1000 points) are
+        embedded as PNG ``<image>`` elements; set ``marker_renderer="svg"``
+        for fully vector markers. Canvas-based widgets (Structure, Trajectory,
+        etc.) always export as PNG/JPEG. PDF export uses Chromium's native PDF
+        generator, producing vector output with selectable text (2D canvas
+        layers embedded as images); only WebGL widgets get a rasterized PDF.
 
         Requires ``playwright`` (install with
         ``uv pip install playwright && playwright install chromium``).
@@ -410,8 +414,8 @@ class MatterVizWidget(AnyWidget):
                 cannot be inferred from ``filename``.
             dpi: Resolution for raster output. Maps to the headless browser's
                 device scale factor (72 = 1x, 144 = 2x, etc.). Defaults to 150
-                (~2x). Applies to PNG, JPEG, and PDFs that rasterize canvas/WebGL
-                content; ignored for SVG and for pure-vector (SVG-content) PDFs.
+                (~2x). Applies to PNG/JPEG and to canvas pixels in SVG/PDF
+                exports; pure-vector content is unaffected.
             timeout: Seconds to wait for headless rendering before
                 raising ``TimeoutError``. Defaults to 30.
             width: Override container width in pixels for this export.

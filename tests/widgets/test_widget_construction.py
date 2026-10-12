@@ -884,6 +884,40 @@ def test_headless_bar_plot_svg(bar_plot_widget: BarPlotWidget) -> None:
 
 
 @_skip_no_playwright
+@_skip_no_pillow
+@pytest.mark.parametrize("marker_renderer", ["svg", "canvas"])
+def test_headless_scatter_vector_export(marker_renderer: str) -> None:
+    """SVG keeps SVG markers as elements, canvas markers as <image>; PDF is vector."""
+    import base64
+    import io
+    import re
+
+    from PIL import Image
+
+    widget = ScatterPlotWidget(
+        series=[{"x": [0, 1, 2], "y": [0, 1, 4], "label": "points"}],
+        marker_renderer=marker_renderer,
+        styles={"point": {"color": "#ff0000", "size": 8}},
+        style="width: 500px; height: 350px;",
+    )
+    assert b"/Font" in widget.to_img(fmt="pdf"), "PDF rasterized, expected vector"
+    svg_text = widget.to_img(fmt="svg", dpi=144).decode("utf-8")
+    assert "<foreignObject" not in svg_text
+    if marker_renderer == "svg":
+        assert svg_text.count('data-roving-key="') == 3
+        return
+    data_uris = re.findall(
+        r'<image [^>]*href="data:image/png;base64,([^"]+)"', svg_text
+    )
+    assert len(data_uris) == 1, "canvas markers not inlined as <image>"
+    img = Image.open(io.BytesIO(base64.b64decode(data_uris[0]))).convert("RGB")
+    assert img.size == (1000, 700), "embedded canvas should follow dpi"
+    pixels = np.asarray(img)
+    red_pixels = (pixels[..., 0] > 200) & (pixels[..., 1:] < 50).all(axis=-1)
+    assert red_pixels.sum() > 50, "embedded canvas is missing the red markers"
+
+
+@_skip_no_playwright
 @pytest.mark.parametrize(
     ("fmt", "magic"), [("jpeg", b"\xff\xd8"), ("pdf", b"%PDF-")]
 )  # JPEG SOI marker, PDF header
@@ -928,10 +962,29 @@ def test_headless_structure_png() -> None:
 
 
 @_skip_no_playwright
-def test_headless_structure_svg_raises() -> None:
-    """StructureWidget (canvas) raises RuntimeError for SVG export."""
-    struct = Structure(Lattice.cubic(3.0), ["Si"], [[0, 0, 0]])
-    widget = StructureWidget(structure=struct, style="height: 300px;")
+@pytest.mark.parametrize("with_plot", [False, True])
+def test_headless_webgl_structure_exports(with_plot: bool) -> None:
+    """WebGL structures rasterize PDFs and raise for SVG, also beside an SVG plot."""
+    if with_plot:
+        frames = [
+            {
+                "structure": Structure(
+                    Lattice.cubic(3 + 0.1 * idx), ["Si"], [[0, 0, 0]]
+                ).as_dict(),
+                "step": idx,
+                "metadata": {"energy": -float(idx)},
+            }
+            for idx in range(4)
+        ]
+        widget = TrajectoryWidget(
+            trajectory={"frames": frames},
+            display_mode="structure+plot",
+            style="height: 400px;",
+        )
+    else:
+        struct = Structure(Lattice.cubic(3.0), ["Si"], [[0, 0, 0]])
+        widget = StructureWidget(structure=struct, style="height: 300px;")
+    assert b"/Font" not in widget.to_img(fmt="pdf", dpi=72), "expected raster PDF"
     with pytest.raises(RuntimeError, match="SVG export not supported"):
         widget.to_img(fmt="svg")
 

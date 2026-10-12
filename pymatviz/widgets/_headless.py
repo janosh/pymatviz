@@ -180,11 +180,10 @@ def _prepare_render(inputs: _RenderInputs) -> tuple[str, int, float]:
         height=inputs.height,
     )
     timeout_ms = int(inputs.timeout * 1000)
-    # PDF capture rasterizes WebGL canvases (Chromium's vector page.pdf() can't
-    # see them), so scale every raster-capable format by DPI. The canvas-vs-SVG
-    # choice is made at capture time from the DOM. SVG stays 1x (pure vector).
-    needs_raster = inputs.fmt in ("png", "jpeg", "pdf")
-    scale_factor = max(1, inputs.dpi / 72) if needs_raster else 1
+    # Every format can carry raster pixels (screenshots, rasterized WebGL PDFs,
+    # canvas layers embedded in SVG), so always scale by DPI. Vector SVG/PDF
+    # output is unaffected by the device scale factor.
+    scale_factor = max(1, inputs.dpi / 72)
     return _write_temp_html(html), timeout_ms, scale_factor
 
 
@@ -223,14 +222,15 @@ async def _async_capture_page(
     if fmt == "svg":
         svg_string = await page.evaluate(_SVG_EXTRACT_JS)
         if svg_string is None:
-            has_canvas = await page.evaluate(_HAS_CANVAS_JS)
-            raise RuntimeError(_no_svg_message(has_canvas=has_canvas))
+            canvas_kind = await page.evaluate(_CANVAS_KIND_JS)
+            raise RuntimeError(_no_svg_message(has_canvas=canvas_kind is not None))
         return svg_string.encode("utf-8")
 
     if fmt == "pdf":
         # WebGL canvas content is invisible to Chromium's print PDF pipeline,
-        # so rasterize canvas widgets; SVG/HTML widgets get a native vector PDF.
-        if await page.evaluate(_HAS_CANVAS_JS):
+        # so rasterize WebGL widgets; SVG/HTML/2D-canvas widgets get a native
+        # vector PDF (2D canvases print as embedded images).
+        if await page.evaluate(_CANVAS_KIND_JS) == "webgl":
             return _png_to_pdf(
                 await page.locator("#widget-root").screenshot(type="png"),
                 scale=scale_factor,
@@ -597,14 +597,19 @@ _MIN_SVG_PX = 20
 
 # Extract the largest chart-sized SVG from the widget for vector export.
 # Sub-threshold elements are toolbar/legend icons, never the chart, so they
-# are ignored and the function returns null when only icons exist.
-# Returning null (rather than an icon) lets the caller raise a clear error.
+# are ignored and the function returns null when only icons exist. Also returns
+# null when a chart-sized canvas lies outside that SVG (e.g. a WebGL structure
+# next to a plot), since the SVG alone would be a partial figure. Returning null
+# (rather than an icon or partial chart) lets the caller raise a clear error.
+# Canvases inside the SVG (scatter markers drawn in a <foreignObject>) serialize
+# as empty elements, so each is swapped for an <image> with the same pixels,
+# mirroring matterviz's own SVG export (inline_foreign_canvases in io/export.ts).
 _SVG_EXTRACT_JS = """\
 () => {
-    const svgs = Array.from(document.querySelectorAll('#widget-root svg'));
-    if (!svgs.length) return null;
+    const root = document.getElementById('widget-root');
+    if (!root) return null;
     let best = null, best_area = 0;
-    for (const svg of svgs) {
+    for (const svg of root.querySelectorAll('svg')) {
         const rect = svg.getBoundingClientRect();
         const area = rect.width * rect.height;
         if (rect.width >= %(svg_px)d && rect.height >= %(svg_px)d
@@ -613,7 +618,24 @@ _SVG_EXTRACT_JS = """\
         }
     }
     if (!best) return null;
+    for (const canvas of root.querySelectorAll('canvas')) {
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width >= %(canvas_px)d && rect.height >= %(canvas_px)d
+            && !best.contains(canvas)) return null;
+    }
     const cloned = best.cloneNode(true);
+    const live_foreign_objs = best.querySelectorAll('foreignObject');
+    cloned.querySelectorAll('foreignObject').forEach((foreign_obj, idx) => {
+        const canvas = live_foreign_objs[idx].querySelector('canvas');
+        if (!canvas) return;
+        const image = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+        for (const attr of ['x', 'y', 'width', 'height']) {
+            const val = foreign_obj.getAttribute(attr);
+            if (val !== null) image.setAttribute(attr, val);
+        }
+        image.setAttribute('href', canvas.toDataURL('image/png'));
+        foreign_obj.replaceWith(image);
+    });
     if (!cloned.hasAttribute('xmlns'))
         cloned.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
     const style = cloned.getAttribute('style') || '';
@@ -623,22 +645,26 @@ _SVG_EXTRACT_JS = """\
     return '<?xml version="1.0" encoding="UTF-8"?>\\n'
         + new XMLSerializer().serializeToString(cloned);
 }
-""" % {"svg_px": _MIN_SVG_PX}  # noqa: UP031  -- %-format keeps JS braces literal
+""" % {"svg_px": _MIN_SVG_PX, "canvas_px": _MIN_CANVAS_PX}  # noqa: UP031
 
-# Detect whether the widget painted a real WebGL <canvas> (vs decorative ones).
-# Capture decisions (SVG-vs-raster, vector-vs-rasterized PDF) are made from the
-# actual DOM rather than a static widget_type list, because some widgets render
-# SVG or canvas depending on their data (e.g. ConvexHull/ChemPotDiagram render
-# 2D SVG for binary systems but 3D WebGL for ternary+).
-_HAS_CANVAS_JS = """\
+# Classify the widget's chart-sized canvases (smaller ones are decorative):
+# null if none, "webgl" if any holds a WebGL context (getContext('2d') returns
+# null for those), else "2d". Capture decisions (SVG error, vector-vs-rasterized
+# PDF) are made from the actual DOM rather than a static widget_type list,
+# because some widgets render SVG or canvas depending on their data (e.g.
+# ConvexHull/ChemPotDiagram render SVG for binary systems, canvas for ternary+).
+_CANVAS_KIND_JS = """\
 () => {
     const root = document.getElementById('widget-root');
-    if (!root) return false;
+    if (!root) return null;
+    let kind = null;
     for (const canvas of root.querySelectorAll('canvas')) {
         const rect = canvas.getBoundingClientRect();
-        if (rect.width >= %(canvas_px)d && rect.height >= %(canvas_px)d) return true;
+        if (rect.width < %(canvas_px)d || rect.height < %(canvas_px)d) continue;
+        if (canvas.getContext('2d') === null) return 'webgl';
+        kind = '2d';
     }
-    return false;
+    return kind;
 }
 """ % {"canvas_px": _MIN_CANVAS_PX}  # noqa: UP031  -- %-format keeps JS braces literal
 
@@ -651,7 +677,10 @@ _HTML_WIDGET_TYPES = frozenset({"periodic_table", "heatmap_matrix"})
 def _no_svg_message(*, has_canvas: bool) -> str:
     """Error message for failed SVG export, tailored to the widget content."""
     if has_canvas:
-        return "SVG export not supported for WebGL (canvas) widgets"
+        return (
+            "SVG export not supported for canvas (e.g. WebGL) content outside "
+            "an SVG chart. Use fmt='png' or fmt='pdf' instead."
+        )
     return (
         "No SVG element found in widget. This widget type may not "
         "support SVG export. Use fmt='png' instead."
@@ -760,12 +789,12 @@ def _capture_page(
     if fmt == "svg":
         svg_string = page.evaluate(_SVG_EXTRACT_JS)
         if svg_string is None:
-            has_canvas = page.evaluate(_HAS_CANVAS_JS)
-            raise RuntimeError(_no_svg_message(has_canvas=has_canvas))
+            canvas_kind = page.evaluate(_CANVAS_KIND_JS)
+            raise RuntimeError(_no_svg_message(has_canvas=canvas_kind is not None))
         return svg_string.encode("utf-8")
 
     if fmt == "pdf":
-        if page.evaluate(_HAS_CANVAS_JS):
+        if page.evaluate(_CANVAS_KIND_JS) == "webgl":
             # WebGL canvas content is invisible to Chromium's print PDF
             # pipeline. Take a high-res screenshot and wrap it in a PDF.
             return _png_to_pdf(
@@ -773,7 +802,7 @@ def _capture_page(
                 scale=scale_factor,
             )
 
-        # SVG/HTML widgets: native vector PDF with selectable text
+        # SVG/HTML/2D-canvas widgets: native vector PDF with selectable text
         page.emulate_media(media="screen")
         bbox = page.locator("#widget-root").bounding_box()
         return page.pdf(**_vector_pdf_kwargs(bbox))
@@ -853,8 +882,8 @@ def render_widget_headless(
         fmt: Output format — ``"png"``, ``"jpeg"``, ``"svg"``, or ``"pdf"``.
         dpi: Resolution for raster capture. Maps to ``device_scale_factor``
             in the headless browser (72 DPI = 1x, 144 = 2x, 216 = 3x).
-            Defaults to 150 (~2x). Applies to PNG, JPEG, and canvas/WebGL PDFs;
-            ignored for SVG and pure-vector (SVG-content) PDFs.
+            Defaults to 150 (~2x). Applies to PNG/JPEG and to canvas pixels in
+            SVG/PDF exports; pure-vector content is unaffected.
         timeout: Max seconds to wait for the widget to render.
         quality: JPEG compression quality (1-100). Ignored for other formats.
         width: Override container width in pixels.
@@ -896,7 +925,7 @@ def render_widget_headless(
 # === Render diagnostics (render_report) ===
 
 # DOM probe: classify content and measure root vs content/scroll size to detect
-# overflow (clipping). Shares size thresholds with _HAS_CANVAS_JS/_SVG_EXTRACT_JS
+# overflow (clipping). Shares size thresholds with _CANVAS_KIND_JS/_SVG_EXTRACT_JS
 # so content_type classification always agrees with capture decisions.
 _CONTENT_METRICS_JS = """\
 () => {

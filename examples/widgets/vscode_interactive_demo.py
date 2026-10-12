@@ -700,7 +700,7 @@ os.makedirs(EXPORT_DIR, exist_ok=True)
 
 # Raster-only widgets — PNG and PDF only (no extractable SVG chart).
 # Covers WebGL/Three.js scenes plus HTML-grid widgets (PeriodicTable,
-# HeatmapMatrix) and the WebGL ternary ConvexHull/ChemPotDiagram below.
+# HeatmapMatrix) and the canvas ternary ConvexHull/ChemPotDiagram below.
 raster_widgets: dict[str, MatterVizWidget] = {
     "structure": structure_widget,
     "multi_vector": multi_vec_widget,
@@ -711,7 +711,7 @@ raster_widgets: dict[str, MatterVizWidget] = {
     "isosurface": iso_widget,
     "orbital": orbital_widget,
     "scatter_plot_3d": scatter_3d_widget,
-    "convex_hull": convex_hull_widget,  # ternary system -> WebGL
+    "convex_hull": convex_hull_widget,  # ternary system -> canvas
     "chem_pot_diagram": chem_pot_widget,  # ternary system -> WebGL
     "periodic_table": ptable_widget,  # HTML element grid
     "heatmap_matrix": heatmap_widget,  # HTML tile grid
