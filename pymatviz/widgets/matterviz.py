@@ -393,10 +393,11 @@ class MatterVizWidget(AnyWidget):
         and captures the output. Works in plain Python scripts, CI, and
         agent workflows -- no notebook frontend required.
 
-        Note: SVG export is only available for SVG-based (2D) widgets.
-        Canvas-based widgets (Structure, Trajectory, etc.) always export
-        as PNG/JPEG. PDF export uses Chromium's native PDF generator,
-        producing vector output with selectable text for SVG widgets.
+        Note: SVG export requires an SVG chart without canvas content.
+        Canvas-based widgets and scatter plots using canvas markers support
+        PNG/JPEG and rasterized PDF. For vector scatter export, set
+        ``marker_renderer="svg"``. SVG widgets produce vector PDFs with
+        selectable text.
 
         Requires ``playwright`` (install with
         ``uv pip install playwright && playwright install chromium``).

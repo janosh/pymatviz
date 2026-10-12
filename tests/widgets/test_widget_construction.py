@@ -884,6 +884,35 @@ def test_headless_bar_plot_svg(bar_plot_widget: BarPlotWidget) -> None:
 
 
 @_skip_no_playwright
+@_skip_no_pillow
+@pytest.mark.parametrize("marker_renderer", ["svg", "canvas"])
+def test_headless_scatter_svg_export(marker_renderer: str) -> None:
+    """SVG retains SVG markers or rejects canvas markers; PNG retains both."""
+    import io
+
+    from PIL import Image
+
+    widget = ScatterPlotWidget(
+        series=[{"x": [0, 1, 2], "y": [0, 1, 4], "label": "points"}],
+        marker_renderer=marker_renderer,
+        styles={"point": {"color": "#ff0000", "size": 8}},
+        style="width: 500px; height: 350px;",
+    )
+    if marker_renderer == "canvas":
+        with pytest.raises(RuntimeError, match="canvas"):
+            widget.to_img(fmt="svg")
+    else:
+        svg_text = widget.to_img(fmt="svg").decode("utf-8")
+        assert svg_text.count('data-roving-key="') == 3
+
+    pixels = np.asarray(
+        Image.open(io.BytesIO(widget.to_img(fmt="png", dpi=72))).convert("RGB")
+    )
+    red_pixels = (pixels[..., 0] > 200) & (pixels[..., 1:] < 50).all(axis=-1)
+    assert red_pixels.sum() > 50, "PNG is missing the red scatter markers"
+
+
+@_skip_no_playwright
 @pytest.mark.parametrize(
     ("fmt", "magic"), [("jpeg", b"\xff\xd8"), ("pdf", b"%PDF-")]
 )  # JPEG SOI marker, PDF header

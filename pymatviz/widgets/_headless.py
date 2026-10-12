@@ -221,10 +221,11 @@ async def _async_capture_page(
     _validate_capture_format(fmt)
 
     if fmt == "svg":
+        if await page.evaluate(_HAS_CANVAS_JS):
+            raise RuntimeError(_no_svg_message(has_canvas=True))
         svg_string = await page.evaluate(_SVG_EXTRACT_JS)
         if svg_string is None:
-            has_canvas = await page.evaluate(_HAS_CANVAS_JS)
-            raise RuntimeError(_no_svg_message(has_canvas=has_canvas))
+            raise RuntimeError(_no_svg_message(has_canvas=False))
         return svg_string.encode("utf-8")
 
     if fmt == "pdf":
@@ -625,7 +626,8 @@ _SVG_EXTRACT_JS = """\
 }
 """ % {"svg_px": _MIN_SVG_PX}  # noqa: UP031  -- %-format keeps JS braces literal
 
-# Detect whether the widget painted a real WebGL <canvas> (vs decorative ones).
+# Detect chart-sized 2D/WebGL canvases (vs decorative ones). A chart can mix SVG
+# axes with canvas markers, whose pixels would be lost by cloning the SVG.
 # Capture decisions (SVG-vs-raster, vector-vs-rasterized PDF) are made from the
 # actual DOM rather than a static widget_type list, because some widgets render
 # SVG or canvas depending on their data (e.g. ConvexHull/ChemPotDiagram render
@@ -651,7 +653,10 @@ _HTML_WIDGET_TYPES = frozenset({"periodic_table", "heatmap_matrix"})
 def _no_svg_message(*, has_canvas: bool) -> str:
     """Error message for failed SVG export, tailored to the widget content."""
     if has_canvas:
-        return "SVG export not supported for WebGL (canvas) widgets"
+        return (
+            "SVG export not supported for canvas-rendered content (2D or WebGL). "
+            "Use fmt='png' or fmt='pdf' instead."
+        )
     return (
         "No SVG element found in widget. This widget type may not "
         "support SVG export. Use fmt='png' instead."
@@ -758,10 +763,11 @@ def _capture_page(
     _validate_capture_format(fmt)
 
     if fmt == "svg":
+        if page.evaluate(_HAS_CANVAS_JS):
+            raise RuntimeError(_no_svg_message(has_canvas=True))
         svg_string = page.evaluate(_SVG_EXTRACT_JS)
         if svg_string is None:
-            has_canvas = page.evaluate(_HAS_CANVAS_JS)
-            raise RuntimeError(_no_svg_message(has_canvas=has_canvas))
+            raise RuntimeError(_no_svg_message(has_canvas=False))
         return svg_string.encode("utf-8")
 
     if fmt == "pdf":

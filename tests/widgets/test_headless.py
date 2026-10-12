@@ -17,6 +17,7 @@ import pytest
 from pymatviz.widgets._headless import (
     _HAS_CANVAS_JS,
     _SVG_EXTRACT_JS,
+    _async_capture_page,
     _build_html,
     _capture_page,
     _diagnose_async,
@@ -271,30 +272,51 @@ def test_build_html_contains_esm_and_widget_data() -> None:
 # twin mirrors this logic and is smoke-tested via _render_widget_async above.
 
 
-def _mock_page(*, svg_result: str | None = None, has_canvas: bool = False) -> MagicMock:
-    """Mock sync Playwright page whose evaluate() answers the SVG/canvas probes."""
+def _mock_page(
+    *, svg_result: str | None = None, has_canvas: bool = False, is_async: bool = False
+) -> MagicMock:
+    """Mock Playwright page whose evaluate() answers the SVG/canvas probes."""
     responses = {_SVG_EXTRACT_JS: svg_result, _HAS_CANVAS_JS: has_canvas}
     page = MagicMock()
-    page.evaluate = MagicMock(side_effect=responses.get)
+    page.evaluate = (AsyncMock if is_async else MagicMock)(side_effect=responses.get)
     page.locator.return_value.screenshot.return_value = b"PNGDATA"
     page.locator.return_value.bounding_box.return_value = {"width": 100, "height": 80}
     page.pdf.return_value = b"%PDF-vector"
     return page
 
 
-def test_capture_page_svg_returns_chart() -> None:
+@pytest.mark.parametrize("is_async", [False, True])
+def test_capture_page_svg_returns_chart(is_async: bool) -> None:
     """SVG export returns the extracted chart SVG when one is present."""
-    page = _mock_page(svg_result="<svg>x</svg>")
-    assert _capture_page(page, "svg") == b"<svg>x</svg>"
+    page = _mock_page(svg_result="<svg>x</svg>", is_async=is_async)
+    result = (
+        asyncio.run(_async_capture_page(page, "svg"))
+        if is_async
+        else _capture_page(page, "svg")
+    )
+    assert result == b"<svg>x</svg>"
 
 
 @pytest.mark.parametrize(
-    ("has_canvas", "match"), [(True, "WebGL"), (False, "No SVG element")]
+    ("has_canvas", "svg_result", "match"),
+    [
+        (True, None, "canvas"),
+        (True, "<svg>axes without canvas markers</svg>", "canvas"),
+        (False, None, "No SVG element"),
+    ],
 )
-def test_capture_page_svg_errors(has_canvas: bool, match: str) -> None:
-    """SVG export of a canvas/HTML-only widget raises a content-tailored error."""
+@pytest.mark.parametrize("is_async", [False, True])
+def test_capture_page_svg_errors(
+    has_canvas: bool, svg_result: str | None, match: str, is_async: bool
+) -> None:
+    """SVG export rejects canvas content even when an SVG is also present."""
+    page = _mock_page(has_canvas=has_canvas, svg_result=svg_result, is_async=is_async)
     with pytest.raises(RuntimeError, match=match):
-        _capture_page(_mock_page(has_canvas=has_canvas), "svg")
+        (
+            asyncio.run(_async_capture_page(page, "svg"))
+            if is_async
+            else _capture_page(page, "svg")
+        )
 
 
 def test_capture_page_pdf_canvas_rasterizes() -> None:
