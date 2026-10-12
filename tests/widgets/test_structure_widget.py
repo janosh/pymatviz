@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pytest
+import traitlets as tl
 
 from pymatviz import StructureWidget
 from tests.widgets.conftest import assert_widget_property_sync
@@ -242,3 +243,53 @@ def test_widget_volumetric_data_rejects_invalid(
     """
     with pytest.raises(err_cls, match=match):
         StructureWidget(volumetric_data=bad_input)
+
+
+@pytest.mark.parametrize(
+    ("layer", "volumes", "match"),
+    [
+        ({"volume_id": "chg"}, [_VOLUME], None),
+        ({"volume_id": "chg", "color_volume_id": "chg"}, [_VOLUME], None),
+        ({"volume_id": "nope"}, [_VOLUME], r"volume_id='nope' matches no"),
+        (
+            {"volume_id": "chg", "color_volume_id": "x"},
+            [_VOLUME],
+            "color_volume_id='x'",
+        ),
+        ({"isovalue": 0.1}, [], "needs a nonempty string volume_id"),
+        # data_url volumes are parsed in the browser: ids can't be checked
+        ({"volume_id": "charge density"}, [], None),
+    ],
+)
+def test_widget_isosurface_layer_volume_ids(
+    layer: dict[str, Any], volumes: list[dict[str, Any]], match: str | None
+) -> None:
+    """Isosurface layers must name a volume_id that matches a loaded volume."""
+    settings = {"layers": [layer]}
+    for kwargs in (  # both trait orders: cross-validation runs after __init__
+        dict(isosurface_settings=settings, volumetric_data=volumes),
+        dict(volumetric_data=volumes, isosurface_settings=settings),
+    ):
+        if match is None:
+            assert StructureWidget(**kwargs).isosurface_settings == settings
+        else:
+            with pytest.raises(tl.TraitError, match=match):
+                StructureWidget(**kwargs)
+
+
+def test_widget_isosurface_volume_swap() -> None:
+    """Volumes and layers swap atomically in hold_trait_notifications; a lone volume
+    swap that orphans a layer raises and leaves the widget unchanged.
+    """
+    widget = StructureWidget(
+        volumetric_data=[_VOLUME],
+        isosurface_settings={"layers": [{"volume_id": "chg"}]},
+    )
+    with pytest.raises(tl.TraitError, match="volume_id='chg' matches no"):
+        widget.volumetric_data = [{**_VOLUME, "id": "elf"}]
+    assert [vol["id"] for vol in widget.volumetric_data] == ["chg"]
+
+    with widget.hold_trait_notifications():
+        widget.volumetric_data = [{**_VOLUME, "id": "elf"}]
+        widget.isosurface_settings = {"layers": [{"volume_id": "elf"}]}
+    assert [vol["id"] for vol in widget.volumetric_data] == ["elf"]
