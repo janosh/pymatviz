@@ -12,11 +12,26 @@ import traitlets as tl
 # name, so traits validate against these (case-insensitively, stored canonical).
 ELEMENT_COLOR_SCHEMES = ("Vesta", "Jmol", "Alloy", "Pastel", "Muted", "Dark Mode")
 BONDING_STRATEGIES = ("electroneg_ratio", "explicit_only")
+# Mirror matterviz's ExportFormat (src/lib/io/export.ts)
+EXPORT_FORMATS = ("png", "svg", "csv", "json", "md", "tex")
 
 
 def optional_trait(trait_cls: Any, **kwargs: Any) -> Any:
     """Synced trait defaulting to None so the frontend component default applies."""
     return trait_cls(allow_none=True, default_value=None, **kwargs).tag(sync=True)
+
+
+def color_scale_trait() -> Any:
+    """Synced matterviz ``ColorScale``: a d3 interpolator name or a config dict.
+
+    The dict form is matterviz's ``ColorScaleConfig`` with keys ``scheme`` (d3
+    interpolator name), ``type`` (``"linear"``, ``"log"``, ``"arcsinh"``),
+    ``value_range`` (``[min, max]`` data values mapped to the palette ends, a None
+    end fits the data) and ``palette_range`` (fraction of the palette to use).
+    """
+    return tl.Union([tl.Unicode(), tl.Dict()], default_value="interpolateViridis").tag(
+        sync=True
+    )
 
 
 class StructureVizTraits(tl.HasTraits):

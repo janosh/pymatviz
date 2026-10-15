@@ -149,6 +149,21 @@ def normalize_plot_json(value: Any, label: str) -> Any:
     )
 
 
+def normalize_json_kwargs(
+    kwargs: dict[str, Any], keys: Sequence[str], component: str
+) -> None:
+    """In place, run normalize_plot_json on each of ``keys`` present in ``kwargs``.
+
+    Args:
+        kwargs: Widget constructor keyword arguments, modified in place.
+        keys: Names of the config kwargs to normalize (e.g. numpy bounds in dicts).
+        component: MatterViz component name used to label error messages.
+    """
+    for key in keys:
+        if key in kwargs:
+            kwargs[key] = normalize_plot_json(kwargs[key], f"{component}.{key}")
+
+
 def normalize_plot_series(
     series_data: Any, *, component_name: str, samples_key: str | None = None
 ) -> list[dict[str, Any]] | None:

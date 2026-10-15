@@ -148,12 +148,24 @@ from pymatviz.widgets.xrd import XrdWidget
             "heatmap_matrix",
             "values",
         ),
-        (PeriodicTableWidget, {"log": True}, "periodic_table", "log"),
+        (
+            PeriodicTableWidget,
+            {"color_scale": {"type": "log", "value_range": [1, None]}},
+            "periodic_table",
+            "color_scale",
+        ),
+        (PeriodicTableWidget, {"color_bar": None}, "periodic_table", "color_bar"),
         (
             HeatmapMatrixWidget,
-            {"x_items": ["A"], "y_items": ["B"], "log": True},
+            {"x_items": ["A"], "y_items": ["B"], "color_scale": {"type": "log"}},
             "heatmap_matrix",
-            "log",
+            "color_scale",
+        ),
+        (
+            HeatmapMatrixWidget,
+            {"color_bar": {"title": "count", "orientation": "vertical"}},
+            "heatmap_matrix",
+            "color_bar",
         ),
         (SpacegroupBarPlotWidget, {"data": [225, 166, 62]}, "spacegroup_bar", "data"),
         (
@@ -288,10 +300,9 @@ def test_to_dict_reflects_runtime_mutations() -> None:
         (HistogramWidget, "mode", "single"),
         (HistogramWidget, "show_legend", True),
         (PeriodicTableWidget, "color_scale", "interpolateViridis"),
-        (PeriodicTableWidget, "log", False),
-        (PeriodicTableWidget, "show_color_bar", True),
+        (PeriodicTableWidget, "color_bar", {}),  # shown by default
         (PeriodicTableWidget, "missing", None),
-        (HeatmapMatrixWidget, "log", False),
+        (HeatmapMatrixWidget, "color_bar", None),  # hidden by default
         (HeatmapMatrixWidget, "missing", None),
         (HeatmapMatrixWidget, "values", None),  # None, not an empty list
         (HeatmapMatrixWidget, "x_items", []),
@@ -528,6 +539,7 @@ def test_treemap_widget_traits_and_validation() -> None:
         "label_max_font_size": 14,
         "parent_label_font_size": 16,
         "max_children": 3,
+        "export_formats": ["svg", "png"],
         "zoom_root_id": "root/a",
     }
     widget = TreemapWidget(data=data, **config)
@@ -547,6 +559,9 @@ def test_treemap_widget_traits_and_validation() -> None:
             TreemapWidget(data=data, **{bad_key: "not-an-option"})
     with pytest.raises(tl.TraitError):
         TreemapWidget(data=data, max_children=-1)
+    with pytest.raises(tl.TraitError):  # not a matterviz ExportFormat
+        TreemapWidget(data=data, export_formats=["pdf"])
+    assert TreemapWidget(data=data, export_formats=[]).export_formats == []
 
     # forest input: list of root nodes passes through unchanged
     roots = [{"label": "x", "value": 1}, {"label": "y", "value": 2}]
@@ -619,6 +634,26 @@ def test_heatmap_matrix_scalar_string_axis_items() -> None:
     widget = HeatmapMatrixWidget(x_items="Fe", y_items="O")
     assert widget.x_items == [{"key": "Fe", "label": "Fe"}]
     assert widget.y_items == [{"key": "O", "label": "O"}]
+
+
+@pytest.mark.parametrize("widget_cls", [PeriodicTableWidget, HeatmapMatrixWidget])
+def test_color_scale_config_normalized_and_validated(widget_cls: type) -> None:
+    """color_scale accepts a ColorScaleConfig dict with numpy bounds, not an int."""
+    color_scale = {
+        "scheme": "interpolateBlues",
+        "type": "log",
+        "value_range": [np.float64(0.5), None],
+        "palette_range": np.array([0.25, 1.0]),
+    }
+    synced = widget_cls(color_scale=color_scale).to_dict()["color_scale"]
+    assert synced == {
+        **color_scale,
+        "value_range": [0.5, None],
+        "palette_range": [0.25, 1],
+    }
+    assert type(synced["value_range"][0]) is float
+    with pytest.raises(tl.TraitError):
+        widget_cls(color_scale=1)
 
 
 def test_rdf_plot_accepts_pymatgen_structure() -> None:
