@@ -14,6 +14,9 @@ from pymatviz.widgets.matterviz import MatterVizWidget
 class HistogramWidget(PlotControlsTraits, MatterVizWidget):
     """MatterViz widget wrapper for histogram visualizations. Each series holds the
     raw samples to bin in ``values``; binning happens in the frontend.
+
+    Assign a new ``series`` to update the data. Samples are normalized to numeric
+    lists; invalid updates raise ``traitlets.TraitError`` and preserve prior data.
     """
 
     series = tl.List(allow_none=True).tag(sync=True)
@@ -38,6 +41,17 @@ class HistogramWidget(PlotControlsTraits, MatterVizWidget):
     x2_range = tl.List(allow_none=True).tag(sync=True)
     y_range = tl.List(allow_none=True).tag(sync=True)
     y2_range = tl.List(allow_none=True).tag(sync=True)
+
+    @tl.validate("series")
+    def _validate_series(self, proposal: dict[str, Any]) -> list[dict[str, Any]] | None:
+        """Normalize replacements before syncing, including batched updates."""
+        try:
+            return normalize_plot_series(
+                proposal["value"], component_name="Histogram", samples_key="values"
+            )
+        except (TypeError, ValueError) as exc:
+            # TraitError triggers rollback inside hold_trait_notifications().
+            raise tl.TraitError(str(exc)) from exc
 
     def __init__(
         self,
@@ -91,6 +105,7 @@ class HistogramWidget(PlotControlsTraits, MatterVizWidget):
         """
         super().__init__(
             widget_type="histogram",
+            # Preserve the constructor's existing TypeError/ValueError behavior.
             series=normalize_plot_series(
                 series, component_name="Histogram", samples_key="values"
             ),

@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import importlib.util
+import json
+from contextlib import nullcontext
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import numpy as np
+import pandas as pd
 import pytest
 import traitlets as tl
 from pymatgen.core import Lattice, Structure
@@ -334,6 +337,67 @@ def test_histogram_widget_delegates_series_validation() -> None:
     assert widget.to_dict()["series"] == [{"values": [2.0, 1.0], "label": "a"}]
     with pytest.raises(ValueError, match="must include key 'values'"):
         HistogramWidget(series=[{"x": [0, 1], "y": [2, 3]}])
+
+
+@pytest.mark.parametrize(
+    "samples", [[2, 1], (2, 1), np.array([2, 1]), pd.Series([2, 1])]
+)
+@pytest.mark.parametrize("hold_notifications", [False, True])
+def test_histogram_series_updates_normalize(
+    samples: Any, hold_notifications: bool
+) -> None:
+    """Updated samples match constructor normalization and produce JSON-safe state."""
+    series: Any = ({"values": samples, "label": "updated", "opacity": np.float32(0.5)},)
+    widget = HistogramWidget(series=[{"values": [0]}])
+    with widget.hold_trait_notifications() if hold_notifications else nullcontext():
+        widget.series = series
+
+    expected = [{"values": [2.0, 1.0], "label": "updated", "opacity": 0.5}]
+    assert widget.series == HistogramWidget(series=series).series == expected
+    assert (
+        json.loads(json.dumps(widget.to_dict(), allow_nan=False))["series"] == expected
+    )
+    assert (
+        json.loads(json.dumps(widget.get_state(), allow_nan=False))["series"]
+        == expected
+    )
+
+
+@pytest.mark.parametrize(
+    ("series", "match"),
+    [
+        ([{"x": [0, 1], "y": [2, 3]}], "must include key 'values'"),
+        ([{"values": [float("nan")]}], "non-finite"),
+        ([{"values": [float("inf")]}], "non-finite"),
+        ([{"values": ["bad"]}], "must be numeric"),
+        ([{"values": 1}], "must be list-like"),
+        ([1], "entries must be dicts"),
+    ],
+)
+@pytest.mark.parametrize("hold_notifications", [False, True])
+def test_histogram_series_updates_reject_invalid(
+    series: Any, match: str, hold_notifications: bool
+) -> None:
+    """Invalid updates leave valid state intact and never notify the frontend."""
+    widget = HistogramWidget(series=[{"values": [1, 2]}])
+    old_state = widget.to_dict()
+    observer = Mock()
+    widget.observe(observer, names="series")
+    with (
+        pytest.raises(tl.TraitError, match=match),
+        widget.hold_trait_notifications() if hold_notifications else nullcontext(),
+    ):
+        widget.series = series
+    assert widget.to_dict() == old_state
+    observer.assert_not_called()
+
+
+@pytest.mark.parametrize("series", [None, [], [{"values": []}]])
+def test_histogram_series_updates_clear(series: Any) -> None:
+    """Clearing or providing an empty sample array stays valid after construction."""
+    widget = HistogramWidget(series=[{"values": [1, 2]}])
+    widget.series = series
+    assert widget.series == HistogramWidget(series=series).series == series
 
 
 # === New widget specific behaviors ===
