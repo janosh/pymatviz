@@ -50,19 +50,15 @@ def spg_to_crystal_sys(spg: float | str) -> CrystalSystem:
     if not (1 <= spg <= 230):
         raise ValueError(f"Invalid space group {spg}, must be 1 <= num <= 230")
 
-    if spg <= 2:
-        return "triclinic"
-    if spg <= 15:
-        return "monoclinic"
-    if spg <= 74:
-        return "orthorhombic"
-    if spg <= 142:
-        return "tetragonal"
-    if spg <= 167:
-        return "trigonal"
-    if spg <= 194:
-        return "hexagonal"
-    return "cubic"
+    crys_sys_max_spg: tuple[tuple[CrystalSystem, int], ...] = (
+        ("triclinic", 2),
+        ("monoclinic", 15),
+        ("orthorhombic", 74),
+        ("tetragonal", 142),
+        ("trigonal", 167),
+        ("hexagonal", 194),
+    )
+    return next((crys for crys, max_spg in crys_sys_max_spg if spg <= max_spg), "cubic")
 
 
 def spg_num_to_from_symbol(spg: int | str) -> str | int:
