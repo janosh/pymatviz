@@ -41,6 +41,14 @@ def color_scale_trait() -> Any:
     )
 
 
+def color_bar_trait() -> Any:
+    """Synced matterviz ``ColorBar`` props dict: ``{}`` (default) shows the default
+    color bar, ``None`` hides it, e.g. ``{"title": "count", "orientation":
+    "vertical"}`` customizes it.
+    """
+    return tl.Dict(default_value={}, allow_none=True).tag(sync=True)
+
+
 class StructureVizTraits(tl.HasTraits):
     """Display options shared by structure-rendering widgets (synced to JS)."""
 

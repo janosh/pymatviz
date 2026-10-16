@@ -7,7 +7,7 @@ from typing import Any
 import traitlets as tl
 
 from pymatviz.widgets._normalize import normalize_json_kwargs, normalize_plot_json
-from pymatviz.widgets._traits import color_scale_trait
+from pymatviz.widgets._traits import color_bar_trait, color_scale_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -36,8 +36,7 @@ class PeriodicTableWidget(MatterVizWidget):
     color_scale = color_scale_trait()
     color_overrides = tl.Dict(allow_none=True).tag(sync=True)
     labels = tl.Dict(allow_none=True).tag(sync=True)
-    # matterviz ColorBar props; {} shows the default bar, None hides it
-    color_bar = tl.Dict(default_value={}, allow_none=True).tag(sync=True)
+    color_bar = color_bar_trait()
     gap = tl.Unicode(default_value="0.3cqw").tag(sync=True)
     # styling for tiles with no heatmap value, e.g. {"color": "gray", "label": "N/A"}.
     # color "element-category" uses the element's category color.

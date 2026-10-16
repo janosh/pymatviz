@@ -167,6 +167,18 @@ from pymatviz.widgets.xrd import XrdWidget
             "heatmap_matrix",
             "color_bar",
         ),
+        (
+            FermiSurfaceWidget,
+            {"fermi_data": {"isosurfaces": []}, "color_bar": {"title": "v_F"}},
+            "fermi_surface",
+            "color_bar",
+        ),
+        (
+            FermiSurfaceWidget,
+            {"band_data": {"energies": []}, "color_bar": None},
+            "fermi_surface",
+            "color_bar",
+        ),
         (SpacegroupBarPlotWidget, {"data": [225, 166, 62]}, "spacegroup_bar", "data"),
         (
             ChemPotDiagramWidget,
