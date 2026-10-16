@@ -121,8 +121,23 @@ def test_clear_widget_cache_version_specific(
 # === pinned version ===
 
 
+@pytest.mark.parametrize(
+    ("version", "expected_url"),
+    [
+        ("main", "https://matterviz.janosh.dev/anywidget/matterviz.css"),
+        (
+            "0.8.0",
+            "https://cdn.jsdelivr.net/npm/matterviz-anywidget@0.8.0/build/matterviz.css",
+        ),
+    ],
+)
+def test_cdn_url(version: str, expected_url: str) -> None:
+    """Version "main" maps to the matterviz docs site, npm versions to jsDelivr."""
+    assert matterviz._cdn_url(version, "matterviz.css") == expected_url
+
+
 def test_pinned_anywidget_version_resolves() -> None:
-    """The pinned matterviz-anywidget version is fetchable from jsDelivr.
+    """The default matterviz-anywidget version's bundle URL is fetchable.
 
     Network-gated: skips (never fails) when offline or not yet published, so it
     stays green pre-publish but flags a broken pin once the bundle is live.
@@ -168,20 +183,31 @@ def cache_at_tmp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 def test_fetch_widget_asset_cached_file(cache_at_tmp: Path) -> None:
-    """Cached files are returned without triggering a download."""
-    cache_file = (
-        cache_at_tmp
-        / "matterviz-anywidget"
-        / matterviz.MATTERVIZ_ANYWIDGET_VERSION
-        / "matterviz.js"
-    )
-    cache_file.parent.mkdir(parents=True)
-    cache_file.write_text("cached content")
+    """Cached npm versions skip the download; main ignores the cache, re-downloads
+    and never writes it (its bundle changes with every matterviz deploy).
+    """
+    for version in ("0.3.9", "main"):
+        cache_file = cache_at_tmp / "matterviz-anywidget" / version / "matterviz.js"
+        cache_file.parent.mkdir(parents=True)
+        cache_file.write_text("cached content")
 
     with patch(f"{DOTTED_PATH}.urllib.request.urlopen") as mock_dl:
-        assert matterviz.fetch_widget_asset("matterviz.js") == "cached content"
-
+        assert (
+            matterviz.fetch_widget_asset("matterviz.js", version_override="0.3.9")
+            == "cached content"
+        )
     mock_dl.assert_not_called()
+
+    main_dir = cache_at_tmp / "matterviz-anywidget" / "main"
+    with patch(
+        f"{DOTTED_PATH}.urllib.request.urlopen", side_effect=_fake_urlopen
+    ) as mock_dl:
+        result = matterviz.fetch_widget_asset("matterviz.js", version_override="main")
+    assert result == "downloaded content"
+    assert mock_dl.call_args.args[0] == matterviz._cdn_url("main")
+    # stale main file neither served nor overwritten
+    assert [path.name for path in main_dir.iterdir()] == ["matterviz.js"]
+    assert (main_dir / "matterviz.js").read_text() == "cached content"
 
 
 def test_fetch_widget_asset_downloads_and_caches(cache_at_tmp: Path) -> None:

@@ -30,6 +30,7 @@ from pymatviz.widgets._headless import (
     render_widget_headless,
 )
 from pymatviz.widgets.chem_pot_diagram import ChemPotDiagramWidget
+from pymatviz.widgets.matterviz import MATTERVIZ_ANYWIDGET_VERSION, _cdn_url
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 
 
@@ -355,10 +356,9 @@ def test_build_interactive_html_requires_one_esm_source() -> None:
 
 
 def test_to_html_default_uses_cdn_url() -> None:
-    """Default to_html references the matterviz-anywidget npm bundle + widget data."""
+    """Default to_html references the default-version bundle URL + widget data."""
     html = _scatter().to_html()
-    assert "https://cdn.jsdelivr.net/npm/matterviz-anywidget@" in html
-    assert "matterviz.js" in html
+    assert _cdn_url(MATTERVIZ_ANYWIDGET_VERSION) in html
     assert '"scatter_plot"' in html
     assert "atob(" not in html  # external, not inlined
 
@@ -367,7 +367,7 @@ def test_to_html_inline_embeds_bundle() -> None:
     """inline=True embeds the base64 bundle and references no CDN."""
     html = _scatter().to_html(inline=True)
     assert "atob(" in html
-    assert "cdn.jsdelivr.net" not in html
+    assert _cdn_url(MATTERVIZ_ANYWIDGET_VERSION) not in html
 
 
 def test_to_html_worker_shim_only_for_chem_pot() -> None:

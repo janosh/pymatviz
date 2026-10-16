@@ -5,19 +5,19 @@ from typing import Any
 import pytest
 from pymatgen.core import Structure
 
-from pymatviz.widgets.matterviz import MatterVizWidget, fetch_widget_asset
+from pymatviz.widgets.matterviz import MatterVizWidget
 
 
 @pytest.fixture(scope="session", autouse=True)
 def ensure_widget_assets() -> None:
-    """Warm the matterviz-anywidget asset cache before any tests run.
+    """Warm the in-process matterviz-anywidget asset cache before any tests run.
 
     Widget construction needs the ESM/CSS bundle; fetch it once (from
-    MATTERVIZ_ANYWIDGET_DIR, the on-disk cache, or jsDelivr) so per-widget
-    construction is fast and works offline after the first fetch.
+    MATTERVIZ_ANYWIDGET_DIR, the on-disk cache, or the bundle URL) so per-widget
+    construction is fast. "main" is never cached on disk, so the class cache is
+    what keeps it from being re-downloaded.
     """
-    for filename in ("matterviz.js", "matterviz.css"):
-        fetch_widget_asset(filename)
+    MatterVizWidget._set_class_assets()
 
 
 @pytest.fixture
