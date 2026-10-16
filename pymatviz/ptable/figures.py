@@ -280,12 +280,9 @@ def ptable_heatmap(
             continue
 
         color_val = heat_value_element_map[symbol]
-        if log and color_val > 0:
-            color_val = np.log10(color_val)
-        # until https://github.com/plotly/plotly.js/issues/975 is resolved, we need to
-        # insert transparency (rgba0) at low end of colorscale (+1e-6) to not show any
-        # colors on empty tiles of the periodic table
-        heatmap_values[row][col] = color_val
+        heatmap_values[row][col] = (
+            np.log10(color_val) if log and color_val > 0 else color_val
+        )
 
     if isinstance(font_colors, str):
         font_colors = [font_colors]
@@ -359,13 +356,7 @@ def ptable_heatmap(
         title=dict(x=0.4, y=0.95),
     )
 
-    horizontal_cbar = colorbar.get("orientation") == "h"
-    if horizontal_cbar:  # other orientation defaults come from _get_colorbar_settings
-        colorbar = dict(y=0.72) | colorbar
-
-    if title := colorbar.get("title"):
-        # <br> to increase title standoff
-        colorbar["title"] = f"{title}" if horizontal_cbar else f"<br><br>{title}"
+    colorbar = _place_colorbar_title(colorbar, horizontal_y=0.72)
 
     if log:
         orig_min = np.floor(min(non_nan_values))
@@ -682,8 +673,7 @@ def ptable_hists(
 
     # Update global figure layout
     fig.layout.margin = dict(l=10, r=10, t=10, b=10)
-    fig.layout.plot_bgcolor = "rgba(0,0,0,0)"
-    fig.layout.paper_bgcolor = "rgba(0,0,0,0)"
+    fig.layout.paper_bgcolor = fig.layout.plot_bgcolor = "rgba(0,0,0,0)"
     fig.layout.width = 900 * scale
     fig.layout.height = 500 * scale
 
@@ -859,6 +849,21 @@ def _add_colorbar_trace(
         row=row,
         col=col,
     )
+
+
+def _place_colorbar_title(
+    colorbar: dict[str, Any], *, horizontal_y: float
+) -> dict[str, Any]:
+    """Default a horizontal colorbar's y position (other orientation defaults come
+    from _get_colorbar_settings) and pad vertical colorbar titles with <br>s for
+    standoff.
+    """
+    horizontal = colorbar.get("orientation") == "h"
+    if horizontal:
+        colorbar = dict(y=horizontal_y) | colorbar
+    if title := colorbar.get("title"):
+        colorbar["title"] = f"{title}" if horizontal else f"<br><br>{title}"
+    return colorbar
 
 
 def _get_colorbar_settings(
@@ -1105,17 +1110,10 @@ def ptable_heatmap_splits(
         element_symbol_map (dict[str, str] | None): A dictionary to map element symbols
             to custom strings. If provided, these custom strings will be displayed
             instead of the standard element symbols. Defaults to None.
-        symbol_kwargs (dict): Additional keyword arguments for element symbol text.
-            Supports all plotly annotation properties plus font customization through
-            the "font" key. Font properties include:
-            - color (str): Text color. Defaults to "black".
-            - size (int): Font size in pixels. Defaults to font_size * 1.5.
-            - family (str): Font family. Defaults to "Arial, sans-serif".
-            - weight (str): Font weight. Defaults to "bold".
-            Example: dict(font=dict(color="red", size=16, weight="normal"))
-            Other common kwargs:
-            - x, y (float): Position within tile. Defaults to (0.5, 0.5).
-            - xanchor, yanchor (str): Text anchor point. Defaults to "center", "middle".
+        symbol_kwargs (dict): Plotly annotation kwargs for the element symbol, centered
+            in the tile by default. A "font" dict is merged into the default font
+            (size font_size or 14, color contrasting with the tile).
+            E.g. dict(y=0.8, font=dict(color="red", weight="bold")).
 
         --- Annotation ---
         annotations (dict[str, str] | Callable[[np.ndarray], str] | None): Annotation to
@@ -1448,8 +1446,7 @@ def ptable_heatmap_splits(
 
     # Update layout
     fig.layout.showlegend = False
-    fig.layout.paper_bgcolor = "rgba(0,0,0,0)"
-    fig.layout.plot_bgcolor = "rgba(0,0,0,0)"
+    fig.layout.paper_bgcolor = fig.layout.plot_bgcolor = "rgba(0,0,0,0)"
     fig.layout.width = 45 * n_cols * scale
     fig.layout.height = 45 * n_rows * scale + 40
     fig.layout.margin = dict(l=10, r=10, t=50, b=10)
@@ -1572,29 +1569,17 @@ def ptable_scatter(
         element_symbol_map (dict[str, str] | None): A dictionary to map element symbols
             to custom strings. If provided, these custom strings will be displayed
             instead of the standard element symbols. Defaults to None.
-        symbol_kwargs (dict): Additional keyword arguments for element symbol text.
-            Supports all plotly annotation properties plus font customization through
-            the "font" key. Font properties include:
-            - color (str): Text color. Defaults to "black".
-            - size (int): Font size in pixels. Defaults to font_size * 1.5.
-            - family (str): Font family. Defaults to "Arial, sans-serif".
-            - weight (str): Font weight. Defaults to "bold".
-            Example: dict(font=dict(color="red", size=16, weight="normal"))
-            Other common kwargs:
-            - x, y (float): Position within tile. Defaults to (0.5, 0.5).
-            - xanchor, yanchor (str): Text anchor point. Defaults to "center", "middle".
+        symbol_kwargs (dict): Plotly annotation kwargs for the element symbol, placed
+            in the tile's top-right corner by default. E.g. dict(font=dict(size=16)).
 
         --- Annotation ---
-        annotations (dict[str, str] | Callable[[np.ndarray], str] | None): Annotation to
-            display for each element tile. Can be either:
-            - dict mapping element symbols to annotation strings
-            - callable that takes values and returns annotation string
-            - None for not displaying annotations (default)
+        annotations (dict[str, str] | Callable[[ElemData], str] | None): Annotation
+            per element tile, see ptable_hists.
 
         --- Element type colors ---
         color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
             color element symbols, tile backgrounds, or both based on element type.
-            Defaults to "background".
+            Defaults to "symbol".
         elem_type_colors (dict | None): dict to map element types to colors.
             None to use the default = pymatviz.colors.ELEM_TYPE_COLORS.
 
@@ -1805,8 +1790,7 @@ def ptable_scatter(
 
     # Update layout
     fig.layout.showlegend = False
-    fig.layout.paper_bgcolor = "rgba(0,0,0,0)"
-    fig.layout.plot_bgcolor = "rgba(0,0,0,0)"
+    fig.layout.paper_bgcolor = fig.layout.plot_bgcolor = "rgba(0,0,0,0)"
     fig.layout.width = 850 * scale
     fig.layout.height = 500 * scale
     fig.layout.margin = dict(l=10, r=10, t=50, b=10)
@@ -1850,14 +1834,9 @@ def ptable_scatter(
         )
 
     if has_numeric_colors and colorbar is not False:
-        colorbar = dict(orientation="h") | (colorbar or {})
-        horizontal_cbar = colorbar.get("orientation") == "h"
-        if horizontal_cbar:  # other orientation defaults come from
-            colorbar = dict(y=0.74) | colorbar  # _get_colorbar_settings
-
-        if title := colorbar.get("title"):
-            # <br> to increase title standoff
-            colorbar["title"] = f"{title}" if horizontal_cbar else f"<br><br>{title}"
+        colorbar = _place_colorbar_title(
+            dict(orientation="h") | (colorbar or {}), horizontal_y=0.74
+        )
 
         fig.add_scatter(
             x=[None],
