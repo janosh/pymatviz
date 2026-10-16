@@ -37,24 +37,6 @@ def _get_axis_labels(
     return xlabel, ylabel
 
 
-def _create_marginal_subplots() -> go.Figure:
-    """Create subplot structure for marginal histograms."""
-    return make_subplots(
-        rows=2,
-        cols=2,
-        column_widths=[0.85, 0.15],
-        row_heights=[0.15, 0.85],
-        shared_xaxes=True,
-        shared_yaxes=True,
-        horizontal_spacing=0.02,
-        vertical_spacing=0.02,
-        specs=[
-            [{"secondary_y": False}, {"secondary_y": False}],
-            [{"secondary_y": False}, {"secondary_y": False}],
-        ],
-    )
-
-
 def _add_marginal_histograms(
     subplot_fig: go.Figure,
     xs: np.ndarray,
@@ -63,33 +45,21 @@ def _add_marginal_histograms(
     xlabel: str,
     ylabel: str,
 ) -> None:
-    """Add marginal histograms to subplot figure."""
-    # Top histogram (x-axis marginal)
-    hist_x, bin_edges_x = np.histogram(xs, bins=bins)
-    bin_centers_x = (bin_edges_x[:-1] + bin_edges_x[1:]) / 2
-    subplot_fig.add_bar(
-        x=bin_centers_x,
-        y=hist_x,
-        opacity=0.7,
-        marker_line_width=0,
-        showlegend=False,
-        row=1,
-        col=1,
-    )
-
-    # Right histogram (y-axis marginal)
-    hist_y, bin_edges_y = np.histogram(ys, bins=bins)
-    bin_centers_y = (bin_edges_y[:-1] + bin_edges_y[1:]) / 2
-    subplot_fig.add_bar(
-        x=hist_y,
-        y=bin_centers_y,
-        opacity=0.7,
-        marker_line_width=0,
-        orientation="h",
-        showlegend=False,
-        row=2,
-        col=2,
-    )
+    """Add x (top) and y (right) marginal histograms to a 2x2 subplot figure."""
+    for values, row, col, orientation in ((xs, 1, 1, None), (ys, 2, 2, "h")):
+        counts, bin_edges = np.histogram(values, bins=bins)
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+        bar_xy = (counts, bin_centers) if orientation else (bin_centers, counts)
+        subplot_fig.add_bar(
+            x=bar_xy[0],
+            y=bar_xy[1],
+            opacity=0.7,
+            marker_line_width=0,
+            orientation=orientation,
+            showlegend=False,
+            row=row,
+            col=col,
+        )
 
     # Remove lines from all axes
     subplot_fig.update_layout(
@@ -589,8 +559,16 @@ def _with_marginal_hist(
 
     fig = main_fig_func(x, y, df=df, xlabel=xlabel, ylabel=ylabel, **kwargs)
 
-    # Create subplot with marginals
-    subplot_fig = _create_marginal_subplots()
+    subplot_fig = make_subplots(
+        rows=2,
+        cols=2,
+        column_widths=[0.85, 0.15],
+        row_heights=[0.15, 0.85],
+        shared_xaxes=True,
+        shared_yaxes=True,
+        horizontal_spacing=0.02,
+        vertical_spacing=0.02,
+    )
 
     # Add main plot and marginals
     for trace in fig.data:
