@@ -439,37 +439,27 @@ class MatterVizWidget(AnyWidget):
         """
         from pymatviz.widgets._headless import _CAPTURE_FORMATS, render_widget_headless
 
-        if dpi <= 0:
-            raise ValueError(f"dpi must be positive, got {dpi}")
-        if timeout <= 0:
-            raise ValueError(f"timeout must be positive, got {timeout}")
+        dims = dict(dpi=dpi, timeout=timeout, width=width, height=height)
+        for name, val in dims.items():
+            if val is not None and val <= 0:
+                raise ValueError(f"{name} must be positive, got {val}")
         if not 1 <= quality <= 100:
             raise ValueError(f"quality must be between 1 and 100, got {quality}")
-        if width is not None and width <= 0:
-            raise ValueError(f"width must be positive, got {width}")
-        if height is not None and height <= 0:
-            raise ValueError(f"height must be positive, got {height}")
 
-        if fmt is not None and fmt not in _CAPTURE_FORMATS:
-            raise ValueError(
-                f"Unsupported format {fmt!r}, expected one of {_CAPTURE_FORMATS}"
-            )
-        resolved_fmt = fmt
-        if resolved_fmt is None and filename:
+        if fmt is None and filename:
             ext = os.path.splitext(filename)[1].lower().lstrip(".")
             if not ext:
                 raise ValueError(
                     f"Cannot infer format from {filename=!r} "
                     "(no extension). Pass fmt= explicitly."
                 )
-            resolved_fmt = {"jpg": "jpeg"}.get(ext, ext)
-            if resolved_fmt not in _CAPTURE_FORMATS:
-                raise ValueError(
-                    f"Unsupported file extension '.{ext}'; "
-                    f"supported: {sorted(_CAPTURE_FORMATS)}"
-                )
-        if resolved_fmt is None:
-            resolved_fmt = "png"
+            fmt = {"jpg": "jpeg"}.get(ext, ext)  # ty: ignore[invalid-assignment]
+        fmt = fmt or "png"
+        if fmt not in _CAPTURE_FORMATS:
+            raise ValueError(
+                f"Unsupported format {fmt!r} ({filename=}), expected one of "
+                f"{_CAPTURE_FORMATS}"
+            )
 
         esm_content, css_content = self._resolve_assets()
 
@@ -477,7 +467,7 @@ class MatterVizWidget(AnyWidget):
             widget_data=self.to_dict(),
             esm_content=esm_content,
             css_content=css_content,
-            fmt=resolved_fmt,
+            fmt=fmt,
             dpi=dpi,
             timeout=timeout,
             quality=quality,

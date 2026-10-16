@@ -6,12 +6,12 @@ from typing import Any
 
 import traitlets as tl
 
-from pymatviz.widgets._normalize import normalize_plot_json, normalize_plot_series
-from pymatviz.widgets._traits import PlotControlsTraits
+from pymatviz.widgets._normalize import normalize_json_kwargs, normalize_plot_series
+from pymatviz.widgets._traits import CartesianPlotTraits, optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
-class HistogramWidget(PlotControlsTraits, MatterVizWidget):
+class HistogramWidget(CartesianPlotTraits, MatterVizWidget):
     """MatterViz widget wrapper for histogram visualizations. Each series holds the
     raw samples to bin in ``values``; binning happens in the frontend.
 
@@ -19,7 +19,6 @@ class HistogramWidget(PlotControlsTraits, MatterVizWidget):
     lists; invalid updates raise ``traitlets.TraitError`` and preserve prior data.
     """
 
-    series = tl.List(allow_none=True).tag(sync=True)
     bins = tl.Int(default_value=100).tag(sync=True)
     mode = tl.CaselessStrEnum(values=["single", "overlay"], default_value="single").tag(
         sync=True
@@ -27,20 +26,7 @@ class HistogramWidget(PlotControlsTraits, MatterVizWidget):
     # Two-way synced index of the active series in single-mode controls
     selected_series_idx = tl.Int(default_value=0).tag(sync=True)
     show_legend = tl.Bool(default_value=True).tag(sync=True)
-    x_axis = tl.Dict(allow_none=True).tag(sync=True)
-    y_axis = tl.Dict(allow_none=True).tag(sync=True)
-    y2_axis = tl.Dict(allow_none=True).tag(sync=True)
-    display = tl.Dict(allow_none=True).tag(sync=True)
-    legend = tl.Dict(allow_none=True).tag(sync=True)
-    bar = tl.Dict(allow_none=True).tag(sync=True)
-    ref_lines = tl.List(allow_none=True).tag(sync=True)
-    padding = tl.Dict(allow_none=True).tag(sync=True)
-    range_padding = tl.Float(allow_none=True, default_value=None).tag(sync=True)
-    x2_axis = tl.Dict(allow_none=True).tag(sync=True)
-    x_range = tl.List(allow_none=True).tag(sync=True)
-    x2_range = tl.List(allow_none=True).tag(sync=True)
-    y_range = tl.List(allow_none=True).tag(sync=True)
-    y2_range = tl.List(allow_none=True).tag(sync=True)
+    bar = optional_trait(tl.Dict)  # bar-style config
 
     @tl.validate("series")
     def _validate_series(self, proposal: dict[str, Any]) -> list[dict[str, Any]] | None:
@@ -56,25 +42,6 @@ class HistogramWidget(PlotControlsTraits, MatterVizWidget):
     def __init__(
         self,
         series: list[dict[str, Any]] | tuple[dict[str, Any], ...] | None = None,
-        *,
-        bins: int = 100,
-        mode: str = "single",
-        selected_series_idx: int = 0,
-        show_legend: bool = True,
-        x_axis: dict[str, Any] | None = None,
-        y_axis: dict[str, Any] | None = None,
-        y2_axis: dict[str, Any] | None = None,
-        display: dict[str, Any] | None = None,
-        legend: dict[str, Any] | None = None,
-        bar: dict[str, Any] | None = None,
-        ref_lines: list[dict[str, Any]] | None = None,
-        padding: dict[str, int] | None = None,
-        range_padding: float | None = None,
-        x2_axis: dict[str, Any] | None = None,
-        x_range: list[float | None] | None = None,
-        x2_range: list[float | None] | None = None,
-        y_range: list[float | None] | None = None,
-        y2_range: list[float | None] | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize a histogram widget.
@@ -82,55 +49,16 @@ class HistogramWidget(PlotControlsTraits, MatterVizWidget):
         Args:
             series: Series dicts ``{"values": [...], "label", "color", ...}`` with
                 the raw samples in ``values``.
-            bins: Number of bins.
-            mode: Histogram mode (``single`` or ``overlay``).
-            selected_series_idx: Index of the active series in single-mode controls.
-            show_legend: Whether to render the legend.
-            x_axis: X axis configuration.
-            y_axis: Primary Y axis configuration.
-            y2_axis: Secondary Y axis configuration.
-            display: Grid/zero-line display options.
-            legend: Legend configuration.
-            bar: Bar-style configuration.
-            ref_lines: Reference line definitions.
-            padding: Plot area padding ``{"t": N, "b": N, "l": N, "r": N}``
-                in pixels.
-            range_padding: Fraction of data range to add as padding.
-            x2_axis: Secondary X axis configuration.
-            x_range: Fixed X axis range ``[min, max]``.
-            x2_range: Fixed secondary X axis range ``[min, max]``.
-            y_range: Fixed Y axis range ``[min, max]``.
-            y2_range: Fixed secondary Y axis range ``[min, max]``.
-            **kwargs: Additional base widget keyword arguments.
+            **kwargs: Widget traits, e.g. ``bins``, ``mode`` (``single`` or
+                ``overlay``), ``selected_series_idx``, axis/range configs (see
+                ``CartesianPlotTraits``), ``bar``.
         """
+        normalize_json_kwargs(kwargs, (*self._JSON_KWARGS, "bar"), "Histogram")
         super().__init__(
             widget_type="histogram",
             # Preserve the constructor's existing TypeError/ValueError behavior.
             series=normalize_plot_series(
                 series, component_name="Histogram", samples_key="values"
             ),
-            bins=bins,
-            mode=mode,
-            selected_series_idx=selected_series_idx,
-            show_legend=show_legend,
-            **normalize_plot_json(
-                dict(
-                    x_axis=x_axis,
-                    y_axis=y_axis,
-                    y2_axis=y2_axis,
-                    display=display,
-                    legend=legend,
-                    bar=bar,
-                    ref_lines=ref_lines,
-                    padding=padding,
-                    x2_axis=x2_axis,
-                    x_range=x_range,
-                    x2_range=x2_range,
-                    y_range=y_range,
-                    y2_range=y2_range,
-                ),
-                "Histogram",
-            ),
-            range_padding=range_padding,
             **kwargs,
         )

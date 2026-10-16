@@ -764,11 +764,25 @@ def test_to_img_format_inference(
     assert mock_render.call_args.kwargs["fmt"] == expected_capture_fmt
 
 
-def test_to_img_rejects_unknown_extension(tmp_path: Any) -> None:
-    """to_img raises ValueError for unrecognized file extensions."""
-    widget = _make_widget()
-    with pytest.raises(ValueError, match="Unsupported file extension"):
-        widget.to_img(filename=f"{tmp_path}/plot.tiff")
+@pytest.mark.parametrize(
+    ("img_kwargs", "match"),
+    [
+        ({"filename": "plot.tiff"}, "Unsupported format 'tiff'"),
+        ({"fmt": "tiff"}, "Unsupported format 'tiff'"),
+        ({"filename": "plot"}, "Cannot infer format"),
+        ({"dpi": 0}, "dpi must be positive"),
+        ({"width": -1}, "width must be positive"),
+        ({"quality": 101}, "quality must be between 1 and 100"),
+    ],
+)
+def test_to_img_rejects_invalid_args(
+    tmp_path: Any, img_kwargs: dict[str, Any], match: str
+) -> None:
+    """to_img raises ValueError for bad formats and render settings."""
+    if filename := img_kwargs.get("filename"):
+        img_kwargs = {**img_kwargs, "filename": f"{tmp_path}/{filename}"}
+    with pytest.raises(ValueError, match=match):
+        _make_widget().to_img(**img_kwargs)
 
 
 @pytest.mark.parametrize("path_suffix", ["output.png", "sub/dir/output.png"])

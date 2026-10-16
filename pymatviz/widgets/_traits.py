@@ -94,3 +94,34 @@ class PlotControlsTraits(tl.HasTraits):
     controls_open = tl.Bool(default_value=False).tag(sync=True)
     controls_toggle_props = optional_trait(tl.Dict)
     controls_pane_props = optional_trait(tl.Dict)
+
+
+class CartesianPlotTraits(PlotControlsTraits):
+    """Series, axes, ranges and decorations shared by matterviz 2D plot components
+    (``ScatterPlot``, ``BarPlot``, ``Histogram``). Axis/legend/display/padding are
+    matterviz config dicts, ranges are ``[min, max]`` lists (None = auto).
+    """
+
+    # config kwargs passed through normalize_plot_json (numpy -> JSON) on init
+    _JSON_KWARGS: tuple[str, ...] = (
+        "x_axis", "x2_axis", "y_axis", "y2_axis", "display", "legend", "ref_lines",
+        "padding", "x_range", "x2_range", "y_range", "y2_range",
+    )  # fmt: skip
+
+    series = optional_trait(tl.List)
+    x_axis = optional_trait(tl.Dict)
+    x2_axis = optional_trait(tl.Dict)
+    y_axis = optional_trait(tl.Dict)
+    y2_axis = optional_trait(tl.Dict)
+    display = optional_trait(tl.Dict)  # grid/zero-line options
+    legend = optional_trait(tl.Dict)
+    ref_lines = optional_trait(tl.List)
+    # plot-area padding {"t": N, "b": N, "l": N, "r": N} in pixels
+    padding = optional_trait(tl.Dict)
+    # fraction of the data range added as padding (frontend default 0.05)
+    range_padding = optional_trait(tl.Float)
+    show_legend = optional_trait(tl.Bool)
+    x_range = optional_trait(tl.List)
+    x2_range = optional_trait(tl.List)
+    y_range = optional_trait(tl.List)
+    y2_range = optional_trait(tl.List)
