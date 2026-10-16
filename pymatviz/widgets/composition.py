@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 import traitlets as tl
 from pymatgen.core import Composition
 
-from pymatviz.widgets._traits import ELEMENT_COLOR_SCHEMES
+from pymatviz.widgets._traits import ELEMENT_COLOR_SCHEMES, optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -46,6 +46,9 @@ class CompositionWidget(MatterVizWidget):
     color_scheme = tl.CaselessStrEnum(ELEMENT_COLOR_SCHEMES, default_value="Jmol").tag(
         sync=True
     )
+    # Hatch/texture fill per element, {symbol: FillPattern}: a matterviz pattern
+    # shape name (e.g. "diagonal") or an options dict
+    patterns = optional_trait(tl.Dict)
 
     # kwargs for the pymatgen Composition constructor. Python-side only (not
     # synced): the frontend has no such prop, it only affects parsing here.

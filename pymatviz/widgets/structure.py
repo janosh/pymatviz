@@ -9,7 +9,7 @@ import numpy as np
 import traitlets as tl
 
 from pymatviz.widgets._normalize import structure_to_dict
-from pymatviz.widgets._traits import StructureVizTraits, optional_trait
+from pymatviz.widgets._traits import STRUCTURE_PANES, StructureVizTraits, optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -178,6 +178,9 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
 
     # UI controls
     enable_info_pane = tl.Bool(default_value=True).tag(sync=True)
+    # Open floating pane (e.g. "flight" for the camera-flight planner), None = closed.
+    # Two-way synced.
+    active_pane = optional_trait(tl.CaselessStrEnum, values=STRUCTURE_PANES)
     png_dpi = optional_trait(tl.Int)
 
     # Interaction state (two-way synced with the frontend for ipywidgets linking).

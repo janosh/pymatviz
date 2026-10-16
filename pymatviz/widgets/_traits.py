@@ -14,6 +14,13 @@ ELEMENT_COLOR_SCHEMES = ("Vesta", "Jmol", "Alloy", "Pastel", "Muted", "Dark Mode
 BONDING_STRATEGIES = ("electroneg_ratio", "explicit_only")
 # Mirror matterviz's ExportFormat (src/lib/io/export.ts)
 EXPORT_FORMATS = ("png", "svg", "csv", "json", "md", "tex")
+# Mirror matterviz's StructurePane (src/lib/structure/index.ts) and TrajectoryPane
+# (src/lib/trajectory/Trajectory.svelte): the floating panes active_pane can open
+STRUCTURE_PANES = ("controls", "info", "export", "flight")
+TRAJECTORY_PANES = (
+    "controls", "info", "msd", "vacf", "rdf", "spectroscopy", "hotspots",
+    "structure-id", "data-inspector", "export", "flight",
+)  # fmt: skip
 
 
 def optional_trait(trait_cls: Any, **kwargs: Any) -> Any:
@@ -77,6 +84,9 @@ class StructureVizTraits(tl.HasTraits):
     ).tag(sync=True)
     background_color = optional_trait(tl.Unicode)
     background_opacity = optional_trait(tl.Float)
+    # matterviz CutawaySettings {mode: "off" | "plane" | "slab", axis: 0 | 1 | 2,
+    # position, thickness, whole_atoms?} slicing the structure in fractional coords
+    cutaway = optional_trait(tl.Dict)
 
     # UI controls. gizmo: bool or a matterviz GizmoOptions dict
     gizmo = tl.Union([tl.Bool(), tl.Dict()], allow_none=True, default_value=None).tag(

@@ -302,7 +302,7 @@ def test_to_dict_reflects_runtime_mutations() -> None:
         (PeriodicTableWidget, "color_scale", "interpolateViridis"),
         (PeriodicTableWidget, "color_bar", {}),  # shown by default
         (PeriodicTableWidget, "missing", None),
-        (HeatmapMatrixWidget, "color_bar", None),  # hidden by default
+        (HeatmapMatrixWidget, "color_bar", {}),  # shown by default
         (HeatmapMatrixWidget, "missing", None),
         (HeatmapMatrixWidget, "values", None),  # None, not an empty list
         (HeatmapMatrixWidget, "x_items", []),
@@ -594,6 +594,11 @@ _BONDING_STRATEGY_CASES = [
             for cls in (StructureWidget, TrajectoryWidget)
             for case in _BONDING_STRATEGY_CASES
         ],
+        (StructureWidget, "active_pane", "Flight", "flight"),
+        (StructureWidget, "active_pane", None, None),
+        (StructureWidget, "active_pane", "hotspots", tl.TraitError),  # trajectory-only
+        (TrajectoryWidget, "active_pane", "hotspots", "hotspots"),
+        (TrajectoryWidget, "active_pane", "nope", tl.TraitError),
     ],
 )
 def test_matterviz_name_enums(
@@ -602,7 +607,7 @@ def test_matterviz_name_enums(
     value: str | None,
     expected: str | type[Exception] | None,
 ) -> None:
-    """Scheme/strategy traits accept exactly matterviz's names, canonicalized."""
+    """Scheme/strategy/pane traits accept exactly matterviz's names, canonicalized."""
     widget = widget_cls()
     if isinstance(expected, type):
         with pytest.raises(expected):

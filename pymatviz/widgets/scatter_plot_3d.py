@@ -35,6 +35,8 @@ class ScatterPlot3DWidget(PlotControlsTraits, MatterVizWidget):
     legend = tl.Dict(allow_none=True).tag(sync=True)
     show_legend = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     camera_projection = tl.Unicode(default_value="perspective").tag(sync=True)
+    # matterviz InstanceTween {duration, easing, ...} animating point changes
+    point_tween = tl.Dict(allow_none=True).tag(sync=True)
 
     def __init__(
         self,

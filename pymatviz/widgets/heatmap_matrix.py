@@ -64,8 +64,8 @@ class HeatmapMatrixWidget(MatterVizWidget):
     y_items = tl.List().tag(sync=True)
     values = tl.Any(allow_none=True).tag(sync=True)
     color_scale = color_scale_trait()
-    # matterviz ColorBar props; None (default) hides the bar, {} shows the default bar
-    color_bar = tl.Dict(default_value=None, allow_none=True).tag(sync=True)
+    # matterviz ColorBar props; {} (default) shows the default bar, None hides it
+    color_bar = tl.Dict(default_value={}, allow_none=True).tag(sync=True)
     # styling for cells with no value, e.g. {"color": "gray", "label": "N/A"}
     missing = tl.Dict(default_value=None, allow_none=True).tag(sync=True)
     x_axis = tl.Dict(allow_none=True).tag(sync=True)

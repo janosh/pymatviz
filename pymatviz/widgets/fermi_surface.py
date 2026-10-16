@@ -6,8 +6,8 @@ from typing import Any
 
 import traitlets as tl
 
-from pymatviz.widgets._normalize import normalize_plot_json
-from pymatviz.widgets._traits import optional_trait
+from pymatviz.widgets._normalize import normalize_json_kwargs, normalize_plot_json
+from pymatviz.widgets._traits import color_scale_trait, optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -43,6 +43,15 @@ class FermiSurfaceWidget(MatterVizWidget):
 
     # Display options
     mu = optional_trait(tl.Float)
+    # Surface coloring: by band index, spin channel, or a per-vertex property
+    color_property = optional_trait(
+        tl.CaselessStrEnum, values=("band", "spin", "property")
+    )
+    color_scale = color_scale_trait()
+    # Property colored by in "property" mode (None = the first present)
+    property_name = optional_trait(tl.Unicode)
+    # Label of the unnamed per-vertex property, e.g. "Fermi velocity"
+    custom_property_label = optional_trait(tl.Unicode)
     representation = optional_trait(tl.Unicode)
     surface_opacity = optional_trait(tl.Float)
     show_bz = optional_trait(tl.Bool)
@@ -66,6 +75,7 @@ class FermiSurfaceWidget(MatterVizWidget):
         """
         if (fermi_data is None) == (band_data is None):
             raise ValueError("Provide exactly one of fermi_data or band_data.")
+        normalize_json_kwargs(kwargs, ("color_scale",), "FermiSurface")
 
         super().__init__(
             widget_type="fermi_surface",
