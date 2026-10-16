@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from plotly.subplots import make_subplots
 from pymatgen.core import PeriodicSite
 
 from pymatviz.enums import ElemColorScheme, SiteCoords
@@ -149,33 +148,12 @@ def structure_2d(
         go.Figure: Plotly figure showing the 2D structure(s).
     """
     structures = normalize_periodic_structures(struct)
-
     n_structs = len(structures)
-    n_cols = min(n_cols, n_structs)
-    n_rows = (n_structs - 1) // n_cols + 1
-
-    fig = make_subplots(
-        rows=n_rows,
-        cols=n_cols,
-        # Avoid IndexError on fig.layout.annotations[idx - 1].update(anno)
-        subplot_titles=[" " for _ in range(n_structs)],
-        vertical_spacing=0,
-        horizontal_spacing=0,
+    fig, n_rows, n_cols = helpers.make_structure_grid(
+        n_structs, n_cols, is_3d=False, vertical_spacing=0, horizontal_spacing=0
     )
 
-    # Don't call helpers.get_elem_colors here if elem_colors is a dict mapping structure
-    # keys to color schemes. Instead, handle per-structure color schemes in the loop
-    if isinstance(show_site_vectors, str):
-        show_site_vectors = [show_site_vectors]
-
-    # Determine which vector property to plot (calling outside loop ensures we plot
-    # the same prop for all sites in all structures)
-    vector_prop = helpers.get_first_matching_site_prop(
-        list(structures.values()),
-        show_site_vectors,
-        warn_if_none=show_site_vectors != ("force", "magmom"),
-        filter_callback=lambda _prop, val: helpers._is_3d_vector(val),
-    )
+    vector_prop = helpers.resolve_vector_prop(structures.values(), show_site_vectors)
 
     for idx, (struct_key, raw_struct_i) in enumerate(structures.items(), start=1):
         row = (idx - 1) // n_cols + 1
@@ -368,19 +346,15 @@ def structure_2d(
                 show_faces=show_cell_faces,
             )
 
-        if subplot_title is not False:  # Set subplot titles
+        if subplot_title is not False:
             anno = helpers.get_subplot_title(struct_i, struct_key, idx, subplot_title)
-            subtitle_y_pos = 1 - (row - 1) / n_rows - 0.02
-            fig.layout.annotations[idx - 1].update(
-                **dict(y=subtitle_y_pos, yanchor="top") | anno
-            )
+            helpers.set_subplot_title(fig, anno, idx, n_cols, n_rows)
 
     # Update layout
     fig.layout.height = 300 * n_rows
     fig.layout.width = 300 * n_cols
-    fig.layout.showlegend = site_labels == "legend"  # Show legend if using legend mode
-    fig.layout.paper_bgcolor = "rgba(0,0,0,0)"
-    fig.layout.plot_bgcolor = "rgba(0,0,0,0)"
+    fig.layout.showlegend = site_labels == "legend"
+    fig.layout.paper_bgcolor = fig.layout.plot_bgcolor = "rgba(0,0,0,0)"
     fig.layout.margin = dict(l=0, r=0, t=30, b=0)
     common_kwargs = dict(
         showticklabels=False,
@@ -439,107 +413,17 @@ def structure_3d(
 ) -> go.Figure:
     """Plot pymatgen structures in 3D with Plotly.
 
-    Args:
-        struct (AnyStructure | dict[str, AnyStructure] | Sequence[AnyStructure]):
-            Structure(s) to plot.
-        atomic_radii (float | dict[str, float], optional): Either a scaling factor for
-            default radii or map from element symbol to atomic radii. Defaults to None.
-        atom_size (float, optional): Scaling factor for atom sizes. Defaults to 20.
-        elem_colors (ElemColorScheme | dict[str, str], optional): Element color scheme
-            or custom color map. Defaults to ElemColorScheme.jmol.
-        scale (float, optional): Scaling of the plotted atoms and lines. Defaults to 1.
-        show_cell (bool | dict[str, Any], optional): Whether to render the cell. A
-            dict with "node"/"edge" keys customizes node/edge appearance. A dict keyed
-            by structure keys sets bool | style per structure (missing keys get the
-            default cell). Defaults to True.
-        show_cell_faces (bool | dict[str, Any], optional): Whether to show transparent
-            cell faces. If a dict, will  customize surfaces style. Defaults to True.
-        show_sites (bool | dict[str, Any], optional): Whether to plot atomic sites. If
-            a dict, will be used to customize site marker appearance. Defaults to True.
-        show_image_sites (bool | dict[str, Any], optional): Whether to show image sites
-            on cell edges and surfaces. If a dict, will be used to customize how
-            image sites are rendered. Defaults to True.
-        cell_boundary_tol (float | dict[str, float], optional): Buffer distance (in
-            fractional coordinates) beyond the unit cell boundaries to include image
-            atoms. Defaults to 0.0 for strict cell boundaries (only atoms with
-            0 <= coord <= 1). Higher values include atoms further outside the cell.
-            Can also be set per-structure via Structure.properties["cell_boundary_tol"]
-            or Atoms.info["cell_boundary_tol"] with highest precedence.
-        show_bonds (bool | NearNeighbors | dict[str, bool | NearNeighbors], optional):
-            Whether to draw bonds between sites. If True, uses CrystalNN with a cutoff
-            of 10 Å to determine nearest neighbors, including in neighboring cells.
-            If a NearNeighbors object, uses that to determine nearest neighbors. If a
-            dict, allows per-structure settings. Defaults to False (since still
-            experimental).
-        site_labels ("symbol" | "species" | "legend" | False | dict | Sequence):
-            How to annotate lattice sites. Defaults to "legend" (show an element
-            color legend). Other options: "symbol", "species", False (no labels),
-            a dict mapping site index to label, or a sequence of labels.
-        standardize_struct (bool, optional): Whether to standardize the structure.
-            Defaults to None.
-        n_cols (int, optional): Number of columns for subplots. Defaults to 3.
-        subplot_title (Callable[[Structure, str | int], str | dict] | False, optional):
-            Function to generate subplot titles. Defaults to
-            lambda struct_i, idx: f"{idx}. {struct_i.formula} (spg={spg_num})". Set to
-            False to hide all subplot titles.
-        show_site_vectors (str | Sequence[str], optional): Whether to show vector site
-            quantities such as forces or magnetic moments as arrow heads originating
-            from each site. Pass the key (or sequence of keys) to look for in site
-            properties. Defaults to ("force", "magmom"). If not found as a site
-            property, will look for it in the structure properties as well and assume
-            the key points at a (N, 3) array with N the number of sites. If multiple
-            keys are provided, it plots the first key found in site properties or
-            structure properties in any of the passed structures (if a dict of
-            structures was passed). But it will only plot one vector per site and it
-            will use the same key for all sites and across all structures.
-        show_image_vectors (bool, optional): Whether to show vectors at image site
-            positions. Only has effect when both show_image_sites and
-            show_site_vectors are active. Defaults to True.
-        vector_kwargs (dict[str, dict[str, Any]], optional): For customizing vector
-            arrows. Keys are property names (e.g., "force", "magmom"), values are
-            dictionaries of arrow customization options. Use key "scale" to adjust
-            vector length.
-        hover_text (SiteCoords | Callable, optional): Controls the hover tooltip
-            template. Can be SiteCoords.cartesian, SiteCoords.fractional,
-            SiteCoords.cartesian_fractional, or a callable that takes a site and
-            returns a custom string. Defaults to SiteCoords.cartesian_fractional.
-        hover_float_fmt (str | Callable[[float], str], optional): Float formatting for
-            hover coordinates. Can be an f-string format like ".4" (default) or a
-            callable that takes a float and returns a string. Defaults to ".4".
-        bond_kwargs (dict[str, Any], optional): For customizing bond lines. Keys are
-            line properties (e.g., "color", "width"), values are the corresponding
-            values. Defaults to None.
+    Takes the same arguments as structure_2d (minus rotation, since 3D scenes can be
+    rotated interactively). atom_size defaults to 20.
 
     Returns:
         go.Figure: Plotly figure showing the 3D structure(s).
     """
     structures = normalize_periodic_structures(struct)
-
     n_structs = len(structures)
-    n_cols = min(n_cols, n_structs)
-    n_rows = (n_structs - 1) // n_cols + 1
+    fig, n_rows, n_cols = helpers.make_structure_grid(n_structs, n_cols, is_3d=True)
 
-    fig = make_subplots(
-        rows=n_rows,
-        cols=n_cols,
-        specs=[[{"type": "scene"} for _ in range(n_cols)] for _ in range(n_rows)],
-        # Avoid IndexError on fig.layout.annotations[idx - 1].update(anno)
-        subplot_titles=[" " for _ in range(n_structs)],
-    )
-
-    # Don't call helpers.get_elem_colors here if elem_colors is a dict mapping structure
-    # keys to color schemes. Instead, handle per-structure color schemes in the loop
-    if isinstance(show_site_vectors, str):
-        show_site_vectors = [show_site_vectors]
-
-    # Determine which vector property to plot (calling outside loop ensures we plot
-    # the same prop for all sites in all structures)
-    vector_prop = helpers.get_first_matching_site_prop(
-        list(structures.values()),
-        show_site_vectors,
-        warn_if_none=show_site_vectors != ("force", "magmom"),
-        filter_callback=lambda _prop, val: helpers._is_3d_vector(val),
-    )
+    vector_prop = helpers.resolve_vector_prop(structures.values(), show_site_vectors)
 
     for idx, (struct_key, raw_struct_i) in enumerate(structures.items(), start=1):
         struct_i = helpers._standardize_struct(
@@ -686,53 +570,21 @@ def structure_3d(
                 show_faces=show_cell_faces,
             )
 
-        # Set subplot titles
         if subplot_title is not False:
             anno = helpers.get_subplot_title(struct_i, struct_key, idx, subplot_title)
-            row = (idx - 1) // n_cols + 1
-            subtitle_y_pos = 1 - (row - 1) / n_rows - 0.02
-            fig.layout.annotations[idx - 1].update(
-                dict(y=subtitle_y_pos, yanchor="top") | anno
-            )
+            helpers.set_subplot_title(fig, anno, idx, n_cols, n_rows)
 
-    # Update 3D scene properties
-    no_axes_kwargs = dict(
-        showticklabels=False, showgrid=False, zeroline=False, visible=False
-    )
-
-    fig.update_scenes(
-        xaxis=no_axes_kwargs,
-        yaxis=no_axes_kwargs,
-        zaxis=no_axes_kwargs,
-        aspectmode="data",
+    helpers.style_scene_grid(
+        fig,
+        n_structs,
+        n_cols,
+        n_rows,
         bgcolor="rgba(80,80,80,0.01)",
-        camera=dict(
-            eye=dict(x=1.5, y=1.5, z=1.5),  # Camera position for better 3D view
-        ),
+        camera=dict(eye=dict(x=1.5, y=1.5, z=1.5)),
     )
-
-    # Calculate subplot positions with small gap
-    gap = 0.01
-    for idx in range(1, n_structs + 1):
-        row = (idx - 1) // n_cols + 1
-        col = (idx - 1) % n_cols + 1
-
-        x_start = (col - 1) / n_cols + gap / 2
-        x_end = col / n_cols - gap / 2
-        y_start = 1 - row / n_rows + gap / 2  # Invert y-axis to match row order
-        y_end = 1 - (row - 1) / n_rows - gap / 2
-
-        domain = dict(x=[x_start, x_end], y=[y_start, y_end])
-        scene_name = "scene" if idx == 1 else f"scene{idx}"
-        fig.update_layout({scene_name: dict(domain=domain, aspectmode="data")})
-
-    # Update overall layout
-    fig.layout.height = 400 * n_rows
-    fig.layout.width = 400 * n_cols
-    fig.layout.showlegend = site_labels == "legend"  # Show legend if using legend mode
-    fig.layout.paper_bgcolor = "rgba(0,0,0,0)"  # Transparent background
-    fig.layout.plot_bgcolor = "rgba(0,0,0,0)"  # Transparent background
-    fig.layout.margin = dict(l=0, r=0, t=30, b=0)  # Minimize margins
+    fig.layout.showlegend = site_labels == "legend"
+    fig.layout.paper_bgcolor = fig.layout.plot_bgcolor = "rgba(0,0,0,0)"
+    fig.layout.margin = dict(l=0, r=0, t=30, b=0)
 
     # Configure legends for each subplot
     helpers.configure_subplot_legends(fig, site_labels, n_structs, n_cols, n_rows)

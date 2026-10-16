@@ -23,6 +23,15 @@ jobs:
       - name: Setup uv
         uses: astral-sh/setup-uv@v10.2.0
 
+      - name: Require a pinned matterviz-anywidget version
+        # main's bundle changes with every matterviz deploy; a release must pin
+        # the published npm version whose props match the Python widget traits
+        run: |
+          if grep -q '^MATTERVIZ_ANYWIDGET_VERSION = "main"' pymatviz/widgets/matterviz.py; then
+            echo "::error::Set MATTERVIZ_ANYWIDGET_VERSION in pymatviz/widgets/matterviz.py to a published matterviz-anywidget npm version before releasing"
+            exit 1
+          fi
+
       - name: Add readme image URL prefixes
         # needed to make images render on PyPI
         run: |

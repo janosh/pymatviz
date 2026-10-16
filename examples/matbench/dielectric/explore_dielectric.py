@@ -13,6 +13,8 @@ https://ml.materialsproject.org/projects/matbench_dielectric
 """
 
 # %%
+from typing import get_args
+
 import plotly.express as px
 from matbench_discovery.structure import prototype
 from matminer.datasets import load_dataset
@@ -20,6 +22,10 @@ from tqdm import tqdm
 
 import pymatviz as pmv
 from pymatviz.enums import Key
+from pymatviz.typing import CrystalSystem
+
+
+crystal_systems = get_args(CrystalSystem)  # ordered triclinic to cubic
 
 
 # %%
@@ -82,7 +88,7 @@ fig = px.violin(
 
 x_ticks = {}  # custom x axis tick labels
 for cry_sys, df_group in sorted(
-    df_diel.groupby(Key.crystal_system), key=lambda x: pmv.crystal_sys_order.index(x[0])
+    df_diel.groupby(Key.crystal_system), key=lambda x: crystal_systems.index(x[0])
 ):
     x_ticks[cry_sys] = (
         f"<b>{cry_sys}</b><br>"
@@ -95,7 +101,7 @@ fig.layout.title = dict(text=title, x=0.5)
 fig.layout.margin = dict(b=10, l=10, r=10, t=50)
 fig.layout.showlegend = False
 fig.layout.xaxis = reusable_x_axis = dict(
-    tickvals=list(range(len(pmv.crystal_sys_order))), ticktext=list(x_ticks.values())
+    tickvals=list(range(len(crystal_systems))), ticktext=list(x_ticks.values())
 )
 
 
@@ -112,7 +118,7 @@ fig = px.violin(
     points="all",
     hover_data=[Key.spg_num],
     hover_name=Key.formula,
-    category_orders={Key.crystal_system: pmv.crystal_sys_order},
+    category_orders={Key.crystal_system: crystal_systems},
     log_y=True,
 ).update_traces(jitter=1)
 
@@ -124,7 +130,7 @@ def rgb_color(val: float, max_val: float) -> str:
 
 x_ticks = {}
 for cry_sys, df_group in sorted(
-    df_diel.groupby(Key.crystal_system), key=lambda x: pmv.crystal_sys_order.index(x[0])
+    df_diel.groupby(Key.crystal_system), key=lambda x: crystal_systems.index(x[0])
 ):
     avg_n_wyckoff = df_group[n_wyckoff_pos_key].mean()
     clr = rgb_color(avg_n_wyckoff, 14)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from enum import EnumType, StrEnum, _EnumDict, unique
 from typing import TYPE_CHECKING, Final
 
@@ -59,7 +60,18 @@ SUBSCRIPT_MAP: Final[dict[str, str]] = {
 }
 
 
-class LabelEnum(StrEnum):
+class _PicklableStrEnum(StrEnum):
+    """StrEnum that pickles its members as plain strings."""
+
+    def __reduce_ex__(self, proto: object) -> tuple[type, tuple[str]]:
+        """Return as a string when pickling. Overrides Enum.__reduce_ex__ which returns
+        the tuple self.__class__, (self._value_,). self.__class can cause pickle
+        failures if the corresponding Enum was moved or renamed in the meantime.
+        """
+        return str, (self.value,)
+
+
+class LabelEnum(_PicklableStrEnum):
     """StrEnum with optional label and description attributes plus dict() methods.
 
     Simply add label and description as a tuple starting with the key's value.
@@ -78,13 +90,6 @@ class LabelEnum(StrEnum):
         """Return label if available, else type name and value."""
         return self.label or f"{type(self).__name__}.{self.name}"
 
-    def __reduce_ex__(self, proto: object) -> tuple[type, tuple[str]]:
-        """Return as a string when pickling. Overrides Enum.__reduce_ex__ which returns
-        the tuple self.__class__, (self._value_,). self.__class can cause pickle
-        failures if the corresponding Enum was moved or renamed in the meantime.
-        """
-        return str, (self.value,)
-
     @property
     def label(self) -> str:
         """Make label read-only."""
@@ -102,7 +107,7 @@ cubic_angstrom = html_tag("(Å<sup>3</sup>)", style="small")
 
 
 @unique
-class Key(StrEnum):
+class Key(_PicklableStrEnum):
     """Keys used to access dataframes columns, organized by semantic groups."""
 
     @property
@@ -121,40 +126,15 @@ class Key(StrEnum):
         if not (unit := _keys[self.value].get("unit")):
             return None
 
-        # Process character by character
-        html_str = ""
-        in_super = in_sub = False
-
-        for char in unit:
-            # Check if character is superscript
-            if new_char := SUPERSCRIPT_MAP.get(char):
-                if not in_super:
-                    html_str += "<sup>"
-                    in_super = True
-                html_str += new_char
-            # Check if character is subscript
-            elif new_char := SUBSCRIPT_MAP.get(char):
-                if not in_sub:
-                    html_str += "<sub>"
-                    in_sub = True
-                html_str += new_char
-            else:
-                # Close any open tags
-                if in_super:
-                    html_str += "</sup>"
-                    in_super = False
-                if in_sub:
-                    html_str += "</sub>"
-                    in_sub = False
-                html_str += char
-
-        # Close any remaining open tags
-        if in_super:
-            html_str += "</sup>"
-        if in_sub:
-            html_str += "</sub>"
-
-        return html_str
+        for char_map, tag in ((SUPERSCRIPT_MAP, "sup"), (SUBSCRIPT_MAP, "sub")):
+            unit = re.sub(
+                f"[{''.join(char_map)}]+",
+                lambda match, char_map=char_map, tag=tag: (
+                    f"<{tag}>{''.join(char_map[char] for char in match[0])}</{tag}>"
+                ),
+                unit,
+            )
+        return unit
 
     @property
     def category(self) -> str:
@@ -170,13 +150,6 @@ class Key(StrEnum):
     def desc(self) -> str | None:
         """Description associated with the key."""
         return _keys[self.value].get("description")
-
-    def __reduce_ex__(self, proto: object) -> tuple[type, tuple[str]]:
-        """Return as a string when pickling. Overrides Enum.__reduce_ex__ which returns
-        the tuple self.__class__, (self._value_,). self.__class can cause pickle
-        failures if the corresponding Enum was moved or renamed in the meantime.
-        """
-        return str, (self.value,)
 
     # Structural
     n_sites = "n_sites"

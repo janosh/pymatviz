@@ -7,7 +7,6 @@ from typing import Any, Literal
 
 import numpy as np
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from pymatgen.core import Element
 
 from pymatviz.typing import AnyStructure
@@ -65,28 +64,18 @@ def brillouin_zone_3d(
     import seekpath
 
     from pymatviz.process_data import normalize_periodic_structures
-    from pymatviz.structure.helpers import get_site_symbol, get_subplot_title
+    from pymatviz.structure import helpers
 
     structures = normalize_periodic_structures(struct)
-
     n_structs = len(structures)
-    n_cols = min(n_cols, n_structs)
-    n_rows = (n_structs - 1) // n_cols + 1
-
-    fig = make_subplots(
-        rows=n_rows,
-        cols=n_cols,
-        specs=[[{"type": "scene"} for _ in range(n_cols)] for _ in range(n_rows)],
-        # needed to avoid IndexError on fig.layout.annotations[idx - 1].update(anno)
-        subplot_titles=[" " for _ in range(n_structs)],
-    )
+    fig, n_rows, n_cols = helpers.make_structure_grid(n_structs, n_cols, is_3d=True)
 
     for idx, (struct_key, structure) in enumerate(structures.items(), start=1):
         # Convert pymatgen Structure to seekpath input format
         spglib_atoms = (
             structure.lattice.matrix,  # cell
             structure.frac_coords,  # positions
-            [Element(get_site_symbol(site)).number for site in structure],
+            [Element(helpers.get_site_symbol(site)).number for site in structure],
         )
         # Get primitive structure and symmetry info using seekpath
         with warnings.catch_warnings():
@@ -283,51 +272,16 @@ def brillouin_zone_3d(
                             scene=scene,
                         )
 
-        # Set subplot titles
-        if subplot_title is None:
+        if subplot_title is not False:
             fig.layout.annotations[idx - 1].update(
-                get_subplot_title(structure, struct_key, idx, None)
-            )
-        elif subplot_title is not False:
-            anno = subplot_title(structure, struct_key)
-            if not isinstance(anno, (str, dict)):
-                raise TypeError("Subplot title must be a string or dict")
-            fig.layout.annotations[idx - 1].update(
-                {"text": anno} if isinstance(anno, str) else anno
+                helpers.get_subplot_title(structure, struct_key, idx, subplot_title)
             )
 
-    # Update 3D scene properties
-    no_axes_kwargs = dict(
-        showticklabels=False, showgrid=False, zeroline=False, visible=False
+    helpers.style_scene_grid(
+        fig, n_structs, n_cols, n_rows, bgcolor="rgba(90, 90, 90, 0.01)"
     )
-    fig.update_scenes(
-        xaxis=no_axes_kwargs,
-        yaxis=no_axes_kwargs,
-        zaxis=no_axes_kwargs,
-        aspectmode="data",
-        bgcolor="rgba(90, 90, 90, 0.01)",  # Transparent background
-    )
-
-    # Calculate subplot positions with small gap
-    gap = 0.01
-    for idx in range(1, n_structs + 1):
-        row = (idx - 1) // n_cols + 1
-        col = (idx - 1) % n_cols + 1
-
-        x_start = (col - 1) / n_cols + gap / 2
-        x_end = col / n_cols - gap / 2
-        y_start = 1 - row / n_rows + gap / 2  # Invert y-axis to match row order
-        y_end = 1 - (row - 1) / n_rows - gap / 2
-
-        domain = dict(x=[x_start, x_end], y=[y_start, y_end])
-        fig.update_layout({f"scene{idx}": dict(domain=domain, aspectmode="data")})
-
-    # Update overall layout
-    fig.layout.height = 400 * n_rows
-    fig.layout.width = 400 * n_cols
     fig.layout.showlegend = False
-    fig.layout.paper_bgcolor = "rgba(0,0,0,0)"  # Transparent background
-    fig.layout.plot_bgcolor = "rgba(0,0,0,0)"  # Transparent background
-    fig.layout.margin = dict(l=0, r=0, t=0, b=0)  # Minimize margins
+    fig.layout.paper_bgcolor = fig.layout.plot_bgcolor = "rgba(0,0,0,0)"
+    fig.layout.margin = dict(l=0, r=0, t=0, b=0)
 
     return fig

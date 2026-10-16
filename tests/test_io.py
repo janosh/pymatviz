@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 import re
 import tempfile
-import urllib.request
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
@@ -298,35 +297,3 @@ def test_df_to_html_inline_props_error(df_mixed: pd.DataFrame) -> None:
             inline_props="class='foo'",
             styler_css=False,
         )
-
-
-def test_tqdm_download(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    test_url = "https://example.com/testfile"
-    test_file_path = tmp_path / "testfile"
-
-    total_size = 1024 * 1024  # 1 MB
-    block_size = 1024  # 1 KB per block
-
-    def mock_urlretrieve(
-        *args: Any,  # noqa: ARG001
-        reporthook: Callable[[int, int, int | None], bool] | None = None,
-    ) -> None:
-        # simulate a file download (in chunks)
-        n_blocks = total_size // block_size
-
-        for block_idx in range(1, n_blocks + 1):
-            if reporthook:
-                reporthook(block_idx, block_size, total_size)
-
-    # apply mock urlretrieve
-    monkeypatch.setattr(urllib.request, "urlretrieve", mock_urlretrieve)
-
-    with pmv.io.TqdmDownload(desc=test_url) as pbar:
-        urllib.request.urlretrieve(test_url, test_file_path, reporthook=pbar.update_to)
-
-    assert pbar.n == total_size
-    assert pbar.total == total_size
-    assert pbar.desc == test_url
-    assert pbar.unit == "B"
-    assert pbar.unit_scale is True
-    assert pbar.unit_divisor == 1024

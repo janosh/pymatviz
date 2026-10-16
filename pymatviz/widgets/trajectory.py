@@ -8,7 +8,11 @@ import numpy as np
 import traitlets as tl
 
 from pymatviz.structure.helpers import add_vacuum_if_needed
-from pymatviz.widgets._traits import StructureVizTraits, optional_trait
+from pymatviz.widgets._traits import (
+    TRAJECTORY_PANES,
+    StructureVizTraits,
+    optional_trait,
+)
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -76,6 +80,8 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
     ).tag(sync=True)
     # Property shown in the distribution plot (None = highest-priority property)
     distribution_property = optional_trait(tl.Unicode)
+    # Open floating pane (e.g. "hotspots", "flight"), None = closed. Two-way synced.
+    active_pane = optional_trait(tl.CaselessStrEnum, values=TRAJECTORY_PANES)
     auto_play = optional_trait(tl.Bool)
     # {atom type: element} for LAMMPS dumps loaded from data_url, e.g. {1: "Si", 2: "O"}
     atom_type_mapping = optional_trait(tl.Dict)

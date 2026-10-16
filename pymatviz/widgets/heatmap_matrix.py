@@ -6,7 +6,8 @@ from typing import TYPE_CHECKING, Any
 
 import traitlets as tl
 
-from pymatviz.widgets._normalize import normalize_plot_json
+from pymatviz.widgets._normalize import normalize_json_kwargs, normalize_plot_json
+from pymatviz.widgets._traits import color_bar_trait, color_scale_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -62,9 +63,8 @@ class HeatmapMatrixWidget(MatterVizWidget):
     x_items = tl.List().tag(sync=True)
     y_items = tl.List().tag(sync=True)
     values = tl.Any(allow_none=True).tag(sync=True)
-    color_scale = tl.Unicode(default_value="interpolateViridis").tag(sync=True)
-    color_scale_range = tl.List(allow_none=True).tag(sync=True)
-    log = tl.Bool(default_value=False).tag(sync=True)
+    color_scale = color_scale_trait()
+    color_bar = color_bar_trait()
     # styling for cells with no value, e.g. {"color": "gray", "label": "N/A"}
     missing = tl.Dict(default_value=None, allow_none=True).tag(sync=True)
     x_axis = tl.Dict(allow_none=True).tag(sync=True)
@@ -93,6 +93,7 @@ class HeatmapMatrixWidget(MatterVizWidget):
         """
         x_axis_items = [x_items] if isinstance(x_items, str) else x_items or []
         y_axis_items = [y_items] if isinstance(y_items, str) else y_items or []
+        normalize_json_kwargs(kwargs, ("color_scale", "color_bar"), "HeatmapMatrix")
 
         super().__init__(
             widget_type="heatmap_matrix",

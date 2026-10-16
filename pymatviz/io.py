@@ -13,7 +13,6 @@ from time import sleep
 from typing import TYPE_CHECKING
 
 import plotly.graph_objects as go
-from tqdm import tqdm
 
 import pymatviz as pmv
 from pymatviz.utils import ROOT
@@ -25,42 +24,6 @@ if TYPE_CHECKING:
     from typing import Any, Final
 
     from pandas.io.formats.style import Styler
-
-
-class TqdmDownload(tqdm):
-    """Progress bar for urllib.request.urlretrieve file download.
-
-    Adapted from official TqdmUpTo example.
-    See https://github.com/tqdm/tqdm/blob/4c956c2/README.rst#hooks-and-callbacks
-    """
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """Sets default values appropriate for file downloads for unit, unit_scale,
-        unit_divisor, miniters, desc.
-        """
-        defaults = dict(
-            unit="B", unit_scale=True, unit_divisor=1024, miniters=1, desc="Downloading"
-        )
-        super().__init__(*args, **defaults | kwargs)
-
-    def update_to(
-        self, n_blocks: int = 1, block_size: int = 1, total_size: int | None = None
-    ) -> bool | None:
-        """Update hook for urlretrieve.
-
-        Args:
-            n_blocks (int, optional): Number of blocks transferred so far. Default = 1.
-            block_size (int, optional): Size of each block (in tqdm units). Default = 1.
-            total_size (int, optional): Total size (in tqdm units). If None, remains
-                unchanged. Defaults to None.
-
-        Returns:
-            bool | None: True if tqdm.display() was triggered.
-        """
-        if total_size is not None:
-            self.total = total_size
-        # update sets self.n = n_blocks * block_size
-        return self.update(n_blocks * block_size - self.n)
 
 
 def save_fig(

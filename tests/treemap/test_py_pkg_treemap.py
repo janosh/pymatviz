@@ -849,6 +849,14 @@ def test_py_pkg_treemap_coverage_path_matching(tmp_path: Path) -> None:
         "my_pkg", color_by="coverage", coverage_data_file=str(coverage_file)
     )
     assert any(color > 0 for color in _numeric_marker_colors(fig))
+    # color_by decides cell colors even when a plotly `color` kwarg names another column
+    fig_color_kwarg = pmv.py_pkg_treemap(
+        "my_pkg",
+        color_by="coverage",
+        coverage_data_file=str(coverage_file),
+        color="line_count",
+    )
+    assert _numeric_marker_colors(fig_color_kwarg) == _numeric_marker_colors(fig)
 
 
 @pytest.mark.parametrize(

@@ -1,8 +1,7 @@
-"""Element and space-group lookups, dictionary patches, and display formatting."""
+"""Element and space-group lookups and display formatting."""
 
 from __future__ import annotations
 
-from contextlib import contextmanager
 from functools import partial
 from typing import TYPE_CHECKING
 
@@ -13,9 +12,6 @@ from pymatviz.utils import ROOT
 
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
-    from typing import Any
-
     from pymatviz.typing import CrystalSystem
 
 _elements_csv = f"{ROOT}/pymatviz/elements.csv"
@@ -50,19 +46,15 @@ def spg_to_crystal_sys(spg: float | str) -> CrystalSystem:
     if not (1 <= spg <= 230):
         raise ValueError(f"Invalid space group {spg}, must be 1 <= num <= 230")
 
-    if spg <= 2:
-        return "triclinic"
-    if spg <= 15:
-        return "monoclinic"
-    if spg <= 74:
-        return "orthorhombic"
-    if spg <= 142:
-        return "tetragonal"
-    if spg <= 167:
-        return "trigonal"
-    if spg <= 194:
-        return "hexagonal"
-    return "cubic"
+    crys_sys_max_spg: tuple[tuple[CrystalSystem, int], ...] = (
+        ("triclinic", 2),
+        ("monoclinic", 15),
+        ("orthorhombic", 74),
+        ("tetragonal", 142),
+        ("trigonal", 167),
+        ("hexagonal", 194),
+    )
+    return next((crys for crys, max_spg in crys_sys_max_spg if spg <= max_spg), "cubic")
 
 
 def spg_num_to_from_symbol(spg: int | str) -> str | int:
@@ -114,32 +106,6 @@ def html_tag(text: str, tag: str = "span", style: str = "", title: str = "") -> 
     if style:
         attr_str += f" {style=}"
     return f"<{tag}{attr_str}>{text}</{tag}>"
-
-
-@contextmanager
-def patch_dict(
-    dct: dict[Any, Any], *args: Any, **kwargs: Any
-) -> Generator[dict[Any, Any], None, None]:
-    """Context manager that yields a patched copy of a dictionary; the original
-    dict is never modified.
-
-    Example:
-        config = {"showlegend": True, "width": 500}
-        with patch_dict(config, showlegend=False) as patched:
-            render(patched)  # config itself is unchanged
-
-    Args:
-        dct (dict): The dictionary to be patched.
-        *args: Only first element is read if present. A single dictionary containing the
-            key-value pairs to patch.
-        **kwargs: The key-value pairs to patch, provided as keyword arguments.
-
-    Yields:
-        dict: The patched dictionary incl. temporary updates.
-    """
-    # Keyword updates take precedence; nested values remain shared with the original.
-    updates = {**args[0], **kwargs} if args and isinstance(args[0], dict) else kwargs
-    yield dct | updates
 
 
 def si_fmt(

@@ -15,44 +15,39 @@ if TYPE_CHECKING:
 
 PKG_NAME = "pymatviz"
 
-# activate the pymatviz white/dark templates by setting
-# `pio.templates.default = "pymatviz_white|pymatviz_dark"`
-# when using plotly or graph objects or
-# `px.defaults.template = "pymatviz_white|pymatviz_dark"`
-# when using plotly express or use set_plotly_template below
-axis_template = dict(
-    mirror=True,
-    showline=True,
-    ticks="outside",
-    zeroline=True,
-    linewidth=1,
-    showgrid=True,
-)
-white_axis_template = axis_template | dict(linecolor="black", gridcolor="lightgray")
-# inherit from plotly_white template
-pmv_white_template = go.layout.Template(pio.templates["plotly_white"])
-common_layout = dict(margin=dict(l=10, r=10, t=10, b=10))
 
-pio.templates[f"{PKG_NAME}_white"] = pmv_white_template.update(
-    layout=dict(
-        xaxis=white_axis_template,
-        yaxis=white_axis_template,
-        font=dict(color="black"),
-        **common_layout,
+def _register_template(
+    theme: str, line_color: str, grid_color: str
+) -> go.layout.Template:
+    """Register pymatviz_{theme} (plotly_{theme} with framed axes and slim margins)
+    with plotly.io and return it.
+    """
+    axis = dict(
+        mirror=True,
+        showline=True,
+        ticks="outside",
+        zeroline=True,
+        linewidth=1,
+        showgrid=True,
+        linecolor=line_color,
+        gridcolor=grid_color,
     )
-)
-dark_axis_template = axis_template | dict(linecolor="white", gridcolor="darkgray")
-# inherit from plotly_dark template
-pmv_dark_template = go.layout.Template(pio.templates["plotly_dark"])
+    template = go.layout.Template(pio.templates[f"plotly_{theme}"]).update(
+        layout=dict(
+            xaxis=axis,
+            yaxis=axis,
+            font=dict(color=line_color),
+            margin=dict(l=10, r=10, t=10, b=10),
+        )
+    )
+    pio.templates[f"{PKG_NAME}_{theme}"] = template
+    return template
 
-pio.templates[f"{PKG_NAME}_dark"] = pmv_dark_template.update(
-    layout=dict(
-        xaxis=dark_axis_template,
-        yaxis=dark_axis_template,
-        font=dict(color="white"),
-        **common_layout,
-    )
-)
+
+# activate with pio.templates.default = "pymatviz_white" (or "pymatviz_dark") for
+# graph objects, px.defaults.template = ... for plotly express, or set_plotly_template
+pmv_white_template = _register_template("white", "black", "lightgray")
+pmv_dark_template = _register_template("dark", "white", "darkgray")
 
 
 def set_plotly_template(

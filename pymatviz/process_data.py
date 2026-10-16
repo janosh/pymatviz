@@ -78,9 +78,8 @@ def count_elements(
     srs = pd.Series(values)
 
     if is_numeric_dtype(srs):
-        pass
+        pass  # already a map from element to value
     elif is_string_dtype(srs) or {*map(type, srs)} <= {str, Composition}:
-        # all items are formula strings or Composition objects
         if count_mode == "occurrence":
             srs = pd.Series(
                 itertools.chain.from_iterable(
@@ -266,27 +265,15 @@ def count_formulas(
     )
 
 
-STRUCTURE_CLASSES = [
-    ("ase", ["Atoms"]),
-    ("pymatgen.core", ["Structure", "IStructure", "Molecule", "IMolecule"]),
-    ("phonopy.structure.atoms", ["PhonopyAtoms"]),
-]
-
-
 def is_structure_like(obj: Any) -> bool:
-    """Check if object is structure-like."""
-    for module_path, class_names in STRUCTURE_CLASSES:
-        try:
-            module = __import__(module_path, fromlist=class_names)
-            if any(
-                isinstance(obj, getattr(module, cls))
-                for cls in class_names
-                if hasattr(module, cls)
-            ):
-                return True
-        except ImportError:
-            pass
-    return False
+    """Whether obj is a pymatgen Structure/Molecule, ASE Atoms or PhonopyAtoms."""
+    from pymatgen.core import IMolecule
+
+    return (
+        isinstance(obj, (IStructure, IMolecule))
+        or is_ase_atoms(obj)
+        or is_phonopy_atoms(obj)
+    )
 
 
 def is_ase_atoms(struct: Any) -> TypeIs[Atoms]:
@@ -299,9 +286,11 @@ def is_ase_atoms(struct: Any) -> TypeIs[Atoms]:
 
 
 def is_phonopy_atoms(obj: Any) -> TypeIs[PhonopyAtoms]:
-    """Check if object is PhonopyAtoms."""
-    cls_name = f"{type(obj).__module__}.{type(obj).__qualname__}"
-    return cls_name == "phonopy.structure.atoms.PhonopyAtoms"
+    """Check if object is PhonopyAtoms or a subclass (Supercell, Primitive)."""
+    return any(
+        f"{cls.__module__}.{cls.__qualname__}" == "phonopy.structure.atoms.PhonopyAtoms"
+        for cls in type(obj).__mro__
+    )
 
 
 def normalize_structures(

@@ -27,7 +27,6 @@ from pymatviz.utils.data import (
     df_ptable,
     element_symbols,
     html_tag,
-    patch_dict,
     si_fmt,
     si_fmt_int,
     spg_num_to_from_symbol,

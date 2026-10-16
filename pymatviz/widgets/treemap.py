@@ -6,8 +6,8 @@ from typing import Any
 
 import traitlets as tl
 
-from pymatviz.widgets._normalize import normalize_plot_json
-from pymatviz.widgets._traits import PlotControlsTraits
+from pymatviz.widgets._normalize import normalize_json_kwargs, normalize_plot_json
+from pymatviz.widgets._traits import EXPORT_FORMATS, PlotControlsTraits
 from pymatviz.widgets._traits import optional_trait as _optional
 from pymatviz.widgets.matterviz import MatterVizWidget
 
@@ -61,8 +61,8 @@ class TreemapWidget(PlotControlsTraits, MatterVizWidget):
     value_format = _optional(tl.Unicode)  # d3-format string for labels/tooltips
     # chart-edge padding {"t": N, "b": N, "l": N, "r": N} in pixels
     padding = _optional(tl.Dict)
-    # SVG/PNG download buttons in the controls pane + their base filename
-    export_buttons = _optional(tl.Bool)
+    # formats offered in the export pane ([] hides it; None = all) + their base filename
+    export_formats = _optional(tl.List, trait=tl.Enum(EXPORT_FORMATS))
     export_filename = _optional(tl.Unicode)
     fullscreen_toggle = _optional(tl.Bool)
     # two-way synced zoom state: id of the cell the view is rooted on
@@ -81,9 +81,7 @@ class TreemapWidget(PlotControlsTraits, MatterVizWidget):
             **kwargs: Config traits (see class-level trait comments) and
                 additional base widget keyword arguments.
         """
-        for key in ("legend", "padding"):
-            if key in kwargs:
-                kwargs[key] = normalize_plot_json(kwargs[key], f"Treemap.{key}")
+        normalize_json_kwargs(kwargs, ("legend", "padding"), "Treemap")
         super().__init__(
             widget_type="treemap",
             data=normalize_plot_json(data, "Treemap.data"),
