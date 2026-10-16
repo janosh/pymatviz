@@ -9,11 +9,9 @@ from pymatgen.core import Composition, Structure
 
 from pymatviz.enums import Key
 from pymatviz.process_data import count_formulas
-from pymatviz.sunburst.helpers import (
-    _apply_sunburst_show_counts,
-    _limit_slices_per_group,
-)
+from pymatviz.sunburst.helpers import _limit_slices_per_group
 from pymatviz.typing import FormulaGroupBy, ShowCounts
+from pymatviz.utils.plotting import apply_show_counts
 
 
 def chem_sys_sunburst(
@@ -94,7 +92,7 @@ def chem_sys_sunburst(
         df_counts, path=path, values=Key.count, **sunburst_defaults | kwargs
     )
 
-    _apply_sunburst_show_counts(fig, show_counts)
+    apply_show_counts(fig, show_counts, value_fmt=".2f")
 
     fig.layout.margin = dict(l=10, r=10, b=10, pad=10)
     fig.layout.paper_bgcolor = "rgba(0, 0, 0, 0)"

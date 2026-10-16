@@ -13,6 +13,7 @@ import plotly.express as px
 
 from pymatviz.enums import Key
 from pymatviz.process_data import count_formulas
+from pymatviz.utils.plotting import apply_show_counts
 
 
 if TYPE_CHECKING:
@@ -155,19 +156,7 @@ def chem_sys_treemap(
     )
     fig.data[0].hovertemplate = hovertemplate
 
-    if show_counts == "percent":
-        fig.data[0].textinfo = "label+percent entry"
-    elif show_counts == "value":
-        fig.data[0].textinfo = "label+value"
-        fig.data[0].texttemplate = "%{label}<br>N=%{value}"
-    elif show_counts == "value+percent":
-        fig.data[0].textinfo = "label+value+percent entry"
-        fig.data[0].texttemplate = "%{label}<br>N=%{value}<br>%{percentEntry}"
-    elif show_counts is not False:
-        raise ValueError(
-            f"Invalid {show_counts=}, must be 'value', 'percent', 'value+percent', "
-            "or False"
-        )
+    apply_show_counts(fig, show_counts)
 
     fig.layout.margin = dict(l=0, r=0, b=0, pad=0)
     fig.layout.paper_bgcolor = "rgba(0, 0, 0, 0)"
