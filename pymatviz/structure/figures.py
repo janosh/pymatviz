@@ -153,19 +153,7 @@ def structure_2d(
         n_structs, n_cols, is_3d=False, vertical_spacing=0, horizontal_spacing=0
     )
 
-    # Don't call helpers.get_elem_colors here if elem_colors is a dict mapping structure
-    # keys to color schemes. Instead, handle per-structure color schemes in the loop
-    if isinstance(show_site_vectors, str):
-        show_site_vectors = [show_site_vectors]
-
-    # Determine which vector property to plot (calling outside loop ensures we plot
-    # the same prop for all sites in all structures)
-    vector_prop = helpers.get_first_matching_site_prop(
-        list(structures.values()),
-        show_site_vectors,
-        warn_if_none=show_site_vectors != ("force", "magmom"),
-        filter_callback=lambda _prop, val: helpers._is_3d_vector(val),
-    )
+    vector_prop = helpers.resolve_vector_prop(structures.values(), show_site_vectors)
 
     for idx, (struct_key, raw_struct_i) in enumerate(structures.items(), start=1):
         row = (idx - 1) // n_cols + 1
@@ -435,19 +423,7 @@ def structure_3d(
     n_structs = len(structures)
     fig, n_rows, n_cols = helpers.make_structure_grid(n_structs, n_cols, is_3d=True)
 
-    # Don't call helpers.get_elem_colors here if elem_colors is a dict mapping structure
-    # keys to color schemes. Instead, handle per-structure color schemes in the loop
-    if isinstance(show_site_vectors, str):
-        show_site_vectors = [show_site_vectors]
-
-    # Determine which vector property to plot (calling outside loop ensures we plot
-    # the same prop for all sites in all structures)
-    vector_prop = helpers.get_first_matching_site_prop(
-        list(structures.values()),
-        show_site_vectors,
-        warn_if_none=show_site_vectors != ("force", "magmom"),
-        filter_callback=lambda _prop, val: helpers._is_3d_vector(val),
-    )
+    vector_prop = helpers.resolve_vector_prop(structures.values(), show_site_vectors)
 
     for idx, (struct_key, raw_struct_i) in enumerate(structures.items(), start=1):
         struct_i = helpers._standardize_struct(

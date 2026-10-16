@@ -6,7 +6,7 @@ import functools
 import itertools
 import math
 import warnings
-from collections.abc import Callable, Hashable, Mapping, Sequence
+from collections.abc import Callable, Hashable, Iterable, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 import numpy as np
@@ -1283,6 +1283,24 @@ def get_first_matching_site_prop(
         warnings.warn(warn_msg, UserWarning, stacklevel=2)
 
     return None
+
+
+def resolve_vector_prop(
+    structures: Iterable[Structure | IStructure | IMolecule],
+    show_site_vectors: str | Sequence[str],
+) -> str | None:
+    """The one vector property (first of show_site_vectors holding 3D vectors in any
+    structure) drawn for all sites of all structures. Only warns if none is found
+    and show_site_vectors isn't the ("force", "magmom") default.
+    """
+    if isinstance(show_site_vectors, str):
+        show_site_vectors = [show_site_vectors]
+    return get_first_matching_site_prop(
+        list(structures),
+        show_site_vectors,
+        warn_if_none=show_site_vectors != ("force", "magmom"),
+        filter_callback=lambda _prop, val: _is_3d_vector(val),
+    )
 
 
 def draw_bonds(
