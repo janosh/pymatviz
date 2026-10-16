@@ -58,7 +58,7 @@ def confusion_matrix(
             pymatviz.utils.plotting.annotated_heatmap()
         metrics (dict[str, str | None] | Sequence[str]): Which metrics to display and
             their format strings. If not dict, uses float_fmt for all metrics. Defaults
-            to ("Acc", "MCC"). Available metrics: "Acc", "Prec", "Rec", "F1", "MCC"
+            to ("Acc",). Available metrics: "Acc", "Prec", "Rec", "F1", "MCC"
             (Matthews correlation coefficient). Only "Acc" applies to multi-class
             problems.
         metrics_kwargs (dict | None): Additional keywords for metrics annotation.
@@ -175,10 +175,6 @@ def confusion_matrix(
     )
     fig = annotated_heatmap(**heatmap_defaults | (heatmap_kwargs or {}))
 
-    # Calculate accuracy and other metrics
-    acc = conf_mat_arr.diagonal().sum() / conf_mat_arr.sum()
-
-    # Handle metrics parameter
     if isinstance(metrics, list | tuple | set):
         metrics_dict: dict[Any, str | None] = dict.fromkeys(metrics)
     elif isinstance(metrics, dict):
@@ -189,41 +185,29 @@ def confusion_matrix(
         if not isinstance(metric, str):
             raise TypeError(f"Metric keys must be strings, got {type(metric).__name__}")
 
-    # Add metrics annotation
-    metrics_text = []
-    available_metrics = {"Acc": lambda: acc}
+    available_metrics = {"Acc": conf_mat_arr.diagonal().sum() / conf_mat_arr.sum()}
     if n_classes == 2:  # binary classification metrics
         tn, fp, fn, tp = conf_mat_arr.ravel()
         precision = tp / (tp + fp) if tp + fp > 0 else 0
         recall = tp / (tp + fn) if tp + fn > 0 else 0
-
+        mcc_denom = (tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)
         available_metrics |= {
-            "Prec": lambda: precision,
-            "Rec": lambda: recall,
-            "F1": lambda: (
-                2 * precision * recall / (precision + recall)
-                if precision + recall > 0
-                else 0
-            ),
-            "MCC": lambda: (
-                (tp * tn - fp * fn)
-                / np.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
-                if (tp + fp) * (tp + fn) * (tn + fp) * (tn + fn) > 0
-                else 0
-            ),
+            "Prec": precision,
+            "Rec": recall,
+            "F1": 2 * precision * recall / (precision + recall)
+            if precision + recall > 0
+            else 0,
+            "MCC": (tp * tn - fp * fn) / np.sqrt(mcc_denom) if mcc_denom > 0 else 0,
         }
 
+    metrics_text = []
     for metric, fmt in cast("dict[str, str | None]", metrics_dict).items():
         if metric not in available_metrics:
             raise ValueError(
                 f"Unknown {metric=}. Available: {', '.join(available_metrics)}"
             )
-
-        metric_val = available_metrics[metric]()
-
-        # use float_fmt if no specific format given
-        f_fmt = float_fmt if fmt is None else fmt
-        metrics_text += [f"{metric}={metric_val:{f_fmt}}"]
+        metric_fmt = float_fmt if fmt is None else fmt
+        metrics_text += [f"{metric}={available_metrics[metric]:{metric_fmt}}"]
 
     if metrics_text:  # only add annotation if there are metrics to show
         metrics_defaults = dict(
@@ -251,8 +235,7 @@ def confusion_matrix(
         constrain="domain",  # ensure nearly square overall figure
     )
     fig.layout.font.size = 18
-    fig.layout.paper_bgcolor = "rgba(0,0,0,0)"
-    fig.layout.plot_bgcolor = "rgba(0,0,0,0)"
+    fig.layout.paper_bgcolor = fig.layout.plot_bgcolor = "rgba(0,0,0,0)"
     fig.layout.xaxis.update(dict(title="Predicted") | axes_kwargs)
     fig.layout.yaxis.update(
         dict(

@@ -75,37 +75,46 @@ def _standardize_input(
     return targets, curves_dict
 
 
-def _add_classifier_curve_traces(
-    fig: go.Figure,
-    targets: np.ndarray,
-    curves_dict: dict[str, dict[str, Any]],
+def _classifier_curves_fig(
+    targets: ArrayLike | str,
+    probs_positive: Predictions,
+    df: pd.DataFrame | None,
     *,
-    build_trace: Callable[[str, int, np.ndarray, np.ndarray], dict[str, Any]],
+    build_trace: Callable[[str, np.ndarray, np.ndarray], dict[str, Any]],
     meta_key: str,
     kwargs: dict[str, Any],
-) -> None:
-    """Add one scatter trace per classifier and sort traces by a meta metric.
+) -> go.Figure:
+    """Figure with one line per classifier, sorted by a meta metric (descending).
 
     Args:
-        fig (go.Figure): Figure to add the per-classifier traces to.
-        targets (np.ndarray): Ground truth binary labels.
-        curves_dict (dict): Map of name to {"probs_positive", **trace_kwargs}.
-        build_trace (Callable): Given (name, idx, targets_no_nan, probs_no_nan), returns
-            the trace kwargs dict (x, y, name, line, hovertemplate, customdata, meta).
-        meta_key (str): Key in each trace's meta dict to sort traces by (descending).
+        targets (ArrayLike | str): Ground truth labels (see roc_curve).
+        probs_positive (Predictions): Per-classifier probabilities (see roc_curve).
+        df (pd.DataFrame | None): Optional DataFrame holding both columns.
+        build_trace (Callable): Given (name, targets_no_nan, probs_no_nan), returns
+            the trace kwargs dict (x, y, name, hovertemplate, customdata, meta).
+        meta_key (str): Key in each trace's meta dict to sort traces by.
         kwargs (dict): Extra keywords merged into every trace's add_scatter call.
     """
+    targets, curves_dict = _standardize_input(targets, probs_positive, df)
+    targets = np.asarray(targets)
+    fig = go.Figure()
     for idx, (name, curve_cfg) in enumerate(curves_dict.items()):
         trace_kwargs = dict(curve_cfg)  # don't mutate caller-supplied dicts
         curve_probs = np.asarray(trace_kwargs.pop("probs_positive"))
         no_nan = ~np.isnan(targets) & ~np.isnan(curve_probs)
-        trace_defaults = build_trace(name, idx, targets[no_nan], curve_probs[no_nan])
-        fig.add_scatter(**trace_defaults | kwargs | trace_kwargs)
+        trace_defaults = build_trace(name, targets[no_nan], curve_probs[no_nan])
+        line_style = dict(
+            width=2, dash=PLOTLY_LINE_STYLES[idx % len(PLOTLY_LINE_STYLES)]
+        )
+        fig.add_scatter(
+            **trace_defaults | dict(line=line_style) | kwargs | trace_kwargs
+        )
 
     # default to -inf so traces missing the metric sort last
     fig.data = sorted(
         fig.data, key=lambda tr: tr.meta.get(meta_key, float("-inf")), reverse=True
     )
+    return fig
 
 
 def roc_curve(
@@ -126,19 +135,14 @@ def roc_curve(
             - dict of form {"name": {"probs_positive": np.array, **trace_kwargs}}
         df (pd.DataFrame | None): Optional DataFrame containing targets and
             probs_positive columns
-        no_skill (dict[str, Any] | False): Options for no-skill baseline
-            or False to hide it. Commonly needed keys:
-            - show_legend: bool = True
-            - annotation: dict = None (plotly annotation dict to label the line)
-            All other keys are passed to fig.add_scatter()
+        no_skill (dict[str, Any] | False): Options for the no-skill diagonal or
+            False to hide it. Keys: "xs"/"ys" (line points), "line" (plotly line
+            style) and "annotation" (plotly annotation dict labeling the line).
         **kwargs: Additional keywords passed to fig.add_scatter()
 
     Returns:
         Figure: Plotly figure object
     """
-    fig = go.Figure()
-    targets, curves_dict = _standardize_input(targets, probs_positive, df)
-    targets = np.asarray(targets)
 
     def hover_template(trace_name: str) -> str:
         return (
@@ -148,9 +152,7 @@ def roc_curve(
             "Threshold: %{customdata.threshold:.3f}<br>"
         )
 
-    def build_trace(
-        name: str, idx: int, tgt: np.ndarray, probs: np.ndarray
-    ) -> dict[str, Any]:
+    def build_trace(name: str, tgt: np.ndarray, probs: np.ndarray) -> dict[str, Any]:
         fpr, tpr, thresholds = skm.roc_curve(tgt, probs)
         roc_auc = skm.roc_auc_score(tgt, probs)
         display_name = f"{name} · AUC={roc_auc:.2f}" if name else f"AUC={roc_auc:.2f}"
@@ -158,38 +160,27 @@ def roc_curve(
             "x": fpr,
             "y": tpr,
             "name": display_name,
-            "line": dict(
-                width=2, dash=PLOTLY_LINE_STYLES[idx % len(PLOTLY_LINE_STYLES)]
-            ),
             "hovertemplate": hover_template(display_name),
             "customdata": [dict(threshold=thr) for thr in thresholds],
             "meta": dict(roc_auc=roc_auc),
         }
 
-    _add_classifier_curve_traces(
-        fig,
+    fig = _classifier_curves_fig(
         targets,
-        curves_dict,
+        probs_positive,
+        df,
         build_trace=build_trace,
         meta_key="roc_auc",
         kwargs=kwargs,
     )
 
-    # Add no-skill baseline line
     if no_skill is not False:
         no_skill = dict(no_skill or {})
-
         # default to 100 points so whole line is hoverable, not just end points
-        xs = no_skill.pop("xs", np.linspace(0, 1, 100))
-        ys = no_skill.pop("ys", np.linspace(0, 1, 100))
-
-        # Extract line options if provided
-        line_kwargs = no_skill.pop("line", {})
-
         fig.add_scatter(
-            x=xs,
-            y=ys,
-            line=dict(dash="dash", color="gray") | line_kwargs,
+            x=no_skill.pop("xs", np.linspace(0, 1, 100)),
+            y=no_skill.pop("ys", np.linspace(0, 1, 100)),
+            line=dict(dash="dash", color="gray") | no_skill.pop("line", {}),
             showlegend=False,
             hovertemplate=hover_template("No skill"),
         )
@@ -229,24 +220,16 @@ def precision_recall_curve(
             probs_positive columns
         no_skill (dict[str, Any] | False): Options for no-skill baselines computed
             from each classifier's valid rows, or False to hide them. Identical
-            baselines share a line. Commonly needed keys:
-            - show_legend: bool = True
-            - annotation: dict = None (plotly annotation dict to label the line)
-            All other keys are passed to fig.add_scatter()
+            baselines share a line. Keys: "line" (plotly line style) and
+            "annotation" (plotly annotation dict labeling the line).
         **kwargs: Additional keywords passed to fig.add_scatter()
 
     Returns:
         Figure: Plotly figure object
     """
-    fig = go.Figure()
-    targets, curves_dict = _standardize_input(targets, probs_positive, df)
-    targets = np.asarray(targets)
-
     baselines: dict[float, list[str]] = {}
 
-    def build_trace(
-        name: str, idx: int, tgt: np.ndarray, probs: np.ndarray
-    ) -> dict[str, Any]:
+    def build_trace(name: str, tgt: np.ndarray, probs: np.ndarray) -> dict[str, Any]:
         prec_curve, recall_curve, thresholds = skm.precision_recall_curve(tgt, probs)
         baselines.setdefault(float(np.mean(tgt == 1)), []).append(name)
         # f1 scores for each threshold
@@ -260,9 +243,6 @@ def precision_recall_curve(
             "x": recall_curve,
             "y": prec_curve,
             "name": display_name,
-            "line": dict(
-                width=2, dash=PLOTLY_LINE_STYLES[idx % len(PLOTLY_LINE_STYLES)]
-            ),
             "hovertemplate": (
                 f"<b>{display_name}</b><br>"
                 "Recall: %{x:.3f}<br>"
@@ -278,16 +258,15 @@ def precision_recall_curve(
             "meta": dict(f1_score=f1_score),
         }
 
-    _add_classifier_curve_traces(
-        fig,
+    fig = _classifier_curves_fig(
         targets,
-        curves_dict,
+        probs_positive,
+        df,
         build_trace=build_trace,
         meta_key="f1_score",
         kwargs=kwargs,
     )
 
-    # Add no-skill baseline if not explicitly disabled
     if no_skill is not False:
         no_skill = dict(no_skill or {})
         no_skill_line = no_skill.pop("line", {})
