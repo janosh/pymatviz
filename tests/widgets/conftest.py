@@ -3,7 +3,6 @@
 from typing import Any
 
 import pytest
-from pymatgen.core import Structure
 
 from pymatviz.widgets.matterviz import MatterVizWidget
 
@@ -18,20 +17,6 @@ def ensure_widget_assets() -> None:
     what keeps it from being re-downloaded.
     """
     MatterVizWidget._set_class_assets()
-
-
-@pytest.fixture
-def multi_frame_trajectory(fe3co4_disordered: Structure) -> dict[str, Any]:
-    """Multi-frame trajectory for testing."""
-    frames = [
-        {
-            "structure": fe3co4_disordered.as_dict(),
-            "step": idx,
-            "metadata": {"step": idx},
-        }
-        for idx in range(5)
-    ]
-    return {"frames": frames}
 
 
 def assert_widget_property_sync(
