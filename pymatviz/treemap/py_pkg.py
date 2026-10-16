@@ -1145,6 +1145,8 @@ def py_pkg_treemap(
         **color_defaults,
         **kwargs,
     }
+    if has_color_mode:  # color_by decides the cell colors, whatever plotly kwargs say
+        treemap_params["color"] = "color_value"
 
     # None marks rows that end above the deepest level. plotly>=7 casts path columns
     # to str and max()es them, so object columns mixing str and None (-> NaN) raise;

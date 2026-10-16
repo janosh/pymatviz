@@ -286,9 +286,11 @@ def is_ase_atoms(struct: Any) -> TypeIs[Atoms]:
 
 
 def is_phonopy_atoms(obj: Any) -> TypeIs[PhonopyAtoms]:
-    """Check if object is PhonopyAtoms."""
-    cls_name = f"{type(obj).__module__}.{type(obj).__qualname__}"
-    return cls_name == "phonopy.structure.atoms.PhonopyAtoms"
+    """Check if object is PhonopyAtoms or a subclass (Supercell, Primitive)."""
+    return any(
+        f"{cls.__module__}.{cls.__qualname__}" == "phonopy.structure.atoms.PhonopyAtoms"
+        for cls in type(obj).__mro__
+    )
 
 
 def normalize_structures(
