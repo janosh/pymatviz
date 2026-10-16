@@ -233,7 +233,7 @@ See [`pymatviz/xrd.py`](pymatviz/xrd.py).
 
 See [`pymatviz/rdf/figures.py`](pymatviz/rdf/figures.py).
 
-| [`element_pair_rdfs(pmg_struct)`](pymatviz/rdf/figures.py#L50) | [`element_pair_rdfs({"A": struct1, "B": struct2})`](pymatviz/rdf/figures.py#L50) [![fig-icon]](assets/scripts/rdf/element_pair_rdfs.py) |
+| [`element_pair_rdfs(pmg_struct)`](pymatviz/rdf/figures.py#L101) | [`element_pair_rdfs({"A": struct1, "B": struct2})`](pymatviz/rdf/figures.py#L101) [![fig-icon]](assets/scripts/rdf/element_pair_rdfs.py) |
 | :------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------------------------: |
 |                 ![element-pair-rdfs-Na8Nb8O24]                 |                                                ![element-pair-rdfs-crystal-vs-amorphous]                                                |
 
