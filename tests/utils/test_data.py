@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from copy import deepcopy
 from typing import TYPE_CHECKING
 
 import pytest
@@ -9,8 +8,6 @@ import pymatviz as pmv
 
 
 if TYPE_CHECKING:
-    from typing import Any
-
     from pymatviz.typing import CrystalSystem
 
 
@@ -53,40 +50,6 @@ def test_spg_to_crystal_sys(spg: int, crystal_sys: CrystalSystem) -> None:
 def test_spg_to_crystal_sys_invalid(spg: int) -> None:
     with pytest.raises(ValueError, match=f"Invalid space group {spg}"):
         pmv.utils.spg_to_crystal_sys(spg)
-
-
-@pytest.mark.parametrize(
-    ("updates", "kwargs", "expected"),
-    [
-        ({}, dict(a=2, b=3, d=4), dict(a=2, b=3, c=[3, 4], d=4)),
-        (dict(a=5, b=6), {}, dict(a=5, b=6, c=[3, 4])),
-        ({}, dict(b=5, c=None), dict(a=1, b=5, c=None)),
-        ({}, dict(d=7, e=None), dict(a=1, b=None, c=[3, 4], d=7, e=None)),
-        ({}, dict(c={"x": 10, "y": 20}), dict(a=1, b=None, c={"x": 10, "y": 20})),
-        (dict(a=7), dict(a=8), dict(a=8, b=None, c=[3, 4])),
-    ],
-    ids=["kwargs", "positional", "none", "new-keys", "nested", "kwargs-precedence"],
-)
-def test_patch_dict(
-    updates: dict[str, Any], kwargs: dict[str, Any], expected: dict[str, Any]
-) -> None:
-    """Patches yield a copy, with keyword updates taking precedence."""
-    original = {"a": 1, "b": None, "c": [3, 4]}
-    before = deepcopy(original)
-    with pmv.utils.patch_dict(original, updates, **kwargs) as patched:
-        assert patched == expected
-        patched.clear()  # mutating the patched copy must not touch the original
-    assert original == before
-
-
-def test_patch_dict_empty() -> None:
-    """Deleting an added key from a patch leaves the original empty."""
-    original: dict[str, int] = {}
-    with pmv.utils.patch_dict(original, a=2) as patched:
-        assert patched == {"a": 2}
-        del patched["a"]
-        assert patched == {}
-    assert original == {}
 
 
 def test_si_fmt() -> None:

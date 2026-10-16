@@ -4,6 +4,7 @@ Available functions:
     - annotate: Annotate a plotly figure with text.
     - annotated_heatmap: Heatmap with per-cell text, replacing the removed
       plotly.figure_factory.create_annotated_heatmap.
+    - apply_show_counts: Set treemap/sunburst cell text from a show_counts mode.
     - get_font_color: Get the font color used in a Plotly figure.
     - get_fig_xy_range: Get the x and y range of a plotly figure.
     - luminance: Compute the luminance of a color.
@@ -14,13 +15,14 @@ Available functions:
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Final, cast
+from typing import TYPE_CHECKING, Final, cast, get_args
 
 import numpy as np
 import plotly.graph_objects as go
 import plotly.io as pio
 
 from pymatviz.colors import _CSS_NAMED_COLORS
+from pymatviz.typing import ShowCounts
 
 
 if TYPE_CHECKING:
@@ -106,6 +108,29 @@ def annotate(text: str | Sequence[str], fig: go.Figure, **kwargs: Any) -> go.Fig
         )
 
     return fig
+
+
+def apply_show_counts(
+    fig: go.Figure, show_counts: ShowCounts, value_fmt: str = ""
+) -> None:
+    """Set a treemap/sunburst trace's text to its label plus the counts selected by
+    show_counts ("value", "percent", "value+percent" or False), formatting values
+    with the d3 value_fmt (e.g. ".2f").
+    """
+    trace = fig.data[0]
+    value = f"N=%{{value{':' if value_fmt else ''}{value_fmt}}}"
+    if show_counts == "percent":
+        trace.textinfo = "label+percent entry"
+    elif show_counts == "value":
+        trace.textinfo = "label+value"
+        trace.texttemplate = f"%{{label}}<br>{value}"
+    elif show_counts == "value+percent":
+        trace.textinfo = "label+value+percent entry"
+        trace.texttemplate = f"%{{label}}<br>{value}<br>%{{percentEntry}}"
+    elif show_counts is not False:
+        raise ValueError(
+            f"Invalid {show_counts=}, must be one of {get_args(ShowCounts)}"
+        )
 
 
 def get_font_color(fig: go.Figure) -> str:

@@ -2,16 +2,11 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, get_args
+from typing import Literal
 
 import pandas as pd
 
 from pymatviz.enums import Key
-from pymatviz.typing import ShowCounts
-
-
-if TYPE_CHECKING:
-    import plotly.graph_objects as go
 
 
 def _limit_slices(
@@ -111,19 +106,3 @@ def _limit_slices_per_group(
         for _, df_sub in df_grouped.groupby(group_col, sort=False)
     ]
     return pd.concat(sub_dfs, ignore_index=True)
-
-
-def _apply_sunburst_show_counts(fig: go.Figure, show_counts: ShowCounts) -> None:
-    """Set sunburst trace text info/template according to show_counts."""
-    if show_counts == "percent":
-        fig.data[0].textinfo = "label+percent entry"
-    elif show_counts == "value":
-        fig.data[0].textinfo = "label+value"
-        fig.data[0].texttemplate = "%{label}<br>N=%{value:.2f}"
-    elif show_counts == "value+percent":
-        fig.data[0].textinfo = "label+value+percent entry"
-        fig.data[0].texttemplate = "%{label}<br>N=%{value:.2f}<br>%{percentEntry}"
-    elif show_counts is not False:
-        raise ValueError(
-            f"Invalid {show_counts=}, must be one of {get_args(ShowCounts)}"
-        )

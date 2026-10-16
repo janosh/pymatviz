@@ -6,7 +6,11 @@ from typing import Any
 
 import traitlets as tl
 
-from pymatviz.widgets._normalize import _to_dict
+from pymatviz.widgets._normalize import (
+    _to_dict,
+    normalize_json_kwargs,
+    structure_to_dict,
+)
 from pymatviz.widgets._traits import PlotControlsTraits, optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
@@ -34,6 +38,8 @@ class BandsAndDosWidget(PlotControlsTraits, MatterVizWidget):
 
     band_structs = tl.Dict(allow_none=True).tag(sync=True)
     doses = tl.Dict(allow_none=True).tag(sync=True)
+    structure = optional_trait(tl.Dict)
+    bz_props = optional_trait(tl.Dict)  # BrillouinZone props for the structure's panel
 
     # Shared electronic reference energy for both panels (None = dataset metadata)
     fermi_level = optional_trait(tl.Float)
@@ -53,6 +59,7 @@ class BandsAndDosWidget(PlotControlsTraits, MatterVizWidget):
         self,
         band_structs: Any | None = None,
         doses: Any | None = None,
+        structure: Any | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize the BandsAndDosWidget.
@@ -63,14 +70,18 @@ class BandsAndDosWidget(PlotControlsTraits, MatterVizWidget):
                 ``{label: band_structure}`` dict of those.
             doses: DOS data -- a pymatgen Dos, CompleteDos, PhononDos, a dict, or a
                 ``{label: dos}`` dict of those.
+            structure: Optional crystal (pymatgen Structure, ASE Atoms, PhonopyAtoms
+                or structure dict) adding its Brillouin zone with the bands' k-path.
             **kwargs: Additional widget properties, e.g. ``fermi_level`` for both
                 panels, ``show_legend`` for the bands panel, or ``stack``, ``sigma``
                 (THz for phonons, eV for electrons), ``normalize``, and ``spin_mode``
                 for the DOS panel.
         """
+        normalize_json_kwargs(kwargs, ("bz_props",), "BandsAndDos")
         super().__init__(
             widget_type="bands_and_dos",
             band_structs=_to_dict(band_structs, "band structure"),
             doses=_to_dict(doses, "DOS"),
+            structure=structure_to_dict(structure, periodic=True),
             **kwargs,
         )

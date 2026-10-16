@@ -190,14 +190,6 @@ def _prepare_render(inputs: _RenderInputs) -> tuple[str, int, float]:
 _CAPTURE_FORMATS = ("png", "jpeg", "svg", "pdf")
 
 
-def _validate_capture_format(fmt: str) -> None:
-    """Raise ValueError if fmt is not a supported capture format."""
-    if fmt not in _CAPTURE_FORMATS:
-        raise ValueError(
-            f"Unsupported capture format {fmt!r}, expected one of {_CAPTURE_FORMATS}"
-        )
-
-
 def _vector_pdf_kwargs(bbox: Mapping[str, object] | None) -> dict[str, Any]:
     """Page.pdf() options sizing a borderless PDF to the widget bounding box."""
     if bbox is None:
@@ -217,8 +209,6 @@ async def _async_capture_page(
     scale_factor: float = 1.0,
 ) -> bytes:
     """Async version of _capture_page."""
-    _validate_capture_format(fmt)
-
     if fmt == "svg":
         svg_string = await page.evaluate(_SVG_EXTRACT_JS)
         if svg_string is None:
@@ -784,8 +774,6 @@ def _capture_page(
     Returns:
         Raw image/document bytes.
     """
-    _validate_capture_format(fmt)
-
     if fmt == "svg":
         svg_string = page.evaluate(_SVG_EXTRACT_JS)
         if svg_string is None:

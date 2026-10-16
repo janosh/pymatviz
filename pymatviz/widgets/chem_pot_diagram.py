@@ -10,6 +10,7 @@ from pymatviz.widgets._normalize import (
     _normalize_entry_compositions,
     normalize_plot_json,
 )
+from pymatviz.widgets._traits import optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -31,6 +32,8 @@ class ChemPotDiagramWidget(MatterVizWidget):
     entries = tl.List(allow_none=True).tag(sync=True)
     config = tl.Dict(allow_none=True).tag(sync=True)
     temperature = tl.Float(allow_none=True, default_value=None).tag(sync=True)
+    width = optional_trait(tl.Int, min=1)
+    height = optional_trait(tl.Int, min=1)
 
     def __init__(
         self,
@@ -43,7 +46,9 @@ class ChemPotDiagramWidget(MatterVizWidget):
             entries: Phase data entries with ``name``, ``energy``, and
                 ``composition`` fields.
             **kwargs: Additional widget properties including ``config`` (dict
-                for diagram settings) and ``temperature`` (float, Kelvin).
+                for diagram settings), ``temperature`` (float, Kelvin) and
+                ``width``/``height`` (px, the aspect ratio the diagram keeps as it fills
+                the available width).
         """
         normalized = _normalize_entry_compositions(entries or [])
         super().__init__(

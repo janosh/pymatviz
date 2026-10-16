@@ -14,6 +14,8 @@ from urllib.parse import urljoin
 import traitlets as tl
 from anywidget import AnyWidget
 
+from pymatviz.widgets._traits import CONTROLS_MODES
+
 
 if TYPE_CHECKING:
     from typing import Literal
@@ -21,20 +23,27 @@ if TYPE_CHECKING:
     from pymatviz.widgets._headless import RenderReport
 
 
-# Pin a published npm bundle matching the Python traits (test_js_prop_parity.py).
-# Users without MATTERVIZ_ANYWIDGET_DIR fetch this version from jsDelivr.
-MATTERVIZ_ANYWIDGET_VERSION = "0.8.0"
+# Bundle matching the Python traits (test_js_prop_parity.py). "main" tracks
+# matterviz main's bundle on its docs site; releases must pin a published npm
+# version (fetched from jsDelivr) so installed wheels keep a fixed frontend.
+MATTERVIZ_ANYWIDGET_VERSION = "main"
 _ANYWIDGET_CDN = "https://cdn.jsdelivr.net/npm/matterviz-anywidget"
+# matterviz's gh-pages workflow deploys main's bundle here on every push to main
+_ANYWIDGET_MAIN_URL = "https://matterviz.janosh.dev/anywidget"
 # expanded at call time (not import time) so tests can patch os.path.expanduser
 _CACHE_ROOT = "~/.cache/pymatviz"
 
 
 def _cdn_url(version: str, filename: str = "matterviz.js") -> str:
-    """Return the jsDelivr URL for a ``matterviz-anywidget`` bundle file.
+    """Return the URL for a ``matterviz-anywidget`` bundle file.
 
-    jsDelivr serves npm packages with CORS and a JavaScript MIME type (both
-    required for cross-origin ``import()``), so these URLs work in ``to_html``.
+    ``version="main"`` maps to the bundle built from matterviz main and served by
+    its docs site; any other version to the jsDelivr URL of that npm release.
+    Both hosts serve with CORS and a JavaScript MIME type (required for
+    cross-origin ``import()``), so these URLs work in ``to_html``.
     """
+    if version == "main":
+        return f"{_ANYWIDGET_MAIN_URL}/{filename}"
     return f"{_ANYWIDGET_CDN}@{version}/build/{filename}"
 
 
@@ -117,10 +126,11 @@ def configure_assets(
 ) -> None:
     """Configure matterviz widget assets globally for all subsequent widgets.
 
-    Call with no arguments to reset to default (the pinned bundle version).
+    Call with no arguments to reset to default (``MATTERVIZ_ANYWIDGET_VERSION``).
 
     Args:
-        version: ``matterviz-anywidget`` npm version to fetch (e.g. ``"0.4.0"``).
+        version: ``matterviz-anywidget`` npm version to fetch (e.g. ``"0.4.0"``),
+            or ``"main"`` for the bundle built from matterviz main.
             Mutually exclusive with ``esm_src``/``css_src``.
         esm_src: URL or local file path for the ESM JavaScript bundle.
         css_src: URL or local file path for the CSS stylesheet.
@@ -193,12 +203,16 @@ def fetch_widget_asset(filename: str, version_override: str | None = None) -> st
     1. ``MATTERVIZ_ANYWIDGET_DIR`` env var -- a local ``build/`` dir, for
        developing against an unpublished bundle.
     2. on-disk cache (``~/.cache/pymatviz/matterviz-anywidget/<version>/``).
-    3. download from jsDelivr (the ``matterviz-anywidget`` npm package), cached.
+    3. download from ``_cdn_url(version)`` (jsDelivr for npm versions), cached.
+
+    ``version="main"`` skips the disk cache (steps 2 and 3's write): main's bundle
+    changes with every matterviz deploy, so it is re-downloaded once per process
+    (``MatterVizWidget`` caches assets in memory).
 
     Args:
         filename: ``"matterviz.js"`` or ``"matterviz.css"``.
-        version_override: ``matterviz-anywidget`` npm version to fetch instead of
-            the pinned ``MATTERVIZ_ANYWIDGET_VERSION``.
+        version_override: ``matterviz-anywidget`` npm version (or ``"main"``) to
+            fetch instead of the default ``MATTERVIZ_ANYWIDGET_VERSION``.
     """
     version = version_override or MATTERVIZ_ANYWIDGET_VERSION
 
@@ -206,12 +220,14 @@ def fetch_widget_asset(filename: str, version_override: str | None = None) -> st
     if dev_dir and os.path.isfile(dev_path := f"{dev_dir}/{filename}"):
         return _read_asset_source(dev_path)
 
+    is_main = version == "main"
     cache_dir = _cache_dir(version)
     cache_path = f"{cache_dir}/{filename}"
-    if os.path.isfile(cache_path):
+    if not is_main and os.path.isfile(cache_path):
         return _read_asset_source(cache_path)
 
-    if not re.match(r"^\d+\.\d+\.\d+([-+].+)?$", version):  # semver, optional pre/build
+    # semver, optional pre/build
+    if not is_main and not re.match(r"^\d+\.\d+\.\d+([-+].+)?$", version):
         raise ValueError(f"Invalid matterviz-anywidget version: {version=}")
 
     cdn_url = _cdn_url(version, filename)
@@ -223,6 +239,8 @@ def fetch_widget_asset(filename: str, version_override: str | None = None) -> st
             f"{cdn_url}. Ensure that version is published to npm, set "
             "MATTERVIZ_ANYWIDGET_DIR to a local build dir, or check connectivity."
         ) from exc
+    if is_main:  # never persist main: it changes with every matterviz deploy
+        return content
 
     # Write to a temp file and atomically rename so an interrupted write never
     # leaves a partial file that later cache-hits and serves a broken bundle.
@@ -271,12 +289,29 @@ class MatterVizWidget(AnyWidget):
     _css: str
     _asset_cache: ClassVar[dict[str, tuple[str, str] | str | None]] = {}
     # ESM URL serving the configured bundle, for to_html(inline=False): None ->
-    # pinned-default CDN; a local path -> to_html inlines so JS/CSS stay one build.
+    # default version's URL; a local path -> to_html inlines so JS/CSS stay one build.
     # Set on the class by configure_assets, on the instance by version_override.
     _export_esm_url: str | None = None
     widget_type = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
     style = tl.Unicode(allow_none=True).tag(sync=True)
-    show_controls = tl.Bool(default_value=True).tag(sync=True)
+    # None keeps each component's default (hover-revealed, pinned for trajectories);
+    # True/False pin controls on/off, a mode picks "always"/"hover"/"never", and a
+    # {"mode", "hidden", "style"} dict also hides named controls
+    show_controls = tl.Union(
+        [
+            tl.Bool(),
+            tl.CaselessStrEnum(CONTROLS_MODES),
+            tl.Dict(
+                per_key_traits={
+                    "mode": tl.CaselessStrEnum(CONTROLS_MODES),
+                    "hidden": tl.List(tl.Unicode()),
+                    "style": tl.Unicode(),
+                }
+            ),
+        ],
+        allow_none=True,
+        default_value=None,
+    ).tag(sync=True)
 
     @classmethod
     def _set_class_assets(cls) -> tuple[str, str]:
@@ -298,8 +333,9 @@ class MatterVizWidget(AnyWidget):
         """Initialize with lazy-loaded widget assets.
 
         Args:
-            version_override: Fetch assets for this version tag instead of the
-                installed version. Prefer ``configure_assets()`` for global overrides.
+            version_override: Fetch assets for this ``matterviz-anywidget``
+                version (or ``"main"``) instead of ``MATTERVIZ_ANYWIDGET_VERSION``.
+                Prefer ``configure_assets()`` for global overrides.
             **kwargs: Passed through to AnyWidget.
         """
         if version_override is not None:
@@ -439,37 +475,27 @@ class MatterVizWidget(AnyWidget):
         """
         from pymatviz.widgets._headless import _CAPTURE_FORMATS, render_widget_headless
 
-        if dpi <= 0:
-            raise ValueError(f"dpi must be positive, got {dpi}")
-        if timeout <= 0:
-            raise ValueError(f"timeout must be positive, got {timeout}")
+        dims = dict(dpi=dpi, timeout=timeout, width=width, height=height)
+        for name, val in dims.items():
+            if val is not None and val <= 0:
+                raise ValueError(f"{name} must be positive, got {val}")
         if not 1 <= quality <= 100:
             raise ValueError(f"quality must be between 1 and 100, got {quality}")
-        if width is not None and width <= 0:
-            raise ValueError(f"width must be positive, got {width}")
-        if height is not None and height <= 0:
-            raise ValueError(f"height must be positive, got {height}")
 
-        if fmt is not None and fmt not in _CAPTURE_FORMATS:
-            raise ValueError(
-                f"Unsupported format {fmt!r}, expected one of {_CAPTURE_FORMATS}"
-            )
-        resolved_fmt = fmt
-        if resolved_fmt is None and filename:
+        if fmt is None and filename:
             ext = os.path.splitext(filename)[1].lower().lstrip(".")
             if not ext:
                 raise ValueError(
                     f"Cannot infer format from {filename=!r} "
                     "(no extension). Pass fmt= explicitly."
                 )
-            resolved_fmt = {"jpg": "jpeg"}.get(ext, ext)
-            if resolved_fmt not in _CAPTURE_FORMATS:
-                raise ValueError(
-                    f"Unsupported file extension '.{ext}'; "
-                    f"supported: {sorted(_CAPTURE_FORMATS)}"
-                )
-        if resolved_fmt is None:
-            resolved_fmt = "png"
+            fmt = {"jpg": "jpeg"}.get(ext, ext)  # ty: ignore[invalid-assignment]
+        fmt = fmt or "png"
+        if fmt not in _CAPTURE_FORMATS:
+            raise ValueError(
+                f"Unsupported format {fmt!r} ({filename=}), expected one of "
+                f"{_CAPTURE_FORMATS}"
+            )
 
         esm_content, css_content = self._resolve_assets()
 
@@ -477,7 +503,7 @@ class MatterVizWidget(AnyWidget):
             widget_data=self.to_dict(),
             esm_content=esm_content,
             css_content=css_content,
-            fmt=resolved_fmt,
+            fmt=fmt,
             dpi=dpi,
             timeout=timeout,
             quality=quality,
@@ -544,9 +570,10 @@ class MatterVizWidget(AnyWidget):
             esm_url: Explicit URL to load the bundle from (a host serving it with
                 CORS and a JavaScript MIME type). Mutually exclusive with
                 ``inline``. When omitted and ``inline`` is False, references the
-                bundle matching the widget's active assets (the pinned jsDelivr
-                version by default, or the version/URL from configure_assets /
-                version_override); local custom assets are inlined instead.
+                bundle matching the widget's active assets (the
+                ``MATTERVIZ_ANYWIDGET_VERSION`` URL by default, or the version/URL
+                from configure_assets / version_override); local custom assets are
+                inlined instead.
 
         Returns:
             The complete HTML document as a string.

@@ -47,6 +47,57 @@ def _resolve_n_bins(
     return int(cutoff / bin_size)
 
 
+def _add_rdf_line(
+    fig: go.Figure,
+    idx: int,
+    label: Hashable,
+    rdf: tuple[np.ndarray, np.ndarray],
+    colors: Sequence[str] | None,
+    line_styles: Sequence[str] | None,
+    **kwargs: Any,
+) -> None:
+    """Add the idx-th structure's (radii, g(r)) line, cycling colors and dashes."""
+    colors = colors or plotly.colors.qualitative.Plotly
+    line_styles = line_styles or PLOTLY_LINE_STYLES
+    radii, g_r = rdf
+    fig.add_scatter(
+        x=radii,
+        y=g_r,
+        mode="lines",
+        name=label,
+        line=dict(
+            color=colors[idx % len(colors)], dash=line_styles[idx % len(line_styles)]
+        ),
+        hovertemplate=f"{label}<br>r = %{{x:.2f}} Å<br>g(r) = %{{y:.2f}}"
+        "<extra></extra>",
+        **kwargs,
+    )
+
+
+def _add_rdf_legend_and_reference(
+    fig: go.Figure,
+    n_structs: int,
+    reference_line: dict[str, Any] | None,
+    **legend_kwargs: Any,
+) -> None:
+    """Draw an optional g(r)=1 reference line and show a legend centered above the
+    plot only when comparing multiple structures.
+    """
+    if reference_line is not None:
+        hline_defaults = dict(line_dash="dash", line_color="gray", opacity=0.7)
+        fig.add_hline(y=1, **hline_defaults | reference_line)
+    fig.layout.showlegend = n_structs > 1
+    if n_structs > 1:
+        fig.layout.legend.update(
+            orientation="h",
+            xanchor="center",
+            x=0.5,
+            y=1.02,
+            yanchor="bottom",
+            **legend_kwargs,
+        )
+
+
 def element_pair_rdfs(
     structures: AnyStructure
     | Sequence[AnyStructure]
@@ -160,58 +211,29 @@ def element_pair_rdfs(
     )
     fig = make_subplots(**subplot_defaults | subplot_kwargs)
 
-    # Set default colors and line styles if not provided
-    colors = colors or plotly.colors.qualitative.Plotly
-    line_styles = line_styles or PLOTLY_LINE_STYLES
     labels = list(struct_dict)
-
-    # Add RDF traces to the figure
     for subplot_idx, rdfs in enumerate(elem_pair_rdfs.values()):
         row, col = divmod(subplot_idx, actual_cols)
-
-        for trace_idx, (radii, rdf) in enumerate(rdfs):
-            color = colors[trace_idx % len(colors)]
-            line_style = line_styles[trace_idx % len(line_styles)]
-            label = labels[trace_idx]
-            fig.add_scatter(
-                x=radii,
-                y=rdf,
-                mode="lines",
-                name=label,
-                line=dict(color=color, dash=line_style),
-                legendgroup=label,
+        for trace_idx, rdf in enumerate(rdfs):
+            _add_rdf_line(
+                fig,
+                trace_idx,
+                labels[trace_idx],
+                rdf,
+                colors,
+                line_styles,
+                legendgroup=labels[trace_idx],
                 # Only show legend for first subplot and if multiple structures
                 showlegend=subplot_idx == 0 and len(struct_dict) > 1,
                 row=row + 1,
                 col=col + 1,
-                hovertemplate=f"{label}<br>r = %{{x:.2f}} Å<br>g(r) = %{{y:.2f}}"
-                "<extra></extra>",
             )
 
     fig.update_xaxes(title_text="r [Å]", title_standoff=9, row=n_rows)
     fig.update_yaxes(title_text="g(r)", title_standoff=9, col=1)
     fig.update_layout(height=300 * n_rows, width=450 * actual_cols)
 
-    # Add reference line if specified
-    if reference_line is not None:
-        hline_defaults = dict(line_dash="dash", line_color="gray", opacity=0.7)
-        fig.add_hline(y=1, **hline_defaults | reference_line)
-
-    # show legend centered above subplots only if multiple structures were passed
-    if len(struct_dict) > 1:
-        fig.layout.showlegend = True
-        fig.layout.legend.update(
-            orientation="h",
-            xanchor="center",
-            x=0.5,
-            y=1.02,
-            yanchor="bottom",
-            font_size=14,
-        )
-    else:
-        # Hide legend for single structure
-        fig.layout.showlegend = False
-
+    _add_rdf_legend_and_reference(fig, len(struct_dict), reference_line, font_size=14)
     return fig
 
 
@@ -258,44 +280,11 @@ def full_rdf(
     struct_dict = normalize_periodic_structures(structures)
     n_bins = _resolve_n_bins(struct_dict, cutoff, n_bins, bin_size)
 
-    # Calculate full RDFs for all structures
-    rdfs = {
-        label: calculate_rdf(struct, cutoff=cutoff, n_bins=n_bins)
-        for label, struct in struct_dict.items()
-    }
-
     fig = go.Figure()
-
-    colors = colors or plotly.colors.qualitative.Plotly
-    line_styles = line_styles or PLOTLY_LINE_STYLES
-
-    for idx, (label, (radii, rdf)) in enumerate(rdfs.items()):
-        fig.add_scatter(
-            x=radii,
-            y=rdf,
-            mode="lines",
-            name=label,
-            line=dict(
-                color=colors[idx % len(colors)],
-                dash=line_styles[idx % len(line_styles)],
-            ),
-            hovertemplate=f"{label}<br>r = %{{x:.2f}} Å<br>g(r) = %{{y:.2f}}"
-            "<extra></extra>",
-        )
+    for idx, (label, struct) in enumerate(struct_dict.items()):
+        rdf = calculate_rdf(struct, cutoff=cutoff, n_bins=n_bins)
+        _add_rdf_line(fig, idx, label, rdf, colors, line_styles)
 
     fig.update_layout(xaxis_title="r [Å]", yaxis_title="g(r)")
-
-    if reference_line is not None:
-        hline_defaults = dict(line_dash="dash", line_color="gray", opacity=0.7)
-        fig.add_hline(y=1, **hline_defaults | reference_line)
-
-    # show legend centered above subplots only if multiple structures were passed
-    if len(struct_dict) > 1:
-        fig.layout.showlegend = True
-        fig.layout.legend.update(
-            orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5
-        )
-    else:
-        fig.layout.showlegend = False
-
+    _add_rdf_legend_and_reference(fig, len(struct_dict), reference_line)
     return fig

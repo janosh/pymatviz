@@ -60,9 +60,9 @@ See [`pymatviz/ptable/figures.py`](pymatviz/ptable/figures.py). The module suppo
 |                                     [`ptable_heatmap(atomic_masses)`](pymatviz/ptable/figures.py#L39)                                     | [`ptable_heatmap(compositions, log=True)`](pymatviz/ptable/figures.py#L39) [![fig-icon]](assets/scripts/ptable/ptable_heatmap.py) |
 | :---------------------------------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------------------: |
 |                                                 ![ptable-heatmap-plotly-more-hover-data]                                                  |                                                   ![ptable-heatmap-plotly-log]                                                    |
-|               [`ptable_hists(data)`](pymatviz/ptable/figures.py#L465) [![fig-icon]](assets/scripts/ptable/ptable_hists.py)                | [`ptable_scatter(data, mode="markers")`](pymatviz/ptable/figures.py#L1508) [![fig-icon]](assets/scripts/ptable/ptable_scatter.py) |
+|               [`ptable_hists(data)`](pymatviz/ptable/figures.py#L456) [![fig-icon]](assets/scripts/ptable/ptable_hists.py)                | [`ptable_scatter(data, mode="markers")`](pymatviz/ptable/figures.py#L1505) [![fig-icon]](assets/scripts/ptable/ptable_scatter.py) |
 |                                                          ![ptable-hists-plotly]                                                           |                                                 ![ptable-scatter-plotly-markers]                                                  |
-| [`ptable_heatmap_splits(2_vals_per_elem)`](pymatviz/ptable/figures.py#L1028) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_splits.py) |                            [`ptable_heatmap_splits(3_vals_per_elem)`](pymatviz/ptable/figures.py#L1028)                            |
+| [`ptable_heatmap_splits(2_vals_per_elem)`](pymatviz/ptable/figures.py#L1033) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_splits.py) |                            [`ptable_heatmap_splits(3_vals_per_elem)`](pymatviz/ptable/figures.py#L1033)                            |
 |                                                     ![ptable-heatmap-splits-plotly-2]                                                     |                                                 ![ptable-heatmap-splits-plotly-3]                                                 |
 
 [ptable-heatmap-plotly-log]: assets/svg/ptable-heatmap-plotly-log.svg
@@ -185,7 +185,7 @@ widget.render_report()  # headless render health check: blank fraction, warnings
 
 `to_img` and `render_report` require [Playwright](https://playwright.dev/python): `pip install pymatviz[export] && playwright install chromium`. Set the `PYMATVIZ_STATIC` env var to make `widget.show()` render static PNGs instead of live widgets (useful for CI notebook execution).
 
-Widget constructor kwargs mirror the props of the matching MatterViz component one-to-one (e.g. `BandStructureWidget(band_structs=...)`, `DosWidget(doses=...)`, `HeatmapMatrixWidget(log=True)`), and every plot widget takes `show_controls`, `controls_open`, `controls_toggle_props` and `controls_pane_props` for its control pane. The frontend is the prebuilt [`matterviz-anywidget`](https://www.npmjs.com/package/matterviz-anywidget) npm bundle pinned in [`pymatviz/widgets/matterviz.py`](pymatviz/widgets/matterviz.py) (fetched from jsDelivr and cached); set `MATTERVIZ_ANYWIDGET_DIR` to a local `matterviz/extensions/anywidget/build` to develop against an unreleased MatterViz.
+Widget constructor kwargs mirror the props of the matching MatterViz component one-to-one (e.g. `BandStructureWidget(band_structs=...)`, `DosWidget(doses=...)`, `HeatmapMatrixWidget(color_scale={"type": "log"})`), and every plot widget takes `show_controls`, `controls_open`, `controls_toggle_props` and `controls_pane_props` for its control pane. The frontend is the prebuilt [`matterviz-anywidget`](https://www.npmjs.com/package/matterviz-anywidget) bundle selected by `MATTERVIZ_ANYWIDGET_VERSION` in [`pymatviz/widgets/matterviz.py`](pymatviz/widgets/matterviz.py): `"main"` between releases (matterviz main's bundle from `matterviz.janosh.dev/anywidget/`, re-fetched each session), a published npm version in releases (fetched from jsDelivr and cached on disk); set `MATTERVIZ_ANYWIDGET_DIR` to a local `matterviz/extensions/anywidget/build` to develop against an unreleased MatterViz.
 
 **Examples:**
 
@@ -202,10 +202,10 @@ Importing `pymatviz` auto-registers all widgets for their respective sets of sup
 
 See [`pymatviz/brillouin.py`](pymatviz/brillouin.py).
 
-|   [`brillouin_zone_3d(cubic_struct)`](pymatviz/brillouin.py#L16) [![fig-icon]](assets/scripts/brillouin/brillouin_zone_3d.py)    |  [`brillouin_zone_3d(hexagonal_struct)`](pymatviz/brillouin.py#L16)   |
+|   [`brillouin_zone_3d(cubic_struct)`](pymatviz/brillouin.py#L15) [![fig-icon]](assets/scripts/brillouin/brillouin_zone_3d.py)    |  [`brillouin_zone_3d(hexagonal_struct)`](pymatviz/brillouin.py#L15)   |
 | :------------------------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------: |
 |                                                   ![brillouin-cubic-mp-10018]                                                    |                   ![brillouin-hexagonal-mp-862690]                    |
-| [`brillouin_zone_3d(monoclinic_struct)`](pymatviz/brillouin.py#L16) [![fig-icon]](assets/scripts/brillouin/brillouin_zone_3d.py) | [`brillouin_zone_3d(orthorhombic_struct)`](pymatviz/brillouin.py#L16) |
+| [`brillouin_zone_3d(monoclinic_struct)`](pymatviz/brillouin.py#L15) [![fig-icon]](assets/scripts/brillouin/brillouin_zone_3d.py) | [`brillouin_zone_3d(orthorhombic_struct)`](pymatviz/brillouin.py#L15) |
 |                                                ![brillouin-monoclinic-mp-1183089]                                                |                      ![brillouin-volumes-3-cols]                      |
 
 [brillouin-cubic-mp-10018]: assets/svg/brillouin-cubic-mp-10018.svg
@@ -233,7 +233,7 @@ See [`pymatviz/xrd.py`](pymatviz/xrd.py).
 
 See [`pymatviz/rdf/figures.py`](pymatviz/rdf/figures.py).
 
-| [`element_pair_rdfs(pmg_struct)`](pymatviz/rdf/figures.py#L50) | [`element_pair_rdfs({"A": struct1, "B": struct2})`](pymatviz/rdf/figures.py#L50) [![fig-icon]](assets/scripts/rdf/element_pair_rdfs.py) |
+| [`element_pair_rdfs(pmg_struct)`](pymatviz/rdf/figures.py#L101) | [`element_pair_rdfs({"A": struct1, "B": struct2})`](pymatviz/rdf/figures.py#L101) [![fig-icon]](assets/scripts/rdf/element_pair_rdfs.py) |
 | :------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------------------------: |
 |                 ![element-pair-rdfs-Na8Nb8O24]                 |                                                ![element-pair-rdfs-crystal-vs-amorphous]                                                |
 
@@ -279,9 +279,9 @@ See [`pymatviz/treemap/chem_sys.py`](pymatviz/treemap/chem_sys.py).
 |                                                           ![chem-sys-treemap-formula]                                                            |                                        ![chem-sys-treemap-ward-bmg]                                        |
 |           [`chem_env_treemap(structures)`](pymatviz/treemap/chem_env.py#L50) [![fig-icon]](assets/scripts/treemap/chem_env_treemap.py)           |     [`chem_env_treemap(structures, max_cells_cn=3, max_cells_ce=4)`](pymatviz/treemap/chem_env.py#L50)     |
 |                                                            ![chem-env-treemap-basic]                                                             |                                     ![chem-env-treemap-large-dataset]                                      |
-|             [`py_pkg_treemap("pymatviz")`](pymatviz/treemap/py_pkg.py#L730) [![fig-icon]](assets/scripts/treemap/py_pkg_treemap.py)              |           [`py_pkg_treemap(["pymatviz", "flame", "pymatgen"])`](pymatviz/treemap/py_pkg.py#L698)            |
+|             [`py_pkg_treemap("pymatviz")`](pymatviz/treemap/py_pkg.py#L691) [![fig-icon]](assets/scripts/treemap/py_pkg_treemap.py)              |           [`py_pkg_treemap(["pymatviz", "flame", "pymatgen"])`](pymatviz/treemap/py_pkg.py#L698)            |
 |                                                            ![py-pkg-treemap-pymatviz]                                                            |                                         ![py-pkg-treemap-multiple]                                         |
-|   [`py_pkg_treemap("pymatviz", color_by="coverage")`](pymatviz/treemap/py_pkg.py#L730) [![fig-icon]](assets/scripts/treemap/py_pkg_treemap.py)   | [`py_pkg_treemap("pymatgen", color_by="coverage", color_range=(0, 100))`](pymatviz/treemap/py_pkg.py#L730) |
+|   [`py_pkg_treemap("pymatviz", color_by="coverage")`](pymatviz/treemap/py_pkg.py#L691) [![fig-icon]](assets/scripts/treemap/py_pkg_treemap.py)   | [`py_pkg_treemap("pymatgen", color_by="coverage", color_range=(0, 100))`](pymatviz/treemap/py_pkg.py#L691) |
 |                                                       ![py-pkg-treemap-pymatviz-coverage]                                                        |                                    ![py-pkg-treemap-pymatgen-coverage]                                     |
 
 > **Note:** For `color_by="coverage"` the package must have coverage data (e.g. run `pytest --cov=<pkg> --cov-report=xml` and pass the resulting `.coverage` file to `coverage_data_file`).
@@ -373,7 +373,7 @@ See [`pymatviz/classify/confusion_matrix.py`](pymatviz/classify/confusion_matrix
 
 See [`pymatviz/classify/curves.py`](pymatviz/classify/curves.py).
 
-| [`roc_curve(targets, probs_positive)`](pymatviz/classify/curves.py#L111) [![fig-icon]](assets/scripts/classify/roc_curve.py) | [`precision_recall_curve(targets, probs_positive)`](pymatviz/classify/curves.py#L212) [![fig-icon]](assets/scripts/classify/precision_recall_curve.py) |
+| [`roc_curve(targets, probs_positive)`](pymatviz/classify/curves.py#L120) [![fig-icon]](assets/scripts/classify/roc_curve.py) | [`precision_recall_curve(targets, probs_positive)`](pymatviz/classify/curves.py#L203) [![fig-icon]](assets/scripts/classify/precision_recall_curve.py) |
 | :-------------------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                                ![roc-curve-plotly-multiple]                                                 |                                                       ![precision-recall-curve-plotly-multiple]                                                        |
 

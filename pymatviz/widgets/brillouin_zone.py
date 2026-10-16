@@ -67,7 +67,7 @@ class BrillouinZoneWidget(MatterVizWidget):
 
         super().__init__(
             widget_type="brillouin_zone",
-            structure=structure_to_dict(structure),
+            structure=structure_to_dict(structure, periodic=True),
             bz_data=normalize_plot_json(bz_data, "bz_data"),
             **kwargs,
         )

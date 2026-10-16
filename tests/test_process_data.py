@@ -395,6 +395,8 @@ def test_is_ase_atoms(obj: object, expected: bool) -> None:
     ("obj", "expected"),
     [
         pytest.param("phonopy_atoms", True, id="phonopy_atoms"),
+        # Supercell/Primitive subclass PhonopyAtoms and must count as structures too
+        pytest.param("phonopy_supercell", True, id="phonopy_supercell"),
         (Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]]), False),
         ("string", False),
         (123, False),
@@ -402,14 +404,21 @@ def test_is_ase_atoms(obj: object, expected: bool) -> None:
     ],
 )
 def test_is_phonopy_atoms(obj: object, expected: bool) -> None:
-    if obj == "phonopy_atoms":
+    if obj in ("phonopy_atoms", "phonopy_supercell"):
         pytest.importorskip("phonopy")
         from phonopy.structure.atoms import PhonopyAtoms
+        from phonopy.structure.cells import Supercell
 
-        obj = PhonopyAtoms(
+        unit_cell = PhonopyAtoms(
             symbols=["Si"],
             positions=[[0, 0, 0]],
             cell=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+        )
+        supercell_matrix = [[2, 0, 0], [0, 1, 0], [0, 0, 1]]
+        obj = (
+            unit_cell
+            if obj == "phonopy_atoms"
+            else Supercell(unit_cell, supercell_matrix)
         )
     assert pmv_pd.is_phonopy_atoms(obj) is expected
 

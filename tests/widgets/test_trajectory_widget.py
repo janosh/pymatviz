@@ -18,6 +18,24 @@ if TYPE_CHECKING:
     from pymatgen.core import Structure
 
 
+# Defined here, not in tests/widgets/conftest.py: pytest 9.1 binds conftest fixtures
+# to the first Dir node collected for their directory, so they go missing when CLI
+# args revisit tests/widgets after another directory, e.g.
+# `pytest tests/widgets/a.py tests/b.py tests/widgets/c.py`.
+@pytest.fixture
+def multi_frame_trajectory(fe3co4_disordered: Structure) -> dict[str, Any]:
+    """Five-frame trajectory dict of the same disordered structure."""
+    frames = [
+        {
+            "structure": fe3co4_disordered.as_dict(),
+            "step": idx,
+            "metadata": {"step": idx},
+        }
+        for idx in range(5)
+    ]
+    return {"frames": frames}
+
+
 def test_widget_creates_view_model(multi_frame_trajectory: dict[str, Any]) -> None:
     """Widget must create proper view model for frontend."""
     widget = TrajectoryWidget(trajectory=multi_frame_trajectory)
@@ -43,7 +61,9 @@ def test_widget_creates_view_model(multi_frame_trajectory: dict[str, Any]) -> No
     assert widget.display_mode == "auto"
     assert widget.plot_type == "time-series"
     assert widget.distribution_property is None
-    assert widget.show_controls is True
+    # None keeps the component default (controls pinned for trajectories)
+    assert widget.show_controls is None
+    assert widget.data_inspector_open is True
 
 
 @pytest.mark.parametrize("input_format", ["dict", "list", "tuple", "structure"])

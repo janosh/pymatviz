@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import importlib.util
+import json
+from contextlib import nullcontext
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import numpy as np
+import pandas as pd
 import pytest
 import traitlets as tl
-from pymatgen.core import Lattice, Structure
+from pymatgen.core import Lattice, Molecule, Structure
 
 from pymatviz.widgets._traits import BONDING_STRATEGIES, ELEMENT_COLOR_SCHEMES
 from pymatviz.widgets.band_structure import BandStructureWidget
@@ -145,12 +148,36 @@ from pymatviz.widgets.xrd import XrdWidget
             "heatmap_matrix",
             "values",
         ),
-        (PeriodicTableWidget, {"log": True}, "periodic_table", "log"),
+        (
+            PeriodicTableWidget,
+            {"color_scale": {"type": "log", "value_range": [1, None]}},
+            "periodic_table",
+            "color_scale",
+        ),
+        (PeriodicTableWidget, {"color_bar": None}, "periodic_table", "color_bar"),
         (
             HeatmapMatrixWidget,
-            {"x_items": ["A"], "y_items": ["B"], "log": True},
+            {"x_items": ["A"], "y_items": ["B"], "color_scale": {"type": "log"}},
             "heatmap_matrix",
-            "log",
+            "color_scale",
+        ),
+        (
+            HeatmapMatrixWidget,
+            {"color_bar": {"title": "count", "orientation": "vertical"}},
+            "heatmap_matrix",
+            "color_bar",
+        ),
+        (
+            FermiSurfaceWidget,
+            {"fermi_data": {"isosurfaces": []}, "color_bar": {"title": "v_F"}},
+            "fermi_surface",
+            "color_bar",
+        ),
+        (
+            FermiSurfaceWidget,
+            {"band_data": {"energies": []}, "color_bar": None},
+            "fermi_surface",
+            "color_bar",
         ),
         (SpacegroupBarPlotWidget, {"data": [225, 166, 62]}, "spacegroup_bar", "data"),
         (
@@ -284,17 +311,16 @@ def test_to_dict_reflects_runtime_mutations() -> None:
         (HistogramWidget, "bins", 100),
         (HistogramWidget, "mode", "single"),
         (HistogramWidget, "show_legend", True),
-        (PeriodicTableWidget, "color_scale", "interpolateViridis"),
-        (PeriodicTableWidget, "log", False),
-        (PeriodicTableWidget, "show_color_bar", True),
+        (PeriodicTableWidget, "color_scale", None),  # component default (viridis)
+        (PeriodicTableWidget, "color_bar", {}),  # shown by default
         (PeriodicTableWidget, "missing", None),
-        (HeatmapMatrixWidget, "log", False),
+        (HeatmapMatrixWidget, "color_bar", {}),  # shown by default
         (HeatmapMatrixWidget, "missing", None),
         (HeatmapMatrixWidget, "values", None),  # None, not an empty list
         (HeatmapMatrixWidget, "x_items", []),
         (ChemPotDiagramWidget, "entries", []),
         (ScatterPlot3DWidget, "camera_projection", "perspective"),
-        (HeatmapMatrixWidget, "color_scale", "interpolateViridis"),
+        (HeatmapMatrixWidget, "color_scale", None),
         (HeatmapMatrixWidget, "tile_size", "50px"),
         (HeatmapMatrixWidget, "gap", "0px"),
         (SpacegroupBarPlotWidget, "data", []),
@@ -334,6 +360,67 @@ def test_histogram_widget_delegates_series_validation() -> None:
     assert widget.to_dict()["series"] == [{"values": [2.0, 1.0], "label": "a"}]
     with pytest.raises(ValueError, match="must include key 'values'"):
         HistogramWidget(series=[{"x": [0, 1], "y": [2, 3]}])
+
+
+@pytest.mark.parametrize(
+    "samples", [[2, 1], (2, 1), np.array([2, 1]), pd.Series([2, 1])]
+)
+@pytest.mark.parametrize("hold_notifications", [False, True])
+def test_histogram_series_updates_normalize(
+    samples: Any, hold_notifications: bool
+) -> None:
+    """Updated samples match constructor normalization and produce JSON-safe state."""
+    series: Any = ({"values": samples, "label": "updated", "opacity": np.float32(0.5)},)
+    widget = HistogramWidget(series=[{"values": [0]}])
+    with widget.hold_trait_notifications() if hold_notifications else nullcontext():
+        widget.series = series
+
+    expected = [{"values": [2.0, 1.0], "label": "updated", "opacity": 0.5}]
+    assert widget.series == HistogramWidget(series=series).series == expected
+    assert (
+        json.loads(json.dumps(widget.to_dict(), allow_nan=False))["series"] == expected
+    )
+    assert (
+        json.loads(json.dumps(widget.get_state(), allow_nan=False))["series"]
+        == expected
+    )
+
+
+@pytest.mark.parametrize(
+    ("series", "match"),
+    [
+        ([{"x": [0, 1], "y": [2, 3]}], "must include key 'values'"),
+        ([{"values": [float("nan")]}], "non-finite"),
+        ([{"values": [float("inf")]}], "non-finite"),
+        ([{"values": ["bad"]}], "must be numeric"),
+        ([{"values": 1}], "must be list-like"),
+        ([1], "entries must be dicts"),
+    ],
+)
+@pytest.mark.parametrize("hold_notifications", [False, True])
+def test_histogram_series_updates_reject_invalid(
+    series: Any, match: str, hold_notifications: bool
+) -> None:
+    """Invalid updates leave valid state intact and never notify the frontend."""
+    widget = HistogramWidget(series=[{"values": [1, 2]}])
+    old_state = widget.to_dict()
+    observer = Mock()
+    widget.observe(observer, names="series")
+    with (
+        pytest.raises(tl.TraitError, match=match),
+        widget.hold_trait_notifications() if hold_notifications else nullcontext(),
+    ):
+        widget.series = series
+    assert widget.to_dict() == old_state
+    observer.assert_not_called()
+
+
+@pytest.mark.parametrize("series", [None, [], [{"values": []}]])
+def test_histogram_series_updates_clear(series: Any) -> None:
+    """Clearing or providing an empty sample array stays valid after construction."""
+    widget = HistogramWidget(series=[{"values": [1, 2]}])
+    widget.series = series
+    assert widget.series == HistogramWidget(series=series).series == series
 
 
 # === New widget specific behaviors ===
@@ -464,6 +551,7 @@ def test_treemap_widget_traits_and_validation() -> None:
         "label_max_font_size": 14,
         "parent_label_font_size": 16,
         "max_children": 3,
+        "export_formats": ["svg", "png"],
         "zoom_root_id": "root/a",
     }
     widget = TreemapWidget(data=data, **config)
@@ -483,6 +571,9 @@ def test_treemap_widget_traits_and_validation() -> None:
             TreemapWidget(data=data, **{bad_key: "not-an-option"})
     with pytest.raises(tl.TraitError):
         TreemapWidget(data=data, max_children=-1)
+    with pytest.raises(tl.TraitError):  # not a matterviz ExportFormat
+        TreemapWidget(data=data, export_formats=["pdf"])
+    assert TreemapWidget(data=data, export_formats=[]).export_formats == []
 
     # forest input: list of root nodes passes through unchanged
     roots = [{"label": "x", "value": 1}, {"label": "y", "value": 2}]
@@ -515,6 +606,40 @@ _BONDING_STRATEGY_CASES = [
             for cls in (StructureWidget, TrajectoryWidget)
             for case in _BONDING_STRATEGY_CASES
         ],
+        (StructureWidget, "active_pane", "Flight", "flight"),
+        (StructureWidget, "active_pane", None, None),
+        (StructureWidget, "active_pane", "hotspots", tl.TraitError),  # trajectory-only
+        (TrajectoryWidget, "active_pane", "hotspots", "hotspots"),
+        (TrajectoryWidget, "active_pane", "nope", tl.TraitError),
+        # the data inspector is a sidebar now (data_inspector_open), not a pane
+        (TrajectoryWidget, "active_pane", "data-inspector", tl.TraitError),
+        # show_controls takes matterviz's boolean, mode or {mode, hidden, style} forms
+        (StructureWidget, "show_controls", "hover", "hover"),
+        (TrajectoryWidget, "show_controls", False, False),
+        (
+            TrajectoryWidget,
+            "show_controls",
+            {"mode": "always", "hidden": ["export"]},
+            {"mode": "always", "hidden": ["export"]},
+        ),
+        (StructureWidget, "show_controls", "ALWAYS", "always"),
+        (StructureWidget, "show_controls", "sometimes", tl.TraitError),
+        (StructureWidget, "show_controls", {"mode": "sometimes"}, tl.TraitError),
+        (StructureWidget, "show_controls", {"hidden": "export"}, tl.TraitError),
+        # color_scale takes a d3 interpolator name, which the renderer resolves
+        *[
+            (cls, "color_scale", *case)
+            for cls in (ScatterPlotWidget, BarPlotWidget, ScatterPlot3DWidget)
+            for case in [
+                ("interpolatePlasma", "interpolatePlasma"),
+                ("viridis", tl.TraitError),
+                ({"scheme": "Blues"}, tl.TraitError),
+            ]
+        ],
+        (ScatterPlotWidget, "size_legend", None, None),  # hides the legend
+        (ScatterPlotWidget, "density_contours", True, True),
+        (TrajectoryWidget, "data_inspector_open", False, False),
+        (ChemPotDiagramWidget, "width", 0, tl.TraitError),
     ],
 )
 def test_matterviz_name_enums(
@@ -523,7 +648,7 @@ def test_matterviz_name_enums(
     value: str | None,
     expected: str | type[Exception] | None,
 ) -> None:
-    """Scheme/strategy traits accept exactly matterviz's names, canonicalized."""
+    """Scheme/strategy/pane/controls traits accept exactly matterviz's values."""
     widget = widget_cls()
     if isinstance(expected, type):
         with pytest.raises(expected):
@@ -557,12 +682,56 @@ def test_heatmap_matrix_scalar_string_axis_items() -> None:
     assert widget.y_items == [{"key": "O", "label": "O"}]
 
 
-def test_rdf_plot_accepts_pymatgen_structure() -> None:
-    """RdfPlotWidget normalizes pymatgen Structure to dict via _to_dict."""
+@pytest.mark.parametrize(
+    "widget_cls",
+    [
+        PeriodicTableWidget,
+        HeatmapMatrixWidget,
+        ScatterPlotWidget,
+        BarPlotWidget,
+        ScatterPlot3DWidget,
+    ],
+)
+def test_color_scale_config_normalized_and_validated(widget_cls: type) -> None:
+    """color_scale accepts a ColorScaleConfig dict with numpy bounds, not an int."""
+    color_scale = {
+        "scheme": "interpolateBlues",
+        "type": "log",
+        "value_range": [np.float64(0.5), None],
+        "palette_range": np.array([0.25, 1.0]),
+    }
+    synced = widget_cls(color_scale=color_scale).to_dict()["color_scale"]
+    assert synced == {
+        **color_scale,
+        "value_range": [0.5, None],
+        "palette_range": [0.25, 1],
+    }
+    assert type(synced["value_range"][0]) is float
+    with pytest.raises(tl.TraitError):
+        widget_cls(color_scale=1)
+
+
+@pytest.mark.parametrize(
+    ("widget_cls", "trait"),
+    [
+        (RdfPlotWidget, "structures"),
+        (BandsAndDosWidget, "structure"),
+        (BrillouinZoneWidget, "structure"),
+    ],
+)
+def test_widgets_accept_pymatgen_structure(widget_cls: type, trait: str) -> None:
+    """Structure traits sync a pymatgen Structure as a dict."""
     struct = Structure(Lattice.cubic(3), ["Si"], [[0, 0, 0]])
-    widget = RdfPlotWidget(structures=struct)
-    assert isinstance(widget.structures, dict)
-    assert "lattice" in widget.structures
+    synced = getattr(widget_cls(**{trait: struct}), trait)
+    assert isinstance(synced, dict)
+    assert "lattice" in synced
+
+
+@pytest.mark.parametrize("widget_cls", [BandsAndDosWidget, BrillouinZoneWidget])
+def test_brillouin_zone_widgets_reject_molecules(widget_cls: type) -> None:
+    """A Brillouin zone needs a lattice, so a Molecule fails at construction."""
+    with pytest.raises(TypeError, match="periodic structure"):
+        widget_cls(structure=Molecule(["H", "H"], [[0, 0, 0], [0, 0, 0.74]]))
 
 
 def test_rdf_plot_rejects_both_structures_and_patterns() -> None:
@@ -665,11 +834,25 @@ def test_to_img_format_inference(
     assert mock_render.call_args.kwargs["fmt"] == expected_capture_fmt
 
 
-def test_to_img_rejects_unknown_extension(tmp_path: Any) -> None:
-    """to_img raises ValueError for unrecognized file extensions."""
-    widget = _make_widget()
-    with pytest.raises(ValueError, match="Unsupported file extension"):
-        widget.to_img(filename=f"{tmp_path}/plot.tiff")
+@pytest.mark.parametrize(
+    ("img_kwargs", "match"),
+    [
+        ({"filename": "plot.tiff"}, "Unsupported format 'tiff'"),
+        ({"fmt": "tiff"}, "Unsupported format 'tiff'"),
+        ({"filename": "plot"}, "Cannot infer format"),
+        ({"dpi": 0}, "dpi must be positive"),
+        ({"width": -1}, "width must be positive"),
+        ({"quality": 101}, "quality must be between 1 and 100"),
+    ],
+)
+def test_to_img_rejects_invalid_args(
+    tmp_path: Any, img_kwargs: dict[str, Any], match: str
+) -> None:
+    """to_img raises ValueError for bad formats and render settings."""
+    if filename := img_kwargs.get("filename"):
+        img_kwargs = {**img_kwargs, "filename": f"{tmp_path}/{filename}"}
+    with pytest.raises(ValueError, match=match):
+        _make_widget().to_img(**img_kwargs)
 
 
 @pytest.mark.parametrize("path_suffix", ["output.png", "sub/dir/output.png"])

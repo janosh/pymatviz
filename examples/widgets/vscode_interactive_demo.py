@@ -624,7 +624,8 @@ chem_pot_widget = pmv.ChemPotDiagramWidget(
         {"name": "Fe2O3", "energy": -25.0, "composition": {"Fe": 2, "O": 3}},
         {"name": "LiFeO2", "energy": -17.5, "composition": {"Li": 1, "Fe": 1, "O": 2}},
     ],
-    style="height: 500px;",
+    width=1000,
+    height=500,
 )
 chem_pot_widget.show()
 

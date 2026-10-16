@@ -645,7 +645,8 @@ def _(pmv):
                 "composition": {"Li": 1, "Fe": 1, "O": 2},
             },
         ],
-        style="height: 500px;",
+        width=1000,
+        height=500,
     )
 
 

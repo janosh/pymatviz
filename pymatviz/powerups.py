@@ -587,26 +587,17 @@ def enhance_parity_plot(
         )
         per_trace_stats_kwargs = {} if isinstance(stats, bool) else stats or {}
         for trace_idx in dict.fromkeys(valid_traces):
-            # Get data for this trace
             trace = fig.data[trace_idx]
-            trace_xs = np.array(trace.x)
-            trace_ys = np.array(trace.y)
-
-            # Skip if insufficient data
+            trace_xs, trace_ys = np.array(trace.x), np.array(trace.y)
             if len(trace_xs) < 2 or len(trace_ys) < 2:
                 continue
 
-            # Get color from trace
-            trace_color = _get_trace_color(trace, "navy")
-
-            # Add best fit line if requested
             if best_fit_line is not False:
-                line_style: dict[str, Any] = {"color": trace_color}
+                line_style: dict[str, Any] = {"color": _get_trace_color(trace, "navy")}
                 if isinstance(best_fit_line, dict):
                     line_style |= best_fit_line
                 add_best_fit_line(fig, xs=trace_xs, ys=trace_ys, line_kwargs=line_style)
 
-            # Add stats annotation if requested
             if stats and faceted_stats is not None:
                 faceted_stats[trace_idx] = (trace_xs, trace_ys)
             elif stats:
@@ -712,7 +703,6 @@ def add_ecdf_line(
 
         return fig
 
-    # ECDF validation function - histograms only need x data
     def is_horizontal(trace: Any) -> bool:
         """Bars/histograms with values on the y-axis (histograms with only y data)."""
         if getattr(trace, "orientation", None) == "h":
@@ -720,19 +710,12 @@ def add_ecdf_line(
         return isinstance(trace, go.Histogram) and trace.x is None
 
     def validate_ecdf_trace(trace: go.Scatter) -> bool:
+        """Histograms only need samples on their value axis, others need x and y."""
         if isinstance(trace, go.Histogram):
             values = trace.y if is_horizontal(trace) else trace.x
             return values is not None and len(values) > 0
-        return (
-            hasattr(trace, "x")
-            and hasattr(trace, "y")
-            and trace.x is not None
-            and trace.y is not None
-            and len(trace.x) > 0
-            and len(trace.y) > 0
-        )
+        return _has_xy_data(trace)
 
-    # Get valid traces using the helper function with custom validation
     selected_traces = _get_valid_traces(fig, traces, validate_ecdf_trace)
     is_single_trace = len(selected_traces) == 1
 
@@ -841,84 +824,60 @@ def add_ecdf_line(
     return fig
 
 
-_common_update_menu = dict(
-    pad={"r": 10, "t": 10}, showactive=True, x=1, xanchor="right", y=1, yanchor="top"
+def _button_menu(
+    direction: str, method: str, buttons: Mapping[str, dict[str, Any]]
+) -> dict[str, Any]:
+    """Plotly updatemenu of buttons applying {label: args} via method."""
+    return dict(
+        type="buttons",
+        direction=direction,
+        buttons=[
+            dict(args=[args], label=label, method=method)
+            for label, args in buttons.items()
+        ],
+        pad={"r": 10, "t": 10},
+        showactive=True,
+        x=1,
+        xanchor="right",
+        y=1,
+        yanchor="top",
+    )
+
+
+# updatemenus to apply to a plotly figure like fig.layout.updatemenus = [toggle_grid].
+# Use e.g. toggle_log_linear_y_axis | dict(x=1, y=0, ...) to customize.
+toggle_log_linear_y_axis = _button_menu(
+    "left",
+    "relayout",
+    {"Linear Y": {"yaxis.type": "linear"}, "Log Y": {"yaxis.type": "log"}},
 )
-
-# buttons to toggle log/linear y-axis. apply to a plotly figure like this:
-# fig.layout.updatemenus = [toggle_log_linear_y_axis]
-# use toggle_log_linear_y_axis | dict(x=1, y=0, ...) to customize
-toggle_log_linear_y_axis = dict(
-    type="buttons",
-    direction="left",
-    buttons=[
-        dict(args=[{"yaxis.type": "linear"}], label="Linear Y", method="relayout"),
-        dict(args=[{"yaxis.type": "log"}], label="Log Y", method="relayout"),
-    ],
-    **_common_update_menu,
+toggle_log_linear_x_axis = _button_menu(
+    "left",
+    "relayout",
+    {"Linear X": {"xaxis.type": "linear"}, "Log X": {"xaxis.type": "log"}},
 )
-
-
-toggle_log_linear_x_axis = dict(
-    type="buttons",
-    direction="left",
-    buttons=[
-        dict(args=[{"xaxis.type": "linear"}], label="Linear X", method="relayout"),
-        dict(args=[{"xaxis.type": "log"}], label="Log X", method="relayout"),
-    ],
-    **_common_update_menu,
+toggle_grid = _button_menu(
+    "left",
+    "relayout",
+    {
+        f"{label} Grid": {"xaxis.showgrid": show, "yaxis.showgrid": show}
+        for label, show in (("Show", True), ("Hide", False))
+    },
 )
-
-# Toggle grid visibility
-toggle_grid = dict(
-    type="buttons",
-    direction="left",
-    buttons=[
-        dict(
-            args=[{"xaxis.showgrid": True, "yaxis.showgrid": True}],
-            label="Show Grid",
-            method="relayout",
-        ),
-        dict(
-            args=[{"xaxis.showgrid": False, "yaxis.showgrid": False}],
-            label="Hide Grid",
-            method="relayout",
-        ),
-    ],
-    **_common_update_menu,
+select_colorscale = _button_menu(
+    "down",
+    "restyle",
+    {name: {"colorscale": name} for name in ("Viridis", "Plasma", "Inferno", "Magma")},
 )
-
-# Toggle between different color scales
-select_colorscale = dict(
-    type="buttons",
-    direction="down",
-    buttons=[
-        dict(args=[{"colorscale": "Viridis"}], label="Viridis", method="restyle"),
-        dict(args=[{"colorscale": "Plasma"}], label="Plasma", method="restyle"),
-        dict(args=[{"colorscale": "Inferno"}], label="Inferno", method="restyle"),
-        dict(args=[{"colorscale": "Magma"}], label="Magma", method="restyle"),
-    ],
-    **_common_update_menu,
-)
-
-# Toggle between different plot types (e.g. scatter, line)
-select_marker_mode = dict(
-    type="buttons",
-    direction="down",
-    buttons=[
-        dict(
-            args=[{"type": "scatter", "mode": "markers"}],
-            label="Scatter",
-            method="restyle",
-        ),
-        dict(
-            args=[{"type": "scatter", "mode": "lines"}], label="Line", method="restyle"
-        ),
-        dict(
-            args=[{"type": "scatter", "mode": "lines+markers"}],
-            label="Line+Markers",
-            method="restyle",
-        ),
-    ],
-    **_common_update_menu,
+select_marker_mode = _button_menu(
+    "down",
+    "restyle",
+    {
+        label: {"type": "scatter", "mode": mode}
+        for label, mode in (
+            ("Scatter", "markers"),
+            ("Line", "lines"),
+            ("Line+Markers", "lines+markers"),
+        )
+    },
 )

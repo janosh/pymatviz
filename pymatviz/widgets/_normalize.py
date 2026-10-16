@@ -149,6 +149,21 @@ def normalize_plot_json(value: Any, label: str) -> Any:
     )
 
 
+def normalize_json_kwargs(
+    kwargs: dict[str, Any], keys: Sequence[str], component: str
+) -> None:
+    """In place, run normalize_plot_json on each of ``keys`` present in ``kwargs``.
+
+    Args:
+        kwargs: Widget constructor keyword arguments, modified in place.
+        keys: Names of the config kwargs to normalize (e.g. numpy bounds in dicts).
+        component: MatterViz component name used to label error messages.
+    """
+    for key in keys:
+        if key in kwargs:
+            kwargs[key] = normalize_plot_json(kwargs[key], f"{component}.{key}")
+
+
 def normalize_plot_series(
     series_data: Any, *, component_name: str, samples_key: str | None = None
 ) -> list[dict[str, Any]] | None:
@@ -212,23 +227,24 @@ def normalize_plot_series(
     return normalized_series
 
 
-def structure_to_dict(structure: Any) -> dict[str, Any] | None:
+def structure_to_dict(
+    structure: Any, *, periodic: bool = False
+) -> dict[str, Any] | None:
     """Convert one structure-like object to the dict structure widgets sync to JS.
-
-    Shared by ``StructureWidget``, ``BrillouinZoneWidget`` and ``link_selection``.
 
     Args:
         structure: ``None`` (passed through), a structure dict with a ``sites`` list
             (passed through unchanged, schema errors are reported by the renderer),
             or a single pymatgen ``Structure``/``Molecule``, ASE ``Atoms`` or
             ``PhonopyAtoms`` (converted via ``normalize_structures(...).as_dict()``).
+        periodic: Require a lattice, for widgets drawing the Brillouin zone.
 
     Returns:
         The structure dict, or None if structure is None.
 
     Raises:
-        TypeError: If a dict has no ``sites`` list, or for any other type (including
-            sequences of structures).
+        TypeError: If a dict has no ``sites`` list, for any other type (including
+            sequences of structures), or for a lattice-less one when ``periodic``.
     """
     if structure is None:
         return None
@@ -238,26 +254,21 @@ def structure_to_dict(structure: Any) -> dict[str, Any] | None:
                 "structure dicts need a 'sites' list (e.g. from Structure.as_dict()), "
                 f"got keys={sorted(structure)}"
             )
-        return structure
+        struct = structure
+    else:
+        from pymatviz.process_data import is_structure_like, normalize_structures
 
-    from pymatgen.core import IMolecule, IStructure
-
-    from pymatviz.process_data import (
-        is_ase_atoms,
-        is_phonopy_atoms,
-        normalize_structures,
-    )
-
-    if not (
-        isinstance(structure, (IStructure, IMolecule))
-        or is_ase_atoms(structure)
-        or is_phonopy_atoms(structure)
-    ):
+        if not is_structure_like(structure):
+            raise TypeError(
+                "structure must be a dict, pymatgen Structure/Molecule, ASE Atoms or "
+                f"PhonopyAtoms, got {type(structure).__name__}"
+            )
+        struct = next(iter(normalize_structures(structure).values())).as_dict()
+    if periodic and "lattice" not in struct:
         raise TypeError(
-            "structure must be a dict, pymatgen Structure/Molecule, ASE Atoms or "
-            f"PhonopyAtoms, got {type(structure).__name__}"
+            f"a periodic structure (with a lattice) is needed, got {sorted(struct)=}"
         )
-    return next(iter(normalize_structures(structure).values())).as_dict()
+    return struct
 
 
 def _parse_formula_to_dict(formula: str) -> dict[str, float]:

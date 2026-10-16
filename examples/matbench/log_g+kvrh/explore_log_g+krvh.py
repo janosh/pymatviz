@@ -11,6 +11,7 @@ https://ml.materialsproject.org/projects/matbench_log_kvrh
 
 # %%
 from time import perf_counter
+from typing import get_args
 
 import numpy as np
 import pandas as pd
@@ -22,6 +23,10 @@ from tqdm import tqdm
 
 import pymatviz as pmv
 from pymatviz.enums import Key
+from pymatviz.typing import CrystalSystem
+
+
+crystal_systems = get_args(CrystalSystem)  # ordered triclinic to cubic
 
 
 # %%
@@ -164,7 +169,7 @@ fig = px.violin(
     points="all",
     hover_data=[Key.spg_num],
     hover_name=Key.formula,
-    category_orders={Key.crystal_system: pmv.crystal_sys_order},
+    category_orders={Key.crystal_system: crystal_systems},
     log_y=True,
 ).update_traces(jitter=1)
 
@@ -176,7 +181,7 @@ def rgb_color(val: float, max_val: float) -> str:
 
 x_ticks = {}
 for cry_sys, df_group in sorted(
-    df_grvh.groupby(Key.crystal_system), key=lambda x: pmv.crystal_sys_order.index(x[0])
+    df_grvh.groupby(Key.crystal_system), key=lambda x: crystal_systems.index(x[0])
 ):
     n_wyckoff_top = df_group[Key.n_wyckoff_pos].mean()
     clr = rgb_color(n_wyckoff_top, 14)

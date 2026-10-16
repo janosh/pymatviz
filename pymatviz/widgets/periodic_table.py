@@ -6,7 +6,8 @@ from typing import Any
 
 import traitlets as tl
 
-from pymatviz.widgets._normalize import normalize_plot_json
+from pymatviz.widgets._normalize import normalize_json_kwargs, normalize_plot_json
+from pymatviz.widgets._traits import color_bar_trait, color_scale_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -22,15 +23,20 @@ class PeriodicTableWidget(MatterVizWidget):
         ...     heatmap_values={"Fe": 42, "O": 100, "Li": 15},
         ...     color_scale="interpolateViridis",
         ... )
+
+        Log-spaced colors clamped to a fixed lower bound, color bar hidden:
+        >>> widget = PeriodicTableWidget(
+        ...     heatmap_values={"Fe": 42, "O": 100, "Li": 15},
+        ...     color_scale={"type": "log", "value_range": [10, None]},
+        ...     color_bar=None,
+        ... )
     """
 
     heatmap_values = tl.Any(allow_none=True).tag(sync=True)
-    color_scale = tl.Unicode(default_value="interpolateViridis").tag(sync=True)
-    color_scale_range = tl.List(allow_none=True).tag(sync=True)
+    color_scale = color_scale_trait()
     color_overrides = tl.Dict(allow_none=True).tag(sync=True)
     labels = tl.Dict(allow_none=True).tag(sync=True)
-    log = tl.Bool(default_value=False).tag(sync=True)
-    show_color_bar = tl.Bool(default_value=True).tag(sync=True)
+    color_bar = color_bar_trait()
     gap = tl.Unicode(default_value="0.3cqw").tag(sync=True)
     # styling for tiles with no heatmap value, e.g. {"color": "gray", "label": "N/A"}.
     # color "element-category" uses the element's category color.
@@ -51,6 +57,7 @@ class PeriodicTableWidget(MatterVizWidget):
             **kwargs: Additional widget properties.
         """
         kwargs.setdefault("style", self._DEFAULT_STYLE)
+        normalize_json_kwargs(kwargs, ("color_scale", "color_bar"), "PeriodicTable")
         super().__init__(
             widget_type="periodic_table",
             heatmap_values=normalize_plot_json(

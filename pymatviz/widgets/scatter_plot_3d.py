@@ -6,8 +6,8 @@ from typing import Any
 
 import traitlets as tl
 
-from pymatviz.widgets._normalize import normalize_plot_json
-from pymatviz.widgets._traits import PlotControlsTraits
+from pymatviz.widgets._normalize import normalize_json_kwargs, normalize_plot_json
+from pymatviz.widgets._traits import PlotControlsTraits, color_scale_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -30,11 +30,18 @@ class ScatterPlot3DWidget(PlotControlsTraits, MatterVizWidget):
     z_axis = tl.Dict(allow_none=True).tag(sync=True)
     display = tl.Dict(allow_none=True).tag(sync=True)
     styles = tl.Dict(allow_none=True).tag(sync=True)
-    color_scale = tl.Dict(allow_none=True).tag(sync=True)
+    color_scale = color_scale_trait()
     size_scale = tl.Dict(allow_none=True).tag(sync=True)
     legend = tl.Dict(allow_none=True).tag(sync=True)
     show_legend = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     camera_projection = tl.Unicode(default_value="perspective").tag(sync=True)
+    # matterviz InstanceTween {duration, easing, ...} animating point changes
+    point_tween = tl.Dict(allow_none=True).tag(sync=True)
+
+    _JSON_KWARGS = (
+        "surfaces", "ref_lines", "ref_planes", "x_axis", "y_axis", "z_axis", "display",
+        "styles", "color_scale", "size_scale", "legend", "point_tween",
+    )  # fmt: skip
 
     def __init__(
         self,
@@ -74,6 +81,7 @@ class ScatterPlot3DWidget(PlotControlsTraits, MatterVizWidget):
                         f"mismatched x/y/z lengths: {lengths}."
                     )
 
+        normalize_json_kwargs(kwargs, self._JSON_KWARGS, "ScatterPlot3D")
         super().__init__(
             widget_type="scatter_plot_3d",
             series=normalize_plot_json(series, "ScatterPlot3D.series"),
