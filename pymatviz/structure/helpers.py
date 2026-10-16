@@ -759,31 +759,9 @@ def draw_disordered_site(
 ) -> None:
     """Draw a disordered site as colored pie slices (2D) or spherical wedges (3D).
 
-    Occupancies set angular spans and, in 3D, wedge radii.
-
-    Args:
-        fig (go.Figure): The plotly figure to add the site to.
-        site (PeriodicSite): The periodic site to draw (must be disordered).
-        coords (np.ndarray): The coordinates of the site.
-        site_idx (int): The index of the site.
-        site_labels (str | dict | list): How to label the site.
-        elem_colors (dict[str, ColorType]): Element color mapping.
-        atomic_radii (dict[str, float]): Atomic radii mapping.
-        atom_size (float): Scaling factor for atom sizes.
-        scale (float): Overall scaling factor.
-        site_kwargs (dict[str, Any]): Additional keyword arguments for site styling.
-        is_image (bool): Whether this is an image site.
-        is_3d (bool): Whether this is a 3D plot.
-        row (int | None): Row for subplot.
-        col (int | None): Column for subplot.
-        scene (str | None): Scene name for 3D plots.
-        hover_text (SiteCoords | Callable[[PeriodicSite], str]): Hover text template.
-        float_fmt (str | Callable[[float], str]): Float format for hover coordinates.
-        legendgroup (str | None): For interactive legend. If None, will be set to
-            site_idx for grouping all parts of this disordered site.
-        showlegend (bool): Whether to show this trace in the legend.
-        legend (str): The legend group for the site.
-        **kwargs: Unused extra keyword arguments.
+    Occupancies set angular spans and, in 3D, wedge radii. Args are the same as for
+    draw_site, except legendgroup defaults to one group per disordered site and
+    extra kwargs are ignored.
     """
     species = get_site_species(site)
     if not isinstance(species, Composition) or len(species) <= 1:
@@ -1015,11 +993,8 @@ def draw_vector(
     arrow_kwargs: dict[str, Any] | None = None,
     **kwargs: Any,
 ) -> None:
-    """Add an arrow to represent a vector quantity on a Plotly figure.
-
-    This function adds an arrow to a 2D or 3D Plotly figure to represent a vector
-    quantity. In 3D, it uses a cone for the arrowhead and a line for the shaft.
-    In 2D, it uses a scatter plot with an arrow marker.
+    """Add an arrow representing a vector to a Plotly figure: a line shaft plus cone
+    head in 3D, a line with an arrow marker in 2D.
 
     Args:
         fig (go.Figure): The Plotly figure to add the arrow to.
@@ -1034,22 +1009,10 @@ def draw_vector(
             - width (float): Width of the arrow shaft.
             - arrow_head_length (float): Length of the arrowhead (3D only).
             - scale (float): Scaling factor for the vector length.
-        **kwargs: Additional keyword arguments passed to the Plotly trace.
-
-    Note:
-        For 3D arrows, this function adds two traces to the figure: a cone for the
-        arrowhead and a line for the shaft. For 2D arrows, it adds a single scatter
-        trace with an arrow marker.
+        **kwargs: Additional keyword arguments passed to the Plotly trace(s).
     """
-    default_arrow_kwargs = dict(
-        color="white",
-        width=5,
-        arrow_head_length=0.8,
-        scale=1.0,
-    )
-    arrow_kwargs = default_arrow_kwargs | (arrow_kwargs or {})
-
-    # Apply scaling to the vector
+    defaults = dict(color="white", width=5, arrow_head_length=0.8, scale=1.0)
+    arrow_kwargs = defaults | (arrow_kwargs or {})
     scaled_vector = vector * arrow_kwargs["scale"]
     end = start + scaled_vector
 
@@ -1569,6 +1532,66 @@ def _prep_augmented_structure_for_bonding(
     return augmented_struct, parent_indices
 
 
+def make_structure_grid(
+    n_structs: int, n_cols: int, *, is_3d: bool, **kwargs: Any
+) -> tuple[go.Figure, int, int]:
+    """Figure with one (2D or scene) subplot per structure in a row-major grid.
+
+    Returns:
+        tuple[go.Figure, int, int]: Figure, number of rows and number of columns.
+    """
+    from plotly.subplots import make_subplots
+
+    n_cols = min(n_cols, n_structs)
+    n_rows = (n_structs - 1) // n_cols + 1
+    if is_3d:
+        kwargs["specs"] = [[{"type": "scene"}] * n_cols for _ in range(n_rows)]
+    fig = make_subplots(
+        rows=n_rows,
+        cols=n_cols,
+        # Avoid IndexError on fig.layout.annotations[idx - 1].update(anno)
+        subplot_titles=[" "] * n_structs,
+        **kwargs,
+    )
+    return fig, n_rows, n_cols
+
+
+def subplot_domain(
+    idx: int, n_cols: int, n_rows: int, gap: float = 0
+) -> tuple[list[float], list[float]]:
+    """Paper-coordinate x and y domains of the 1-based idx-th subplot in a row-major
+    grid (rows top to bottom), shrunk by gap / 2 on every side.
+    """
+    row, col = divmod(idx - 1, n_cols)
+    x_dom = [col / n_cols + gap / 2, (col + 1) / n_cols - gap / 2]
+    y_dom = [1 - (row + 1) / n_rows + gap / 2, 1 - row / n_rows - gap / 2]
+    return x_dom, y_dom
+
+
+def style_scene_grid(
+    fig: go.Figure, n_structs: int, n_cols: int, n_rows: int, **scene_kwargs: Any
+) -> None:
+    """Hide scene axes, keep data aspect ratios and tile scenes with a small gap."""
+    no_axes = dict(showticklabels=False, showgrid=False, zeroline=False, visible=False)
+    fig.update_scenes(
+        xaxis=no_axes, yaxis=no_axes, zaxis=no_axes, aspectmode="data", **scene_kwargs
+    )
+    for idx in range(1, n_structs + 1):
+        x_dom, y_dom = subplot_domain(idx, n_cols, n_rows, gap=0.01)
+        scene_name = "scene" if idx == 1 else f"scene{idx}"
+        fig.layout[scene_name].domain = dict(x=x_dom, y=y_dom)
+    fig.layout.height = 400 * n_rows
+    fig.layout.width = 400 * n_cols
+
+
+def set_subplot_title(
+    fig: go.Figure, anno: dict[str, Any], idx: int, n_cols: int, n_rows: int
+) -> None:
+    """Pin the idx-th subplot title annotation just below its subplot's top edge."""
+    _, (_, y_top) = subplot_domain(idx, n_cols, n_rows)
+    fig.layout.annotations[idx - 1].update(dict(y=y_top - 0.02, yanchor="top") | anno)
+
+
 def configure_subplot_legends(
     fig: go.Figure,
     site_labels: Literal["symbol", "species", "legend", False]
@@ -1578,20 +1601,13 @@ def configure_subplot_legends(
     n_cols: int,
     n_rows: int,
 ) -> None:
-    """Configure legends for each subplot if site_labels is 'legend'."""
+    """Place each subplot's legend in its bottom right corner if site_labels is
+    'legend'.
+    """
     if site_labels != "legend":
         return
     for idx in range(1, n_structs + 1):
-        row = (idx - 1) // n_cols + 1
-        col = (idx - 1) % n_cols + 1
-
-        # Calculate position within each subplot (bottom right)
-        x_start = (col - 1) / n_cols
-        x_end = col / n_cols
-        y_start = 1 - row / n_rows
-        y_end = 1 - (row - 1) / n_rows
-
-        # Position legend much closer to bottom right of subplot
+        (x_start, x_end), (y_start, y_end) = subplot_domain(idx, n_cols, n_rows)
         fig.layout["legend" if idx == 1 else f"legend{idx}"] = dict(
             x=x_start + 0.98 * (x_end - x_start),
             y=y_start + 0.02 * (y_end - y_start),
@@ -1599,9 +1615,9 @@ def configure_subplot_legends(
             yref="paper",
             xanchor="right",
             yanchor="bottom",
-            bgcolor="rgba(0,0,0,0)",  # Transparent background
-            borderwidth=0,  # Remove border
-            font=dict(size=12, weight="bold"),  # Larger and bold font
+            bgcolor="rgba(0,0,0,0)",
+            borderwidth=0,
+            font=dict(size=12, weight="bold"),
             itemsizing="constant",  # Keep legend symbols same size
             itemwidth=30,  # Min allowed
             tracegroupgap=2,  # Reduce vertical space between legend items

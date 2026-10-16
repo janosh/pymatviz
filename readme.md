@@ -202,10 +202,10 @@ Importing `pymatviz` auto-registers all widgets for their respective sets of sup
 
 See [`pymatviz/brillouin.py`](pymatviz/brillouin.py).
 
-|   [`brillouin_zone_3d(cubic_struct)`](pymatviz/brillouin.py#L16) [![fig-icon]](assets/scripts/brillouin/brillouin_zone_3d.py)    |  [`brillouin_zone_3d(hexagonal_struct)`](pymatviz/brillouin.py#L16)   |
+|   [`brillouin_zone_3d(cubic_struct)`](pymatviz/brillouin.py#L15) [![fig-icon]](assets/scripts/brillouin/brillouin_zone_3d.py)    |  [`brillouin_zone_3d(hexagonal_struct)`](pymatviz/brillouin.py#L15)   |
 | :------------------------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------: |
 |                                                   ![brillouin-cubic-mp-10018]                                                    |                   ![brillouin-hexagonal-mp-862690]                    |
-| [`brillouin_zone_3d(monoclinic_struct)`](pymatviz/brillouin.py#L16) [![fig-icon]](assets/scripts/brillouin/brillouin_zone_3d.py) | [`brillouin_zone_3d(orthorhombic_struct)`](pymatviz/brillouin.py#L16) |
+| [`brillouin_zone_3d(monoclinic_struct)`](pymatviz/brillouin.py#L15) [![fig-icon]](assets/scripts/brillouin/brillouin_zone_3d.py) | [`brillouin_zone_3d(orthorhombic_struct)`](pymatviz/brillouin.py#L15) |
 |                                                ![brillouin-monoclinic-mp-1183089]                                                |                      ![brillouin-volumes-3-cols]                      |
 
 [brillouin-cubic-mp-10018]: assets/svg/brillouin-cubic-mp-10018.svg
