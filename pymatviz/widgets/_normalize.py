@@ -255,19 +255,9 @@ def structure_to_dict(structure: Any) -> dict[str, Any] | None:
             )
         return structure
 
-    from pymatgen.core import IMolecule, IStructure
+    from pymatviz.process_data import is_structure_like, normalize_structures
 
-    from pymatviz.process_data import (
-        is_ase_atoms,
-        is_phonopy_atoms,
-        normalize_structures,
-    )
-
-    if not (
-        isinstance(structure, (IStructure, IMolecule))
-        or is_ase_atoms(structure)
-        or is_phonopy_atoms(structure)
-    ):
+    if not is_structure_like(structure):
         raise TypeError(
             "structure must be a dict, pymatgen Structure/Molecule, ASE Atoms or "
             f"PhonopyAtoms, got {type(structure).__name__}"
