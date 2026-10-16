@@ -75,11 +75,8 @@ class ModuleStats(NamedTuple):
 
 type CellSizeFn = Callable[[ModuleStats], float | int]
 
-# module-data columns usable as color_by (besides "coverage" and dict mappings)
-_NUMERIC_COLOR_COLUMNS: tuple[str, ...] = (
-    "line_count",
-    "cell_value",
-    "depth",
+# Python AST counts per module (zero for non-Python sources)
+_ANALYSIS_COLS: tuple[str, ...] = (
     "n_classes",
     "n_functions",
     "n_methods",
@@ -87,6 +84,8 @@ _NUMERIC_COLOR_COLUMNS: tuple[str, ...] = (
     "n_external_imports",
     "n_type_checking_imports",
 )
+# module-data columns usable as color_by (besides "coverage" and dict mappings)
+_NUMERIC_COLOR_COLUMNS = ("line_count", "cell_value", "depth", *_ANALYSIS_COLS)
 
 
 def default_module_formatter(module: str, count: int, total: int) -> str:
@@ -166,10 +165,8 @@ def find_package_path(package_name: str) -> str:
 
     # Try sys.path for packages added to path (e.g. in tests)
     for path_entry in sys.path:
-        if path_entry and os.path.isdir(path_entry):
-            package_path = os.path.join(path_entry, package_name)
-            if os.path.isdir(package_path):
-                return package_path
+        if path_entry and os.path.isdir(package_path := f"{path_entry}/{package_name}"):
+            return package_path
 
     # Try common locations if importlib approach fails
     current_dir = os.path.abspath(os.getcwd())
@@ -195,14 +192,7 @@ def find_package_path(package_name: str) -> str:
 
 def _analyze_py_file(file_path: str, package_name: str) -> dict[str, int]:
     """Parse Python file using AST to count classes, functions, and imports."""
-    counts = {
-        "n_classes": 0,
-        "n_functions": 0,
-        "n_methods": 0,
-        "n_internal_imports": 0,
-        "n_external_imports": 0,
-        "n_type_checking_imports": 0,
-    }
+    counts = dict.fromkeys(_ANALYSIS_COLS, 0)
     try:
         with open(file_path, encoding="utf-8") as file_handle:
             source = file_handle.read()
@@ -445,61 +435,37 @@ def collect_package_modules(
             ]
 
         for file_path in python_files:
-            line_count = count_lines(file_path)
             rel_path = os.path.relpath(file_path, os.path.dirname(pkg_path))
             module_name = (
                 rel_path.replace(".py", "").replace(os.sep, ".").replace("\\", ".")
             )
-
-            # Extract module path components (e.g. pymatviz.utils.io -> ['utils', 'io'])
-            relative_module_name = (
-                module_name[len(package_name) + 1 :]
-                if module_name.startswith(package_name + ".")
-                else module_name
-            )
+            # module path components, e.g. pymatviz.utils.io -> ['utils', 'io']
+            relative_module_name = module_name.removeprefix(f"{package_name}.")
             module_parts = (
                 relative_module_name.split(".") if relative_module_name else []
             )
-
-            # Get top directory for directory grouping
             directory_parts = rel_path.split(os.sep)
-            directory = directory_parts[0] if len(directory_parts) > 1 else "root"
-
-            # Filename without extension for file grouping
             filename = os.path.basename(rel_path).replace(".py", "")
-
-            # Top-level module for grouping
-            top_module = module_parts[0] if module_parts else "root"
-
-            # Calculate path segment for repository URL
-            # Path relative to the immediate package root directory
-            path_relative_to_pkg_root = os.path.relpath(
-                file_path, start=pkg_path
-            ).replace(os.sep, "/")
-
-            repo_path_segment = f"{repo_path_prefix}/{path_relative_to_pkg_root}"
-
-            # Determine leaf node label for linking text
-            leaf_label = (
-                module_parts[-1] if module_parts else (filename or package_name)
-            )
-
-            analysis_results = _analyze_py_file(file_path, package_name)
+            pkg_rel_path = os.path.relpath(file_path, pkg_path).replace(os.sep, "/")
 
             all_modules.append(
                 {
                     "package": package_name,
                     "full_module": module_name,
                     "filename": filename,
-                    "directory": directory,
-                    "top_module": top_module,  # Needed for grouping
-                    "line_count": line_count,
-                    "file_path": file_path,  # Absolute path
-                    "repo_path_segment": repo_path_segment,  # Path for URL
-                    "leaf_label": leaf_label,  # Link text
-                    "module_parts": module_parts,  # Parts for hierarchy
+                    "directory": directory_parts[0]
+                    if len(directory_parts) > 1
+                    else "root",
+                    "top_module": module_parts[0] if module_parts else "root",
+                    "line_count": count_lines(file_path),
+                    "file_path": file_path,
+                    "repo_path_segment": f"{repo_path_prefix}/{pkg_rel_path}",
+                    "leaf_label": module_parts[-1]  # link text
+                    if module_parts
+                    else (filename or package_name),
+                    "module_parts": module_parts,
                     "depth": len(module_parts),
-                    **analysis_results,  # Add n_classes, n_functions, etc.
+                    **_analyze_py_file(file_path, package_name),
                 }
             )
 
@@ -591,12 +557,7 @@ def collect_source_modules_from_dir(
                     "leaf_label": leaf_label,
                     "module_parts": module_parts,
                     "depth": len(module_parts),
-                    "n_classes": 0,
-                    "n_functions": 0,
-                    "n_methods": 0,
-                    "n_internal_imports": 0,
-                    "n_external_imports": 0,
-                    "n_type_checking_imports": 0,
+                    **dict.fromkeys(_ANALYSIS_COLS, 0),
                 }
             )
 
@@ -1072,7 +1033,9 @@ def py_pkg_treemap(
 
             if rows_to_drop:
                 rows_were_merged = True
-                df_treemap = df_treemap.drop(index=pd.Index([]).append(rows_to_drop))
+                df_treemap = df_treemap.drop(
+                    index=rows_to_drop[0].append(rows_to_drop[1:])
+                )
                 df_treemap = pd.concat(
                     [df_treemap, pd.DataFrame(rows_to_add)], ignore_index=True
                 )
@@ -1109,7 +1072,7 @@ def py_pkg_treemap(
         total_lines = package_totals.sum()
 
         # When in coverage mode, show coverage percentage instead of line percentage
-        if color_by == "coverage" and has_color_mode:
+        if color_by == "coverage":
             # package-level coverage is the line-weighted average of its files
             package_coverage = {}
             for pkg_name in package_names:
@@ -1131,28 +1094,20 @@ def py_pkg_treemap(
                 lambda pkg: cell_text_fn(pkg, package_totals.get(pkg, 0), total_lines)
             )
 
-    # Calculate full file URLs for linking ("" without a base URL: plotly>=7 casts
-    # customdata to str before aggregating parents, NaN then breaks max())
-    def _get_file_url(row: pd.Series) -> str:
-        pkg_name = row["package_name_raw"]
-        base = package_base_urls.get(pkg_name)
-        if base:
-            # Use repo_path_segment which includes src/ prefix if needed
-            return f"{base}/{row['repo_path_segment']}"
-        return ""
-
-    df_treemap["file_url"] = df_treemap.apply(_get_file_url, axis=1)
+    # Full file URLs for linking ("" without a base URL: plotly>=7 casts customdata
+    # to str before aggregating parents, NaN then breaks max())
+    df_treemap["file_url"] = [
+        f"{base}/{segment}" if (base := package_base_urls.get(pkg)) else ""
+        for pkg, segment in zip(
+            df_treemap["package_name_raw"],
+            df_treemap["repo_path_segment"],
+            strict=True,
+        )
+    ]
 
     # Define custom data columns for hovertemplate and linking
     # Order matters for hovertemplate %{customdata[index]} references
-    analysis_cols = [
-        "n_classes",
-        "n_functions",
-        "n_methods",
-        "n_internal_imports",
-        "n_external_imports",
-        "n_type_checking_imports",
-    ]
+    analysis_cols = list(_ANALYSIS_COLS)
     custom_data_cols: list[str] = [
         "package_name_raw",  # 0
         "repo_path_segment",  # 1
@@ -1176,30 +1131,20 @@ def py_pkg_treemap(
             df_treemap["color_value"].fillna(0).infer_objects(copy=False)
         )
 
-    treemap_defaults = dict(
-        color_discrete_sequence=px.colors.qualitative.Set3,
+    color_defaults: dict[str, Any] = (
+        dict(color="color_value", color_continuous_scale="Viridis")
+        if has_color_mode
+        else dict(color_discrete_sequence=px.colors.qualitative.Set3)
     )
-
-    # Prepare treemap parameters
     treemap_params = {
         "data_frame": df_treemap,
         "path": path_definition,
         "values": "cell_value",
         "custom_data": df_treemap[custom_data_cols],
         "branchvalues": "total",  # proper aggregation for parent nodes
-        **treemap_defaults,
+        **color_defaults,
         **kwargs,
     }
-
-    # Add color parameter if heatmap mode is enabled
-    if has_color_mode:
-        treemap_params["color"] = "color_value"
-        # Set a continuous color scale for heatmap mode
-        if "color_continuous_scale" not in kwargs:
-            treemap_params["color_continuous_scale"] = "Viridis"
-        # Colorbar title will be set after figure creation
-        # Remove discrete color sequence when using continuous colors
-        treemap_params.pop("color_discrete_sequence", None)
 
     # None marks rows that end above the deepest level. plotly>=7 casts path columns
     # to str and max()es them, so object columns mixing str and None (-> NaN) raise;
@@ -1211,7 +1156,7 @@ def py_pkg_treemap(
 
     # Fix parent node colors for coverage heatmaps (weighted averages).
     # Must run before label wrapping so substring matching still works.
-    if has_color_mode and color_by == "coverage":
+    if color_by == "coverage":
         _apply_coverage_weighted_averages(fig, df_treemap)
 
     # Break long labels at underscores so plotly can wrap text instead of
@@ -1240,32 +1185,26 @@ def py_pkg_treemap(
 
     # Configure colorbar for heatmap mode
     if has_color_mode:
-        colorbar_title = (
-            "Coverage (%)"
-            if color_by == "coverage"
-            else (
-                color_by.replace("_", " ").title()
-                if isinstance(color_by, str)
-                else "Color Value"
-            )
-        )
+        if color_by == "coverage":
+            colorbar_title = "Coverage (%)"
+        elif isinstance(color_by, str):
+            colorbar_title = color_by.replace("_", " ").title()
+        else:
+            colorbar_title = "Color Value"
         fig.update_layout(
             coloraxis_colorbar=dict(
                 title=colorbar_title, title_side="right", thickness=12
             )
         )
-
-        # Set color range for heatmap mode
-        if color_range is not None:  # Use manually specified range
+        if color_range is None and color_by == "coverage":  # default to data range
+            color_range = (
+                df_treemap["color_value"].min(),
+                df_treemap["color_value"].max(),
+            )
+        if color_range is not None:
             min_val, max_val = color_range
             fig.layout.coloraxis.update(
                 cmin=min_val, cmax=max_val, cmid=(min_val + max_val) / 2
-            )
-        elif color_by == "coverage":  # For coverage, use data range by default
-            min_cov = df_treemap["color_value"].min()
-            max_cov = df_treemap["color_value"].max()
-            fig.layout.coloraxis.update(
-                cmin=min_cov, cmax=max_cov, cmid=(min_cov + max_cov) / 2
             )
 
     # Configure hover display using hovertemplate
@@ -1286,17 +1225,13 @@ def py_pkg_treemap(
             "Lines: %{customdata[11]:,}<br>"  # line_count
         )
 
-        # Add color value to hover if heatmap mode is enabled
         if has_color_mode:
-            color_label = "Coverage" if color_by == "coverage" else "Color Value"
-            color_value_index = len(custom_data_cols) - 1
+            color_idx = len(custom_data_cols) - 1
             if color_by == "coverage":
-                base_hovertemplate += (
-                    f"{color_label}: %{{customdata[{color_value_index}]:.1f}}%<br>"
-                )
+                base_hovertemplate += f"Coverage: %{{customdata[{color_idx}]:.1f}}%<br>"
             else:
                 base_hovertemplate += (
-                    f"{color_label}: %{{customdata[{color_value_index}]:,.2f}}<br>"
+                    f"Color Value: %{{customdata[{color_idx}]:,.2f}}<br>"
                 )
 
         # Only show Python AST analysis fields when they have data
@@ -1328,7 +1263,7 @@ def py_pkg_treemap(
     }[show_counts]
     # Aggregated parent nodes lack customdata for links and coverage labels.
     coverage_text = ""
-    if not has_depth_limit and color_by == "coverage" and has_color_mode:
+    if not has_depth_limit and color_by == "coverage":
         coverage_text = f"<br>%{{customdata[{len(custom_data_cols) - 1}]:,.1f}}% cov"
     use_links = has_links and not has_depth_limit
     texttemplate = ""
