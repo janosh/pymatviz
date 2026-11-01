@@ -25,7 +25,7 @@ dependencies = [
   "anywidget>=0.11",
   "moyopy>=0.21",
   "numpy>=2.5",
-  "pandas[output-formatting,xml]>=2.3", # output-formatting needed for pandas Stylers,
+  "pandas[output-formatting]>=2.3", # output-formatting needed for pandas Stylers,
   # see https://github.com/pandas-dev/pandas/blob/-/pyproject.toml. Not pandas 3 yet:
   # matminer (clustering/make-assets extras) still requires pandas<3
   "plotly>=7.1",
@@ -39,7 +39,7 @@ dependencies = [
 # kaleido: plotly needs it for static export and full_figure_for_development
 # moyopy[interface]: pymatgen's get_symmetry_dataset (used by the spacegroup scripts) needs
 # moyopy's ase-based structure interface
-make-assets = ["kaleido>=1.5", "matminer>=0.10.1", "moyopy[interface]>=0.21"]
+make-assets = ["kaleido>=1.5", "lxml>=6", "matminer>=0.10.1", "moyopy[interface]>=0.21"]
 gh-pages = ["jupyter>=1.1.1", "nbconvert>=7.17"]
 phonons = ["phonopy>=4.8"] # only needed if user passes in phonopy objects
 test = [

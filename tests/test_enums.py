@@ -3,10 +3,10 @@ from __future__ import annotations
 import os
 import pickle
 from typing import TYPE_CHECKING
-from unittest.mock import Mock, call, patch
+from unittest.mock import MagicMock, call, patch
+from urllib.error import HTTPError
 
 import pytest
-import requests
 
 from pymatviz.enums import Files, Key, LabelEnum
 
@@ -446,15 +446,17 @@ def test_files_enum_auto_download(
         with open(path, mode="wb") as file:
             file.write(b"old content")
 
-    response = Mock(content=b"new content")
-    if not response_ok:
-        response.raise_for_status.side_effect = requests.HTTPError("HTTP Error: 404")
+    response = MagicMock()
+    response.__enter__.return_value.read.return_value = b"new content"
+    error = None if response_ok else HTTPError(url, 404, "Not Found", None, None)  # ty: ignore[invalid-argument-type]
 
-    with patch("requests.get", return_value=response) as mock_get:
+    with patch(
+        "pymatviz.enums.urlopen", return_value=response, side_effect=error
+    ) as mock_get:
         if response_ok:
             assert TestFiles.test_file.file_path == path
         else:
-            with pytest.raises(requests.HTTPError, match="HTTP Error: 404"):
+            with pytest.raises(HTTPError, match="HTTP Error 404"):
                 _ = TestFiles.test_file.file_path
 
     assert mock_get.call_args_list == ([call(url)] if expect_download else [])
