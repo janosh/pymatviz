@@ -76,6 +76,26 @@ jobs:
           marimo export script examples/widgets/marimo_demo.py -o /tmp/marimo_flat.py && python /tmp/marimo_flat.py
           jupyter nbconvert --to notebook --execute --ExecutePreprocessor.timeout=120 examples/widgets/jupyter_demo.ipynb --output /tmp/jupyter_out.ipynb
 
+  run-example-notebooks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v10.2.0
+
+      # mp_bimodal_e_form and mprester_ptable need a Materials Project API key
+      - name: Execute data notebooks
+        run: |
+          uv pip install -e '.[make-assets]' nbconvert ipykernel --system
+          jupyter nbconvert --to notebook --execute --ExecutePreprocessor.timeout=300 examples/matbench_{dielectric,perovskites}_eda.ipynb --output-dir /tmp/notebooks
+
   find-example-scripts:
     runs-on: ubuntu-latest
     outputs:

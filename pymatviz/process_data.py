@@ -669,34 +669,27 @@ def sankey_flow_data(
         df[list(cols)].value_counts().reset_index().to_numpy().T.tolist()
     )
 
-    # Deduplicate nodes - a value may appear in both source and target columns
-    unique_vals = list(dict.fromkeys(source + target))  # preserves order
-    val_to_idx = {val: idx for idx, val in enumerate(unique_vals)}
+    # Each column is one side of the diagram, so a value in both gets two nodes
+    source_vals = list(dict.fromkeys(source))  # preserves order
+    target_vals = list(dict.fromkeys(target))
+    source_idx = {val: idx for idx, val in enumerate(source_vals)}
+    target_idx = {val: idx + len(source_vals) for idx, val in enumerate(target_vals)}
 
+    labels = [*source_vals, *target_vals]
     if labels_with_counts:
         as_percent = labels_with_counts == "percent"
-        source_counts = df[cols[0]].value_counts().to_dict()
-        target_counts = df[cols[1]].value_counts().to_dict()
-        # sum occurrences across both columns (a node may appear in both as
-        # source and target; merging the dicts would drop its source count)
-        all_counts = {
-            val: source_counts.get(val, 0) + target_counts.get(val, 0)
-            for val in unique_vals
-        }
         fmt = ".1%" if as_percent else "d"
-        labels = [
-            f"{val}: "
-            f"{all_counts[val] / len(df) if as_percent else all_counts[val]:{fmt}}"
-            for val in unique_vals
+        source_counts = df[cols[0]].value_counts(normalize=as_percent)
+        target_counts = df[cols[1]].value_counts(normalize=as_percent)
+        labels = [f"{val}: {source_counts[val]:{fmt}}" for val in source_vals] + [
+            f"{val}: {target_counts[val]:{fmt}}" for val in target_vals
         ]
-    else:
-        labels = unique_vals
 
     return {
         "source": source,
         "target": target,
         "value": value,
         "labels": labels,
-        "source_indices": [val_to_idx[val] for val in source],
-        "target_indices": [val_to_idx[val] for val in target],
+        "source_indices": [source_idx[val] for val in source],
+        "target_indices": [target_idx[val] for val in target],
     }
