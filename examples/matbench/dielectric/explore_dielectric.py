@@ -2,7 +2,7 @@
 
 Input: Pymatgen Structure of the material.
 Target variable: refractive index.
-Entries: 636
+Entries: 4,764
 
 Matbench v0.1 test dataset for predicting refractive index from structure. Adapted from
 Materials Project database. Removed entries having a formation energy (or energy above

@@ -310,11 +310,11 @@ See [`pymatviz/rainclouds.py`](pymatviz/rainclouds.py).
 
 See [`pymatviz/sankey.py`](pymatviz/sankey.py).
 
-| [`sankey_from_2_df_cols(df_perovskites)`](pymatviz/sankey.py#L18) [![fig-icon]](assets/scripts/sankey/sankey_from_2_df_cols.py) | [`sankey_from_2_df_cols(df_space_groups)`](pymatviz/sankey.py#L18) |
-| :-----------------------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------: |
-|                                              ![sankey-spglib-vs-aflow-spacegroups]                                              |                ![sankey-crystal-sys-to-spg-symbol]                 |
+| [`sankey_from_2_df_cols(df_perovskites)`](pymatviz/sankey.py#L18) [![fig-icon]](examples/matbench_perovskites_eda.ipynb) | [`sankey_from_2_df_cols(df_space_groups)`](pymatviz/sankey.py#L18) |
+| :----------------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------: |
+|                                          ![sankey-moyopy-vs-aflow-spacegroups]                                           |                ![sankey-crystal-sys-to-spg-symbol]                 |
 
-[sankey-spglib-vs-aflow-spacegroups]: assets/svg/sankey-spglib-vs-aflow-spacegroups.svg
+[sankey-moyopy-vs-aflow-spacegroups]: assets/svg/sankey-moyopy-vs-aflow-spacegroups.svg
 [sankey-crystal-sys-to-spg-symbol]: assets/svg/sankey-crystal-sys-to-spg-symbol.svg
 
 ## Bar Plots
