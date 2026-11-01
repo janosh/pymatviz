@@ -17,7 +17,7 @@ A toolkit for visualizations in materials informatics.
 
 </h4>
 
-[fig-icon]: https://api.iconify.design/lsicon:scatter-diagram-outline.svg?color=%234c8bf5&height=16 "View example code"
+[fig-icon]: assets/svg/fig-icon.svg "View example code"
 
 <slot name="how-to-cite">
 
@@ -60,9 +60,9 @@ See [`pymatviz/ptable/figures.py`](pymatviz/ptable/figures.py). The module suppo
 |                                     [`ptable_heatmap(atomic_masses)`](pymatviz/ptable/figures.py#L39)                                     | [`ptable_heatmap(compositions, log=True)`](pymatviz/ptable/figures.py#L39) [![fig-icon]](assets/scripts/ptable/ptable_heatmap.py) |
 | :---------------------------------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------------------: |
 |                                                 ![ptable-heatmap-plotly-more-hover-data]                                                  |                                                   ![ptable-heatmap-plotly-log]                                                    |
-|               [`ptable_hists(data)`](pymatviz/ptable/figures.py#L456) [![fig-icon]](assets/scripts/ptable/ptable_hists.py)                | [`ptable_scatter(data, mode="markers")`](pymatviz/ptable/figures.py#L1505) [![fig-icon]](assets/scripts/ptable/ptable_scatter.py) |
+|               [`ptable_hists(data)`](pymatviz/ptable/figures.py#L456) [![fig-icon]](assets/scripts/ptable/ptable_hists.py)                | [`ptable_scatter(data, mode="markers")`](pymatviz/ptable/figures.py#L1494) [![fig-icon]](assets/scripts/ptable/ptable_scatter.py) |
 |                                                          ![ptable-hists-plotly]                                                           |                                                 ![ptable-scatter-plotly-markers]                                                  |
-| [`ptable_heatmap_splits(2_vals_per_elem)`](pymatviz/ptable/figures.py#L1033) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_splits.py) |                            [`ptable_heatmap_splits(3_vals_per_elem)`](pymatviz/ptable/figures.py#L1033)                            |
+| [`ptable_heatmap_splits(2_vals_per_elem)`](pymatviz/ptable/figures.py#L1027) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_splits.py) |                            [`ptable_heatmap_splits(3_vals_per_elem)`](pymatviz/ptable/figures.py#L1027)                            |
 |                                                     ![ptable-heatmap-splits-plotly-2]                                                     |                                                 ![ptable-heatmap-splits-plotly-3]                                                 |
 
 [ptable-heatmap-plotly-log]: assets/svg/ptable-heatmap-plotly-log.svg
@@ -247,7 +247,7 @@ See [`pymatviz/coordination/figures.py`](pymatviz/coordination/figures.py).
 |              [`coordination_hist(struct_dict)`](pymatviz/coordination/figures.py#L60)              |            [`coordination_hist(struct_dict, by_element=True)`](pymatviz/coordination/figures.py#L60) [![fig-icon]](assets/scripts/coordination/coordination_hist.py)             |
 | :------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                    ![coordination-hist-single]                                     |                                                                  ![coordination-hist-by-structure-and-element]                                                                   |
-| [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination/figures.py#L320) | [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination/figures.py#L320) [![fig-icon]](assets/scripts/coordination/coordination_vs_cutoff_line.py#L52) |
+| [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination/figures.py#L319) | [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination/figures.py#L319) [![fig-icon]](assets/scripts/coordination/coordination_vs_cutoff_line.py#L52) |
 |                                  ![coordination-vs-cutoff-single]                                  |                                                                        ![coordination-vs-cutoff-multiple]                                                                        |
 
 [coordination-hist-single]: assets/svg/coordination-hist-single.svg
@@ -279,9 +279,9 @@ See [`pymatviz/treemap/chem_sys.py`](pymatviz/treemap/chem_sys.py).
 |                                                           ![chem-sys-treemap-formula]                                                            |                                        ![chem-sys-treemap-ward-bmg]                                        |
 |           [`chem_env_treemap(structures)`](pymatviz/treemap/chem_env.py#L50) [![fig-icon]](assets/scripts/treemap/chem_env_treemap.py)           |     [`chem_env_treemap(structures, max_cells_cn=3, max_cells_ce=4)`](pymatviz/treemap/chem_env.py#L50)     |
 |                                                            ![chem-env-treemap-basic]                                                             |                                     ![chem-env-treemap-large-dataset]                                      |
-|             [`py_pkg_treemap("pymatviz")`](pymatviz/treemap/py_pkg.py#L691) [![fig-icon]](assets/scripts/treemap/py_pkg_treemap.py)              |           [`py_pkg_treemap(["pymatviz", "flame", "pymatgen"])`](pymatviz/treemap/py_pkg.py#L698)            |
+|             [`py_pkg_treemap("pymatviz")`](pymatviz/treemap/py_pkg.py#L676) [![fig-icon]](assets/scripts/treemap/py_pkg_treemap.py)              |           [`py_pkg_treemap(["pymatviz", "flame", "pymatgen"])`](pymatviz/treemap/py_pkg.py#L677)           |
 |                                                            ![py-pkg-treemap-pymatviz]                                                            |                                         ![py-pkg-treemap-multiple]                                         |
-|   [`py_pkg_treemap("pymatviz", color_by="coverage")`](pymatviz/treemap/py_pkg.py#L691) [![fig-icon]](assets/scripts/treemap/py_pkg_treemap.py)   | [`py_pkg_treemap("pymatgen", color_by="coverage", color_range=(0, 100))`](pymatviz/treemap/py_pkg.py#L691) |
+|   [`py_pkg_treemap("pymatviz", color_by="coverage")`](pymatviz/treemap/py_pkg.py#L676) [![fig-icon]](assets/scripts/treemap/py_pkg_treemap.py)   | [`py_pkg_treemap("pymatgen", color_by="coverage", color_range=(0, 100))`](pymatviz/treemap/py_pkg.py#L676) |
 |                                                       ![py-pkg-treemap-pymatviz-coverage]                                                        |                                    ![py-pkg-treemap-pymatgen-coverage]                                     |
 
 > **Note:** For `color_by="coverage"` the package must have coverage data (e.g. run `pytest --cov=<pkg> --cov-report=xml` and pass the resulting `.coverage` file to `coverage_data_file`).

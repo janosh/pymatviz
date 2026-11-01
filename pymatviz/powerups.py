@@ -203,7 +203,6 @@ def add_identity_line(
         kwargs.setdefault("row", "all")
         kwargs.setdefault("col", "all")
 
-    # Prepare line properties
     line_defaults = dict(color="gray", width=1, dash="dash")
     if "line" in kwargs:
         line_defaults.update(kwargs.pop("line"))
@@ -666,7 +665,6 @@ def add_ecdf_line(
 
         fig.data[-1].hovertemplate = hovertemplate
 
-        # Create unique name
         name = base_name
         trace_names = [trace.name for trace in fig.data[:-1]]
         name_suffix = 1
@@ -674,7 +672,6 @@ def add_ecdf_line(
             name_suffix += 1
             name = f"{base_name} {name_suffix}"
 
-        # Apply user overrides to trace defaults
         line_defaults = dict(
             color=trace_kwargs.get("line_color", "gray"),
             dash=trace_kwargs.get("line", {}).get("dash", "solid"),
@@ -694,7 +691,6 @@ def add_ecdf_line(
         if isinstance(line_dict, dict) and (color := line_dict.get("color")):
             yaxis_defaults["color"] = color
 
-        # Set up yaxis2 properly
         if not hasattr(fig.layout, "yaxis2"):
             fig.layout.yaxis2 = yaxis_defaults
         else:
@@ -723,7 +719,6 @@ def add_ecdf_line(
     if not hasattr(fig.layout, "yaxis2"):
         fig.layout.yaxis2 = yaxis_defaults
 
-    # Process each selected trace
     for trace_idx in selected_traces:
         target_trace = fig.data[trace_idx]
 
@@ -769,7 +764,6 @@ def add_ecdf_line(
 
         legendgroup = target_trace.legendgroup or str(trace_idx)
 
-        # Create name for ECDF trace
         trace_name = base_name
         if not is_single_trace and getattr(target_trace, "name", None):
             trace_name = f"{base_name} ({target_trace.name})"
@@ -798,7 +792,6 @@ def add_ecdf_line(
         if has_subplots and not horizontal and hasattr(target_trace, "xaxis"):
             ecdf_trace["xaxis"] = target_trace.xaxis
 
-        # Add to figure with defaults
         fig.add_trace(ecdf_trace, **kwargs)
 
         # Apply user overrides, merging line dicts into the existing line style

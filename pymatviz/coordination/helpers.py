@@ -131,7 +131,6 @@ def coordination_nums_in_structure(
     """
     get_neighbors = normalize_get_neighbors(strategy=strategy)
 
-    # Store coordination numbers for each group
     cns: dict[str, list[int]] = defaultdict(list)
 
     # Calculate CNs for all sites in the structure

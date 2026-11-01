@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 import pytest
 
 import pymatviz as pmv
@@ -81,7 +80,6 @@ def test_rainclouds_with_dataframe(sample_dataframe: pd.DataFrame) -> None:
         "Y": sample_dataframe[sample_dataframe["category"] == "Y"]["value"],
     }
     fig = pmv.rainclouds(data, hover_data=["category", "extra"])
-    assert isinstance(fig, go.Figure)
     assert len(fig.data) == 6
 
 

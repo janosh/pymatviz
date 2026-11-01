@@ -537,7 +537,6 @@ def ptable_hists(
     Returns:
         go.Figure: Plotly Figure object with histograms in a periodic table layout.
     """
-    # Process data into a consistent format
     if isinstance(data, pd.DataFrame):
         data = data.to_dict("list")
     elif isinstance(data, pd.Series):
@@ -579,7 +578,6 @@ def ptable_hists(
 
     bar_colors = px.colors.sample_colorscale(colorscale, bins)
 
-    # Create histograms for each element
     for symbol, period, group, *_ in df_ptable.itertuples():
         row, col = period - 1, group - 1  # row, col are 0-indexed
 
@@ -591,7 +589,6 @@ def ptable_hists(
 
         xy_ref = _subplot_xy_ref(row, col, n_cols, domain=True)
 
-        # Add element type background
         elem_type = df_ptable.loc[symbol].get("type", None)
         if bg_shape := _make_elem_type_background(
             elem_type, elem_type_colors, color_elem_strategy, xy_ref=xy_ref
@@ -623,7 +620,6 @@ def ptable_hists(
             col=col + 1,
         )
 
-        # Add element symbol
         font_color = "lightgray"
         symbol_style = {
             "font_size": (font_size or 10) * scale,
@@ -671,7 +667,6 @@ def ptable_hists(
             col=n_cols,
         )
 
-    # Update global figure layout
     fig.layout.margin = dict(l=10, r=10, t=10, b=10)
     fig.layout.paper_bgcolor = fig.layout.plot_bgcolor = "rgba(0,0,0,0)"
     fig.layout.width = 900 * scale
@@ -895,7 +890,6 @@ def _get_colorbar_settings(
         )
         cbar_settings = v_defaults | cbar_settings
 
-    # Handle title
     if title := cbar_settings.get("title"):
         title_text = title.get("text", "") if isinstance(title, dict) else title
         if split_name:
@@ -1251,7 +1245,6 @@ def ptable_heatmap_splits(
             )
         colorscales[idx] = normalized_scale
 
-    # Initialize figure with subplots
     has_f_block_data = any(
         Element(symbol).is_actinoid or Element(symbol).is_lanthanoid for symbol in data
     )
@@ -1305,7 +1298,6 @@ def ptable_heatmap_splits(
 
         xy_ref = _subplot_xy_ref(row, col, n_cols, domain=False)
 
-        # Get values and colors
         values = np.asarray(data.get(symbol, np.full(n_splits, np.nan)), dtype=float)
 
         split_colors: list[str] = []  # Store colors for each split
@@ -1345,7 +1337,6 @@ def ptable_heatmap_splits(
                 col=col + 1,
             )
 
-            # Add formatted split value annotation
             if split_value_fmt is not None and not np.isnan(values[idx]):
                 current_fmt = (
                     split_value_fmt[idx]
@@ -1393,7 +1384,6 @@ def ptable_heatmap_splits(
             )
         )
 
-        # Add hover data
         elem_name = df_ptable.loc[symbol, "name"]
         split_hovers = [
             (split_labels[idx], format_hover(val))
@@ -1444,7 +1434,6 @@ def ptable_heatmap_splits(
 
     _extend_layout_items(fig, annotations=tile_annotations)
 
-    # Update layout
     fig.layout.showlegend = False
     fig.layout.paper_bgcolor = fig.layout.plot_bgcolor = "rgba(0,0,0,0)"
     fig.layout.width = 45 * n_cols * scale
@@ -1505,7 +1494,6 @@ type LineData = (
 def ptable_scatter(
     data: Mapping[str, ElemData],
     *,
-    # Plot mode
     mode: Literal["markers", "lines", "lines+markers"] = "markers",
     # Color settings
     colorscale: str = "viridis",
@@ -1602,7 +1590,6 @@ def ptable_scatter(
     """
     elem_type_colors = _resolve_elem_type_colors(color_elem_strategy, elem_type_colors)
 
-    # Initialize figure with subplots
     n_rows, n_cols = 10, 18
     subplot_kwargs = dict(
         rows=n_rows,
@@ -1632,7 +1619,6 @@ def ptable_scatter(
         all_y_vals = [y_val for line in all_lines for y_val in line[1]]
         y_range = (min(all_y_vals), max(all_y_vals))
 
-    # Get default marker and line settings
     marker_defaults: dict[str, Any] = dict(
         size=6 * scale, color=template_line_color, line=dict(width=0)
     )
@@ -1665,7 +1651,6 @@ def ptable_scatter(
             for key in elem_data
             if isinstance(key, str)
         }
-        # Create color map for line names
         color_sequence = px.colors.qualitative.Set2
         line_colors = {
             name: color_sequence[idx % len(color_sequence)]
@@ -1687,7 +1672,6 @@ def ptable_scatter(
 
         xy_ref = _subplot_xy_ref(row, col, n_cols, domain=True)
 
-        # Add element type background
         elem_type = df_ptable.loc[symbol].get("type", None)
         if bg_shape := _make_elem_type_background(
             elem_type, elem_type_colors, color_elem_strategy, xy_ref=xy_ref
@@ -1760,7 +1744,6 @@ def ptable_scatter(
             )
             fig.add_scatter(**scatter_kwargs)
 
-        # Add element symbol
         display_symbol = (element_symbol_map or {}).get(symbol, symbol)
         font = dict(
             color=elem_type_colors.get(elem_type, template_line_color)
@@ -1788,14 +1771,12 @@ def ptable_scatter(
 
     _extend_layout_items(fig, annotations=tile_annotations, shapes=tile_shapes)
 
-    # Update layout
     fig.layout.showlegend = False
     fig.layout.paper_bgcolor = fig.layout.plot_bgcolor = "rgba(0,0,0,0)"
     fig.layout.width = 850 * scale
     fig.layout.height = 500 * scale
     fig.layout.margin = dict(l=10, r=10, t=50, b=10)
 
-    # Update x and y axes
     axis_defaults = dict(
         showgrid=False,  # hide grid lines
         showline=True,  # show axis line
@@ -1805,7 +1786,6 @@ def ptable_scatter(
         ticks="inside",  # move ticks to inside
         tickwidth=1,
         tickcolor=template_line_color,
-        # Configure tick count
         nticks=2,  # show only 2 ticks by default
         tickmode="auto",  # let plotly choose nice tick values
         zeroline=False,  # remove x/y=0 line

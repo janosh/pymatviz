@@ -34,7 +34,6 @@ def test_error_decay_with_uncert(
     assert fig.layout.yaxis.title.text == "MAE"
     assert len(fig.data) >= 2  # At least uncertainty line and error line
 
-    # Check for essential traces
     trace_names = {trace.name for trace in fig.data if trace.name}
     assert "error" in trace_names
     assert "random" in trace_names or "random (mean)" in trace_names
@@ -78,12 +77,10 @@ def test_qq_gaussian(
     assert fig.layout.xaxis.range == (0, 1)
     assert fig.layout.yaxis.range == (0, 1)
 
-    # Check legend positioning and miscalibration measures
     assert fig.layout.legend.x == 0.02
     assert fig.layout.legend.y == 0.98
     assert fig.layout.legend.borderwidth == 0
 
-    # Check miscalibration measures in legend labels
     legend_traces = [
         trace
         for trace in fig.data
@@ -91,7 +88,6 @@ def test_qq_gaussian(
     ]
     assert len(legend_traces) > 0
 
-    # Check Q-Q line properties
     qq_traces = [
         trace
         for trace in fig.data
@@ -101,7 +97,6 @@ def test_qq_gaussian(
         assert trace.line.width == 2
         assert trace.opacity == 0.8
 
-    # Check fill areas
     fill_traces = [trace for trace in fig.data if trace.fill and trace.fill != "none"]
     assert len(fill_traces) > 0
 

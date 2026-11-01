@@ -109,7 +109,6 @@ def classify_local_env_with_order_params(
         # Create LocalStructOrderParams instance
         local_ops = local_env.LocalStructOrderParams(types, parameters=params)
 
-        # Get neighboring sites using CrystalNN
         nn_info = local_env.CrystalNN().get_nn_info(
             structure=analysis_structure, n=site_idx
         )

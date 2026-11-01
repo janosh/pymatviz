@@ -21,7 +21,6 @@ if TYPE_CHECKING:
         (143, "trigonal"),
         (168, "hexagonal"),
         (230, "cubic"),
-        # Test with short Hermann-Mauguin symbols
         ("P1", "triclinic"),
         ("P-1", "triclinic"),
         ("P2/m", "monoclinic"),
@@ -36,7 +35,6 @@ if TYPE_CHECKING:
         ("P6_3/mmc", "hexagonal"),
         ("Fm-3m", "cubic"),
         ("Ia-3d", "cubic"),
-        # Test with full Hermann-Mauguin symbols
         ("P2_1/c", "monoclinic"),
         ("P12_1/c1", "monoclinic"),
         ("C12/c1", "monoclinic"),

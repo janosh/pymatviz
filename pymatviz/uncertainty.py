@@ -203,7 +203,6 @@ def error_decay_with_uncert(
     if percentiles:
         xs *= 100 / n_samples
 
-    # Add uncertainty-based decay lines
     for key, std in y_std.items():
         decay = abs_err[np.argsort(std)].cumsum() / retained
         fig.add_scatter(x=xs, y=decay[sample_indices], mode="lines", name=key)
@@ -212,7 +211,6 @@ def error_decay_with_uncert(
     decay_optimal = np.sort(abs_err).cumsum() / retained
     fig.add_scatter(x=xs, y=decay_optimal[sample_indices], mode="lines", name="error")
 
-    # Add random baseline with confidence interval
     rand_mean = abs_err.mean()
     abs_err_tile = np.tile(abs_err, [n_rand, 1])
     rng = np.random.default_rng(seed=0)

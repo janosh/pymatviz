@@ -153,14 +153,12 @@ def test_phonon_bands_and_dos(
         dos_kwargs["fill"] = fill
     if stack:
         doses = dict.fromkeys(doses, doses["DFT"])
-    # test dicts
     fig = pmv.phonon_bands_and_dos(bands, doses, dos_kwargs=dos_kwargs)
 
     assert fig.layout.xaxis.title.text == "Wave Vector"
     assert fig.layout.yaxis.title.text == f"Frequency ({units})"
     assert fig.layout.xaxis2.title.text == "DOS"
     assert fig.layout.font.size == 16
-    # check legend labels
     assert {trace.name for trace in fig.data} == {"DFT", "MACE"}
     dos_traces = [trace for trace in fig.data if trace.xaxis == "x2"]
     expected_fill = {"tozerox": "tozeroy", "tonextx": "tonexty"}.get(fill)
@@ -355,7 +353,6 @@ def test_phonon_dos_with_phonopy(phonopy_nacl: Phonopy) -> None:
     total_dos = phonopy_nacl.total_dos
     assert total_dos is not None
 
-    # Test single TotalDos
     fig = pmv.phonon_dos(
         total_dos,
         stack=False,
@@ -366,7 +363,6 @@ def test_phonon_dos_with_phonopy(phonopy_nacl: Phonopy) -> None:
     assert fig.layout.xaxis.title.text == "Frequency (THz)"
     assert fig.layout.yaxis.title.text == "Density of States"
 
-    # Test dictionary of TotalDos objects
     dos_dict = {"DFT": total_dos, "ML": total_dos}
     fig = pmv.phonon_dos(dos_dict, stack=True, sigma=0.1, normalize="max", units="THz")
     assert {trace.name for trace in fig.data} == {"DFT", "ML"}
@@ -388,11 +384,9 @@ def test_phonon_bands_with_phonopy(phonopy_nacl: Phonopy) -> None:
     band_structure = phonopy_nacl.band_structure
     assert band_structure is not None
 
-    # Test single band structure
     fig = pmv.phonon_bands(band_structure)
     assert len(fig.data) == 6
 
-    # Test multiple band structures in dict
     bands_dict = {
         "NaCl (phonopy)": band_structure,
         "DFT": band_structure,

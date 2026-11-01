@@ -76,10 +76,8 @@ def test_project_vectors_methods(
 
     result, proj_obj = project_vectors(sample_data, method=method, **kwargs)
 
-    # Check shape of projected data
     assert result.shape == (100, 2)
 
-    # Check projection object type
     assert isinstance(proj_obj, expected_obj_type)
 
     # Check projection object attributes
@@ -94,7 +92,6 @@ def test_project_vectors_methods(
     # Check that result has reasonable scale (not zero or infinite)
     assert 0.01 < np.std(result) < 100
 
-    # Check that result preserves some structure
     if method in ("pca", "isomap", "kernel_pca"):
         # These methods should preserve some linear structure
         assert np.linalg.matrix_rank(result) == 2
@@ -108,7 +105,6 @@ def test_project_vectors_components(sample_data: np.ndarray, n_components: int) 
     """Default PCA projection to different numbers of components."""
     result, proj_obj = project_vectors(sample_data, n_components=n_components)
 
-    # Check shape matches requested components
     assert result.shape == (100, n_components)
     assert isinstance(proj_obj, PCA)
     assert proj_obj.n_components_ == n_components
@@ -119,11 +115,9 @@ def test_project_vectors_components(sample_data: np.ndarray, n_components: int) 
     assert not np.any(np.isnan(result))
     assert not np.any(np.isinf(result))
 
-    # Check that result has reasonable scale
     assert np.std(result) == pytest.approx(1.0, rel=0.5)
     assert np.mean(result) == pytest.approx(0.0, abs=1e-10)
 
-    # Check that result preserves some structure
     assert np.linalg.matrix_rank(result) == n_components
 
 

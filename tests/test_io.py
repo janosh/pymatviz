@@ -136,7 +136,6 @@ def test_df_to_html(
     if inline_props:
         assert inline_props in html_text
 
-    # check file contains original dataframe value
     assert str(df_mixed.iloc[0, 0].round(6)) in html_text
 
 

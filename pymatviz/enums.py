@@ -18,7 +18,6 @@ if TYPE_CHECKING:
     from pymatviz.typing import ColorType
 
 
-# Load YAML data at module level
 with open(f"{PKG_DIR}/keys.yml", encoding="utf-8") as file:
     _key_data = yaml.safe_load(file)
 

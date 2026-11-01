@@ -126,7 +126,6 @@ def test_ptable_heatmap_splits_display_options(
         "vertical_spacing": 0.05,
         "subplot_titles": ["Split 1", "Split 2", "Split 3", "Split 4"],
     }
-    # Test custom element symbols
     element_symbol_map = {"Fe": "Iron", "O": "Oxygen"}
     symbol_kwargs = {"font": {"size": 14, "color": "red"}}
 
@@ -190,7 +189,6 @@ def test_ptable_heatmap_splits_annotations() -> None:
     """Test custom annotations in ptable_heatmap_splits."""
     data = {"Fe": [1, 2], "O": [3, 4], "H": [0.5, 1.5], "He": [1.5, 2.5]}
 
-    # Test with dict annotations
     annotations: dict[str, str | dict[str, Any]] = {
         "Fe": {"text": "Iron", "font": {"size": 14, "color": "red"}},
         "O": {"text": "Oxygen", "font": {"size": 14, "color": "blue"}},
@@ -206,7 +204,6 @@ def test_ptable_heatmap_splits_annotations() -> None:
     }
     assert custom_fonts == {"Iron": ("red", 8.0), "Oxygen": ("blue", 8.0)}
 
-    # Test with callable annotations
     def annotation_func(value: list[float] | np.ndarray) -> dict[str, Any]:
         return {"text": f"Value: {np.mean(value):.1f}"}
 
@@ -481,7 +478,6 @@ def test_ptable_heatmap_splits_dataframe_input() -> None:
     fe_hover_text = next(text for text in hover_texts(fig) if "Iron" in text)
     assert fe_hover_text == "<b>Iron</b><br>Formation Energy: 1.23<br>Band Gap: 2.34"
 
-    # Test custom hover template with DataFrame
     custom_template = "{name} ({symbol}): {split_name} = {value} eV"
     fig = pmv.ptable_heatmap_splits(
         data=data,
@@ -513,7 +509,6 @@ def test_ptable_heatmap_splits_special_colors() -> None:
     """Test nan_color and zero_color customization."""
     data = {"Fe": [1.0, np.nan], "O": [0.0, 2.0]}  # Test NaN and zero values
 
-    # Test both custom and default colors
     fig_default = pmv.ptable_heatmap_splits(data)
     fig_custom = pmv.ptable_heatmap_splits(data, nan_color="#f00", zero_color="#0f0")
 

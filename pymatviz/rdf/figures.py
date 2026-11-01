@@ -186,7 +186,6 @@ def element_pair_rdfs(
 
     element_pairs = sorted(element_pairs)
 
-    # Calculate pairwise RDFs for all structures
     elem_pair_rdfs: dict[tuple[str, str], list[tuple[np.ndarray, np.ndarray]]] = {
         pair: [
             calculate_rdf(struct, pair[0], pair[1], cutoff=cutoff, n_bins=n_bins)

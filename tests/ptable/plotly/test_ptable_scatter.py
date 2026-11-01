@@ -39,7 +39,6 @@ def test_basic_scatter_plot(sample_data: SampleData) -> None:
     """Test basic scatter plot creation."""
     fig = pmv.ptable_scatter(sample_data)
 
-    # Check basic figure properties
     assert fig.layout.width == 850  # default scale=1.0
     assert fig.layout.height == 500
     assert fig.layout.showlegend is False
@@ -50,20 +49,17 @@ def test_basic_scatter_plot(sample_data: SampleData) -> None:
     scatter_traces = [trace for trace in fig.data if isinstance(trace, go.Scatter)]
     assert len(scatter_traces) == len(sample_data)
 
-    # Verify data points match input
     for trace in scatter_traces:
         elem_name = trace.hovertemplate.split("<br>")[0]  # extract element name
         elem_symbol = {"Iron": "Fe", "Oxygen": "O"}[elem_name]
         x_data, y_data = sample_data[elem_symbol]
         assert list(trace.x) == x_data
         assert list(trace.y) == y_data
-        # Check trace properties
         assert trace.mode == "markers"  # default mode
         assert trace.showlegend is False
         assert trace.marker.size == 6
         assert trace.marker.line.width == 0
 
-    # Check axis properties
     for axis in (fig.layout.xaxis, fig.layout.yaxis):
         assert axis.showgrid is False
         assert axis.showline is True
@@ -78,7 +74,6 @@ def test_basic_scatter_plot(sample_data: SampleData) -> None:
     assert fig.layout.xaxis.zeroline is False
     assert fig.layout.yaxis.zeroline is False
 
-    # Check element annotations
     symbol_annotations = [
         ann for ann in fig.layout.annotations if ann.text in {e.name for e in Element}
     ]
@@ -131,7 +126,6 @@ def test_axis_ranges(sample_data: SampleData) -> None:
     y_range = (-5, 5)
     fig = pmv.ptable_scatter(sample_data, x_range=x_range, y_range=y_range)
 
-    # Check ranges were set correctly
     assert fig.layout.xaxis.range == x_range
     assert fig.layout.yaxis.range == y_range
 
@@ -190,7 +184,6 @@ def test_scaling(
 
     assert fig.layout.width == 850 * scale
     assert fig.layout.height == 500 * scale
-    # Check font scaling
     symbol_annotations = [
         ann for ann in fig.layout.annotations if ann.text in {e.name for e in Element}
     ]
@@ -222,7 +215,6 @@ def test_axis_styling(
     )
 
     for key, val in axis_kwargs.items():
-        # Handle nested properties like "title.text"
         key_path = dict(title="title.text").get(key, key)
         obj = fig.layout.xaxis
         for part in key_path.split("."):
@@ -272,11 +264,8 @@ def test_color_data_handling(color_data: ColorData) -> None:
     """Test handling of color data in the third sequence."""
     traces = traces_by_elem_name(pmv.ptable_scatter(color_data))
 
-    # Check discrete colors for Fe
     assert traces["Iron"].marker.color == ("red", "blue")
-    # Check numeric colors for Cu
     assert traces["Copper"].marker.color == (0.1, 0.9)
-    # Check default color for O
     assert traces["Oxygen"].marker.color == "green"
 
     # Check line colors are removed when using color data
@@ -308,14 +297,12 @@ def test_colorbar_with_numeric_colors(color_data: ColorData) -> None:
         "O": ([1, 2], [3, 4], [0.2, 0.6]),
     }
 
-    # Test default colorbar
     (cbar_trace,) = colorbar_traces(pmv.ptable_scatter(numeric_data))
     cbar = cbar_trace.marker
     assert cbar.colorscale[0] == (0.0, "#440154")
     assert cbar.cmin == 0.1  # min of all color values
     assert cbar.cmax == 0.7  # max of all color values
 
-    # Test custom colorbar settings
     fig = pmv.ptable_scatter(
         numeric_data,
         colorscale="RdYlBu",
@@ -331,7 +318,6 @@ def test_colorbar_with_numeric_colors(color_data: ColorData) -> None:
     assert cbar.colorbar.thickness == 20
     assert cbar.colorbar.orientation == "v"
 
-    # Test colorbar can be hidden
     assert colorbar_traces(pmv.ptable_scatter(numeric_data, colorbar=False)) == []
 
     # Test mixed numeric and string colors (should still show colorbar)
@@ -348,7 +334,6 @@ def test_ptable_scatter_multi_line() -> None:
 
     fig = pmv.ptable_scatter(data, mode="lines")
 
-    # Check that legend is shown
     assert fig.layout.showlegend is True
 
     # Check that we have the correct number of traces
@@ -370,7 +355,6 @@ def test_ptable_scatter_multi_line() -> None:
     legend_traces = [trace for trace in fig.data if trace.showlegend]
     assert len(legend_traces) == 2
 
-    # Check legend position
     assert fig.layout.legend.orientation == "h"
     assert fig.layout.legend.y == 0.74
     assert fig.layout.legend.x == 0.4
@@ -396,7 +380,6 @@ def test_empty_element_data() -> None:
     }
     fig = pmv.ptable_scatter(data, mode="lines")
 
-    # Check that empty element is skipped
     assert len(fig.data) == 2, "H should not have a trace"
     assert fig.data[0].hovertemplate.startswith("Iron")
     assert fig.data[1].hovertemplate.startswith("Copper")

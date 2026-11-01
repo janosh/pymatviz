@@ -15,7 +15,6 @@ from pymatviz.coordination.helpers import (
 
 def test_normalize_get_neighbors_with_float() -> None:
     """Test normalize_get_neighbors with float cutoff."""
-    # Create a simple cubic structure
     lattice = Lattice.cubic(4.0)
     struct = Structure(lattice, ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]])
 

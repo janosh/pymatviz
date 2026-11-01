@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 import pytest
 
 from pymatviz.bar import spacegroup_bar
@@ -65,7 +64,6 @@ def test_spacegroup_bar(
         show_empty_bins=show_empty_bins,
         log=log,
     )
-    assert isinstance(fig, go.Figure)
     y_min, y_max = fig.layout.yaxis.range
     assert y_min == 0
     expected_max = max(counts.values()) * 1.05

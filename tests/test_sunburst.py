@@ -79,7 +79,6 @@ def test_spacegroup_sunburst_single_item() -> None:
 
 def test_spacegroup_sunburst_series_counts() -> None:
     """Test with other types of input."""
-    # test with pandas series
     series = pd.Series([*[1] * 3, *[2] * 10, *[3] * 5])
     fig = spacegroup_sunburst(series, show_counts="value")
     values = [*map(int, fig.data[0].values)]
@@ -239,7 +238,6 @@ def test_chem_sys_sunburst_basic() -> None:
     }
     assert arity_levels == {"unary", "binary", "ternary"}
 
-    # Check specific systems
     unary_elements = {
         label for idx, label in enumerate(labels) if parents[idx] == "unary"
     }
@@ -289,7 +287,6 @@ def test_chem_sys_sunburst_input_types(structures: list[Structure]) -> None:
     """Test chem_sys_sunburst plot with various input types."""
     from pymatgen.core import Composition
 
-    # Test with mixed input types
     systems = [
         "Fe2O3",  # formula string
         Composition("LiPO4"),  # pymatgen composition
@@ -311,7 +308,6 @@ def test_chem_sys_sunburst_input_types(structures: list[Structure]) -> None:
     # Test with only Structure objects
     assert len(pmv.chem_sys_sunburst(structures).data[0].labels) > 0
 
-    # Test with invalid input type
     with pytest.raises(TypeError, match="Expected str, Composition or Structure"):
         pmv.chem_sys_sunburst([1])  # ty: ignore[invalid-argument-type]
 
@@ -331,11 +327,9 @@ def test_chem_sys_sunburst_high_arity() -> None:
     parents = fig.data[0].parents
     values = fig.data[0].values  # noqa: PD011
 
-    # Check arity levels
     arity_levels = {label for label in labels if label in {"ternary", "quinary"}}
     assert arity_levels == {"ternary", "quinary"}
 
-    # Get counts for each arity level
     arity_counts = {
         labels[idx]: values[idx]
         for idx in range(len(labels))

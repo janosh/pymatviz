@@ -616,7 +616,6 @@ def phonon_bands_and_dos(
 
     fig.add_traces(bands_fig.data, rows=1, cols=1)
 
-    # plot density of states
     dos_fig = phonon_dos(doses, **dos_options)
     # Orient DOS with frequency on the shared y-axis.
     for trace in dos_fig.data:

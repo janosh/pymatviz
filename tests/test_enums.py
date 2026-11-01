@@ -176,7 +176,6 @@ def test_keys_yaml_and_enum_are_in_sync() -> None:
     """Test that all keys in keys.yml are defined in Key enum and vice versa."""
     from pymatviz.enums import _keys
 
-    # Check for differences
     only_in_yaml = set(map(str, _keys)) - set(map(str, Key)) - {"yield", "material_id"}
     only_in_enum = set(map(str, Key)) - set(map(str, _keys)) - {"yield_", "mat_id"}
 
@@ -355,10 +354,8 @@ def test_unit_special_characters() -> None:
         if unit is None:
             continue
 
-        # Check for proper middle dot usage
         assert "·" not in unit, f"ASCII middle dot in {unit} of {key}, use ⋅ instead"
 
-        # Check for proper minus sign usage
         if "-" in unit:
             assert "<sup>-" in unit, (
                 f"ASCII hyphen in {unit}, use <sup>-...</sup> for exponents"

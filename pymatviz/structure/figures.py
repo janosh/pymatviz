@@ -350,7 +350,6 @@ def structure_2d(
             anno = helpers.get_subplot_title(struct_i, struct_key, idx, subplot_title)
             helpers.set_subplot_title(fig, anno, idx, n_cols, n_rows)
 
-    # Update layout
     fig.layout.height = 300 * n_rows
     fig.layout.width = 300 * n_cols
     fig.layout.showlegend = site_labels == "legend"
@@ -373,7 +372,6 @@ def structure_2d(
         fig.layout[f"xaxis{key}"].scaleanchor = f"y{key}"
         fig.layout[f"yaxis{key}"].scaleanchor = f"x{key}"
 
-    # Configure legends for each subplot
     helpers.configure_subplot_legends(fig, site_labels, n_structs, n_cols, n_rows)
 
     return fig
@@ -459,7 +457,6 @@ def structure_3d(
             )
         )
 
-        # Plot atoms and vectors
         if show_sites:
             # For 3D, need to handle disordered sites properly by drawing each site
             # individually instead of grouping by element symbol
@@ -586,7 +583,6 @@ def structure_3d(
     fig.layout.paper_bgcolor = fig.layout.plot_bgcolor = "rgba(0,0,0,0)"
     fig.layout.margin = dict(l=0, r=0, t=30, b=0)
 
-    # Configure legends for each subplot
     helpers.configure_subplot_legends(fig, site_labels, n_structs, n_cols, n_rows)
 
     return fig

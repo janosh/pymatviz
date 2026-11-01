@@ -238,11 +238,9 @@ def test_contrast_ratio() -> None:
     assert abs(contrast_ratio("black", "white") - 21.0) < 0.1
     assert abs(contrast_ratio("white", "black") - 21.0) < 0.1
 
-    # Test same colors (should be 1:1)
     assert abs(contrast_ratio("red", "red") - 1.0) < 0.1
     assert abs(contrast_ratio("blue", "blue") - 1.0) < 0.1
 
-    # Test some common combinations
     assert 3.5 < contrast_ratio("red", "white") < 4.5  # Around 4.0:1
     assert 8.0 < contrast_ratio("blue", "white") < 9.0  # Around 8.59:1
     assert 15.0 < contrast_ratio("yellow", "black") < 20.0  # Around 19.56:1

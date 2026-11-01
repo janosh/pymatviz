@@ -223,7 +223,6 @@ def test_chem_env_treemap_no_data() -> None:
     with patch("pymatviz.chem_env.normalize_structures") as mock_norm:
         mock_norm.return_value.values.return_value = []
         fig = chem_env_treemap([])
-        assert isinstance(fig, go.Figure)
         assert "No CN/CE data to display" in fig.layout.title.text
 
 
@@ -294,7 +293,6 @@ def test_chem_env_treemap_max_cells(
         max_cells_cn=max_cells_cn,
         max_cells_ce=max_cells_ce,
     )
-    assert isinstance(fig, go.Figure)
     assert len(fig.data) == 1
 
 
@@ -365,7 +363,6 @@ def test_chem_env_treemap_formatting_options(
         chem_env_settings="chemenv",
     )
 
-    assert isinstance(fig, go.Figure)
     assert len(fig.data) == 1
 
     if expected_label_content:
@@ -385,7 +382,6 @@ def test_chem_env_treemap_failure_handling(chemenv_mocks: dict[str, Any]) -> Non
 
     with pytest.warns(UserWarning, match="ChemEnv analysis failed for structure 0"):
         fig = chem_env_treemap(mocks["structure"], chem_env_settings="chemenv")
-    assert isinstance(fig, go.Figure)
     assert "No CN/CE data to display" in fig.layout.title.text
 
 

@@ -102,7 +102,6 @@ def test_phonon_bands(
     line_kwargs: dict[str, Any] | Callable[[np.ndarray, int], dict[str, Any]] | None,
     expected_x_labels: tuple[str, ...],
 ) -> None:
-    # test single band structure
     fig = pmv.phonon_bands(
         phonon_bands_doses_mp_2758["bands"]["DFT"],
         path_mode=path_mode,
@@ -125,7 +124,6 @@ def test_phonon_bands(
     assert fig.layout.xaxis.range is None
     assert fig.layout.yaxis.range == pytest.approx((0, 5.36385427095))
 
-    # test line styling
     if isinstance(line_kwargs, dict) and "acoustic" in line_kwargs:
         # check that acoustic and optical modes have different styles. All traces
         # must carry their mode's custom name (regression: pop() used to consume
@@ -151,13 +149,11 @@ def test_phonon_bands(
         traces_by_width = sorted(fig.data, key=lambda t: t.line.width)
         assert traces_by_width[0].line.width < traces_by_width[-1].line.width
 
-        # check acoustic/optical line style separation
         acoustic_traces = [trace for trace in fig.data if trace.line.dash == "solid"]
         optical_traces = [trace for trace in fig.data if trace.line.dash == "dash"]
         assert len(acoustic_traces) == 18  # 6 segments for the first 3 bands
         assert len(optical_traces) > 0  # should have some optical bands
 
-    # test dict of band structures
     fig = pmv.phonon_bands(
         phonon_bands_doses_mp_2758["bands"],
         path_mode=path_mode,
@@ -175,7 +171,6 @@ def test_phonon_bands(
     else:
         assert {trace.name for trace in fig.data} == {"DFT", "MACE"}
     assert fig.layout.xaxis.ticktext == expected_x_labels
-    # verify default shading is present
     assert any(
         shape.fillcolor == "gray" and shape.opacity == 0.07
         for shape in fig.layout.shapes or []
@@ -227,7 +222,6 @@ def test_phonon_bands_raises(
     with pytest.raises(ValueError, match="Empty band structure mapping"):
         pmv.phonon_bands({})
 
-    # test invalid shaded_ys values
     with pytest.raises(TypeError, match="expect shaded_ys as dict, got str"):
         pmv.phonon_bands(
             phonon_bands_doses_mp_2758["bands"]["DFT"],

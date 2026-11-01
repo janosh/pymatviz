@@ -19,7 +19,6 @@ if TYPE_CHECKING:
 # Type alias for arity formatter function
 ArityFormatter = Callable[[str, int, int], str]
 
-# Test data fixtures
 TEST_SYSTEMS: list[str] = [
     "Fe2O3",
     "FeO",
@@ -72,20 +71,16 @@ def test_chem_sys_treemap_basic() -> None:
     systems = ["Fe-O", "Li-P-O", "Fe", "O", "Li-O"]
     fig = pmv.chem_sys_treemap(systems)
 
-    # Verify figure structure
     assert len(fig.data) == 1
     assert fig.data[0].type == "treemap"
 
-    # Extract data for testing
     labels = fig.data[0].labels
     parents = fig.data[0].parents
     values = fig.data[0].values
 
-    # Verify treemap structure
     assert "" in parents, "Root node missing"
     assert len(labels) == len(parents) == len(values), "Mismatched data lengths"
 
-    # Check arity levels
     arity_levels = {
         label.split(" (")[0]
         for label in labels
@@ -114,7 +109,6 @@ def test_chem_sys_treemap_basic() -> None:
     assert binary_systems == {"Fe-O", "Li-O"}
     assert ternary_systems == {"Li-O-P"}
 
-    # Verify hover template
     assert "hovertemplate" in fig.data[0]
     assert "Count:" in fig.data[0].hovertemplate
     assert "percentEntry" in fig.data[0].hovertemplate
@@ -193,7 +187,6 @@ def test_chem_sys_treemap_arity_formatting(
 
 def test_chem_sys_treemap_input_types_and_errors(structures: list[Structure]) -> None:
     """Test input types handling and error conditions."""
-    # Test with mixed input types
     systems = [
         "Fe2O3",  # formula string
         Composition("LiPO4"),  # pymatgen composition
@@ -258,7 +251,6 @@ def test_chem_sys_treemap_grouping_modes(
     parents = fig.data[0].parents
     values = fig.data[0].values
 
-    # Get counts for relevant systems
     if group_by == "chem_sys":
         actual_counts = {
             label: val
@@ -302,17 +294,14 @@ def test_chem_sys_treemap_max_cells(
     parents = fig.data[0].parents
     values = fig.data[0].values
 
-    # Get systems for the specified arity
     arity_systems = {
         label: val
         for label, parent, val in zip(labels, parents, values, strict=False)
         if arity in parent
     }
 
-    # Verify number of systems
     assert len(arity_systems) == expected_systems
 
-    # Check for "Other" entry
     other_entries = [
         (label, val)
         for label, parent, val in zip(labels, parents, values, strict=False)
@@ -326,7 +315,6 @@ def test_chem_sys_treemap_max_cells(
         assert f"{expected_other_count}" in other_label
         assert other_value == expected_other_count
 
-        # Verify "Other" entry has different styling
         colors = fig.data[0].marker.colors
         other_indices = [
             idx
@@ -346,7 +334,6 @@ def test_chem_sys_treemap_high_arity_systems() -> None:
     parents = fig.data[0].parents
     values = fig.data[0].values
 
-    # Verify arity levels
     arity_levels = {
         label.split(" (")[0]
         for label in labels
@@ -354,7 +341,6 @@ def test_chem_sys_treemap_high_arity_systems() -> None:
     }
     assert arity_levels == {"ternary", "quinary"}
 
-    # Verify arity counts
     arity_counts = {
         label.split(" (")[0]: val
         for label, parent, val in zip(labels, parents, values, strict=False)
@@ -362,7 +348,6 @@ def test_chem_sys_treemap_high_arity_systems() -> None:
     }
     assert arity_counts == {"ternary": 5, "quinary": 5}
 
-    # Verify chemical systems
     ternary_systems = {
         label: val
         for label, parent, val in zip(labels, parents, values, strict=False)

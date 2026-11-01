@@ -21,19 +21,16 @@ def test_coordination_hist_single_structure(structures: Sequence[Structure]) -> 
     fig = coordination_hist(structures[0])
     assert len(fig.data) == len({site.specie.symbol for site in structures[0]})
 
-    # Test y-axis range
     expected_y_max = max(max(trace.y) for trace in fig.data)  # get max CN count
     dev_fig = fig.full_figure_for_development(warn=False)
     y_min, y_max = dev_fig.layout.yaxis.range
     assert y_min == 0
     assert y_max == pytest.approx(expected_y_max, rel=0.1)
 
-    # Test x-axis properties
     assert dev_fig.layout.xaxis.tick0 is not None
     assert dev_fig.layout.xaxis.dtick == 1
     assert dev_fig.layout.xaxis.range[0] < min(trace.x[0] for trace in dev_fig.data)
 
-    # Test y-axis properties
     assert dev_fig.layout.yaxis.range[0] == 0
     # Y-axis title "Count" is added as an annotation
     assert any(anno.text == "Count" for anno in dev_fig.layout.annotations)
@@ -85,12 +82,10 @@ def test_coordination_hist_custom_strategy(
     actual_max_x = max(max(trace.x) for trace in fig.data)
     assert actual_max_x == expected_max_x, f"{actual_max_x=} for {strategy=}"
 
-    # Test with multiple structures
     fig_multi = coordination_hist(structures, strategy=strategy)
     assert fig_multi.data
     assert len(fig_multi.data) >= len(fig.data)
 
-    # Test different split modes
     for split_mode in CnSplitMode:
         fig_split = coordination_hist(
             structures[:2], strategy=strategy, split_mode=split_mode
@@ -170,16 +165,13 @@ def test_coordination_vs_cutoff_line(
     strategy: tuple[int | float, int | float] | NearNeighbors | type[NearNeighbors],
 ) -> None:
     """Test coordination_vs_cutoff_line function with different strategies."""
-    # Test with a single structure
     fig = coordination_vs_cutoff_line(structures[0], strategy=strategy)
     assert len(fig.data) == len({site.specie.symbol for site in structures[0]})
 
-    # Test with multiple structures
     fig_multi = coordination_vs_cutoff_line(structures[:2], strategy=strategy)
     assert fig_multi.data
     assert len(fig_multi.data) >= len(fig.data)
 
-    # Test with custom number of points
     fig_custom_points = coordination_vs_cutoff_line(
         structures[0],
         strategy=strategy,
@@ -188,7 +180,6 @@ def test_coordination_vs_cutoff_line(
     assert fig_custom_points.data
     assert len(fig_custom_points.data[0].x) == 100
 
-    # Test with custom element color scheme
     custom_colors = {"Si": "red", "O": "blue"}
     fig_custom_colors = coordination_vs_cutoff_line(
         structures[0],
@@ -202,7 +193,6 @@ def test_coordination_vs_cutoff_line(
             element, ELEM_COLORS_JMOL.get(element)
         )
 
-    # Test with built-in color schemes
     for color_scheme in ElemColorScheme:
         fig_color_scheme = coordination_vs_cutoff_line(
             structures[0],
@@ -211,10 +201,8 @@ def test_coordination_vs_cutoff_line(
         )
         assert fig_color_scheme.data
 
-    # Test y-axis label
     assert fig.layout.yaxis.title.text == "Coordination Number"
 
-    # Test with custom subplot_kwargs
     custom_subplot_kwargs = {
         "subplot_titles": ["Custom Title 1", "Custom Title 2"],
     }
@@ -258,7 +246,6 @@ def test_coordination_hist_hover_text_formatting(
     split_mode: CnSplitMode,
 ) -> None:
     """Test hover text formatting in coordination_hist."""
-    # Add test property
     structures[0].add_site_property("test_prop", list(range(len(structures[0]))))
 
     fig = coordination_hist(
@@ -277,7 +264,6 @@ def test_coordination_hist_hover_text_formatting(
     ]
     assert any("test_prop: 0, 1" in text for text in populated)
 
-    # Test with multiple structures
     struct_dict = {"struct1": structures[0], "struct2": structures[1]}
     fig_multi = coordination_hist(
         struct_dict, hover_data=["test_prop"], split_mode=split_mode
@@ -290,12 +276,10 @@ def test_coordination_hist_subplot_layout(structures: Sequence[Structure]) -> No
     """Test subplot layout in coordination_hist."""
     struct_dict = {f"s{idx}": struct for idx, struct in enumerate(structures[:3])}
 
-    # Test by_structure layout
     fig = coordination_hist(struct_dict, split_mode=CnSplitMode.by_structure)
     # subplot titles + axis titles
     assert len(fig.layout.annotations) == len(struct_dict) + 2
 
-    # Test by_element layout
     elements = {
         site.specie.symbol for struct in struct_dict.values() for site in struct
     }
@@ -306,12 +290,10 @@ def test_coordination_hist_subplot_layout(structures: Sequence[Structure]) -> No
 
 def test_coordination_hist_color_schemes(structures: Sequence[Structure]) -> None:
     """Test different color schemes in coordination_hist."""
-    # Test JMOL colors
     fig_jmol = coordination_hist(
         structures[0], element_color_scheme=ElemColorScheme.jmol
     )
 
-    # Test VESTA colors
     fig_vesta = coordination_hist(
         structures[0], element_color_scheme=ElemColorScheme.vesta
     )
@@ -344,13 +326,11 @@ def test_coordination_hist_invalid_split_mode(structures: Sequence[Structure]) -
 
 def test_coordination_hist_bar_annotations(structures: Sequence[Structure]) -> None:
     """Test bar annotation functionality."""
-    # Test default annotation settings
     fig = coordination_hist(structures[0], annotate_bars=True)
     assert all(trace.text is not None for trace in fig.data)
     elements = {site.specie.symbol for site in structures[0]} | {""}
     assert {trace.text for trace in fig.data} <= elements
 
-    # Test custom annotation settings
     custom_annotations = {"size": 14, "color": "red"}
     fig = coordination_hist(structures[0], annotate_bars=custom_annotations)
     assert all(
@@ -367,14 +347,12 @@ def test_coordination_vs_cutoff_line_disordered_structure() -> None:
     fig = coordination_vs_cutoff_line(fe3co4_disordered, strategy=(1, 5))
     assert {trace.name for trace in fig.data} == {"C", "Fe", "O"}
 
-    # Check that traces have valid data
     for trace in fig.data:
         assert len(trace.x) == 50, "Default num_points=50"
         assert len(trace.y) == 50, "Should have 50 y-values"
         assert all(y_val >= 0 for y_val in trace.y), "CNs should be non-negative"
         assert trace.name, "Each trace should have a name"
 
-    # Test with different strategies
     for strategy in [(2, 6), CrystalNN, VoronoiNN()]:
         fig_strat = coordination_vs_cutoff_line(fe3co4_disordered, strategy=strategy)
         assert fig_strat.data, f"Should work with {strategy=}"

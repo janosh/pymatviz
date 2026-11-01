@@ -113,7 +113,6 @@ def spacegroup_bar(
             line=dict(width=1),
             annotation=anno,
         )
-        # add percent annotation
         if show_counts:
             fig.add_annotation(
                 text=f"{si_fmt_int(count)} ({count / len(data):.0%})",

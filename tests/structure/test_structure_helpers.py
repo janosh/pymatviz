@@ -297,7 +297,6 @@ def test_draw_site(
         hover_text=hover_text,
     )
 
-    # Verify hover text format
     expected_text = ""
     if callable(hover_text):
         expected_text = "Custom:"
@@ -371,12 +370,10 @@ def test_draw_vector(
     fig = go.Figure()
     start_arr, vector_arr = np.array(start), np.array(vector)
 
-    # Draw vector and check trace count
     initial_trace_count = len(fig.data)
     draw_vector(fig, start_arr, vector_arr, is_3d=is_3d, arrow_kwargs=arrow_kwargs)
     assert len(fig.data) - initial_trace_count == expected_traces
 
-    # Check trace properties based on dimensionality
     if is_3d:
         # 3D arrow properties (line + cone)
         line_trace = fig.data[-2]
@@ -394,7 +391,6 @@ def test_draw_vector(
         assert scatter_trace.marker.color == arrow_kwargs["color"]
         assert scatter_trace.line.width == arrow_kwargs.get("width", 5)
 
-    # Check scaling
     scale = arrow_kwargs.get("scale", 1.0)
     end_point = start_arr + vector_arr * scale
     if is_3d:
@@ -501,7 +497,6 @@ def test_get_first_matching_site_prop_edge_cases() -> None:
         == "force"
     )
 
-    # Test with complex filter
     def complex_filter(prop: str, value: Any) -> bool:
         """Accept large forces and small velocities."""
         if prop == "force":
@@ -556,7 +551,6 @@ def test_get_site_hover_text_float_formatting() -> None:
     # Create a site with coordinates that would show scientific notation with .3g
     site = PeriodicSite("Si", [1.23456789, 1e-17, 2.3456], lattice)
 
-    # Test default format (.4)
     result_default = get_site_hover_text(site, SiteCoords.cartesian, site.species)
     assert "1.235" in result_default
     assert ("1e-17" in result_default) or (
@@ -564,19 +558,16 @@ def test_get_site_hover_text_float_formatting() -> None:
     )  # Very small number in scientific notation or zero
     assert "2.346" in result_default
 
-    # Test custom string format (.2f)
     result_2f = get_site_hover_text(site, SiteCoords.cartesian, site.species, ".2f")
     assert "1.23" in result_2f
     assert "0.00" in result_2f
     assert "2.35" in result_2f
 
-    # Test with fractional coordinates
     result_frac = get_site_hover_text(site, SiteCoords.fractional, site.species, ".6f")
     assert "1.234568" in result_frac
     assert "0.000000" in result_frac
     assert "2.345600" in result_frac
 
-    # Test with custom callable formatter
     def custom_formatter(val: float) -> str:
         """Custom formatter that shows rounded values with prefix."""
         return f"~{val:.1f}"
@@ -591,7 +582,6 @@ def test_get_site_hover_text_float_formatting() -> None:
     assert "~0.0" in result_custom  # 1e-17 rounds to 0
     assert "~2.3" in result_custom
 
-    # Test with both cartesian and fractional
     result_both = get_site_hover_text(
         site,
         SiteCoords.cartesian_fractional,
@@ -633,13 +623,11 @@ def test_draw_cell(
 
     draw_cell(fig, structure, cell_kwargs, is_3d=is_3d)
 
-    # Check trace count and types
     n_edge_traces, n_node_traces = 12, 8
     assert len(fig.data) == n_edge_traces + n_node_traces
     expected_trace_type = go.Scatter3d if is_3d else go.Scatter
     assert all(isinstance(trace, expected_trace_type) for trace in fig.data)
 
-    # Check trace modes
     edge_traces = fig.data[:n_edge_traces]
     node_traces = fig.data[n_edge_traces:]
     assert all(trace.mode == "lines" for trace in edge_traces)
@@ -687,7 +675,6 @@ def test_draw_cell_hover_text(structures: list[Structure]) -> None:
     fig = go.Figure()
     draw_cell(fig, structure, {}, is_3d=True)
 
-    # Check hover text content
     edge_trace = fig.data[0]  # First edge
     assert "Length:" in edge_trace.hovertext[1]
     assert "Start:" in edge_trace.hovertext[1]

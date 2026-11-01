@@ -19,7 +19,6 @@ def test_pkg_metadata() -> None:
         pkg_data = json.load(file)
     assert pkg_data["name"] == pmv.PKG_NAME
 
-    # check pyproject.toml matches package.json and __init__.py
     with open("pyproject.toml", mode="rb") as file:
         pyproject = tomllib.load(file)
 

@@ -91,7 +91,6 @@ def brillouin_zone_3d(
         # Get reciprocal lattice vectors (scaled by 2π)
         k_space_cell = np.linalg.inv(real_space_cell).T * 2 * np.pi
 
-        # Generate points for Voronoi construction
         mgrid_array = np.mgrid[-1:2, -1:2, -1:2]
         px, py, pz = np.tensordot(k_space_cell, mgrid_array, axes=(0, 0))
         points = np.c_[px.ravel(), py.ravel(), pz.ravel()]
@@ -101,7 +100,6 @@ def brillouin_zone_3d(
         # Find central point (index 13 corresponds to [0,0,0])
         center_index = 13
 
-        # Get BZ vertices and edges
         bz_vertices = set()
         bz_edges = []
 
@@ -121,9 +119,7 @@ def brillouin_zone_3d(
 
         scene = f"scene{idx}"
 
-        # Plot reciprocal lattice vectors
         if axes_vectors is not False:
-            # Validate axes_vectors dict
             if axes_vectors is not None and not all(
                 key in axes_vectors for key in ("shaft", "cone")
             ):
@@ -186,13 +182,10 @@ def brillouin_zone_3d(
                     scene=scene,
                 )
 
-        # Plot BZ faces using convex hull
         hull = sps.ConvexHull(vertices)
 
-        # Calculate BZ volume
         bz_volume = hull.volume  # in inverse cubic angstrom
 
-        # Plot faces as a single mesh
         fig.add_mesh3d(
             x=vertices[:, 0],
             y=vertices[:, 1],
@@ -213,7 +206,6 @@ def brillouin_zone_3d(
             **{"color": "lightblue", "opacity": 0.3} | (surface_kwargs or {}),
         )
 
-        # Plot edges
         for edge_vertices in bz_edges:
             fig.add_scatter3d(
                 x=edge_vertices[:, 0],
@@ -226,13 +218,11 @@ def brillouin_zone_3d(
             )
 
         if point_kwargs is not False:  # Add high symmetry k-points
-            # Convert fractional k-points to Cartesian coordinates
             cart_kpoints = {
                 label: np.dot(coords, k_space_cell)
                 for label, coords in seekpath_dict["point_coords"].items()
             }
 
-            # Plot high symmetry points
             point_labels = []
             for label in cart_kpoints:
                 for text, repl in [("\\Gamma", "Γ"), ("GAMMA", "Γ"), ("DELTA", "Δ")]:
@@ -254,7 +244,6 @@ def brillouin_zone_3d(
                 scene=scene,
             )
 
-            # Add paths between high symmetry points
             if path_kwargs is not False:
                 for path in seekpath_dict["path"]:
                     for path_idx in range(len(path) - 1):

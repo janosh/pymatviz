@@ -75,12 +75,10 @@ def test_matminer_featurize(preset: MatminerElementPropertyPreset) -> None:
 
     compositions = pd.Series(["H2O", "CO2", "NaCl"])
 
-    # Test basic functionality
     result = matminer_featurize(compositions, preset=preset, normalize=True)
     first_fea_col = ElementProperty.from_preset(preset).feature_labels()[0]
     subset = [first_fea_col]
 
-    # Check that we got valid output
     assert result.shape[0] == len(compositions)
     assert not np.isnan(result).any()
 
@@ -90,7 +88,6 @@ def test_matminer_featurize(preset: MatminerElementPropertyPreset) -> None:
     assert not np.allclose(np.linalg.norm(raw, axis=1), 1.0)
     np.testing.assert_allclose(raw / np.linalg.norm(raw, axis=1)[:, None], result)
 
-    # Test with a feature subset
     result_subset = matminer_featurize(
         compositions, preset=preset, feature_subset=subset
     )

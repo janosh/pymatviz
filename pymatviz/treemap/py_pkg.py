@@ -633,10 +633,9 @@ def _apply_coverage_weighted_averages(fig: go.Figure, df_treemap: pd.DataFrame) 
     labels, parents, values = trace.labels, trace.parents, trace.values  # noqa: PD011
     label_index = {label: idx for idx, label in enumerate(labels)}
 
-    # Create a mapping from treemap labels to DataFrame rows
-    label_to_row = {}
+    # Map treemap labels to their rows' coverage values
+    node_coverage = {}
     for _, row in df_treemap.iterrows():
-        # Try to match by various criteria
         for label in labels:
             if (
                 # Match by exact line count and module name
@@ -644,46 +643,32 @@ def _apply_coverage_weighted_averages(fig: go.Figure, df_treemap: pd.DataFrame) 
                     abs(values[label_index[label]] - row["line_count"]) < 1
                     and row["leaf_label"] in label
                 )
-                or
                 # Match by package name for root nodes
-                (row["package_name_raw"] in label and "lines" in label)
-                or
+                or (row["package_name_raw"] in label and "lines" in label)
                 # Match by full module path
-                (row["full_module"] in label)
+                or row["full_module"] in label
             ):
-                label_to_row[label] = row
+                node_coverage[label] = row["color_value"]
                 break
 
-    # Map leaf nodes to their coverage values
-    node_coverage = {label: row["color_value"] for label, row in label_to_row.items()}
-
-    # Calculate weighted averages for parent nodes
     colors = list(trace.marker.colors)
     parent_children: dict[str, list[tuple[str, float]]] = {}
     for idx, parent in enumerate(parents):
         if parent:
             parent_children.setdefault(parent, []).append(labels[idx])
 
-    # Process parent nodes to calculate weighted averages
     for idx, label in enumerate(labels):
-        if label not in node_coverage and label in parent_children:
-            children_data = []
-            for child in parent_children[label]:
-                if child in node_coverage:
-                    child_idx = label_index[child]
-                    child_weight = values[child_idx]
-                    child_coverage = node_coverage[child]
-                    children_data.append((child_coverage, child_weight))
-
-            if children_data:
-                total_weight = sum(weight for _, weight in children_data)
-                if total_weight > 0:
-                    weighted_avg = (
-                        sum(cov * weight for cov, weight in children_data)
-                        / total_weight
-                    )
-                    node_coverage[label] = weighted_avg
-                    colors[idx] = weighted_avg
+        if label in node_coverage or label not in parent_children:
+            continue
+        children = [
+            (node_coverage[child], values[label_index[child]])
+            for child in parent_children[label]
+            if child in node_coverage
+        ]
+        total_weight = sum(weight for _, weight in children)
+        if total_weight > 0:
+            weighted = sum(cov * weight for cov, weight in children) / total_weight
+            node_coverage[label] = colors[idx] = weighted
 
     fig.data[0].marker.colors = tuple(colors)
 
@@ -809,43 +794,11 @@ def py_pkg_treemap(
         >>> import pymatviz as pmv
         >>> # Analyze a single package
         >>> fig1 = pmv.py_pkg_treemap("pymatviz")
-        >>> # Compare multiple packages
-        >>> fig2 = pmv.py_pkg_treemap(["pymatviz", "pymatgen"])
-        >>> # Only show files with at least 50 lines of code by using cell_size_fn
+        >>> # Compare multiple packages, coloring cells by test coverage
+        >>> fig2 = pmv.py_pkg_treemap(["pymatviz", "pymatgen"], color_by="coverage")
+        >>> # Rust crate treemap (language-agnostic mode)
         >>> fig3 = pmv.py_pkg_treemap(
-        ...     "pymatviz",
-        ...     cell_size_fn=lambda cell: (
-        ...         cell.line_count if cell.line_count >= 50 else 0
-        ...     ),
-        ... )
-        >>> # Group by top-level directory instead of module
-        >>> fig4 = pmv.py_pkg_treemap("pymatviz", group_by="directory")
-        >>> # Add source links for a GitHub repository
-        >>> fig5 = pmv.py_pkg_treemap(
-        ...     "pymatviz", base_url="https://github.com/janosh/pymatviz/blob/main"
-        ... )
-        >>> # Use heatmap mode with coverage data collected on the fly
-        >>> fig6 = pmv.py_pkg_treemap("pymatviz", color_by="coverage")
-        >>> # Use heatmap mode with pre-computed coverage data
-        >>> fig7 = pmv.py_pkg_treemap(
-        ...     "pymatviz", color_by="coverage", coverage_data_file="coverage.json"
-        ... )
-        >>> # Use heatmap mode with custom values
-        >>> custom_values = {"/path/to/module1.py": 85.5, "/path/to/module2.py": 92.1}
-        >>> fig8 = pmv.py_pkg_treemap("pymatviz", color_by=custom_values)
-        >>> # Use with imported module objects
-        >>> import numpy as np
-        >>> fig9 = pmv.py_pkg_treemap(np)  # Pass the module object directly
-        >>> # Or mix strings and modules
-        >>> fig10 = pmv.py_pkg_treemap([np, "pymatviz"])
-        >>> # Rust crate coverage treemap (language-agnostic mode)
-        >>> fig11 = pmv.py_pkg_treemap(
-        ...     "my_rust_crate",
-        ...     source_dir="src",
-        ...     file_extensions=(".rs",),
-        ...     color_by="coverage",
-        ...     coverage_data_file="lcov.info",
-        ...     base_url="https://github.com/user/repo/blob/main",
+        ...     "my_rust_crate", source_dir="src", file_extensions=(".rs",)
         ... )
     """
     if max_module_depth is not None and max_module_depth < 0:
@@ -879,14 +832,12 @@ def py_pkg_treemap(
         package_base_urls = dict.fromkeys(package_names, base_url)
     has_links = any(package_base_urls.values())
 
-    # Process color_by parameter for heatmap mode
     color_values: dict[str, float] = {}
     if color_by == "coverage":
         color_values = collect_coverage_data(coverage_data_file)
     elif isinstance(color_by, dict):
         color_values = color_by.copy()
 
-    # Collect module information
     if source_dir:
         df_modules = collect_source_modules_from_dir(
             source_dir, package_names, file_extensions
@@ -941,11 +892,9 @@ def py_pkg_treemap(
         )
 
     # Determine the maximum depth of the module hierarchy
-    data_max_depth = df_treemap["depth"].max()
+    data_max_depth = effective_depth = df_treemap["depth"].max()
     if max_module_depth is not None and group_by == "module":
         effective_depth = min(data_max_depth, max_module_depth)
-    else:
-        effective_depth = data_max_depth
     depth_was_clamped = effective_depth < data_max_depth
     level_columns = [f"level_{idx}" for idx in range(effective_depth)]
 
@@ -957,13 +906,11 @@ def py_pkg_treemap(
             )
         )
 
-    # Adaptive depth pruning. Iterates from the deepest level upward.
-    # At each level, "significant" children (>= min_lines_for_split) are
-    # counted. If there are 1..max_children significant children, the parent
-    # is expanded (small children merge into "other"). If none are significant,
-    # the parent collapses to a single cell. max_children_for_split only
-    # applies at the deepest level — intermediate levels use min_lines alone,
-    # so large modules like io/analysis always show their sub-packages.
+    # Adaptive depth pruning from the deepest level upward. A parent with
+    # 1..max_children children >= min_lines_for_split is expanded (small children merge
+    # into "other"), with no significant children it collapses to one cell.
+    # max_children_for_split and the full line threshold only apply at the deepest
+    # level, so large modules like io/analysis always show their sub-packages.
     rows_were_merged = False
     if group_by == "module" and (min_lines_for_split > 0 or max_children_for_split):
         for prune_depth in range(effective_depth - 1, 0, -1):
@@ -971,7 +918,7 @@ def py_pkg_treemap(
             child_col = f"level_{prune_depth}"
             parent_cols = [f"level_{idx}" for idx in range(prune_depth)]
 
-            rows_to_drop: list[pd.Index] = []
+            rows_to_drop: list[int] = []
             rows_to_add: list[dict] = []
 
             for _key, group in df_treemap.groupby(parent_cols, dropna=False):
@@ -980,8 +927,6 @@ def py_pkg_treemap(
                     continue
 
                 child_line_counts = group.groupby(child_col)["line_count"].sum()
-                # Deepest level uses the full threshold; intermediate levels
-                # use a lower cap so large modules keep their sub-packages
                 effective_min = (
                     min_lines_for_split
                     if is_deepest_level
@@ -989,14 +934,8 @@ def py_pkg_treemap(
                 )
                 significant = child_line_counts[child_line_counts >= effective_min]
                 n_sig = len(significant)
-                # Only cap children count at the deepest level; intermediate
-                # levels expand freely so large modules keep their sub-packages
-                if is_deepest_level and max_children_for_split is not None:
-                    max_kids = max_children_for_split
-                else:
-                    max_kids = float("inf")
-
-                if 1 <= n_sig <= max_kids:
+                max_kids = max_children_for_split if is_deepest_level else None
+                if n_sig >= 1 and (max_kids is None or n_sig <= max_kids):
                     # EXPAND: keep significant children, merge the rest
                     sig_set = set(significant.index)
                     small_mask = group[child_col].map(
@@ -1014,11 +953,7 @@ def py_pkg_treemap(
                 rep = merge_rows.iloc[0].copy()
                 rep["cell_value"] = merge_rows["cell_value"].sum()
                 rep["line_count"] = merge_rows["line_count"].sum()
-                if (
-                    has_color_mode
-                    and "color_value" in merge_rows.columns
-                    and rep["line_count"] > 0
-                ):
+                if has_color_mode and rep["line_count"] > 0:
                     rep["color_value"] = (
                         merge_rows["color_value"] * merge_rows["line_count"]
                     ).sum() / rep["line_count"]
@@ -1028,16 +963,14 @@ def py_pkg_treemap(
                     rep["depth"] = prune_depth
                 for deeper in range(clear_start, effective_depth):
                     rep[f"level_{deeper}"] = None
-                rows_to_drop.append(merge_rows.index)
+                rows_to_drop.extend(merge_rows.index)
                 rows_to_add.append(rep.to_dict())
 
             if rows_to_drop:
                 rows_were_merged = True
-                df_treemap = df_treemap.drop(
-                    index=rows_to_drop[0].append(rows_to_drop[1:])
-                )
                 df_treemap = pd.concat(
-                    [df_treemap, pd.DataFrame(rows_to_add)], ignore_index=True
+                    [df_treemap.drop(index=rows_to_drop), pd.DataFrame(rows_to_add)],
+                    ignore_index=True,
                 )
 
             # Drop level columns that became entirely None after pruning
@@ -1045,13 +978,10 @@ def py_pkg_treemap(
                 col for col in level_columns if df_treemap[col].notna().any()
             ]
 
-    # Define the path definition based on group_by
-    if group_by == "file":
-        path_definition = ["package", "filename"]
-    elif group_by == "directory":
-        path_definition = ["package", "directory", "filename"]
-    else:  # group_by == "module"
-        path_definition = ["package", *level_columns]
+    path_definition = {
+        "file": ["package", "filename"],
+        "directory": ["package", "directory", "filename"],
+    }.get(group_by, ["package", *level_columns])
 
     # Keep track of raw package names for percentage calculation
     df_treemap["package_name_raw"] = df_treemap["package"]
@@ -1074,14 +1004,12 @@ def py_pkg_treemap(
         # When in coverage mode, show coverage percentage instead of line percentage
         if color_by == "coverage":
             # package-level coverage is the line-weighted average of its files
-            package_coverage = {}
-            for pkg_name in package_names:
-                pkg_rows = df_treemap[df_treemap["package_name_raw"] == pkg_name]
-                total_pkg_lines = pkg_rows["line_count"].sum()
-                weighted_sum = (pkg_rows["color_value"] * pkg_rows["line_count"]).sum()
-                package_coverage[pkg_name] = (
-                    weighted_sum / total_pkg_lines if total_pkg_lines > 0 else 0.0
-                )
+            weighted_lines = df_treemap["color_value"] * df_treemap["line_count"]
+            by_pkg = df_treemap["package_name_raw"]
+            pkg_lines = df_treemap["line_count"].groupby(by_pkg).sum()
+            package_coverage = (
+                weighted_lines.groupby(by_pkg).sum() / pkg_lines
+            ).fillna(0)
 
             df_treemap["package"] = df_treemap["package_name_raw"].map(
                 lambda pkg: (
@@ -1122,14 +1050,9 @@ def py_pkg_treemap(
     if has_color_mode:
         custom_data_cols.append("color_value")  # 12
 
-    # Fill NaNs in analysis columns with 0 for customdata
-    df_treemap[analysis_cols] = (
-        df_treemap[analysis_cols].fillna(0).infer_objects(copy=False)
-    )
-    if has_color_mode:
-        df_treemap["color_value"] = (
-            df_treemap["color_value"].fillna(0).infer_objects(copy=False)
-        )
+    # Fill NaNs with 0 for customdata
+    fill_cols = analysis_cols + ["color_value"] * has_color_mode
+    df_treemap[fill_cols] = df_treemap[fill_cols].fillna(0).infer_objects(copy=False)
 
     color_defaults: dict[str, Any] = (
         dict(color="color_value", color_continuous_scale="Viridis")
@@ -1153,7 +1076,6 @@ def py_pkg_treemap(
     # pandas' string dtype keeps the gaps as <NA>.
     df_treemap[path_definition] = df_treemap[path_definition].astype("string")
 
-    # Create the treemap
     fig = px.treemap(**treemap_params)
 
     # Fix parent node colors for coverage heatmaps (weighted averages).
@@ -1164,28 +1086,20 @@ def py_pkg_treemap(
     # Break long labels at underscores so plotly can wrap text instead of
     # shrinking the font to fit names like "advanced_transformations" on one line.
     trace = fig.data[0]
-    max_label_len = 18
     if trace.labels is not None:
         wrapped = []
-        for label in trace.labels:
-            label_str = str(label)
-            if (
-                len(label_str) > max_label_len
-                and "_" in label_str
-                and " " not in label_str
-            ):
-                mid = len(label_str) // 2
+        for label in map(str, trace.labels):
+            if len(label) > 18 and "_" in label and " " not in label:
+                mid = len(label) // 2
                 best_pos = min(
-                    (pos for pos in range(len(label_str)) if label_str[pos] == "_"),
+                    (pos for pos, char in enumerate(label) if char == "_"),
                     key=lambda pos: abs(pos - mid),
                 )
-                label_str = (
-                    f"{label_str[: best_pos + 1]}<br>{label_str[best_pos + 1 :]}"
-                )
-            wrapped.append(label_str)
+                wrapped.append(f"{label[: best_pos + 1]}<br>{label[best_pos + 1 :]}")
+            else:
+                wrapped.append(label)
         fig.data[0].labels = wrapped
 
-    # Configure colorbar for heatmap mode
     if has_color_mode:
         if color_by == "coverage":
             colorbar_title = "Coverage (%)"
@@ -1209,7 +1123,6 @@ def py_pkg_treemap(
                 cmin=min_val, cmax=max_val, cmid=(min_val + max_val) / 2
             )
 
-    # Configure hover display using hovertemplate
     has_depth_limit = depth_was_clamped or rows_were_merged
     if has_depth_limit:
         # Aggregated/collapsed nodes inherit per-file customdata from the first
@@ -1227,27 +1140,29 @@ def py_pkg_treemap(
             "Lines: %{customdata[11]:,}<br>"  # line_count
         )
 
-        if has_color_mode:
-            color_idx = len(custom_data_cols) - 1
-            if color_by == "coverage":
-                base_hovertemplate += f"Coverage: %{{customdata[{color_idx}]:.1f}}%<br>"
-            else:
-                base_hovertemplate += (
-                    f"Color Value: %{{customdata[{color_idx}]:,.2f}}<br>"
-                )
+        color_idx = len(custom_data_cols) - 1
+        if color_by == "coverage":
+            base_hovertemplate += f"Coverage: %{{customdata[{color_idx}]:.1f}}%<br>"
+        elif has_color_mode:
+            base_hovertemplate += f"Color Value: %{{customdata[{color_idx}]:,.2f}}<br>"
 
         # Only show Python AST analysis fields when they have data
-        has_analysis_data = df_treemap[analysis_cols].sum().sum() > 0
-        analysis_hover = (
-            "Classes: %{customdata[4]:,}<br>"  # n_classes
-            "Functions: %{customdata[5]:,}<br>"  # n_functions
-            "Methods: %{customdata[6]:,}<br>"  # n_methods
-            "Internal Imports: %{customdata[7]:,}<br>"  # n_internal_imports
-            "External Imports: %{customdata[8]:,}<br>"  # n_external_imports
-            "Type Imports: %{customdata[9]:,}<br>"  # n_type_checking_imports
-            if has_analysis_data
-            else ""
-        )
+        analysis_hover = ""
+        if df_treemap[analysis_cols].sum().sum() > 0:
+            analysis_hover = "".join(
+                f"{name}: %{{customdata[{idx}]:,}}<br>"
+                for idx, name in enumerate(
+                    (
+                        "Classes",
+                        "Functions",
+                        "Methods",
+                        "Internal Imports",
+                        "External Imports",
+                        "Type Imports",
+                    ),
+                    start=4,
+                )
+            )
         hovertemplate = (
             base_hovertemplate
             + "%{customdata[10]:.1%} of %{customdata[0]} (by cell value)<br>"
