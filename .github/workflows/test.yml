@@ -118,6 +118,21 @@ jobs:
               "assets/scripts/sunburst/chem_env_sunburst.py",
           }
           scripts = sorted(glob.glob("assets/scripts/**/*.py", recursive=True))
+          # other examples need extra packages, credentials or very large downloads
+          scripts += [
+              f"examples/{script}.py"
+              for script in (
+                  "boltztrap_mp/explore_boltztrap_mp",
+                  "matbench/expt_gap/explore_expt_gap",
+                  "matbench/jdft2d/explore_jdft2d",
+                  "matbench/list_datasets",
+                  "matbench/phonons/explore_phonons",
+                  "matbench/steels/explore_steels",
+                  "notebook_display",
+                  "ricci_carrier_transport/explore_carrier_transport",
+                  "ward_metallic_glasses/create_canonical_splits",
+              )
+          ]
           groups = [[script] for script in scripts if script in slow_scripts]
           remaining = [script for script in scripts if script not in slow_scripts]
           groups.extend(remaining[group_idx::2] for group_idx in range(2))
