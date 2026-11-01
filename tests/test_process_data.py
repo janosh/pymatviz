@@ -642,15 +642,15 @@ def test_normalize_spacegroups_raises(data: list[str], match: str) -> None:
 @pytest.mark.parametrize(
     ("labels_with_counts", "expected_labels"),
     [
-        (True, ["A: 4", "B: 1", "C: 3"]),
-        ("percent", ["A: 100.0%", "B: 25.0%", "C: 75.0%"]),
-        (False, ["A", "B", "C"]),
+        (True, ["A: 3", "B: 1", "C: 3", "A: 1"]),
+        ("percent", ["A: 75.0%", "B: 25.0%", "C: 75.0%", "A: 25.0%"]),
+        (False, ["A", "B", "C", "A"]),
     ],
 )
 def test_sankey_flow_data(
     labels_with_counts: bool | str, expected_labels: list[str]
 ) -> None:
-    """Deduplicate shared nodes, sum their source+target counts and index links."""
+    """Values in both columns get a node per side, so no link is a self-loop."""
     df_flows = pd.DataFrame({"src": ["A", "A", "A", "B"], "tgt": ["C", "C", "A", "C"]})
     flow_data = pmv_pd.sankey_flow_data(
         df_flows, ["src", "tgt"], labels_with_counts=labels_with_counts
@@ -661,8 +661,26 @@ def test_sankey_flow_data(
         "value": [2, 1, 1],
         "labels": expected_labels,
         "source_indices": [0, 0, 1],
-        "target_indices": [2, 0, 2],
+        "target_indices": [2, 3, 2],
     }
+
+
+@pytest.mark.parametrize(
+    ("source", "target", "expected_labels"),
+    [
+        ([2**53 + 1], [1.5], [f"{2**53 + 1}: 1", "1.5: 1"]),  # would round as float
+        ([221, 221], [1.5, 2.5], ["221: 2", "1.5: 1", "2.5: 1"]),
+        ([("A",)], ["B"], ["('A',): 1", "B: 1"]),
+    ],
+)
+def test_sankey_flow_data_keeps_column_values(
+    source: list[Any], target: list[Any], expected_labels: list[str]
+) -> None:
+    """Node values keep each column's own type instead of a shared dtype."""
+    df_flows = pd.DataFrame({"src": source, "tgt": target})
+    assert pmv_pd.sankey_flow_data(df_flows, ["src", "tgt"])["labels"] == (
+        expected_labels
+    )
 
 
 def test_sankey_flow_data_invalid_cols_raises() -> None:
