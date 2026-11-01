@@ -38,7 +38,8 @@ def docstring_to_md(node: ast.FunctionDef | ast.ClassDef) -> str:
 def signature(func: ast.FunctionDef) -> str:
     """Format a function signature without its self argument."""
     args = ast.unparse(func.args).removeprefix("self, ").removeprefix("self")
-    return f"{func.name}({args})"
+    returns = f" -> {ast.unparse(func.returns)}" if func.returns else ""
+    return f"{func.name}({args}){returns}"
 
 
 def module_to_md(path: str) -> str:
@@ -71,7 +72,7 @@ for pattern in ("[!_]*.py", "__init__.py"):
     for path in glob(f"pymatviz/**/{pattern}", recursive=True):
         if markdown := module_to_md(path):
             md_name = path.replace("/", ".").removesuffix(".py")
-            with open(f"{route}/{md_name}.md", "w") as file:
+            with open(f"{route}/{md_name}.md", "w", encoding="utf-8") as file:
                 file.write(markdown)
 
 if not glob(f"{route}/*.md"):
@@ -95,9 +96,9 @@ if len(html_paths) != len(notebooks):
 
 
 for file_path in html_paths:
-    with open(file_path) as file:
+    with open(file_path, encoding="utf-8") as file:
         html = file.read()
 
     html = html.replace("<pre>", '<pre class="language-python">')
-    with open(file_path, "w") as file:
+    with open(file_path, "w", encoding="utf-8") as file:
         file.write(html)
