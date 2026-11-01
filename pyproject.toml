@@ -40,7 +40,7 @@ dependencies = [
 # moyopy[interface]: pymatgen's get_symmetry_dataset (used by the spacegroup scripts) needs
 # moyopy's ase-based structure interface
 make-assets = ["kaleido>=1.5", "matminer>=0.10.1", "moyopy[interface]>=0.21"]
-gh-pages = ["jupyter>=1.1.1", "lazydocs>=0.4.8", "nbconvert>=7.17"]
+gh-pages = ["jupyter>=1.1.1", "nbconvert>=7.17"]
 phonons = ["phonopy>=4.8"] # only needed if user passes in phonopy objects
 test = [
   "ase>=3.29",
