@@ -665,6 +665,24 @@ def test_sankey_flow_data(
     }
 
 
+@pytest.mark.parametrize(
+    ("source", "target", "expected_labels"),
+    [
+        ([2**53 + 1], [1.5], [f"{2**53 + 1}: 1", "1.5: 1"]),  # would round as float
+        ([221, 221], [1.5, 2.5], ["221: 2", "1.5: 1", "2.5: 1"]),
+        ([("A",)], ["B"], ["('A',): 1", "B: 1"]),
+    ],
+)
+def test_sankey_flow_data_keeps_column_values(
+    source: list[Any], target: list[Any], expected_labels: list[str]
+) -> None:
+    """Node values keep each column's own type instead of a shared dtype."""
+    df_flows = pd.DataFrame({"src": source, "tgt": target})
+    assert pmv_pd.sankey_flow_data(df_flows, ["src", "tgt"])["labels"] == (
+        expected_labels
+    )
+
+
 def test_sankey_flow_data_invalid_cols_raises() -> None:
     """Test that invalid columns raise ValueError."""
     df_test = pd.DataFrame({"A": ["x"], "B": ["p"]})

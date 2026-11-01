@@ -665,9 +665,9 @@ def sankey_flow_data(
             f"{cols=} should specify exactly two columns: (source_col, target_col)"
         )
 
-    source, target, value = (
-        df[list(cols)].value_counts().reset_index().to_numpy().T.tolist()
-    )
+    df_flows = df[list(cols)].value_counts().reset_index()
+    # per-column tolist, to_numpy would coerce mixed int/float columns to one dtype
+    source, target, value = (df_flows[col].tolist() for col in df_flows)
 
     # Each column is one side of the diagram, so a value in both gets two nodes
     source_vals = list(dict.fromkeys(source))  # preserves order
@@ -679,8 +679,8 @@ def sankey_flow_data(
     if labels_with_counts:
         as_percent = labels_with_counts == "percent"
         fmt = ".1%" if as_percent else "d"
-        source_counts = df[cols[0]].value_counts(normalize=as_percent)
-        target_counts = df[cols[1]].value_counts(normalize=as_percent)
+        source_counts = df[cols[0]].value_counts(normalize=as_percent).to_dict()
+        target_counts = df[cols[1]].value_counts(normalize=as_percent).to_dict()
         labels = [f"{val}: {source_counts[val]:{fmt}}" for val in source_vals] + [
             f"{val}: {target_counts[val]:{fmt}}" for val in target_vals
         ]
