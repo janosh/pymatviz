@@ -208,12 +208,13 @@ def test_py_pkg_treemap_cell_text_fn(
 ) -> None:
     """Test the cell_text_fn parameter with different options."""
     fig = pmv.py_pkg_treemap(["my_pkg", "another_pkg"], cell_text_fn=cell_text_fn)
-    labels = fig.data[0].labels
+    labels, parents = np.array(fig.data[0].labels), np.array(fig.data[0].parents)
 
     for expected in expected_in_labels:
         assert any(expected in str(lbl) for lbl in labels)
 
-    pkg_labels = [lbl for lbl in labels if lbl in ("my_pkg", "another_pkg")]
+    pkg_labels = labels[parents == ""]
+    assert len(pkg_labels) == 2
     for not_expected in expected_not_in_labels:
         assert not any(not_expected in str(lbl) for lbl in pkg_labels)
 
