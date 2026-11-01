@@ -51,11 +51,9 @@ def test_density_scatter(
     assert fig.layout.xaxis.title.text == (x if isinstance(x, str) else "Actual")
     assert fig.layout.yaxis.title.text == (y if isinstance(y, str) else "Predicted")
 
-    # Check that we have scatter data
     assert len(fig.data) > 0
     assert all(isinstance(trace, go.Scatter) for trace in fig.data)
 
-    # Check powerup elements
     if stats:
         # Check stats annotation exists and contains expected metrics
         stats_annotations = [
@@ -332,7 +330,6 @@ def test_density_scatter_facet_variations(
     assert len({trace.xaxis for trace in fig.data}) == DF_TIPS[facet_col].nunique()
     assert "xaxis2" in fig.layout
 
-    # Check log density colorbar
     if "log_colorbar" in expected_checks:
         colorbar = fig.layout.coloraxis.colorbar
         assert colorbar.tickvals is not None
@@ -355,7 +352,6 @@ def test_density_scatter_facet_variations(
         ]
         assert all(0 <= ann.x <= 1 and 0 <= ann.y <= 1 for ann in stats_annotations)
 
-    # Check fit lines
     if "fit_lines" in expected_checks:
         line_traces = [
             trace
@@ -504,5 +500,4 @@ def test_density_scatter_zero_handling_log_density() -> None:
     """Test log density auto-detection handles zeros without warnings."""
     df_zero = pd.DataFrame({"x": [0, 1, 2], "y": [0, 1, 2]})
     fig = pmv.density_scatter(df=df_zero, x="x", y="y", log_density=None, n_bins=3)
-    assert isinstance(fig, go.Figure)
     assert fig.layout.coloraxis.colorbar.tickvals is None  # No log scaling

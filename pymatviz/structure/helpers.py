@@ -1120,7 +1120,6 @@ def draw_cell(
         else functools.partial(fig.add_scatter, row=row, col=col)
     )
 
-    # Add edges
     edge_defaults = dict(color="black", width=1, dash="dash")
     edge_kwargs = edge_defaults | cell_kwargs.get("edge", {})
     for idx, (start, end) in enumerate(CELL_EDGES):
@@ -1153,7 +1152,6 @@ def draw_cell(
             showlegend=False,
         )
 
-    # Add corner spheres
     node_defaults = dict(size=3, color="black")
     node_kwargs = node_defaults | cell_kwargs.get("node", {})
     for idx, (frac_coord, cart_coord) in enumerate(

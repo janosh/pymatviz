@@ -6,6 +6,7 @@ import os
 import re
 from enum import EnumType, StrEnum, _EnumDict, unique
 from typing import TYPE_CHECKING, Final
+from urllib.request import urlopen
 
 import yaml
 
@@ -18,7 +19,6 @@ if TYPE_CHECKING:
     from pymatviz.typing import ColorType
 
 
-# Load YAML data at module level
 with open(f"{PKG_DIR}/keys.yml", encoding="utf-8") as file:
     _key_data = yaml.safe_load(file)
 
@@ -925,12 +925,8 @@ class Files(StrEnum, metaclass=MetaFiles):
         path = f"{type(self)._base_dir}/{self.__dict__['file_path']}"
         if type(self)._auto_download and not os.path.isfile(path) and self.url:
             print(f"Downloading {self.url} to {path}")  # noqa: T201
-            import requests
-
-            response = requests.get(self.url)  # noqa: S113
-            response.raise_for_status()
-            with open(path, mode="wb") as file:
-                file.write(response.content)
+            with urlopen(self.url) as response, open(path, mode="wb") as file:  # noqa: S310
+                file.write(response.read())
         return path
 
     @property

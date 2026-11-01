@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 import pytest
 
 from pymatviz.histogram import elements_hist, histogram
@@ -74,7 +73,6 @@ def test_histogram(
 ) -> None:
     """Test histogram function with Plotly backend."""
     fig = histogram(values, log_y=log_y, bins=bins)
-    assert isinstance(fig, go.Figure)
 
     dev_fig = fig.full_figure_for_development(warn=False)
     y_min, y_max = dev_fig.layout.yaxis.range

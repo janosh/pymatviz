@@ -282,7 +282,6 @@ def _bin_and_calculate_density(
     bin_counts_col: str,
 ) -> pd.DataFrame:
     """Helper function to bin data and calculate density."""
-    # Handle empty dataframes
     if len(df) == 0:
         df_empty = df.copy()
         df_empty[bin_counts_col] = pd.Series(dtype=float, index=df_empty.index)
@@ -570,7 +569,6 @@ def _with_marginal_hist(
         vertical_spacing=0.02,
     )
 
-    # Add main plot and marginals
     for trace in fig.data:
         subplot_fig.add_trace(trace, row=2, col=1)
     _add_marginal_histograms(subplot_fig, xs, ys, bins, xlabel, ylabel)

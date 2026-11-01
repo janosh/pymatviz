@@ -207,7 +207,6 @@ def test_ptable_heatmap_cscale_range(
     fig = pmv.ptable_heatmap(df_ptable[Key.density], cscale_range=cscale_range)
     trace = fig.data[-1]
     assert "colorbar" in trace
-    # check for correct color bar range
     data_min, data_max = df_ptable[Key.density].min(), df_ptable[Key.density].max()
     if cscale_range == (None, None):
         # if both None, range is dynamic based on plotted data
@@ -306,10 +305,8 @@ def test_ptable_heatmap_all_elements() -> None:
 
 def test_ptable_heatmap_hover_tooltips() -> None:
     """Hover texts show values, percentages, hover_props and hover_data."""
-    # Test with non-integer values
     float_values = {"Fe": 0.2, "O": 0.3, "H": 0.5}
 
-    # Test value mode
     fig = pmv.ptable_heatmap(float_values, heat_mode="value")
     hover_texts = fig.data[-1].text.flat
 
@@ -318,7 +315,6 @@ def test_ptable_heatmap_hover_tooltips() -> None:
         hover_text = next(text for text in hover_texts if text.startswith(elem_name))
         assert hover_text == f"{elem_name} ({elem_symb})<br>Value: {value:.3g}"
 
-    # Test fraction and percent modes
     for heat_mode in ["fraction", "percent"]:
         fig = pmv.ptable_heatmap(float_values, heat_mode=heat_mode)  # ty: ignore[invalid-argument-type]
         hover_texts = fig.data[-1].text.flat
@@ -333,7 +329,6 @@ def test_ptable_heatmap_hover_tooltips() -> None:
             )
             assert hover_text == expected_hover_text
 
-    # Test with integer values
     int_values = {"Fe": 2, "O": 3, "H": 1}
 
     for heat_mode in ("value", "fraction", "percent"):
@@ -357,13 +352,11 @@ def test_ptable_heatmap_hover_tooltips() -> None:
                 )
             assert hover_text == expected_hover_text
 
-    # Test with excluded elements
     fig = pmv.ptable_heatmap(int_values, exclude_elements=["O"])
     hover_texts = fig.data[-1].text.flat
     o_hover_text = next(text for text in hover_texts if text.startswith("Oxygen"))
     assert "Value:" not in o_hover_text
 
-    # Test with hover_props
     fig = pmv.ptable_heatmap(int_values, hover_props=["atomic_number", "atomic_mass"])
     hover_texts = fig.data[-1].text.flat
     for hover_text in hover_texts:
@@ -372,7 +365,6 @@ def test_ptable_heatmap_hover_tooltips() -> None:
         assert "atomic_number" in hover_text
         assert "atomic_mass" in hover_text
 
-    # Test with hover_data
     hover_data = {"Fe": "Custom Fe data", "O": "Custom O data"}
     fig = pmv.ptable_heatmap(int_values, hover_data=hover_data)
     hover_texts = fig.data[-1].text.flat
@@ -403,7 +395,6 @@ def test_ptable_heatmap_element_symbol_map() -> None:
             f"Original symbol {elem} not found in hover text"
         )
 
-    # Test with partial mapping
     partial_map = {"Fe": "This be Iron"}
     fig = pmv.ptable_heatmap(values, element_symbol_map=partial_map)
     tile_texts = [anno.text for anno in fig.layout.annotations if anno.text]
@@ -414,7 +405,6 @@ def test_ptable_heatmap_element_symbol_map() -> None:
         "Original symbol 'O' not found in tile texts"
     )
 
-    # Test with None value
     fig = pmv.ptable_heatmap(values, element_symbol_map=None)
     tile_texts = [anno.text for anno in fig.layout.annotations if anno.text]
     for elem in values:
@@ -428,37 +418,31 @@ def test_ptable_heatmap_colorbar() -> None:
     """Test colorbar customization in ptable_heatmap."""
     data = {"Fe": 1.234, "O": 5.678}
 
-    # Test colorbar title and formatting
     colorbar = dict(
         title="Test Title", tickformat=".2f", orientation="v", len=0.8, x=1.1
     )
 
     fig = pmv.ptable_heatmap(data, colorbar=colorbar)
 
-    # Get the colorbar from the figure
     colorbar_trace = next(trace for trace in fig.data if hasattr(trace, "colorbar"))
     actual_colorbar = colorbar_trace.colorbar
 
-    # Check colorbar properties were set correctly
     assert actual_colorbar.title.text == "<br><br>Test Title"
     assert actual_colorbar.tickformat == ".2f"
     assert actual_colorbar.orientation == "v"
     assert actual_colorbar.len == 0.8
     assert actual_colorbar.x == 1.1
 
-    # Test horizontal colorbar title formatting
     h_colorbar = dict(title="Horizontal Title", orientation="h", y=0.8)
 
     fig = pmv.ptable_heatmap(data, colorbar=h_colorbar)
     h_colorbar_trace = next(trace for trace in fig.data if hasattr(trace, "colorbar"))
     actual_h_colorbar = h_colorbar_trace.colorbar
 
-    # Check horizontal colorbar properties
     assert actual_h_colorbar.title.text == "Horizontal Title"
     assert actual_h_colorbar.orientation == "h"
     assert actual_h_colorbar.y == 0.8
 
-    # Test disabling colorbar
     fig = pmv.ptable_heatmap(data, show_scale=False)
     assert not any(trace.showscale for trace in fig.data)
 

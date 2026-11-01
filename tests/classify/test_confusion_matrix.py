@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-import plotly.graph_objects as go
 import pytest
 
 from pymatviz.classify.confusion_matrix import confusion_matrix
@@ -34,7 +33,6 @@ def test_confusion_matrix_basic(sample_conf_mat: np.ndarray) -> None:
         x_labels=("Negative", "Positive"),
         y_labels=("Negative", "Positive"),
     )
-    assert isinstance(fig, go.Figure)
     assert fig.layout.xaxis.constrain == "domain"
     assert fig.layout.yaxis.constrain == "domain"
     assert fig.layout.yaxis.scaleanchor == "x"
@@ -53,7 +51,6 @@ def test_confusion_matrix_color_text_alignment(sample_conf_mat: np.ndarray) -> N
         normalize=True,  # use normalization to get percentages
     )
 
-    # Get the heatmap trace
     heatmap = fig.data[0]
 
     # Get z-values (colors), annotations, and hover text
@@ -106,7 +103,6 @@ def test_confusion_matrix_color_text_alignment(sample_conf_mat: np.ndarray) -> N
     assert z_values[1, 0] > z_values[1, 1]  # TN > FP
     assert z_values[0, 1] == z_values[0, 0]  # TP = FN in this case
 
-    # Verify this matches the hover text
     hover_text = heatmap.text
     for row_idx, col_idx in [(1, 0), (1, 1), (0, 0), (0, 1)]:
         text = hover_text[row_idx][col_idx]
@@ -137,9 +133,7 @@ def test_confusion_matrix_display_options(
         colorscale=colorscale,
         float_fmt=float_fmt,
     )
-    assert isinstance(fig, go.Figure)
 
-    # Check heatmap trace properties
     heatmap = fig.data[0]
     first_color = heatmap.colorscale[0][1].lower()
     expected_first_colors = {
@@ -150,7 +144,6 @@ def test_confusion_matrix_display_options(
     }
     assert first_color == expected_first_colors[colorscale.lower()]
 
-    # Check annotations format
     annotations = [anno.text for anno in fig.layout.annotations if anno.text]
     if normalize:
         assert all("%" in anno for anno in annotations if anno != "")
@@ -229,15 +222,12 @@ def test_confusion_matrix_multi_class(multi_class_conf_mat: np.ndarray) -> None:
 
 def test_confusion_matrix_error_cases() -> None:
     """Test error handling."""
-    # Test missing input
     with pytest.raises(ValueError, match="Must provide either conf_mat or both"):
         confusion_matrix()
 
-    # Test missing labels for pre-computed matrix
     with pytest.raises(ValueError, match="Must provide x_labels"):
         confusion_matrix(np.array([[1, 2], [3, 4]]))
 
-    # Test unknown metric
     with pytest.raises(ValueError, match="Unknown metric='invalid'"):
         confusion_matrix(
             np.array([[1, 2], [3, 4]]),
@@ -440,7 +430,6 @@ def test_confusion_matrix_callable_annotations_multiclass(
         normalize=True,
     )
 
-    # Get cell annotations (excluding metrics)
     cell_annotations = [
         anno.text
         for anno in fig.layout.annotations

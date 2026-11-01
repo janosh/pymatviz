@@ -230,7 +230,6 @@ def test_brillouin_zone_3d_subplot_grid(structures: list[Structure]) -> None:
 
 def test_brillouin_zone_3d_subplot_grid_options(structures: list[Structure]) -> None:
     """Test different subplot grid configurations and title options."""
-    # Test disabling subplot titles
     fig = brillouin_zone_3d(structures, subplot_title=False)
     assert all(anno.text == " " for anno in fig.layout.annotations)
 
@@ -272,7 +271,6 @@ def test_brillouin_zone_3d_subplot_grid_options(structures: list[Structure]) -> 
 
 def test_brillouin_zone_3d_axes_vectors(structures: list[Structure]) -> None:
     """Test customization of coordinate axes vectors."""
-    # Test with custom axes vector styling
     custom_axes: dict[Literal["shaft", "cone"], dict[str, Any]] = {
         "shaft": {"color": "purple", "width": 8},
         "cone": {"sizeref": 0.99},
@@ -283,7 +281,6 @@ def test_brillouin_zone_3d_axes_vectors(structures: list[Structure]) -> None:
     assert custom_axes["cone"] == {"sizeref": 0.99}
     fig = brillouin_zone_3d(structures[0], axes_vectors=custom_axes)
 
-    # Check shaft traces
     shaft_traces = [
         trace
         for trace in fig.data
@@ -296,13 +293,11 @@ def test_brillouin_zone_3d_axes_vectors(structures: list[Structure]) -> None:
         assert trace.line.color == "purple"
         assert trace.line.width == 8
 
-    # Check cone traces
     cone_traces = [trace for trace in fig.data if trace.type == "cone"]
     assert len(cone_traces) == 3  # one for each axis
     for trace in cone_traces:
         assert trace.sizeref == 0.99
 
-    # Test disabling axes vectors
     fig = brillouin_zone_3d(structures[0], axes_vectors=False)
     shaft_traces = [
         trace
@@ -321,6 +316,5 @@ def test_brillouin_zone_3d_edge_cases(structures: list[Structure]) -> None:
     with pytest.raises(TypeError, match="Invalid subplot_title, must be str or dict"):
         brillouin_zone_3d(structures, subplot_title=lambda *_args: [42])  # ty: ignore[invalid-argument-type]
 
-    # Test with invalid axes_vectors dict
     with pytest.raises(KeyError, match="axes_vectors must contain 'shaft' and 'cone'"):
         brillouin_zone_3d(structures[0], axes_vectors={"shaft": {}})

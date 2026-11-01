@@ -41,17 +41,14 @@ def test_widget_structure_inputs(
     structures = fixture_value if isinstance(fixture_value, tuple) else (fixture_value,)
 
     for structure in structures:
-        # Test with Structure object
         widget = StructureWidget(structure=structure)
         assert widget.widget_type == "structure"
         assert widget.structure == structure.as_dict()
 
-        # Test with structure dict
         structure_dict = structure.as_dict()
         widget = StructureWidget(structure=structure_dict)
         assert widget.structure == structure_dict
 
-        # Test structure assignment and update
         widget = StructureWidget()
         assert widget.structure is None
         widget.structure = structure_dict

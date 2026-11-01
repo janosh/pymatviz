@@ -156,7 +156,6 @@ def test_chemical_system_visualization(
         for color in colors:
             assert color.upper() in px.colors.qualitative.Plotly[:3]
 
-    # Check for color+shape mode without properties
     if show_chem_sys == "color+shape" and not prop_name:
         # Check that marker has multiple colors (one per chemical system)
         assert isinstance(fig.data[0].marker.color, (list, tuple))
@@ -906,7 +905,6 @@ def test_coordinates_with_labels(
             n_components=3,
         )
 
-        # Check 3D axis labels
         assert fig_3d.layout.scene.xaxis.title.text == f"{component_label} 1"
         assert fig_3d.layout.scene.yaxis.title.text == f"{component_label} 2"
         assert fig_3d.layout.scene.zaxis.title.text == f"{component_label} 3"

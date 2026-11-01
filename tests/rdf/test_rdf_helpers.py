@@ -22,14 +22,12 @@ def check_basic_rdf_properties(
     """Check basic properties that all RDFs should satisfy."""
     suffix = f" for {name}" if name else ""
 
-    # Check array types and shapes
     assert isinstance(radii, np.ndarray), f"{radii=} should be a numpy array{suffix}"
     assert isinstance(rdf, np.ndarray), f"{rdf=} should be a numpy array{suffix}"
     assert len(radii) == len(rdf) == n_bins, (
         f"{rdf=} length should match n_bins{suffix}"
     )
 
-    # Check RDF values
     assert np.all(rdf >= 0), f"{rdf=} should have non-negative values{suffix}"
     assert rdf[0] == 0, f"{rdf=} should start at 0{suffix}"
 
@@ -59,12 +57,10 @@ def test_calculate_rdf(structure_name: str, structure: Any) -> None:
 )
 def test_calculate_rdf_normalization(composition: list[str], n_atoms: int) -> None:
     """Test RDF normalization for different compositions."""
-    # Create large structure with random coordinates
     elements = sum(([el] * n_atoms for el in composition), [])  # noqa: RUF017
     coords = np.random.default_rng(seed=0).uniform(size=(len(elements), 3))
     structure = Structure(Lattice.cubic(30), elements, coords)
 
-    # Calculate RDF for each element pair
     cutoff, n_bins = 12, 75
     for el1 in composition:
         for el2 in composition:
@@ -180,7 +176,6 @@ def test_calculate_rdf_different_species() -> None:
 )
 def test_calculate_rdf_edge_cases(cutoff: float, frac_coords: list[float]) -> None:
     """RDF is zero when no neighbors lie within the cutoff."""
-    # Test with a single atom
     single_atom = Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]])
     _radii, rdf = calculate_rdf(
         single_atom,
@@ -210,13 +205,11 @@ def test_calculate_rdf_disordered_structure(fe3co4_disordered: Structure) -> Non
     radii, rdf = calculate_rdf(fe3co4_disordered, cutoff=cutoff, n_bins=n_bins)
     check_basic_rdf_properties(radii, rdf, n_bins, "disordered")
 
-    # Check RDF shape properties
     peak_idx = 43
     assert np.argmax(rdf) == peak_idx
     assert rdf[peak_idx] == pytest.approx(20.552033)
     assert np.std(rdf) == pytest.approx(3.12714)
 
-    # Test high-entropy alloy structure
     hea_structure = Structure(
         lattice=Lattice.cubic(a_len := 3.59),
         species=[Composition({"Co": 0.2, "Cr": 0.2, "Fe": 0.2, "Ni": 0.2, "Mn": 0.2})]
@@ -267,7 +260,6 @@ def test_calculate_rdf_extreme_parameters(
 
     radii, rdf = calculate_rdf(structure, cutoff=cutoff, n_bins=n_bins)
 
-    # Check basic properties
     check_basic_rdf_properties(radii, rdf, n_bins, f"{param_name}={param_value}")
 
     # Check expected properties based on the test case
@@ -306,7 +298,6 @@ def test_calculate_rdf_with_no_atoms_of_requested_species(
     cutoff, n_bins = 10, 100
     radii, rdf = calculate_rdf(structure, center, neighbor, cutoff, n_bins)
 
-    # Check basic properties
     check_basic_rdf_properties(radii, rdf, n_bins, f"{center}-{neighbor}")
 
     # Check expected RDF values
@@ -367,12 +358,10 @@ def test_calculate_rdf_input_validation(
     empty: bool,
 ) -> None:
     """Test input validation in calculate_rdf function."""
-    # Create a simple structure for testing
     structure = Structure(
         Lattice.cubic(5), [] if empty else ["Si"], [] if empty else [[0, 0, 0]]
     )
 
-    # Set default parameters
     params = {"structure": structure, "cutoff": 10, "n_bins": 10} | test_input
 
     # Test for expected error

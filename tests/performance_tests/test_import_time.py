@@ -89,7 +89,6 @@ def test_import_time() -> None:
     for module_name, ref_time in REF_IMPORT_TIME.items():
         current_time = measure_import_time(module_name)
 
-        # Calculate grace and hard thresholds
         grace_threshold = ref_time * (1 + grace_percent)
         hard_threshold = ref_time * (1 + hard_percent)
 

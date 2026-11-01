@@ -91,7 +91,6 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
 
     show_image_atoms = optional_trait(tl.Bool)
 
-    # Plot
     step_labels = tl.Union(
         [tl.Int(), tl.List()], allow_none=True, default_value=None
     ).tag(sync=True)

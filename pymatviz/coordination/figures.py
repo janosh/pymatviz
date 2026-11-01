@@ -298,7 +298,6 @@ def coordination_hist(
     fig.update_layout(barmode=bar_mode, bargap=0.15, bargroupgap=0.1)
     fig.layout.legend.tracegroupgap = 2  # reduce gap between legend groups
 
-    # Add figure-level axis titles using annotations
     anno_kwargs = dict(font_size=15, xref="paper", yref="paper", showarrow=False)
     fig.add_annotation(  # X-axis title
         text="Coordination Number", x=0.5, y=-0.15, **anno_kwargs

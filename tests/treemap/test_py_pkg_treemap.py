@@ -149,7 +149,6 @@ def test_default_module_formatter() -> None:
     [
         ("my_pkg", "src/my_pkg"),
         ("another_pkg", "src/another_pkg"),
-        # test installed pkg
         pytest.param("pytest", "site-packages/pytest", marks=pytest.mark.slow),
         ("non_existent_pkg", ""),  # Should not find
     ],
@@ -158,18 +157,12 @@ def test_find_package_path(
     dummy_pkg_path: Path, package_name: str, expected_end: str
 ) -> None:
     """Test find_package_path for local dummy and non-existent packages."""
-    is_dummy = package_name in ("my_pkg", "another_pkg")
-    found_path = pmv.treemap.py_pkg.find_package_path(package_name)
-
-    if expected_end:
-        if is_dummy:
-            expected_abs_path = str(dummy_pkg_path / package_name).replace("\\", "/")
-            assert found_path.replace("\\", "/").endswith(expected_abs_path)
-        elif "site-packages" in expected_end:
-            assert expected_end in found_path.replace("\\", "/")
-        else:
-            rel_path = os.path.relpath(found_path, start=dummy_pkg_path.parent)
-            assert rel_path.replace("\\", "/") == expected_end
+    found_path = pmv.treemap.py_pkg.find_package_path(package_name).replace("\\", "/")
+    if "site-packages" in expected_end:
+        assert expected_end in found_path
+    elif expected_end:
+        expected_abs_path = str(dummy_pkg_path / package_name).replace("\\", "/")
+        assert found_path.endswith(expected_abs_path)
     else:
         assert found_path == ""
 
@@ -185,7 +178,6 @@ def test_find_package_path_fallbacks(dummy_pkg_path: Path) -> None:
         found_path = pmv.treemap.py_pkg.find_package_path(target_pkg)
         assert found_path.replace("\\", "/") == expected_abs_path
 
-    # Test fallback to site-packages check
     with (
         patch("importlib.resources.files", side_effect=ImportError, create=True),
         patch("site.getsitepackages", return_value=[str(dummy_pkg_path.parent)]),
@@ -197,7 +189,6 @@ def test_find_package_path_fallbacks(dummy_pkg_path: Path) -> None:
         assert found_path.replace("\\", "/") == expected_site_path.replace("\\", "/")
 
 
-# Test main treemap function parameters
 @pytest.mark.parametrize(
     ("cell_text_fn", "expected_in_labels", "expected_not_in_labels"),
     [
@@ -217,22 +208,15 @@ def test_py_pkg_treemap_cell_text_fn(
 ) -> None:
     """Test the cell_text_fn parameter with different options."""
     fig = pmv.py_pkg_treemap(["my_pkg", "another_pkg"], cell_text_fn=cell_text_fn)
-    labels = fig.data[0].labels
+    labels, parents = np.array(fig.data[0].labels), np.array(fig.data[0].parents)
 
     for expected in expected_in_labels:
-        assert any(expected in str(lbl) for lbl in labels), (
-            f"Expected '{expected}' in labels"
-        )
+        assert any(expected in str(lbl) for lbl in labels)
 
+    pkg_labels = labels[parents == ""]
+    assert len(pkg_labels) == 2
     for not_expected in expected_not_in_labels:
-        if cell_text_fn is False:
-            # For False case, check specific package labels don't have formatting
-            pkg_labels = [lbl for lbl in labels if lbl in ("my_pkg", "another_pkg")]
-            assert not any(not_expected in str(lbl) for lbl in pkg_labels)
-        else:
-            assert not any(not_expected in str(lbl) for lbl in labels), (
-                f"Unexpected '{not_expected}' in labels"
-            )
+        assert not any(not_expected in str(lbl) for lbl in pkg_labels)
 
 
 @pytest.mark.parametrize(
@@ -274,7 +258,6 @@ def test_py_pkg_treemap_base_url(test_base_url: str | None, expect_link: bool) -
     fig = pmv.py_pkg_treemap(pkg_name, base_url=test_base_url, show_counts=show_counts)
     trace = fig.data[0]
 
-    # Check texttemplate and textinfo
     expected_texttemplate = (
         "<a href='%{customdata[3]}' target='_blank'>%{customdata[2]}</a><br>"
         "%{value:,}<br>%{percentEntry}"
@@ -284,7 +267,6 @@ def test_py_pkg_treemap_base_url(test_base_url: str | None, expect_link: bool) -
     assert trace.texttemplate == expected_texttemplate
     assert trace.textinfo == "none"
 
-    # Check customdata structure
     custom_data = trace.customdata
     assert custom_data is not None
     assert custom_data.shape[1] == 12
@@ -301,7 +283,6 @@ def test_py_pkg_treemap_base_url(test_base_url: str | None, expect_link: bool) -
             isinstance(url, str) and url.startswith("http") for url in file_urls
         )
 
-    # Check hovertemplate generation
     hovertemplate = trace.hovertemplate
     assert hovertemplate is not None
     assert "<b>%{customdata[2]}</b>" in hovertemplate
@@ -531,33 +512,9 @@ def test_py_pkg_treemap_tooltip_data(mock_pkg_data: pd.DataFrame) -> None:
         fig = pmv.py_pkg_treemap(packages=["pkg1", "pkg2"], base_url=None)
 
         assert fig.data[0].hovertemplate == expected_hovertemplate
-        passed_custom_data_arg = mock_px_treemap.call_args.kwargs["custom_data"]
-
-        # Test specific percentage calculation
-        generated_customdata_df = pd.DataFrame(
-            passed_custom_data_arg,
-            columns=pd.Index(
-                [
-                    "package_name_raw",
-                    "repo_path_segment",
-                    "leaf_label",
-                    "file_url",
-                    "n_classes",
-                    "n_functions",
-                    "n_methods",
-                    "n_internal_imports",
-                    "n_external_imports",
-                    "n_type_checking_imports",
-                    "percent_of_package_cell_value",
-                    "line_count",
-                ]
-            ),
-        )
-
-        pkg1_mod_a_percent = generated_customdata_df[
-            generated_customdata_df["leaf_label"] == "modA"
-        ]["percent_of_package_cell_value"].iloc[0]
-        assert pkg1_mod_a_percent == pytest.approx(100 / 300)
+        custom_data = mock_px_treemap.call_args.kwargs["custom_data"]
+        mod_a = custom_data[custom_data["leaf_label"] == "modA"].iloc[0]
+        assert mod_a["percent_of_package_cell_value"] == pytest.approx(100 / 300)
 
 
 def test_py_pkg_treemap_wraps_long_underscore_labels(
@@ -598,35 +555,22 @@ def _sizer_omit_specific(metrics: pmv.treemap.py_pkg.ModuleStats) -> int:
 
 
 @pytest.mark.parametrize(
-    ("calculator", "expected_filenames", "test_id"),
+    ("calculator", "expected_filenames"),
     [
-        (None, {"module1", "module2", "module3", "module4_typed", "main"}, "default"),
-        (
-            _calc_sum_functions_classes,
-            {"module1", "module2", "module4_typed"},
-            "func+class",
-        ),
+        (None, {"module1", "module2", "module3", "module4_typed", "main"}),
+        (_calc_sum_functions_classes, {"module1", "module2", "module4_typed"}),
         (
             _calc_methods_x_10_plus_lines,
             {"module1", "module2", "module3", "module4_typed", "main"},
-            "methods*10+lines",
         ),
-        (
-            lambda m: m.n_type_checking_imports + m.n_internal_imports,
-            {"module4_typed"},
-            "imports",
-        ),
-        (
-            _sizer_omit_specific,
-            {"module2", "module3", "module4_typed"},
-            "omit_specific",
-        ),
+        (lambda m: m.n_type_checking_imports + m.n_internal_imports, {"module4_typed"}),
+        (_sizer_omit_specific, {"module2", "module3", "module4_typed"}),
     ],
+    ids=["default", "func+class", "methods*10+lines", "imports", "omit_specific"],
 )
 def test_py_pkg_treemap_cell_size_fn(
     calculator: pmv.treemap.py_pkg.CellSizeFn | None,
     expected_filenames: set[str],
-    test_id: str,  # noqa: ARG001
 ) -> None:
     """Test the cell_size_fn argument in py_pkg_treemap."""
     with patch("plotly.express.treemap") as mock_px_treemap:
@@ -634,19 +578,11 @@ def test_py_pkg_treemap_cell_size_fn(
             ["my_pkg", "another_pkg"], cell_size_fn=calculator, group_by="file"
         )
 
-    assert mock_px_treemap.called  # Check if the mock was called
-
-    call_object = mock_px_treemap.call_args
-    assert call_object is not None
-
-    # Get the DataFrame from keyword arguments (data_frame parameter)
-    df_passed_to_plotly: pd.DataFrame = call_object.kwargs["data_frame"]
+    df_passed_to_plotly: pd.DataFrame = mock_px_treemap.call_args.kwargs["data_frame"]
 
     assert "cell_value" in df_passed_to_plotly
-    actual_filenames = set(df_passed_to_plotly["filename"])
-    assert actual_filenames >= expected_filenames
+    assert set(df_passed_to_plotly["filename"]) >= expected_filenames
 
-    # Verify cell_value calculations match expectations
     numeric_fields = {
         "line_count",
         "depth",
@@ -673,21 +609,16 @@ def test_py_pkg_treemap_cell_size_fn(
         assert int(row["cell_value"]) == expected_val
 
 
-# Test coverage and module object features
 def test_normalize_package_input() -> None:
     """Test _normalize_package_input function with various inputs."""
-    # Test string input
     assert pmv.treemap.py_pkg._normalize_package_input("numpy") == "numpy"
 
-    # Test module object input
     assert pmv.treemap.py_pkg._normalize_package_input(np) == "numpy"
 
-    # Test submodule object input
     import numpy.random
 
     assert pmv.treemap.py_pkg._normalize_package_input(numpy.random) == "numpy"
 
-    # Test object without __name__
     class MockObj:
         pass
 
@@ -695,19 +626,26 @@ def test_normalize_package_input() -> None:
     assert pmv.treemap.py_pkg._normalize_package_input(mock_obj) == str(mock_obj)
 
 
+def _write_coverage(path: Path, percents: dict[str, float]) -> Path:
+    """Write a coverage JSON file mapping file paths to percent covered."""
+    files = {
+        file: {"summary": {"percent_covered": pct}} for file, pct in percents.items()
+    }
+    path.write_text(json.dumps({"files": files}))
+    return path
+
+
 @pytest.fixture
 def mock_coverage_data(tmp_path: Path) -> Path:
     """Create a mock coverage.json file."""
-    coverage_content = {
-        "files": {
-            "my_pkg/module1.py": {"summary": {"percent_covered": 85.5}},
-            "my_pkg/submodule/module2.py": {"summary": {"percent_covered": 92.1}},
-            "my_pkg/submodule/module3.py": {"summary": {"percent_covered": 0.0}},
-        }
-    }
-    coverage_file = tmp_path / "coverage.json"
-    coverage_file.write_text(json.dumps(coverage_content))
-    return coverage_file
+    return _write_coverage(
+        tmp_path / "coverage.json",
+        {
+            "my_pkg/module1.py": 85.5,
+            "my_pkg/submodule/module2.py": 92.1,
+            "my_pkg/submodule/module3.py": 0.0,
+        },
+    )
 
 
 @pytest.mark.parametrize(
@@ -793,23 +731,13 @@ def test_py_pkg_treemap_coverage_scenarios(
             for idx, row in enumerate(df_modules.head(2).to_dict(orient="records"))
         }
     elif expectations.get("ambiguous"):
-        coverage_file = mock_coverage_data.parent / "coverage_ambiguous.json"
-        coverage_file.write_text(
-            json.dumps(
-                {
-                    "files": {
-                        "different/path/module1.py": {
-                            "summary": {"percent_covered": 75.0}
-                        },
-                        "another/different/path/module1.py": {
-                            "summary": {"percent_covered": 90.0}
-                        },
-                        "some/other/path/module2.py": {
-                            "summary": {"percent_covered": 80.0}
-                        },
-                    }
-                }
-            )
+        coverage_file = _write_coverage(
+            mock_coverage_data.parent / "coverage_ambiguous.json",
+            {
+                "different/path/module1.py": 75.0,
+                "another/different/path/module1.py": 90.0,
+                "some/other/path/module2.py": 80.0,
+            },
         )
         kwargs["coverage_data_file"] = str(coverage_file)
     elif kwargs.get("color_by") == "coverage":
@@ -832,18 +760,9 @@ def test_py_pkg_treemap_coverage_scenarios(
 
 def test_py_pkg_treemap_coverage_path_matching(tmp_path: Path) -> None:
     """Test coverage path matching with src/ prefix."""
-    coverage_file = tmp_path / "coverage_src.json"
-    coverage_file.write_text(
-        json.dumps(
-            {
-                "files": {
-                    "src/my_pkg/module1.py": {"summary": {"percent_covered": 75.0}},
-                    "src/my_pkg/submodule/module2.py": {
-                        "summary": {"percent_covered": 80.0}
-                    },
-                }
-            }
-        )
+    coverage_file = _write_coverage(
+        tmp_path / "coverage_src.json",
+        {"src/my_pkg/module1.py": 75.0, "src/my_pkg/submodule/module2.py": 80.0},
     )
     fig = pmv.py_pkg_treemap(
         "my_pkg", color_by="coverage", coverage_data_file=str(coverage_file)
@@ -924,8 +843,7 @@ def test_py_pkg_treemap_color_by_colorbar_title(
 
 def test_py_pkg_treemap_missing_coverage_values_are_zero(tmp_path: Path) -> None:
     """Files missing from the coverage data get zero customdata values."""
-    coverage_file = tmp_path / "coverage.json"
-    coverage_file.write_text(json.dumps({"files": {}}))
+    coverage_file = _write_coverage(tmp_path / "coverage.json", {})
     fig = pmv.py_pkg_treemap(
         "my_pkg", color_by="coverage", coverage_data_file=str(coverage_file)
     )
@@ -937,21 +855,13 @@ def test_py_pkg_treemap_submodule_coverage_weighted_averages(
 ) -> None:
     """Submodule coverage shows weighted averages of child modules."""
     pkg_dir = dummy_pkg_path / "my_pkg"
-    coverage_file = dummy_pkg_path / "coverage.json"
-    coverage_file.write_text(
-        json.dumps(
-            {
-                "files": {
-                    str(pkg_dir / "module1.py"): {"summary": {"percent_covered": 80.0}},
-                    str(pkg_dir / "submodule" / "module2.py"): {
-                        "summary": {"percent_covered": 70.0}
-                    },
-                    str(pkg_dir / "submodule" / "module3.py"): {
-                        "summary": {"percent_covered": 90.0}
-                    },
-                }
-            }
-        )
+    coverage_file = _write_coverage(
+        dummy_pkg_path / "coverage.json",
+        {
+            str(pkg_dir / "module1.py"): 80.0,
+            str(pkg_dir / "submodule" / "module2.py"): 70.0,
+            str(pkg_dir / "submodule" / "module3.py"): 90.0,
+        },
     )
     fig = pmv.py_pkg_treemap(
         "my_pkg", color_by="coverage", coverage_data_file=str(coverage_file)
@@ -984,18 +894,12 @@ def test_py_pkg_treemap_coverage_regression_prevention(
     }
     _write_package_files(tmp_path / "pymatgen", files)
     monkeypatch.syspath_prepend(str(tmp_path))
-    coverage_file = tmp_path / "regression_coverage.json"
-    coverage_file.write_text(
-        json.dumps(
-            {
-                "files": {
-                    f"pymatgen/{rel_path}": {
-                        "summary": {"percent_covered": expected_leaf_coverage[key]}
-                    }
-                    for rel_path, key in zip(files, expected_leaf_coverage, strict=True)
-                }
-            }
-        )
+    coverage_file = _write_coverage(
+        tmp_path / "regression_coverage.json",
+        {
+            f"pymatgen/{rel_path}": expected_leaf_coverage[key]
+            for rel_path, key in zip(files, expected_leaf_coverage, strict=True)
+        },
     )
 
     fig = pmv.py_pkg_treemap(

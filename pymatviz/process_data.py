@@ -609,7 +609,6 @@ def normalize_phonon_bands(
 
     from pymatviz.phonons.helpers import phonopy_to_pymatgen_bands
 
-    # Convert single input to dict
     if isinstance(band_structs, Mapping):
         input_dict = dict(band_structs)
         if len(input_dict) == 0:
@@ -617,7 +616,6 @@ def normalize_phonon_bands(
     else:
         input_dict = {"": band_structs}
 
-    # Convert all to pymatgen format
     result: dict[str, PhononBands] = {}
     for key, bands in input_dict.items():
         if type(bands).__module__.startswith("phonopy"):

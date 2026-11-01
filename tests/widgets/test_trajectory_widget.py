@@ -205,7 +205,6 @@ def test_trajectory_widget_property_extraction(
     """Test TrajectoryWidget correctly extracts properties from dict format."""
     from pymatgen.core import Lattice, Structure
 
-    # Create structures and replace placeholders
     structures = [
         Structure(
             lattice=Lattice.cubic(3.0 + idx * 0.1),
@@ -229,7 +228,6 @@ def test_trajectory_widget_property_extraction(
     assert frame1["step"] == 0
     assert all(frame1["metadata"][k] == v for k, v in expected_properties.items())
 
-    # Test step indices are sequential
     for idx, frame in enumerate(widget.trajectory["frames"]):
         assert frame["step"] == idx
 

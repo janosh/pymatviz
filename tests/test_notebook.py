@@ -56,7 +56,6 @@ def test_notebook_mode_toggle(enable: bool) -> None:
         assert callable(Structure._ipython_display_)  # ty: ignore[unresolved-attribute]
         assert callable(Structure._repr_mimebundle_)  # ty: ignore[unresolved-attribute]
 
-    # Check optional classes
     for module_name, class_name in [
         ("ase.atoms", "Atoms"),
         ("pymatgen.analysis.diffraction.xrd", "DiffractionPattern"),
@@ -113,12 +112,10 @@ def test_object_notebook_display(
     )
 
     try:
-        # Test _ipython_display_
         obj._ipython_display_()
         assert len(published_data) == 1
         assert "text/plain" in published_data[0]
 
-        # Test _repr_mimebundle_
         mime_bundle = obj._repr_mimebundle_()
         assert isinstance(mime_bundle, dict)
         assert "text/plain" in mime_bundle

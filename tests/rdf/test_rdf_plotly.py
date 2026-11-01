@@ -86,17 +86,14 @@ def test_element_pair_rdfs_layout_and_annotations(
     assert fig.layout.title.text is None  # Assuming no main title is set
     assert fig.layout.yaxis.title.text == "g(r)"  # Common y-axis title
 
-    # Assert legend visibility
     assert fig.layout.showlegend == expected["legend_visible"]
 
-    # Assert grid dimensions
     actual_fig_rows = len(fig._grid_ref) if fig._grid_ref else 0
     actual_fig_cols = len(fig._grid_ref[0]) if fig._grid_ref and fig._grid_ref[0] else 0
 
     assert actual_fig_cols == expected["subplot_grid"][1]
     assert actual_fig_rows == expected["subplot_grid"][0]
 
-    # Assert annotations (subplot titles)
     annotations = fig.layout.annotations
     current_annotation_texts = [anno.text for anno in annotations]
 
@@ -266,7 +263,6 @@ def test_element_pair_rdfs_cutoff_and_bins(structures: list[Structure]) -> None:
     assert max(fig.data[0].x) == pytest.approx(cutoff)
     assert len(fig.data[0].x) == n_bins
 
-    # Test negative cutoff
     struct = structures[0]
     max_cell_len = max(struct.lattice.abc)
     neg_cutoff = -1.5

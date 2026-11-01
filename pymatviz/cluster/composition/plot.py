@@ -450,7 +450,6 @@ def cluster_compositions(
             "function or column name."
         )
 
-    # Validate color_scale parameter
     valid_scales = get_args(ColorScale)
     if isinstance(color_scale, str):
         if color_scale not in valid_scales:
@@ -485,7 +484,6 @@ def cluster_compositions(
     using_precomputed_coords = not is_method_name and projection in df_in
 
     if using_precomputed_coords:
-        # Validate the coordinates
         first_coords = df_in[projection].iloc[0]
         if not isinstance(first_coords, (list, np.ndarray)):
             raise ValueError(
@@ -500,7 +498,6 @@ def cluster_compositions(
     projection_kwargs = projection_kwargs or {}
     embedding_kwargs = embedding_kwargs or {}
 
-    # Get compositions from DataFrame
     compositions = df_in[composition_col]
     properties = None if prop_name is None else df_in[prop_name].infer_objects()
     # Numbers with None/pd.NA gaps (object or nullable dtypes) become float NaN
@@ -532,13 +529,11 @@ def cluster_compositions(
             # Using a specified column for embeddings
             comp_strs = _composition_strings(compositions)
 
-            # Get embeddings from the specified column
             embeddings = np.array([np.array(val) for val in df_in[embedding_method]])
         else:
             # Convert compositions to strings for consistent handling
             comp_strs = _composition_strings(compositions)
 
-            # Create embeddings
             if callable(embedding_method):
                 # Use custom embedding function
                 embedding_fn = cast("EmbeddingCallable", embedding_method)
@@ -699,7 +694,6 @@ def cluster_compositions(
         prop_values = [prop_values[idx] for idx in sort_indices]
         hover_prop_values = [hover_prop_values[idx] for idx in sort_indices]
 
-    # Create hover text template
     hover_template: list[str] = []
 
     # Determine the method label for hover text
@@ -732,10 +726,8 @@ def cluster_compositions(
 
         hover_template.append(hover_text)
 
-    # Store hover text in the dataframe
     df_plot["hover_text"] = hover_template
 
-    # Calculate projection statistics
     projection_stats: str | None = None
     if show_projection_stats and not using_precomputed_coords:
         if projection == "pca" and isinstance(projector, PCA):
@@ -767,7 +759,6 @@ def cluster_compositions(
                 for param, value in fitted.items()
             )
 
-    # Create the plot
     plot_func = px.scatter if n_components == 2 else px.scatter_3d
     plot_kwargs: dict[str, Any] = {
         "x": x_name,
@@ -898,7 +889,6 @@ def cluster_compositions(
         else:
             fig.layout.annotations = list(fig.layout.annotations) + annotations
 
-    # Convert to ClusterFigure and attach metadata
     cluster_fig = ClusterFigure(fig)
     object.__setattr__(cluster_fig, "projector", projector)
     object.__setattr__(cluster_fig, "embeddings", embeddings)

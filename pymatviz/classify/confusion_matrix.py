@@ -228,7 +228,6 @@ def confusion_matrix(
         elif isinstance(y_pos, (int, float)) and y_pos <= 0:
             fig.layout.margin.b = 60
 
-    # Update axes formatting
     axes_kwargs = dict(
         showline=False,
         showgrid=False,

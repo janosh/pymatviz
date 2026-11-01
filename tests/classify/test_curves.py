@@ -59,11 +59,9 @@ def test_curve_plotting(
     # no_skill=False for consistent trace counting
     fig = curve_func(targets, probs, no_skill=False)
 
-    assert isinstance(fig, go.Figure)
     assert len(fig.data) == expected_traces
     assert fig.layout.xaxis.title.text == expected_x_label
     assert fig.layout.yaxis.title.text == expected_y_label
-    # Check value ranges
     assert all(0 <= y <= 1 for trace in fig.data for y in trace.y)
     assert all(0 <= x <= 1 for trace in fig.data for x in trace.x)
 

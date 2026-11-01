@@ -67,7 +67,6 @@ def test_ptable_hists_annotations() -> None:
     anno_kwargs: dict[str, str | int] = {"font_size": 14, "font_color": "red"}
 
     annotations = {
-        # Test multiple annotations per element
         "Fe": [
             {"text": "Iron", **anno_kwargs},
             {"text": "<br>Fe", "font_size": 12, "font_color": "gray"},
@@ -81,7 +80,6 @@ def test_ptable_hists_annotations() -> None:
         symbol_kwargs=dict(x=0, y=1),
     )
 
-    # Check multiple annotations are present
     anno_texts = [anno.text for anno in fig.layout.annotations]
     assert len(anno_texts) == 5
     assert "Iron" in anno_texts
@@ -101,7 +99,6 @@ def test_ptable_hists_annotations() -> None:
         ]
 
     fig = pmv.ptable_hists(data, annotations=annotation_func)
-    # check multiple annotations are present
     anno_texts = [anno.text for anno in fig.layout.annotations]
     assert len(anno_texts) == 6
     assert "Mean: 2.0" in anno_texts
@@ -113,18 +110,15 @@ def test_ptable_hists_error_cases() -> None:
     """Invalid color strategy, scale and bins raise."""
     data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
 
-    # Test invalid color_elem_strategy
     with pytest.raises(
         ValueError, match="color_elem_strategy='invalid' must be one of"
     ):
         pmv.ptable_hists(data, color_elem_strategy="invalid")  # ty: ignore[invalid-argument-type]
 
-    # Test invalid scale
     with pytest.raises(ValueError, match="Invalid value of type ") as exc:
         pmv.ptable_hists(data, scale=-1.0)
     assert "An int or float in the interval [1, inf]" in str(exc.value)
 
-    # Test invalid bins
     with pytest.raises(ValueError, match=r"bins.*must be positive"):
         pmv.ptable_hists(data, bins=0)
 
@@ -139,7 +133,6 @@ def test_ptable_hists_subplot_kwargs() -> None:
         "subplot_titles": sub_titles,
     }
     fig = pmv.ptable_hists(data, subplot_kwargs=subplot_kwargs)
-    # Verify subplot titles are set
     assert [anno.text for anno in fig.layout.annotations][:2] == sub_titles
 
 
@@ -165,17 +158,11 @@ def test_ptable_hists_hover_tooltips() -> None:
 @pytest.mark.parametrize(
     "colorbar",
     [
-        # Test default settings
         None,
-        # Test no colorbar
         False,
-        # Test horizontal colorbar with custom length
         dict(orientation="h", len=0.4),
-        # Test vertical colorbar with custom length
         dict(orientation="v", len=0.8),
-        # Test title formatting for horizontal orientation
         dict(title="Test Title", orientation="h"),
-        # Test comprehensive custom settings
         dict(orientation="v", len=0.6, thickness=20, title="Custom", x=1.1, y=0.5),
     ],
 )
@@ -197,11 +184,9 @@ def test_ptable_hists_colorbar(
     assert cbar_trace.hoverinfo == "none"
     assert cbar_trace.showlegend is False
 
-    # Check colorbar properties
     marker = cbar_trace.marker
     assert marker.showscale is True
 
-    # Check colorbar range matches x_range
     assert marker.cmin == x_range[0]
     assert marker.cmax == x_range[1]
 
@@ -210,7 +195,6 @@ def test_ptable_hists_colorbar(
     assert not fig.layout[f"xaxis{x_axis_num}"].visible
     assert not fig.layout[f"yaxis{x_axis_num}"].visible
 
-    # Check colorbar settings
     cbar_defaults = dict(len=0.87, thickness=15)
     for key, expect in (colorbar or cbar_defaults).items():
         if key == "title":
@@ -224,7 +208,6 @@ def test_ptable_hists_x_axis_kwargs() -> None:
     """Test that x_axis_kwargs properly modifies histogram x-axes."""
     data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
 
-    # Test various x-axis customizations
     x_axis_kwargs = {
         "tickangle": 45,
         "tickformat": ".3f",

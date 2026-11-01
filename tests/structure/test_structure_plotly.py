@@ -333,9 +333,7 @@ def test_structure_2d_multiple_inputs(
         structures_input = list(structs_dict.values())
 
     fig = pmv.structure_2d(structures_input, n_cols=n_cols, site_labels=False)
-    assert isinstance(fig, go.Figure)
 
-    # Validate trace counts
     trace_names = [trace.name or "" for trace in fig.data]
 
     actual_n_site_traces = sum(name.startswith("site-") for name in trace_names)
@@ -415,7 +413,6 @@ def test_structure_2d_legend_and_colors(
         assert "Li" in trace_names
         assert "O" in trace_names
 
-        # Test color consistency for custom colors
         if isinstance(elem_colors, dict):
             for trace in legend_traces:
                 element_name = trace.name
@@ -456,7 +453,6 @@ def test_structure_2d_invalid_input() -> None:
     with pytest.raises(ValueError, match="Cannot plot empty set of structures"):
         pmv.structure_2d([])
 
-    # Test with invalid rotation string
     struct = Structure(lattice_cubic, ["Fe", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
     with pytest.raises(ValueError, match="Invalid rotation angle='invalid_rotation'"):
         pmv.structure_2d(struct, rotation="invalid_rotation")
@@ -580,7 +576,6 @@ def test_structure_2d_invalid_input() -> None:
             "subplot_title": lambda _struct, idx: f"Custom {idx}",
             "show_sites": False,  # Simplified to avoid complex validation
         },
-        # Test cell_boundary_tol parameter for 3D
         {
             "cell_boundary_tol": 0.1,
             "show_image_sites": True,
@@ -773,7 +768,6 @@ def test_structure_3d_multiple() -> None:
     }
     # Test with default site_labels="legend"
     fig = pmv.structure_3d(structs_dict, n_cols=2)
-    assert isinstance(fig, go.Figure)
 
     expected_total_traces_3d = 0
 
@@ -832,16 +826,12 @@ def test_structure_3d_multiple() -> None:
     # Check if subplot_title is default (None), which generates titles
     assert len(fig.layout.annotations) == expected_n_subplot_titles
 
-    # Test pandas.Series[Structure]
     struct_series = pd.Series(structs_dict)
     fig = pmv.structure_3d(struct_series)
-    assert isinstance(fig, go.Figure)
     assert len(fig.data) == expected_total_traces_3d
     assert len(fig.layout.annotations) == expected_n_subplot_titles
 
-    # Test list[Structure]
     fig = pmv.structure_3d(list(structs_dict.values()), n_cols=3)
-    assert isinstance(fig, go.Figure)
     assert len(fig.data) == expected_total_traces_3d
     assert len(fig.layout.annotations) == expected_n_subplot_titles
 
@@ -852,7 +842,6 @@ def test_structure_3d_multiple() -> None:
         return f"{key} - {struct.formula}"
 
     fig = pmv.structure_3d(struct_series, subplot_title=custom_subplot_title_func)
-    assert isinstance(fig, go.Figure)
     assert len(fig.data) == expected_total_traces_3d
     assert len(fig.layout.annotations) == expected_n_subplot_titles
 
@@ -977,7 +966,6 @@ def test_structure_plotly_cell_faces_no_cell() -> None:
     lattice = Lattice.cubic(4.0)
     struct = Structure(lattice, ["Li", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
 
-    # Test 2D
     fig_2d = pmv.structure_2d(
         struct,
         show_cell=False,
@@ -988,7 +976,6 @@ def test_structure_plotly_cell_faces_no_cell() -> None:
     surface_traces_2d = [trace for trace in fig_2d.data if trace.name == "cell-face"]
     assert len(surface_traces_2d) == 0
 
-    # Test 3D
     fig_3d = pmv.structure_3d(
         struct,
         show_cell=False,
@@ -1058,7 +1045,6 @@ def test_structure_plotly_multiple_properties_precedence(is_3d: bool) -> None:
         fig1 = pmv.structure_2d(struct1, atom_size=20, scale=1.0, atomic_radii=0.8)
         fig2 = pmv.structure_2d(struct2, atom_size=20, scale=1.0, atomic_radii=0.8)
 
-    # Get site traces from both figures
     def get_site_traces(fig: go.Figure) -> list[Any]:
         """Site marker traces excluding cell and image traces."""
         return [
@@ -1093,7 +1079,6 @@ def test_structure_plotly_multiple_properties_precedence(is_3d: bool) -> None:
         if extract_size(trace.marker.size) > 0
     ]
 
-    # Calculate averages for comparison
     avg_size1 = sum(sizes1) / len(sizes1)
     avg_size2 = sum(sizes2) / len(sizes2)
 

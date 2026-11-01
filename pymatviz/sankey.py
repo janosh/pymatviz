@@ -62,7 +62,6 @@ def sankey_from_2_df_cols(
     )
 
     if annotate_columns:
-        # Add column labels as annotations
         anno_kwargs = (
             dict(annotate_columns) if isinstance(annotate_columns, dict) else {}
         )
