@@ -269,19 +269,22 @@ def test_trajectory_widget_structure_sequence(n_frames: int) -> None:
     np.testing.assert_array_equal(arrays["lattice"], expected_cells)
     assert widget.trajectory["pbc"] == [True] * 3
 
-    # a pymatgen Trajectory (or its dict) encodes from its coords to the same arrays,
-    # its per-frame lattices deduplicated to one [3, 3] cell when all agree
     from pymatgen.core.trajectory import Trajectory
 
     traj = Trajectory.from_structures(structures, constant_lattice=False)
-    for traj_input in (traj, traj.as_dict()):
-        traj_arrays = decode_envelope(
-            TrajectoryWidget(trajectory=traj_input).trajectory
-        )
-        np.testing.assert_allclose(
-            traj_arrays["positions"], expected_pos, rtol=0, atol=1e-6
-        )
-        np.testing.assert_array_equal(traj_arrays["lattice"], expected_cells)
+    traj_arrays = decode_envelope(TrajectoryWidget(trajectory=traj).trajectory)
+    np.testing.assert_array_equal(
+        traj_arrays["positions"], expected_pos.astype("float32")
+    )
+    np.testing.assert_array_equal(traj_arrays["lattice"], expected_cells)
+    # The frontend also accepts molecular JSON without the Python constructor's charge.
+    serialized = {
+        "@class": "Trajectory",
+        "coords": [[[0, 0, 0]]],
+        "species": ["H"],
+        "lattice": None,
+    }
+    assert TrajectoryWidget(trajectory=serialized).trajectory == serialized
 
 
 _CUBIC = {"matrix": [[4, 0, 0], [0, 4, 0], [0, 0, 4]]}

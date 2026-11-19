@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import functools
 import math
+from collections import Counter
 from collections.abc import Mapping
 from typing import Any
 
@@ -138,14 +139,16 @@ def _describe_trajectory(data: Mapping[str, Any]) -> dict[str, Any]:
                 f"{sorted(arrays)}"
             )
         positions, numbers = arrays["positions"], arrays["numbers"]
-        symbols = [
-            element_symbols[num]
-            for num in np.frombuffer(numbers["data"], dtype=numbers["dtype"]).tolist()
-        ]
-        counts = {sym: symbols.count(sym) for sym in dict.fromkeys(symbols)}
+        atomic_numbers = np.frombuffer(
+            numbers["data"], dtype=np.dtype(numbers["dtype"]).newbyteorder("<")
+        )
+        counts = {
+            element_symbols[int(num)]: count
+            for num, count in Counter(atomic_numbers.tolist()).items()
+        }
         return {
             "n_frames": positions["shape"][0],
-            "n_sites": len(symbols),
+            "n_sites": len(atomic_numbers),
             "elements": sorted(counts),
             "formula": _format_formula(counts),
         }

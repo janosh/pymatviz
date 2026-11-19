@@ -36,7 +36,7 @@ def decode_envelope(payload: dict[str, Any]) -> dict[str, np.ndarray]:
     assert payload["format"] == "matterviz-binary-v1"
     return {
         name: np.frombuffer(
-            bytes(spec["data"]), dtype=np.dtype(spec["dtype"]).newbyteorder("<")
+            spec["data"], dtype=np.dtype(spec["dtype"]).newbyteorder("<")
         ).reshape(spec["shape"])
         for name, spec in payload["arrays"].items()
     }

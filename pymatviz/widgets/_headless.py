@@ -343,15 +343,10 @@ def _worker_shim(widget_type: str | None) -> str:
     return ""
 
 
-# Marks a base64-encoded binary buffer (a ``matterviz-binary-v1`` array's ``data``) in
-# the embedded widget JSON; _REVIVE_BUFFERS_JS revives it to a DataView
-_BUFFER_KEY = "__matterviz_buffer_b64__"
-
-
-def _json_default(obj: Any) -> Any:
-    """JSON fallback: binary buffers to ``{_BUFFER_KEY: base64}``, the rest to str."""
+def _json_default(obj: Any) -> str:
+    """Embed binary array data as base64 for the headless renderer."""
     if isinstance(obj, (bytes, bytearray, memoryview)):
-        return {_BUFFER_KEY: base64.b64encode(obj).decode("ascii")}
+        return base64.b64encode(obj).decode("ascii")
     return str(obj)
 
 
@@ -376,18 +371,16 @@ def _esm_blob_loader_js(esm_content: str) -> str:
 # Binary buffers arrive base64-encoded; decode each synchronously (no fetch of a data:
 # URL, which a strict CSP blocks) to the DataView a live comm gives
 _REVIVE_BUFFERS_JS = """\
-const revive_buffers = (value) => {
-  if (!value || typeof value !== "object") return;
-  for (const [key, val] of Object.entries(value)) {
-    const b64 = val?.__matterviz_buffer_b64__;
-    if (typeof b64 !== "string") revive_buffers(val);
-    else {
-      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-      value[key] = new DataView(bytes.buffer);
-    }
+const volumes = widget_data.volumetric_data ?? [];
+for (const envelope of [widget_data.trajectory, ...volumes]) {
+  if (envelope?.format !== "matterviz-binary-v1") continue;
+  for (const spec of Object.values(envelope.arrays)) {
+    const raw = atob(spec.data);
+    const bytes = new Uint8Array(raw.length);
+    for (let idx = 0; idx < raw.length; idx++) bytes[idx] = raw.charCodeAt(idx);
+    spec.data = new DataView(bytes.buffer);
   }
-};
-revive_buffers(widget_data);
+}
 """
 # Anywidget model mock (only get() is needed to render) + mount. Assumes
 # ``esm_url`` and ``widget_data`` are already defined; defines ``el`` so callers
@@ -865,7 +858,7 @@ def _apply_nest_asyncio(loop: asyncio.AbstractEventLoop) -> bool:
     that is a hard error or a soft diagnostic).
     """
     try:
-        import nest_asyncio  # ty: ignore[unresolved-import]
+        import nest_asyncio  # ty: ignore[import-not-found]
     except ImportError:
         return False
     nest_asyncio.apply(loop)

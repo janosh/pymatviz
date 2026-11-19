@@ -55,7 +55,7 @@ def _cache_dir(version: str) -> str:
 def _in_marimo_runtime() -> bool:
     """Return whether execution is inside a live marimo runtime context."""
     try:
-        from marimo._runtime.context import ContextNotInitializedError, get_context  # ty: ignore[unresolved-import]
+        from marimo._runtime.context import ContextNotInitializedError, get_context  # ty: ignore[import-not-found]
     except ImportError:
         return False
     try:
@@ -69,8 +69,8 @@ def _in_marimo_runtime() -> bool:
 def _marimo_esm_url(esm_text: str) -> str | None:
     """Resolve ESM text to a marimo virtual-file URL, or None if unsupported."""
     try:
-        from marimo._output.data.data import js  # ty: ignore[unresolved-import]
-        from marimo._runtime.context import get_context  # ty: ignore[unresolved-import]
+        from marimo._output.data.data import js  # ty: ignore[import-not-found]
+        from marimo._runtime.context import get_context  # ty: ignore[import-not-found]
     except ImportError:
         return None
 
@@ -531,6 +531,24 @@ class MatterVizWidget(AnyWidget):
         if isinstance(inst_esm, str) and isinstance(inst_css, str):
             return inst_esm, inst_css
         return type(self)._set_class_assets()
+
+    def _require_binary_bundle(self) -> None:
+        """Check explicitly pinned npm bundles before sending binary data.
+
+        Raises:
+            ValueError: If the selected bundle predates the binary protocol.
+        """
+        from pymatviz.widgets._binary import BINARY_FORMAT
+
+        url = self._export_esm_url or _cdn_url(MATTERVIZ_ANYWIDGET_VERSION)
+        if (
+            url.startswith(f"{_ANYWIDGET_CDN}@")
+            and BINARY_FORMAT not in self._resolve_assets()[0]
+        ):
+            raise ValueError(
+                f"Widget bundle {url} lacks {BINARY_FORMAT}. "
+                "Select version 'main' or a binary-capable release."
+            )
 
     def describe(self) -> dict[str, Any]:
         """Return structured, machine-parseable facts about this widget's data.

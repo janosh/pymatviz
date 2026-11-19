@@ -166,8 +166,14 @@ def test_widget_volumetric_data_trait() -> None:
     legacy = {**meta, "grid": grid.tolist(), "grid_dims": [2, 3, 4], "data_order": "z"}
     (legacy_payload,) = StructureWidget(volumetric_data=[legacy]).volumetric_data
     (flat_payload,) = StructureWidget(
-        volumetric_data=[{**meta, "values": grid.ravel().tolist(), "dims": [2, 3, 4]}]
+        volumetric_data=[
+            {**meta, "values": grid.ravel().tolist(), "dims": [2.0, 3.0, 4.0]}
+        ]
     ).volumetric_data
+    (empty,) = StructureWidget(
+        volumetric_data=[{**meta, "values": [], "dims": [0, 2, 2]}]
+    ).volumetric_data
+    assert decode_envelope(empty)["values"].shape == (0, 2, 2)
     assert legacy_payload == flat_payload
     values = decode_envelope(legacy_payload)["values"]
     assert values.shape == (2, 3, 4)
@@ -261,6 +267,7 @@ def test_widget_volumetric_data_from_pymatgen() -> None:
             "duplicates",
         ),
         ([{**_VOLUME, "dims": [3, 1, 1]}], ValueError, r"flat values \(2\) need dims"),
+        ([{**_VOLUME, "dims": [0.5, 4, 1]}], ValueError, "need dims"),
         ([{**_VOLUME, "values": [0.1, np.nan]}], ValueError, "non-finite value at"),
         ([{**_VOLUME, "values": [0.1, 1e39]}], ValueError, "beyond float32 range"),
     ],

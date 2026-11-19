@@ -140,7 +140,7 @@ def _github_base_url(package: str) -> str | None:
         return None
 
     github_url = None
-    homepage = metadata.get("Home-page")  # ty: ignore[unresolved-attribute] https://github.com/astral-sh/ty/issues/1134
+    homepage = metadata.get("Home-page")  # ty: ignore[missing-attribute] https://github.com/astral-sh/ty/issues/1134
     if homepage and "github.com" in homepage:
         github_url = homepage
     else:

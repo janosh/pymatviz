@@ -41,26 +41,37 @@ def volume_to_envelopes(volume: Any) -> list[dict[str, Any]]:
         if is_binary_envelope(volume, "volume"):  # copy: prefixing rewrites its id
             return [{**volume, "id": vol_id}]
         if "grid" in volume:
-            grid = np.asarray(volume["grid"], dtype=float)
+            grid = volume["grid"]
         else:
-            values, dims = (
-                np.asarray(volume.get("values", []), float),
-                volume.get("dims"),
-            )
-            if dims is None or values.size != math.prod(dims):
-                raise ValueError(
-                    f"volumetric_data {vol_id!r} flat values ({values.size}) need "
-                    f"dims with that many points, got {dims=}"
+            values = np.asarray(volume.get("values", []))
+            dims = np.asarray(volume.get("dims"))
+            if (
+                dims.shape != (3,)
+                or dims.dtype.kind not in "iuf"
+                or not all(
+                    0 <= size <= 2**53 - 1 and int(size) == size for size in dims
                 )
-            grid = values.reshape(dims)
-        fields = {  # numpy lattice/origin/... to JSON primitives
-            key: normalize_plot_json(volume[key], f"volumetric_data {vol_id!r} {key}")
-            for key in (
-                *("lattice", "origin", "periodic", "label", "source"),
-                *("source_filename", "units", "signed"),
-            )
-            if key in volume
+                or values.size != math.prod(map(int, dims))
+            ):
+                raise ValueError(
+                    f"volumetric_data {vol_id!r} flat values ({values.size}) need dims "
+                    f"with that many points, got {dims=}"
+                )
+            grid = values.reshape(tuple(map(int, dims)))
+        keys = {
+            "lattice",
+            "origin",
+            "periodic",
+            "label",
+            "source",
+            "source_filename",
+            "units",
+            "signed",
         }
+        fields = normalize_plot_json(
+            {key: volume[key] for key in keys & volume.keys()},
+            f"volumetric_data {vol_id!r}",
+        )
         return [volume_envelope(grid, **fields, id=vol_id)]
 
     data, structure = getattr(volume, "data", None), getattr(volume, "structure", None)
@@ -70,10 +81,10 @@ def volume_to_envelopes(volume: Any) -> list[dict[str, Any]]:
             f"{type(volume).__name__}"
         )
     # CHGCAR stores rho * V_cell; matterviz divides by the volume on parse
-    scale = 1 / structure.volume if type(volume).__name__ == "Chgcar" else 1
+    is_chgcar = type(volume).__name__ == "Chgcar"
     return [
         volume_envelope(
-            np.asarray(grid, dtype=float) * scale,
+            np.asarray(grid, dtype=float) / structure.volume if is_chgcar else grid,
             id=str(key),
             lattice=structure.lattice.matrix.tolist(),
             origin=[0.0, 0.0, 0.0],
@@ -123,7 +134,8 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
       precedence.
 
     ``volumetric_data`` entries hold ``memoryview`` buffers, so ``to_dict()`` isn't
-    plain JSON (``json.dumps`` needs a ``default`` for them).
+    plain JSON. Custom bundles must support matterviz-binary-v1. Contiguous float32
+    input grids are borrowed and must stay unmodified.
 
     Examples:
         Basic usage:
@@ -245,6 +257,8 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
                 "volumetric_data must be a list of volumes or a {prefix: volume} "
                 f"mapping, got {type(value).__name__}"
             )
+        if payloads:
+            self._require_binary_bundle()
         ids = [payload["id"] for payload in payloads]
         if dupes := sorted({vol_id for vol_id in ids if ids.count(vol_id) > 1}):
             raise ValueError(

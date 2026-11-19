@@ -12,87 +12,14 @@ import numpy as np
 import pytest
 
 from pymatviz import StructureWidget, TrajectoryWidget
-from pymatviz.widgets._binary import (
-    BINARY_FORMAT,
-    binary_array,
-    trajectory_envelope,
-    trajectory_to_envelope,
-    volume_envelope,
-)
-from pymatviz.widgets._headless import (
-    _BUFFER_KEY,
-    _REVIVE_BUFFERS_JS,
-    _widget_data_json,
-)
+from pymatviz.widgets._binary import BINARY_FORMAT, binary_array, volume_envelope
+from pymatviz.widgets._headless import _REVIVE_BUFFERS_JS, _widget_data_json
 from tests.widgets.conftest import decode_envelope
 
 
-_RNG = np.random.default_rng(seed=0)
-_POSITIONS = _RNG.random((4, 3, 3)) * 10
+_POSITIONS = np.random.default_rng(seed=0).random((4, 3, 3)) * 10
 _NUMBERS = [8, 1, 1]
 _CELL = np.eye(3) * 10
-
-
-def _envelope(**kwargs: Any) -> dict[str, Any]:
-    """A valid 4-frame x 3-atom envelope with per-frame cells and channels."""
-    defaults: dict[str, Any] = {
-        "lattice": np.array([_CELL * (1 + 0.01 * idx) for idx in range(4)]),
-        "pbc": [True, True, False],
-        "steps": np.arange(0, 40, 10),
-        "metadata": {"source": "md"},
-        "time_step": {"value": 0.5, "unit": "fs"},
-        "vectors": {"force": _POSITIONS / 10},
-        "scalars": {"energy": [-1.0, -1.5, np.nan, -2.0]},
-        "positions": _POSITIONS,
-        "numbers": _NUMBERS,
-    }
-    return trajectory_envelope(**defaults | kwargs)
-
-
-@pytest.mark.parametrize(
-    ("steps", "steps_dtype"),
-    [(np.arange(0, 40, 10), "int32"), (np.array([0, 10, 20, 2**40]), "float64")],
-)
-def test_trajectory_envelope_round_trip(steps: np.ndarray, steps_dtype: str) -> None:
-    """Wire bytes decode back to the inputs with the documented dtypes and shapes;
-    steps beyond int32 fall to float64 (exact below 2^53).
-    """
-    payload = _envelope(steps=steps)
-    assert payload["format"] == BINARY_FORMAT
-    assert payload["kind"] == "trajectory"
-    assert {key: payload[key] for key in ("pbc", "metadata", "time_step")} == {
-        "pbc": [True, True, False],
-        "metadata": {"source": "md"},
-        "time_step": {"value": 0.5, "unit": "fs"},
-    }
-    dtypes = {name: spec["dtype"] for name, spec in payload["arrays"].items()}
-    assert dtypes == {
-        "positions": "float32",
-        "numbers": "uint8",
-        "lattice": "float64",
-        "steps": steps_dtype,
-        "force": "float32",
-        "energy": "float64",
-    }
-    arrays = decode_envelope(payload)
-    assert {name: arr.shape for name, arr in arrays.items()} == {
-        "positions": (4, 3, 3),
-        "numbers": (3,),
-        "lattice": (4, 3, 3),
-        "steps": (4,),
-        "force": (4, 3, 3),
-        "energy": (4,),
-    }
-    # float32: relative error <= 2^-24 (half an ulp) of the float64 input
-    np.testing.assert_allclose(arrays["positions"], _POSITIONS, rtol=6e-8, atol=0)
-    np.testing.assert_array_equal(arrays["positions"], _POSITIONS.astype(np.float32))
-    assert arrays["numbers"].tolist() == _NUMBERS
-    assert arrays["steps"].tolist() == steps.tolist()
-    np.testing.assert_array_equal(arrays["energy"], [-1.0, -1.5, np.nan, -2.0])
-    # every buffer holds exactly prod(shape) * itemsize bytes
-    for spec in payload["arrays"].values():
-        n_bytes = np.prod(spec["shape"]) * np.dtype(spec["dtype"]).itemsize
-        assert memoryview(spec["data"]).nbytes == n_bytes
 
 
 @pytest.mark.parametrize(
@@ -115,45 +42,27 @@ def test_binary_array_copies_only_when_needed(
     np.testing.assert_array_equal(view.reshape(values.shape), values)
 
 
-_NAN_POSITIONS = _POSITIONS.copy()
-_NAN_POSITIONS[1, 2, 0] = np.nan
+@pytest.mark.parametrize("key", ["positions", "force", "lattice"])
+@pytest.mark.parametrize("value", [np.nan, np.inf, 1e39])
+def test_invalid_frame_arrays(key: str, value: float) -> None:
+    """Non-finite data and float32 overflow fail before a frame syncs."""
+    from ase import Atoms
 
-
-@pytest.mark.parametrize(
-    ("override", "match"),
-    [
-        (
-            {"positions": _NAN_POSITIONS},
-            "positions has non-finite value at flat index 15",
-        ),
-        ({"positions": _POSITIONS[..., :2]}, r"positions .*\[\*, \*, 3\]"),
-        ({"positions": _POSITIONS * 1e38}, "positions beyond float32 range"),
-        ({"vectors": {"force": _POSITIONS * 1e38}}, "force beyond float32 range"),
-        *[
-            ({"time_step": {"value": val, "unit": "fs"}}, "finite and > 0")
-            for val in (-1, 0, np.nan, np.inf, None)
-        ],
-        ({"positions": _POSITIONS[:0]}, "at least 1 frame"),
-        ({"positions": _POSITIONS.astype(str)}, "numeric array"),
-        ({"numbers": [8, 1]}, r"numbers .*shape \[3\]"),
-        ({"numbers": [8.0, 1, 1]}, r"integers in 1..118, got \[1.0, 8.0\]"),
-        ({"numbers": [300, 0, 1]}, r"integers in 1..118, got \[0, 1, 300\]"),
-        ({"lattice": np.eye(2)}, r"lattice .*\[3, 3\]"),
-        ({"steps": np.arange(3)}, r"steps .*\[4\]"),
-        ({"vectors": {"force": _POSITIONS[:, :2]}}, r"force .*\[4, 3, 3\]"),
-        ({"scalars": {"energy": np.zeros(5)}}, r"energy .*\[4\]"),
-        ({"scalars": {"steps": np.zeros(4)}}, r"channels \['steps'\]"),
-        ({"vectors": {"energy": _POSITIONS}}, r"channels \['energy'\]"),
-    ],
-)
-def test_trajectory_envelope_rejects_bad_inputs(
-    override: dict[str, Any], match: str
-) -> None:
-    """Arrays matterviz's trajectory_from_binary would reject raise in Python, atomic
-    numbers before the uint8 cast wraps them, and clashing channel names.
-    """
-    with pytest.raises(ValueError, match=match):
-        _envelope(**override)
+    atoms = Atoms("H", positions=[[0, 0, 0]], cell=[2, 2, 2], pbc=True)
+    if key == "positions":
+        atoms.positions[0, 0] = value
+    elif key == "force":
+        atoms.info["force"] = [[value, 0, 0]]
+    else:
+        atoms.cell[0, 0] = value
+        if np.isfinite(value):  # Lattice uses float64.
+            arrays = decode_envelope(TrajectoryWidget(trajectory=atoms).trajectory)
+            assert arrays["lattice"][0, 0] == value
+            return
+    with pytest.raises(
+        ValueError, match=f"{key} (has non-finite value|beyond float32 range)"
+    ):
+        TrajectoryWidget(trajectory=atoms)
 
 
 def test_envelope_kind_mismatch_raises() -> None:
@@ -162,12 +71,34 @@ def test_envelope_kind_mismatch_raises() -> None:
     with pytest.raises(TypeError, match="kind must be 'trajectory', got 'volume'"):
         TrajectoryWidget(trajectory=volume)
     with pytest.raises(TypeError, match="kind must be 'volume', got 'trajectory'"):
-        StructureWidget(volumetric_data=[_envelope() | {"id": "v"}])
+        StructureWidget(volumetric_data=[volume | {"kind": "trajectory"}])
+
+
+@pytest.mark.parametrize(
+    ("widget_type", "kwargs"),
+    [
+        (
+            TrajectoryWidget,
+            {"trajectory": {"format": BINARY_FORMAT, "kind": "trajectory"}},
+        ),
+        (StructureWidget, {"volumetric_data": [{"id": "mask", "grid": [[[True]]]}]}),
+    ],
+)
+def test_pinned_bundle_needs_decoder(
+    widget_type: type, kwargs: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An incompatible pinned bundle raises before any bytes sync."""
+    from pymatviz.widgets import matterviz
+
+    monkeypatch.setattr(matterviz, "fetch_widget_asset", lambda *_args: "old bundle")
+    with pytest.raises(ValueError, match=r"0\.8\.0.*lacks matterviz-binary-v1"):
+        widget_type(version_override="0.8.0", **kwargs)
 
 
 def _fallback_cases() -> list[Any]:
     """Frame lists (and pymatgen Trajectories) the binary format can't hold."""
     from ase import Atoms
+    from ase.constraints import FixAtoms
     from pymatgen.core import DummySpecies, Lattice, Molecule, Species, Structure
     from pymatgen.core.trajectory import Trajectory
 
@@ -186,6 +117,18 @@ def _fallback_cases() -> list[Any]:
         [fe2, Structure(lattice, ["Fe", "Co"], coords)],  # varying species
         [{"structure": fe2, "label": "relaxed"}],  # string frame property
         [Structure(lattice, [{"Fe": 0.5, "Co": 0.5}], [[0, 0, 0]])],  # disordered
+        [fe2.copy(site_properties={"aux": [[0, 1, 2], [3, 4]]})],
+        [with_force.copy(site_properties={"force_max": zeros})],
+        [Atoms("H2", h2_pos, cell=[5, 5, 5], constraint=FixAtoms(indices=[0]))],
+        [Atoms("H2", h2_pos, cell=[5, 5, 5], magmoms=[[0, 0, 1], [0, 0, 2]])],
+        [
+            {
+                "structure": Structure(
+                    lattice, ["Fe", "Fe"], coords, properties={"phase": "alpha"}
+                ),
+                "energy": -1,
+            }
+        ],
         [dummy, dummy],
         Trajectory.from_structures([dummy, dummy]),
         [Structure(lattice, [], [])] * 2,  # zero atoms
@@ -199,6 +142,7 @@ def _fallback_cases() -> list[Any]:
         Trajectory.from_structures([fe2, fe2], frame_properties=forces),  # ragged
         [Structure(lattice, ["Fe", "Fe"], coords, charge=1)],
         # singular cell (2D slab without c): the JSON path pads it with vacuum
+        [Atoms("H2", h2_pos, cell=[0.009] * 3, pbc=True)],
         [Atoms("H2", h2_pos, cell=[5, 5, 0], pbc=[1, 1, 0])] * 2,
         [with_force.copy(site_properties={"forces": zeros})],  # force and forces
         [{"structure": fe2, "n_evals": 2**53 + 1}],  # float64 would round it
@@ -219,14 +163,51 @@ def test_unsupported_frames_fall_back_to_json(frames: Any) -> None:
     traj = TrajectoryWidget(trajectory=frames).trajectory
     assert "format" not in traj
     assert "frames" in traj or traj.get("@class") == "Trajectory"
-    assert trajectory_to_envelope(frames) is None
+
+
+@pytest.mark.parametrize("source", ["object", "dict", "json"])
+def test_disordered_trajectory_frames(source: str) -> None:
+    """Mixed sites retain occupancies, unwrapped coordinates and properties."""
+    from monty.json import MontyEncoder
+    from pymatgen.core import Composition, Species
+    from pymatgen.core.trajectory import Trajectory
+
+    frac = np.array([[[0.9, 0, 0], [0, 0, 0]], [[1.1, 0, 0], [0, 0, 0]]])
+    traj = Trajectory(
+        [Composition({"Fe": 0.5, "Co": 0.5}), Species("Fe", 3)],
+        frac,
+        lattice=_CELL,
+        time_step=2,
+        site_properties={"moment": [1, 2]},
+        frame_properties=[{}, {"energy": -1}],
+    )
+    traj.to_displacements()
+    value = {
+        "object": traj,
+        "dict": traj.as_dict(),
+        "json": json.loads(json.dumps(traj, cls=MontyEncoder)),
+    }[source]
+    payload = TrajectoryWidget(trajectory=value).trajectory
+    assert traj.coords_are_displacement
+    assert payload["time_step"] == {"value": 2, "unit": "fs"}
+    assert payload["frames"][1]["metadata"] == {"energy": -1}
+    for frame, pos in zip(payload["frames"], frac[:, 0], strict=True):
+        site, iron = frame["structure"]["sites"]
+        assert iron["species"][0]["oxidation_state"] == 3
+        assert site["species"] == [
+            {"element": "Fe", "occu": 0.5},
+            {"element": "Co", "occu": 0.5},
+        ]
+        assert site["properties"] == {"moment": 1}
+        np.testing.assert_array_equal(site["abc"], pos)
+        np.testing.assert_array_equal(site["xyz"], pos @ _CELL)
 
 
 def test_binary_trajectory_describe_and_numpy_metadata() -> None:
     """describe() reads binary envelopes; numpy metadata/time_step become JSON-safe."""
-    from pymatgen.core import Lattice, Structure
+    from pymatgen.core import IStructure, Lattice
 
-    struct = Structure(Lattice.cubic(3), ["Fe", "Fe"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+    struct = IStructure(Lattice.cubic(3), ["Fe", "Fe"], [[0, 0, 0], [0.5, 0.5, 0.5]])
     facts = TrajectoryWidget(trajectory=[struct] * 3).describe()
     assert {key: facts[key] for key in ("n_frames", "n_sites", "formula")} == {
         "n_frames": 3,
@@ -237,11 +218,11 @@ def test_binary_trajectory_describe_and_numpy_metadata() -> None:
     traj = TrajectoryWidget(
         trajectory={"frames": [struct, struct], "metadata": metadata}
     ).trajectory
-    assert traj["format"] == BINARY_FORMAT
+    assert traj["pbc"] == [True] * 3
+    np.testing.assert_array_equal(
+        decode_envelope(traj)["lattice"], struct.lattice.matrix
+    )
     assert json.dumps(traj["metadata"]) == '{"T": 300.0, "arr": [0, 1]}'
-    time_step = {"value": np.float32(0.5), "unit": "fs"}
-    payload = trajectory_envelope(_POSITIONS, _NUMBERS, time_step=time_step)
-    assert json.dumps(payload["time_step"]) == '{"value": 0.5, "unit": "fs"}'
     no_positions = {"format": BINARY_FORMAT, "kind": "trajectory", "arrays": {}}
     with pytest.raises(ValueError, match=r"lacks arrays \['numbers', 'positions'\]"):
         TrajectoryWidget(trajectory=no_positions).describe()
@@ -257,7 +238,7 @@ def test_pymatgen_trajectory_per_frame_lattice(displacement: bool) -> None:
 
     frac = np.array([[[0.1, 0.2, 0.95]], [[0.15, 0.2, 1.02]], [[0.2, 0.25, 1.1]]])
     lattices = np.array([np.eye(3) * (4 + 0.1 * idx) for idx in range(3)])
-    forces = [[[0, 0, 3.0]], [[0, 4.0, 0]], [[0, 0, 0.0]]]
+    forces = np.array([[[0, 0, 300]], [[0, 4, 0]], [[0, 0, 0]]], dtype=np.float16)
     frame_props = [
         {"energy": -1.0 - idx, "forces": force} for idx, force in enumerate(forces)
     ]
@@ -267,64 +248,75 @@ def test_pymatgen_trajectory_per_frame_lattice(displacement: bool) -> None:
         lattice=lattices,
         constant_lattice=False,
         frame_properties=frame_props,
+        time_step=np.float64(0.5),
     )
     if displacement:
         traj.to_displacements()
-    arrays = decode_envelope(TrajectoryWidget(trajectory=traj).trajectory)
+    payload = TrajectoryWidget(trajectory=traj).trajectory
+    assert json.loads(json.dumps(payload["time_step"])) == {"value": 0.5, "unit": "fs"}
+    arrays = decode_envelope(payload)
     np.testing.assert_array_equal(arrays["lattice"], lattices)
     assert arrays["energy"].tolist() == [-1.0, -2.0, -3.0]
     np.testing.assert_array_equal(arrays["force"], forces)
-    assert arrays["force_max"].tolist() == arrays["force_norm"].tolist() == [3, 4, 0]
+    assert arrays["force_max"].tolist() == arrays["force_norm"].tolist() == [300, 4, 0]
     expected = np.einsum("fai,fij->faj", frac, lattices).astype(np.float32)
-    # f32 cast of identical f64 products; displacement cumsum adds <= 3 f64 ulps
-    np.testing.assert_allclose(arrays["positions"], expected, rtol=1e-7, atol=0)
+    np.testing.assert_array_equal(arrays["positions"], expected)
+    traj.frame_properties = [None, {"energy": -2.0}, {}]
+    np.testing.assert_array_equal(
+        decode_envelope(TrajectoryWidget(trajectory=traj).trajectory)["energy"],
+        [np.nan, -2.0, np.nan],
+    )
+    traj.time_step, traj.frame_properties = 0, [{"label": "MD"}] * len(frac)
+    with pytest.raises(ValueError, match="time_step value"):
+        TrajectoryWidget(trajectory=traj)
 
 
 def test_volume_envelope_round_trip() -> None:
     """A volume encodes its grid as float32 [nx, ny, nz] beside the JSON fields."""
-    grid = _RNG.random((2, 3, 4))
-    fields = {"id": "chg", "lattice": _CELL.tolist(), "origin": [0, 0, 0]}
-    payload = volume_envelope(grid, **fields, periodic=True)
-    assert payload["arrays"]["values"]["dtype"] == "float32"
+    grid = np.arange(24, dtype="<f4").reshape(2, 3, 4)
+    volume = {"id": "v", "grid": grid, "lattice": _CELL, "origin": np.zeros(3)}
+    widget = StructureWidget(volumetric_data=[volume])
+    (payload,) = widget.volumetric_data
     values = decode_envelope(payload)["values"]
-    np.testing.assert_array_equal(values, grid.astype(np.float32))
-    assert values[1, 2, 3] == np.float32(grid.ravel()[(1 * 3 + 2) * 4 + 3])
+    assert np.shares_memory(grid, values)
+    np.testing.assert_array_equal(values, grid)
+    assert json.loads(json.dumps(payload["origin"])) == [0, 0, 0]
     with pytest.raises(ValueError, match=r"values must be .* \[\*, \*, \*\]"):
-        volume_envelope(grid[0], **fields, periodic=True)
-    np_vol = {"id": "v", "grid": grid, "lattice": _CELL, "origin": np.zeros(3)}
-    np_payload = StructureWidget(volumetric_data=[np_vol | {"periodic": True}])
-    np_fields = {
-        key: val
-        for key, val in np_payload.volumetric_data[0].items()
-        if key != "arrays"
-    }
-    assert json.loads(json.dumps(np_fields))["origin"] == [0.0, 0.0, 0.0]
-    ready = payload | {"extra": "x"}  # ready-made envelopes pass through as-is
-    assert StructureWidget(volumetric_data=[ready]).volumetric_data[0]["extra"] == "x"
+        widget.volumetric_data = [volume | {"grid": grid[0]}]
+    widget.volumetric_data = [payload | {"extra": "x"}]
+    assert widget.volumetric_data[0]["extra"] == "x"
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="needs node")
 def test_headless_json_embeds_buffers_as_base64() -> None:
-    """to_html/to_img embed binary buffers as base64 markers revived to DataViews."""
-    payload = trajectory_envelope(_POSITIONS[:1], _NUMBERS)
-    embedded = json.loads(_widget_data_json({"trajectory": payload}))["trajectory"]
-    marker = embedded["arrays"]["positions"]["data"]
-    assert set(marker) == {_BUFFER_KEY}
-    decoded = base64.b64decode(marker[_BUFFER_KEY])
-    assert decoded == bytes(payload["arrays"]["positions"]["data"])
+    """Headless exports revive only binary array data as DataViews."""
+    from ase import Atoms
+
+    payload = TrajectoryWidget(
+        trajectory=Atoms(numbers=_NUMBERS, positions=_POSITIONS[0])
+    ).trajectory
+    marker = {"__matterviz_buffer_b64__": "ordinary metadata"}
+    volume = volume_envelope(_POSITIONS, id="grid")
+    data_json = _widget_data_json(
+        {"trajectory": payload, "volumetric_data": [volume], "metadata": marker}
+    )
+    encoded = json.loads(data_json)["trajectory"]["arrays"]["positions"]["data"]
+    assert base64.b64decode(encoded) == bytes(payload["arrays"]["positions"]["data"])
     assert _REVIVE_BUFFERS_JS in TrajectoryWidget(trajectory=payload).to_html()
-    # run the revive snippet in node: buffers become DataViews synchronously
-    script = f"""const widget_data = {_widget_data_json({"trajectory": payload})};
+    script = f"""const widget_data = {data_json};
 {_REVIVE_BUFFERS_JS}
 const {{ data }} = widget_data.trajectory.arrays.positions;
-const floats = new Float32Array(data.buffer, data.byteOffset, data.byteLength / 4);
-console.log(JSON.stringify([data instanceof DataView, Array.from(floats)]));"""
+console.log(JSON.stringify([data instanceof DataView,
+  widget_data.volumetric_data[0].arrays.values.data instanceof DataView,
+  widget_data.metadata, Array.from(new Float32Array(data.buffer))]));"""
     result = subprocess.run(  # noqa: S603
         ["node", "-e", script],  # noqa: S607
         capture_output=True,
         text=True,
         check=True,
     )
-    is_view, floats = json.loads(result.stdout)
-    assert is_view
+    traj_view, vol_view, metadata, floats = json.loads(result.stdout)
+    assert traj_view
+    assert vol_view
+    assert metadata == marker
     np.testing.assert_array_equal(floats, _POSITIONS[:1].astype(np.float32).ravel())

@@ -53,8 +53,8 @@ def test_notebook_mode_toggle(enable: bool) -> None:
     assert hasattr(Structure, "_repr_mimebundle_") == enable
 
     if enable:
-        assert callable(Structure._ipython_display_)  # ty: ignore[unresolved-attribute]
-        assert callable(Structure._repr_mimebundle_)  # ty: ignore[unresolved-attribute]
+        assert callable(Structure._ipython_display_)  # ty: ignore[missing-attribute]
+        assert callable(Structure._repr_mimebundle_)  # ty: ignore[missing-attribute]
 
     for module_name, class_name in [
         ("ase.atoms", "Atoms"),
@@ -164,9 +164,9 @@ def test_fallback_without_widgets(
     monkeypatch.setattr("builtins.__import__", mock_import)
     try:
         expected = {"text/plain": repr(structures[0])}
-        structures[0]._ipython_display_()  # ty: ignore[unresolved-attribute]
+        structures[0]._ipython_display_()  # ty: ignore[missing-attribute]
         assert published_data == [expected]
-        assert structures[0]._repr_mimebundle_() == expected  # ty: ignore[unresolved-attribute]
+        assert structures[0]._repr_mimebundle_() == expected  # ty: ignore[missing-attribute]
     finally:
         monkeypatch.undo()
         pmv.notebook_mode(on=False)
@@ -193,7 +193,7 @@ def test_phonopy_dos_integration(monkeypatch: pytest.MonkeyPatch) -> None:
         from phonopy.phonon.dos import TotalDos
 
         assert hasattr(TotalDos, "_ipython_display_")
-        phonopy_nacl.total_dos._ipython_display_()  # ty: ignore[unresolved-attribute]
+        phonopy_nacl.total_dos._ipython_display_()  # ty: ignore[missing-attribute]
         assert len(published_data) == 1
         assert "text/plain" in published_data[0]
         assert "application/vnd.jupyter.widget-view+json" in published_data[0]

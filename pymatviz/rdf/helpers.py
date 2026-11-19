@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 # compiled cython module, has no type stubs
-from pymatgen.optimization.neighbors import find_points_in_spheres  # ty: ignore[unresolved-import]
+from pymatgen.optimization.neighbors import find_points_in_spheres  # ty: ignore[import-not-found]
 
 from pymatviz.process_data import normalize_periodic_structures
 

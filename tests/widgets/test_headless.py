@@ -117,7 +117,7 @@ def test_foreign_running_loop_after_shutdown() -> None:
 def test_render_widget_headless_dispatches_async_in_event_loop() -> None:
     """render_widget_headless calls _render_widget_async when inside an event loop."""
     pytest.importorskip("nest_asyncio")
-    import nest_asyncio  # ty: ignore[unresolved-import]
+    import nest_asyncio  # ty: ignore[import-not-found]
 
     fake_png = b"\x89PNG"
 
