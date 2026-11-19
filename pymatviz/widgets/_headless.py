@@ -343,12 +343,24 @@ def _worker_shim(widget_type: str | None) -> str:
     return ""
 
 
+# Marks a base64-encoded binary buffer (a ``matterviz-binary-v1`` array's ``data``) in
+# the embedded widget JSON; _REVIVE_BUFFERS_JS revives it to a DataView
+_BUFFER_KEY = "__matterviz_buffer_b64__"
+
+
+def _json_default(obj: Any) -> Any:
+    """JSON fallback: binary buffers to ``{_BUFFER_KEY: base64}``, the rest to str."""
+    if isinstance(obj, (bytes, bytearray, memoryview)):
+        return {_BUFFER_KEY: base64.b64encode(obj).decode("ascii")}
+    return str(obj)
+
+
 def _widget_data_json(widget_data: dict[str, Any]) -> str:
     """Serialize widget data for embedding in a ``<script>`` tag.
 
     Escapes ``</`` so the JSON can't prematurely close the script tag.
     """
-    return json.dumps(widget_data, default=str).replace("</", r"<\/")
+    return json.dumps(widget_data, default=_json_default).replace("</", r"<\/")
 
 
 def _esm_blob_loader_js(esm_content: str) -> str:
@@ -361,10 +373,28 @@ def _esm_blob_loader_js(esm_content: str) -> str:
     )
 
 
+# Binary buffers arrive base64-encoded; decode each synchronously (no fetch of a data:
+# URL, which a strict CSP blocks) to the DataView a live comm gives
+_REVIVE_BUFFERS_JS = """\
+const revive_buffers = (value) => {
+  if (!value || typeof value !== "object") return;
+  for (const [key, val] of Object.entries(value)) {
+    const b64 = val?.__matterviz_buffer_b64__;
+    if (typeof b64 !== "string") revive_buffers(val);
+    else {
+      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      value[key] = new DataView(bytes.buffer);
+    }
+  }
+};
+revive_buffers(widget_data);
+"""
 # Anywidget model mock (only get() is needed to render) + mount. Assumes
 # ``esm_url`` and ``widget_data`` are already defined; defines ``el`` so callers
 # can reuse the mounted root. Plain single-brace JS (injected via substitution).
-_MOUNT_WIDGET_JS = """\
+_MOUNT_WIDGET_JS = (
+    _REVIVE_BUFFERS_JS
+    + """\
 const model = {
   get: (key) => widget_data[key],
   set: () => {}, on: () => {}, off: () => {}, save_changes: () => {}, send: () => {},
@@ -374,6 +404,7 @@ const render_fn = mod.default?.render ?? mod.render;
 if (!render_fn) throw new Error("ESM bundle has no render export");
 const el = document.getElementById("widget-root");
 render_fn({ model, el });"""
+)
 
 
 def _build_html(

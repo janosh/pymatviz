@@ -360,13 +360,13 @@ def test_to_html_default_uses_cdn_url() -> None:
     html = _scatter().to_html()
     assert _cdn_url(MATTERVIZ_ANYWIDGET_VERSION) in html
     assert '"scatter_plot"' in html
-    assert "atob(" not in html  # external, not inlined
+    assert "const esm_blob" not in html  # external, not inlined
 
 
 def test_to_html_inline_embeds_bundle() -> None:
     """inline=True embeds the base64 bundle and references no CDN."""
     html = _scatter().to_html(inline=True)
-    assert "atob(" in html
+    assert "const esm_blob" in html
     assert _cdn_url(MATTERVIZ_ANYWIDGET_VERSION) not in html
 
 

@@ -13,6 +13,11 @@ import math
 from collections.abc import Mapping
 from typing import Any
 
+import numpy as np
+
+from pymatviz.utils.data import element_symbols
+from pymatviz.widgets._binary import is_binary_envelope
+
 
 def _minmax(values: Any) -> list[float] | None:
     """Find finite extrema in nested lists/tuples/mappings, ignoring bools."""
@@ -125,6 +130,25 @@ def _describe_structure(data: Mapping[str, Any]) -> dict[str, Any]:
 def _describe_trajectory(data: Mapping[str, Any]) -> dict[str, Any]:
     """Frame count plus first-frame structure facts."""
     traj = data.get("trajectory")
+    if isinstance(traj, Mapping) and is_binary_envelope(traj, "trajectory"):
+        arrays = traj.get("arrays") or {}
+        if missing := sorted({"positions", "numbers"} - set(arrays)):
+            raise ValueError(
+                f"binary trajectory envelope lacks arrays {missing}, has "
+                f"{sorted(arrays)}"
+            )
+        positions, numbers = arrays["positions"], arrays["numbers"]
+        symbols = [
+            element_symbols[num]
+            for num in np.frombuffer(numbers["data"], dtype=numbers["dtype"]).tolist()
+        ]
+        counts = {sym: symbols.count(sym) for sym in dict.fromkeys(symbols)}
+        return {
+            "n_frames": positions["shape"][0],
+            "n_sites": len(symbols),
+            "elements": sorted(counts),
+            "formula": _format_formula(counts),
+        }
     frames = traj.get("frames") or [] if isinstance(traj, Mapping) else []
     facts: dict[str, Any] = {"n_frames": len(frames)}
     if frames and isinstance(frames[0], Mapping):
