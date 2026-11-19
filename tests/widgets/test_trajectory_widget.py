@@ -174,16 +174,16 @@ def test_widget_complete_lifecycle(
     ("trajectory_input", "expected_properties", "is_binary"),
     [
         ([{"structure": "struct1", "energy": -1.23}], {"energy": -1.23}, True),
-        # a stress tensor doesn't fit the binary format: JSON frame metadata
+        # Arbitrary tensor metadata stays JSON.
         (
             [
                 {
                     "structure": "struct1",
-                    "stress": [[0.1, 0, 0], [0, 0.1, 0], [0, 0, 0.1]],
+                    "other_tensor": [[0.1, 0, 0], [0, 0.1, 0], [0, 0, 0.1]],
                     "temp": 300,
                 }
             ],
-            {"stress": [[0.1, 0, 0], [0, 0.1, 0], [0, 0, 0.1]], "temp": 300},
+            {"other_tensor": [[0.1, 0, 0], [0, 0.1, 0], [0, 0, 0.1]], "temp": 300},
             False,
         ),
         (
@@ -235,6 +235,64 @@ def test_trajectory_widget_property_extraction(
     assert set(traj) == {"frames", "metadata"}
     assert [frame["step"] for frame in traj["frames"]] == list(range(n_frames))
     assert traj["frames"][0]["metadata"] == expected_properties
+
+
+@pytest.mark.parametrize("shape", [(6,), (3, 3)])
+def test_ase_stress_transfer(
+    shape: tuple[int, ...], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Transfer raw ASE stress losslessly with compatible renderers."""
+    from ase import Atoms
+    from ase.calculators.singlepoint import SinglePointCalculator
+
+    frames = [Atoms("H", positions=[[idx, 0, 0]]) for idx in range(2)]
+    tensors = np.random.default_rng(seed=0).normal(size=(len(frames), *shape))
+    for atoms, stress in zip(frames, tensors, strict=True):
+        atoms.calc = SinglePointCalculator(atoms, stress=stress)
+
+    widget = TrajectoryWidget()
+    monkeypatch.setattr(
+        widget, "_resolve_assets", lambda: ("matterviz-binary-v1 frame_stress", "")
+    )
+    widget.trajectory = frames
+    encoded = widget.trajectory
+    wire = decode_envelope(encoded)["frame_stress"]
+    assert wire.dtype == np.dtype("<f8")
+    np.testing.assert_array_equal(wire, tensors.reshape(2, -1))
+
+    monkeypatch.setattr(widget, "_resolve_assets", lambda: ("matterviz-binary-v1", ""))
+    widget.trajectory = frames
+    np.testing.assert_array_equal(
+        [frame["metadata"]["stress"] for frame in widget.trajectory["frames"]], tensors
+    )
+    with pytest.raises(ValueError, match="lacks the binary frame_stress channel"):
+        widget.trajectory = encoded
+
+
+@pytest.mark.parametrize(
+    "extra", [{}, {"stress": np.eye(3)}, {"stress": np.ones(6), "frame_stress": 42}]
+)
+def test_partial_or_conflicting_stress_stays_json(
+    extra: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Keep missing stresses, mixed shapes, and user-defined channels intact."""
+    from ase import Atoms
+
+    atoms = Atoms("H")
+    widget = TrajectoryWidget()
+    monkeypatch.setattr(
+        widget, "_resolve_assets", lambda: ("matterviz-binary-v1 frame_stress", "")
+    )
+    widget.trajectory = [
+        {"structure": atoms, "stress": [1] * 6},
+        {"structure": atoms, **extra},
+    ]
+    frames = widget.trajectory["frames"]
+    assert frames[0]["metadata"]["stress"] == [1] * 6
+    metadata = frames[1].get("metadata", {})
+    assert metadata.keys() == extra.keys()
+    for key, value in extra.items():
+        np.testing.assert_array_equal(metadata[key], value)
 
 
 @pytest.mark.parametrize(

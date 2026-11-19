@@ -178,27 +178,58 @@ def test_disordered_trajectory_frames(source: str) -> None:
         frac,
         lattice=_CELL,
         time_step=2,
-        site_properties={"moment": [1, 2]},
-        frame_properties=[{}, {"energy": -1}],
+        site_properties={"moment": [np.array(1), np.array(2)]},
+        frame_properties=[{}, {"energy": -1, "forces": np.full((2, 3), [0, 3, 4])}],
     )
     traj.to_displacements()
+    traj.charge = 2  # Explicit charge differs from the sum of oxidation states (3).
+    serialized = traj.as_dict()
     value = {
         "object": traj,
-        "dict": traj.as_dict(),
-        "json": json.loads(json.dumps(traj, cls=MontyEncoder)),
+        "dict": serialized,
+        "json": json.loads(
+            json.dumps(
+                serialized
+                | {
+                    "coords": traj.coords,
+                    "lattice": _CELL,
+                    "site_properties": [traj.site_properties],
+                },
+                cls=MontyEncoder,
+            )
+        ),
     }[source]
-    payload = TrajectoryWidget(trajectory=value).trajectory
+    with pytest.warns(UserWarning, match="sum of oxidation states"):
+        widget = TrajectoryWidget(trajectory=value)
+    assert widget.describe() == {
+        "widget_type": "trajectory",
+        "n_frames": 2,
+        "n_sites": 2,
+        "elements": ["Co", "Fe"],
+        "formula": "Co0.5Fe1.5",
+    }
+    payload = widget.trajectory
     assert traj.coords_are_displacement
     assert payload["time_step"] == {"value": 2, "unit": "fs"}
-    assert payload["frames"][1]["metadata"] == {"energy": -1}
+    assert payload["frames"][1]["metadata"] == {
+        "energy": -1,
+        "force_max": 5,
+        "force_norm": 5,
+    }
+    assert payload["frames"][1]["structure"]["sites"][0]["properties"]["force"] == [
+        0,
+        3,
+        4,
+    ]
     for frame, pos in zip(payload["frames"], frac[:, 0], strict=True):
+        assert frame["structure"]["charge"] == 2
         site, iron = frame["structure"]["sites"]
         assert iron["species"][0]["oxidation_state"] == 3
         assert site["species"] == [
             {"element": "Fe", "occu": 0.5},
             {"element": "Co", "occu": 0.5},
         ]
-        assert site["properties"] == {"moment": 1}
+        assert site["properties"]["moment"] == 1
         np.testing.assert_array_equal(site["abc"], pos)
         np.testing.assert_array_equal(site["xyz"], pos @ _CELL)
 
@@ -266,9 +297,17 @@ def test_pymatgen_trajectory_per_frame_lattice(displacement: bool) -> None:
         decode_envelope(TrajectoryWidget(trajectory=traj).trajectory)["energy"],
         [np.nan, -2.0, np.nan],
     )
-    traj.time_step, traj.frame_properties = 0, [{"label": "MD"}] * len(frac)
-    with pytest.raises(ValueError, match="time_step value"):
-        TrajectoryWidget(trajectory=traj)
+
+
+@pytest.mark.parametrize("step", [0, -1, np.nan, np.inf, True, "2"])
+def test_invalid_pymatgen_time_step(step: Any) -> None:
+    """Live and serialized trajectories reject invalid time steps before encoding."""
+    from pymatgen.core.trajectory import Trajectory
+
+    traj = Trajectory(["Si"], np.zeros((1, 1, 3)), lattice=_CELL, time_step=step)
+    for value in (traj, traj.as_dict()):
+        with pytest.raises(ValueError, match="time_step value must be finite and > 0"):
+            TrajectoryWidget(trajectory=value)
 
 
 def test_volume_envelope_round_trip() -> None:

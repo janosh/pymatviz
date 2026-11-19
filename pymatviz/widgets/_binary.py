@@ -205,10 +205,13 @@ def _channels(
     frames: Iterable[tuple[Mapping[str, Any], Mapping[str, Any]]],
     n_frames: int,
     n_atoms: int,
-) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray]] | None:
-    """Stack site vectors and frame scalars, preserving missing scalars as NaN."""
+    *,
+    frame_stress: bool,
+) -> dict[str, Any] | None:
+    """Encode site vectors, frame scalars (NaN if missing), and optional stress."""
     vectors: dict[str, list[np.ndarray]] = {}
     scalars: dict[str, np.ndarray] = {}
+    stress: list[np.ndarray] = []
     for idx, (site_props, props) in enumerate(frames):
         seen: set[str] = set()
         for key, value in (*site_props.items(), *props.items()):
@@ -216,27 +219,48 @@ def _channels(
             if name in seen or name in TRAJECTORY_RESERVED:
                 return None
             seen.add(name)
-            if name != "force" and key not in site_props:
-                if not _is_number(value) or name in vectors:
-                    return None
-                if np.asarray(value).dtype.kind != "f" and abs(int(value)) > 2**53:
+            frame_property = name != "force" and key not in site_props
+            if frame_property and _is_number(value):
+                if name in vectors or (
+                    np.asarray(value).dtype.kind != "f" and abs(int(value)) > 2**53
+                ):
                     return None
                 if name not in scalars:
                     scalars[name] = np.full(n_frames, np.nan)
                 scalars[name][idx] = value
                 continue
+            if frame_property and not (name == "stress" and frame_stress):
+                return None
             try:
-                vector = np.asarray(value)
-            except ValueError:  # Ragged site properties are valid JSON.
+                array = np.asarray(value)
+            except ValueError:  # Ragged properties can still travel as JSON.
                 return None
-            if (
-                vector.shape != (n_atoms, 3)
-                or vector.dtype.kind not in "iuf"
-                or name in scalars
-            ):
+            if array.dtype.kind not in "iuf" or name in scalars:
                 return None
-            vectors.setdefault(name, []).append(vector)
-    if any(len(series) != n_frames for series in vectors.values()):
+            if frame_property:
+                if (
+                    array.shape not in ((6,), (3, 3))
+                    or (stress and array.size != stress[0].size)
+                    or array.dtype.itemsize > 8
+                    or (
+                        array.dtype.kind in "iu"
+                        and (int(array.max()) > 2**53 or int(array.min()) < -(2**53))
+                    )
+                ):
+                    return None
+                stress.append(array.ravel())
+            elif array.shape == (n_atoms, 3):
+                vectors.setdefault(name, []).append(array)
+            else:
+                return None
+    if any(len(series) != n_frames for series in vectors.values()) or (
+        stress
+        and (
+            len(stress) != n_frames
+            or "frame_stress" in scalars
+            or "frame_stress" in vectors
+        )
+    ):
         return None
     stacked = {name: np.stack(series) for name, series in vectors.items()}
     if (force := stacked.get("force")) is not None:
@@ -249,7 +273,15 @@ def _channels(
                 if given is None
                 else np.where(np.isnan(given), computed, given)
             )
-    return stacked, scalars
+    arrays = {
+        name: binary_array(values, "float32", name=name)
+        for name, values in stacked.items()
+    }
+    for name, values in scalars.items():
+        arrays[name] = binary_array(values, "float64", name=name, finite=False)
+    if stress:
+        arrays["frame_stress"] = binary_array(stress, "float64", name="stress")
+    return arrays
 
 
 def force_stats(forces: np.ndarray) -> dict[str, Any]:
@@ -262,13 +294,12 @@ def force_stats(forces: np.ndarray) -> dict[str, Any]:
 
 
 def trajectory_to_envelope(
-    trajectory: Any, metadata: Mapping[str, Any] | None = None
+    trajectory: Any,
+    metadata: Mapping[str, Any] | None = None,
+    *,
+    frame_stress: bool = False,
 ) -> dict[str, Any] | None:
-    """Encode supported trajectories, or return None for JSON-only data.
-
-    Raises:
-        ValueError: If a pymatgen time step is non-finite or non-positive.
-    """
+    """Encode supported trajectories, or return None for JSON-only data."""
     from pymatgen.core.periodic_table import get_el_sp
     from pymatgen.core.trajectory import Trajectory
 
@@ -278,10 +309,6 @@ def trajectory_to_envelope(
 
     if isinstance(trajectory, Trajectory):
         if (step := trajectory.time_step) is not None:
-            if not _is_number(step) or not 0 < float(step) < np.inf:
-                raise ValueError(
-                    f"time_step value must be finite and > 0, got {step!r}"
-                )
             fields["time_step"] = {"value": float(step), "unit": "fs"}
         site_props = trajectory.site_properties
         if any(site_props or ()) or any(
@@ -307,7 +334,10 @@ def trajectory_to_envelope(
         if props is not None and len(props) != len(positions):
             return None
         channels = _channels(
-            (({}, frame or {}) for frame in props or []), len(positions), len(numbers)
+            (({}, frame or {}) for frame in props or []),
+            len(positions),
+            len(numbers),
+            frame_stress=frame_stress,
         )
     else:
         frames: list[_Frame] = []
@@ -335,6 +365,7 @@ def trajectory_to_envelope(
             ((frame.site_props, frame.props) for frame in frames),
             len(frames),
             len(numbers),
+            frame_stress=frame_stress,
         )
         if channels is None:
             return None
@@ -347,7 +378,6 @@ def trajectory_to_envelope(
         )
     if channels is None:
         return None
-    vectors, scalars = channels
     arrays = {
         "positions": binary_array(
             positions,
@@ -362,8 +392,5 @@ def trajectory_to_envelope(
             cell = cell[0]
         shape = (3, 3) if cell.ndim == 2 else (len(positions), 3, 3)
         arrays["lattice"] = binary_array(cell, "float64", name="lattice", shape=shape)
-    for name, values in vectors.items():
-        arrays[name] = binary_array(values, "float32", name=name)
-    for name, values in scalars.items():
-        arrays[name] = binary_array(values, "float64", name=name, finite=False)
+    arrays.update(channels)
     return {"format": BINARY_FORMAT, "kind": "trajectory", "arrays": arrays, **fields}

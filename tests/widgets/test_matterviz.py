@@ -333,6 +333,26 @@ def test_configure_assets_from_sources(tmp_path: Path, explicit_css: bool) -> No
 
 
 @pytest.mark.usefixtures("_clean_asset_cache")
+def test_local_bundle_survives_reconfiguration(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Existing widgets export and sync with the local bundle they loaded."""
+    from pymatviz import TrajectoryWidget
+
+    for ext in ("js", "css"):
+        (tmp_path / f"matterviz.{ext}").write_text(f"/* local {ext} */")
+    monkeypatch.setenv("MATTERVIZ_ANYWIDGET_DIR", str(tmp_path))
+    widget = TrajectoryWidget()
+    configure_assets()
+    monkeypatch.delenv("MATTERVIZ_ANYWIDGET_DIR")
+    widget.current_step_idx = 1
+    html = widget.to_html()
+    assert "const esm_url = URL.createObjectURL" in html
+    assert "/* local css */" in html
+    assert widget.get_state("_esm") == {"_esm": "/* local js */"}
+
+
+@pytest.mark.usefixtures("_clean_asset_cache")
 def test_configure_assets_reset() -> None:
     """configure_assets() with no args resets to auto-detect."""
     with patch(f"{DOTTED_PATH}.fetch_widget_asset", return_value="preset"):

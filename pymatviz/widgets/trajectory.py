@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from functools import lru_cache
 from typing import Any
 
 import numpy as np
@@ -10,6 +11,7 @@ import traitlets as tl
 
 from pymatviz.structure.helpers import add_vacuum_if_needed
 from pymatviz.widgets._binary import (
+    _is_number,
     force_stats,
     frame_input,
     is_binary_envelope,
@@ -21,6 +23,27 @@ from pymatviz.widgets._traits import (
     optional_trait,
 )
 from pymatviz.widgets.matterviz import MatterVizWidget
+
+
+@lru_cache(maxsize=1)
+def _supports_frame_stress(esm: str) -> bool:
+    """Detect the optional binary stress channel once per loaded renderer bundle."""
+    return "frame_stress" in esm
+
+
+def _unwrap_monty_arrays(value: Any, *, nested: bool = False) -> Any:
+    """Read Monty ndarray data without copying plain coordinate or lattice arrays."""
+    if isinstance(value, dict):
+        if value.get("@class") == "array" and "data" in value:
+            return value["data"]
+        if nested:
+            return {
+                key: _unwrap_monty_arrays(item, nested=True)
+                for key, item in value.items()
+            }
+    if nested and isinstance(value, list):
+        return [_unwrap_monty_arrays(item, nested=True) for item in value]
+    return value
 
 
 class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
@@ -122,7 +145,10 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
                 matterviz's own parsers produce.
                 Structure sequences and pymatgen Trajectories sync as a
                 ``matterviz-binary-v1`` envelope when representable. Custom widget
-                bundles must support this format. Serialized trajectory dicts stay JSON.
+                bundles must support this format. Bundles with the ``frame_stress``
+                channel also transfer six-component or 3x3 frame stresses as float64,
+                preserving component order and units. Older bundles use JSON for them.
+                Serialized trajectory dicts stay JSON.
             **kwargs: Additional widget properties
         """
         super().__init__(widget_type="trajectory", trajectory=trajectory, **kwargs)
@@ -133,8 +159,15 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
         from pymatviz.widgets._normalize import normalize_plot_json
 
         normalized = self._normalize_trajectory(proposal["value"])
-        if is_binary_envelope(normalized, "trajectory"):
+        if normalized is not None and is_binary_envelope(normalized, "trajectory"):
             self._require_binary_bundle()
+            stress = normalized.get("arrays", {}).get("frame_stress", {})
+            if len(stress.get("shape", ())) == 2 and not _supports_frame_stress(
+                self._resolve_assets()[0]
+            ):
+                raise ValueError(
+                    "Selected widget bundle lacks the binary frame_stress channel"
+                )
             return normalized
         return normalize_plot_json(normalized, "trajectory")
 
@@ -272,7 +305,11 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
         """Convert a sequence of structures or ``{"structure", **props}`` dicts to a
         matterviz trajectory dict with one frame per item.
         """
-        if envelope := trajectory_to_envelope(items, metadata):
+        if envelope := trajectory_to_envelope(
+            items,
+            metadata,
+            frame_stress=_supports_frame_stress(self._resolve_assets()[0]),
+        ):
             return envelope
         frames: list[dict[str, Any]] = []
         for step_idx, item in enumerate(items):
@@ -286,15 +323,25 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
     def _pymatgen_json(self, data: dict[str, Any]) -> dict[str, Any]:
         """Expand occupancy mappings into the renderer's per-site species lists."""
         from pymatgen.core import DummySpecies, Molecule, Species, Structure
+        from pymatgen.core.periodic_table import get_el_sp
 
-        species = data.get("species", [])
+        from pymatviz.utils.data import atomic_numbers
+
+        # The renderer accepts symbols and species dicts; pymatgen also accepts
+        # atomic numbers and decorated strings such as Fe2+.
+        species = [
+            get_el_sp(entry)
+            if isinstance(entry, (str, int, float, np.number))
+            and entry not in atomic_numbers
+            else entry
+            for entry in data.get("species", [])
+        ]
         if not any(
             isinstance(entry, Mapping) and "element" not in entry for entry in species
         ):
-            return data
+            return data | {"species": species}
         # Rebuild only the known species fields when raw JSON mixes decorated
         # elements with occupancy dictionaries. Metadata stays plain data.
-        species = list(species)
         for idx, entry in enumerate(species):
             if isinstance(entry, dict) and "element" in entry:
                 atom = entry["element"]
@@ -310,18 +357,23 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
                 species[idx] = {
                     key: val for key, val in entry.items() if not key.startswith("@")
                 }
-        coords = np.asarray(data["coords"], dtype=float)
+        coords = np.asarray(_unwrap_monty_arrays(data["coords"]), dtype=float)
         if data.get("coords_are_displacement"):
-            base = data["base_positions"]
-            coords = np.cumsum(coords, axis=0) + (
-                base["data"] if isinstance(base, dict) else base
+            coords = np.cumsum(coords, axis=0) + _unwrap_monty_arrays(
+                data["base_positions"]
             )
-        lattice = data.get("lattice")
+        lattice = _unwrap_monty_arrays(data.get("lattice"))
         cells = (
             None if lattice is None else np.broadcast_to(lattice, (len(coords), 3, 3))
         )
-        site_props = data.get("site_properties") or {}
-        frame_props = data.get("frame_properties") or [{}] * len(coords)
+        site_props = (
+            _unwrap_monty_arrays(data.get("site_properties"), nested=True) or {}
+        )
+        if isinstance(site_props, list) and len(site_props) == 1:
+            (site_props,) = site_props  # The renderer broadcasts a single property map.
+        frame_props = _unwrap_monty_arrays(
+            data.get("frame_properties"), nested=True
+        ) or [{}] * len(coords)
         frames = []
         for idx, (positions, props) in enumerate(zip(coords, frame_props, strict=True)):
             per_site = site_props[idx] if isinstance(site_props, list) else site_props
@@ -335,7 +387,11 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
                 )
             else:
                 structure = Structure(
-                    cells[idx], species, positions, site_properties=per_site
+                    cells[idx],
+                    species,
+                    positions,
+                    charge=data.get("charge"),
+                    site_properties=per_site,
                 )
             frame = {"structure": structure.as_dict(), "step": idx, "metadata": props}
             frames.append(self._attach_forces(frame, idx))
@@ -357,14 +413,25 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
 
         from pymatviz.process_data import is_structure_like
 
-        if isinstance(trajectory, dict) and trajectory.get("@class") == "Trajectory":
+        is_pymatgen = isinstance(trajectory, Trajectory)
+        if is_pymatgen or (
+            isinstance(trajectory, dict) and trajectory.get("@class") == "Trajectory"
+        ):
+            step = trajectory.time_step if is_pymatgen else trajectory.get("time_step")
+            if step is not None and (
+                not _is_number(step) or not 0 < float(step) < np.inf
+            ):
+                raise ValueError(
+                    f"time_step value must be finite and > 0, got {step!r}"
+                )
+            if is_pymatgen:
+                if envelope := trajectory_to_envelope(
+                    trajectory,
+                    frame_stress=_supports_frame_stress(self._resolve_assets()[0]),
+                ):
+                    return envelope
+                trajectory = trajectory.as_dict()
             return self._pymatgen_json(trajectory)
-        if isinstance(trajectory, Trajectory):
-            # matterviz parses the JSON fallback (site properties, non-scalar frame
-            # properties) itself, moving frame_properties forces to sites
-            return trajectory_to_envelope(trajectory) or self._pymatgen_json(
-                trajectory.as_dict()
-            )
 
         if isinstance(trajectory, dict):
             frames_data = trajectory.get("frames")
