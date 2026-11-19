@@ -29,8 +29,10 @@ def chart(request: pytest.FixtureRequest) -> ChemicalChart:
 def test_system_limit(
     chart: ChemicalChart, group_by: FormulaGroupBy, mode: Literal["other", "drop"]
 ) -> None:
-    """Keep whole systems per arity, with alphabetical ties across all formulas."""
-    samples = ["Li2O"] * 3 + ["Fe2O3", "Fe4O6", "FeO", "Na2O", "Fe", "O"]
+    """Keep the most frequent whole system per arity (O beats Fe by count), with
+    alphabetical tie-breaking (Fe-O beats Li-O at 3 each) across all formulas.
+    """
+    samples = ["Li2O"] * 3 + ["Fe2O3", "Fe4O6", "FeO", "Na2O", "Fe", "O", "O"]
     widget = chart(
         samples, group_by=group_by, max_systems=1, mode=mode, label_text="value"
     )
@@ -41,16 +43,19 @@ def test_system_limit(
     unary, binary = widget.data
     assert [unary["id"], binary["id"]] == ["unary", "binary"]
     assert all("value" not in branch for branch in (unary, binary))
-    iron, *unary_other = unary["children"]
+    oxygen, *unary_other = unary["children"]
     iron_oxide, *binary_other = binary["children"]
-    assert (iron["id"], iron["label"]) == ("unary/Fe", "Fe")
+    assert (oxygen["id"], oxygen["label"]) == ("unary/O", "O")
     assert (iron_oxide["id"], iron_oxide["label"]) == ("binary/Fe-O", "Fe-O")
     if group_by == "chem_sys":
         assert "children" not in iron_oxide
-        assert (iron["value"], iron_oxide["value"]) == (1, 3)
+        assert (oxygen["value"], iron_oxide["value"]) == (2, 3)
     else:
-        assert all("value" not in branch for branch in (iron, iron_oxide))
-        assert iron["children"] == [{"id": "unary/Fe/Fe", "label": "Fe", "value": 1}]
+        assert all("value" not in branch for branch in (oxygen, iron_oxide))
+        o_formula = "O2" if group_by == "reduced_formula" else "O"  # reduced O -> O2
+        assert oxygen["children"] == [
+            {"id": f"unary/O/{o_formula}", "label": o_formula, "value": 2}
+        ]
         formulas = (
             {"FeO": 1, "Fe2O3": 2}
             if group_by == "reduced_formula"

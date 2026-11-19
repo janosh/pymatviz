@@ -352,6 +352,39 @@ def test_local_bundle_survives_reconfiguration(
     assert widget.get_state("_esm") == {"_esm": "/* local js */"}
 
 
+@pytest.mark.parametrize("in_frontend", [False, True])
+@pytest.mark.usefixtures("_clean_asset_cache")
+def test_default_assets_deferred_without_frontend(
+    monkeypatch: pytest.MonkeyPatch, in_frontend: bool
+) -> None:
+    """Building a widget from local data needs no fetch unless a frontend syncs it;
+    the default bundle loads on first export instead.
+    """
+    import pymatviz as pmv
+
+    monkeypatch.delenv("MATTERVIZ_ANYWIDGET_DIR", raising=False)
+    monkeypatch.setattr(matterviz, "_in_widget_frontend", lambda: in_frontend)
+    offline = FileNotFoundError("offline")
+    with patch(f"{DOTTED_PATH}.fetch_widget_asset", side_effect=offline) as fetch:
+        if in_frontend:  # a kernel needs the bundle before the comm opens
+            with pytest.raises(FileNotFoundError, match="offline"):
+                pmv.chem_sys_treemap(["Fe-O"])
+            return
+        widget = pmv.chem_sys_treemap(["Fe-O"])
+        assert widget.data[0]["children"][0]["label"] == "Fe-O"
+        assert widget.to_dict()["data"] == widget.data
+    fetch.assert_not_called()
+
+    def fake_fetch(name: str) -> str:
+        """Return stub bundle sources."""
+        return "export default { render() {} }" if name.endswith(".js") else "/*c*/"
+
+    with patch(f"{DOTTED_PATH}.fetch_widget_asset", side_effect=fake_fetch):
+        html = widget.to_html()
+    assert "/*c*/" in html
+    assert (widget._esm, widget._css) == (fake_fetch("x.js"), "/*c*/")
+
+
 @pytest.mark.usefixtures("_clean_asset_cache")
 def test_configure_assets_reset() -> None:
     """configure_assets() with no args resets to auto-detect."""
@@ -390,8 +423,11 @@ def test_configure_assets_rejects_invalid_combos(
 
 @pytest.mark.usefixtures("_clean_asset_cache")
 def test_lazy_matterviz_widget() -> None:
-    """Default init fetches both .js and .css and sets class-level assets."""
-    with patch(f"{DOTTED_PATH}.fetch_widget_asset", return_value="widget content"):
+    """Default init in a frontend fetches .js and .css and sets class-level assets."""
+    with (
+        patch(f"{DOTTED_PATH}.fetch_widget_asset", return_value="widget content"),
+        patch(f"{DOTTED_PATH}._in_widget_frontend", return_value=True),
+    ):
         widget = matterviz.MatterVizWidget()
 
     assert widget._esm == "widget content"

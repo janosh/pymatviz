@@ -208,6 +208,29 @@ def test_widget_construction_and_type(
     assert getattr(widget, state_key) == kwargs[state_key]
 
 
+_ROOT_WITH_KIDS = {"label": "root", "children": [{"label": "leaf", "value": 3}]}
+
+
+@pytest.mark.parametrize("widget_cls", [SunburstWidget, TreemapWidget])
+@pytest.mark.parametrize(
+    ("data", "expected"),
+    [
+        ({"label": "Fe-O", "value": 4}, [{"label": "Fe-O", "value": 4}]),
+        ({"label": "Fe-O", "children": []}, [{"label": "Fe-O", "children": []}]),
+        (_ROOT_WITH_KIDS, _ROOT_WITH_KIDS),
+        ([{"label": "Fe-O", "value": 4}], [{"label": "Fe-O", "value": 4}]),
+    ],
+)
+def test_hierarchy_standalone_leaf_wrapped(
+    widget_cls: type, data: Any, expected: Any
+) -> None:
+    """A standalone leaf node is wrapped in a list so it gets a visible cell."""
+    widget = widget_cls(data=data)
+    assert widget.data == expected
+    widget.data = data  # assignment after construction normalizes too
+    assert widget.data == expected
+
+
 @pytest.mark.parametrize(
     "widget_cls", [CompositionWidget, StructureWidget, TrajectoryWidget]
 )
@@ -1086,6 +1109,8 @@ def test_headless_bar_plot_png(bar_plot_widget: BarPlotWidget) -> None:
 @pytest.mark.parametrize("chart", ["treemap", "sunburst"])
 def test_hierarchy_vector_and_html_exports(chart: str, tmp_path: Any) -> None:
     """Chemical-system charts export vector SVG/PDF and interactive standalone HTML."""
+    from playwright.sync_api import expect
+
     import pymatviz as pmv
     from pymatviz.widgets._headless import _get_browser
 
@@ -1122,7 +1147,7 @@ def test_hierarchy_vector_and_html_exports(chart: str, tmp_path: Any) -> None:
         live_styles = shapes.evaluate_all(paint)
         page.get_by_role("button", name="binary: 2", exact=True).press("Enter")
         page.locator(".breadcrumbs").get_by_text("binary", exact=True).wait_for()
-        assert chart_nodes.count() == 2
+        expect(chart_nodes).to_have_count(2)  # retries until zoom-out cells leave
         svg_path = tmp_path / f"{chart}.svg"
         svg_path.write_text(svg)
         page.goto(svg_path.as_uri())

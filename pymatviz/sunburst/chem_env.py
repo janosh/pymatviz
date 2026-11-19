@@ -28,11 +28,12 @@ def chem_env_sunburst(
     """Show coordination numbers and their chemical environments as a sunburst.
 
     Use CrystalNN (default), "chemenv", or a dict of ChemEnv settings.
-    With normalize=True, each structure contributes one total count. Limit the
-    most frequent coordination numbers and environments per coordination number
-    with max_coordination_numbers and max_environments. Mode "other" combines
-    omitted counts into one leaf per group; "drop" omits them. Additional
-    options go to SunburstWidget.
+    With normalize=True, each structure with at least one classified environment
+    contributes one total count before pruning (structures without environments
+    contribute zero). Limit the most frequent coordination numbers and
+    environments per coordination number with max_coordination_numbers and
+    max_environments. Mode "other" combines omitted counts into one leaf per
+    group; "drop" omits them. Additional options go to SunburstWidget.
     """
     nodes = chem_env_nodes(
         structures,

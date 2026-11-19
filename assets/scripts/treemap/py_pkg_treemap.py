@@ -8,6 +8,7 @@ structures of Python packages using the pmv.py_pkg_treemap function.
 from __future__ import annotations
 
 import json
+import os
 from urllib.request import urlopen
 
 import numpy as np
@@ -104,7 +105,10 @@ def coverage_percentages(url: str, package: str) -> dict[str, float]:
     pkg_dir = pmv.treemap.py_pkg.find_package_path(package)
     prefix = f"{package}/"
     return {
-        f"{pkg_dir}/{path.partition(prefix)[2]}": record["summary"]["percent_covered"]
+        # normpath matches the collector's file_path (e.g. backslashes on Windows)
+        os.path.normpath(f"{pkg_dir}/{path.partition(prefix)[2]}"): record["summary"][
+            "percent_covered"
+        ]
         for path, record in files.items()
         if prefix in path
     }

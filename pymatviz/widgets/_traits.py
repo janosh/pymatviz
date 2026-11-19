@@ -193,9 +193,19 @@ class HierarchyPlotTraits(PlotControlsTraits):
 
     @tl.validate("data", "legend", "padding")
     def _normalize_hierarchy_json(self, proposal: dict[str, Any]) -> Any:
-        """Normalize JSON values on construction and subsequent assignments."""
+        """Normalize JSON values on construction and subsequent assignments. A
+        standalone leaf passed as ``data`` is wrapped in a list: MatterViz hides a
+        single node's depth-0 root, which would leave a leaf without a cell.
+        """
+        value = proposal["value"]
+        if (
+            proposal["trait"].name == "data"
+            and isinstance(value, dict)
+            and not value.get("children")
+        ):
+            value = [value]
         return normalize_plot_json(
-            proposal["value"], f"{self._chart_type}.{proposal['trait'].name}"
+            value, f"{self._chart_type}.{proposal['trait'].name}"
         )
 
 

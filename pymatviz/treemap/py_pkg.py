@@ -241,7 +241,15 @@ def _analyze_py_file(file_path: str, package_name: str) -> dict[str, int]:
                     else:
                         counts["n_external_imports"] += 1
 
-    except (FileNotFoundError, SyntaxError, PermissionError, UnicodeDecodeError) as exc:
+    except (
+        FileNotFoundError,
+        SyntaxError,
+        PermissionError,
+        UnicodeDecodeError,
+        # ast.parse overflows its stack on very deeply nested (e.g. generated) code
+        RecursionError,
+        MemoryError,
+    ) as exc:
         print(f"Warning: Could not analyze {file_path}: {exc}")  # noqa: T201
     return counts
 
@@ -360,6 +368,9 @@ def collect_source_modules_from_dir(
 
     project_name = project_names[0]
     source_dir_name = os.path.basename(source_dir)
+    # Python import root for internal-import counts, independent of the display
+    # label: the source dir itself if it is a package, else each file's top dir
+    is_py_package = os.path.isfile(f"{source_dir}/__init__.py")
 
     ignored = set(ignored_dirs)
     all_modules: list[dict[str, Any]] = []
@@ -372,8 +383,12 @@ def collect_source_modules_from_dir(
                 continue
 
             file_path = os.path.normpath(f"{root}/{filename}")
+            rel_path = os.path.relpath(file_path, source_dir)
+            rel_parts = rel_path.replace(os.sep, "/").split("/")
+            stem = os.path.splitext(rel_parts[-1])[0]
+            import_root = source_dir_name if is_py_package else rel_parts[0]
             stats = (
-                _analyze_py_file(file_path, project_name)
+                _analyze_py_file(file_path, os.path.splitext(import_root)[0])
                 if ext in (".py", ".pyi")
                 else {
                     "line_count": count_lines(
@@ -382,10 +397,6 @@ def collect_source_modules_from_dir(
                     **dict.fromkeys(_ANALYSIS_COLS, 0),
                 }
             )
-
-            rel_path = os.path.relpath(file_path, source_dir)
-            rel_parts = rel_path.replace(os.sep, "/").split("/")
-            stem = os.path.splitext(rel_parts[-1])[0]
 
             # Every file gets a unique leaf in the hierarchy.
             # When a file shares its stem with a sibling directory (Rust

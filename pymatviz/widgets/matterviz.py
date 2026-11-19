@@ -74,6 +74,19 @@ def _in_marimo_runtime() -> bool:
         return True
 
 
+def _in_widget_frontend() -> bool:
+    """Return whether a live frontend (Jupyter kernel or marimo) receives widget
+    state at construction, so assets must be loaded before the comm opens.
+    """
+    if _in_marimo_runtime():
+        return True
+    try:
+        from IPython import get_ipython
+    except ImportError:
+        return False
+    return getattr(get_ipython(), "kernel", None) is not None
+
+
 def _marimo_esm_url(esm_text: str) -> str | None:
     """Resolve ESM text to a marimo virtual-file URL, or None if unsupported."""
     try:
@@ -280,6 +293,7 @@ class MatterVizWidget(AnyWidget):
 
     _esm: str
     _css: str
+    _asset_sources: tuple[str, str] | None
     _asset_cache: ClassVar[dict[str, tuple[str, str] | str | None]] = {}
     # ESM URL serving the configured bundle, for to_html(inline=False): None ->
     # default version's URL; a local path -> to_html inlines so JS/CSS stay one build.
@@ -337,6 +351,16 @@ class MatterVizWidget(AnyWidget):
             self._css = fetch_widget_asset("matterviz.css", version_override)
             self._export_esm_url = _bundle_source(version_override)
             self._asset_sources = self._esm, self._css
+        elif (
+            "default" not in MatterVizWidget._asset_cache
+            and _bundle_source(MATTERVIZ_ANYWIDGET_VERSION).startswith(
+                ("http://", "https://")
+            )
+            and not _in_widget_frontend()
+        ):
+            # no frontend to sync with: defer the network fetch to the first
+            # export so building a widget and reading its data works offline
+            self._asset_sources = None
         else:
             # Set assets on the class so Jupyter/VS Code share them across
             # instances via ipywidgets comms without per-widget serialization.
@@ -514,7 +538,13 @@ class MatterVizWidget(AnyWidget):
         return img_bytes
 
     def _resolve_assets(self) -> tuple[str, str]:
-        """Return the source selected at construction, including for marimo widgets."""
+        """Return the source selected at construction, including for marimo widgets.
+        Widgets built without a frontend load the default assets on first use.
+        """
+        if self._asset_sources is None:
+            self._asset_sources = MatterVizWidget._set_class_assets()
+            self._export_esm_url = MatterVizWidget._export_esm_url
+            self._esm, self._css = self._asset_sources
         return self._asset_sources
 
     def _require_binary_bundle(self) -> None:
