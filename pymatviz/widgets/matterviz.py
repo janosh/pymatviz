@@ -359,7 +359,10 @@ class MatterVizWidget(AnyWidget):
             and not _in_widget_frontend()
         ):
             # no frontend to sync with: defer the network fetch to the first
-            # export so building a widget and reading its data works offline
+            # export so building a widget and reading its data works offline.
+            # Empty placeholders still register _esm/_css as synced traits, so a
+            # later display or state export carries the assets once loaded.
+            self._esm = self._css = ""
             self._asset_sources = None
         else:
             # Set assets on the class so Jupyter/VS Code share them across

@@ -824,8 +824,10 @@ def test_collect_source_modules_empty_dir(tmp_path: Path) -> None:
         ("from demo import helpers\nimport demo.sub\nimport os\n", (3, 2, 1)),
         ("x = " + "+".join(["1"] * 200_000) + "\n", (1, 0, 0)),  # RecursionError
         ("x = " + "-" * 100_000 + "1\n", (1, 0, 0)),  # parser stack overflow
+        # scanning demo/subpkg: imports resolve against the enclosing demo package
+        ("import demo.subpkg.helpers\nimport os\n", (2, 1, 1)),
     ],
-    ids=["import-root", "recursion", "parser-overflow"],
+    ids=["import-root", "recursion", "parser-overflow", "subpackage"],
 )
 def test_collect_source_modules_py_imports(
     tmp_path: Path, code: str, expected: tuple[int, int, int]
@@ -834,9 +836,14 @@ def test_collect_source_modules_py_imports(
     pkg = tmp_path / "demo"
     pkg.mkdir()
     (pkg / "__init__.py").touch()
-    (pkg / "mod.py").write_text(code)
+    scan_dir = pkg
+    if "subpkg" in code:
+        scan_dir = pkg / "subpkg"
+        scan_dir.mkdir()
+        (scan_dir / "__init__.py").touch()
+    (scan_dir / "mod.py").write_text(code)
     df_result = pmv.treemap.py_pkg.collect_source_modules_from_dir(
-        str(pkg), ["Demo project"]
+        str(scan_dir), ["Demo project"]
     )
     cols = ["line_count", "n_internal_imports", "n_external_imports"]
     assert tuple(df_result.set_index("filename").loc["mod", cols]) == expected

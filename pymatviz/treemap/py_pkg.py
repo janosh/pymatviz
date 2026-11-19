@@ -369,8 +369,12 @@ def collect_source_modules_from_dir(
     project_name = project_names[0]
     source_dir_name = os.path.basename(source_dir)
     # Python import root for internal-import counts, independent of the display
-    # label: the source dir itself if it is a package, else each file's top dir
+    # label: the outermost enclosing package if the source dir is one (so a
+    # subpackage counts `import demo.subpkg` as internal), else each file's top dir
     is_py_package = os.path.isfile(f"{source_dir}/__init__.py")
+    package_root = os.path.abspath(source_dir)
+    while os.path.isfile(f"{os.path.dirname(package_root)}/__init__.py"):
+        package_root = os.path.dirname(package_root)
 
     ignored = set(ignored_dirs)
     all_modules: list[dict[str, Any]] = []
@@ -386,7 +390,9 @@ def collect_source_modules_from_dir(
             rel_path = os.path.relpath(file_path, source_dir)
             rel_parts = rel_path.replace(os.sep, "/").split("/")
             stem = os.path.splitext(rel_parts[-1])[0]
-            import_root = source_dir_name if is_py_package else rel_parts[0]
+            import_root = (
+                os.path.basename(package_root) if is_py_package else rel_parts[0]
+            )
             stats = (
                 _analyze_py_file(file_path, os.path.splitext(import_root)[0])
                 if ext in (".py", ".pyi")
