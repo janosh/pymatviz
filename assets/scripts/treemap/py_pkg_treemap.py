@@ -7,6 +7,9 @@ structures of Python packages using the pmv.py_pkg_treemap function.
 # %%
 from __future__ import annotations
 
+import json
+from urllib.request import urlopen
+
 import numpy as np
 import plotly.express as px
 import pymatgen
@@ -90,25 +93,29 @@ fig_custom_size = pmv.py_pkg_treemap(
 )
 title = "pymatviz: Cell size by (functions + classes + methods)"
 fig_custom_size.layout.title.update(text=title, x=0.5, y=0.97, font_size=18)
-fig_custom_size.update_traces(
-    hovertemplate="<b>%{label}</b><br>"  # Use label from path
-    "Classes: %{customdata[4]:,}<br>"  # n_classes is at customdata[4]
-    "Functions: %{customdata[5]:,}<br>"  # n_functions is at customdata[5]
-    "Methods: %{customdata[9]:,}<br>"  # n_methods is at customdata[9]
-    "Lines: %{customdata[11]:,}<br>"  # line_count is at customdata[11]
-    "Cell Value (Func+Class+Meth): %{value:,}<br>"  # value is the result of calculator
-    "<extra></extra>",
-)
 fig_custom_size.show()
 
 
-# %% pymatviz treemap with coverage heatmap (cell size by lines, color by test coverage)
-coverage_data_file = "https://github.com/janosh/pymatviz/releases/download/v0.17.5/2026-03-31-pymatviz-coverage.json"
+# %% Color files from published coverage.py JSON reports
+def coverage_percentages(url: str, package: str) -> dict[str, float]:
+    """Map each reported file to its installed path for this gallery example."""
+    with urlopen(url, timeout=30) as response:  # noqa: S310
+        files = json.load(response)["files"]
+    pkg_dir = pmv.treemap.py_pkg.find_package_path(package)
+    prefix = f"{package}/"
+    return {
+        f"{pkg_dir}/{path.partition(prefix)[2]}": record["summary"]["percent_covered"]
+        for path, record in files.items()
+        if prefix in path
+    }
+
+
+coverage_url = "https://github.com/janosh/pymatviz/releases/download/v0.17.5/2026-03-31-pymatviz-coverage.json"
 
 fig_cov = pmv.py_pkg_treemap(
     "pymatviz",
-    color_by="coverage",
-    coverage_data_file=coverage_data_file,
+    color_by=coverage_percentages(coverage_url, "pymatviz"),
+    labels={"color_value": "Coverage (%)"},
     cell_size_fn=lambda cell: cell.line_count if cell.line_count >= 20 else 0,
     show_counts="value",
     color_continuous_scale="RdYlGn",  # Red-Yellow-Green scale for coverage
@@ -120,8 +127,7 @@ pmv.io.save_and_compress_svg(fig_cov, "py-pkg-treemap-pymatviz-coverage")
 
 
 # %% pymatgen treemap with coverage heatmap and manual color range (0-100%)
-coverage_data_file = "https://github.com/user-attachments/files/21545087/2025-07-31-pymatgen-coverage.json"
-# coverage_data_file = f"{pmv.ROOT}/tmp/2025-07-31-pymatgen-coverage.json"
+coverage_url = "https://github.com/user-attachments/files/21545087/2025-07-31-pymatgen-coverage.json"
 
 # Namespace packages have their own repos and coverage reports, so they show
 # as 0% coverage here which is misleading. Exclude them.
@@ -138,8 +144,8 @@ def _pmg_cell_size(cell: pmv.treemap.py_pkg.ModuleStats) -> int:
 
 fig_cov_range = pmv.py_pkg_treemap(
     pymatgen,
-    color_by="coverage",
-    coverage_data_file=coverage_data_file,  # Use existing coverage data
+    color_by=coverage_percentages(coverage_url, "pymatgen"),
+    labels={"color_value": "Coverage (%)"},
     color_range=(0, 100),  # Manual range: 0% (red) to 100% (green)
     cell_size_fn=_pmg_cell_size,
     show_counts="value",

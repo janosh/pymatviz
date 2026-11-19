@@ -1,370 +1,118 @@
-"""Test treemap plots for chemical systems."""
+"""Native sunburst and treemap hierarchies for chemical system distributions."""
 
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, get_args
+from typing import TYPE_CHECKING, Any, Literal
 
 import pytest
-from pymatgen.core import Composition
+from pymatgen.core import Composition, Structure
 
 import pymatviz as pmv
-from pymatviz.typing import FormulaGroupBy, ShowCounts
 
 
 if TYPE_CHECKING:
-    from pymatgen.core import Structure
+    from pymatviz.typing import FormulaGroupBy
 
 
-# Type alias for arity formatter function
-ArityFormatter = Callable[[str, int, int], str]
-
-TEST_SYSTEMS: list[str] = [
-    "Fe2O3",
-    "FeO",
-    "Li2O",
-    "Na2O",
-    "K2O",
-    "CaO",
-    "MgO",
-    "Al2O3",
-    "SiO2",
-    "TiO2",
-    "LiFeO2",
-    "NaFeO2",
-    "KFeO2",
-    "CaFeO3",
-    "MgFeO3",
-]
-
-HIGH_ARITY_SYSTEMS: list[str] = [
-    "Zr42.5Ga2.5Cu55",
-    "Zr37.5Ga5Cu57.5",
-    "Zr40Ga7.5Cu52.5",
-    "Zr40Ga5Cu55",
-    "Zr42.5Ga5Cu52.5",
-    "Zr48Al8Cu32Ag8Pd4",
-    "Zr48Al8Cu30Ag8Pd6",
-    "Zr48Al8Cu34Ni2Ag8",
-    "Zr48Al8Cu32Ni4Ag8",
-    "Zr48Al8Cu30Ni6Ag8",
-]
-
-GROUPING_TEST_SYSTEMS: list[str] = [
-    "Fe2O3",
-    "Fe4O6",
-    "FeO",
-    "Li2O",
-    "Li2O",
-    "LiFeO2",
-    "Li3FeO3",
-]
+type ChemicalChart = Callable[..., pmv.TreemapWidget | pmv.SunburstWidget]
 
 
-def custom_formatter(arity: str, count: int, _total: int) -> str:
-    """Format arity name with count in square brackets."""
-    return f"{arity} [{count}]"
+@pytest.fixture(params=[pmv.chem_sys_treemap, pmv.chem_sys_sunburst])
+def chart(request: pytest.FixtureRequest) -> ChemicalChart:
+    """Run the same hierarchy contract through both public chart constructors."""
+    return request.param
 
 
-def test_chem_sys_treemap_basic() -> None:
-    """Test basic functionality with mixed arity systems."""
-    systems = ["Fe-O", "Li-P-O", "Fe", "O", "Li-O"]
-    fig = pmv.chem_sys_treemap(systems)
-
-    assert len(fig.data) == 1
-    assert fig.data[0].type == "treemap"
-
-    labels = fig.data[0].labels
-    parents = fig.data[0].parents
-    values = fig.data[0].values
-
-    assert "" in parents, "Root node missing"
-    assert len(labels) == len(parents) == len(values), "Mismatched data lengths"
-
-    arity_levels = {
-        label.split(" (")[0]
-        for label in labels
-        if any(x in label for x in ("unary", "binary", "ternary"))
-    }
-    assert arity_levels == {"unary", "binary", "ternary"}
-
-    # Check elements and systems at each level
-    unary_elements = {
-        label
-        for label, parent in zip(labels, parents, strict=False)
-        if "unary" in parent
-    }
-    binary_systems = {
-        label
-        for label, parent in zip(labels, parents, strict=False)
-        if "binary" in parent
-    }
-    ternary_systems = {
-        label
-        for label, parent in zip(labels, parents, strict=False)
-        if "ternary" in parent
-    }
-
-    assert unary_elements == {"Fe", "O"}
-    assert binary_systems == {"Fe-O", "Li-O"}
-    assert ternary_systems == {"Li-O-P"}
-
-    assert "hovertemplate" in fig.data[0]
-    assert "Count:" in fig.data[0].hovertemplate
-    assert "percentEntry" in fig.data[0].hovertemplate
-
-
-@pytest.mark.parametrize(
-    ("systems", "expected_arity_levels"),
-    [
-        (["Fe", "O", "Li-Fe-O"], {"unary", "ternary"}),
-        (["Fe2O3", "FeO", "Li2O", "LiFeO2"], {"binary", "ternary"}),
-        (TEST_SYSTEMS, {"binary", "ternary"}),
-    ],
-    ids=["skip_binary", "skip_unary", "regular_systems"],
-)
-def test_chem_sys_treemap_arity_scenarios(
-    systems: list[str], expected_arity_levels: set[str]
+@pytest.mark.parametrize("group_by", ["chem_sys", "formula", "reduced_formula"])
+@pytest.mark.parametrize("mode", ["other", "drop"])
+def test_system_limit(
+    chart: ChemicalChart, group_by: FormulaGroupBy, mode: Literal["other", "drop"]
 ) -> None:
-    """Only arities present in the data get top-level nodes."""
-    labels = pmv.chem_sys_treemap(systems).data[0].labels
-    arity_levels = {
-        label.split(" (")[0]
-        for label in labels
-        if any(x in label for x in ("unary", "binary", "ternary"))
-    }
-    assert arity_levels == expected_arity_levels
-
-
-@pytest.mark.parametrize("show_counts", get_args(ShowCounts))
-def test_chem_sys_treemap_show_counts(show_counts: ShowCounts) -> None:
-    """Test different show_counts options."""
-    systems = ["Fe2O3", "FeO", "Li2O", "LiFeO2"]
-    fig = pmv.chem_sys_treemap(systems, show_counts=show_counts)
-
-    if show_counts == "value":
-        assert "texttemplate" in fig.data[0]
-        assert "N=" in fig.data[0].texttemplate
-        assert "percentEntry" not in fig.data[0].texttemplate
-    elif show_counts == "value+percent":
-        assert "texttemplate" in fig.data[0]
-        assert "N=" in fig.data[0].texttemplate
-        assert "percentEntry" in fig.data[0].texttemplate
-    elif show_counts == "percent":
-        assert "textinfo" in fig.data[0]
-        assert "percent" in fig.data[0].textinfo
-    elif show_counts is False:
-        assert fig.data[0].textinfo is None
-
-
-@pytest.mark.parametrize(
-    ("show_arity_counts", "expected_in_labels", "expected_not_in_labels"),
-    [
-        (custom_formatter, ["[3]", "[1]"], []),
-        (False, [], ["N=", "%"]),
-        (True, ["N="], []),  # Default behavior
-    ],
-)
-def test_chem_sys_treemap_arity_formatting(
-    show_arity_counts: ArityFormatter | bool,
-    expected_in_labels: list[str],
-    expected_not_in_labels: list[str],
-) -> None:
-    """Test arity formatting options."""
-    systems = ["Fe2O3", "FeO", "Li2O", "LiFeO2"]
-    fig = pmv.chem_sys_treemap(systems, show_arity_counts=show_arity_counts)
-    labels = fig.data[0].labels
-    arity_labels = {
-        label for label in labels if any(x in label for x in ("binary", "ternary"))
-    }
-
-    for expected in expected_in_labels:
-        assert any(expected in label for label in arity_labels)
-
-    for not_expected in expected_not_in_labels:
-        assert not any(not_expected in label for label in arity_labels)
-
-
-def test_chem_sys_treemap_input_types_and_errors(structures: list[Structure]) -> None:
-    """Test input types handling and error conditions."""
-    systems = [
-        "Fe2O3",  # formula string
-        Composition("LiPO4"),  # pymatgen composition
-        "Na2CO3",  # formula string
-        structures[0],  # pymatgen structure
-        "Li-Fe-P-O",  # chemical system string
-        "Fe-O",  # chemical system string
-    ]
-    fig = pmv.chem_sys_treemap(systems)
-
-    # Check that systems with same elements are grouped
-    labels = fig.data[0].labels
-    parents = fig.data[0].parents
-    values = fig.data[0].values
-
-    binary_count = sum(
-        val
-        for label, parent, val in zip(labels, parents, values, strict=False)
-        if "binary" in parent and label == "Fe-O"
+    """Keep whole systems per arity, with alphabetical ties across all formulas."""
+    samples = ["Li2O"] * 3 + ["Fe2O3", "Fe4O6", "FeO", "Na2O", "Fe", "O"]
+    widget = chart(
+        samples, group_by=group_by, max_systems=1, mode=mode, label_text="value"
     )
-    assert binary_count == 2, "Fe2O3 and Fe-O should be merged"
-
-    # Test with only Structure objects
-    assert len(pmv.chem_sys_treemap(structures).data[0].labels) > 0
-
-
-@pytest.mark.parametrize(
-    ("kwargs", "err_cls", "expected_error"),
-    [
-        (
-            dict(data=["Fe-O"], show_counts="invalid"),
-            ValueError,
-            "Invalid show_counts=",
-        ),
-        (dict(data=[]), ValueError, "Empty input: data sequence is empty"),
-        (dict(data=[1]), TypeError, "Expected str, Composition or Structure"),
-    ],
-)
-def test_chem_sys_treemap_errors(
-    kwargs: dict[str, Any], err_cls: type[Exception], expected_error: str
-) -> None:
-    """Invalid show_counts, empty and non-formula inputs raise."""
-    with pytest.raises(err_cls, match=expected_error):
-        pmv.chem_sys_treemap(**kwargs)
-
-
-@pytest.mark.parametrize(
-    ("group_by", "expected_fe_counts"),
-    [
-        ("formula", {"Fe2O3": 1, "Fe4O6": 1, "FeO": 1, "Li2O": 2}),
-        ("reduced_formula", {"Fe2O3": 2, "FeO": 1, "Li2O": 2}),  # Fe2O3 includes Fe4O6
-        ("chem_sys", {"Fe-O": 3, "Li-O": 2, "Fe-Li-O": 2}),
-    ],
-)
-def test_chem_sys_treemap_grouping_modes(
-    group_by: FormulaGroupBy, expected_fe_counts: dict[str, int]
-) -> None:
-    """Test different grouping modes with strict verification."""
-    fig = pmv.chem_sys_treemap(GROUPING_TEST_SYSTEMS, group_by=group_by)
-
-    labels = fig.data[0].labels
-    parents = fig.data[0].parents
-    values = fig.data[0].values
-
+    assert widget.widget_type == (
+        "treemap" if chart is pmv.chem_sys_treemap else "sunburst"
+    )
+    assert widget.label_text == "value"
+    unary, binary = widget.data
+    assert [unary["id"], binary["id"]] == ["unary", "binary"]
+    assert all("value" not in branch for branch in (unary, binary))
+    iron, *unary_other = unary["children"]
+    iron_oxide, *binary_other = binary["children"]
+    assert (iron["id"], iron["label"]) == ("unary/Fe", "Fe")
+    assert (iron_oxide["id"], iron_oxide["label"]) == ("binary/Fe-O", "Fe-O")
     if group_by == "chem_sys":
-        actual_counts = {
-            label: val
-            for label, parent, val in zip(labels, parents, values, strict=False)
-            if any(x in parent for x in ("binary", "ternary"))
-        }
+        assert "children" not in iron_oxide
+        assert (iron["value"], iron_oxide["value"]) == (1, 3)
     else:
-        # For formula modes, the formulas are leaf nodes with chem_sys as parents
-        formula_nodes = {
-            label: val
-            for label, parent, val in zip(labels, parents, values, strict=False)
-            if any(x in parent for x in ("binary", "ternary")) and "/" in parent
-        }
-        actual_counts = formula_nodes
+        assert all("value" not in branch for branch in (iron, iron_oxide))
+        assert iron["children"] == [{"id": "unary/Fe/Fe", "label": "Fe", "value": 1}]
+        formulas = (
+            {"FeO": 1, "Fe2O3": 2}
+            if group_by == "reduced_formula"
+            else {"FeO": 1, "Fe2O3": 1, "Fe4O6": 1}
+        )
+        assert iron_oxide["children"] == [
+            {"id": f"binary/Fe-O/{formula}", "label": formula, "value": count}
+            for formula, count in sorted(formulas.items())
+        ]
+    if mode == "other":
+        assert unary_other == [
+            {"id": "unary/__omitted__", "label": "Other (1 more not shown)", "value": 1}
+        ]
+        assert binary_other == [
+            {
+                "id": "binary/__omitted__",
+                "label": "Other (2 more not shown)",
+                "value": 4,
+            }
+        ]
+    else:
+        assert not unary_other
+        assert not binary_other
 
-    # Verify each expected count
-    for system, count in expected_fe_counts.items():
-        assert actual_counts[system] == count
 
-
-@pytest.mark.parametrize(
-    ("max_cells", "arity", "expected_systems", "expected_other_count"),
-    [
-        (5, "binary", 6, 4),  # 5 regular + 1 "Other" with 4 systems
-        (3, "ternary", 4, 2),  # 3 regular + 1 "Other" with 2 systems
-        (0, "binary", 9, 0),  # All systems, no "Other"
-        (None, "binary", 9, 0),  # All systems, no "Other"
-        (15, "binary", 9, 0),  # All systems, no "Other"
-    ],
-)
-def test_chem_sys_treemap_max_cells(
-    max_cells: int | None,
-    arity: str,
-    expected_systems: int,
-    expected_other_count: int,
-) -> None:
-    """Test max_cells parameter."""
-    fig = pmv.chem_sys_treemap(TEST_SYSTEMS, max_cells=max_cells)
-
-    labels = fig.data[0].labels
-    parents = fig.data[0].parents
-    values = fig.data[0].values
-
-    arity_systems = {
-        label: val
-        for label, parent, val in zip(labels, parents, values, strict=False)
-        if arity in parent
-    }
-
-    assert len(arity_systems) == expected_systems
-
-    other_entries = [
-        (label, val)
-        for label, parent, val in zip(labels, parents, values, strict=False)
-        if arity in parent and "Other" in label
+@pytest.mark.parametrize("limit", [None, 0, 99])
+def test_mixed_inputs(chart: ChemicalChart, limit: int | None) -> None:
+    """Mixed inputs produce nodes only for arities present in the data."""
+    structure = Structure(
+        [[3, 0, 0], [0, 3, 0], [0, 0, 3]], ["Fe", "O"], [[0, 0, 0], [0.5] * 3]
+    )
+    inputs = ["Fe-O", " Fe2O3 ", structure, Composition("LiPO4"), "Zr48Al8Cu32Ni4Ag8"]
+    widget = chart(inputs, max_systems=limit)
+    assert [(root["label"], root["children"]) for root in widget.data] == [
+        ("binary", [{"id": "binary/Fe-O", "label": "Fe-O", "value": 3}]),
+        ("ternary", [{"id": "ternary/Li-O-P", "label": "Li-O-P", "value": 1}]),
+        (
+            "quinary",
+            [{"id": "quinary/Ag-Al-Cu-Ni-Zr", "label": "Ag-Al-Cu-Ni-Zr", "value": 1}],
+        ),
     ]
 
-    if expected_other_count > 0:
-        assert len(other_entries) == 1
-        other_label, other_value = other_entries[0]
-        assert "more not shown" in other_label
-        assert f"{expected_other_count}" in other_label
-        assert other_value == expected_other_count
 
-        colors = fig.data[0].marker.colors
-        other_indices = [
-            idx
-            for idx, label in enumerate(labels)
-            if "Other" in label and arity in parents[idx]
-        ]
-        assert len(other_indices) > 0
-        assert colors[other_indices[0]] == "rgba(255,255,255,0.1)"
-    else:
-        assert len(other_entries) == 0
-
-
-def test_chem_sys_treemap_high_arity_systems() -> None:
-    """Test high-arity systems verification."""
-    fig = pmv.chem_sys_treemap(HIGH_ARITY_SYSTEMS)
-    labels = fig.data[0].labels
-    parents = fig.data[0].parents
-    values = fig.data[0].values
-
-    arity_levels = {
-        label.split(" (")[0]
-        for label in labels
-        if any(x in label for x in ("ternary", "quinary"))
-    }
-    assert arity_levels == {"ternary", "quinary"}
-
-    arity_counts = {
-        label.split(" (")[0]: val
-        for label, parent, val in zip(labels, parents, values, strict=False)
-        if parent == ""
-    }
-    assert arity_counts == {"ternary": 5, "quinary": 5}
-
-    ternary_systems = {
-        label: val
-        for label, parent, val in zip(labels, parents, values, strict=False)
-        if "ternary" in parent
-    }
-    quinary_systems = {
-        label: val
-        for label, parent, val in zip(labels, parents, values, strict=False)
-        if "quinary" in parent
-    }
-
-    assert len(ternary_systems) == 1
-    assert "Cu-Ga-Zr" in ternary_systems
-    assert ternary_systems["Cu-Ga-Zr"] == 5
-
-    assert len(quinary_systems) == 2
-    assert "Ag-Al-Cu-Pd-Zr" in quinary_systems
-    assert "Ag-Al-Cu-Ni-Zr" in quinary_systems
-    assert quinary_systems["Ag-Al-Cu-Pd-Zr"] == 2
-    assert quinary_systems["Ag-Al-Cu-Ni-Zr"] == 3
+@pytest.mark.parametrize(
+    ("samples", "kwargs", "error", "message"),
+    [
+        ([], {}, ValueError, "Empty input"),
+        (["?"], {}, ValueError, "Invalid formula"),
+        ([1], {}, TypeError, "Expected str, Composition or Structure"),
+        (["Fe"], {"mode": "merge"}, ValueError, "Invalid mode="),
+        (["Fe"], {"show_counts": False}, TypeError, "show_counts"),
+        (["Fe"], {"max_cells": 1}, TypeError, "max_cells"),
+        (["Fe"], {"max_slices": 1}, TypeError, "max_slices"),
+    ],
+)
+def test_invalid_inputs(
+    chart: ChemicalChart,
+    samples: list[Any],
+    kwargs: dict[str, Any],
+    error: type[Exception],
+    message: str,
+) -> None:
+    """Reject invalid data, unknown modes and retired Plotly options."""
+    with pytest.raises(error, match=message):
+        chart(samples, **kwargs)

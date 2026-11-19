@@ -183,7 +183,7 @@ widget.describe()  # machine-readable facts: counts, ranges, formula, chemical s
 widget.render_report()  # headless render health check: blank fraction, warnings
 ```
 
-`to_img` and `render_report` require [Playwright](https://playwright.dev/python): `pip install pymatviz[export] && playwright install chromium`. Set the `PYMATVIZ_STATIC` env var to make `widget.show()` render static PNGs instead of live widgets (useful for CI notebook execution).
+`to_img` and `render_report` require [Playwright](https://playwright.dev/python): `pip install pymatviz[export] && playwright install chromium`. Widget exports run in Chromium without Kaleido. Static export of Plotly figures still requires Kaleido. Set the `PYMATVIZ_STATIC` env var to make `widget.show()` render static PNGs instead of live widgets (useful for CI notebook execution).
 
 Widget constructor kwargs mirror the props of the matching MatterViz component one-to-one (e.g. `BandStructureWidget(band_structs=...)`, `DosWidget(doses=...)`, `HeatmapMatrixWidget(color_scale={"type": "log"})`), and every plot widget takes `show_controls`, `controls_open`, `controls_toggle_props` and `controls_pane_props` for its control pane. The frontend is the prebuilt [`matterviz-anywidget`](https://www.npmjs.com/package/matterviz-anywidget) bundle selected by `MATTERVIZ_ANYWIDGET_VERSION` in [`pymatviz/widgets/matterviz.py`](pymatviz/widgets/matterviz.py): `"main"` between releases (matterviz main's bundle from `matterviz.janosh.dev/anywidget/`, re-fetched each session), a published npm version in releases (fetched from jsDelivr and cached on disk); set `MATTERVIZ_ANYWIDGET_DIR` to a local `matterviz/extensions/anywidget/build` to develop against an unreleased MatterViz.
 
@@ -257,34 +257,34 @@ See [`pymatviz/coordination/figures.py`](pymatviz/coordination/figures.py).
 
 ## Sunburst
 
-See [`pymatviz/sunburst.py`](pymatviz/sunburst).
+`chem_sys_sunburst` and `chem_env_sunburst` return interactive MatterViz `SunburstWidget` instances. Pass the same nested `data` to `SunburstWidget` or `TreemapWidget` to switch views. Use `widget.to_html("hierarchy.html")` for interaction or `widget.to_img("hierarchy.svg")` for a vector figure.
 
 | [`spacegroup_sunburst([65, 134, 225, ...])`](pymatviz/sunburst/spacegroup.py) [![fig-icon]](assets/scripts/sunburst/spacegroup_sunburst.py) | [`chem_sys_sunburst(["FeO", "Fe2O3", "LiPO4", ...])`](pymatviz/sunburst/chem_sys.py) [![fig-icon]](assets/scripts/sunburst/chem_sys_sunburst.py) |
 | :-----------------------------------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                                             ![spg-num-sunburst]                                                             |                                                          ![chem-sys-sunburst-ward-bmg]                                                           |
-|                                     [`chem_env_sunburst(single_struct)`](pymatviz/sunburst/chem_env.py)                                     |                                      [`chem_env_sunburst(multiple_structs)`](pymatviz/sunburst/chem_env.py)                                      |
-|                                                         ![chem-env-sunburst-basic]                                                          |                                                          ![chem-env-sunburst-mp-carbon]                                                          |
+|                                     [`chem_env_sunburst(single_struct)`](pymatviz/sunburst/chem_env.py)                                     |                                      [`chem_env_sunburst(structures, normalize=True)`](pymatviz/sunburst/chem_env.py)                                      |
+|                                                         ![chem-env-sunburst-basic]                                                          |                                                          ![chem-env-sunburst-normalized]                                                          |
 
 [spg-num-sunburst]: assets/svg/spg-num-sunburst.svg
 [chem-sys-sunburst-ward-bmg]: assets/svg/chem-sys-sunburst-ward-bmg.svg
 [chem-env-sunburst-basic]: assets/svg/chem-env-sunburst-basic.svg
-[chem-env-sunburst-mp-carbon]: assets/svg/chem-env-sunburst-mp-carbon.svg
+[chem-env-sunburst-normalized]: assets/svg/chem-env-sunburst-normalized.svg
 
 ## Treemap
 
-See [`pymatviz/treemap/chem_sys.py`](pymatviz/treemap/chem_sys.py).
+Chemical-system and coordination-environment treemaps return MatterViz `TreemapWidget` instances. `max_systems` limits systems per arity. Set `mode="drop"` to omit the remaining systems or use the default `"other"` to retain their combined count.
 
-| [`chem_sys_treemap(["FeO", "Fe2O3", "LiPO4", ...])`](pymatviz/treemap/chem_sys.py#L36) [![fig-icon]](assets/scripts/treemap/chem_sys_treemap.py) | [`chem_sys_treemap(["FeO", "Fe2O3", "LiPO4", ...], group_by="formula")`](pymatviz/treemap/chem_sys.py#L36) |
+| [`chem_sys_treemap(formulas, group_by="formula")`](pymatviz/treemap/chem_sys.py#L19) [![fig-icon]](assets/scripts/treemap/chem_sys_treemap.py) | [`chem_sys_treemap(ward_compositions)`](pymatviz/treemap/chem_sys.py#L19) |
 | :----------------------------------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------: |
 |                                                           ![chem-sys-treemap-formula]                                                            |                                        ![chem-sys-treemap-ward-bmg]                                        |
-|           [`chem_env_treemap(structures)`](pymatviz/treemap/chem_env.py#L50) [![fig-icon]](assets/scripts/treemap/chem_env_treemap.py)           |     [`chem_env_treemap(structures, max_cells_cn=3, max_cells_ce=4)`](pymatviz/treemap/chem_env.py#L50)     |
+|           [`chem_env_treemap(structure, chem_env_settings="chemenv")`](pymatviz/treemap/chem_env.py#L18) [![fig-icon]](assets/scripts/treemap/chem_env_treemap.py)           |     [`chem_env_treemap(structures, max_coordination_numbers=3, max_environments=4)`](pymatviz/treemap/chem_env.py#L18)     |
 |                                                            ![chem-env-treemap-basic]                                                             |                                     ![chem-env-treemap-large-dataset]                                      |
-|             [`py_pkg_treemap("pymatviz")`](pymatviz/treemap/py_pkg.py#L676) [![fig-icon]](assets/scripts/treemap/py_pkg_treemap.py)              |           [`py_pkg_treemap(["pymatviz", "flame", "pymatgen"])`](pymatviz/treemap/py_pkg.py#L677)           |
+|             [`py_pkg_treemap("pymatviz")`](pymatviz/treemap/py_pkg.py#L425) [![fig-icon]](assets/scripts/treemap/py_pkg_treemap.py)              |           [`py_pkg_treemap(["pymatviz", "flame", "pymatgen"])`](pymatviz/treemap/py_pkg.py#L425)           |
 |                                                            ![py-pkg-treemap-pymatviz]                                                            |                                         ![py-pkg-treemap-multiple]                                         |
-|   [`py_pkg_treemap("pymatviz", color_by="coverage")`](pymatviz/treemap/py_pkg.py#L676) [![fig-icon]](assets/scripts/treemap/py_pkg_treemap.py)   | [`py_pkg_treemap("pymatgen", color_by="coverage", color_range=(0, 100))`](pymatviz/treemap/py_pkg.py#L676) |
+|   [`py_pkg_treemap("pymatviz", color_by=coverage_by_path)`](pymatviz/treemap/py_pkg.py#L425) [![fig-icon]](assets/scripts/treemap/py_pkg_treemap.py)   | [`py_pkg_treemap("pymatgen", color_by=coverage_by_path, color_range=(0, 100))`](pymatviz/treemap/py_pkg.py#L425) |
 |                                                       ![py-pkg-treemap-pymatviz-coverage]                                                        |                                    ![py-pkg-treemap-pymatgen-coverage]                                     |
 
-> **Note:** For `color_by="coverage"` the package must have coverage data (e.g. run `pytest --cov=<pkg> --cov-report=xml` and pass the resulting `.coverage` file to `coverage_data_file`).
+For coverage coloring, pass a `color_by` dictionary mapping file paths to coverage percentages. Use `color_range=(0, 100)` and `labels={"color_value": "Coverage (%)"}` for a fixed percentage scale. The gallery script shows how to read a coverage.py JSON report.
 
 [chem-sys-treemap-formula]: assets/svg/chem-sys-treemap-formula.svg
 [chem-sys-treemap-ward-bmg]: assets/svg/chem-sys-treemap-ward-bmg.svg

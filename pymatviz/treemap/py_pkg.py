@@ -8,13 +8,8 @@ from __future__ import annotations
 
 import ast
 import importlib.metadata
-import json
 import os
-import subprocess
 import sys
-import tempfile
-import urllib.error
-import urllib.request
 from collections.abc import Callable, Iterable, Sequence
 from typing import TYPE_CHECKING, Any, Literal, NamedTuple, get_args
 
@@ -84,7 +79,7 @@ _ANALYSIS_COLS: tuple[str, ...] = (
     "n_external_imports",
     "n_type_checking_imports",
 )
-# module-data columns usable as color_by (besides "coverage" and dict mappings)
+# Numeric module-data columns usable as color_by
 _NUMERIC_COLOR_COLUMNS = ("line_count", "cell_value", "depth", *_ANALYSIS_COLS)
 
 
@@ -107,6 +102,15 @@ def _normalize_package_input(package: str | Any) -> str:
     return str(package)
 
 
+def _code_lines(lines: Iterable[str], comment_prefixes: tuple[str, ...]) -> int:
+    """Count nonblank lines whose first token is not a comment."""
+    return sum(
+        1
+        for line in lines
+        if (code := line.lstrip()) and not code.startswith(comment_prefixes)
+    )
+
+
 def count_lines(file_path: str, comment_prefixes: tuple[str, ...] = ("#",)) -> int:
     """Count non-empty, non-comment lines in a source file.
 
@@ -117,13 +121,7 @@ def count_lines(file_path: str, comment_prefixes: tuple[str, ...] = ("#",)) -> i
     """
     try:
         with open(file_path, encoding="utf-8") as file_handle:
-            return sum(
-                bool(
-                    (stripped := line.strip())
-                    and not stripped.startswith(comment_prefixes)
-                )
-                for line in file_handle
-            )
+            return _code_lines(file_handle, comment_prefixes)
     except (FileNotFoundError, PermissionError, UnicodeDecodeError):
         return 0
 
@@ -191,11 +189,12 @@ def find_package_path(package_name: str) -> str:
 
 
 def _analyze_py_file(file_path: str, package_name: str) -> dict[str, int]:
-    """Parse Python file using AST to count classes, functions, and imports."""
-    counts = dict.fromkeys(_ANALYSIS_COLS, 0)
+    """Count source lines and AST metrics from one read of a Python file."""
+    counts = dict.fromkeys(("line_count", *_ANALYSIS_COLS), 0)
     try:
         with open(file_path, encoding="utf-8") as file_handle:
             source = file_handle.read()
+        counts["line_count"] = _code_lines(source.split("\n"), ("#",))
         tree = ast.parse(source, filename=file_path)
 
         # Pre-collect nodes needing special treatment since ast.walk is a flat
@@ -245,153 +244,6 @@ def _analyze_py_file(file_path: str, package_name: str) -> dict[str, int]:
     except (FileNotFoundError, SyntaxError, PermissionError, UnicodeDecodeError) as exc:
         print(f"Warning: Could not analyze {file_path}: {exc}")  # noqa: T201
     return counts
-
-
-def _parse_lcov_lines(lines: Iterable[str]) -> dict[str, float]:
-    """Parse lcov-format lines into a path-to-percentage map.
-
-    Args:
-        lines: Iterable of raw lcov lines (may include trailing newlines).
-
-    Returns:
-        dict mapping file paths to coverage percentages (0-100).
-    """
-    coverage_map: dict[str, float] = {}
-    current_file: str | None = None
-    lines_hit = 0
-    lines_found = 0
-
-    for raw_line in lines:
-        line = raw_line.strip()
-        if line.startswith("SF:"):
-            current_file = line[3:]
-            lines_hit = 0
-            lines_found = 0
-        elif line.startswith("LH:"):
-            lines_hit = int(line[3:])
-        elif line.startswith("LF:"):
-            lines_found = int(line[3:])
-        elif line == "end_of_record":
-            if current_file and lines_found > 0:
-                coverage_map[current_file] = (lines_hit / lines_found) * 100
-            current_file = None
-
-    return coverage_map
-
-
-def parse_lcov_file(lcov_path: str) -> dict[str, float]:
-    """Parse an lcov/info coverage file into a path-to-percentage map.
-
-    Handles output from cargo-llvm-cov, lcov, gcov, geninfo, and similar tools
-    that produce the lcov trace-file format.
-
-    Args:
-        lcov_path: Path to an lcov-format coverage file (typically .info or .lcov).
-
-    Returns:
-        dict mapping file paths to coverage percentages (0-100).
-    """
-    with open(lcov_path, encoding="utf-8") as fh:
-        return _parse_lcov_lines(fh)
-
-
-def _coverage_json_to_map(
-    coverage_data: dict[str, Any], base_dir: str | None = None
-) -> dict[str, float]:
-    """Extract per-file percent_covered from Python coverage JSON.
-
-    Relative paths are resolved against base_dir when given.
-    """
-    coverage_map: dict[str, float] = {}
-    for file_path, file_data in coverage_data.get("files", {}).items():
-        summary = file_data.get("summary", {})
-        if "percent_covered" in summary:
-            path = file_path
-            if base_dir is not None:
-                path = os.path.normpath(f"{base_dir}/{file_path}")
-            coverage_map[path] = summary["percent_covered"]
-    return coverage_map
-
-
-def collect_coverage_data(coverage_data_file: str | None = None) -> dict[str, float]:
-    """Collect coverage data from various formats.
-
-    Supports Python coverage JSON (from ``coverage json``), lcov/info files
-    (from cargo-llvm-cov, lcov, gcov, etc.), and URLs to either format.
-    Format is auto-detected from file extension (.info/.lcov -> lcov, else JSON).
-
-    When coverage_data_file is not provided, attempts to run the ``coverage``
-    CLI to generate Python coverage data on the fly.
-
-    Args:
-        coverage_data_file: Path to coverage data file or URL. Supported formats:
-
-            - Python coverage JSON (from ``coverage json``)
-            - lcov/info files (.info or .lcov extension)
-
-            If provided as a URL, fetches from the remote location (HTTPS only).
-            If None, attempts auto-generation via the ``coverage`` CLI.
-
-    Returns:
-        dict[str, float]: Mapping from file paths to coverage percentages (0-100).
-    """
-    if coverage_data_file:
-        is_url = coverage_data_file.startswith("https://")
-        is_lcov = coverage_data_file.endswith((".info", ".lcov"))
-
-        # lcov format: parse directly (or download and parse in memory for URLs)
-        if is_lcov:
-            if is_url:
-                with urllib.request.urlopen(  # noqa: S310
-                    coverage_data_file, timeout=15
-                ) as response:
-                    return _parse_lcov_lines(
-                        response.read().decode("utf-8").splitlines()
-                    )
-            return parse_lcov_file(coverage_data_file)
-
-        # JSON format (Python coverage json)
-        try:
-            if is_url:
-                # Security: Only HTTPS URLs allowed to prevent file:// and other schemes
-                with urllib.request.urlopen(coverage_data_file, timeout=15) as response:  # noqa: S310
-                    coverage_data = json.load(response)
-            else:
-                with open(coverage_data_file, encoding="utf-8") as file_handle:
-                    coverage_data = json.load(file_handle)
-        except (urllib.error.URLError, json.JSONDecodeError) as exc:
-            if is_url:
-                exc.add_note(
-                    f"Failed to fetch coverage data from URL: {coverage_data_file}"
-                )
-            raise
-
-        # Convert relative paths to absolute paths for local files
-        base_dir = (
-            None if is_url else os.path.dirname(os.path.abspath(coverage_data_file))
-        )
-        return _coverage_json_to_map(coverage_data, base_dir)
-
-    # No coverage file given: generate Python coverage JSON on the fly
-    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp_cov_file:
-        tmp_json_path = tmp_cov_file.name
-    try:
-        result = subprocess.run(  # noqa: S603
-            ["coverage", "json", "-o", tmp_json_path],  # noqa: S607
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if result.returncode != 0:
-            raise RuntimeError(
-                f"`coverage json` failed with exit code {result.returncode}, pass "
-                f"coverage_data_file explicitly. stderr: {result.stderr.strip()}"
-            )
-        with open(tmp_json_path, encoding="utf-8") as file_handle:
-            return _coverage_json_to_map(json.load(file_handle))
-    finally:
-        if os.path.isfile(tmp_json_path):
-            os.unlink(tmp_json_path)
 
 
 def collect_package_modules(
@@ -457,7 +309,6 @@ def collect_package_modules(
                     if len(directory_parts) > 1
                     else "root",
                     "top_module": module_parts[0] if module_parts else "root",
-                    "line_count": count_lines(file_path),
                     "file_path": file_path,
                     "repo_path_segment": f"{repo_path_prefix}/{pkg_rel_path}",
                     "leaf_label": module_parts[-1]  # link text
@@ -521,8 +372,16 @@ def collect_source_modules_from_dir(
                 continue
 
             file_path = os.path.normpath(f"{root}/{filename}")
-            comment_prefix = (_COMMENT_PREFIXES.get(ext, "#"),)
-            line_count = count_lines(file_path, comment_prefix)
+            stats = (
+                _analyze_py_file(file_path, project_name)
+                if ext in (".py", ".pyi")
+                else {
+                    "line_count": count_lines(
+                        file_path, (_COMMENT_PREFIXES.get(ext, "#"),)
+                    ),
+                    **dict.fromkeys(_ANALYSIS_COLS, 0),
+                }
+            )
 
             rel_path = os.path.relpath(file_path, source_dir)
             rel_parts = rel_path.replace(os.sep, "/").split("/")
@@ -551,126 +410,16 @@ def collect_source_modules_from_dir(
                     "filename": stem,
                     "directory": directory,
                     "top_module": top_module,
-                    "line_count": line_count,
                     "file_path": file_path,
                     "repo_path_segment": repo_path_segment,
                     "leaf_label": leaf_label,
                     "module_parts": module_parts,
                     "depth": len(module_parts),
-                    **dict.fromkeys(_ANALYSIS_COLS, 0),
+                    **stats,
                 }
             )
 
     return pd.DataFrame(all_modules)
-
-
-def _match_coverage_path(
-    file_path: str,
-    coverage_map: dict[str, float],
-    df_modules: pd.DataFrame,
-    package_names: list[str],
-) -> float:
-    """Match a file path to coverage data using simple strategies.
-
-    Args:
-        file_path: Path to the file to match
-        coverage_map: Mapping from file paths to coverage percentages
-        df_modules: DataFrame with module data including repo_path_segment
-        package_names: List of package names to match against
-
-    Returns:
-        float: Coverage percentage for the file, or NaN if no match found
-    """
-    if file_path in coverage_map:  # Try exact match first
-        return coverage_map[file_path]
-
-    row_data = df_modules[df_modules["file_path"] == file_path]
-    if row_data.empty:
-        return float("nan")
-
-    row = row_data.iloc[0]
-    repo_path_segment = row["repo_path_segment"]
-
-    # Try matching by repo_path_segment
-    for cov_path, cov_value in coverage_map.items():
-        cov_path_unix = cov_path.replace(os.sep, "/")
-        for pkg_name in package_names:
-            pkg_idx = cov_path_unix.find(pkg_name)
-            if pkg_idx != -1:
-                cov_rel_path = cov_path_unix[pkg_idx:]
-                # Direct match or with src/ prefix
-                if cov_rel_path in (repo_path_segment, f"src/{repo_path_segment}"):
-                    return cov_value
-
-    # Fallback: match by filename
-    filename = os.path.basename(file_path)
-    matches = [
-        (file_path, cov_val)
-        for file_path, cov_val in coverage_map.items()
-        if os.path.basename(file_path) == filename
-    ]
-
-    if len(matches) == 1:
-        return matches[0][1]
-    if len(matches) > 1:
-        # Find best match by path similarity
-        def path_similarity(match_path: str) -> int:
-            """Calculate path similarity."""
-            try:
-                return len(os.path.commonpath([file_path, match_path]))
-            except ValueError:
-                return len(os.path.basename(match_path))
-
-        best_match = max(matches, key=lambda x: path_similarity(x[0]))
-        return best_match[1]
-
-    return float("nan")
-
-
-def _apply_coverage_weighted_averages(fig: go.Figure, df_treemap: pd.DataFrame) -> None:
-    """Apply weighted average coverage calculations to parent nodes in treemap."""
-    trace = fig.data[0]
-    labels, parents, values = trace.labels, trace.parents, trace.values  # noqa: PD011
-    label_index = {label: idx for idx, label in enumerate(labels)}
-
-    # Map treemap labels to their rows' coverage values
-    node_coverage = {}
-    for _, row in df_treemap.iterrows():
-        for label in labels:
-            if (
-                # Match by exact line count and module name
-                (
-                    abs(values[label_index[label]] - row["line_count"]) < 1
-                    and row["leaf_label"] in label
-                )
-                # Match by package name for root nodes
-                or (row["package_name_raw"] in label and "lines" in label)
-                # Match by full module path
-                or row["full_module"] in label
-            ):
-                node_coverage[label] = row["color_value"]
-                break
-
-    colors = list(trace.marker.colors)
-    parent_children: dict[str, list[tuple[str, float]]] = {}
-    for idx, parent in enumerate(parents):
-        if parent:
-            parent_children.setdefault(parent, []).append(labels[idx])
-
-    for idx, label in enumerate(labels):
-        if label in node_coverage or label not in parent_children:
-            continue
-        children = [
-            (node_coverage[child], values[label_index[child]])
-            for child in parent_children[label]
-            if child in node_coverage
-        ]
-        total_weight = sum(weight for _, weight in children)
-        if total_weight > 0:
-            weighted = sum(cov * weight for cov, weight in children) / total_weight
-            node_coverage[label] = colors[idx] = weighted
-
-    fig.data[0].marker.colors = tuple(colors)
 
 
 def py_pkg_treemap(
@@ -687,7 +436,6 @@ def py_pkg_treemap(
     max_children_for_split: int | None = None,
     cell_size_fn: CellSizeFn | None = None,
     color_by: str | dict[str, float] | None = None,
-    coverage_data_file: str | None = None,
     color_range: tuple[float, float] | None = None,
     cell_border: dict[str, Any] | None = None,
     **kwargs: Any,
@@ -759,21 +507,18 @@ def py_pkg_treemap(
             corresponding module/file will be omitted from the treemap.
             If None (default), cell size is based on `line_count`.
         color_by (str | dict[str, float] | None): Controls heatmap coloring mode:
-            - "coverage": Color by test coverage (see `coverage_data_file`)
             - str: Name of a numeric column in the module data to use for coloring
                 (e.g. "line_count", "n_classes", "n_functions")
-            - dict: Non-empty mapping from absolute file paths to numeric values
+            - dict: Numeric values keyed by absolute file path or repo_path_segment.
+                Absolute paths take precedence; missing files get zero. Pass
+                ``labels={"color_value": "Coverage (%)"}`` for coverage percentages.
             - None: No heatmap coloring (default)
-        coverage_data_file (str | None): Path to a coverage JSON file or URL (e.g., from
-            `coverage json`). Used when `color_by` is "coverage". If None and
-            `color_by="coverage"`, coverage will be collected on the fly. URLs must
-            start with "https://".
         color_range (tuple[float, float] | None): Manual range for the color scale
             (min, max). Useful for consistent color mapping across plots or to
             ensure specific values (e.g., 0% coverage) map to specific colors.
             If None, uses the actual min/max values from the data.
         cell_border (dict[str, Any] | None): Cell border styling. If None, defaults to
-            white borders with width 0.5 in coverage mode, no borders otherwise.
+            white borders with width 0.5 for continuous coloring, no borders otherwise.
             Example: dict(color="black", width=2) for thick black borders.
         **kwargs (Any): Additional keyword arguments passed to plotly.express.treemap
 
@@ -794,8 +539,8 @@ def py_pkg_treemap(
         >>> import pymatviz as pmv
         >>> # Analyze a single package
         >>> fig1 = pmv.py_pkg_treemap("pymatviz")
-        >>> # Compare multiple packages, coloring cells by test coverage
-        >>> fig2 = pmv.py_pkg_treemap(["pymatviz", "pymatgen"], color_by="coverage")
+        >>> # Compare multiple packages, coloring cells by function count
+        >>> fig2 = pmv.py_pkg_treemap(["pymatviz", "pymatgen"], color_by="n_functions")
         >>> # Rust crate treemap (language-agnostic mode)
         >>> fig3 = pmv.py_pkg_treemap(
         ...     "my_rust_crate", source_dir="src", file_extensions=(".rs",)
@@ -832,12 +577,6 @@ def py_pkg_treemap(
         package_base_urls = dict.fromkeys(package_names, base_url)
     has_links = any(package_base_urls.values())
 
-    color_values: dict[str, float] = {}
-    if color_by == "coverage":
-        color_values = collect_coverage_data(coverage_data_file)
-    elif isinstance(color_by, dict):
-        color_values = color_by.copy()
-
     if source_dir:
         df_modules = collect_source_modules_from_dir(
             source_dir, package_names, file_extensions
@@ -873,21 +612,18 @@ def py_pkg_treemap(
     # Add color values to the DataFrame if heatmap mode is enabled
     df_treemap = df_modules.copy()
     has_color_mode = color_by is not None
-    if color_by == "coverage":
-        df_treemap["color_value"] = df_treemap["file_path"].map(
-            lambda path: _match_coverage_path(
-                path, color_values, df_modules, package_names
+    if isinstance(color_by, dict):
+        df_treemap["color_value"] = [
+            color_by.get(path, color_by.get(segment, 0.0))
+            for path, segment in zip(
+                df_treemap["file_path"], df_treemap["repo_path_segment"], strict=True
             )
-        )
-    elif isinstance(color_by, dict):  # direct mapping, missing files get 0
-        df_treemap["color_value"] = (
-            df_treemap["file_path"].map(color_values).fillna(0.0)
-        )
+        ]
     elif isinstance(color_by, str) and color_by in _NUMERIC_COLOR_COLUMNS:
         df_treemap["color_value"] = df_treemap[color_by]  # Use existing column
     elif color_by is not None:
         raise ValueError(
-            f"Invalid {color_by=}, must be 'coverage', a dict of file path to "
+            f"Invalid {color_by=}, must be a dict of file path to "
             f"value, or one of the numeric module columns {_NUMERIC_COLOR_COLUMNS}"
         )
 
@@ -953,10 +689,10 @@ def py_pkg_treemap(
                 rep = merge_rows.iloc[0].copy()
                 rep["cell_value"] = merge_rows["cell_value"].sum()
                 rep["line_count"] = merge_rows["line_count"].sum()
-                if has_color_mode and rep["line_count"] > 0:
+                if has_color_mode:
                     rep["color_value"] = (
-                        merge_rows["color_value"] * merge_rows["line_count"]
-                    ).sum() / rep["line_count"]
+                        merge_rows["color_value"] * merge_rows["cell_value"]
+                    ).sum() / rep["cell_value"]
                 if is_expand:
                     rep[child_col] = "other"
                 else:
@@ -1001,26 +737,9 @@ def py_pkg_treemap(
     if callable(cell_text_fn):
         total_lines = package_totals.sum()
 
-        # When in coverage mode, show coverage percentage instead of line percentage
-        if color_by == "coverage":
-            # package-level coverage is the line-weighted average of its files
-            weighted_lines = df_treemap["color_value"] * df_treemap["line_count"]
-            by_pkg = df_treemap["package_name_raw"]
-            pkg_lines = df_treemap["line_count"].groupby(by_pkg).sum()
-            package_coverage = (
-                weighted_lines.groupby(by_pkg).sum() / pkg_lines
-            ).fillna(0)
-
-            df_treemap["package"] = df_treemap["package_name_raw"].map(
-                lambda pkg: (
-                    f"{pkg} ({package_totals.get(pkg, 0):,} lines, "
-                    f"{package_coverage.get(pkg, 0.0):.1f}% cov)"
-                )
-            )
-        else:
-            df_treemap["package"] = df_treemap["package_name_raw"].map(
-                lambda pkg: cell_text_fn(pkg, package_totals.get(pkg, 0), total_lines)
-            )
+        df_treemap["package"] = df_treemap["package_name_raw"].map(
+            lambda pkg: cell_text_fn(pkg, package_totals.get(pkg, 0), total_lines)
+        )
 
     # Full file URLs for linking ("" without a base URL: plotly>=7 casts customdata
     # to str before aggregating parents, NaN then breaks max())
@@ -1045,10 +764,6 @@ def py_pkg_treemap(
         "percent_of_package_cell_value",  # 10
         "line_count",  # 11
     ]
-
-    # Add color_value column only if in color mode
-    if has_color_mode:
-        custom_data_cols.append("color_value")  # 12
 
     # Fill NaNs with 0 for customdata
     fill_cols = analysis_cols + ["color_value"] * has_color_mode
@@ -1078,11 +793,6 @@ def py_pkg_treemap(
 
     fig = px.treemap(**treemap_params)
 
-    # Fix parent node colors for coverage heatmaps (weighted averages).
-    # Must run before label wrapping so substring matching still works.
-    if color_by == "coverage":
-        _apply_coverage_weighted_averages(fig, df_treemap)
-
     # Break long labels at underscores so plotly can wrap text instead of
     # shrinking the font to fit names like "advanced_transformations" on one line.
     trace = fig.data[0]
@@ -1100,23 +810,18 @@ def py_pkg_treemap(
                 wrapped.append(label)
         fig.data[0].labels = wrapped
 
+    color_hover = ""
     if has_color_mode:
-        if color_by == "coverage":
-            colorbar_title = "Coverage (%)"
-        elif isinstance(color_by, str):
-            colorbar_title = color_by.replace("_", " ").title()
-        else:
-            colorbar_title = "Color Value"
-        fig.update_layout(
-            coloraxis_colorbar=dict(
-                title=colorbar_title, title_side="right", thickness=12
-            )
+        default_title = (
+            color_by.replace("_", " ").title()
+            if isinstance(color_by, str)
+            else "Color Value"
         )
-        if color_range is None and color_by == "coverage":  # default to data range
-            color_range = (
-                df_treemap["color_value"].min(),
-                df_treemap["color_value"].max(),
-            )
+        color_title = (kwargs.get("labels") or {}).get("color_value", default_title)
+        fig.update_coloraxes(
+            colorbar=dict(title=color_title, title_side="right", thickness=12)
+        )
+        color_hover = f"{color_title}: %{{color:,.2f}}<br>"
         if color_range is not None:
             min_val, max_val = color_range
             fig.layout.coloraxis.update(
@@ -1129,7 +834,9 @@ def py_pkg_treemap(
         # merged row, and Plotly synthetic parents get "(?) " placeholders.
         # Use only Plotly built-in fields that are correct for all nodes.
         hovertemplate = (
-            "<b>%{label}</b><br>Value: %{value:,}<br>%{percentEntry}<br><extra></extra>"
+            "<b>%{label}</b><br>Value: %{value:,}<br>%{percentEntry}<br>"
+            + color_hover
+            + "<extra></extra>"
         )
     else:
         # Indices match the order in custom_data_cols
@@ -1139,12 +846,6 @@ def py_pkg_treemap(
             "Cell Value: %{value:,}<br>"  # cell_value
             "Lines: %{customdata[11]:,}<br>"  # line_count
         )
-
-        color_idx = len(custom_data_cols) - 1
-        if color_by == "coverage":
-            base_hovertemplate += f"Coverage: %{{customdata[{color_idx}]:.1f}}%<br>"
-        elif has_color_mode:
-            base_hovertemplate += f"Color Value: %{{customdata[{color_idx}]:,.2f}}<br>"
 
         # Only show Python AST analysis fields when they have data
         analysis_hover = ""
@@ -1165,6 +866,7 @@ def py_pkg_treemap(
             )
         hovertemplate = (
             base_hovertemplate
+            + color_hover
             + "%{customdata[10]:.1%} of %{customdata[0]} (by cell value)<br>"
             + analysis_hover
             + "<extra></extra>"
@@ -1178,21 +880,15 @@ def py_pkg_treemap(
         "value+percent": "%{value:,}<br>%{percentEntry}",
         False: "",
     }[show_counts]
-    # Aggregated parent nodes lack customdata for links and coverage labels.
-    coverage_text = ""
-    if not has_depth_limit and color_by == "coverage":
-        coverage_text = f"<br>%{{customdata[{len(custom_data_cols) - 1}]:,.1f}}% cov"
     use_links = has_links and not has_depth_limit
     texttemplate = ""
-    if use_links or coverage_text or show_counts in ("value", "value+percent"):
+    if use_links or show_counts in ("value", "value+percent"):
         label_part = (
             "<a href='%{customdata[3]}' target='_blank'>%{customdata[2]}</a>"
             if use_links
             else "%{label}"
         )
-        texttemplate = (
-            label_part + (f"<br>{count_part}" if count_part else "") + coverage_text
-        )
+        texttemplate = label_part + (f"<br>{count_part}" if count_part else "")
         textinfo = "none"
     else:
         textinfo = "label+percent entry" if show_counts == "percent" else "label"

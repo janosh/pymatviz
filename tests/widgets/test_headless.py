@@ -8,6 +8,8 @@ deadlocked in jupyter nbconvert --execute due to greenlet conflicts.
 from __future__ import annotations
 
 import asyncio
+import multiprocessing
+from concurrent.futures import ProcessPoolExecutor
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -114,41 +116,30 @@ def test_foreign_running_loop_after_shutdown() -> None:
 # === Async path dispatch ===
 
 
-def test_render_widget_headless_dispatches_async_in_event_loop() -> None:
-    """render_widget_headless calls _render_widget_async when inside an event loop."""
-    pytest.importorskip("nest_asyncio")
-    import nest_asyncio  # ty: ignore[import-not-found]
+def _check_nested_render() -> None:
+    """Exercise the notebook export path in a process with its own asyncio state."""
 
-    fake_png = b"\x89PNG"
+    async def render_in_loop() -> bytes:
+        """Export from an active event loop, as in Jupyter."""
+        return render_widget_headless(DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS)
 
-    async def fake_render(*_args: Any, **_kwargs: Any) -> bytes:
-        return fake_png
+    with patch(f"{HEADLESS_PATH}._render_widget_async", return_value=b"png") as render:
+        assert asyncio.run(render_in_loop()) == b"png"
 
-    with (
-        patch(
-            f"{HEADLESS_PATH}._foreign_running_loop",
-            side_effect=asyncio.get_running_loop,
-        ),
-        patch(
-            f"{HEADLESS_PATH}._render_widget_async", side_effect=fake_render
-        ) as mock_async,
-    ):
-        loop = asyncio.new_event_loop()
-        nest_asyncio.apply(loop)
-
-        async def run_in_loop() -> bytes:
-            return render_widget_headless(
-                DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS, fmt="png"
-            )
-
-        result = loop.run_until_complete(run_in_loop())
-        loop.close()
-
-    assert result == fake_png
-    mock_async.assert_called_once()
-    inputs = mock_async.call_args[0][0]
+    render.assert_awaited_once()
+    inputs = render.call_args.args[0]
     assert inputs.widget_data == {**DUMMY_WIDGET_DATA, "show_controls": False}
     assert inputs.fmt == "png"
+
+
+def test_render_widget_headless_dispatches_async_in_event_loop() -> None:
+    """Notebook exports use async Playwright without patching the pytest process."""
+    pytest.importorskip("nest_asyncio")
+    # nest_asyncio permanently replaces asyncio.run and the asyncio task implementation.
+    with ProcessPoolExecutor(
+        mp_context=multiprocessing.get_context("spawn"), max_workers=1
+    ) as pool:
+        pool.submit(_check_nested_render).result()
 
 
 @pytest.mark.parametrize(

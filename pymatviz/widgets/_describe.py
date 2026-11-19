@@ -277,8 +277,8 @@ def _describe_bands_and_dos(data: Mapping[str, Any]) -> dict[str, Any]:
     return {**_describe_band_structure(data), **_describe_dos(data)}
 
 
-def _describe_treemap(data: Mapping[str, Any]) -> dict[str, Any]:
-    """Node/leaf counts and depth for a treemap hierarchy."""
+def _describe_hierarchy(data: Mapping[str, Any]) -> dict[str, Any]:
+    """Node/leaf counts and depth for a chart hierarchy."""
     tree = data.get("data")
     roots = tree if isinstance(tree, (list, tuple)) else [tree]
     n_nodes = n_leaves = max_depth = 0
@@ -335,7 +335,8 @@ _HANDLERS: dict[str, Any] = {
     "dos": _describe_dos,
     "band_structure": _describe_band_structure,
     "bands_and_dos": _describe_bands_and_dos,
-    "treemap": _describe_treemap,
+    "sunburst": _describe_hierarchy,
+    "treemap": _describe_hierarchy,
     # which optional data source is populated (structures/patterns, fermi/band)
     "rdf_plot": functools.partial(_source_flags, keys=("structures", "patterns")),
     "fermi_surface": functools.partial(_source_flags, keys=("fermi_data", "band_data")),
@@ -359,6 +360,7 @@ _PRIMARY_DATA: dict[str, str | tuple[str, ...]] = {
     "spacegroup_bar": "data",
     "dos": "doses",
     "band_structure": "band_structs",
+    "sunburst": "data",
     "treemap": "data",
     # can render with either input, so only warn when both are missing
     "bands_and_dos": ("doses", "band_structs"),

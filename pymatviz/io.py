@@ -1,4 +1,4 @@
-"""I/O utilities for saving figures and dataframes to various image formats."""
+"""Plotly figure export utilities."""
 
 from __future__ import annotations
 
@@ -9,7 +9,6 @@ import re
 import subprocess
 from numbers import Integral, Real
 from shutil import which
-from time import sleep
 from typing import TYPE_CHECKING
 
 import plotly.graph_objects as go
@@ -19,11 +18,7 @@ from pymatviz.utils import ROOT
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
-    from pathlib import Path
-    from typing import Any, Final
-
-    from pandas.io.formats.style import Styler
+    from typing import Any
 
 
 def save_fig(
@@ -31,8 +26,6 @@ def save_fig(
     path: str,
     *,
     plotly_config: dict[str, Any] | None = None,
-    env_disable: Sequence[str] = ("CI",),
-    pdf_sleep: float = 0.6,
     style: str = "",
     prec: int | None = None,
     template: str | None = None,
@@ -50,11 +43,6 @@ def save_fig(
             Defaults to dict(showTips=False, responsive=True, modeBarButtonsToRemove=
             ["lasso2d", "select2d", "autoScale2d", "toImage"]).
             See https://plotly.com/python/configuration-options.
-        env_disable (list[str], optional): Do nothing if any of these environment
-            variables are set. Defaults to ("CI",).
-        pdf_sleep (float, optional): Minimum time in seconds to wait before writing a
-            plotly figure to PDF file. Workaround for this plotly issue
-            https://github.com/plotly/plotly.py/issues/3469. Defaults to 0.6.
         style (str, optional): CSS style string to be inserted into the HTML file.
             Defaults to "". Only used if path ends with .svelte or .html.
         prec (int, optional): Number of decimal places to round trace x/y floats
@@ -68,9 +56,6 @@ def save_fig(
     is_pdf = path.lower().endswith((".pdf", ".pdfa"))
     if template is None and is_pdf:
         template = "pymatviz_white"
-
-    if any(var in os.environ for var in env_disable):
-        return
 
     if not isinstance(fig, go.Figure):
         raise TypeError(f"Unsupported figure type {type(fig)}, expected plotly Figure")
@@ -138,11 +123,6 @@ def save_fig(
                     trace.visible = False
                     hidden_traces.append(trace)
             fig.write_image(path, **kwargs)
-            if is_pdf:
-                # write PDFs twice to get rid of MathJax loading text
-                # see https://github.com/plotly/plotly.py/issues/3469
-                sleep(pdf_sleep)
-                fig.write_image(path, **kwargs)
         finally:
             if is_pdf:
                 fig.layout.template = orig_template
@@ -177,86 +157,3 @@ def save_and_compress_svg(fig: go.Figure, filename: str) -> None:
     # Compress SVG if svgo is available
     if (svgo := which("svgo")) is not None:
         subprocess.run([svgo, "--multipass", "--final-newline", filepath], check=True)  # noqa: S603
-
-
-DEFAULT_DF_STYLES: Final = {
-    "": "font-family: sans-serif; border-collapse: collapse;",
-    "td, th": "border: none; padding: 4px 6px; white-space: nowrap;",
-    "th.col_heading": "border: 1px solid; border-width: 1px 0; text-align: left;",
-    "th.row_heading": "font-weight: normal; padding: 3pt;",
-}
-
-
-ALLOW_TABLE_SCROLL = "table { overflow: scroll; max-width: 100%; display: block; }"
-# https://stackoverflow.com/a/38994837
-HIDE_SCROLL_BAR = """
-table {
-    scrollbar-width: none;  /* Firefox */
-}
-table::-webkit-scrollbar {
-    display: none;  /* Safari and Chrome */
-}"""
-
-
-def df_to_html(
-    styler: Styler,
-    *,
-    file_path: str | Path | None = None,
-    inline_props: str | None = "{{...$$props}} ",
-    pre_table: str | None = "",
-    styles: str | None = ALLOW_TABLE_SCROLL + HIDE_SCROLL_BAR,
-    styler_css: bool | dict[str, str] = True,
-    post_process: Callable[[str], str] | None = None,
-    **kwargs: Any,
-) -> str:
-    """Convert a pandas Styler to a svelte table.
-
-    Args:
-        styler (Styler): Styler object to export.
-        file_path (str): Path to the file to write the svelte table to.
-        inline_props (str): Inline props to pass to the table element. Example:
-            "class='table' style='width: 100%'". Defaults to "".
-        pre_table (str): HTML string to insert above the table. Defaults to "". Will
-            replace the opening table tag to allow passing props to it.
-        styles (str): CSS rules to insert at the bottom of the style tag. Defaults to
-            TABLE_SCROLL_CSS.
-        styler_css (bool | dict[str, str]): Whether to apply some sensible default CSS
-            to the pandas Styler. Defaults to True. If dict, keys are CSS selectors and
-            values CSS strings. Example:
-            dict("td, th": "border: none; padding: 4px 6px;")
-        post_process (Callable[[str], str]): Function to post-process the HTML string
-            before writing it to file. Defaults to None.
-        **kwargs: Keyword arguments passed to Styler.to_html().
-
-    Returns:
-        str: pandas Styler as HTML.
-    """
-    styler.set_uuid("")
-    if styler_css:
-        styler_css = styler_css if isinstance(styler_css, dict) else DEFAULT_DF_STYLES
-        styler.set_table_styles(
-            [dict(selector=sel, props=val) for sel, val in styler_css.items()]
-        )
-    html = styler.to_html(**kwargs)
-    if html is None:
-        raise ValueError("Styler.to_html() returned None, don't pass buf kwarg")
-    if pre_table:
-        html = html.replace("<table", pre_table)
-
-    if inline_props:
-        if "<table " not in html:
-            raise ValueError(
-                f"Got {inline_props=} but no '<table ...' tag found in HTML string to "
-                "attach to"
-            )
-        html = html.replace("<table", f"<table {inline_props}")
-    if styles is not None:
-        # insert styles at end of closing </style> tag so they override default styles
-        html = html.replace("</style>", f"{styles}\n</style>")
-    if callable(post_process):
-        html = post_process(html)
-    if file_path:
-        with open(file_path, mode="w", encoding="utf-8") as file:
-            file.write(html)
-
-    return html

@@ -261,6 +261,7 @@ def test_short_summary(report: dict[str, Any], expected: str) -> None:
         (pmv.RdfPlotWidget(structures=[]), True),
         (pmv.RdfPlotWidget(patterns=[]), True),
         (pmv.RdfPlotWidget(patterns=[{"label": "a", "x": [1.0], "y": [2.0]}]), False),
+        (pmv.SunburstWidget(), True),
         (pmv.TreemapWidget(), True),
         (pmv.TreemapWidget(data={"label": "root", "value": 1}), False),
     ],

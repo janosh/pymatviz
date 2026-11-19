@@ -8,7 +8,6 @@ axis labels with sub/superscripts.
 from __future__ import annotations
 
 import builtins
-import os
 from importlib.metadata import PackageNotFoundError, version
 
 import plotly.express as px
@@ -50,7 +49,7 @@ from pymatviz.cluster.composition import cluster_compositions
 from pymatviz.coordination import coordination_hist, coordination_vs_cutoff_line
 from pymatviz.enums import Key, angstrom_per_atom, cubic_angstrom, eV
 from pymatviz.histogram import elements_hist, histogram
-from pymatviz.io import df_to_html, save_fig
+from pymatviz.io import save_fig
 from pymatviz.notebook import notebook_mode
 from pymatviz.phonons import phonon_bands, phonon_bands_and_dos, phonon_dos
 from pymatviz.process_data import (
@@ -104,6 +103,7 @@ from pymatviz.widgets import (
     ScatterPlotWidget,
     SpacegroupBarPlotWidget,
     StructureWidget,
+    SunburstWidget,
     TrajectoryWidget,
     TreemapWidget,
     WidgetLink,
@@ -126,17 +126,5 @@ IS_IPYTHON = hasattr(builtins, "__IPYTHON__")
 px.defaults.labels |= {
     "gap expt": "Experimental band gap (eV)",
 } | {key: key.label for key in Key}
-
-# to hide math loading MathJax message in bottom left corner of plotly PDFs
-# https://github.com/plotly/Kaleido/issues/122#issuecomment-994906924
-# use pio.kaleido.scope.mathjax = None
-
-
-if os.environ.get("CI"):  # Configure Plotly to be silent in CI
-    import plotly.graph_objects as go
-
-    # Replace fig.show() method with a noop version for CI environments to avoid
-    # spamming logs with huge HTML strings
-    go.Figure.show = lambda *_args, **_kwargs: None  # ty: ignore[invalid-assignment]
 
 notebook_mode(on=IS_IPYTHON)

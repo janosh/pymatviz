@@ -7,6 +7,8 @@ from typing import Any
 
 import traitlets as tl
 
+from pymatviz.widgets._normalize import normalize_plot_json
+
 
 # Mirror matterviz's ELEMENT_COLOR_SCHEME_NAMES (src/lib/constants.ts) and
 # BONDING_STRATEGIES (src/lib/structure/bonding.ts). The renderer throws on any other
@@ -132,6 +134,69 @@ class PlotControlsTraits(tl.HasTraits):
     controls_open = tl.Bool(default_value=False).tag(sync=True)
     controls_toggle_props = optional_trait(tl.Dict)
     controls_pane_props = optional_trait(tl.Dict)
+
+
+class HierarchyPlotTraits(PlotControlsTraits):
+    """Native data, coloring, label and zoom traits for hierarchy charts."""
+
+    _chart_type: str
+    data = tl.Any(allow_none=True).tag(sync=True)
+    value_mode = optional_trait(
+        tl.CaselessStrEnum, values=["leaf-sum", "total", "remainder"]
+    )
+    sort = optional_trait(
+        tl.CaselessStrEnum, values=["descending", "ascending", "none"]
+    )
+    # fraction by which each depth level lightens its inherited color
+    level_lighten = optional_trait(tl.Float)
+    # group siblings below this fraction of the total into one "Other" cell (0 = off)
+    min_fraction = optional_trait(tl.Float)
+    # keep the N largest children per parent, bucketing the rest into "Other" (0 = all)
+    max_children = optional_trait(tl.Int, min=0)
+    other_label = optional_trait(tl.Unicode)  # label for the aggregated "Other" cell
+    max_depth = optional_trait(tl.Int)  # levels shown below the zoom root (0 = all)
+    show_labels = optional_trait(tl.Bool)
+    # label content (plotly textinfo equivalent)
+    label_text = optional_trait(
+        tl.CaselessStrEnum,
+        values=[
+            "label",
+            "value",
+            "percent",
+            "label+value",
+            "label+percent",
+            "label+parent-percent",
+        ],
+    )
+    zoom_on_click = optional_trait(tl.Bool)
+    show_breadcrumbs = optional_trait(tl.Bool)  # clickable ancestor pathbar when zoomed
+    legend = optional_trait(tl.Dict)
+    show_legend = optional_trait(tl.Bool)  # depth-1 category legend
+    value_format = optional_trait(tl.Unicode)  # d3-format string for labels/tooltips
+    # chart-edge padding {"t": N, "b": N, "l": N, "r": N} in pixels
+    padding = optional_trait(tl.Dict)
+    # formats offered in the export pane ([] hides it; None = all) + their base filename
+    export_formats = optional_trait(tl.List, trait=tl.Enum(EXPORT_FORMATS))
+    export_filename = optional_trait(tl.Unicode)
+    fullscreen_toggle = optional_trait(tl.Bool)
+    # two-way synced zoom state: id of the cell the view is rooted on
+    zoom_root_id = optional_trait(tl.Any)
+
+    def __init__(
+        self, data: dict[str, Any] | list[dict[str, Any]] | None = None, **kwargs: Any
+    ) -> None:
+        """Display labeled nodes with leaf values and optional children."""
+        unknown = kwargs.keys() - self.trait_names() - {"version_override", "model_id"}
+        if unknown:
+            raise TypeError(f"Unknown {type(self).__name__} options: {sorted(unknown)}")
+        super().__init__(widget_type=self._chart_type, data=data, **kwargs)
+
+    @tl.validate("data", "legend", "padding")
+    def _normalize_hierarchy_json(self, proposal: dict[str, Any]) -> Any:
+        """Normalize JSON values on construction and subsequent assignments."""
+        return normalize_plot_json(
+            proposal["value"], f"{self._chart_type}.{proposal['trait'].name}"
+        )
 
 
 class CartesianPlotTraits(PlotControlsTraits):

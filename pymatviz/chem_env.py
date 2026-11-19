@@ -6,33 +6,23 @@ using pymatgen's ChemEnv and local environment modules.
 
 from __future__ import annotations
 
-import textwrap
 import warnings
-from typing import TYPE_CHECKING, Any, Final, Literal, get_args
+from collections import defaultdict
+from math import fsum
+from typing import TYPE_CHECKING, Any, Literal
 
-import pandas as pd
-import plotly.graph_objects as go
-
-from pymatviz.process_data import normalize_structures
-from pymatviz.typing import ShowCounts
+from pymatviz._hierarchy import _limit_nodes, _validate_limit_mode
+from pymatviz.process_data import normalize_periodic_structures
 
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
 
-    from pymatgen.core import IStructure, Structure
+    from pymatgen.core import PeriodicSite, Structure
 
-    from pymatviz.typing import AnyStructure
+    from pymatviz.typing import PeriodicStructure
 
 ChemEnvSettings = dict[str, Any] | Literal["chemenv", "crystal_nn"]
-
-# Cell/slice text templates shared by chem_env_sunburst and chem_env_treemap
-CHEM_ENV_TEXT_TEMPLATES: Final[dict[str | bool, str]] = {
-    "value": "%{label}: %{value:.2f}",
-    "percent": "%{label}: %{percentParent:.1%}",
-    "value+percent": "%{label}: %{value:.2f} (%{percentParent:.1%})",
-    False: "%{label}",
-}
 
 
 def get_cn_from_symbol(ce_symbol: str, symbol_cn_mapping: dict[str, int]) -> int:
@@ -62,37 +52,17 @@ def get_cn_from_symbol(ce_symbol: str, symbol_cn_mapping: dict[str, int]) -> int
 
 
 def classify_local_env_with_order_params(
-    structure: Structure | IStructure, site_idx: int, cn_val: int
+    center: PeriodicSite, neighbors: Sequence[PeriodicSite]
 ) -> str:
-    """Classify local coordination environment using LocalStructOrderParams.
-
-    Based on Crystal Toolkit's approach using pymatgen's LocalStructOrderParams
-    to calculate order parameters for different coordination geometries.
-
-    Args:
-        structure (Structure | IStructure): The crystal structure
-        site_idx (int): Index of the site to analyze
-        cn_val (int): Coordination number of the site
-
-    Returns:
-        str: String describing the coordination environment (e.g. "T:4", "O:6", "CN:8")
-    """
+    """Classify a site from its image-resolved CrystalNN neighbors."""
     from pymatgen.analysis import local_env
     from pymatgen.core import Structure
 
-    if not 0 <= site_idx < len(structure):
-        raise IndexError(
-            f"{site_idx=} out of range for structure with {len(structure)} sites"
-        )
+    cn_val = len(neighbors)
+    if (cn_params := local_env.CN_OPT_PARAMS.get(cn_val)) is None:
+        return f"CN:{cn_val}"
 
     try:
-        analysis_structure = Structure.from_sites(structure)
-
-        # Check if we have order parameters for this coordination number
-        cn_params = local_env.CN_OPT_PARAMS.get(cn_val)
-        if cn_params is None:
-            return f"CN:{cn_val}"
-
         # Get the parameter names and settings for this CN
         names = list(cn_params)
         order_params = list(cn_params.values())
@@ -109,19 +79,14 @@ def classify_local_env_with_order_params(
         # Create LocalStructOrderParams instance
         local_ops = local_env.LocalStructOrderParams(types, parameters=params)
 
-        nn_info = local_env.CrystalNN().get_nn_info(
-            structure=analysis_structure, n=site_idx
-        )
-
-        # Create local structure: central site + neighbors
-        sites = [analysis_structure[site_idx]] + [info["site"] for info in nn_info]
-        local_structure = Structure.from_sites(sites)
+        # Preserve each periodic image's coordinates, including repeated site indices.
+        local_structure = Structure.from_sites([center, *neighbors])
 
         # Calculate order parameters
         local_order_params = local_ops.get_order_parameters(
             structure=local_structure,
             n=0,
-            indices_neighs=list(range(1, len(sites))),
+            indices_neighs=list(range(1, cn_val + 1)),
         )
 
         # Find the geometry with the highest order parameter
@@ -143,7 +108,7 @@ def classify_local_env_with_order_params(
 
 
 def collect_coord_envs_chemenv(
-    structures: Iterable[Any],
+    structures: Iterable[Structure],
     *,
     chem_env_settings: dict[str, Any] | None = None,
     normalize: bool = False,
@@ -210,7 +175,7 @@ def collect_coord_envs_chemenv(
 
 
 def collect_coord_envs_crystal_nn(
-    structures: Iterable[Any],
+    structures: Iterable[Structure],
     *,
     normalize: bool = False,
 ) -> list[dict[str, Any]]:
@@ -231,18 +196,24 @@ def collect_coord_envs_crystal_nn(
     crystal_nn = CrystalNN()
 
     for struct_idx, structure in enumerate(structures):
+        if not structure:
+            continue
         site_count = 1.0 / len(structure) if normalize else 1.0
         # collect per structure so a failure midway doesn't leave partial rows
         struct_rows: list[dict[str, Any]] = []
         try:
-            for site_idx in range(len(structure)):
-                cn_val = len(crystal_nn.get_nn_info(structure, site_idx))
-                # Get best matching coordination environment using order parameters
-                ce_symbol = classify_local_env_with_order_params(
-                    structure, site_idx, cn_val
-                )
+            for site_idx, site in enumerate(structure):
+                neighbors = [
+                    info["site"] for info in crystal_nn.get_nn_info(structure, site_idx)
+                ]
                 struct_rows.append(
-                    dict(coord_num=cn_val, chem_env_symbol=ce_symbol, count=site_count)
+                    dict(
+                        coord_num=len(neighbors),
+                        chem_env_symbol=classify_local_env_with_order_params(
+                            site, neighbors
+                        ),
+                        count=site_count,
+                    )
                 )
         except (RuntimeError, ValueError) as exc:
             warnings.warn(
@@ -257,79 +228,67 @@ def collect_coord_envs_crystal_nn(
     return chem_env_data
 
 
-def collect_chem_env_data(
-    structures: AnyStructure | Sequence[AnyStructure],
+def chem_env_nodes(
+    structures: PeriodicStructure | Sequence[PeriodicStructure],
     *,
     chem_env_settings: ChemEnvSettings,
     normalize: bool,
-    show_counts: ShowCounts,
+    max_coordination_numbers: int | None,
+    max_environments: int | None,
+    mode: Literal["other", "drop"],
 ) -> list[dict[str, Any]]:
-    """Validate shared chem_env plot options and collect CN/CE counts.
+    """Build coordination-number branches with environment counts as leaves.
 
-    Shared setup of chem_env_sunburst and chem_env_treemap.
-
-    Args:
-        structures (AnyStructure | Sequence[AnyStructure]): Structures to analyze.
-        chem_env_settings (dict[str, Any] | "chemenv" | "crystal_nn"): "crystal_nn"
-            uses CrystalNN + order params, "chemenv" uses ChemEnv with default
-            settings and a dict uses ChemEnv with custom LocalGeometryFinder settings.
-        normalize (bool): Whether to normalize counts per structure.
-        show_counts ("value" | "percent" | "value+percent" | False): Text display
-            mode, only validated here.
-
-    Returns:
-        list[dict[str, Any]]: Rows with keys coord_num, chem_env_symbol, count.
-
-    Raises:
-        ValueError: For invalid show_counts or chem_env_settings.
+    Rank coordination numbers by their full counts before limiting environments
+    per branch. Ties use coordination number and environment symbol respectively.
     """
-    if show_counts not in get_args(ShowCounts):
-        raise ValueError(
-            f"Invalid {show_counts=}, must be one of {get_args(ShowCounts)}"
-        )
-    valid_methods = ("chemenv", "crystal_nn")
-    if not isinstance(chem_env_settings, dict) and (
-        chem_env_settings not in valid_methods
+    from pymatgen.core import Structure
+
+    _validate_limit_mode(mode)
+
+    if not isinstance(chem_env_settings, dict) and chem_env_settings not in (
+        "chemenv",
+        "crystal_nn",
     ):
         raise ValueError(
-            f"Invalid {chem_env_settings=}, must be one of {valid_methods} or a dict "
-            "of ChemEnv settings"
+            f"Invalid {chem_env_settings=}, expected 'chemenv', 'crystal_nn' or a dict"
+        )
+    structs = (
+        struct if isinstance(struct, Structure) else Structure.from_sites(struct)
+        for struct in normalize_periodic_structures(structures).values()
+        if struct
+    )
+    if chem_env_settings == "crystal_nn":
+        rows = collect_coord_envs_crystal_nn(structs, normalize=normalize)
+    else:
+        settings = {} if chem_env_settings == "chemenv" else chem_env_settings
+        rows = collect_coord_envs_chemenv(
+            structs, chem_env_settings=settings, normalize=normalize
         )
 
-    structs = normalize_structures(structures).values()
-    if chem_env_settings == "crystal_nn":
-        return collect_coord_envs_crystal_nn(structs, normalize=normalize)
-    settings = {} if chem_env_settings == "chemenv" else chem_env_settings
-    return collect_coord_envs_chemenv(
-        structs, chem_env_settings=settings, normalize=normalize
-    )
+    counts: defaultdict[tuple[int, str], list[float]] = defaultdict(list)
+    for row in rows:
+        counts[row["coord_num"], row["chem_env_symbol"]].append(row["count"])
 
-
-def empty_chem_env_figure() -> go.Figure:
-    """Return the placeholder figure shown when there is no CN/CE data."""
-    fig = go.Figure()
-    fig.layout.title = dict(text="No CN/CE data to display", x=0.5, font_size=16)
-    return fig
-
-
-def aggregate_chem_env_data(chem_env_data: list[dict[str, Any]]) -> pd.DataFrame:
-    """Sum counts per (coord_num, chem_env_symbol) pair.
-
-    Args:
-        chem_env_data (list[dict[str, Any]]): Rows with keys coord_num,
-            chem_env_symbol, count.
-
-    Returns:
-        pd.DataFrame: with columns coord_num, chem_env_symbol, count.
-    """
-    df_chem_env = pd.DataFrame(chem_env_data)
-    return df_chem_env.groupby(["coord_num", "chem_env_symbol"], as_index=False)[
-        "count"
-    ].sum()
-
-
-def wrap_chem_env_label(text: str) -> str:
-    """Wrap long CE labels with <br> so plots can use larger fonts in small cells."""
-    return "<br>".join(
-        textwrap.wrap(text, width=15, break_long_words=True, break_on_hyphens=True)
-    )
+    by_cn: defaultdict[int, list[dict[str, Any]]] = defaultdict(list)
+    for (coord_num, symbol), weights in sorted(counts.items()):
+        by_cn[coord_num].append(
+            dict(id=f"CN {coord_num}/{symbol}", label=symbol, value=fsum(weights))
+        )
+    nodes = [
+        dict(
+            id=f"CN {coord_num}",
+            label=f"CN {coord_num}",
+            children=children,
+            value=fsum(child["value"] for child in children),
+        )
+        for coord_num, children in by_cn.items()
+    ]
+    roots = _limit_nodes(nodes, max_coordination_numbers, mode)
+    for root in roots:
+        if children := root.get("children"):
+            root["children"] = _limit_nodes(
+                children, max_environments, mode, parent_id=root["id"]
+            )
+            del root["value"]  # The renderer derives branch totals from visible leaves.
+    return roots

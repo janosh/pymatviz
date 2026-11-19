@@ -638,6 +638,45 @@ _SVG_EXTRACT_JS = """\
             && !best.contains(canvas)) return null;
     }
     const cloned = best.cloneNode(true);
+    // The clone loses the document's stylesheets and CSS variables. Pin the
+    // live SVG paint and typography only where standalone inheritance differs.
+    const inherited = `color fill fill-opacity fill-rule stroke stroke-width
+        stroke-opacity stroke-dasharray stroke-dashoffset stroke-linecap stroke-linejoin
+        stroke-miterlimit font-family font-size font-style font-weight font-variant
+        letter-spacing word-spacing text-anchor dominant-baseline paint-order visibility
+        text-rendering shape-rendering marker-start marker-mid marker-end`
+        .split(/\\s+/);
+    const own = {opacity: '1', display: 'inline', filter: 'none', 'clip-path': 'none',
+        mask: 'none', 'vector-effect': 'none', 'stop-color': 'rgb(0, 0, 0)',
+        'stop-opacity': '1'};
+    const props = [...inherited, ...Object.keys(own)];
+    const doc_fragment = document.URL.split('#')[0] + '#';
+    function inline_styles(live, copy, parent) {
+        if (!(live instanceof SVGElement)) return;
+        const css = getComputedStyle(live);
+        for (const prop of props) {
+            const value = css.getPropertyValue(prop);
+            const expected = own[prop] ?? parent?.getPropertyValue(prop);
+            const authored = copy.style.getPropertyValue(prop)
+                || copy.getAttribute(prop);
+            // A <use> instance supplies inherited values to its referenced tree.
+            // Keep explicit paint even when it matches the definition's parent.
+            const contextual = (authored?.toLowerCase() === 'currentcolor'
+                && value === css.color) || (authored === 'inherit'
+                && value === parent?.getPropertyValue(prop));
+            copy.style.removeProperty(prop);
+            if (value && (value !== expected || authored))
+                copy.setAttribute(prop, contextual ? authored
+                    : value.replaceAll(doc_fragment, '#'));
+            else copy.removeAttribute(prop);
+        }
+        // Composited SVG layers use different edge antialiasing in Chromium.
+        if (css.willChange !== 'auto') copy.style.willChange = css.willChange;
+        if (!copy.style.length) copy.removeAttribute('style');
+        for (let idx = 0; idx < live.children.length; idx++)
+            inline_styles(live.children[idx], copy.children[idx], css);
+    }
+    inline_styles(best, cloned, null);
     const live_foreign_objs = best.querySelectorAll('foreignObject');
     cloned.querySelectorAll('foreignObject').forEach((foreign_obj, idx) => {
         const canvas = live_foreign_objs[idx].querySelector('canvas');
@@ -652,10 +691,6 @@ _SVG_EXTRACT_JS = """\
     });
     if (!cloned.hasAttribute('xmlns'))
         cloned.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-    const style = cloned.getAttribute('style') || '';
-    if (!/font-family/.test(style))
-        cloned.setAttribute('style', style + ';font-family:sans-serif;');
-    cloned.setAttribute('font-family', 'sans-serif');
     return '<?xml version="1.0" encoding="UTF-8"?>\\n'
         + new XMLSerializer().serializeToString(cloned);
 }
