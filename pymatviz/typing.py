@@ -11,6 +11,7 @@ import pandas as pd
 if TYPE_CHECKING:
     from ase.atoms import Atoms as AseAtoms
     from phonopy.phonon.dos import TotalDos
+    from phonopy.structure.atoms import PhonopyAtoms
     from pymatgen.core import Composition, IMolecule, IStructure, Molecule, Structure
     from pymatgen.io.ase import MSONAtoms
     from pymatgen.phonon.dos import PhononDos
@@ -20,6 +21,7 @@ type Xyz = tuple[float, float, float]
 type AnyStructure = (
     "Structure | IStructure | Molecule | IMolecule | MSONAtoms | AseAtoms"
 )
+type PeriodicStructure = "IStructure | AseAtoms | PhonopyAtoms"
 type AnyDos = "PhononDos | TotalDos"
 
 # Bare Literal assignments (not `type`): get_args() is empty on PEP 695 type aliases

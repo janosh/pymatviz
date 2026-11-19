@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pytest
-from pymatgen.core import Lattice, Structure
+from pymatgen.core import Lattice, PeriodicSite, Structure
 
 from pymatviz import chem_env
+from pymatviz.utils.testing import TEST_FILES
 
 
 @pytest.mark.parametrize(
@@ -41,38 +44,21 @@ def test_get_cn_from_symbol(
     assert chem_env.get_cn_from_symbol(symbol, mapping) == expected_cn
 
 
-@pytest.mark.parametrize(
-    ("site_idx", "cn_val", "expected"),
-    [
-        (0, 0, "CN:0"),
-        (0, -1, "CN:-1"),
-        (0, 99, "CN:99"),
-        (999, 6, IndexError),
-        (-1, 4, IndexError),
-    ],
-)
-def test_classify_local_env_with_order_params_cubic(
-    structures: tuple[Structure, Structure],
-    site_idx: int,
-    cn_val: int,
-    expected: str | type[Exception],
+@pytest.mark.parametrize("cn_val", [0, 99])
+def test_classify_local_env_unknown_coordination(
+    structures: tuple[Structure, Structure], cn_val: int
 ) -> None:
-    """Unsupported CNs get a generic CN label, out-of-range sites raise."""
-    if isinstance(expected, str):
-        result = chem_env.classify_local_env_with_order_params(
-            structures[0], site_idx, cn_val
-        )
-        assert result == expected
-    else:
-        with pytest.raises(expected, match=rf"site_idx={site_idx} out of range"):
-            chem_env.classify_local_env_with_order_params(
-                structures[0], site_idx, cn_val
-            )
+    """Coordination numbers without order parameters retain their generic label."""
+    site = structures[0][0]
+    assert (
+        chem_env.classify_local_env_with_order_params(site, [site] * cn_val)
+        == f"CN:{cn_val}"
+    )
 
 
 @pytest.mark.parametrize(
     ("order_params", "expected"),
-    [([0.0, 1.0], "T:4"), ([0.0, 0.5], "CN:4")],
+    [([0.0, 1.0], "T:2"), ([0.0, 0.5], "CN:2")],
     ids=["best-match", "weak-match-fallback"],
 )
 def test_classify_local_env_order_params(
@@ -84,14 +70,6 @@ def test_classify_local_env_order_params(
     structure = Structure(
         Lattice.cubic(4), ["Li", "O", "O"], [[0, 0, 0], [0.5, 0.5, 0.5], [0.5, 0, 0]]
     )
-
-    class FakeCrystalNN:
-        """Nearest-neighbor finder that only answers for site 1."""
-
-        def get_nn_info(self, structure: Structure, n: int) -> list[dict[str, object]]:
-            """Return the two other sites as neighbors of site 1."""
-            assert n == 1
-            return [{"site": structure[0]}, {"site": structure[2]}]
 
     class FakeOrderParams:
         """Order-parameter calculator returning fixed values."""
@@ -112,11 +90,15 @@ def test_classify_local_env_order_params(
             assert indices_neighs == [1, 2]
             return np.array(order_params)
 
-    monkeypatch.setitem(local_env.CN_OPT_PARAMS, 4, {"Z": ("zero",), "T": ("tet",)})
-    monkeypatch.setattr(local_env, "CrystalNN", FakeCrystalNN)
+    monkeypatch.setitem(local_env.CN_OPT_PARAMS, 2, {"Z": ("zero",), "T": ("tet",)})
     monkeypatch.setattr(local_env, "LocalStructOrderParams", FakeOrderParams)
 
-    assert chem_env.classify_local_env_with_order_params(structure, 1, 4) == expected
+    assert (
+        chem_env.classify_local_env_with_order_params(
+            structure[1], [structure[0], structure[2]]
+        )
+        == expected
+    )
 
 
 def test_collect_coord_envs_crystal_nn_normalizes_counts(
@@ -143,10 +125,10 @@ def test_collect_coord_envs_crystal_nn_normalizes_counts(
             return [{"site": structure[1 - site_idx]}]
 
     def fake_classify_local_env(
-        _structure: Structure, site_idx: int, cn_val: int
+        center: PeriodicSite, neighbors: list[PeriodicSite]
     ) -> str:
         """Return a site-specific label to keep normalized rows distinct."""
-        return f"site-{site_idx}:CN{cn_val}"
+        return f"{center.species_string}:CN{len(neighbors)}"
 
     monkeypatch.setattr(local_env, "CrystalNN", FakeCrystalNN)
     monkeypatch.setattr(
@@ -163,6 +145,44 @@ def test_collect_coord_envs_crystal_nn_normalizes_counts(
         )
 
     assert result == [
-        {"coord_num": 1, "chem_env_symbol": "site-0:CN1", "count": 0.5},
-        {"coord_num": 1, "chem_env_symbol": "site-1:CN1", "count": 0.5},
+        {"coord_num": 1, "chem_env_symbol": "Li:CN1", "count": 0.5},
+        {"coord_num": 1, "chem_env_symbol": "O:CN1", "count": 0.5},
+    ]
+
+
+def test_crystal_nn_reuses_periodic_neighbors(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Compute neighbors once per site and build only image-resolved local clusters."""
+    from pymatgen.analysis.local_env import CrystalNN
+
+    structure = Structure.from_file(
+        f"{TEST_FILES}/structures/mp-1207297-Ac2Br2O1-tetragonal.json.gz"
+    )
+    query = CrystalNN.get_nn_info
+    from_sites = Structure.from_sites
+    queried = []
+    clusters = []
+
+    def track_neighbors(
+        self: CrystalNN, structure: Structure, n: int
+    ) -> list[dict[str, Any]]:
+        """Record every query and return the actual neighbor images."""
+        queried.append(n)
+        return query(self, structure, n)
+
+    def track_cluster(sites: list[PeriodicSite]) -> Structure:
+        """Record the size of each local structure passed to the classifier."""
+        clusters.append(len(sites))
+        return from_sites(sites)
+
+    monkeypatch.setattr(CrystalNN, "get_nn_info", track_neighbors)
+    monkeypatch.setattr(Structure, "from_sites", track_cluster)
+    rows = chem_env.collect_coord_envs_crystal_nn([structure])
+    assert queried == list(range(len(structure)))
+    assert clusters == [3, 3, 3]
+    assert [row["chem_env_symbol"] for row in rows] == [
+        "linear:2",
+        "linear:2",
+        "CN:1",
+        "CN:1",
+        "linear:2",
     ]

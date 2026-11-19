@@ -34,6 +34,7 @@ from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 from pymatviz.widgets.scatter_plot_3d import ScatterPlot3DWidget
 from pymatviz.widgets.spacegroup_bar import SpacegroupBarPlotWidget
 from pymatviz.widgets.structure import StructureWidget
+from pymatviz.widgets.sunburst import SunburstWidget
 from pymatviz.widgets.trajectory import TrajectoryWidget
 from pymatviz.widgets.treemap import TreemapWidget
 from pymatviz.widgets.xrd import XrdWidget
@@ -186,6 +187,7 @@ from pymatviz.widgets.xrd import XrdWidget
             "chem_pot_diagram",
             "entries",
         ),
+        (SunburstWidget, {"data": [{"label": "leaf", "value": 3}]}, "sunburst", "data"),
         (
             TreemapWidget,
             {"data": {"label": "root", "children": [{"label": "leaf", "value": 3}]}},
@@ -204,6 +206,29 @@ def test_widget_construction_and_type(
     widget = widget_cls(**kwargs)
     assert widget.widget_type == expected_type
     assert getattr(widget, state_key) == kwargs[state_key]
+
+
+_ROOT_WITH_KIDS = {"label": "root", "children": [{"label": "leaf", "value": 3}]}
+
+
+@pytest.mark.parametrize("widget_cls", [SunburstWidget, TreemapWidget])
+@pytest.mark.parametrize(
+    ("data", "expected"),
+    [
+        ({"label": "Fe-O", "value": 4}, [{"label": "Fe-O", "value": 4}]),
+        ({"label": "Fe-O", "children": []}, [{"label": "Fe-O", "children": []}]),
+        (_ROOT_WITH_KIDS, _ROOT_WITH_KIDS),
+        ([{"label": "Fe-O", "value": 4}], [{"label": "Fe-O", "value": 4}]),
+    ],
+)
+def test_hierarchy_standalone_leaf_wrapped(
+    widget_cls: type, data: Any, expected: Any
+) -> None:
+    """A standalone leaf node is wrapped in a list so it gets a visible cell."""
+    widget = widget_cls(data=data)
+    assert widget.data == expected
+    widget.data = data  # assignment after construction normalizes too
+    assert widget.data == expected
 
 
 @pytest.mark.parametrize(
@@ -252,6 +277,7 @@ def test_widget_notebook_integration(widget_cls: type[MatterVizWidget]) -> None:
         (SpacegroupBarPlotWidget, {"data": [225]}),
         (ChemPotDiagramWidget, {"entries": [{"name": "Li", "energy": -1.9}]}),
         (TreemapWidget, {"data": {"label": "root", "value": 1}}),
+        (SunburstWidget, {"shape": "icicle"}),
     ],
 )
 def test_to_dict_includes_subclass_fields(
@@ -337,16 +363,11 @@ def test_widget_traitlet_defaults(widget_cls: type, attr: str, expected: Any) ->
     assert widget_cls().to_dict()[attr] == expected
 
 
-def test_treemap_widget_all_config_traits_default_to_none() -> None:
-    """Every treemap config trait defaults to None so frontend defaults apply.
-
-    Guards against container traits regressing to []/{} defaults (traitlets
-    List/Dict need explicit default_value=None) which would override the
-    component's own defaults.
-    """
-    # controls_open is two-way view state mirroring the frontend's false default
+@pytest.mark.parametrize("widget_cls", [TreemapWidget, SunburstWidget])
+def test_hierarchy_config_defaults(widget_cls: type) -> None:
+    """Hierarchy config defaults to None so each renderer controls its own defaults."""
     base_traits = {"widget_type", "style", "show_controls", "controls_open"}
-    state = TreemapWidget().to_dict()
+    state = widget_cls().to_dict()
     non_none = {key for key, val in state.items() if val is not None} - base_traits
     assert not non_none, f"expected None defaults, got non-None for {sorted(non_none)}"
 
@@ -541,20 +562,45 @@ def test_spacegroup_bar_data_inputs() -> None:
             SpacegroupBarPlotWidget(data=bad_data)
 
 
-def test_treemap_widget_traits_and_validation() -> None:
-    """TreemapWidget normalizes data, validates enums, and syncs zoom state."""
+@pytest.mark.parametrize(
+    ("widget_cls", "geometry", "enum_key"),
+    [
+        (
+            TreemapWidget,
+            {
+                "label_fit": "shrink",
+                "label_min_font_size": 7,
+                "label_max_font_size": 14,
+                "parent_label_font_size": 16,
+            },
+            "label_fit",
+        ),
+        (
+            SunburstWidget,
+            {
+                "shape": "icicle",
+                "inner_radius": 0.2,
+                "pad_angle": 0.1,
+                "label_rotation": "radial",
+            },
+            "shape",
+        ),
+    ],
+)
+def test_hierarchy_widget_traits(
+    widget_cls: type, geometry: dict[str, Any], enum_key: str
+) -> None:
+    """Both charts normalize hierarchy updates, validate chart options and sync zoom."""
     data = {"label": "root", "children": [{"label": "a", "value": np.float64(2.5)}]}
     config = {
+        **geometry,
         "value_mode": "total",
-        "label_fit": "shrink",
-        "label_min_font_size": 7,
-        "label_max_font_size": 14,
-        "parent_label_font_size": 16,
+        "label_text": "label+value",
         "max_children": 3,
         "export_formats": ["svg", "png"],
         "zoom_root_id": "root/a",
     }
-    widget = TreemapWidget(data=data, **config)
+    widget = widget_cls(data=data, **config)
     leaf_value = widget.data["children"][0]["value"]
     assert leaf_value == 2.5
     assert type(leaf_value) is float  # numpy scalar normalized
@@ -566,18 +612,20 @@ def test_treemap_widget_traits_and_validation() -> None:
     widget.zoom_root_id = None
     assert widget.zoom_root_id is None
 
-    for bad_key in ("value_mode", "label_text", "label_fit"):
+    for bad_key in ("value_mode", "label_text", enum_key):
         with pytest.raises(tl.TraitError):
-            TreemapWidget(data=data, **{bad_key: "not-an-option"})
+            widget_cls(data=data, **{bad_key: "not-an-option"})
     with pytest.raises(tl.TraitError):
-        TreemapWidget(data=data, max_children=-1)
+        widget_cls(data=data, max_children=-1)
     with pytest.raises(tl.TraitError):  # not a matterviz ExportFormat
-        TreemapWidget(data=data, export_formats=["pdf"])
-    assert TreemapWidget(data=data, export_formats=[]).export_formats == []
+        widget_cls(data=data, export_formats=["pdf"])
+    with pytest.raises(TypeError, match="show_counts"):
+        widget_cls(data=data, show_counts="value")
+    assert widget_cls(data=data, export_formats=[]).export_formats == []
 
-    # forest input: list of root nodes passes through unchanged
-    roots = [{"label": "x", "value": 1}, {"label": "y", "value": 2}]
-    assert TreemapWidget(data=roots).to_dict()["data"] == roots
+    widget.data = [{"label": "x", "value": np.int64(1)}, {"label": "y", "value": 2}]
+    assert type(widget.to_dict()["data"][0]["value"]) is int
+    assert widget.describe()["n_leaves"] == 2
 
 
 _COLOR_SCHEME_CASES = [
@@ -1055,6 +1103,84 @@ def test_headless_bar_plot_png(bar_plot_widget: BarPlotWidget) -> None:
     img = Image.open(io.BytesIO(png_bytes))
     assert img.width >= 400
     assert img.height >= 200
+
+
+@_skip_no_playwright
+@pytest.mark.parametrize("chart", ["treemap", "sunburst"])
+def test_hierarchy_vector_and_html_exports(chart: str, tmp_path: Any) -> None:
+    """Chemical-system charts export vector SVG/PDF and interactive standalone HTML."""
+    from playwright.sync_api import expect
+
+    import pymatviz as pmv
+    from pymatviz.widgets._headless import _get_browser
+
+    plot = pmv.chem_sys_treemap if chart == "treemap" else pmv.chem_sys_sunburst
+    widget = plot(
+        ["Fe2O3", "Li2O", "Si"],
+        label_text="label+value",
+        show_controls=False,
+        style="width: 700px; height: 480px;",
+    )
+    svg = widget.to_img(fmt="svg").decode()
+    assert f"data-{chart}-node-idx=" in svg
+    assert "Fe-O" in svg
+    pdf = widget.to_img(fmt="pdf")
+    assert pdf.startswith(b"%PDF-")
+    assert b"/Font" in pdf
+
+    html_path = tmp_path / f"{chart}.html"
+    widget.to_html(str(html_path), inline=True)
+    with _get_browser().new_page() as page:
+        page.goto(html_path.as_uri())
+        chart_nodes = page.locator(f"[data-{chart}-node-idx][aria-label]")
+        chart_nodes.first.wait_for()
+        assert chart_nodes.count() == widget.describe()["n_nodes"]
+        shapes = page.locator(
+            'svg[role="application"] :is(path, rect, circle, text, tspan)'
+        )
+        paint = """nodes => nodes.map(node => {
+            const style = getComputedStyle(node);
+            return [style.fill, style.stroke, style.strokeWidth, style.fontFamily,
+                    style.fontSize, style.fontWeight, style.textAnchor,
+                    style.dominantBaseline];
+        })"""
+        live_styles = shapes.evaluate_all(paint)
+        page.get_by_role("button", name="binary: 2", exact=True).press("Enter")
+        page.locator(".breadcrumbs").get_by_text("binary", exact=True).wait_for()
+        expect(chart_nodes).to_have_count(2)  # retries until zoom-out cells leave
+        svg_path = tmp_path / f"{chart}.svg"
+        svg_path.write_text(svg)
+        page.goto(svg_path.as_uri())
+        assert shapes.evaluate_all(paint) == live_styles
+
+
+@_skip_no_playwright
+@_skip_no_pillow
+def test_svg_export_keeps_use_instance_paint(tmp_path: Any) -> None:
+    """Referenced shapes keep explicit paint and inherit fill/color from each use."""
+    import io
+
+    from PIL import Image
+
+    from pymatviz.widgets._headless import _SVG_EXTRACT_JS, _get_browser
+
+    with _get_browser().new_page() as page:
+        page.set_content("""
+            <div id="widget-root"><svg width="192" height="64">
+            <defs><g id="swatches">
+                <rect width="64" height="64" fill="black"/>
+                <rect x="64" width="64" height="64" style="fill:currentColor"/>
+                <rect x="128" width="64" height="64" fill="inherit"/>
+            </g></defs><use href="#swatches" color="lime" fill="red"/></svg></div>""")
+        exported = tmp_path / "swatches.svg"
+        exported.write_text(page.evaluate(_SVG_EXTRACT_JS))
+        page.goto(exported.as_uri())
+        image = Image.open(io.BytesIO(page.locator("svg").screenshot())).convert("RGB")
+        assert [image.getpixel((pos, 32)) for pos in (32, 96, 160)] == [
+            (0, 0, 0),
+            (0, 255, 0),
+            (255, 0, 0),
+        ]
 
 
 @_skip_no_playwright

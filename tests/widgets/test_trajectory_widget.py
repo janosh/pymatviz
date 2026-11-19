@@ -10,6 +10,7 @@ import pytest
 import traitlets as tl
 
 from pymatviz import TrajectoryWidget
+from tests.widgets.conftest import decode_envelope
 
 
 if TYPE_CHECKING:
@@ -170,39 +171,43 @@ def test_widget_complete_lifecycle(
 
 
 @pytest.mark.parametrize(
-    ("trajectory_input", "expected_frames", "expected_properties"),
+    ("trajectory_input", "expected_properties", "is_binary"),
     [
-        # Basic properties
-        ([{"structure": "struct1", "energy": -1.23}], 1, {"energy": -1.23}),
-        # Complex properties
+        ([{"structure": "struct1", "energy": -1.23}], {"energy": -1.23}, True),
+        # Arbitrary tensor metadata stays JSON.
         (
             [
                 {
                     "structure": "struct1",
-                    "stress": [[0.1, 0, 0], [0, 0.1, 0], [0, 0, 0.1]],
+                    "other_tensor": [[0.1, 0, 0], [0, 0.1, 0], [0, 0, 0.1]],
                     "temp": 300,
                 }
             ],
-            1,
-            {"stress": [[0.1, 0, 0], [0, 0.1, 0], [0, 0, 0.1]], "temp": 300},
+            {"other_tensor": [[0.1, 0, 0], [0, 0.1, 0], [0, 0, 0.1]], "temp": 300},
+            False,
         ),
-        # Multiple frames
         (
             [
-                {"structure": "struct1", "step": 0, "lattice": 3.0},
-                {"structure": "struct2", "step": 1, "lattice": 3.1},
+                {"structure": "struct1", "step": 0, "density": 3.0},
+                {"structure": "struct2", "step": 1, "density": 3.1},
             ],
-            2,
-            {"step": 0, "lattice": 3.0},
+            {"step": 0, "density": 3.0},
+            True,
+        ),
+        # a scalar named like a reserved array ('lattice') stays JSON
+        (
+            [{"structure": "struct1", "lattice": 3.0}],
+            {"lattice": 3.0},
+            False,
         ),
     ],
 )
 def test_trajectory_widget_property_extraction(
     trajectory_input: list[dict[str, Any]],
-    expected_frames: int,
     expected_properties: dict[str, Any],
+    is_binary: bool,
 ) -> None:
-    """Test TrajectoryWidget correctly extracts properties from dict format."""
+    """Numeric frame properties become binary per-frame scalars, others JSON frames."""
     from pymatgen.core import Lattice, Structure
 
     structures = [
@@ -213,25 +218,81 @@ def test_trajectory_widget_property_extraction(
         )
         for idx in range(len(trajectory_input))
     ]
-
     trajectory_with_structures = [
         {**item, "structure": structures[idx]}
         for idx, item in enumerate(trajectory_input)
     ]
+    traj = TrajectoryWidget(trajectory=trajectory_with_structures).trajectory
+    n_frames = len(trajectory_input)
+    if is_binary:
+        arrays = decode_envelope(traj)
+        assert arrays["positions"].shape == (n_frames, 2, 3)
+        assert {key: arrays[key][0] for key in expected_properties} == (
+            expected_properties
+        )
+        assert set(arrays) == {"positions", "numbers", "lattice", *expected_properties}
+        return
+    assert set(traj) == {"frames", "metadata"}
+    assert [frame["step"] for frame in traj["frames"]] == list(range(n_frames))
+    assert traj["frames"][0]["metadata"] == expected_properties
 
-    widget = TrajectoryWidget(trajectory=trajectory_with_structures)
 
-    assert widget.trajectory is not None
-    assert len(widget.trajectory["frames"]) == expected_frames
+@pytest.mark.parametrize("shape", [(6,), (3, 3)])
+def test_ase_stress_transfer(
+    shape: tuple[int, ...], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Transfer raw ASE stress losslessly with compatible renderers."""
+    from ase import Atoms
+    from ase.calculators.singlepoint import SinglePointCalculator
 
-    frame1 = widget.trajectory["frames"][0]
-    assert frame1["step"] == 0
-    assert all(frame1["metadata"][k] == v for k, v in expected_properties.items())
+    frames = [Atoms("H", positions=[[idx, 0, 0]]) for idx in range(2)]
+    tensors = np.random.default_rng(seed=0).normal(size=(len(frames), *shape))
+    for atoms, stress in zip(frames, tensors, strict=True):
+        atoms.calc = SinglePointCalculator(atoms, stress=stress)
 
-    for idx, frame in enumerate(widget.trajectory["frames"]):
-        assert frame["step"] == idx
+    widget = TrajectoryWidget()
+    monkeypatch.setattr(
+        widget, "_resolve_assets", lambda: ("matterviz-binary-v1 frame_stress", "")
+    )
+    widget.trajectory = frames
+    encoded = widget.trajectory
+    wire = decode_envelope(encoded)["frame_stress"]
+    assert wire.dtype == np.dtype("<f8")
+    np.testing.assert_array_equal(wire, tensors.reshape(2, -1))
 
-    assert set(widget.trajectory) == {"frames", "metadata"}
+    monkeypatch.setattr(widget, "_resolve_assets", lambda: ("matterviz-binary-v1", ""))
+    widget.trajectory = frames
+    np.testing.assert_array_equal(
+        [frame["metadata"]["stress"] for frame in widget.trajectory["frames"]], tensors
+    )
+    with pytest.raises(ValueError, match="lacks the binary frame_stress channel"):
+        widget.trajectory = encoded
+
+
+@pytest.mark.parametrize(
+    "extra", [{}, {"stress": np.eye(3)}, {"stress": np.ones(6), "frame_stress": 42}]
+)
+def test_partial_or_conflicting_stress_stays_json(
+    extra: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Keep missing stresses, mixed shapes, and user-defined channels intact."""
+    from ase import Atoms
+
+    atoms = Atoms("H")
+    widget = TrajectoryWidget()
+    monkeypatch.setattr(
+        widget, "_resolve_assets", lambda: ("matterviz-binary-v1 frame_stress", "")
+    )
+    widget.trajectory = [
+        {"structure": atoms, "stress": [1] * 6},
+        {"structure": atoms, **extra},
+    ]
+    frames = widget.trajectory["frames"]
+    assert frames[0]["metadata"]["stress"] == [1] * 6
+    metadata = frames[1].get("metadata", {})
+    assert metadata.keys() == extra.keys()
+    for key, value in extra.items():
+        np.testing.assert_array_equal(metadata[key], value)
 
 
 @pytest.mark.parametrize(
@@ -252,25 +313,36 @@ def test_trajectory_widget_structure_sequence(n_frames: int) -> None:
     ]
 
     widget = TrajectoryWidget(trajectory=structures)
+    if not n_frames:  # nothing to encode: empty JSON trajectory
+        assert widget.trajectory == {"frames": [], "metadata": {}}
+        return
 
-    assert widget.trajectory is not None
-    assert len(widget.trajectory["frames"]) == n_frames
-    assert all(
-        frame["step"] == idx for idx, frame in enumerate(widget.trajectory["frames"])
+    arrays = decode_envelope(widget.trajectory)
+    expected_pos = np.array([struct.cart_coords for struct in structures])
+    np.testing.assert_allclose(arrays["positions"], expected_pos, rtol=0, atol=1e-6)
+    assert arrays["numbers"].tolist() == [26, 26]
+    expected_cells = [struct.lattice.matrix for struct in structures]
+    # one shared [3, 3] cell when all frames agree, else [n_frames, 3, 3]
+    expected_cells = expected_cells[0] if n_frames == 1 else expected_cells
+    np.testing.assert_array_equal(arrays["lattice"], expected_cells)
+    assert widget.trajectory["pbc"] == [True] * 3
+
+    from pymatgen.core.trajectory import Trajectory
+
+    traj = Trajectory.from_structures(structures, constant_lattice=False)
+    traj_arrays = decode_envelope(TrajectoryWidget(trajectory=traj).trajectory)
+    np.testing.assert_array_equal(
+        traj_arrays["positions"], expected_pos.astype("float32")
     )
-    assert set(widget.trajectory) == {"frames", "metadata"}
-    assert widget.trajectory["metadata"] == {}
-
-    if n_frames:  # pymatgen Trajectory (or its dict) goes to matterviz's own parser
-        from pymatgen.core.trajectory import Trajectory
-
-        from pymatviz.widgets._normalize import normalize_plot_json
-
-        traj = Trajectory.from_structures(structures, constant_lattice=False)
-        expected = normalize_plot_json(traj.as_dict(), "trajectory")
-        assert expected["@class"] == "Trajectory"
-        for traj_input in (traj, traj.as_dict()):
-            assert TrajectoryWidget(trajectory=traj_input).trajectory == expected
+    np.testing.assert_array_equal(traj_arrays["lattice"], expected_cells)
+    # The frontend also accepts molecular JSON without the Python constructor's charge.
+    serialized = {
+        "@class": "Trajectory",
+        "coords": [[[0, 0, 0]]],
+        "species": ["H"],
+        "lattice": None,
+    }
+    assert TrajectoryWidget(trajectory=serialized).trajectory == serialized
 
 
 _CUBIC = {"matrix": [[4, 0, 0], [0, 4, 0], [0, 0, 4]]}
@@ -358,27 +430,21 @@ def test_trajectory_widget_with_structure_metadata(
     elif metadata_field == "info":
         object.__setattr__(structure, "info", metadata_value)
 
-    widget = TrajectoryWidget(trajectory=structure)
-
-    assert widget.trajectory is not None
-    assert len(widget.trajectory["frames"]) == 1
-    frame = widget.trajectory["frames"][0]
-    assert frame["step"] == 0
-    assert set(widget.trajectory) == {"frames", "metadata"}
-    if metadata_field is None:
-        assert "metadata" not in frame
-    elif "forces" in metadata_value:
-        assert frame["metadata"] == {
-            "energy": -1.23,
-            "force_max": pytest.approx(0.5, rel=1e-15),
-            "force_norm": pytest.approx(0.5 / np.sqrt(2), rel=1e-15),
+    arrays = decode_envelope(TrajectoryWidget(trajectory=structure).trajectory)
+    scalars = {key: arr.tolist() for key, arr in arrays.items() if arr.ndim == 1}
+    scalars.pop("numbers")
+    if "forces" in metadata_value:
+        assert scalars == {
+            "energy": [-1.23],
+            "force_max": [pytest.approx(0.5, rel=1e-15)],
+            "force_norm": [pytest.approx(0.5 / np.sqrt(2), rel=1e-15)],
         }
-        site_forces = [
-            site["properties"]["force"] for site in frame["structure"]["sites"]
-        ]
-        assert site_forces == metadata_value["forces"]
+        # float32 vectors: within 1 float32 ulp of the float64 input
+        np.testing.assert_allclose(
+            arrays["force"][0], metadata_value["forces"], rtol=1.2e-7, atol=0
+        )
     else:
-        assert frame["metadata"] == metadata_value
+        assert scalars == {key: [val] for key, val in metadata_value.items()}
 
 
 @pytest.mark.parametrize(
@@ -415,17 +481,20 @@ def test_trajectory_widget_with_ase_atoms(
     forces = np.zeros((len(atoms), 3))
     forces[0] = [0.0, 0.0, 2.0]
     atoms.calc = SinglePointCalculator(atoms, energy=energy, forces=forces)
-    widget = TrajectoryWidget(trajectory=atoms)
-    (frame,) = widget.trajectory["frames"]
-    assert frame["step"] == 0
-    assert frame["metadata"] == {
-        "temperature": 300,
-        "energy": energy,
-        "force_max": 2.0,
-        "force_norm": pytest.approx(2 / np.sqrt(len(atoms)), rel=1e-15),
+    payload = TrajectoryWidget(trajectory=atoms).trajectory
+    arrays = decode_envelope(payload)
+    np.testing.assert_allclose(arrays["positions"][0], positions, rtol=0, atol=1e-7)
+    assert arrays["numbers"].tolist() == atoms.numbers.tolist()
+    # a molecule has no cell (and so no pbc); a periodic frame keeps its cell
+    assert ("lattice" in arrays) == (cell is not None)
+    assert payload.get("pbc") == (atoms.pbc.tolist() if cell else None)
+    assert {key: arrays[key].tolist() for key in ("temperature", "energy")} == {
+        "temperature": [300],
+        "energy": [energy],
     }
-    sites = frame["structure"]["sites"]
-    assert [site["properties"]["force"] for site in sites] == forces.tolist()
+    assert arrays["force_max"].tolist() == [2.0]
+    np.testing.assert_allclose(arrays["force_norm"], [2 / np.sqrt(len(atoms))])
+    assert arrays["force"][0].tolist() == forces.tolist()
 
 
 def test_trajectory_widget_atom_type_mapping_trait() -> None:

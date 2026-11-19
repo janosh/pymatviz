@@ -11,7 +11,6 @@ from pymatgen.core import Structure
 import pymatviz as pmv
 from pymatviz.enums import Key
 from pymatviz.process_data import get_spacegroup_number, is_structure_like
-from pymatviz.sunburst.helpers import _limit_slices_per_group
 from pymatviz.typing import ShowCounts
 from pymatviz.utils.plotting import apply_show_counts
 
@@ -51,6 +50,8 @@ def spacegroup_sunburst(
     Raises:
         ValueError: If data is empty.
     """
+    if max_slices_mode not in ("other", "drop"):
+        raise ValueError(f"Invalid {max_slices_mode=}, must be 'other' or 'drop'")
     if len(data) == 0:
         raise ValueError("spacegroup_sunburst requires non-empty data")
 
@@ -80,16 +81,19 @@ def spacegroup_sunburst(
         pmv.utils.spg_to_crystal_sys
     )
 
-    # Limit the number of space groups per crystal system if requested
-    df_spg_counts = _limit_slices_per_group(
-        df_spg_counts,
-        group_col=Key.crystal_system,
-        count_col="count",
-        max_slices=max_slices,
-        max_slices_mode=max_slices_mode,
-        other_label="Other",
-        child_col_for_other_label=Key.spg_num,
-    )
+    if max_slices and max_slices > 0:
+        ranks = df_spg_counts.groupby(Key.crystal_system)["count"].rank(
+            ascending=False, method="first"
+        )
+        hidden = df_spg_counts[ranks > max_slices]
+        df_spg_counts = df_spg_counts[ranks <= max_slices]
+        if max_slices_mode == "other" and not hidden.empty:
+            groups = hidden.groupby(Key.crystal_system)["count"]
+            other = groups.sum().to_frame()
+            other[Key.spg_num] = groups.size().map(
+                lambda count: f"Other ({count} more not shown)"
+            )
+            df_spg_counts = pd.concat([df_spg_counts, other.reset_index()])
 
     sunburst_defaults = dict(color_discrete_sequence=px.colors.qualitative.G10)
 

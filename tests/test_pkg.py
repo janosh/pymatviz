@@ -28,16 +28,16 @@ def test_pkg_metadata() -> None:
 
 
 def test_all_modules_reexported() -> None:
-    """Top-level modules are explicitly re-exported when importing the package."""
+    """Importing the package explicitly re-exports its public top-level modules."""
     # Test a fresh package namespace without leaking it into subsequent tests.
     original_module = sys.modules.pop(pmv.PKG_NAME)
     try:
         import pymatviz
 
-        for file in glob(f"{pmv.PKG_DIR}/*.py"):
+        for file in glob(f"{pmv.PKG_DIR}/[!_]*.py"):
             module_name = os.path.basename(file).removesuffix(".py")
             # These modules share their names with public plotting functions.
-            if module_name in ("__init__", "histogram", "rainclouds"):
+            if module_name in ("histogram", "rainclouds"):
                 continue
 
             assert isinstance(getattr(pymatviz, module_name, None), ModuleType), (

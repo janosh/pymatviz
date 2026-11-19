@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 import re
+import subprocess
+import sys
 import tempfile
 from typing import TYPE_CHECKING
 from unittest.mock import patch
@@ -18,13 +20,12 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any
 
-    import pandas as pd
-
 
 @pytest.mark.parametrize("ext", ["html", "svelte"])
 @pytest.mark.parametrize(
     "plotly_config", [None, {"showTips": True}, {"scrollZoom": True}]
 )
+@patch.dict(os.environ, {"CI": "1"})
 def test_save_fig(
     ext: str,
     tmp_path: Path,
@@ -35,7 +36,7 @@ def test_save_fig(
     fig.add_scatter(x=[1, 2], y=[3, 4])
 
     path = f"{tmp_path}/fig.{ext}"
-    pmv.save_fig(fig, path, plotly_config=plotly_config, env_disable=[])
+    pmv.save_fig(fig, path, plotly_config=plotly_config)
 
     assert os.path.isfile(path), f"{path=}, {ext=}, {plotly_config=}"
 
@@ -57,13 +58,20 @@ def test_save_fig(
         assert html.startswith("<div")
 
 
-@patch.dict(os.environ, {"CI": "1"})
-def test_save_fig_env_disable(tmp_path: Path) -> None:
-    """save_fig skips writing when env_disable variable is set."""
-    fig = go.Figure()
-    path = f"{tmp_path}/fig.html"
-    pmv.save_fig(fig, path, env_disable=["CI"])
-    assert not os.path.isfile(path)
+def test_ci_import_preserves_plotly_show() -> None:
+    """Importing pymatviz in CI leaves Plotly display working for other libraries."""
+    subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "from plotly.graph_objects import Figure\n"
+                "show = Figure.show\nimport pymatviz\nassert Figure.show is show"
+            ),
+        ],
+        env=os.environ | {"CI": "1"},
+        check=True,
+    )
 
 
 def test_plotly_pdf_no_mathjax_loading(tmp_path: Path) -> None:
@@ -84,78 +92,18 @@ def test_plotly_pdf_no_mathjax_loading(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    ("pre_table", "styles", "inline_props", "styler_css"),
+    ("save_func", "err_msg"),
     [
-        (None, None, "", False),
-        (None, "", None, False),
-        ("", "body { margin: 0; padding: 1em; }", "<table class='table'", True),
-        (
-            "<script>import { something } from 'some-module'\n</script><table",
-            "body { margin: 0; padding: 1em; }",
-            "style='width: 100%'",
-            {"tb, th, td": "border: 1px solid black;"},
-        ),
-    ],
-)
-def test_df_to_html(
-    tmp_path: Path,
-    pre_table: str | None,
-    styles: str | None,
-    inline_props: str,
-    styler_css: bool | dict[str, str],
-    df_mixed: pd.DataFrame,
-) -> None:
-    file_path = tmp_path / "test_df.svelte"
-
-    html1 = pmv.io.df_to_html(
-        df_mixed.style,
-        pre_table=pre_table,
-        styles=styles,
-        inline_props=inline_props,
-        styler_css=styler_css,
-    )
-    assert not file_path.is_file()
-    html2 = pmv.io.df_to_html(
-        df_mixed.style,
-        file_path=file_path,
-        pre_table=pre_table,
-        styles=styles,
-        inline_props=inline_props,
-        styler_css=styler_css,
-    )
-    assert html1 == html2
-
-    assert file_path.is_file()
-    html_text = file_path.read_text()
-    assert html2 == html_text
-
-    if pre_table is not None:
-        assert pre_table.split("\n")[0] in html_text, html_text
-    if styles is not None:
-        assert f"{styles}\n</style>" in html_text
-    if inline_props:
-        assert inline_props in html_text
-
-    assert str(df_mixed.iloc[0, 0].round(6)) in html_text
-
-
-@pytest.mark.parametrize(
-    ("save_func", "kwargs", "err_msg"),
-    [
-        (
-            pmv.save_fig,
-            {"env_disable": []},
-            r"Unsupported figure type.*expected plotly",
-        ),
-        (pmv.io.save_and_compress_svg, {}, "fig must be a plotly Figure"),
+        (pmv.save_fig, r"Unsupported figure type.*expected plotly"),
+        (pmv.io.save_and_compress_svg, "fig must be a plotly Figure"),
     ],
 )
 def test_save_non_figure_raises(
-    tmp_path: Path, save_func: Callable[..., None], kwargs: dict[str, Any], err_msg: str
+    tmp_path: Path, save_func: Callable[..., None], err_msg: str
 ) -> None:
     """Figure savers raise TypeError for non-Figure input."""
     with pytest.raises(TypeError, match=err_msg):
-        save_func("not a figure", f"{tmp_path}/dummy.html", **kwargs)
+        save_func("not a figure", f"{tmp_path}/dummy.html")
 
 
 @pytest.mark.parametrize("dtype", [float, np.float32])
@@ -172,7 +120,7 @@ def test_save_fig_prec_rounds_floats(tmp_path: Path, dtype: type) -> None:
 
     path = f"{tmp_path}/fig_prec.html"
     with patch.object(go.Figure, "write_html", autospec=True) as write_html:
-        pmv.save_fig(fig, path, prec=3, env_disable=[])
+        pmv.save_fig(fig, path, prec=3)
     exported = write_html.call_args.args[0]
     np.testing.assert_array_equal(exported.data[0].x, [1.123, 2.988])
     np.testing.assert_array_equal(exported.data[0].y, [3.111, 5.0])
@@ -189,7 +137,7 @@ def test_save_fig_style_param(tmp_path: Path, full_html: bool) -> None:
     fig.add_scatter(x=[1, 2], y=[3, 4])
 
     path = f"{tmp_path}/fig_style.html"
-    pmv.save_fig(fig, path, style="color: red;", env_disable=[], full_html=full_html)
+    pmv.save_fig(fig, path, style="color: red;", full_html=full_html)
 
     with open(path) as file:
         html = file.read()
@@ -202,10 +150,7 @@ def test_save_fig_style_param(tmp_path: Path, full_html: bool) -> None:
     assert div_tag.endswith('; color: red;"')
 
 
-@patch("pymatviz.io.sleep")
-def test_save_fig_pdf_template_and_hidden_traces(
-    mock_sleep: Any, tmp_path: Path
-) -> None:
+def test_save_fig_pdf_template_and_hidden_traces(tmp_path: Path) -> None:
     """save_fig applies template and hides legendonly traces for PDF."""
     fig = go.Figure()
     fig.add_scatter(x=[1, 2], y=[3, 4], visible="legendonly", name="hidden")
@@ -215,10 +160,8 @@ def test_save_fig_pdf_template_and_hidden_traces(
     path = f"{tmp_path}/fig.pdf"
 
     with patch.object(fig, "write_image") as mock_write:
-        pmv.save_fig(fig, path, env_disable=[])
-        # PDF writes image twice (MathJax workaround)
-        assert mock_write.call_count == 2
-        mock_sleep.assert_called_once()
+        pmv.save_fig(fig, path)
+        mock_write.assert_called_once_with(path)
 
     # template should be restored after save
     assert fig.layout.template == orig_template
@@ -236,7 +179,7 @@ def test_save_fig_restores_pdf_mutations_on_write_error(tmp_path: Path) -> None:
         patch.object(fig, "write_image", side_effect=RuntimeError("write failed")),
         pytest.raises(RuntimeError, match="write failed"),
     ):
-        pmv.save_fig(fig, f"{tmp_path}/fig.pdf", env_disable=[])
+        pmv.save_fig(fig, f"{tmp_path}/fig.pdf")
 
     assert fig.layout.template == orig_template
     assert fig.data[0].visible == "legendonly"
@@ -270,29 +213,3 @@ def test_save_and_compress_svg(filename: str, monkeypatch: pytest.MonkeyPatch) -
         pmv.io.save_and_compress_svg(fig, filename)
         mock_run.assert_called_once()
         assert "svgo" in mock_run.call_args[0][0][0]
-
-
-def test_df_to_html_post_process(df_mixed: pd.DataFrame) -> None:
-    """df_to_html applies post_process callback to output HTML."""
-    marker = "<!-- POST PROCESSED -->"
-
-    def add_marker(html: str) -> str:
-        return html + marker
-
-    result = pmv.io.df_to_html(df_mixed.style, post_process=add_marker, inline_props="")
-    assert result.endswith(marker)
-
-
-def test_df_to_html_inline_props_error(df_mixed: pd.DataFrame) -> None:
-    """df_to_html raises ValueError if inline_props set but no table tag found."""
-    styler = df_mixed.style
-    styler.set_uuid("")
-
-    with pytest.raises(ValueError, match=r"no '<table \.\.\.' tag found"):
-        # pre_table replaces <table, so inline_props has nothing to attach to
-        pmv.io.df_to_html(
-            styler,
-            pre_table="<div",
-            inline_props="class='foo'",
-            styler_css=False,
-        )

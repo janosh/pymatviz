@@ -123,14 +123,6 @@ def df_float() -> pd.DataFrame:
     return pd.DataFrame(np_rng.random(size=(30, 5)), columns=pd.Index([*"ABCDE"]))
 
 
-@pytest.fixture
-def df_mixed() -> pd.DataFrame:
-    floats = np_rng.random(size=30)
-    bools = np_rng.choice([True, False], size=30)
-    strings = np_rng.choice([*"abcdef"], size=30)
-    return pd.DataFrame(dict(floats=floats, bools=bools, strings=strings))
-
-
 @pytest.fixture(scope="session")
 def phonopy_nacl() -> Phonopy:
     """Return Phonopy class instance of NaCl 2x2x2 without symmetrizing fc2."""

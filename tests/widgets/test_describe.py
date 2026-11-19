@@ -55,6 +55,14 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
             {"n_sites": 2, "formula": "Si2", "elements": ["Si"]},
         ),
         (
+            pmv.StructureWidget(
+                structure=Structure(
+                    Lattice.cubic(3), [{"Fe": 0.1}] * 10, [[0, 0, 0]] * 10
+                )
+            ),
+            {"n_sites": 10, "formula": "Fe", "elements": ["Fe"]},
+        ),
+        (
             pmv.PeriodicTableWidget(heatmap_values={"Fe": 42, "O": 100}),
             {"n_elements": 2, "value_range": [42.0, 100.0]},
         ),
@@ -144,6 +152,45 @@ def test_describe_widget(widget: Any, expected: dict[str, Any]) -> None:
             assert report[key] == value, f"{key}: {report.get(key)!r} != {value!r}"
 
 
+@pytest.mark.parametrize("monty_coords", [False, True])
+def test_serialized_trajectory_facts(monty_coords: bool) -> None:
+    """Serialized trajectories count frames, symbols, and decorated site occupancies."""
+    coords = [[[0, 0, 0]] * 4] * 3
+    widget = pmv.TrajectoryWidget(
+        trajectory={
+            "@class": "Trajectory",
+            "coords": (
+                {
+                    "@module": "numpy",
+                    "@class": "array",
+                    "dtype": "float64",
+                    "data": coords,
+                }
+                if monty_coords
+                else coords
+            ),
+            "lattice": _STRUCT.lattice.matrix,
+            "species": [
+                "O",
+                26,
+                "Fe2+",
+                {"element": "Fe", "oxidation_state": 3, "occu": 0.5},
+            ],
+        }
+    )
+    oxygen, iron, ferrous, _ = widget.trajectory["species"]
+    assert oxygen == "O"
+    assert iron["element"] == ferrous["element"] == "Fe"
+    assert ferrous["oxidation_state"] == 2
+    assert widget.describe() == {
+        "widget_type": "trajectory",
+        "n_frames": 3,
+        "n_sites": 4,
+        "elements": ["Fe", "O"],
+        "formula": "Fe2.5O",
+    }
+
+
 @pytest.mark.parametrize(
     ("data", "n_nodes", "n_leaves"),
     [
@@ -214,6 +261,7 @@ def test_short_summary(report: dict[str, Any], expected: str) -> None:
         (pmv.RdfPlotWidget(structures=[]), True),
         (pmv.RdfPlotWidget(patterns=[]), True),
         (pmv.RdfPlotWidget(patterns=[{"label": "a", "x": [1.0], "y": [2.0]}]), False),
+        (pmv.SunburstWidget(), True),
         (pmv.TreemapWidget(), True),
         (pmv.TreemapWidget(data={"label": "root", "value": 1}), False),
     ],

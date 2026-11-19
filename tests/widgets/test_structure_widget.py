@@ -9,7 +9,7 @@ import pytest
 import traitlets as tl
 
 from pymatviz import StructureWidget
-from tests.widgets.conftest import assert_widget_property_sync
+from tests.widgets.conftest import assert_widget_property_sync, decode_envelope
 
 
 if TYPE_CHECKING:
@@ -71,7 +71,7 @@ def test_widget_invalid_structure_handling(invalid_structure: Any) -> None:
         ("style", [None, "width: 400px; height: 600px", "width: 600px; height: 800px"]),
         ("show_controls", [True, False]),
         ("enable_info_pane", [True, False]),
-        ("volumetric_data", [[], [_VOLUME]]),
+        ("volumetric_data", [[]]),
     ],
 )
 def test_widget_property_sync_structure(
@@ -127,29 +127,57 @@ def test_widget_preserves_site_properties(
     assert uniq_prop_keys == expected_keys
 
 
+def _meta(payload: dict[str, Any]) -> dict[str, Any]:
+    """Envelope JSON fields (everything but the binary arrays and tags)."""
+    return {k: v for k, v in payload.items() if k not in ("format", "kind", "arrays")}
+
+
 def test_widget_volumetric_data_trait() -> None:
-    """volumetric_data defaults to a fresh [], keeps flat payloads as-is (dropping keys
-    the renderer recomputes), flattens legacy nested grid[ix][iy][iz] dicts to z-fastest
-    values + dims, uses a dict's label as missing id, prefixes ids/labels of mapping
-    inputs and supports mutation.
+    """volumetric_data defaults to a fresh [], sends dict volumes as float32 binary
+    envelopes (flat values + dims or legacy nested grid[ix][iy][iz], z fastest), passes
+    ready envelopes through, uses a dict's label as missing id, prefixes ids/labels of
+    mapping inputs and supports mutation.
     """
     default_widget = StructureWidget()
     assert default_widget.volumetric_data == []
     assert default_widget.volumetric_data is not StructureWidget().volumetric_data
     vol = {**_VOLUME, "label": "chg"}
     widget = StructureWidget(volumetric_data=[vol])
-    assert widget.to_dict()["volumetric_data"] == [vol]
+    (payload,) = widget.to_dict()["volumetric_data"]
+    meta = {k: v for k, v in vol.items() if k not in ("values", "dims")}
+    assert (payload["format"], payload["kind"], _meta(payload)) == (
+        "matterviz-binary-v1",
+        "volume",
+        meta,
+    )
+    assert payload["arrays"]["values"]["dtype"] == "float32"
+    np.testing.assert_array_equal(
+        decode_envelope(payload)["values"],
+        np.array([[[0.1]], [[0.2]]], dtype=np.float32),
+    )
     elf = {**_VOLUME, "id": "elf", "periodic": False, "label": "elf"}
     widget.volumetric_data = [vol, elf]
-    assert widget.volumetric_data == [vol, elf]
+    assert [_meta(pl)["id"] for pl in widget.volumetric_data] == ["chg", "elf"]
+    # envelopes round-trip unchanged through the validator
+    widget.volumetric_data = widget.volumetric_data
+    assert widget.volumetric_data[0] == payload
 
     grid = np.random.default_rng(seed=0).random((2, 3, 4))
-    meta = {k: v for k, v in vol.items() if k not in ("values", "dims")}
     legacy = {**meta, "grid": grid.tolist(), "grid_dims": [2, 3, 4], "data_order": "z"}
-    (payload,) = StructureWidget(volumetric_data=[legacy]).volumetric_data
-    # z fastest: index (ix * ny + iy) * nz + iz == numpy C-order ravel
-    assert payload == {**meta, "values": grid.ravel().tolist(), "dims": [2, 3, 4]}
-    assert payload["values"][(1 * 3 + 2) * 4 + 3] == grid[1, 2, 3]
+    (legacy_payload,) = StructureWidget(volumetric_data=[legacy]).volumetric_data
+    (flat_payload,) = StructureWidget(
+        volumetric_data=[
+            {**meta, "values": grid.ravel().tolist(), "dims": [2.0, 3.0, 4.0]}
+        ]
+    ).volumetric_data
+    (empty,) = StructureWidget(
+        volumetric_data=[{**meta, "values": [], "dims": [0, 2, 2]}]
+    ).volumetric_data
+    assert decode_envelope(empty)["values"].shape == (0, 2, 2)
+    assert legacy_payload == flat_payload
+    values = decode_envelope(legacy_payload)["values"]
+    assert values.shape == (2, 3, 4)
+    np.testing.assert_allclose(values, grid, rtol=6e-8, atol=0)  # float32 ulp / 2
 
     # id defaults to label (like matterviz's parsers name volumes by block label)
     unnamed = {key: val for key, val in _VOLUME.items() if key != "id"}
@@ -172,8 +200,8 @@ def test_widget_volumetric_data_trait() -> None:
 
 
 def test_widget_volumetric_data_from_pymatgen() -> None:
-    """Pymatgen VolumetricData expands to one flat payload per data key; Chgcar values
-    are divided by the cell volume like matterviz's CHGCAR parser.
+    """Pymatgen VolumetricData expands to one binary envelope per data key; Chgcar
+    values are divided by the cell volume like matterviz's CHGCAR parser.
     """
     from pymatgen.core import Lattice, Structure
     from pymatgen.io.vasp.outputs import Chgcar, VolumetricData
@@ -185,19 +213,22 @@ def test_widget_volumetric_data_from_pymatgen() -> None:
         volumetric_data=[Chgcar(struct, data)]
     ).volumetric_data
     assert (diff["id"], diff["label"]) == ("diff", "diff")
-    assert total == {
+    assert _meta(total) == {
         "id": "total",
-        "values": pytest.approx((data["total"] / 8.0).ravel().tolist(), rel=1e-15),
-        "dims": [2, 2, 3],
         "lattice": struct.lattice.matrix.tolist(),
         "origin": [0.0, 0.0, 0.0],
         "periodic": True,
         "label": "total",
     }
+    np.testing.assert_allclose(
+        decode_envelope(total)["values"], data["total"] / 8.0, rtol=6e-8, atol=0
+    )
     # generic VolumetricData (ELFCAR, LOCPOT, ...) is passed through unscaled
     volume = VolumetricData(struct, {"total": data["total"]})
     (raw,) = StructureWidget(volumetric_data=[volume]).volumetric_data
-    assert raw["values"] == data["total"].ravel().tolist()
+    np.testing.assert_array_equal(
+        decode_envelope(raw)["values"], data["total"].astype(np.float32)
+    )
 
     # colliding data keys ("total" twice) load side by side via a prefix mapping
     payloads = StructureWidget(
@@ -208,7 +239,7 @@ def test_widget_volumetric_data_from_pymatgen() -> None:
         ("relaxed/diff", "relaxed/diff"),
         ("initial/total", "initial/total"),
     ]
-    assert payloads[0]["values"] == total["values"]
+    assert payloads[0]["arrays"] == total["arrays"]
     with pytest.raises(ValueError, match=r"duplicates \['total'\].*prefix: volume"):
         StructureWidget(volumetric_data=[Chgcar(struct, data), volume])
 
@@ -227,7 +258,18 @@ def test_widget_volumetric_data_from_pymatgen() -> None:
         ([{**_VOLUME, "id": " "}], ValueError, "'id' or 'label'"),
         ([{**_VOLUME, "id": 1, "label": "chg"}], ValueError, "'id' or 'label'"),
         ([_VOLUME, {**_VOLUME, "label": "copy"}], ValueError, r"duplicates \['chg'\]"),
-        ([_VOLUME, {"label": "chg", "values": []}], ValueError, r"duplicates"),
+        (
+            [
+                _VOLUME,
+                {**{k: v for k, v in _VOLUME.items() if k != "id"}, "label": "chg"},
+            ],
+            ValueError,
+            "duplicates",
+        ),
+        ([{**_VOLUME, "dims": [3, 1, 1]}], ValueError, r"flat values \(2\) need dims"),
+        ([{**_VOLUME, "dims": [0.5, 4, 1]}], ValueError, "need dims"),
+        ([{**_VOLUME, "values": [0.1, np.nan]}], ValueError, "non-finite value at"),
+        ([{**_VOLUME, "values": [0.1, 1e39]}], ValueError, "beyond float32 range"),
     ],
 )
 def test_widget_volumetric_data_rejects_invalid(
@@ -235,8 +277,8 @@ def test_widget_volumetric_data_rejects_invalid(
 ) -> None:
     """volumetric_data rejects non-list/non-mapping values, entries that are neither
     dicts nor pymatgen VolumetricData, non-string mapping prefixes, and missing or
-    duplicate volume ids (layers pick volumes by id). Shape errors are left to the
-    renderer.
+    duplicate volume ids (layers pick volumes by id), values not matching dims,
+    non-finite or float32-overflowing grids and malformed geometry fields.
     """
     with pytest.raises(err_cls, match=match):
         StructureWidget(volumetric_data=bad_input)

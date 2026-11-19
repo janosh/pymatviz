@@ -293,11 +293,17 @@ def is_phonopy_atoms(obj: Any) -> TypeIs[PhonopyAtoms]:
     )
 
 
-def normalize_structures(
-    systems: AnyStructure
-    | Sequence[AnyStructure]
+type _StructureInput = AnyStructure | PhonopyAtoms
+type _StructureInputs = (
+    _StructureInput
+    | Sequence[_StructureInput]
     | pd.Series
-    | Mapping[Any, AnyStructure],
+    | Mapping[Any, _StructureInput]
+)
+
+
+def normalize_structures(
+    systems: _StructureInputs,
 ) -> dict[Hashable, Structure | IStructure | Molecule | IMolecule]:
     """Convert pymatgen Structures/IStructures, ASE Atoms, or PhonopyAtoms or
     sequences/dicts of them to a dictionary mapping hashable keys to pymatgen
@@ -351,10 +357,7 @@ def normalize_structures(
 
 
 def normalize_periodic_structures(
-    systems: AnyStructure
-    | Sequence[AnyStructure]
-    | pd.Series
-    | Mapping[Any, AnyStructure],
+    systems: _StructureInputs,
 ) -> dict[Hashable, IStructure]:
     """Like normalize_structures but requires all inputs to be periodic.
 

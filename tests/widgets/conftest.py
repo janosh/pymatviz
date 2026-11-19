@@ -2,6 +2,7 @@
 
 from typing import Any
 
+import numpy as np
 import pytest
 
 from pymatviz.widgets.matterviz import MatterVizWidget
@@ -28,3 +29,14 @@ def assert_widget_property_sync(
 
     trait = widget.class_traits()[property_name]
     assert trait.metadata.get("sync") is True, f"Property {property_name} not synced"
+
+
+def decode_envelope(payload: dict[str, Any]) -> dict[str, np.ndarray]:
+    """Reference matterviz-binary-v1 decoder: {name: array} from wire bytes."""
+    assert payload["format"] == "matterviz-binary-v1"
+    return {
+        name: np.frombuffer(
+            spec["data"], dtype=np.dtype(spec["dtype"]).newbyteorder("<")
+        ).reshape(spec["shape"])
+        for name, spec in payload["arrays"].items()
+    }

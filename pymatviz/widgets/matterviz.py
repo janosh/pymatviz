@@ -47,6 +47,14 @@ def _cdn_url(version: str, filename: str = "matterviz.js") -> str:
     return f"{_ANYWIDGET_CDN}@{version}/build/{filename}"
 
 
+def _bundle_source(version: str, filename: str = "matterviz.js") -> str:
+    """Select the actual bundle source for both loading and standalone export."""
+    dev_dir = os.environ.get("MATTERVIZ_ANYWIDGET_DIR")
+    if dev_dir and os.path.isfile(path := f"{dev_dir}/{filename}"):
+        return path
+    return _cdn_url(version, filename)
+
+
 def _cache_dir(version: str) -> str:
     """On-disk cache dir for one downloaded ``matterviz-anywidget`` version."""
     return f"{os.path.expanduser(_CACHE_ROOT)}/matterviz-anywidget/{version}"
@@ -55,7 +63,7 @@ def _cache_dir(version: str) -> str:
 def _in_marimo_runtime() -> bool:
     """Return whether execution is inside a live marimo runtime context."""
     try:
-        from marimo._runtime.context import ContextNotInitializedError, get_context  # ty: ignore[unresolved-import]
+        from marimo._runtime.context import ContextNotInitializedError, get_context  # ty: ignore[import-not-found]
     except ImportError:
         return False
     try:
@@ -66,11 +74,24 @@ def _in_marimo_runtime() -> bool:
         return True
 
 
+def _in_widget_frontend() -> bool:
+    """Return whether a live frontend (Jupyter kernel or marimo) receives widget
+    state at construction, so assets must be loaded before the comm opens.
+    """
+    if _in_marimo_runtime():
+        return True
+    try:
+        from IPython import get_ipython
+    except ImportError:
+        return False
+    return getattr(get_ipython(), "kernel", None) is not None
+
+
 def _marimo_esm_url(esm_text: str) -> str | None:
     """Resolve ESM text to a marimo virtual-file URL, or None if unsupported."""
     try:
-        from marimo._output.data.data import js  # ty: ignore[unresolved-import]
-        from marimo._runtime.context import get_context  # ty: ignore[unresolved-import]
+        from marimo._output.data.data import js  # ty: ignore[import-not-found]
+        from marimo._runtime.context import get_context  # ty: ignore[import-not-found]
     except ImportError:
         return None
 
@@ -156,20 +177,6 @@ def configure_assets(
     cls = MatterVizWidget
     cls._asset_cache.clear()
 
-    def _all_subclasses(klass: type) -> list[type]:
-        subclasses = klass.__subclasses__()
-        return subclasses + [
-            sub for direct in subclasses for sub in _all_subclasses(direct)
-        ]
-
-    # _set_class_assets stores assets on the concrete subclass whose instance
-    # triggered it, shadowing anything set here on MatterVizWidget. Clear those
-    # subclass attrs so stale bundles don't survive a reset or reconfigure.
-    for klass in _all_subclasses(cls):
-        for attr in ("_esm", "_css"):
-            if attr in klass.__dict__:
-                delattr(klass, attr)
-
     if not version and not esm_src:
         for attr in ("_esm", "_css"):
             if attr in cls.__dict__:
@@ -180,7 +187,7 @@ def configure_assets(
     if version:
         esm_content = fetch_widget_asset("matterviz.js", version)
         css_content = fetch_widget_asset("matterviz.css", version)
-        cls._export_esm_url = _cdn_url(version)
+        cls._export_esm_url = _bundle_source(version)
     else:
         if esm_src is None or css_src is None:  # unreachable, narrows types for ty
             raise ValueError(f"configure_assets() got {esm_src=}, {css_src=}")
@@ -216,9 +223,9 @@ def fetch_widget_asset(filename: str, version_override: str | None = None) -> st
     """
     version = version_override or MATTERVIZ_ANYWIDGET_VERSION
 
-    dev_dir = os.environ.get("MATTERVIZ_ANYWIDGET_DIR")
-    if dev_dir and os.path.isfile(dev_path := f"{dev_dir}/{filename}"):
-        return _read_asset_source(dev_path)
+    source = _bundle_source(version, filename)
+    if not source.startswith(("http://", "https://")):
+        return _read_asset_source(source)
 
     is_main = version == "main"
     cache_dir = _cache_dir(version)
@@ -230,13 +237,12 @@ def fetch_widget_asset(filename: str, version_override: str | None = None) -> st
     if not is_main and not re.match(r"^\d+\.\d+\.\d+([-+].+)?$", version):
         raise ValueError(f"Invalid matterviz-anywidget version: {version=}")
 
-    cdn_url = _cdn_url(version, filename)
     try:
-        content = _read_asset_source(cdn_url)
+        content = _read_asset_source(source)
     except Exception as exc:
         raise FileNotFoundError(
             f"Could not load {filename} for matterviz-anywidget@{version} from "
-            f"{cdn_url}. Ensure that version is published to npm, set "
+            f"{source}. Ensure that version is published to npm, set "
             "MATTERVIZ_ANYWIDGET_DIR to a local build dir, or check connectivity."
         ) from exc
     if is_main:  # never persist main: it changes with every matterviz deploy
@@ -287,6 +293,7 @@ class MatterVizWidget(AnyWidget):
 
     _esm: str
     _css: str
+    _asset_sources: tuple[str, str] | None
     _asset_cache: ClassVar[dict[str, tuple[str, str] | str | None]] = {}
     # ESM URL serving the configured bundle, for to_html(inline=False): None ->
     # default version's URL; a local path -> to_html inlines so JS/CSS stay one build.
@@ -319,6 +326,7 @@ class MatterVizWidget(AnyWidget):
         return them as ``(esm_content, css_content)``.
         """
         if "default" not in cls._asset_cache:
+            cls._export_esm_url = _bundle_source(MATTERVIZ_ANYWIDGET_VERSION)
             cls._asset_cache["default"] = (
                 fetch_widget_asset("matterviz.js"),
                 fetch_widget_asset("matterviz.css"),
@@ -341,13 +349,28 @@ class MatterVizWidget(AnyWidget):
         if version_override is not None:
             self._esm = fetch_widget_asset("matterviz.js", version_override)
             self._css = fetch_widget_asset("matterviz.css", version_override)
-            self._export_esm_url = _cdn_url(version_override)
-        elif _in_marimo_runtime():
-            self._init_marimo_assets()
+            self._export_esm_url = _bundle_source(version_override)
+            self._asset_sources = self._esm, self._css
+        elif (
+            "default" not in MatterVizWidget._asset_cache
+            and _bundle_source(MATTERVIZ_ANYWIDGET_VERSION).startswith(
+                ("http://", "https://")
+            )
+            and not _in_widget_frontend()
+        ):
+            # no frontend to sync with: defer the network fetch to the first
+            # export so building a widget and reading its data works offline.
+            # Empty placeholders still register _esm/_css as synced traits, so a
+            # later display or state export carries the assets once loaded.
+            self._esm = self._css = ""
+            self._asset_sources = None
         else:
             # Set assets on the class so Jupyter/VS Code share them across
             # instances via ipywidgets comms without per-widget serialization.
-            type(self)._set_class_assets()
+            self._asset_sources = MatterVizWidget._set_class_assets()
+            self._export_esm_url = MatterVizWidget._export_esm_url
+            if _in_marimo_runtime():
+                self._init_marimo_assets()
 
         super().__init__(**kwargs)
 
@@ -359,7 +382,6 @@ class MatterVizWidget(AnyWidget):
         virtual files are unavailable — use ``marimo edit`` in a browser.
         """
         cls = type(self)
-        cls._set_class_assets()
 
         # Cache the resolved URL so js() is only called once per session
         if "marimo_esm" not in cls._asset_cache:
@@ -519,18 +541,32 @@ class MatterVizWidget(AnyWidget):
         return img_bytes
 
     def _resolve_assets(self) -> tuple[str, str]:
-        """Return ``(esm_content, css_content)`` as real source strings.
-
-        We need actual ESM/CSS source for headless rendering and HTML export,
-        not a marimo virtual-file URL. ``version_override`` sets both on the
-        instance with real content; marimo only overrides ``_esm`` with a URL.
-        Use instance attrs only when both are present in ``__dict__``.
+        """Return the source selected at construction, including for marimo widgets.
+        Widgets built without a frontend load the default assets on first use.
         """
-        inst_esm = self.__dict__.get("_esm")
-        inst_css = self.__dict__.get("_css")
-        if isinstance(inst_esm, str) and isinstance(inst_css, str):
-            return inst_esm, inst_css
-        return type(self)._set_class_assets()
+        if self._asset_sources is None:
+            self._asset_sources = MatterVizWidget._set_class_assets()
+            self._export_esm_url = MatterVizWidget._export_esm_url
+            self._esm, self._css = self._asset_sources
+        return self._asset_sources
+
+    def _require_binary_bundle(self) -> None:
+        """Check explicitly pinned npm bundles before sending binary data.
+
+        Raises:
+            ValueError: If the selected bundle predates the binary protocol.
+        """
+        from pymatviz.widgets._binary import BINARY_FORMAT
+
+        url = self._export_esm_url or _cdn_url(MATTERVIZ_ANYWIDGET_VERSION)
+        if (
+            url.startswith(f"{_ANYWIDGET_CDN}@")
+            and BINARY_FORMAT not in self._resolve_assets()[0]
+        ):
+            raise ValueError(
+                f"Widget bundle {url} lacks {BINARY_FORMAT}. "
+                "Select version 'main' or a binary-capable release."
+            )
 
     def describe(self) -> dict[str, Any]:
         """Return structured, machine-parseable facts about this widget's data.

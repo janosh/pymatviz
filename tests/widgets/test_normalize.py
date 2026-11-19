@@ -352,7 +352,7 @@ def test_structure_to_dict_passthrough() -> None:
         ),
         pytest.param(
             "ASE Atoms",
-            lambda: __import__("ase.build", fromlist=["bulk"]).bulk(  # ty: ignore[unresolved-attribute]
+            lambda: __import__("ase.build", fromlist=["bulk"]).bulk(  # ty: ignore[missing-attribute]
                 "Si", "diamond", a=5.43
             ),
             marks=pytest.mark.skipif(

@@ -1640,6 +1640,9 @@ def configure_subplot_legends(
         )
 
 
+MIN_ASE_CELL_VOLUME = 1e-6  # Å³
+
+
 def add_vacuum_if_needed(struct: Any) -> Any:
     """Add vacuum to ASE Atoms if they lack a proper cell."""
     from pymatviz.process_data import is_ase_atoms
@@ -1647,7 +1650,7 @@ def add_vacuum_if_needed(struct: Any) -> Any:
     if is_ase_atoms(struct) and (
         not hasattr(struct, "cell")
         or struct.cell is None
-        or (hasattr(struct.cell, "volume") and struct.cell.volume < 1e-6)
+        or (hasattr(struct.cell, "volume") and struct.cell.volume < MIN_ASE_CELL_VOLUME)
     ):
         # No proper cell - add vacuum for molecular systems
         struct = struct.copy()

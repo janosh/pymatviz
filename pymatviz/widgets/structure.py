@@ -2,29 +2,33 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping
 from typing import Any
 
 import numpy as np
 import traitlets as tl
 
-from pymatviz.widgets._normalize import structure_to_dict
+from pymatviz.widgets._binary import is_binary_envelope, volume_envelope
+from pymatviz.widgets._normalize import normalize_plot_json, structure_to_dict
 from pymatviz.widgets._traits import STRUCTURE_PANES, StructureVizTraits, optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
-def volume_to_dicts(volume: Any) -> list[dict[str, Any]]:
-    """Convert a volumetric dict (flat ``values`` + ``dims`` or nested ``grid``) or a
-    pymatgen ``VolumetricData`` (one payload per ``data`` key, ``Chgcar`` divided by the
-    cell volume to e/Å³ like matterviz's CHGCAR parser) to flat z-fastest matterviz
-    payloads. Each payload carries the ``id`` that isosurface layers reference via
-    ``volume_id``: dicts use their ``id``, else their ``label`` (like matterviz's file
-    parsers), pymatgen volumes use their ``data`` key (e.g. ``"total"``, ``"diff"``).
-    Shape errors (dims, lattice, origin, periodic) are reported by the renderer.
+def volume_to_envelopes(volume: Any) -> list[dict[str, Any]]:
+    """Convert a volumetric dict (flat ``values`` + ``dims``, nested ``grid``, or a
+    ready ``matterviz-binary-v1`` volume envelope) or a pymatgen ``VolumetricData``
+    (one entry per ``data`` key, Chgcar values divided by the cell volume to e/Å³ like
+    matterviz's CHGCAR parser) to binary volume envelopes (float32 grid, z fastest).
+    ``id`` is what isosurface layers reference via ``volume_id``: dicts use their
+    ``id``, else their ``label`` (like matterviz's file parsers), pymatgen volumes use
+    their ``data`` key (e.g. ``"total"``, ``"diff"``).
 
     Raises:
-        ValueError: If a dict has neither a nonempty string ``id`` nor ``label``.
         TypeError: If volume is neither a dict nor a pymatgen ``VolumetricData``.
+            Lattice/origin/periodic errors are reported by the renderer.
+        ValueError: If a dict lacks an id/label, or a flat ``values`` doesn't match
+            its ``dims`` or has non-finite values.
     """
     if isinstance(volume, Mapping):
         vol_id = volume.get("id", volume.get("label"))
@@ -34,22 +38,41 @@ def volume_to_dicts(volume: Any) -> list[dict[str, Any]]:
                 f"(referenced by isosurface layers' volume_id), got {vol_id=}, "
                 f"keys={sorted(volume)}"
             )
-        nested = "grid" in volume
-        arr = np.asarray(volume["grid"] if nested else volume.get("values", []), float)
-        payload = {"values": arr.ravel().tolist()}
-        payload["dims"] = list(arr.shape) if nested else volume.get("dims")
-        payload["id"] = vol_id
-        for key in (
+        if is_binary_envelope(volume, "volume"):  # copy: prefixing rewrites its id
+            return [{**volume, "id": vol_id}]
+        if "grid" in volume:
+            grid = volume["grid"]
+        else:
+            values = np.asarray(volume.get("values", []))
+            dims = np.asarray(volume.get("dims"))
+            if (
+                dims.shape != (3,)
+                or dims.dtype.kind not in "iuf"
+                or not all(
+                    0 <= size <= 2**53 - 1 and int(size) == size for size in dims
+                )
+                or values.size != math.prod(map(int, dims))
+            ):
+                raise ValueError(
+                    f"volumetric_data {vol_id!r} flat values ({values.size}) need dims "
+                    f"with that many points, got {dims=}"
+                )
+            grid = values.reshape(tuple(map(int, dims)))
+        keys = {
             "lattice",
             "origin",
             "periodic",
             "label",
             "source",
             "source_filename",
-        ):
-            if key in volume:
-                payload[key] = volume[key]
-        return [payload]
+            "units",
+            "signed",
+        }
+        fields = normalize_plot_json(
+            {key: volume[key] for key in keys & volume.keys()},
+            f"volumetric_data {vol_id!r}",
+        )
+        return [volume_envelope(grid, **fields, id=vol_id)]
 
     data, structure = getattr(volume, "data", None), getattr(volume, "structure", None)
     if not isinstance(data, Mapping) or structure is None:
@@ -58,17 +81,16 @@ def volume_to_dicts(volume: Any) -> list[dict[str, Any]]:
             f"{type(volume).__name__}"
         )
     # CHGCAR stores rho * V_cell; matterviz divides by the volume on parse
-    scale = 1 / structure.volume if type(volume).__name__ == "Chgcar" else 1
+    is_chgcar = type(volume).__name__ == "Chgcar"
     return [
-        {
-            "id": str(key),
-            "values": (np.asarray(grid, dtype=float) * scale).ravel().tolist(),
-            "dims": list(np.shape(grid)),
-            "lattice": structure.lattice.matrix.tolist(),
-            "origin": [0.0, 0.0, 0.0],
-            "periodic": True,
-            "label": str(key),
-        }
+        volume_envelope(
+            np.asarray(grid, dtype=float) / structure.volume if is_chgcar else grid,
+            id=str(key),
+            lattice=structure.lattice.matrix.tolist(),
+            origin=[0.0, 0.0, 0.0],
+            periodic=True,
+            label=str(key),
+        )
         for key, grid in data.items()
     ]
 
@@ -110,6 +132,10 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
       parsed on the frontend. Useful when you have the file content but
       not a parsed object. If both are provided, ``structure`` takes
       precedence.
+
+    ``volumetric_data`` entries hold ``memoryview`` buffers, so ``to_dict()`` isn't
+    plain JSON. Custom bundles must support matterviz-binary-v1. Contiguous float32
+    input grids are borrowed and must stay unmodified.
 
     Examples:
         Basic usage:
@@ -161,7 +187,8 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
     show_image_atoms = tl.Bool(default_value=True).tag(sync=True)
 
     # Isosurface: a list of pymatgen VolumetricData objects or dicts (see
-    # volume_to_dicts), or a {prefix: volume} mapping namespacing ids as "prefix/id".
+    # volume_to_envelopes), or a {prefix: volume} mapping namespacing ids as
+    # "prefix/id".
     # Synced as a list of flat payloads (Any, not List, so mappings reach the
     # validator). Layers follow matterviz IsosurfaceSettings {layers: [{volume_id,
     # isovalue, color, opacity, visible, show_negative, negative_color}], wireframe,
@@ -218,18 +245,20 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
                         "volumetric_data mapping keys must be nonempty strings (id "
                         f"prefixes), got {prefix=}"
                     )
-                for payload in volume_to_dicts(volume):
+                for payload in volume_to_envelopes(volume):
                     payload["id"] = f"{prefix}/{payload['id']}"
                     if "label" in payload:
                         payload["label"] = f"{prefix}/{payload['label']}"
                     payloads.append(payload)
         elif isinstance(value, (list, tuple)):
-            payloads = [pl for vol in value for pl in volume_to_dicts(vol)]
+            payloads = [pl for vol in value for pl in volume_to_envelopes(vol)]
         else:
             raise TypeError(
                 "volumetric_data must be a list of volumes or a {prefix: volume} "
                 f"mapping, got {type(value).__name__}"
             )
+        if payloads:
+            self._require_binary_bundle()
         ids = [payload["id"] for payload in payloads]
         if dupes := sorted({vol_id for vol_id in ids if ids.count(vol_id) > 1}):
             raise ValueError(

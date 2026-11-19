@@ -10,8 +10,14 @@ from __future__ import annotations
 
 import functools
 import math
-from collections.abc import Mapping
+from collections import Counter, defaultdict
+from collections.abc import Iterable, Mapping
 from typing import Any
+
+import numpy as np
+
+from pymatviz.utils.data import element_symbols
+from pymatviz.widgets._binary import is_binary_envelope
 
 
 def _minmax(values: Any) -> list[float] | None:
@@ -38,15 +44,32 @@ def _minmax(values: Any) -> list[float] | None:
 
 
 def _fmt_amount(amount: float) -> str:
-    """Format a composition amount, dropping a trailing ``1`` and ``.0``."""
-    if isinstance(amount, float) and amount.is_integer():
-        amount = int(amount)
-    return "" if amount == 1 else str(amount)
+    """Omit unit amounts and keep summed fractional occupancies readable."""
+    text = f"{amount:.12g}" if isinstance(amount, float) else str(amount)
+    return "" if text == "1" else text
 
 
-def _format_formula(amounts: Mapping[str, float]) -> str:
-    """Alphabetical formula string from element->amount counts (1s dropped)."""
-    return "".join(f"{el}{_fmt_amount(amt)}" for el, amt in sorted(amounts.items()))
+def _composition_facts(amounts: Mapping[str, float]) -> dict[str, Any]:
+    """Sorted elements and alphabetical formula, omitting unit amounts."""
+    elements = sorted(amounts)
+    return {
+        "elements": elements,
+        "formula": "".join(f"{el}{_fmt_amount(amounts[el])}" for el in elements),
+    }
+
+
+def _species_facts(species: Iterable[Any], n_sites: int) -> dict[str, Any]:
+    """Sum occupancies across site species in structure and trajectory JSON."""
+    counts: defaultdict[str, float] = defaultdict(float)
+    for entry in species:
+        if isinstance(entry, str):
+            counts[entry] += 1
+        elif isinstance(entry, Mapping) and isinstance(
+            element := entry.get("element"), str
+        ):
+            occu = entry.get("occu")
+            counts[element] += 1 if occu is None else occu
+    return {"n_sites": n_sites, **(_composition_facts(counts) if counts else {})}
 
 
 def _structure_facts(struct: Any) -> dict[str, Any]:
@@ -54,18 +77,14 @@ def _structure_facts(struct: Any) -> dict[str, Any]:
     if not isinstance(struct, Mapping):
         return {}
     sites = struct.get("sites") or []
-    counts: dict[str, int] = {}
-    for site in sites:
-        species = site.get("species") if isinstance(site, Mapping) else None
-        if isinstance(species, list) and species and isinstance(species[0], Mapping):
-            element = species[0].get("element")
-            if element:
-                counts[str(element)] = counts.get(str(element), 0) + 1
-    facts: dict[str, Any] = {"n_sites": len(sites)}
-    if counts:
-        facts["elements"] = sorted(counts)
-        facts["formula"] = _format_formula(counts)
-    return facts
+    species = (
+        entry
+        for site in sites
+        if isinstance(site, Mapping)
+        and isinstance(entries := site.get("species"), list)
+        for entry in entries
+    )
+    return _species_facts(species, len(sites))
 
 
 def _series_list(widget_data: Mapping[str, Any]) -> list[Mapping[str, Any]]:
@@ -125,7 +144,35 @@ def _describe_structure(data: Mapping[str, Any]) -> dict[str, Any]:
 def _describe_trajectory(data: Mapping[str, Any]) -> dict[str, Any]:
     """Frame count plus first-frame structure facts."""
     traj = data.get("trajectory")
-    frames = traj.get("frames") or [] if isinstance(traj, Mapping) else []
+    if not isinstance(traj, Mapping):
+        return {"n_frames": 0}
+    if is_binary_envelope(traj, "trajectory"):
+        arrays = traj.get("arrays") or {}
+        if missing := sorted({"positions", "numbers"} - set(arrays)):
+            raise ValueError(
+                f"binary trajectory envelope lacks arrays {missing}, has "
+                f"{sorted(arrays)}"
+            )
+        positions, numbers = arrays["positions"], arrays["numbers"]
+        atomic_numbers = np.frombuffer(
+            numbers["data"], dtype=np.dtype(numbers["dtype"]).newbyteorder("<")
+        )
+        counts = {
+            element_symbols[int(num)]: count
+            for num, count in Counter(atomic_numbers.tolist()).items()
+        }
+        return {
+            "n_frames": positions["shape"][0],
+            "n_sites": len(atomic_numbers),
+            **_composition_facts(counts),
+        }
+    if traj.get("@class") == "Trajectory":
+        species = traj.get("species") or []
+        coords = traj.get("coords", [])
+        if isinstance(coords, Mapping) and coords.get("@class") == "array":
+            coords = coords["data"]
+        return {"n_frames": len(coords), **_species_facts(species, len(species))}
+    frames = traj.get("frames") or []
     facts: dict[str, Any] = {"n_frames": len(frames)}
     if frames and isinstance(frames[0], Mapping):
         facts |= _structure_facts(frames[0].get("structure"))
@@ -161,9 +208,7 @@ def _describe_composition(data: Mapping[str, Any]) -> dict[str, Any]:
     amounts = {
         str(el): amt for el, amt in comp.items() if isinstance(amt, (int, float))
     }
-    if not amounts:
-        return {}
-    return {"elements": sorted(amounts), "formula": _format_formula(amounts)}
+    return _composition_facts(amounts) if amounts else {}
 
 
 def _describe_xrd(data: Mapping[str, Any]) -> dict[str, Any]:
@@ -232,8 +277,8 @@ def _describe_bands_and_dos(data: Mapping[str, Any]) -> dict[str, Any]:
     return {**_describe_band_structure(data), **_describe_dos(data)}
 
 
-def _describe_treemap(data: Mapping[str, Any]) -> dict[str, Any]:
-    """Node/leaf counts and depth for a treemap hierarchy."""
+def _describe_hierarchy(data: Mapping[str, Any]) -> dict[str, Any]:
+    """Node/leaf counts and depth for a chart hierarchy."""
     tree = data.get("data")
     roots = tree if isinstance(tree, (list, tuple)) else [tree]
     n_nodes = n_leaves = max_depth = 0
@@ -290,7 +335,8 @@ _HANDLERS: dict[str, Any] = {
     "dos": _describe_dos,
     "band_structure": _describe_band_structure,
     "bands_and_dos": _describe_bands_and_dos,
-    "treemap": _describe_treemap,
+    "sunburst": _describe_hierarchy,
+    "treemap": _describe_hierarchy,
     # which optional data source is populated (structures/patterns, fermi/band)
     "rdf_plot": functools.partial(_source_flags, keys=("structures", "patterns")),
     "fermi_surface": functools.partial(_source_flags, keys=("fermi_data", "band_data")),
@@ -314,6 +360,7 @@ _PRIMARY_DATA: dict[str, str | tuple[str, ...]] = {
     "spacegroup_bar": "data",
     "dos": "doses",
     "band_structure": "band_structs",
+    "sunburst": "data",
     "treemap": "data",
     # can render with either input, so only warn when both are missing
     "bands_and_dos": ("doses", "band_structs"),
