@@ -180,11 +180,16 @@ def _describe_trajectory(data: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _describe_periodic_table(data: Mapping[str, Any]) -> dict[str, Any]:
-    """Element count and value range for a periodic-table heatmap."""
+    """Element count and value range for a periodic-table heatmap, plus the number
+    of elements with tile plots.
+    """
+    facts: dict[str, Any] = {"n_elements": 0}
+    if tile_plots := data.get("tile_plots"):
+        facts["n_tile_plots"] = len(tile_plots)
     values = data.get("heatmap_values")
     if not isinstance(values, (Mapping, list, tuple)):
-        return {"n_elements": 0}
-    facts: dict[str, Any] = {"n_elements": len(values)}
+        return facts
+    facts["n_elements"] = len(values)
     if (value_range := _minmax(values)) is not None:
         facts["value_range"] = value_range
     return facts
@@ -351,7 +356,7 @@ _PRIMARY_DATA: dict[str, str | tuple[str, ...]] = {
     "scatter_plot_3d": "series",
     "structure": "structure",
     "trajectory": "trajectory",
-    "periodic_table": "heatmap_values",
+    "periodic_table": ("heatmap_values", "tile_plots"),
     "heatmap_matrix": "values",
     "convex_hull": "entries",
     "chem_pot_diagram": "entries",
@@ -398,6 +403,7 @@ def short_summary(report: Mapping[str, Any]) -> str:
         ("n_series", "series"),
         ("n_frames", "frames"),
         ("n_entries", "entries"),
+        ("n_tile_plots", "tile plots"),
         ("n_elements", "elements"),
         ("n_nodes", "nodes"),
     ):

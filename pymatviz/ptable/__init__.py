@@ -1,4 +1,4 @@
-"""matplotlib and plotly periodic table figures."""
+"""Periodic table heatmaps and per-element mini plots as MatterViz widgets."""
 
 from __future__ import annotations
 

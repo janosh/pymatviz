@@ -25,14 +25,6 @@ type PeriodicStructure = "IStructure | AseAtoms | PhonopyAtoms"
 type AnyDos = "PhononDos | TotalDos"
 
 # Bare Literal assignments (not `type`): get_args() is empty on PEP 695 type aliases
-ColorElemTypeStrategy = Literal["symbol", "background", "both", "off"]
-VALID_COLOR_ELEM_STRATEGIES = get_args(ColorElemTypeStrategy)
-
-PTableSplitOrientation = Literal["diagonal", "horizontal", "vertical", "grid"]
-PTABLE_SPLIT_ORIENTATIONS: tuple[PTableSplitOrientation, ...] = get_args(
-    PTableSplitOrientation
-)
-
 CrystalSystem = Literal[
     "triclinic",
     "monoclinic",

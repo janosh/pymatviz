@@ -135,11 +135,8 @@ fig.show()
 # %%
 df_grvh[Key.formula] = df_grvh[Key.structure].map(lambda struct: struct.formula)
 
-fig = pmv.ptable_heatmap(pmv.count_elements(df_grvh[Key.formula]), log=True)
-title = "<b>Element counts in the Matbench<br>bulk/shear modulus datasets</b>"
-fig.layout.title.update(text=title)
-fig.show()
-# pmv.save_fig(fig, "gvrh-ptable-heatmap.pdf")
+title = "Element counts in the Matbench bulk/shear modulus datasets"
+pmv.ptable_heatmap(df_grvh[Key.formula], log=True, color_bar={"title": title}).show()
 
 
 # %%

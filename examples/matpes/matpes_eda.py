@@ -105,18 +105,14 @@ r2scan_elem_counts = locals().get("r2scan_elem_counts")
 if r2scan_elem_counts is None:
     r2scan_elem_counts = pmv.count_elements(df_r2scan[Key.formula])
 
-fig = pmv.ptable_heatmap(r2scan_elem_counts)
-fig.show()
-
-# pmv.save_fig(fig, "r2scan-element-counts-ptable.pdf")
+pmv.ptable_heatmap(r2scan_elem_counts).show()
 
 
 # %%
 pbe_elem_counts = locals().get("pbe_elem_counts")
 if pbe_elem_counts is None:
     pbe_elem_counts = pmv.count_elements(df_pbe[Key.formula])
-fig = pmv.ptable_heatmap(pbe_elem_counts)
-fig.show()
+pmv.ptable_heatmap(pbe_elem_counts).show()
 
 
 # %% calculate per element energies
@@ -151,24 +147,18 @@ per_elem_cohesive_energy = {
     key: list(dct.values()) for key, dct in df_per_elem.to_dict(orient="index").items()
 }
 
-fig = pmv.ptable_heatmap_splits(
-    per_elem_cohesive_energy,
-    colorbar=dict(title=col_name.label, orientation="h"),
-)
-fig.show()
+pmv.ptable_heatmap_splits(
+    per_elem_cohesive_energy, color_bar={"title": col_name.label}
+).show()
 
 
 # %% which elements have a higher share of missing r2SCAN data
-fig = pmv.ptable_heatmap(
-    (pbe_elem_counts - r2scan_elem_counts) / pbe_elem_counts,
-    colorbar=dict(
-        title="Fraction of missing PBE calcs missing r2SCAN", orientation="h"
-    ),
-    heat_mode="percent",
+widget = pmv.ptable_heatmap(
+    100 * (pbe_elem_counts - r2scan_elem_counts) / pbe_elem_counts,
+    color_bar={"title": "PBE calcs missing r2SCAN (%)"},
 )
-fig.show()
-
-pmv.save_fig(fig, "ptable-has-pbe-but-no-r2scan.pdf")
+widget.show()
+widget.to_img("ptable-has-pbe-but-no-r2scan.pdf")
 
 
 # %% per-elem mean abs magmoms
@@ -177,10 +167,9 @@ df_per_elem_magmoms = pd.DataFrame(
     for struct in df_r2scan[Key.structure]
 ).mean()
 
-fig = pmv.ptable_heatmap(df_per_elem_magmoms)
-fig.layout.coloraxis.colorbar.title = r"Mean |magmom| ($\mu_B$)"
-fig.show()
-# pmv.save_fig(fig, "magmoms-ptable.pdf")
+pmv.ptable_heatmap(
+    df_per_elem_magmoms, color_bar={"title": "Mean |magmom| (μB)"}
+).show()
 
 
 # %% spacegroup distribution
@@ -247,14 +236,13 @@ df_pbe_elem_forces = pd.DataFrame(
 
 
 # %%
-fig = pmv.ptable_heatmap_splits(
+pmv.ptable_heatmap_splits(
     {
         elem: [df_r2scan_elem_forces[elem], df_pbe_elem_forces[elem]]
         for elem in df_r2scan_elem_forces.index
     },
-    colorbar=dict(title="Mean |force| (eV/Å)", orientation="h"),
-)
-fig.show()
+    color_bar={"title": "Mean |force| (eV/Å), r2SCAN top-left, PBE bottom-right"},
+).show()
 
 
 # %%

@@ -37,20 +37,16 @@ df_wbm.hist(bins=100, figsize=(16, 10))
 
 
 # %%
-fig = pmv.ptable_heatmap(df_wbm[Key.formula])
-title = "<b>Elements in WBM Dataset</b>"
-fig.layout.title = dict(text=title, x=0.4, y=0.94, font_size=20)
-fig.show()
-# fig.write_image("wbm-ptable-heatmap-plotly.pdf")
+widget = pmv.ptable_heatmap(
+    df_wbm[Key.formula], color_bar={"title": "Elements in WBM dataset"}
+)
+widget.show()
 
 
 # %% plot elemental prevalence heatmap by iteration number of the elemental substitution
 for idx, df in df_wbm.groupby("batch_idx"):
-    fig = pmv.ptable_heatmap(df[Key.formula])
-    title = f"<b>Elements in WBM batch {idx} of size {len(df):,}</b>"
-    fig.layout.title = dict(text=title, x=0.4, y=0.94, font_size=20)
-    # fig.write_image(f"wbm-ptable-heatmap-plotly-batch-{idx}.pdf")
-    fig.show()
+    title = f"Elements in WBM batch {idx} of size {len(df):,}"
+    pmv.ptable_heatmap(df[Key.formula], color_bar={"title": title}).show()
 
 
 # %%
