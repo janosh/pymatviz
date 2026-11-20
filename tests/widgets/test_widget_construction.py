@@ -791,6 +791,23 @@ def test_rdf_plot_rejects_both_structures_and_patterns() -> None:
         )
 
 
+def test_xrd_widget_labeled_patterns() -> None:
+    """A {label: pattern} mapping normalizes each pattern, keeping label order."""
+    from pymatgen.analysis.diffraction.xrd import DiffractionPattern
+
+    computed = DiffractionPattern(
+        [10, 20], [100, 50], [[{"hkl": (1, 0, 0)}]] * 2, [2, 1]
+    )
+    widget = XrdWidget(
+        patterns={"computed": computed, "scan": {"two_theta": [5], "intensities": [1]}}
+    )
+    assert list(widget.patterns) == ["computed", "scan"]
+    assert widget.patterns["computed"]["hkls"][0] == [{"hkl": [1, 0, 0]}]
+    assert widget.patterns["scan"] == {"x": [5], "y": [1], "kind": "profile"}
+    with pytest.raises(ValueError, match="patterns mapping must not be empty"):
+        XrdWidget(patterns={})
+
+
 @pytest.mark.parametrize(
     ("series", "exc_type", "match"),
     [

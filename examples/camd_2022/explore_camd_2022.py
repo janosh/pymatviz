@@ -59,6 +59,6 @@ fig.show()
 
 
 # %%
-fig = pmv.spacegroup_sunburst(df_camd.space_group, show_counts="percent")
-pmv.save_fig(fig, "camd-2022-spacegroup-sunburst.pdf")
-fig.show()
+widget = pmv.spacegroup_sunburst(df_camd.space_group, label_text="label+percent")
+widget.to_img("camd-2022-spacegroup-sunburst.pdf")
+widget.show()

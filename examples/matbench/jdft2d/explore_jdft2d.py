@@ -56,8 +56,7 @@ fig.show()
 
 
 # %%
-fig = pmv.spacegroup_sunburst(df_2d[Key.spg_num], show_counts="percent")
-fig.layout.title.update(text="Spacegroup sunburst of the JARVIS DFT 2D dataset", x=0.5)
-fig.layout.margin.update(b=0, l=0, r=0, t=40)
-fig.show()
-# pmv.save_fig(fig, "jdft2d-spacegroup-sunburst.pdf")
+# Spacegroup sunburst of the JARVIS DFT 2D dataset
+widget = pmv.spacegroup_sunburst(df_2d[Key.spg_num], label_text="label+percent")
+widget.show()
+# widget.to_img("jdft2d-spacegroup-sunburst.pdf")

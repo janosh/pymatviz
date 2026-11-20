@@ -22,46 +22,22 @@ df_phonons[Key.spg_symbol] = df_phonons[Key.spg_num].map(
 
 
 # %% Sunburst Plots
-fig = pmv.spacegroup_sunburst(df_phonons[Key.spg_num], show_counts="percent")
-title = "Matbench Phonons Spacegroup Sunburst"
-fig.layout.title = dict(text=f"<b>{title}</b>", x=0.5, y=0.96, font_size=18)
-fig.show()
-# pmv.io.save_and_compress_svg(fig, "spg-num-sunburst")
+widget = pmv.spacegroup_sunburst(df_phonons[Key.spg_num], label_text="label+percent")
+widget.show()
+widget.to_img(f"{pmv.ROOT}/assets/svg/spg-num-sunburst.svg", width=600)
 
-fig = pmv.spacegroup_sunburst(df_phonons[Key.spg_symbol], show_counts="percent")
-title = "Matbench Phonons Spacegroup Symbols Sunburst"
-fig.layout.title = dict(text=f"<b>{title}</b>", x=0.5, y=0.96, font_size=18)
-fig.show()
-# pmv.io.save_and_compress_svg(fig, "spg-symbol-sunburst")
+widget = pmv.spacegroup_sunburst(df_phonons[Key.spg_symbol], label_text="label+percent")
+widget.show()
+widget.to_img(f"{pmv.ROOT}/assets/svg/spg-symbol-sunburst.svg", width=600)
 
 
-# %% Demonstrate max_slices with "other" mode
-# Show only top 3 space groups per crystal system, combine the rest into "Other"
-max_slices = 6
-fig = pmv.spacegroup_sunburst(
-    df_phonons[Key.spg_num],
-    show_counts="value+percent",
-    max_slices=max_slices,
-    max_slices_mode="other",
-)
-title = f"Matbench Phonons Space Groups - Top {max_slices} Crystal Systems (Other Mode)"
-fig.layout.title = dict(text=f"<b>{title}</b>", x=0.5, y=0.96, font_size=18)
-fig.layout.update(height=600)
-fig.show()
-# pmv.io.save_and_compress_svg(fig, "spg-num-sunburst-max-slices-other")
+# %% Show the top 6 space groups per crystal system, combine the rest into "Other"
+pmv.spacegroup_sunburst(
+    df_phonons[Key.spg_num], max_slices=6, max_slices_mode="other"
+).show()
 
 
-# %% Demonstrate max_slices with "drop" mode
-# Show only top 2 space groups per crystal system, discard the rest
-max_slices = 5
-fig = pmv.spacegroup_sunburst(
-    df_phonons[Key.spg_num],
-    show_counts="value+percent",
-    max_slices=max_slices,
-    max_slices_mode="drop",
-)
-title = f"Matbench Phonons Space Groups - Top {max_slices} Crystal Systems (Drop Mode)"
-fig.layout.title = dict(text=f"<b>{title}</b>", x=0.5, y=0.96, font_size=18)
-fig.layout.update(height=600)
-fig.show()
-# pmv.io.save_and_compress_svg(fig, "spg-num-sunburst-max-slices-drop")
+# %% Show the top 5 space groups per crystal system, discard the rest
+pmv.spacegroup_sunburst(
+    df_phonons[Key.spg_num], max_slices=5, max_slices_mode="drop"
+).show()

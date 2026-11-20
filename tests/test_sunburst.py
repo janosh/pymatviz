@@ -5,12 +5,13 @@ from __future__ import annotations
 import sys
 from typing import Any, Literal, get_args
 
+import numpy as np
 import pandas as pd
 import pytest
 from pymatgen.core import Lattice, Structure
 
 import pymatviz as pmv
-from pymatviz.sunburst import ShowCounts, spacegroup_sunburst
+from pymatviz.sunburst import spacegroup_sunburst
 
 
 @pytest.fixture
@@ -21,32 +22,27 @@ def rock_salt() -> Structure:
     )
 
 
-@pytest.mark.parametrize("show_counts", get_args(ShowCounts))
-def test_spacegroup_sunburst(show_counts: ShowCounts) -> None:
-    """Test spacegroup_sunburst with different show_counts options."""
-    fig = spacegroup_sunburst(range(1, 231), show_counts=show_counts)
-
-    assert set(fig.data[0].parents) == {"", *get_args(pmv.typing.CrystalSystem)}
-    assert fig.data[0].branchvalues == "total"
-
-    if show_counts == "value":
-        assert fig.data[0].texttemplate is not None
-        assert "N=" in fig.data[0].texttemplate
-    elif show_counts == "value+percent":
-        assert fig.data[0].texttemplate is not None
-        assert "N=" in fig.data[0].texttemplate
-        assert "percentEntry" in fig.data[0].texttemplate
-    elif show_counts == "percent":
-        assert fig.data[0].textinfo is not None
-        assert "percent" in fig.data[0].textinfo
-    elif show_counts is False:
-        assert fig.data[0].textinfo is None
+def spg_leaves(widget: pmv.SunburstWidget) -> dict[str, tuple[str, int]]:
+    """Map leaf IDs to (label, value) of a crystal system/space group sunburst."""
+    return {
+        leaf["id"]: (leaf["label"], leaf["value"])
+        for root in widget.data
+        for leaf in root["children"]
+    }
 
 
-def test_spacegroup_sunburst_invalid_show_counts() -> None:
-    """Test that invalid show_counts values raise ValueError."""
-    with pytest.raises(ValueError, match=r"Invalid.*show_counts"):
-        spacegroup_sunburst([1], show_counts="invalid")  # ty: ignore[invalid-argument-type]
+def test_spacegroup_sunburst_all_groups() -> None:
+    """All 230 space groups nest under the 7 crystal systems with label+value text."""
+    widget = spacegroup_sunburst(range(1, 231))
+    assert isinstance(widget, pmv.SunburstWidget)
+    assert widget.label_text == "label+value"
+    assert {root["id"] for root in widget.data} == set(
+        get_args(pmv.typing.CrystalSystem)
+    )
+    leaves = spg_leaves(widget)
+    assert len(leaves) == 230
+    assert leaves["cubic/225"] == ("225", 1)
+    assert spacegroup_sunburst([1], label_text="percent").label_text == "percent"
 
 
 @pytest.mark.parametrize("invalid", [None, float("nan"), pd.NA, 0, 231, 2.5, "invalid"])
@@ -56,47 +52,48 @@ def test_spacegroup_sunburst_invalid_data(invalid: Any) -> None:
         spacegroup_sunburst([1, invalid])
 
 
-def test_spacegroup_sunburst_single_item() -> None:
-    """Test with single-item input."""
-    fig = spacegroup_sunburst([1], show_counts="value")
-    assert len(fig.data[0].ids) == 2  # one for crystal system, one for spg number
-
-    fig = spacegroup_sunburst(["P1"], show_counts="value+percent")
-    assert len(fig.data[0].ids) == 2
-
-
-def test_spacegroup_sunburst_series_counts() -> None:
-    """Test with other types of input."""
-    series = pd.Series([*[1] * 3, *[2] * 10, *[3] * 5])
-    fig = spacegroup_sunburst(series, show_counts="value")
-    values = [*map(int, fig.data[0].values)]
-    assert values == [10, 5, 3, 13, 5], f"actual {values=}"
+@pytest.mark.parametrize(
+    ("data", "expected"),
+    [
+        ([1], {"triclinic/1": ("1", 1)}),
+        (np.array([225, 225, 1]), {"cubic/225": ("225", 2), "triclinic/1": ("1", 1)}),
+        (["P1"], {"triclinic/P1": ("P1", 1)}),
+        (
+            pd.Series([*[1] * 3, *[2] * 10, *[3] * 5]),
+            {
+                "triclinic/2": ("2", 10),
+                "monoclinic/3": ("3", 5),
+                "triclinic/1": ("1", 3),
+            },
+        ),
+    ],
+)
+def test_spacegroup_sunburst_counts(data: Any, expected: dict[str, Any]) -> None:
+    """Numbers, symbols and Series are counted per space group."""
+    assert spg_leaves(spacegroup_sunburst(data)) == expected
 
 
 def test_spacegroup_sunburst_symbol_counts(spg_symbols: list[str]) -> None:
     """Space-group symbols are grouped into crystal systems with counts."""
-    fig = spacegroup_sunburst(spg_symbols, show_counts="value")
-    trace = fig.data[0]
-    values_by_label = dict(zip(trace.labels, map(int, trace.values), strict=True))
-    parents_by_label = dict(zip(trace.labels, trace.parents, strict=True))
-
-    assert values_by_label["monoclinic"] == 4
-    assert values_by_label["cubic"] == 5
-    assert values_by_label["hexagonal"] == 3
-    assert parents_by_label["C2/m"] == "monoclinic"
-    assert parents_by_label["P-43m"] == "cubic"
+    widget = spacegroup_sunburst(spg_symbols)
+    totals = {
+        root["id"]: sum(leaf["value"] for leaf in root["children"])
+        for root in widget.data
+    }
+    assert (totals["monoclinic"], totals["cubic"], totals["hexagonal"]) == (4, 5, 3)
+    leaves = spg_leaves(widget)
+    assert leaves["monoclinic/C2/m"][0] == "C2/m"
+    assert leaves["cubic/P-43m"][0] == "P-43m"
 
 
 def test_spacegroup_sunburst_structure_counts(
     structures: tuple[Structure, Structure],
 ) -> None:
     """Structure inputs are converted to space group counts via moyopy."""
-    fig = spacegroup_sunburst(structures, show_counts="value")
-    trace = fig.data[0]
-
-    assert list(trace.labels) == ["12", "129", "monoclinic", "tetragonal"]
-    assert list(trace.parents) == ["monoclinic", "tetragonal", "", ""]
-    assert [*map(int, trace.values)] == [1, 1, 1, 1]
+    assert spg_leaves(spacegroup_sunburst(structures)) == {
+        "monoclinic/12": ("12", 1),
+        "tetragonal/129": ("129", 1),
+    }
 
 
 def test_spacegroup_sunburst_requires_moyopy(
@@ -163,39 +160,15 @@ def test_spacegroup_sunburst_max_slices(
     # Create a dataset with multiple space groups per crystal system
     spg_numbers = (1, 2, 3, 4, 5, 6, 7)
 
-    fig = pmv.spacegroup_sunburst(
+    widget = pmv.spacegroup_sunburst(
         spg_numbers, max_slices=max_slices, max_slices_mode=max_slices_mode
     )
-
-    # Get all space group entries (excluding crystal system level)
-    space_groups = {
-        label: val
-        for idx, (label, val) in enumerate(
-            zip(fig.data[0].labels, fig.data[0].values, strict=True)
-        )
-        if fig.data[0].parents[idx] != ""  # exclude root level
-    }
+    space_groups = dict(spg_leaves(widget).values())
     assert len(space_groups) == expected_systems
-
-    # Check for expected "Other" entries
-    if expected_others:
-        other_entries = [
-            (label, val)
-            for label, val in space_groups.items()
-            if "more not shown" in str(label)
-        ]
-        assert len(other_entries) == len(expected_others)
-
-        for expected_label, expected_count in expected_others:
-            found = any(
-                expected_label in label and val == expected_count
-                for label, val in other_entries
-            )
-            assert found, (
-                f"{expected_label=} with {expected_count=} not in {other_entries=}"
-            )
-    else:
-        assert not any("Other" in str(label) for label in space_groups)
+    others = sorted(
+        (label, val) for label, val in space_groups.items() if "more not shown" in label
+    )
+    assert others == sorted(expected_others or [])
 
 
 def test_spacegroup_sunburst_invalid_limit_mode() -> None:

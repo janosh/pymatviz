@@ -4,13 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import plotly
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-
 from pymatviz.process_data import normalize_periodic_structures
 from pymatviz.rdf.helpers import calculate_rdf
-from pymatviz.utils.plotting import PLOTLY_LINE_STYLES
+from pymatviz.widgets.rdf_plot import RdfPlotWidget
 
 
 if TYPE_CHECKING:
@@ -47,55 +43,32 @@ def _resolve_n_bins(
     return int(cutoff / bin_size)
 
 
-def _add_rdf_line(
-    fig: go.Figure,
-    idx: int,
-    label: Hashable,
+def _rdf_entry(
+    label: str,
     rdf: tuple[np.ndarray, np.ndarray],
-    colors: Sequence[str] | None,
-    line_styles: Sequence[str] | None,
-    **kwargs: Any,
-) -> None:
-    """Add the idx-th structure's (radii, g(r)) line, cycling colors and dashes."""
-    colors = colors or plotly.colors.qualitative.Plotly
-    line_styles = line_styles or PLOTLY_LINE_STYLES
+    *,
+    color: str | None,
+    element_pair: tuple[str, str] | None = None,
+    legend_group: str | None = None,
+) -> dict[str, Any]:
+    """MatterViz RdfEntry for one (radii, g(r)) curve."""
     radii, g_r = rdf
-    fig.add_scatter(
-        x=radii,
-        y=g_r,
-        mode="lines",
-        name=label,
-        line=dict(
-            color=colors[idx % len(colors)], dash=line_styles[idx % len(line_styles)]
-        ),
-        hovertemplate=f"{label}<br>r = %{{x:.2f}} Å<br>g(r) = %{{y:.2f}}"
-        "<extra></extra>",
-        **kwargs,
-    )
+    pattern: dict[str, Any] = {"r": radii.tolist(), "g_r": g_r.tolist()}
+    if element_pair:
+        pattern["element_pair"] = list(element_pair)
+    entry: dict[str, Any] = {"label": label, "pattern": pattern}
+    if color:
+        entry["color"] = color
+    if legend_group:
+        entry["legend_group"] = legend_group
+    return entry
 
 
-def _add_rdf_legend_and_reference(
-    fig: go.Figure,
-    n_structs: int,
-    reference_line: dict[str, Any] | None,
-    **legend_kwargs: Any,
-) -> None:
-    """Draw an optional g(r)=1 reference line and show a legend centered above the
-    plot only when comparing multiple structures.
+def _rdf_widget(entries: list[dict[str, Any]], **kwargs: Any) -> RdfPlotWidget:
+    """Plot precomputed RDF entries. mode="full" keeps every curve visible: in its
+    default "element_pairs" mode, MatterViz hides all but the first 3 curves.
     """
-    if reference_line is not None:
-        hline_defaults = dict(line_dash="dash", line_color="gray", opacity=0.7)
-        fig.add_hline(y=1, **hline_defaults | reference_line)
-    fig.layout.showlegend = n_structs > 1
-    if n_structs > 1:
-        fig.layout.legend.update(
-            orientation="h",
-            xanchor="center",
-            x=0.5,
-            y=1.02,
-            yanchor="bottom",
-            **legend_kwargs,
-        )
+    return RdfPlotWidget(patterns=entries, **{"mode": "full"} | kwargs)
 
 
 def element_pair_rdfs(
@@ -107,13 +80,14 @@ def element_pair_rdfs(
     n_bins: int = 75,
     bin_size: float | None = None,
     element_pairs: list[tuple[str, str]] | None = None,
-    reference_line: dict[str, Any] | None = None,
     colors: Sequence[str] | None = None,
-    line_styles: Sequence[str] | None = None,
-    subplot_kwargs: dict[str, Any] | None = None,
-) -> go.Figure:
-    """Generate a plotly figure of pairwise radial distribution functions (RDFs) for
-    all (or a subset of) element pairs in one or multiple structures.
+    **kwargs: Any,
+) -> RdfPlotWidget:
+    """Plot pairwise radial distribution functions (RDFs) for all (or a subset of)
+    element pairs in one or multiple structures.
+
+    Every element pair of every structure is one curve labeled by the pair. With
+    multiple structures, each structure's curves share a legend group.
 
     Args:
         structures (AnyStructure | Sequence[AnyStructure] | dict[str, AnyStructure]):
@@ -132,20 +106,14 @@ def element_pair_rdfs(
             overrides n_bins. Default is None.
         element_pairs (list[tuple[str, str]], optional): Element pairs to plot.
             If None, all pairs present in any structure are plotted.
-        reference_line (dict, optional): Keywords for reference line at g(r)=1 drawn
-            with Figure.add_hline(). If None (default), no reference line is drawn.
-        colors (Sequence[str], optional): colors for each structure's RDF line. Defaults
-            to plotly.colors.qualitative.Plotly.
-        line_styles (Sequence[str], optional): line styles for each structure's RDF
-            line. Will be used for all element pairs present in that structure.
-            Defaults to ["solid", "dot", "dash", "longdash", "dashdot", "longdashdot"].
-        subplot_kwargs (dict, optional): Passed to plotly.make_subplots. Use this to
-            e.g. set subplot_titles, rows/cols or row/column spacing to customize the
-            subplot layout.
+        colors (Sequence[str], optional): CSS colors cycled over the curves. Defaults
+            to the MatterViz palette.
+        **kwargs: Passed to RdfPlotWidget, e.g. ``show_reference_line=False`` to hide
+            the g(r)=1 line, ``x_axis``, ``y_axis`` or ``style``.
 
     Returns:
-        go.Figure: A plotly figure with facets for each pairwise RDF, comparing one or
-            multiple structures.
+        RdfPlotWidget: MatterViz RDF plot with one curve per structure and element
+            pair.
 
     Raises:
         ValueError: If no structures are provided, if structures have no sites,
@@ -161,17 +129,12 @@ def element_pair_rdfs(
         cutoff = min(15, 2 * max_cell_len)
     elif cutoff < 0:
         cutoff = abs(cutoff) * max_cell_len
-    if not isinstance(cutoff, int | float):
-        raise TypeError(f"Invalid {cutoff=}")
 
     n_bins = _resolve_n_bins(struct_dict, cutoff, n_bins, bin_size)
 
-    # Determine all unique elements across all structures
     all_elements = set.union(
         *(struct.chemical_system_set for struct in struct_dict.values())
     )
-
-    # Determine element pairs to plot
     if element_pairs is None:
         element_pairs = [
             (el1, el2) for el1 in all_elements for el2 in all_elements if el1 <= el2
@@ -184,56 +147,27 @@ def element_pair_rdfs(
                 f"Elements {extra_elems} in element_pairs not present in any structure"
             )
 
-    element_pairs = sorted(element_pairs)
-
-    elem_pair_rdfs: dict[tuple[str, str], list[tuple[np.ndarray, np.ndarray]]] = {
-        pair: [
-            calculate_rdf(struct, pair[0], pair[1], cutoff=cutoff, n_bins=n_bins)
-            for struct in struct_dict.values()
-        ]
-        for pair in element_pairs
-    }
-
-    # Determine subplot layout
-    n_pairs = len(element_pairs)
-    subplot_kwargs = dict(subplot_kwargs or {})
-    actual_cols = min(subplot_kwargs.pop("cols", 3), n_pairs)
-    n_rows = (n_pairs + actual_cols - 1) // actual_cols
-
-    # Create the plotly figure with facets
-    subplot_defaults = dict(
-        rows=n_rows,
-        cols=actual_cols,
-        subplot_titles=[f"{el1}-{el2}" for el1, el2 in element_pairs],
-        vertical_spacing=0.15 / n_rows,
-        horizontal_spacing=0.15 / actual_cols,
-    )
-    fig = make_subplots(**subplot_defaults | subplot_kwargs)
-
-    labels = list(struct_dict)
-    for subplot_idx, rdfs in enumerate(elem_pair_rdfs.values()):
-        row, col = divmod(subplot_idx, actual_cols)
-        for trace_idx, rdf in enumerate(rdfs):
-            _add_rdf_line(
-                fig,
-                trace_idx,
-                labels[trace_idx],
-                rdf,
-                colors,
-                line_styles,
-                legendgroup=labels[trace_idx],
-                # Only show legend for first subplot and if multiple structures
-                showlegend=subplot_idx == 0 and len(struct_dict) > 1,
-                row=row + 1,
-                col=col + 1,
+    multiple = len(struct_dict) > 1
+    pairs = sorted({tuple(sorted(pair)) for pair in element_pairs})
+    entries = []
+    for label, struct in struct_dict.items():
+        for el1, el2 in pairs:
+            if not {el1, el2} <= struct.chemical_system_set:
+                continue  # an all-zero curve for elements this structure lacks
+            rdf = calculate_rdf(struct, el1, el2, cutoff=cutoff, n_bins=n_bins)
+            color = colors[len(entries) % len(colors)] if colors else None
+            entries.append(
+                _rdf_entry(
+                    f"{el1}-{el2}",
+                    rdf,
+                    color=color,
+                    element_pair=(el1, el2),
+                    legend_group=str(label) if multiple else None,
+                )
             )
-
-    fig.update_xaxes(title_text="r [Å]", title_standoff=9, row=n_rows)
-    fig.update_yaxes(title_text="g(r)", title_standoff=9, col=1)
-    fig.update_layout(height=300 * n_rows, width=450 * actual_cols)
-
-    _add_rdf_legend_and_reference(fig, len(struct_dict), reference_line, font_size=14)
-    return fig
+    if not entries:
+        raise ValueError(f"No structure contains any of the element pairs {pairs}")
+    return _rdf_widget(entries, **kwargs)
 
 
 def full_rdf(
@@ -244,12 +178,11 @@ def full_rdf(
     cutoff: float = 15,
     n_bins: int = 75,
     bin_size: float | None = None,
-    reference_line: dict[str, Any] | None = None,
     colors: Sequence[str] | None = None,
-    line_styles: Sequence[str] | None = None,
-) -> go.Figure:
-    """Generate a plotly figure of full radial distribution functions (RDFs) for
-    one or multiple structures.
+    **kwargs: Any,
+) -> RdfPlotWidget:
+    """Plot the full radial distribution functions (RDFs) of one or multiple
+    structures.
 
     Args:
         structures (AnyStructure | Sequence[AnyStructure] | dict[str, AnyStructure]):
@@ -261,16 +194,13 @@ def full_rdf(
         n_bins (int, optional): Number of bins for RDF calculation. Default is 75.
         bin_size (float, optional): Size of bins for RDF calculation. If specified, it
             overrides n_bins. Default is None.
-        reference_line (dict, optional): Keywords for reference line at g(r)=1 drawn
-            with Figure.add_hline(). If None (default), no reference line is drawn.
-        colors (Sequence[str], optional): colors for each structure's RDF line. Defaults
-            to plotly.colors.qualitative.Plotly.
-        line_styles (Sequence[str], optional): line styles for each structure's RDF
-            line. Defaults to ["solid", "dot", "dash", "longdash", "dashdot",
-            "longdashdot"].
+        colors (Sequence[str], optional): CSS colors cycled over the structures'
+            curves. Defaults to the MatterViz palette.
+        **kwargs: Passed to RdfPlotWidget, e.g. ``show_reference_line=False`` to hide
+            the g(r)=1 line, ``x_axis``, ``y_axis`` or ``style``.
 
     Returns:
-        go.Figure: A plotly figure with full RDFs for one or multiple structures.
+        RdfPlotWidget: MatterViz RDF plot with one curve per structure.
 
     Raises:
         ValueError: If no structures are provided, if structures have no sites,
@@ -278,12 +208,12 @@ def full_rdf(
     """
     struct_dict = normalize_periodic_structures(structures)
     n_bins = _resolve_n_bins(struct_dict, cutoff, n_bins, bin_size)
-
-    fig = go.Figure()
-    for idx, (label, struct) in enumerate(struct_dict.items()):
-        rdf = calculate_rdf(struct, cutoff=cutoff, n_bins=n_bins)
-        _add_rdf_line(fig, idx, label, rdf, colors, line_styles)
-
-    fig.update_layout(xaxis_title="r [Å]", yaxis_title="g(r)")
-    _add_rdf_legend_and_reference(fig, len(struct_dict), reference_line)
-    return fig
+    entries = [
+        _rdf_entry(
+            str(label),
+            calculate_rdf(struct, cutoff=cutoff, n_bins=n_bins),
+            color=colors[idx % len(colors)] if colors else None,
+        )
+        for idx, (label, struct) in enumerate(struct_dict.items())
+    ]
+    return _rdf_widget(entries, **kwargs)

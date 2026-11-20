@@ -83,10 +83,9 @@ fig.show()
 
 
 # %%
-fig = pmv.spacegroup_sunburst(df_wbm[Key.spg_num], show_counts="percent")
-fig.layout.title = "Matbench Perovskites spacegroup sunburst"
-fig.show()
-pmv.save_fig(fig, "wbm-spacegroup-sunburst.pdf")
+widget = pmv.spacegroup_sunburst(df_wbm[Key.spg_num], label_text="label+percent")
+widget.show()
+widget.to_img("wbm-spacegroup-sunburst.pdf")
 
 
 # %%

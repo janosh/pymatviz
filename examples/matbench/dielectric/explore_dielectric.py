@@ -66,10 +66,9 @@ fig.show()
 
 
 # %%
-fig = pmv.spacegroup_sunburst(df_diel[Key.spg_num], show_counts="percent")
-fig.layout.title.update(text="<b>Space group sunburst</b>", x=0.5)
-# pmv.save_fig(fig, "dielectric-spacegroup-sunburst.pdf")
-fig.show()
+widget = pmv.spacegroup_sunburst(df_diel[Key.spg_num], label_text="label+percent")
+# widget.to_img("dielectric-spacegroup-sunburst.pdf")
+widget.show()
 
 
 # %%

@@ -80,10 +80,10 @@ See [`examples/mprester_ptable.ipynb`](examples/mprester_ptable.ipynb).
 
 ## Phonons
 
-| [`phonon_bands(bands_dict)`](pymatviz/phonons/figures.py#L42) [![fig-icon]](assets/scripts/phonons/phonon_bands.py) |                  [`phonon_dos(doses_dict)`](pymatviz/phonons/figures.py#L319) [![fig-icon]](assets/scripts/phonons/phonon_dos.py)                  |
+| [`phonon_bands(bands_dict)`](pymatviz/phonons/figures.py#L99) [![fig-icon]](assets/scripts/phonons/phonon_bands.py) |                  [`phonon_dos(doses_dict)`](pymatviz/phonons/figures.py#L121) [![fig-icon]](assets/scripts/phonons/phonon_dos.py)                  |
 | :-----------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                                   ![phonon-bands]                                                   |                                                                   ![phonon-dos]                                                                    |
-|                 [`phonon_bands_and_dos(bands_dict, doses_dict)`](pymatviz/phonons/figures.py#L552)                  | [`phonon_bands_and_dos(single_bands, single_dos)`](pymatviz/phonons/figures.py#L552) [![fig-icon]](assets/scripts/phonons/phonon_bands_and_dos.py) |
+|                 [`phonon_bands_and_dos(bands_dict, doses_dict)`](pymatviz/phonons/figures.py#L178)                  | [`phonon_bands_and_dos(single_bands, single_dos)`](pymatviz/phonons/figures.py#L178) [![fig-icon]](assets/scripts/phonons/phonon_bands_and_dos.py) |
 |                                           ![phonon-bands-and-dos-mp-2758]                                           |                                                          ![phonon-bands-and-dos-mp-23907]                                                          |
 
 [phonon-bands]: assets/svg/phonon-bands-mp-2758.svg
@@ -137,10 +137,9 @@ See [`pymatviz/structure/figures.py`](pymatviz/structure/figures.py).
 |                            [`structure_3d(hea_structure)`](pymatviz/structure/figures.py)                            | [`structure_3d(lco_supercell)`](pymatviz/structure/figures.py) [![fig-icon]](assets/scripts/structure/structure_3d.py) |
 | :------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------------------: |
 |                                                 ![hea-structure-3d]                                                  |                                                  ![lco-structure-3d]                                                   |
-| [`structure_2d(six_structs)`](pymatviz/structure/figures.py) [![fig-icon]](assets/scripts/structure/structure_2d.py) |  [`structure_3d(six_structs)`](pymatviz/structure/figures.py) [![fig-icon]](assets/scripts/structure/structure_3d.py)  |
-|                                          ![matbench-phonons-structures-2d]                                           |                                           ![matbench-phonons-structures-3d]                                            |
+| [`structure_3d(six_structs)`](pymatviz/structure/figures.py) [![fig-icon]](assets/scripts/structure/structure_3d.py) | |
+|                                          ![matbench-phonons-structures-3d]                                           | |
 
-[matbench-phonons-structures-2d]: assets/svg/matbench-phonons-structures-2d.svg
 [matbench-phonons-structures-3d]: assets/svg/matbench-phonons-structures-3d.svg
 [hea-structure-3d]: assets/svg/hea-structure-3d.svg
 [lco-structure-3d]: assets/svg/lco-structure-3d.svg
@@ -197,38 +196,33 @@ Importing `pymatviz` auto-registers all widgets for their respective sets of sup
 
 See [`pymatviz/brillouin.py`](pymatviz/brillouin.py).
 
-|   [`brillouin_zone_3d(cubic_struct)`](pymatviz/brillouin.py#L15) [![fig-icon]](assets/scripts/brillouin/brillouin_zone_3d.py)    |  [`brillouin_zone_3d(hexagonal_struct)`](pymatviz/brillouin.py#L15)   |
+|   [`brillouin_zone_3d(cubic_struct)`](pymatviz/brillouin.py#L47) [![fig-icon]](assets/scripts/brillouin/brillouin_zone_3d.py)    |  [`brillouin_zone_3d(hexagonal_struct)`](pymatviz/brillouin.py#L47)   |
 | :------------------------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------: |
 |                                                   ![brillouin-cubic-mp-10018]                                                    |                   ![brillouin-hexagonal-mp-862690]                    |
-| [`brillouin_zone_3d(monoclinic_struct)`](pymatviz/brillouin.py#L15) [![fig-icon]](assets/scripts/brillouin/brillouin_zone_3d.py) | [`brillouin_zone_3d(orthorhombic_struct)`](pymatviz/brillouin.py#L15) |
-|                                                ![brillouin-monoclinic-mp-1183089]                                                |                      ![brillouin-volumes-3-cols]                      |
+| [`brillouin_zone_3d(monoclinic_struct)`](pymatviz/brillouin.py#L47) [![fig-icon]](assets/scripts/brillouin/brillouin_zone_3d.py) | [`brillouin_zone_3d(orthorhombic_struct)`](pymatviz/brillouin.py#L47) |
+|                                                ![brillouin-monoclinic-mp-1183089]                                                |                  ![brillouin-orthorhombic-mp-1183085]                 |
 
 [brillouin-cubic-mp-10018]: assets/svg/brillouin-cubic-mp-10018.svg
 [brillouin-hexagonal-mp-862690]: assets/svg/brillouin-hexagonal-mp-862690.svg
 [brillouin-monoclinic-mp-1183089]: assets/svg/brillouin-monoclinic-mp-1183089.svg
 [brillouin-orthorhombic-mp-1183085]: assets/svg/brillouin-orthorhombic-mp-1183085.svg
-[brillouin-volumes-3-cols]: assets/svg/brillouin-volumes-3-cols.svg
 
 ## X-Ray Diffraction
 
 See [`pymatviz/xrd.py`](pymatviz/xrd.py).
 
-|             [`xrd_pattern(pattern)`](pymatviz/xrd.py#L47) [![fig-icon]](assets/scripts/xrd/xrd_pattern.py)             |  [`xrd_pattern({key1: patt1, key2: patt2})`](pymatviz/xrd.py#L47)   |
+|             [`xrd_pattern(pattern)`](pymatviz/xrd.py#L51) [![fig-icon]](assets/scripts/xrd/xrd_pattern.py)             |  [`xrd_pattern({key1: patt1, key2: patt2})`](pymatviz/xrd.py#L51)   |
 | :--------------------------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------: |
 |                                                     ![xrd-pattern]                                                     |                       ![xrd-pattern-multiple]                       |
-| [`xrd_pattern(struct_dict, stack="horizontal")`](pymatviz/xrd.py#L47) [![fig-icon]](assets/scripts/xrd/xrd_pattern.py) | [`xrd_pattern(struct_dict, stack="vertical")`](pymatviz/xrd.py#L47) |
-|                                            ![xrd-pattern-horizontal-stack]                                             |                    ![xrd-pattern-vertical-stack]                    |
 
 [xrd-pattern]: assets/svg/xrd-pattern.svg
 [xrd-pattern-multiple]: assets/svg/xrd-pattern-multiple.svg
-[xrd-pattern-horizontal-stack]: assets/svg/xrd-pattern-horizontal-stack.svg
-[xrd-pattern-vertical-stack]: assets/svg/xrd-pattern-vertical-stack.svg
 
 ## Radial Distribution Functions
 
 See [`pymatviz/rdf/figures.py`](pymatviz/rdf/figures.py).
 
-| [`element_pair_rdfs(pmg_struct)`](pymatviz/rdf/figures.py#L101) | [`element_pair_rdfs({"A": struct1, "B": struct2})`](pymatviz/rdf/figures.py#L101) [![fig-icon]](assets/scripts/rdf/element_pair_rdfs.py) |
+| [`element_pair_rdfs(pmg_struct)`](pymatviz/rdf/figures.py#L74) | [`element_pair_rdfs({"A": struct1, "B": struct2})`](pymatviz/rdf/figures.py#L74) [![fig-icon]](assets/scripts/rdf/element_pair_rdfs.py) |
 | :------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------------------------: |
 |                 ![element-pair-rdfs-Na8Nb8O24]                 |                                                ![element-pair-rdfs-crystal-vs-amorphous]                                                |
 
@@ -274,12 +268,12 @@ Chemical-system and coordination-environment treemaps return MatterViz `TreemapW
 |                                                           ![chem-sys-treemap-formula]                                                            |                                        ![chem-sys-treemap-ward-bmg]                                        |
 |           [`chem_env_treemap(structure, chem_env_settings="chemenv")`](pymatviz/treemap/chem_env.py#L18) [![fig-icon]](assets/scripts/treemap/chem_env_treemap.py)           |     [`chem_env_treemap(structures, max_coordination_numbers=3, max_environments=4)`](pymatviz/treemap/chem_env.py#L18)     |
 |                                                            ![chem-env-treemap-basic]                                                             |                                     ![chem-env-treemap-large-dataset]                                      |
-|             [`py_pkg_treemap("pymatviz")`](pymatviz/treemap/py_pkg.py#L442) [![fig-icon]](assets/scripts/treemap/py_pkg_treemap.py)              |           [`py_pkg_treemap(["pymatviz", "flame", "pymatgen"])`](pymatviz/treemap/py_pkg.py#L425)           |
+|             [`py_pkg_treemap("pymatviz")`](pymatviz/treemap/py_pkg.py#L418) [![fig-icon]](assets/scripts/treemap/py_pkg_treemap.py)              |           [`py_pkg_treemap(["pymatviz", "flame", "pymatgen"])`](pymatviz/treemap/py_pkg.py#L418)           |
 |                                                            ![py-pkg-treemap-pymatviz]                                                            |                                         ![py-pkg-treemap-multiple]                                         |
-|   [`py_pkg_treemap("pymatviz", color_by=coverage_by_path)`](pymatviz/treemap/py_pkg.py#L442) [![fig-icon]](assets/scripts/treemap/py_pkg_treemap.py)   | [`py_pkg_treemap("pymatgen", color_by=coverage_by_path, color_range=(0, 100))`](pymatviz/treemap/py_pkg.py#L442) |
+|   [`py_pkg_treemap("pymatviz", color_by=coverage_by_path)`](pymatviz/treemap/py_pkg.py#L418) [![fig-icon]](assets/scripts/treemap/py_pkg_treemap.py)   | [`py_pkg_treemap("pymatgen", color_by=coverage_by_path, color_range=(0, 100))`](pymatviz/treemap/py_pkg.py#L418) |
 |                                                       ![py-pkg-treemap-pymatviz-coverage]                                                        |                                    ![py-pkg-treemap-pymatgen-coverage]                                     |
 
-For coverage coloring, pass a `color_by` dictionary mapping file paths to coverage percentages. Use `color_range=(0, 100)` and `labels={"color_value": "Coverage (%)"}` for a fixed percentage scale. The gallery script shows how to read a coverage.py JSON report.
+For coverage coloring, pass a `color_by` dictionary mapping file paths to coverage percentages. Use `color_range=(0, 100)` for a fixed percentage scale. The gallery script shows how to read a coverage.py JSON report.
 
 [chem-sys-treemap-formula]: assets/svg/chem-sys-treemap-formula.svg
 [chem-sys-treemap-ward-bmg]: assets/svg/chem-sys-treemap-ward-bmg.svg

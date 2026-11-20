@@ -1,276 +1,83 @@
-"""Plot the Brillouin zone of a structure."""
+"""Plot the first Brillouin zone of crystal structures."""
 
-import re
+from __future__ import annotations
+
 import warnings
-from collections.abc import Callable, Hashable, Mapping, Sequence
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any
 
-import numpy as np
-import plotly.graph_objects as go
-from pymatgen.core import Element
+from pymatgen.core import Element, Structure
 
-from pymatviz.typing import AnyStructure
+from pymatviz.widgets.brillouin_zone import BrillouinZoneWidget
+
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
+
+    import ipywidgets as ipw
+    from pymatgen.core import IStructure
+
+    from pymatviz.typing import AnyStructure
+
+
+def seekpath_primitive(structure: Structure | IStructure) -> Structure:
+    """Seekpath's standardized primitive cell, whose first Brillouin zone carries the
+    standard high-symmetry k-path labels.
+    """
+    import seekpath
+
+    from pymatviz.structure.helpers import get_site_symbol
+
+    spglib_cell = (
+        structure.lattice.matrix,
+        structure.frac_coords,
+        [Element(get_site_symbol(site)).number for site in structure],
+    )
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore", message="dict interface .* is deprecated", module="spglib"
+        )
+        seekpath_dict = seekpath.get_path(spglib_cell)
+    return Structure(
+        seekpath_dict["primitive_lattice"],
+        seekpath_dict["primitive_types"],
+        seekpath_dict["primitive_positions"],
+    )
 
 
 def brillouin_zone_3d(
     struct: AnyStructure | Sequence[AnyStructure] | Mapping[Any, AnyStructure],
     *,
-    # Surface styling
-    surface_kwargs: dict[str, Any] | None = None,
-    edge_kwargs: dict[str, Any] | None = None,
-    # High symmetry point styling
-    point_kwargs: dict[str, Any] | Literal[False] | None = None,
-    label_kwargs: dict[str, Any] | None = None,
-    # High symmetry path styling
-    path_kwargs: dict[str, Any] | Literal[False] | None = None,
-    # Coordinate axes styling
-    axes_vectors: dict[Literal["shaft", "cone"], dict[str, Any]]
-    | Literal[False]
-    | None = None,
-    # Grid layout
     n_cols: int = 3,
-    subplot_title: Callable[[AnyStructure, Hashable], str | dict[str, Any]]
-    | Literal[False]
-    | None = None,
-) -> go.Figure:
-    """Generate a 3D plotly figure of the first Brillouin zone for given structure(s).
+    **kwargs: Any,
+) -> BrillouinZoneWidget | ipw.GridBox:
+    """Plot the first Brillouin zone of seekpath's standardized primitive cell of each
+    structure as an interactive 3D scene.
 
     Args:
-        struct (AnyStructure | Sequence[AnyStructure]): Structure(s) to plot.
-        # Surface styling
-        surface_kwargs (dict): Styling for BZ surfaces.
-        edge_kwargs (dict): Styling for BZ edges.
-        # High symmetry point styling
-        point_kwargs (dict | Literal[False]): Styling for high symmetry points.
-        label_kwargs (dict): Styling for point labels.
-        # High symmetry path styling
-        path_kwargs (dict | Literal[False]): Styling for paths. Set to False to disable
-            plotting paths.
-        # Coordinate axes styling
-        axes_vectors (dict | False): Keywords for coordinate axes vectors. Split into
-            2 sub dicts axes_vectors={shaft: {...}, cone: {...}}. Use nested key
-            shaft.len to control vector length. Set to False to disable axes plotting.
-        # Grid layout
-        n_cols (int): Number of columns for subplots. Defaults to 3.
-        subplot_title (Callable[[AnyStructure, Hashable], str | dict] | False, optional):
-            Function to generate subplot titles. Defaults to
-            lambda struct_i, idx: f"{idx}. {struct_i.formula} (spg={spg_num})". Set to
-            False to hide all subplot titles.
+        struct (AnyStructure | Sequence | Mapping): Structure(s) to plot.
+        n_cols (int): Number of grid columns when plotting several structures.
+            Defaults to 3.
+        **kwargs: Passed to every BrillouinZoneWidget, e.g. ``surface_color``,
+            ``surface_opacity``, ``edge_color``, ``show_vectors``, ``show_ibz`` or
+            ``style``.
 
     Returns:
-        go.Figure: A plotly figure containing the first Brillouin zone(s)
-    """  # noqa: E501
-    import scipy.spatial as sps
-    import seekpath
+        BrillouinZoneWidget | ipw.GridBox: The widget for a single structure. For
+            several, an ipywidgets grid with one titled cell per structure, each cell
+            a VBox whose ``children[1]`` is its BrillouinZoneWidget.
 
+    Raises:
+        TypeError: If an input is not a periodic structure.
+        ValueError: If no structures are given or n_cols is not positive.
+    """
     from pymatviz.process_data import normalize_periodic_structures
-    from pymatviz.structure import helpers
+    from pymatviz.structure.helpers import widget_grid
 
     structures = normalize_periodic_structures(struct)
-    n_structs = len(structures)
-    fig, n_rows, n_cols = helpers.make_structure_grid(n_structs, n_cols, is_3d=True)
-
-    for idx, (struct_key, structure) in enumerate(structures.items(), start=1):
-        # Convert pymatgen Structure to seekpath input format
-        spglib_atoms = (
-            structure.lattice.matrix,  # cell
-            structure.frac_coords,  # positions
-            [Element(helpers.get_site_symbol(site)).number for site in structure],
-        )
-        # Get primitive structure and symmetry info using seekpath
-        with warnings.catch_warnings():
-            warnings.filterwarnings(
-                "ignore", message="dict interface .* is deprecated", module="spglib"
-            )
-            seekpath_dict = seekpath.get_path(spglib_atoms)
-
-        real_space_cell = np.array(seekpath_dict["primitive_lattice"])
-        spg_num = seekpath_dict["spacegroup_number"]
-        spg_symbol = seekpath_dict["spacegroup_international"]
-
-        # Get reciprocal lattice vectors (scaled by 2π)
-        k_space_cell = np.linalg.inv(real_space_cell).T * 2 * np.pi
-
-        mgrid_array = np.mgrid[-1:2, -1:2, -1:2]
-        px, py, pz = np.tensordot(k_space_cell, mgrid_array, axes=(0, 0))
-        points = np.c_[px.ravel(), py.ravel(), pz.ravel()]
-
-        voronoi = sps.Voronoi(points)  # Create Voronoi cell
-
-        # Find central point (index 13 corresponds to [0,0,0])
-        center_index = 13
-
-        bz_vertices = set()
-        bz_edges = []
-
-        # tolist: iterating 2D arrays types rows as scalars under numpy>=2.5 stubs
-        ridge_points = voronoi.ridge_points.tolist()
-        for pid, rid in zip(ridge_points, voronoi.ridge_vertices, strict=False):
-            if pid[0] == center_index or (
-                pid[1] == center_index and -1 not in rid
-            ):  # Skip ridges with vertices at infinity
-                bz_edges.append(voronoi.vertices[np.r_[rid, [rid[0]]]])
-                bz_vertices.update(rid)
-
-        vertices = voronoi.vertices[list(bz_vertices)]
-
-        colors = ["red", "green", "blue"]
-        labels = ["b₁", "b₂", "b₃"]
-
-        scene = f"scene{idx}"
-
-        if axes_vectors is not False:
-            if axes_vectors is not None and not all(
-                key in axes_vectors for key in ("shaft", "cone")
-            ):
-                raise KeyError("axes_vectors must contain 'shaft' and 'cone'")
-
-            # copy sub-dicts to avoid mutating the caller's axes_vectors via pop()
-            shaft_kwargs = dict(
-                {} if axes_vectors is None else axes_vectors.get("shaft", {})
-            )
-            cone_kwargs = dict(
-                {} if axes_vectors is None else axes_vectors.get("cone", {})
-            )
-            # Pop parameters that we handle directly to avoid conflicts
-            sizeref = cone_kwargs.pop("sizeref", 0.4)
-            custom_colorscale = cone_kwargs.pop("colorscale", None)
-
-            for vec_idx, vec in enumerate(k_space_cell):
-                start, end = np.zeros(3), vec  # Vector points
-                color = shaft_kwargs.get("color", colors[vec_idx])
-
-                fig.add_scatter3d(  # vector shaft
-                    x=[start[0], end[0]],
-                    y=[start[1], end[1]],
-                    z=[start[2], end[2]],
-                    mode="lines",
-                    line=dict(color=color, width=6) | shaft_kwargs,
-                    showlegend=False,
-                    hoverinfo="none",
-                    scene=scene,
-                )
-
-                # Add arrow head as cone at vector end (same direction but shorter)
-                arrow_dir = 0.25 * (end - start)
-                colorscale = custom_colorscale or [[0, color], [1, color]]
-                fig.add_cone(  # arrow head
-                    x=[end[0]],
-                    y=[end[1]],
-                    z=[end[2]],
-                    u=[arrow_dir[0]],
-                    v=[arrow_dir[1]],
-                    w=[arrow_dir[2]],
-                    anchor="cm",  # Place cone tip at vector end
-                    hoverinfo="none",
-                    colorscale=colorscale,
-                    showscale=False,
-                    sizeref=sizeref,
-                    scene=scene,
-                    **cone_kwargs,
-                )
-
-                fig.add_scatter3d(  # vector label at the tip
-                    x=[vec[0]],
-                    y=[vec[1]],
-                    z=[vec[2]],
-                    mode="text",
-                    text=[labels[vec_idx]],
-                    textposition="top center",
-                    textfont=dict(size=20, color=color),
-                    showlegend=False,
-                    scene=scene,
-                )
-
-        hull = sps.ConvexHull(vertices)
-
-        bz_volume = hull.volume  # in inverse cubic angstrom
-
-        fig.add_mesh3d(
-            x=vertices[:, 0],
-            y=vertices[:, 1],
-            z=vertices[:, 2],
-            i=hull.simplices[:, 0],
-            j=hull.simplices[:, 1],
-            k=hull.simplices[:, 2],
-            showscale=False,
-            hovertemplate=(
-                "x: %{x:.2f}<br>"
-                "y: %{y:.2f}<br>"
-                "z: %{z:.2f}<br>"
-                f"Space group: {spg_symbol} ({spg_num})<br>"
-                f"BZ volume: {bz_volume:.2f} Å⁻³"
-                "<extra></extra>"
-            ),
-            scene=scene,
-            **{"color": "lightblue", "opacity": 0.3} | (surface_kwargs or {}),
-        )
-
-        for edge_vertices in bz_edges:
-            fig.add_scatter3d(
-                x=edge_vertices[:, 0],
-                y=edge_vertices[:, 1],
-                z=edge_vertices[:, 2],
-                mode="lines",
-                line=dict(color="black", width=5) | (edge_kwargs or {}),
-                showlegend=False,
-                scene=scene,
-            )
-
-        if point_kwargs is not False:  # Add high symmetry k-points
-            cart_kpoints = {
-                label: np.dot(coords, k_space_cell)
-                for label, coords in seekpath_dict["point_coords"].items()
-            }
-
-            point_labels = []
-            for label in cart_kpoints:
-                for text, repl in [("\\Gamma", "Γ"), ("GAMMA", "Γ"), ("DELTA", "Δ")]:
-                    label = label.replace(text, repl)  # noqa: PLW2901
-                # use <sub> for subscripts
-                point_labels += [re.sub(r"_(\d+)", r"<sub>\1</sub>", label)]
-
-            x_coords, y_coords, z_coords = zip(*cart_kpoints.values(), strict=True)
-            fig.add_scatter3d(
-                x=x_coords,
-                y=y_coords,
-                z=z_coords,
-                mode="markers+text",
-                marker=dict(color="red", size=6) | (point_kwargs or {}),
-                text=point_labels,
-                textposition="top center",
-                textfont=dict(size=14) | (label_kwargs or {}),
-                name="High Symmetry Points",
-                scene=scene,
-            )
-
-            if path_kwargs is not False:
-                for path in seekpath_dict["path"]:
-                    for path_idx in range(len(path) - 1):
-                        start_point = cart_kpoints[path[path_idx]]
-                        end_point = cart_kpoints[path[path_idx + 1]]
-
-                        fig.add_scatter3d(
-                            x=[start_point[0], end_point[0]],
-                            y=[start_point[1], end_point[1]],
-                            z=[start_point[2], end_point[2]],
-                            mode="lines",
-                            line=dict(color="red", width=5, dash="dash")
-                            | (path_kwargs or {}),
-                            showlegend=False,
-                            scene=scene,
-                        )
-
-        if subplot_title is not False:
-            fig.layout.annotations[idx - 1].update(
-                helpers.get_subplot_title(structure, struct_key, idx, subplot_title)
-            )
-
-    helpers.style_scene_grid(
-        fig, n_structs, n_cols, n_rows, bgcolor="rgba(90, 90, 90, 0.01)"
-    )
-    fig.layout.showlegend = False
-    fig.layout.paper_bgcolor = fig.layout.plot_bgcolor = "rgba(0,0,0,0)"
-    fig.layout.margin = dict(l=0, r=0, t=0, b=0)
-
-    return fig
+    widgets = {
+        key: BrillouinZoneWidget(structure=seekpath_primitive(structure), **kwargs)
+        for key, structure in structures.items()
+    }
+    if len(widgets) == 1:
+        return next(iter(widgets.values()))
+    return widget_grid(widgets, n_cols)

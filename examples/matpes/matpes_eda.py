@@ -184,11 +184,10 @@ for label, df_data in (
 
 
 # %% high-temperate MLMD frames are expected to have low symmetry (mostly triclinic)
-fig = pmv.spacegroup_sunburst(df_r2scan[Key.spg_num], show_counts="percent")
-fig.layout.title = dict(text=f"{N_R2SCAN:,} r2SCAN spacegroups", x=0.5, y=0.98)
-fig.layout.margin = dict(l=0, r=0, b=0, t=30)
-fig.show()
-# pmv.save_fig(fig, "r2scan-spacegroup-sunburst.pdf")
+# space groups of the r2SCAN structures
+widget = pmv.spacegroup_sunburst(df_r2scan[Key.spg_num], label_text="label+percent")
+widget.show()
+# widget.to_img("r2scan-spacegroup-sunburst.pdf")
 
 
 # %% spacegroup histogram
