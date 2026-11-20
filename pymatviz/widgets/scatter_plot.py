@@ -55,6 +55,8 @@ class ScatterPlotWidget(CartesianPlotTraits, MatterVizWidget):
     selected_point = optional_trait(tl.Dict)
     active_point = optional_trait(tl.Dict)
     hovered_point = optional_trait(tl.Dict)
+    # Dims points whose series `point_ids` entry is not listed (None: no dimming)
+    highlighted_ids = optional_trait(tl.List)
 
     _SCATTER_JSON_KWARGS = (
         "styles", "color_scale", "size_scale", "fill_regions", "error_bands",

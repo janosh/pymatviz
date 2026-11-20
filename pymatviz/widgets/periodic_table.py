@@ -10,7 +10,7 @@ import traitlets as tl
 
 from pymatviz.utils import df_ptable
 from pymatviz.widgets._normalize import normalize_json_kwargs, normalize_plot_json
-from pymatviz.widgets._traits import color_bar_trait, color_scale_trait
+from pymatviz.widgets._traits import color_bar_trait, color_scale_trait, optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -285,6 +285,9 @@ class PeriodicTableWidget(MatterVizWidget):
     # ElementTile props for every tile, e.g. {"float_fmt": ".1%"} (d3-format spec of
     # value labels), show_symbol, show_number, show_name, symbol_style, text_color
     tile_props = tl.Dict(default_value=None, allow_none=True).tag(sync=True)
+    # Highlighted element symbols. None (default): tile clicks pin their tooltip and
+    # inset plot. A list (link_selection sets one): clicks toggle elements in it
+    active_elements = optional_trait(tl.List, trait=tl.Unicode())
 
     @tl.validate("tile_props")
     def _validate_tile_props(self, proposal: dict[str, Any]) -> Any:

@@ -18,7 +18,7 @@ import pytest
 
 from pymatviz.widgets._headless import (
     _CANVAS_KIND_JS,
-    _SVG_EXTRACT_JS,
+    _SVG_EXPORT_JS,
     _async_capture_page,
     _build_html,
     _capture_page,
@@ -159,7 +159,8 @@ def test_render_widget_headless_uses_dpi_scale_factor(
     """render_widget_headless takes the sync path outside event loops and maps DPI
     to browser scale for every format.
     """
-    mock_page = _mock_page(svg_result=expected_bytes.decode() if fmt == "svg" else None)
+    svg_result = {"svg": expected_bytes.decode()} if fmt == "svg" else None
+    mock_page = _mock_page(svg_result=svg_result)
     mock_page.locator.return_value.screenshot.return_value = expected_bytes
     mock_browser = MagicMock()
     mock_browser.new_page.return_value = mock_page
@@ -177,6 +178,8 @@ def test_render_widget_headless_uses_dpi_scale_factor(
         viewport={"width": 1024, "height": 768},
         device_scale_factor=expected_scale,
     )
+    if fmt == "svg":  # MatterViz embeds canvas layers at the export DPI
+        mock_page.evaluate.assert_any_call(_SVG_EXPORT_JS, dpi)
 
 
 def test_render_widget_headless_canvas_pdf_uses_dpi_scale() -> None:
@@ -259,21 +262,25 @@ def test_build_html_contains_esm_and_widget_data() -> None:
 
 # === Content-aware capture (_capture_page) ===
 #
-# Capture picks SVG-vs-raster and vector-vs-rasterized PDF from the rendered DOM
-# (_CANVAS_KIND_JS / _SVG_EXTRACT_JS), not a static widget_type list. The async
-# twin mirrors this logic and is smoke-tested via _render_widget_async above.
+# Capture picks vector-vs-rasterized PDF from the rendered DOM (_CANVAS_KIND_JS),
+# not a static widget_type list; SVG comes from MatterViz's export_svg
+# (_SVG_EXPORT_JS). The async twin mirrors this logic and is smoke-tested via
+# _render_widget_async above.
 
 
 def _mock_page(
     *,
-    svg_result: str | None = None,
+    svg_result: dict[str, str] | None = None,
     canvas_kind: str | None = None,
     is_async: bool = False,
 ) -> MagicMock:
     """Mock Playwright page whose evaluate() answers the SVG/canvas probes."""
-    responses = {_SVG_EXTRACT_JS: svg_result, _CANVAS_KIND_JS: canvas_kind}
+    responses = {_SVG_EXPORT_JS: svg_result, _CANVAS_KIND_JS: canvas_kind}
     page = MagicMock()
-    page.evaluate = (AsyncMock if is_async else MagicMock)(side_effect=responses.get)
+    # evaluate(js) or evaluate(js, arg): the export probe takes the DPI
+    page.evaluate = (AsyncMock if is_async else MagicMock)(
+        side_effect=lambda js, *_args: responses.get(js)
+    )
     page.locator.return_value.screenshot.return_value = b"PNGDATA"
     page.locator.return_value.bounding_box.return_value = {"width": 100, "height": 80}
     page.pdf.return_value = b"%PDF-vector"
@@ -283,7 +290,7 @@ def _mock_page(
 @pytest.mark.parametrize("is_async", [False, True])
 def test_capture_page_svg_returns_chart(is_async: bool) -> None:
     """SVG export returns the extracted chart SVG when one is present."""
-    page = _mock_page(svg_result="<svg>x</svg>", is_async=is_async)
+    page = _mock_page(svg_result={"svg": "<svg>x</svg>"}, is_async=is_async)
     result = (
         asyncio.run(_async_capture_page(page, "svg"))
         if is_async
@@ -292,17 +299,12 @@ def test_capture_page_svg_returns_chart(is_async: bool) -> None:
     assert result == b"<svg>x</svg>"
 
 
-@pytest.mark.parametrize(
-    ("canvas_kind", "match"),
-    [("webgl", "WebGL"), ("2d", "WebGL"), (None, "No SVG element")],
-)
 @pytest.mark.parametrize("is_async", [False, True])
-def test_capture_page_svg_errors(
-    canvas_kind: str | None, match: str, is_async: bool
-) -> None:
-    """SVG export of a canvas/HTML-only widget raises a content-tailored error."""
-    page = _mock_page(canvas_kind=canvas_kind, is_async=is_async)
-    with pytest.raises(RuntimeError, match=match):
+def test_capture_page_svg_errors(is_async: bool) -> None:
+    """MatterViz's reason a widget has no vector form surfaces as a RuntimeError."""
+    reason = "MatterViz structure renders canvas content, which has no vector form"
+    page = _mock_page(svg_result={"error": reason}, is_async=is_async)
+    with pytest.raises(RuntimeError, match=f"SVG export failed: {reason}"):
         (
             asyncio.run(_async_capture_page(page, "svg"))
             if is_async

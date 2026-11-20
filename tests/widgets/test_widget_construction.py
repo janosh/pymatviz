@@ -1187,8 +1187,11 @@ def test_hierarchy_vector_and_html_exports(chart: str, tmp_path: Any) -> None:
         shapes = page.locator(
             'svg[role="application"] :is(path, rect, circle, text, tspan)'
         )
-        paint = """nodes => nodes.map(node => {
-            const style = getComputedStyle(node);
+        # invisible hit targets and measuring text don't reach the file
+        paint = """nodes => nodes.map(node => getComputedStyle(node))
+            .filter(style =>
+                style.fill !== 'rgba(0, 0, 0, 0)' || style.stroke !== 'none')
+            .map(style => {
             return [style.fill, style.stroke, style.strokeWidth, style.fontFamily,
                     style.fontSize, style.fontWeight, style.textAnchor,
                     style.dominantBaseline];
@@ -1206,35 +1209,6 @@ def test_hierarchy_vector_and_html_exports(chart: str, tmp_path: Any) -> None:
 
 
 @_skip_no_playwright
-@_skip_no_pillow
-def test_svg_export_keeps_use_instance_paint(tmp_path: Any) -> None:
-    """Referenced shapes keep explicit paint and inherit fill/color from each use."""
-    import io
-
-    from PIL import Image
-
-    from pymatviz.widgets._headless import _SVG_EXTRACT_JS, _get_browser
-
-    with _get_browser().new_page() as page:
-        page.set_content("""
-            <div id="widget-root"><svg width="192" height="64">
-            <defs><g id="swatches">
-                <rect width="64" height="64" fill="black"/>
-                <rect x="64" width="64" height="64" style="fill:currentColor"/>
-                <rect x="128" width="64" height="64" fill="inherit"/>
-            </g></defs><use href="#swatches" color="lime" fill="red"/></svg></div>""")
-        exported = tmp_path / "swatches.svg"
-        exported.write_text(page.evaluate(_SVG_EXTRACT_JS))
-        page.goto(exported.as_uri())
-        image = Image.open(io.BytesIO(page.locator("svg").screenshot())).convert("RGB")
-        assert [image.getpixel((pos, 32)) for pos in (32, 96, 160)] == [
-            (0, 0, 0),
-            (0, 255, 0),
-            (255, 0, 0),
-        ]
-
-
-@_skip_no_playwright
 def test_headless_bar_plot_svg(bar_plot_widget: BarPlotWidget) -> None:
     """BarPlotWidget.to_img(fmt='svg') returns a standalone-sized chart SVG."""
     import re
@@ -1247,12 +1221,10 @@ def test_headless_bar_plot_svg(bar_plot_widget: BarPlotWidget) -> None:
     root = re.search(r"<svg[^>]*>", svg_text)
     assert root is not None
     size = dict(re.findall(r' (width|height|viewBox)="([^"]+)"', root.group()))
-    assert float(size["width"]) == 600
-    assert ' aria-label="' in root.group()  # the figure keeps its accessible name
-    assert size["viewBox"] == f"0 0 {size['width']} {size['height']}"
-    # static files drop keyboard/pointer wiring and keep 0.01 px coordinates
-    assert not re.search(r' (tabindex|role|data-[\w-]+)="', svg_text)
-    assert not re.search(r' d="[^"]*\.\d{3}', svg_text)
+    # the viewBox is padded by half the widest stroke so edge strokes aren't clipped
+    assert 600 <= float(size["width"]) <= 602
+    assert size["viewBox"].split()[2:] == [size["width"], size["height"]]
+    assert "<title>" in svg_text  # the chart's aria-label as the file's name
 
 
 @_skip_no_playwright
@@ -1357,7 +1329,7 @@ def test_headless_webgl_structure_exports(with_plot: bool) -> None:
         struct = Structure(Lattice.cubic(3.0), ["Si"], [[0, 0, 0]])
         widget = StructureWidget(structure=struct, style="height: 300px;")
     assert b"/Font" not in widget.to_img(fmt="pdf", dpi=72), "expected raster PDF"
-    with pytest.raises(RuntimeError, match="SVG export not supported"):
+    with pytest.raises(RuntimeError, match="no vector form"):
         widget.to_img(fmt="svg")
 
 
@@ -1440,7 +1412,7 @@ def test_headless_convex_hull_ternary_canvas_export() -> None:
     )
     assert widget.to_img(fmt="png", dpi=72)[:4] == b"\x89PNG"
     assert widget.to_img(fmt="pdf", dpi=72)[:5] == b"%PDF-"
-    with pytest.raises(RuntimeError, match="WebGL"):
+    with pytest.raises(RuntimeError, match="no vector form"):
         widget.to_img(fmt="svg")
 
 

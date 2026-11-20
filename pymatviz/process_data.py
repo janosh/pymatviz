@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import itertools
 from collections.abc import Hashable, Mapping, Sequence
 from numbers import Number
@@ -154,6 +155,36 @@ def count_elements(
     return srs
 
 
+def _system_and_formula(
+    item: str | Composition | Structure, group_by: FormulaGroupBy
+) -> tuple[tuple[str, ...], str]:
+    """Sorted element tuple and formula label of one count_formulas input item."""
+    if isinstance(item, str) and "-" in item:  # already a chemical system string
+        elems, formula = item.split("-"), item
+    else:
+        if isinstance(item, str):  # assume it's a formula string
+            try:
+                comp = Composition(item)
+            except (ValueError, KeyError) as exc:
+                raise ValueError(f"Invalid formula: {item}") from exc
+        elif isinstance(item, Structure | Composition):
+            comp = item.composition if isinstance(item, Structure) else item
+        else:
+            raise TypeError(
+                f"Expected str, Composition or Structure, got {type(item)} instead"
+            )
+        elems = comp.chemical_system.split("-")
+        if group_by == "reduced_formula":
+            formula = comp.reduced_formula
+        else:  # preserve original formula strings
+            formula = item if isinstance(item, str) else str(comp)
+
+    elems = sorted(set(elems))
+    if not all(elem in df_ptable.index for elem in elems):
+        raise ValueError(f"Invalid elements in system: {item}")
+    return tuple(elems), formula
+
+
 def count_formulas(
     data: Sequence[str | Composition | Structure],
     *,
@@ -203,36 +234,17 @@ def count_formulas(
         10: "denary",
     }
 
-    # Convert all inputs to chemical systems (sorted tuples of element strings)
-    systems: list[tuple[str, ...]] = []
-    formulas: list[str] = []  # only used if not grouping by chem_sys
-    for item in data:
-        if isinstance(item, str) and "-" in item:  # already a chemical system string
-            elems, formula = item.split("-"), item
-        else:
-            if isinstance(item, str):  # assume it's a formula string
-                try:
-                    comp = Composition(item)
-                except (ValueError, KeyError) as exc:
-                    raise ValueError(f"Invalid formula: {item}") from exc
-            elif isinstance(item, Structure | Composition):
-                comp = item.composition if isinstance(item, Structure) else item
-            else:
-                raise TypeError(
-                    f"Expected str, Composition or Structure, got {type(item)} instead"
-                )
-            elems = comp.chemical_system.split("-")
-            if group_by == "reduced_formula":
-                formula = comp.reduced_formula
-            else:  # preserve original formula strings
-                formula = item if isinstance(item, str) else str(comp)
-
-        # Remove duplicates and sort elements
-        elems = sorted(set(elems))
-        if not all(elem in df_ptable.index for elem in elems):
-            raise ValueError(f"Invalid elements in system: {item}")
-        systems += [tuple(elems)]
-        formulas += [formula]
+    # Chemical system (sorted element tuple) and formula of every item; repeated
+    # strings, the common case for large datasets, are parsed once
+    parse_str = functools.cache(lambda item: _system_and_formula(item, group_by))
+    pairs = [
+        parse_str(item)
+        if isinstance(item, str)
+        else _system_and_formula(item, group_by)
+        for item in data
+    ]
+    systems = [system for system, _ in pairs]
+    formulas = [formula for _, formula in pairs]
 
     # Create a DataFrame with arity and chemical system columns
     df_systems = pd.DataFrame({"system": systems})

@@ -210,11 +210,7 @@ async def _async_capture_page(
 ) -> bytes:
     """Async version of _capture_page."""
     if fmt == "svg":
-        svg_string = await page.evaluate(_SVG_EXTRACT_JS)
-        if svg_string is None:
-            canvas_kind = await page.evaluate(_CANVAS_KIND_JS)
-            raise RuntimeError(_no_svg_message(has_canvas=canvas_kind is not None))
-        return svg_string.encode("utf-8")
+        return _svg_bytes(await page.evaluate(_SVG_EXPORT_JS, scale_factor * 72))
 
     if fmt == "pdf":
         # WebGL canvas content is invisible to Chromium's print PDF pipeline,
@@ -397,6 +393,8 @@ const mod = await import(esm_url);
 const render_fn = mod.default?.render ?? mod.render;
 if (!render_fn) throw new Error("ESM bundle has no render export");
 const el = document.getElementById("widget-root");
+// set first: after a throwing render, export reports "no rendered widget"
+window.__matterviz_export_svg = (dpi) => mod.export_svg(el, dpi);
 render_fn({ model, el });"""
 )
 
@@ -465,7 +463,7 @@ def _build_html(
 <!DOCTYPE html>
 <html><head><meta charset="utf-8">
 <style>{css_content}</style>
-</head><body style="margin: 0; padding: 0;">
+</head><body style="margin: 0; padding: 0; font-family: system-ui, sans-serif;">
 <div id="widget-root" style="{widget_style}"></div>
 <script type="module">
 {worker_shim}{esm_loader}
@@ -585,7 +583,7 @@ def build_interactive_html(
 <title>{title_esc}</title>
 <meta name="description" content="{desc_esc}">
 <style>{css_content}</style>
-</head><body style="margin: 0; padding: 0;">
+</head><body style="margin: 0; padding: 0; font-family: system-ui, sans-serif;">
 <div id="widget-root" style="{style}"></div>
 <script type="module">
 {worker_shim}{esm_loader}
@@ -604,127 +602,30 @@ if (wrapper) {{
 </body></html>"""
 
 
-# DOM size thresholds shared by the capture and diagnostics probes: canvases
-# below _MIN_CANVAS_PX are decorative (not the chart), SVGs below _MIN_SVG_PX
-# are toolbar/legend icons.
+# DOM size thresholds of the canvas-kind and diagnostics probes, matching
+# MIN_FIGURE_CANVAS_PX/MIN_FIGURE_SVG_PX of MatterViz's export_svg: canvases below
+# _MIN_CANVAS_PX are decorative (not the chart), SVGs below _MIN_SVG_PX are icons.
 _MIN_CANVAS_PX = 50
 _MIN_SVG_PX = 20
 
-# Extract the largest chart-sized SVG from the widget for vector export.
-# Sub-threshold elements are toolbar/legend icons, never the chart, so they
-# are ignored and the function returns null when only icons exist. Also returns
-# null when a chart-sized canvas lies outside that SVG (e.g. a WebGL structure
-# next to a plot), since the SVG alone would be a partial figure. Returning null
-# (rather than an icon or partial chart) lets the caller raise a clear error.
-# Canvases inside the SVG (scatter markers drawn in a <foreignObject>) serialize
-# as empty elements, so each is swapped for an <image> with the same pixels,
-# mirroring matterviz's own SVG export (inline_foreign_canvases in io/export.ts).
-_SVG_EXTRACT_JS = """\
-() => {
-    const root = document.getElementById('widget-root');
-    if (!root) return null;
-    let best = null, best_area = 0;
-    for (const svg of root.querySelectorAll('svg')) {
-        const rect = svg.getBoundingClientRect();
-        const area = rect.width * rect.height;
-        if (rect.width >= %(svg_px)d && rect.height >= %(svg_px)d
-            && area > best_area) {
-            best = svg; best_area = area;
-        }
-    }
-    if (!best) return null;
-    for (const canvas of root.querySelectorAll('canvas')) {
-        const rect = canvas.getBoundingClientRect();
-        if (rect.width >= %(canvas_px)d && rect.height >= %(canvas_px)d
-            && !best.contains(canvas)) return null;
-    }
-    const cloned = best.cloneNode(true);
-    // The clone loses the document's stylesheets and CSS variables. Pin the
-    // live SVG paint and typography only where standalone inheritance differs.
-    const inherited = `color fill fill-opacity fill-rule stroke stroke-width
-        stroke-opacity stroke-dasharray stroke-dashoffset stroke-linecap stroke-linejoin
-        stroke-miterlimit font-family font-size font-style font-weight font-variant
-        letter-spacing word-spacing text-anchor dominant-baseline paint-order visibility
-        text-rendering shape-rendering marker-start marker-mid marker-end`
-        .split(/\\s+/);
-    const own = {opacity: '1', display: 'inline', filter: 'none', 'clip-path': 'none',
-        mask: 'none', 'vector-effect': 'none', 'stop-color': 'rgb(0, 0, 0)',
-        'stop-opacity': '1'};
-    const props = [...inherited, ...Object.keys(own)];
-    const doc_fragment = document.URL.split('#')[0] + '#';
-    function inline_styles(live, copy, parent) {
-        if (!(live instanceof SVGElement)) return;
-        const css = getComputedStyle(live);
-        for (const prop of props) {
-            const value = css.getPropertyValue(prop);
-            const expected = own[prop] ?? parent?.getPropertyValue(prop);
-            const authored = copy.style.getPropertyValue(prop)
-                || copy.getAttribute(prop);
-            // A <use> instance supplies inherited values to its referenced tree.
-            // Keep explicit paint even when it matches the definition's parent.
-            const contextual = (authored?.toLowerCase() === 'currentcolor'
-                && value === css.color) || (authored === 'inherit'
-                && value === parent?.getPropertyValue(prop));
-            copy.style.removeProperty(prop);
-            if (value && (value !== expected || authored))
-                copy.setAttribute(prop, contextual ? authored
-                    : value.replaceAll(doc_fragment, '#'));
-            else copy.removeAttribute(prop);
-        }
-        // Composited SVG layers use different edge antialiasing in Chromium.
-        if (css.willChange !== 'auto') copy.style.willChange = css.willChange;
-        if (!copy.style.length) copy.removeAttribute('style');
-        for (let idx = 0; idx < live.children.length; idx++)
-            inline_styles(live.children[idx], copy.children[idx], css);
-    }
-    inline_styles(best, cloned, null);
-    const live_foreign_objs = best.querySelectorAll('foreignObject');
-    cloned.querySelectorAll('foreignObject').forEach((foreign_obj, idx) => {
-        const canvas = live_foreign_objs[idx].querySelector('canvas');
-        if (!canvas) return;
-        const image = document.createElementNS('http://www.w3.org/2000/svg', 'image');
-        for (const attr of ['x', 'y', 'width', 'height']) {
-            const val = foreign_obj.getAttribute(attr);
-            if (val !== null) image.setAttribute(attr, val);
-        }
-        image.setAttribute('href', canvas.toDataURL('image/png'));
-        foreign_obj.replaceWith(image);
-    });
-    if (!cloned.hasAttribute('xmlns'))
-        cloned.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-    // Keyboard/pointer wiring means nothing in a static file and was ~40%% of a bar
-    // chart's bytes: drop it, keeping the root's aria-label as the figure's name
-    const geometry_attrs = new Set(['d', 'x', 'y', 'x1', 'x2', 'y1', 'y2', 'cx', 'cy',
-        'r', 'rx', 'ry', 'width', 'height', 'points']);
-    for (const node of [cloned, ...cloned.querySelectorAll('*')]) {
-        for (const { name, value } of [...node.attributes]) {
-            if (name === 'role' || name === 'tabindex' || name.startsWith('data-')
-                || (name.startsWith('aria-') && node !== cloned))
-                node.removeAttribute(name);
-            // 0.01 px is far below what any viewer resolves, and d3 emits 16 digits.
-            // The lookbehind keeps compact path data like 1.9.9999 (1.9 and .9999)
-            // from merging; transforms stay exact since scale/matrix terms aren't px
-            else if (geometry_attrs.has(name))
-                node.setAttribute(name, value.replace(/(?<![\\d.])-?\\d*\\.\\d{3,}/g,
-                    (num) => String(+(+num).toFixed(2))));
-        }
-        if (!node.style) continue;
-        node.style.removeProperty('cursor');
-        node.style.removeProperty('touch-action');
-        if (!node.style.length) node.removeAttribute('style');
-    }
-    // CSS sizes chart SVGs (width: 100%%), which a standalone file loses: without
-    // its rendered px size an <img> falls back to 300x150 and crops the chart
-    const box = best.getBoundingClientRect();
-    const [width, height] = [box.width, box.height].map((px) => +px.toFixed(2));
-    cloned.setAttribute('width', width);
-    cloned.setAttribute('height', height);
-    if (!cloned.hasAttribute('viewBox'))
-        cloned.setAttribute('viewBox', `0 0 ${width} ${height}`);
-    return '<?xml version="1.0" encoding="UTF-8"?>\\n'
-        + new XMLSerializer().serializeToString(cloned);
+# Vector export is MatterViz's own (the bundle's export_svg, the serializer behind
+# the widget's Export pane), embedding canvas layers at the export DPI. It throws
+# for figures without a vector form (3D/canvas content); the catch hands its
+# reason back as data so Playwright needn't translate the exception
+_SVG_EXPORT_JS = """\
+(dpi) => {
+    try { return { svg: window.__matterviz_export_svg(dpi) }; }
+    catch (error) { return { error: String(error?.message ?? error) }; }
 }
-""" % {"svg_px": _MIN_SVG_PX, "canvas_px": _MIN_CANVAS_PX}  # noqa: UP031
+"""
+
+
+def _svg_bytes(result: Mapping[str, str]) -> bytes:
+    """Encode the SVG from ``_SVG_EXPORT_JS``'s result, raising its error if any."""
+    if "error" in result:
+        raise RuntimeError(f"SVG export failed: {result['error']}")
+    return result["svg"].encode("utf-8")
+
 
 # Classify the widget's chart-sized canvases (smaller ones are decorative):
 # null if none, "webgl" if any holds a WebGL context (getContext('2d') returns
@@ -751,19 +652,6 @@ _CANVAS_KIND_JS = """\
 # HTML-content fallback in _build_html to detect render completion. All other
 # widgets render an <svg> or <canvas> we wait for instead.
 _HTML_WIDGET_TYPES = frozenset({"periodic_table", "heatmap_matrix"})
-
-
-def _no_svg_message(*, has_canvas: bool) -> str:
-    """Error message for failed SVG export, tailored to the widget content."""
-    if has_canvas:
-        return (
-            "SVG export not supported for canvas (e.g. WebGL) content outside "
-            "an SVG chart. Use fmt='png' or fmt='pdf' instead."
-        )
-    return (
-        "No SVG element found in widget. This widget type may not "
-        "support SVG export. Use fmt='png' instead."
-    )
 
 
 def _png_to_pdf(png_bytes: bytes, scale: float = 1.0) -> bytes:
@@ -864,11 +752,7 @@ def _capture_page(
         Raw image/document bytes.
     """
     if fmt == "svg":
-        svg_string = page.evaluate(_SVG_EXTRACT_JS)
-        if svg_string is None:
-            canvas_kind = page.evaluate(_CANVAS_KIND_JS)
-            raise RuntimeError(_no_svg_message(has_canvas=canvas_kind is not None))
-        return svg_string.encode("utf-8")
+        return _svg_bytes(page.evaluate(_SVG_EXPORT_JS, scale_factor * 72))
 
     if fmt == "pdf":
         if page.evaluate(_CANVAS_KIND_JS) == "webgl":
@@ -1002,7 +886,7 @@ def render_widget_headless(
 # === Render diagnostics (render_report) ===
 
 # DOM probe: classify content and measure root vs content/scroll size to detect
-# overflow (clipping). Shares size thresholds with _CANVAS_KIND_JS/_SVG_EXTRACT_JS
+# overflow (clipping). Shares size thresholds with _CANVAS_KIND_JS
 # so content_type classification always agrees with capture decisions.
 _CONTENT_METRICS_JS = """\
 () => {
