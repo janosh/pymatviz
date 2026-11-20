@@ -19,8 +19,8 @@ if TYPE_CHECKING:
     from pymatviz.typing import ColorType
 
 
-with open(f"{PKG_DIR}/keys.yml", encoding="utf-8") as file:
-    _key_data = yaml.safe_load(file)
+with open(f"{PKG_DIR}/keys.yml", encoding="utf-8") as file:  # libyaml is ~7x faster
+    _key_data = yaml.load(file, getattr(yaml, "CSafeLoader", yaml.SafeLoader))  # noqa: S506
 
 # Flatten nested structure and add group info
 _keys: dict[str, dict[str, str]] = {}

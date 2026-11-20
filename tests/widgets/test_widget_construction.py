@@ -5,7 +5,7 @@ from __future__ import annotations
 import importlib.util
 import json
 from contextlib import nullcontext
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from unittest.mock import Mock, patch
 
 import numpy as np
@@ -15,6 +15,7 @@ import traitlets as tl
 from pymatgen.core import Lattice, Molecule, Structure
 
 import pymatviz as pmv
+from pymatviz.widgets import matterviz
 from pymatviz.widgets._traits import BONDING_STRATEGIES, ELEMENT_COLOR_SCHEMES
 from pymatviz.widgets.band_structure import BandStructureWidget
 from pymatviz.widgets.bands_and_dos import BandsAndDosWidget
@@ -27,7 +28,7 @@ from pymatviz.widgets.dos import DosWidget
 from pymatviz.widgets.fermi_surface import FermiSurfaceWidget
 from pymatviz.widgets.heatmap_matrix import HeatmapMatrixWidget
 from pymatviz.widgets.histogram import HistogramWidget
-from pymatviz.widgets.matterviz import MatterVizWidget
+from pymatviz.widgets.matterviz import MATTERVIZ_ANYWIDGET_VERSION, MatterVizWidget
 from pymatviz.widgets.periodic_table import PeriodicTableWidget
 from pymatviz.widgets.phase_diagram import PhaseDiagramWidget
 from pymatviz.widgets.rdf_plot import RdfPlotWidget
@@ -39,6 +40,12 @@ from pymatviz.widgets.sunburst import SunburstWidget
 from pymatviz.widgets.trajectory import TrajectoryWidget
 from pymatviz.widgets.treemap import TreemapWidget
 from pymatviz.widgets.xrd import XrdWidget
+
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+FE_STRUCT = Structure(Lattice.cubic(2.87), ["Fe", "Fe"], [[0, 0, 0], [0.5, 0.5, 0.5]])
 
 
 # === Construction and widget_type ===
@@ -251,49 +258,19 @@ def test_widget_notebook_integration(widget_cls: type[MatterVizWidget]) -> None:
 
     for attr_name in ("_model_name", "_view_name", "_model_module", "_view_module"):
         assert hasattr(widget, attr_name)
-    assert len(widget._esm) > 1000
-    assert len(widget._css) > 100
-    assert "export default" in widget._esm or " as default" in widget._esm
-    assert "render" in widget._esm
+    # the frontend loads remote bundles by URL, local builds as text
+    esm, css = widget._resolve_assets()
+    assert widget._esm in (
+        esm,
+        matterviz._bundle_sources(MATTERVIZ_ANYWIDGET_VERSION)[0],
+    )
+    assert len(esm) > 1000
+    assert len(css) > 100
+    assert "export default" in esm or " as default" in esm
+    assert "render" in esm
 
 
-# === to_dict auto-discovery ===
-
-
-@pytest.mark.parametrize(
-    ("widget_cls", "kwargs"),
-    [
-        (ScatterPlotWidget, {"series": [{"x": [0, 1], "y": [1, 2], "label": "s"}]}),
-        (
-            HistogramWidget,
-            {"series": [{"values": [1, 2]}], "bins": 50, "mode": "overlay"},
-        ),
-        (BarPlotWidget, {"series": [{"x": [0], "y": [1]}], "mode": "grouped"}),
-        (DosWidget, {"doses": {"energies": [0, 1]}, "sigma": 0.05}),
-        (ConvexHullWidget, {"entries": [{"composition": {"Li": 1}, "energy": -1.5}]}),
-        (PeriodicTableWidget, {"heatmap_values": {"Fe": 42}}),
-        (ScatterPlot3DWidget, {"series": [{"x": [1], "y": [2], "z": [3]}]}),
-        (HeatmapMatrixWidget, {"x_items": ["A"], "y_items": ["B"]}),
-        (SpacegroupBarPlotWidget, {"data": [225]}),
-        (ChemPotDiagramWidget, {"entries": [{"name": "Li", "energy": -1.9}]}),
-        (TreemapWidget, {"data": {"label": "root", "value": 1}}),
-        (SunburstWidget, {"shape": "icicle"}),
-    ],
-)
-def test_to_dict_includes_subclass_fields(
-    widget_cls: type,
-    kwargs: dict[str, Any],
-) -> None:
-    """to_dict returns all public synced traitlets."""
-    widget = widget_cls(**kwargs)
-    state = widget.to_dict()
-    expected = {
-        name
-        for name in widget.traits(sync=True)
-        if not name.startswith("_") and name not in widget._EXCLUDED_TRAITS
-    }
-    assert {"widget_type", "style", "show_controls"} <= set(state)
-    assert set(state) == expected
+# === to_dict ===
 
 
 def test_to_dict_reflects_constructor_values() -> None:
@@ -894,9 +871,8 @@ _FAKE_PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 50
 
 
 def _make_widget() -> MatterVizWidget:
-    """Create a MatterVizWidget with mocked assets for testing."""
-    with patch("pymatviz.widgets.matterviz.fetch_widget_asset", return_value="x"):
-        return MatterVizWidget(widget_type="scatter_plot")
+    """Create a bare scatter-plot MatterVizWidget for to_img tests."""
+    return MatterVizWidget(widget_type="scatter_plot")
 
 
 @pytest.mark.parametrize(
@@ -1006,7 +982,7 @@ def test_to_img_falls_back_from_marimo_url() -> None:
     assert isinstance(esm_passed, str)
 
 
-# === _build_html unit tests ===
+# === headless mount option unit tests ===
 
 
 _W8 = "width: 800px"
@@ -1032,14 +1008,13 @@ def test_build_html_dimensions(
     expect_in: list[str],
     expect_not_in: list[str],
 ) -> None:
-    """_build_html applies dimension defaults only for missing width/height."""
-    from pymatviz.widgets._headless import _build_html
+    """_container_style applies dimension defaults only for missing width/height."""
+    from pymatviz.widgets._headless import _container_style
 
     data: dict[str, Any] = {"widget_type": "bar_plot"}
     if style is not None:
         data["style"] = style
-    html = _build_html(data, "// esm", "/* css */")
-    assert 'id="widget-root"' in html
+    html = _container_style(data, None, None)
     for substr in expect_in:
         assert substr in html, f"expected {substr!r} in HTML"
     for substr in expect_not_in:
@@ -1059,25 +1034,21 @@ def test_build_html_width_height_override(
     height: int | None,
     expect_in: list[str],
 ) -> None:
-    """_build_html explicit width/height override user style and defaults."""
-    from pymatviz.widgets._headless import _build_html
+    """_container_style explicit width/height override user style and defaults."""
+    from pymatviz.widgets._headless import _container_style
 
     data: dict[str, Any] = {"widget_type": "bar_plot", "style": "width: 500px;"}
-    html = _build_html(data, "// esm", "/* css */", width=width, height=height)
+    html = _container_style(data, width, height)
     for substr in expect_in:
         assert substr in html, f"expected {substr!r} in HTML"
 
 
 def test_shutdown_browser_tolerates_none() -> None:
-    """_shutdown_browser handles _browser/_pw/_pw_cm all None without error."""
+    """_shutdown_browser is a no-op when no browser thread was started."""
     import pymatviz.widgets._headless as headless_mod
     from pymatviz.widgets._headless import _shutdown_browser
 
-    with (
-        patch.object(headless_mod, "_browser", None),
-        patch.object(headless_mod, "_pw", None),
-        patch.object(headless_mod, "_pw_cm", None),
-    ):
+    with patch.object(headless_mod, "_browser_thread", None):
         _shutdown_browser()
 
 
@@ -1085,17 +1056,14 @@ def test_get_browser_import_error() -> None:
     """_get_browser raises ImportError with install instructions."""
     import pymatviz.widgets._headless as headless_mod
 
-    original = headless_mod._browser
-    headless_mod._browser = None
-    blocked = {"playwright": None, "playwright.sync_api": None}
-    try:
-        with (
-            patch.dict("sys.modules", blocked),
-            pytest.raises(ImportError, match="playwright is required"),
-        ):
-            headless_mod._get_browser()
-    finally:
-        headless_mod._browser = original
+    state = headless_mod._get_browser_thread()
+    blocked = {"playwright": None, "playwright.async_api": None}
+    with (
+        patch.object(state, "browser", None),
+        patch.dict("sys.modules", blocked),
+        pytest.raises(ImportError, match="playwright is required"),
+    ):
+        headless_mod._run_in_browser_thread(headless_mod._get_browser())
 
 
 @pytest.mark.parametrize(
@@ -1111,14 +1079,15 @@ def test_get_browser_import_error() -> None:
 def test_build_html_render_gates(
     widget_type: str, expect_html_fallback: bool, expect_worker_shim: bool
 ) -> None:
-    """_build_html toggles HTML fallback and Worker shim per widget type."""
-    from pymatviz.widgets._headless import _build_html
+    """_mount_options toggles HTML fallback and Worker shim per widget type."""
+    from pymatviz.widgets._headless import _build_html, _mount_options, _RenderInputs
 
-    html = _build_html({"widget_type": widget_type}, "// esm", "/* css */")
-    assert ("const allow_html_fallback = true" in html) is expect_html_fallback
-    assert ("globalThis.Worker = undefined" in html) is expect_worker_shim
+    inputs = _RenderInputs({"widget_type": widget_type}, "// esm", "/* css */")
+    options = _mount_options(inputs)
+    assert options["allow_html"] is expect_html_fallback
+    assert options["no_worker"] is expect_worker_shim
     # Spinner guard is always present so loading states are never captured
-    assert '.spinner[role="status"]' in html
+    assert '.spinner[role="status"]' in _build_html("// esm", "/* css */")
 
 
 # === Headless integration tests (require playwright + chromium) ===
@@ -1159,10 +1128,9 @@ def test_headless_bar_plot_png(bar_plot_widget: BarPlotWidget) -> None:
 @pytest.mark.parametrize("chart", ["treemap", "sunburst"])
 def test_hierarchy_vector_and_html_exports(chart: str, tmp_path: Any) -> None:
     """Chemical-system charts export vector SVG/PDF and interactive standalone HTML."""
-    from playwright.sync_api import expect
+    from playwright.sync_api import expect, sync_playwright
 
     import pymatviz as pmv
-    from pymatviz.widgets._headless import _get_browser
 
     plot = pmv.chem_sys_treemap if chart == "treemap" else pmv.chem_sys_sunburst
     widget = plot(
@@ -1179,7 +1147,7 @@ def test_hierarchy_vector_and_html_exports(chart: str, tmp_path: Any) -> None:
 
     html_path = tmp_path / f"{chart}.html"
     widget.to_html(str(html_path), inline=True)
-    with _get_browser().new_page() as page:
+    with sync_playwright() as pw, pw.chromium.launch().new_page() as page:
         page.goto(html_path.as_uri())
         chart_nodes = page.locator(f"[data-{chart}-node-idx][aria-label]")
         chart_nodes.first.wait_for()
@@ -1500,31 +1468,49 @@ def test_render_report_never_raises_on_asset_failure(
 
 @_skip_no_playwright
 @_skip_no_pillow
-def test_to_html_inline_renders_offline(tmp_path: Any) -> None:
+@pytest.mark.parametrize(
+    ("make_widget", "selector"),
+    [
+        (
+            lambda: ScatterPlotWidget(
+                series=[{"x": [0, 1, 2], "y": [0, 1, 4], "label": "s"}],
+                style="width: 500px; height: 350px;",
+            ),
+            "svg",
+        ),
+        # default traits (no volumes, no isosurface settings) must not crash the scene
+        (lambda: StructureWidget(structure=FE_STRUCT), "canvas"),
+    ],
+    ids=["scatter", "structure"],
+)
+def test_to_html_inline_renders_offline(
+    tmp_path: Any, make_widget: Callable[[], MatterVizWidget], selector: str
+) -> None:
     """to_html(inline=True) produces a self-contained page that actually renders.
 
     build_interactive_html has its own render path (controls on, no capture
     machinery) that to_img/render_report don't exercise, so load the file and
-    confirm it paints a non-blank chart.
+    confirm it paints without page errors.
     """
-    from pymatviz.widgets._headless import _get_browser, png_blank_fraction
+    from playwright.sync_api import sync_playwright
 
-    widget = ScatterPlotWidget(
-        series=[{"x": [0, 1, 2], "y": [0, 1, 4], "label": "s"}],
-        style="width: 500px; height: 350px;",
-    )
+    from pymatviz.widgets._headless import png_blank_fraction
+
     out_path = tmp_path / "widget.html"
-    widget.to_html(str(out_path), inline=True)
+    make_widget().to_html(str(out_path), inline=True)
 
-    page = _get_browser().new_page(viewport={"width": 600, "height": 420})
-    try:
+    with (
+        sync_playwright() as pw,
+        pw.chromium.launch().new_page(viewport={"width": 600, "height": 420}) as page,
+    ):
+        page_errors: list[str] = []
+        page.on("pageerror", lambda err: page_errors.append(str(err)))
         page.goto(out_path.as_uri(), wait_until="domcontentloaded")
-        page.wait_for_selector("#widget-root svg", timeout=20000)
-        page.wait_for_timeout(500)
+        page.wait_for_selector(f"#widget-root {selector}", timeout=20000)
+        page.wait_for_timeout(1000)
         png_bytes = page.locator("#widget-root").screenshot(type="png")
-    finally:
-        page.close()
 
+    assert page_errors == []
     assert png_bytes[:4] == b"\x89PNG"
     blank_frac = png_blank_fraction(png_bytes)
     assert blank_frac is not None

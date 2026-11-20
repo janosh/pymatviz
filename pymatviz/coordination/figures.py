@@ -7,7 +7,6 @@ from inspect import isclass
 from typing import TYPE_CHECKING
 
 import numpy as np
-from pymatgen.analysis.local_env import NearNeighbors
 
 from pymatviz.colors import ELEM_COLORS_JMOL
 from pymatviz.coordination.helpers import CnSplitMode, coordination_nums_in_structure
@@ -24,6 +23,7 @@ if TYPE_CHECKING:
     from typing import Any
 
     import pandas as pd
+    from pymatgen.analysis.local_env import NearNeighbors
 
     from pymatviz.typing import AnyStructure
 
@@ -204,6 +204,8 @@ def coordination_vs_cutoff_line(
     Returns:
         ScatterPlotWidget: one line per structure and element.
     """
+    from pymatgen.analysis.local_env import NearNeighbors
+
     struct_dict = normalize_structures(structures)
 
     if isinstance(strategy, tuple):

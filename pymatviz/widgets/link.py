@@ -73,8 +73,8 @@ class WidgetLink:
                 (``selected_point``). Defaults to 0 (the first series).
 
         Raises:
-            ValueError: If fewer than two widgets are given, or a
-                ``StructureWidget`` is included without ``structures``.
+            ValueError: If fewer than two widgets are given, or a ``StructureWidget``
+                or ``PeriodicTableWidget`` is included without ``structures``.
         """
         if len(widgets) < 2:
             raise ValueError(
@@ -110,6 +110,8 @@ class WidgetLink:
             )
         # element symbols per structure, for periodic table highlights and filtering
         self._elements: list[set[str]] = []
+        # per periodic table (by id), the elements the last index broadcast showed
+        self._shown_elements: dict[int, set[str]] = {}
         if any(isinstance(widget, PeriodicTableWidget) for widget in self.widgets):
             self._elements = [_element_symbols(st) for st in self._structures or ()]
             # tile clicks dim scatter points by id, and points without one never dim
@@ -167,10 +169,20 @@ class WidgetLink:
         """Dim scatter points whose structure lacks any clicked element (none: undim).
 
         Ignores ``active_elements`` writes made by this link's own index broadcast.
+        The first click after one toggles a tile relative to the broadcast elements,
+        so the filter is just the toggled symbol(s), written back to the table.
         """
         if self._syncing:
             return
-        selected = set(change["new"] or ())
+        selected: set[str] = set(change["new"] or ())
+        shown = self._shown_elements.pop(id(change["owner"]), None)
+        if shown is not None and selected:
+            selected ^= shown
+            self._syncing = True
+            try:
+                change["owner"].active_elements = sorted(selected)
+            finally:
+                self._syncing = False
         ids = [idx for idx, elems in enumerate(self._elements) if selected <= elems]
         for widget in self.widgets:
             if isinstance(widget, ScatterPlotWidget):
@@ -207,6 +219,7 @@ class WidgetLink:
         elif isinstance(widget, PeriodicTableWidget) and 0 <= index < len(
             self._elements
         ):
+            self._shown_elements[id(widget)] = self._elements[index]
             widget.active_elements = sorted(self._elements[index])
 
     def unlink(self) -> None:

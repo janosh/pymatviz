@@ -7,7 +7,11 @@ from typing import Any
 import traitlets as tl
 
 from pymatviz.widgets._normalize import normalize_json_kwargs, normalize_plot_json
-from pymatviz.widgets._traits import PlotControlsTraits, color_scale_trait
+from pymatviz.widgets._traits import (
+    PlotControlsTraits,
+    color_scale_trait,
+    optional_trait,
+)
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -21,22 +25,22 @@ class ScatterPlot3DWidget(PlotControlsTraits, MatterVizWidget):
         ... )
     """
 
-    series = tl.List(allow_none=True).tag(sync=True)
-    surfaces = tl.List(allow_none=True).tag(sync=True)
-    ref_lines = tl.List(allow_none=True).tag(sync=True)
-    ref_planes = tl.List(allow_none=True).tag(sync=True)
-    x_axis = tl.Dict(allow_none=True).tag(sync=True)
-    y_axis = tl.Dict(allow_none=True).tag(sync=True)
-    z_axis = tl.Dict(allow_none=True).tag(sync=True)
-    display = tl.Dict(allow_none=True).tag(sync=True)
-    styles = tl.Dict(allow_none=True).tag(sync=True)
+    series = optional_trait(tl.List)
+    surfaces = optional_trait(tl.List)
+    ref_lines = optional_trait(tl.List)
+    ref_planes = optional_trait(tl.List)
+    x_axis = optional_trait(tl.Dict)
+    y_axis = optional_trait(tl.Dict)
+    z_axis = optional_trait(tl.Dict)
+    display = optional_trait(tl.Dict)
+    styles = optional_trait(tl.Dict)
     color_scale = color_scale_trait()
-    size_scale = tl.Dict(allow_none=True).tag(sync=True)
-    legend = tl.Dict(allow_none=True).tag(sync=True)
-    show_legend = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    size_scale = optional_trait(tl.Dict)
+    legend = optional_trait(tl.Dict)
+    show_legend = optional_trait(tl.Bool)
     camera_projection = tl.Unicode(default_value="perspective").tag(sync=True)
     # matterviz InstanceTween {duration, easing, ...} animating point changes
-    point_tween = tl.Dict(allow_none=True).tag(sync=True)
+    point_tween = optional_trait(tl.Dict)
 
     _JSON_KWARGS = (
         "surfaces", "ref_lines", "ref_planes", "x_axis", "y_axis", "z_axis", "display",

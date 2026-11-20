@@ -5,8 +5,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Literal
 
-from pymatgen.phonon.dos import CompletePhononDos, PhononDos
-
 from pymatviz.process_data import normalize_phonon_bands
 from pymatviz.widgets.band_structure import BandStructureWidget
 from pymatviz.widgets.bands_and_dos import BandsAndDosWidget
@@ -16,6 +14,7 @@ from pymatviz.widgets.dos import DosWidget
 if TYPE_CHECKING:
     from phonopy.phonon.band_structure import BandStructure as PhonopyBandStructure
     from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
+    from pymatgen.phonon.dos import CompletePhononDos, PhononDos
 
     from pymatviz.typing import AnyDos
 
@@ -45,6 +44,8 @@ def _unwrap_single[T](labeled: dict[str, T]) -> T | dict[str, T]:
 
 def _to_phonon_dos(label: str, dos: Any) -> PhononDos:
     """Convert a phonopy TotalDos or CompletePhononDos to a total PhononDos."""
+    from pymatgen.phonon.dos import CompletePhononDos, PhononDos
+
     cls_name = f"{type(dos).__module__}.{type(dos).__qualname__}"
     if cls_name == "phonopy.phonon.dos.TotalDos":
         return PhononDos(frequencies=dos.frequency_points, densities=dos.dos)
@@ -65,6 +66,8 @@ def _dos_dict(
     show_total: bool,
 ) -> dict[str, PhononDos]:
     """Map labels to total or (with project) element/site-projected phonon DOS."""
+    from pymatgen.phonon.dos import CompletePhononDos
+
     if project not in (None, "element", "site"):
         raise ValueError(f"Invalid {project=}, must be 'element' or 'site'")
     raw_doses = dict(doses) if isinstance(doses, Mapping) else {"": doses}

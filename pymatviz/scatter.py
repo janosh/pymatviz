@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
-import scipy.stats
 
 from pymatviz.powerups import enhance_parity_plot
 from pymatviz.process_data import bin_df_cols, df_to_arrays
@@ -79,6 +78,8 @@ def _point_density(
     else:
         plot_x, plot_y, point_density = xs, ys, np.ones(len(xs))
     if density == "kde":
+        import scipy.stats
+
         try:  # needs >= 2 points not all on one line (non-singular covariance)
             kde = scipy.stats.gaussian_kde(np.vstack([xs, ys]))
             point_density = kde(np.vstack([plot_x, plot_y]))

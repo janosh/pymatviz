@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
-from scipy.stats import norm
 
 from pymatviz.powerups import add_identity_line
 from pymatviz.process_data import df_to_arrays
@@ -105,6 +104,8 @@ def qq_gaussian(
         raise ValueError("Q-Q calibration requires non-empty data")
     eps = 1e-10
     exp_proportions = np.linspace(eps, 1 - eps, 100)
+    from scipy.stats import norm
+
     quantiles = norm.ppf(exp_proportions)
 
     series, fill_regions = [], []

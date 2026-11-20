@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, Any, Final
 
 import numpy as np
 import pandas as pd
-import scipy.stats
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 from pymatgen.core import Composition, IStructure, Structure
 
@@ -234,23 +233,17 @@ def count_formulas(
         10: "denary",
     }
 
-    # Chemical system (sorted element tuple) and formula of every item; repeated
-    # strings, the common case for large datasets, are parsed once
+    # repeated strings, the common case for large datasets, are parsed once
     parse_str = functools.cache(lambda item: _system_and_formula(item, group_by))
-    pairs = [
-        parse_str(item)
-        if isinstance(item, str)
-        else _system_and_formula(item, group_by)
-        for item in data
-    ]
-    systems = [system for system, _ in pairs]
-    formulas = [formula for _, formula in pairs]
-
-    # Create a DataFrame with arity and chemical system columns
-    df_systems = pd.DataFrame({"system": systems})
-    if group_by != Key.chem_sys:
-        df_systems[Key.formula] = formulas
-
+    df_systems = pd.DataFrame(
+        [
+            parse_str(item)
+            if isinstance(item, str)
+            else _system_and_formula(item, group_by)
+            for item in data
+        ],
+        columns=pd.Index(["system", Key.formula]),
+    )
     df_systems[Key.arity] = df_systems["system"].map(len)
     df_systems["arity_name"] = df_systems[Key.arity].map(
         lambda n_elems: arity_names.get(n_elems, f"{n_elems}-component")
@@ -508,10 +501,12 @@ def bin_df_cols(
     if density_col:
         # compute kernel density estimate for each bin
         values = df_in[bin_by_cols].dropna().T
-        gaussian_kde = scipy.stats.gaussian_kde(values.astype(float))
+        import scipy.stats
+
+        kde = scipy.stats.gaussian_kde(values.astype(float))
 
         xy_binned = df_bin[bin_by_cols].T
-        density = gaussian_kde(xy_binned.astype(float))
+        density = kde(xy_binned.astype(float))
         # scale density to sum to the number of data points (values is transposed,
         # so its columns are the data points)
         df_bin[density_col] = density / density.sum() * values.shape[1]

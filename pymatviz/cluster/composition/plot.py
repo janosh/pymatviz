@@ -10,7 +10,6 @@ import numpy as np
 import pandas as pd
 from pandas.api.types import is_bool_dtype, is_numeric_dtype
 from pymatgen.core import Composition
-from sklearn.decomposition import PCA
 
 from pymatviz.cluster.composition.embed import matminer_featurize, one_hot_encode
 from pymatviz.cluster.composition.project import project_vectors
@@ -32,7 +31,7 @@ CHEM_SYS_SYMBOLS = (
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Mapping, Sequence
 
-    from sklearn.decomposition import KernelPCA
+    from sklearn.decomposition import PCA, KernelPCA
     from sklearn.manifold import TSNE, Isomap
 
     from pymatviz.typing import ColorType
@@ -389,6 +388,8 @@ def cluster_compositions(
 
     stats_lines: list[str] = []
     if show_projection_stats and not using_precomputed_coords:
+        from sklearn.decomposition import PCA
+
         if projection == "pca" and isinstance(projector, PCA):
             ratios = projector.explained_variance_ratio_[:n_components]
             axis_labels = [

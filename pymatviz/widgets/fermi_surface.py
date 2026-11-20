@@ -40,8 +40,8 @@ class FermiSurfaceWidget(MatterVizWidget):
         ... )
     """
 
-    fermi_data = tl.Dict(allow_none=True).tag(sync=True)
-    band_data = tl.Dict(allow_none=True).tag(sync=True)
+    fermi_data = optional_trait(tl.Dict)
+    band_data = optional_trait(tl.Dict)
 
     # Display options
     mu = optional_trait(tl.Float)

@@ -29,9 +29,9 @@ class ChemPotDiagramWidget(MatterVizWidget):
         ... )
     """
 
-    entries = tl.List(allow_none=True).tag(sync=True)
-    config = tl.Dict(allow_none=True).tag(sync=True)
-    temperature = tl.Float(allow_none=True, default_value=None).tag(sync=True)
+    entries = optional_trait(tl.List)
+    config = optional_trait(tl.Dict)
+    temperature = optional_trait(tl.Float)
     width = optional_trait(tl.Int, min=1)
     height = optional_trait(tl.Int, min=1)
 

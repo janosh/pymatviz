@@ -36,7 +36,7 @@ class CompositionWidget(MatterVizWidget):
         ... )
     """
 
-    composition = tl.Dict(allow_none=True).tag(sync=True)
+    composition = optional_trait(tl.Dict)
 
     # Visualization options
     mode = tl.CaselessStrEnum(["pie", "bar", "bubble"], default_value="pie").tag(

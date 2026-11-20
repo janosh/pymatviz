@@ -34,8 +34,8 @@ class BrillouinZoneWidget(MatterVizWidget):
         ... )
     """
 
-    structure = tl.Dict(allow_none=True).tag(sync=True)
-    bz_data = tl.Dict(allow_none=True).tag(sync=True)
+    structure = optional_trait(tl.Dict)
+    bz_data = optional_trait(tl.Dict)
 
     # Display options
     surface_color = optional_trait(tl.Unicode)

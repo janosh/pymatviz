@@ -33,7 +33,7 @@ class DosWidget(PlotControlsTraits, MatterVizWidget):
     """
 
     # one DOS, or {label: dos} to overlay several
-    doses = tl.Dict(allow_none=True).tag(sync=True)
+    doses = optional_trait(tl.Dict)
 
     # Display options
     stack = optional_trait(tl.Bool)

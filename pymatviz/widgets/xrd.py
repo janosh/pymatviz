@@ -7,7 +7,7 @@ from typing import Any
 
 import traitlets as tl
 
-from pymatviz.widgets._traits import PlotControlsTraits
+from pymatviz.widgets._traits import PlotControlsTraits, optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -42,7 +42,7 @@ class XrdWidget(PlotControlsTraits, MatterVizWidget):
         ... )
     """
 
-    patterns = tl.Dict(allow_none=True).tag(sync=True)
+    patterns = optional_trait(tl.Dict)
 
     def __init__(self, patterns: Any | None = None, **kwargs: Any) -> None:
         """Initialize the XrdWidget.

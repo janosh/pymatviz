@@ -12,7 +12,6 @@ from pymatgen.core import (
     Structure,
 )
 
-from pymatviz.structure import helpers
 from pymatviz.structure.helpers import (
     NO_SYM_MSG,
     get_site_elements,
@@ -78,7 +77,9 @@ def test_standardize_struct(monkeypatch: pytest.MonkeyPatch) -> None:
         def __init__(self, _struct: Structure) -> None:
             raise ValueError("Unable to determine symmetry")
 
-    monkeypatch.setattr(helpers, "SpacegroupAnalyzer", FailingSpacegroupAnalyzer)
+    monkeypatch.setattr(
+        "pymatgen.symmetry.analyzer.SpacegroupAnalyzer", FailingSpacegroupAnalyzer
+    )
     with pytest.warns(
         UserWarning, match=f"{NO_SYM_MSG} for Fe1 O1: Unable to determine symmetry"
     ):

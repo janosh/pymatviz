@@ -181,7 +181,7 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
 
     # display options shared with TrajectoryWidget live in StructureVizTraits
 
-    structure = tl.Dict(allow_none=True).tag(sync=True)
+    structure = optional_trait(tl.Dict)
     structure_string = optional_trait(tl.Unicode)
 
     show_image_atoms = tl.Bool(default_value=True).tag(sync=True)
@@ -194,7 +194,7 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
     # isovalue, color, opacity, visible, show_negative, negative_color}], wireframe,
     # halo, display_range?}
     volumetric_data = tl.Any().tag(sync=True)
-    isosurface_settings = tl.Dict(allow_none=True).tag(sync=True)
+    isosurface_settings = optional_trait(tl.Dict)
     # Two-way synced isosurface view state (active volume id, structure/slice view,
     # plane). None selects the first volume.
     active_volume_id = optional_trait(tl.Unicode)
@@ -257,8 +257,6 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
                 "volumetric_data must be a list of volumes or a {prefix: volume} "
                 f"mapping, got {type(value).__name__}"
             )
-        if payloads:
-            self._require_binary_bundle("volume")
         ids = [payload["id"] for payload in payloads]
         if dupes := sorted({vol_id for vol_id in ids if ids.count(vol_id) > 1}):
             raise ValueError(

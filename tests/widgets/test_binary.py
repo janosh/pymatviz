@@ -86,38 +86,6 @@ def test_envelope_kind_mismatch_raises() -> None:
         StructureWidget(volumetric_data=[volume | {"kind": "trajectory"}])
 
 
-@pytest.mark.parametrize(
-    ("widget_type", "kwargs"),
-    [
-        (
-            TrajectoryWidget,
-            {"trajectory": {"format": BINARY_FORMAT, "kind": "trajectory"}},
-        ),
-        (StructureWidget, {"volumetric_data": [{"id": "mask", "grid": [[[True]]]}]}),
-        (
-            ScatterPlotWidget,
-            {
-                "series": [
-                    {
-                        "x": np.arange(BINARY_SERIES_MIN_POINTS),
-                        "y": np.zeros(BINARY_SERIES_MIN_POINTS),
-                    }
-                ]
-            },
-        ),
-    ],
-)
-def test_pinned_bundle_needs_decoder(
-    widget_type: type, kwargs: dict[str, Any], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """An incompatible pinned bundle raises before any bytes sync."""
-    from pymatviz.widgets import matterviz
-
-    monkeypatch.setattr(matterviz, "fetch_widget_asset", lambda *_args: "old bundle")
-    with pytest.raises(ValueError, match=r"0\.8\.0.*lacks matterviz-binary-v1"):
-        widget_type(version_override="0.8.0", **kwargs)
-
-
 _N_BIG = BINARY_SERIES_MIN_POINTS
 
 

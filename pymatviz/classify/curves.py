@@ -5,7 +5,6 @@ from typing import Any, Literal, cast
 
 import numpy as np
 import pandas as pd
-import sklearn.metrics as skm
 from numpy.typing import ArrayLike
 
 from pymatviz.process_data import df_to_arrays
@@ -172,6 +171,8 @@ def roc_curve(
     def build_series(
         name: str, tgt: np.ndarray, probs: np.ndarray
     ) -> tuple[dict[str, Any], float]:
+        import sklearn.metrics as skm
+
         fpr, tpr, thresholds = skm.roc_curve(tgt, probs)
         roc_auc = float(skm.roc_auc_score(tgt, probs))
         label = f"{name} · AUC={roc_auc:.2f}" if name else f"AUC={roc_auc:.2f}"
@@ -262,6 +263,8 @@ def precision_recall_curve(
     def build_series(
         name: str, tgt: np.ndarray, probs: np.ndarray
     ) -> tuple[dict[str, Any], float]:
+        import sklearn.metrics as skm
+
         # drop thresholds that don't change the plotted step curve (like roc_curve
         # does by default): 200k samples otherwise sync ~200k points of metadata
         prec_curve, recall_curve, thresholds = skm.precision_recall_curve(

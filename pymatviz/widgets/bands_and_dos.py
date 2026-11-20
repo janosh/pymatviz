@@ -36,8 +36,8 @@ class BandsAndDosWidget(PlotControlsTraits, MatterVizWidget):
         ... )
     """
 
-    band_structs = tl.Dict(allow_none=True).tag(sync=True)
-    doses = tl.Dict(allow_none=True).tag(sync=True)
+    band_structs = optional_trait(tl.Dict)
+    doses = optional_trait(tl.Dict)
     structure = optional_trait(tl.Dict)
     bz_props = optional_trait(tl.Dict)  # BrillouinZone props for the structure's panel
 

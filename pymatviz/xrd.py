@@ -6,7 +6,6 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from pymatgen.analysis.diffraction.xrd import DiffractionPattern, XRDCalculator
 from pymatgen.core import IStructure
 
 from pymatviz.process_data import is_ase_atoms
@@ -15,6 +14,7 @@ from pymatviz.widgets.xrd import XrdWidget
 
 if TYPE_CHECKING:
     from ase import Atoms
+    from pymatgen.analysis.diffraction.xrd import DiffractionPattern
 
 
 type PatternOrStruct = DiffractionPattern | IStructure | Atoms
@@ -27,6 +27,8 @@ def _to_diffraction_pattern(
     """Compute a structure's pattern (or pass a pattern through) and check its
     intensities are present, finite and non-negative.
     """
+    from pymatgen.analysis.diffraction.xrd import DiffractionPattern, XRDCalculator
+
     if is_ase_atoms(pattern_or_struct):
         from pymatgen.io.ase import AseAtomsAdaptor
 
@@ -77,15 +79,8 @@ def xrd_pattern(
     Returns:
         XrdWidget: The MatterViz XRD plot.
     """
-    is_single = isinstance(patterns, DiffractionPattern | IStructure) or is_ase_atoms(
-        patterns
-    )
+    is_single = not isinstance(patterns, Mapping)
     labeled = {"XRD Pattern": patterns} if is_single else patterns
-    if not isinstance(labeled, Mapping):
-        raise TypeError(
-            "patterns must be a DiffractionPattern, Structure, ASE Atoms, or mapping "
-            f"of labels to patterns/structures, got {type(patterns).__name__}"
-        )
     if not labeled:
         raise ValueError("patterns must not be empty")
     computed = {

@@ -11,11 +11,12 @@ import warnings
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from sklearn.decomposition import PCA, KernelPCA
-from sklearn.manifold import TSNE, Isomap
 
 
 if TYPE_CHECKING:
+    from sklearn.decomposition import PCA, KernelPCA
+    from sklearn.manifold import TSNE, Isomap
+
     from pymatviz.cluster.composition.plot import ProjectionMethod
 
 
@@ -50,6 +51,9 @@ def project_vectors(
         ValueError: If method is invalid or n_components is too small
         ImportError: If UMAP is requested but not installed
     """
+    from sklearn.decomposition import PCA, KernelPCA
+    from sklearn.manifold import TSNE, Isomap
+
     from pymatviz.cluster.composition.plot import ProjectionMethod
 
     if method is None:

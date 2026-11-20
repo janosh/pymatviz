@@ -64,12 +64,22 @@ def _normalize_ferrox_hkls(hkls_data: Any) -> Any:
     return hkls_data
 
 
+# pymatgen as_dict() fields MatterViz never draws, up to ~100 MB on projected band
+# structures: band projections, CompleteDos.pdos, phonon eigendisplacements
+_UNREAD_KEYS = frozenset({"projections", "pdos", "eigendisplacements"})
+
+
+def _as_dict(obj: Any) -> dict[str, Any]:
+    """``obj.as_dict()`` without the fields MatterViz never reads."""
+    return {key: val for key, val in obj.as_dict().items() if key not in _UNREAD_KEYS}
+
+
 def _to_dict(obj: Any, label: str) -> dict[str, Any] | None:
     """Convert None/dict/MSONable object to a JSON-serializable dict.
 
     Args:
         obj: None, a dict (MSONable values converted via ``as_dict``), or any
-            object with .as_dict().
+            object with .as_dict(). Converted dicts drop ``_UNREAD_KEYS``.
         label: Human-readable name for error messages (e.g. "band structure").
 
     Returns:
@@ -82,13 +92,13 @@ def _to_dict(obj: Any, label: str) -> dict[str, Any] | None:
         return None
     if isinstance(obj, dict):
         converted = {
-            key: value.as_dict()
+            key: _as_dict(value)
             for key, value in obj.items()
             if callable(getattr(value, "as_dict", None)) and not isinstance(value, dict)
         }
         return {**obj, **converted} if converted else obj
     if hasattr(obj, "as_dict"):
-        return obj.as_dict()
+        return _as_dict(obj)
     raise TypeError(
         f"Unsupported type for {label}: {type(obj)}. "
         "Expected dict or object with .as_dict()."

@@ -6,6 +6,8 @@ and more.
 
 from __future__ import annotations
 
+import sys
+
 from pymatviz.widgets.band_structure import BandStructureWidget
 from pymatviz.widgets.bands_and_dos import BandsAndDosWidget
 from pymatviz.widgets.bar_plot import BarPlotWidget
@@ -37,4 +39,6 @@ from pymatviz.widgets.treemap import TreemapWidget
 from pymatviz.widgets.xrd import XrdWidget
 
 
-register_matterviz_widgets()  # Auto-register in all supported environments
+# only marimo reads _display_ hooks; elsewhere create_widget() registers on first use
+if "marimo" in sys.modules:
+    register_matterviz_widgets()

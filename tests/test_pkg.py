@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
 import tomllib
 from glob import glob
@@ -45,3 +46,26 @@ def test_all_modules_reexported() -> None:
             )
     finally:
         sys.modules[pmv.PKG_NAME] = original_module
+
+
+HEAVY_MODULES = (
+    "scipy.stats",
+    "scipy.spatial",
+    "matplotlib",
+    "sklearn",
+    "pymatgen.phonon",
+    "pymatgen.electronic_structure",
+    "pymatgen.analysis.local_env",
+    "pymatgen.symmetry.analyzer",
+    "pymatgen.analysis.diffraction.xrd",
+)
+
+
+def test_import_skips_heavy_modules() -> None:
+    """Importing pymatviz skips heavy optional dependencies to stay fast."""
+    loaded = f"sorted(set({HEAVY_MODULES!r}) & sys.modules.keys())"
+    code = f"import sys, pymatviz; print({loaded})"
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, "-c", code], capture_output=True, text=True, check=True
+    )
+    assert result.stdout.strip() == "[]", "heavy modules loaded on import"

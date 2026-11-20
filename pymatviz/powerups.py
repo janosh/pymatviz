@@ -9,8 +9,6 @@ from numbers import Real
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-import sklearn.metrics
-from sklearn.metrics import mean_absolute_percentage_error, r2_score
 
 from pymatviz.widgets._normalize import normalize_plot_series
 from pymatviz.widgets.binned_scatter_plot import BinnedScatterPlotWidget
@@ -26,16 +24,30 @@ if TYPE_CHECKING:
 type SeriesSelector = int | np.integer | Sequence[int] | None
 
 PARITY_WIDGETS = (ScatterPlotWidget, BinnedScatterPlotWidget)
+
+
 PRETTY_METRIC_LABELS = {"R2": "R²", "R2_adj": "R²_adj"}
+
+
+def _r2(xs: np.ndarray, ys: np.ndarray) -> float:
+    """Numpy ``r2_score``: -inf or nan (without RuntimeWarning) for constant targets."""
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return float(1 - ((xs - ys) ** 2).sum() / ((xs - xs.mean()) ** 2).sum())
+
+
+# numpy equivalents of sklearn's r2_score and mean_absolute_percentage_error (keeps
+# sklearn out of `import pymatviz`)
 BUILTIN_METRICS: dict[str, Callable[[np.ndarray, np.ndarray], float]] = {
     "MAE": lambda xs, ys: np.abs(xs - ys).mean(),
     "RMSE": lambda xs, ys: ((xs - ys) ** 2).mean() ** 0.5,
     "MSE": lambda xs, ys: ((xs - ys) ** 2).mean(),
-    "MAPE": mean_absolute_percentage_error,
-    "R2": r2_score,
+    "MAPE": lambda xs, ys: (
+        np.abs(xs - ys) / np.maximum(np.abs(xs), np.finfo(float).eps)
+    ).mean(),
+    "R2": _r2,
     # adjusted R2 is undefined for n <= 2 samples (zero/negative denominator)
     "R2_adj": lambda xs, ys: (
-        1 - (1 - r2_score(xs, ys)) * (len(xs) - 1) / (len(xs) - 2)
+        1 - (1 - _r2(xs, ys)) * (len(xs) - 1) / (len(xs) - 2)
         if len(xs) > 2
         else float("nan")
     ),
@@ -178,6 +190,8 @@ def annotate_metrics[Widget: ScatterPlotWidget | BinnedScatterPlotWidget](
     funcs = dict(BUILTIN_METRICS)
     for name in {val for val in label_to_metric.values() if isinstance(val, str)}:
         if name not in funcs:
+            import sklearn.metrics
+
             if (func := getattr(sklearn.metrics, name, None)) is None:
                 raise ValueError(f"Unrecognized metric {name!r}")
             funcs[name] = func
@@ -394,7 +408,8 @@ def enhance_parity_plot[Widget: ScatterPlotWidget | BinnedScatterPlotWidget](
         xs_arr, ys_arr = _resolve_xy(widget, xs, ys, series)
         finite = np.isfinite(xs_arr) & np.isfinite(ys_arr)
         best_fit_line = (
-            finite.sum() > 1 and r2_score(xs_arr[finite], ys_arr[finite]) > 0.3
+            finite.sum() > 1
+            and BUILTIN_METRICS["R2"](xs_arr[finite], ys_arr[finite]) > 0.3
         )
     if best_fit_line:
         fit_kwargs = best_fit_line if isinstance(best_fit_line, dict) else {}

@@ -45,7 +45,7 @@ test = [
   "pytest-split>=0.11",
   "pytest>=9.1",
 ]
-export = ["nest-asyncio>=1.6", "playwright>=1.63"]
+export = ["playwright>=1.63"]
 brillouin = ["seekpath>=2.2.2"]
 clustering = [
   "matminer>=0.10.1",

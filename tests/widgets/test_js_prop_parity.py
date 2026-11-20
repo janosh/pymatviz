@@ -1,62 +1,56 @@
 """Lint the Python<->JS widget trait contract.
 
 A Python trait the JS bridge (matterviz/extensions/anywidget/anywidget.ts)
-doesn't drive is silently dead (historic examples: ``missing_color``,
+doesn't read is silently dead (historic examples: ``missing_color``,
 ``ScatterPlotWidget.show_legend``); a bridge key without a Python trait is a
-prop users cannot set. This test loads the active ESM bundle in headless
-Chromium, reads its exported ``WIDGET_MODEL_KEYS`` contract, and diffs it
-against each widget's synced traits in both directions. Skips on bundles
-predating the export (< 0.4.3).
+prop users cannot set. The bundle build writes its ``WIDGET_MODEL_KEYS`` contract
+to ``widget-model-keys.json`` next to ``matterviz.js``; this test diffs it against
+each widget's public synced traits in both directions.
 """
 
 from __future__ import annotations
 
-import importlib.util
+import json
+import os
 from typing import Any
+from urllib.error import HTTPError, URLError
 
 import pytest
 
 import pymatviz.widgets
-from pymatviz.widgets.matterviz import MatterVizWidget
+from pymatviz.widgets.matterviz import MatterVizWidget, fetch_widget_asset
 
-
-pytestmark = pytest.mark.skipif(
-    importlib.util.find_spec("playwright") is None, reason="playwright not installed"
-)
-
-# Traits every widget syncs but that the JS side handles outside per-widget drive
-# specs: widget_type selects the spec in render(); style/show_controls are base-drive
-# props that some components legitimately don't consume (e.g. PeriodicTable has no
-# control pane, so its spec omits show_controls from the drive deps).
-_BASE_TRAITS = frozenset({"widget_type", "style", "show_controls"})
 
 # Widgets whose constructors reject empty input
 _MINIMAL_KWARGS: dict[str, dict[str, Any]] = {
     "FermiSurfaceWidget": {"fermi_data": {"isosurfaces": []}}
 }
-
-_IMPORT_CONTRACT_JS = """async (esm) => {
-  const url = URL.createObjectURL(new Blob([esm], { type: "text/javascript" }));
-  try { return (await import(url)).WIDGET_MODEL_KEYS ?? null }
-  finally { URL.revokeObjectURL(url) }
-}"""
+CONTRACT_FILE = "widget-model-keys.json"
 
 
-def test_python_traits_match_js_contract() -> None:
-    """Each widget's synced traits exactly mirror the JS bridge's model keys."""
-    from pymatviz.widgets._headless import _get_browser
-    from pymatviz.widgets.matterviz import fetch_widget_asset
-
-    page = _get_browser().new_page()
+@pytest.fixture(scope="module")
+def js_contract() -> dict[str, list[str]]:
+    """The active bundle's {widget_type: model keys} contract: a local build's file
+    when MATTERVIZ_ANYWIDGET_DIR is set (required there), else the pinned bundle's.
+    Skips only when offline: a reachable host lacking the file fails the test.
+    """
+    if dev_dir := os.environ.get("MATTERVIZ_ANYWIDGET_DIR"):
+        with open(f"{dev_dir}/{CONTRACT_FILE}", encoding="utf-8") as file:
+            return json.load(file)
     try:
-        contract = page.evaluate(
-            _IMPORT_CONTRACT_JS, fetch_widget_asset("matterviz.js")
-        )
-    finally:
-        page.close()
-    if contract is None:
-        pytest.skip("bundle predates the WIDGET_MODEL_KEYS export (< 0.4.3)")
+        return json.loads(fetch_widget_asset(CONTRACT_FILE))
+    except FileNotFoundError as exc:
+        cause = exc.__cause__
+        if isinstance(cause, URLError) and not isinstance(cause, HTTPError):
+            pytest.skip(f"offline, can't fetch {CONTRACT_FILE}: {cause}")
+        raise
 
+
+def test_python_traits_match_js_contract(js_contract: dict[str, list[str]]) -> None:
+    """Each widget's public synced traits exactly mirror the JS bridge's model keys,
+    except base traits (widget_type, style, show_controls) a spec may ignore.
+    """
+    base_keys = set(MatterVizWidget.public_trait_names())
     widget_classes = {
         cls
         for cls in vars(pymatviz.widgets).values()
@@ -67,16 +61,16 @@ def test_python_traits_match_js_contract() -> None:
     drift: list[str] = []
     for cls in sorted(widget_classes, key=lambda cls: cls.__name__):
         widget = cls(**_MINIMAL_KWARGS.get(cls.__name__, {}))
-        if widget.widget_type not in contract:
+        if widget.widget_type not in js_contract:
             drift.append(f"{cls.__name__}: {widget.widget_type=} not in JS registry")
             continue
-        py_traits = set(widget.to_dict()) - _BASE_TRAITS
-        js_keys = set(contract[widget.widget_type]) - _BASE_TRAITS
-        if dead := py_traits - js_keys:
+        py_keys = set(widget._synced_keys)
+        js_keys = set(js_contract[widget.widget_type])
+        if dead := py_keys - js_keys - base_keys:
             drift.append(
                 f"{cls.__name__}: dead traits (JS never reads): {sorted(dead)}"
             )
-        if missing := js_keys - py_traits:
+        if missing := js_keys - py_keys:
             drift.append(
                 f"{cls.__name__}: JS reads keys Python can't set: {sorted(missing)}"
             )
@@ -84,3 +78,23 @@ def test_python_traits_match_js_contract() -> None:
         "Python<->JS widget trait contract drift (fix in matterviz/extensions/"
         "anywidget/anywidget.ts or the pymatviz widget class):\n" + "\n".join(drift)
     )
+
+
+def test_public_trait_names_exclude_framework_traits() -> None:
+    """public_trait_names() drops anywidget/ipywidgets traits but keeps a subclass's
+    redeclaration of one (TrajectoryWidget.layout) and the base widget traits.
+    """
+    from anywidget import AnyWidget
+
+    from pymatviz.widgets import StructureWidget, TrajectoryWidget
+
+    framework = set(AnyWidget.class_traits(sync=True))
+    for cls in (MatterVizWidget, StructureWidget):
+        names = set(cls.public_trait_names())
+        assert {"widget_type", "style", "show_controls"} <= names
+        assert not names & framework
+        assert not any(name.startswith("_") for name in names)
+    assert "layout" in TrajectoryWidget.public_trait_names()
+    widget = StructureWidget()
+    assert widget._synced_keys == StructureWidget.public_trait_names()
+    assert set(widget.to_dict()) == set(widget._synced_keys)

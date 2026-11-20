@@ -74,7 +74,7 @@ def test_xrd_pattern_mapping() -> None:
     [
         (DiffractionPattern([], [], [], []), ValueError, "No intensities found"),
         ({}, ValueError, "patterns must not be empty"),
-        ("invalid", TypeError, "patterns must be a DiffractionPattern"),
+        ("invalid", TypeError, "'XRD Pattern': expected a pymatgen Structure"),
         ({"bad": "invalid"}, TypeError, "'bad': expected a pymatgen Structure"),
         *[
             (DiffractionPattern([10], [val], [[{"hkl": (1, 0, 0)}]], [1]), *err)

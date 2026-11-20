@@ -6,8 +6,6 @@ from collections import defaultdict
 from inspect import isclass
 from typing import TYPE_CHECKING, Literal
 
-from pymatgen.analysis.local_env import NearNeighbors
-
 from pymatviz.enums import LabelEnum
 from pymatviz.structure import helpers
 
@@ -16,6 +14,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import Any
 
+    from pymatgen.analysis.local_env import NearNeighbors
     from pymatgen.core import IMolecule, IStructure, Site
 
 
@@ -35,6 +34,8 @@ def normalize_get_neighbors(
     """Normalize get_neighbors function."""
     if isinstance(strategy, int | float):
         return lambda site, structure: structure.get_neighbors(site, r=strategy)
+    from pymatgen.analysis.local_env import NearNeighbors
+
     is_nn_class = isclass(strategy) and issubclass(strategy, NearNeighbors)
     nn_instance = strategy() if is_nn_class else strategy
     if isinstance(nn_instance, NearNeighbors):

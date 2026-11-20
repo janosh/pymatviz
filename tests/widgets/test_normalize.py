@@ -60,6 +60,15 @@ def test_to_dict_passthrough(input_val: Any, label: str, expected: Any) -> None:
         assert result is input_val
 
 
+def test_to_dict_drops_unread_fields() -> None:
+    """as_dict() output loses projections/pdos/eigendisplacements, dict input not."""
+    big = {"bands": [1], "projections": [2], "pdos": [3], "eigendisplacements": [4]}
+    obj = type("Bands", (), {"as_dict": lambda _self: big})()
+    assert _to_dict(obj, "band structure") == {"bands": [1]}
+    assert _to_dict({"DFT": obj}, "band structure") == {"DFT": {"bands": [1]}}
+    assert _to_dict(big, "band structure") is big
+
+
 @pytest.mark.parametrize("label", ["band structure", "DOS"])
 def test_to_dict_raises_for_unsupported_type(label: str) -> None:
     """Test _to_dict raises TypeError with descriptive label."""

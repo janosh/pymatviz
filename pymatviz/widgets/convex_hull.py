@@ -41,7 +41,7 @@ class ConvexHullWidget(MatterVizWidget):
         ... )
     """
 
-    entries = tl.List(allow_none=True).tag(sync=True)
+    entries = optional_trait(tl.List)
 
     # Display options
     show_stable = tl.Bool(default_value=True).tag(sync=True)

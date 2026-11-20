@@ -8,7 +8,6 @@ import warnings
 from typing import TYPE_CHECKING, Any
 
 import ipywidgets as ipw
-from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 
 if TYPE_CHECKING:
@@ -43,6 +42,8 @@ def standardize_struct(struct: Structure | IStructure) -> Structure | IStructure
     (forces, magmoms, ...). Warns with NO_SYM_MSG and returns the input unchanged if
     spglib can't determine the symmetry.
     """
+    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+
     try:
         return SpacegroupAnalyzer(struct).get_conventional_standard_structure(
             keep_site_properties=True

@@ -9,9 +9,17 @@ MATTERVIZ_ANYWIDGET_DIR points at a local build.
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
+import functools
 import importlib.util
+import os
 import re
+import threading
+import urllib.error
+import urllib.request
 import xml.etree.ElementTree as ET
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -48,10 +56,11 @@ from pymatviz.widgets import (
     TreemapWidget,
     XrdWidget,
 )
+from pymatviz.widgets.matterviz import MATTERVIZ_ANYWIDGET_VERSION, _cdn_url
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    from collections.abc import Callable
 
     from pymatviz.widgets.matterviz import MatterVizWidget
 
@@ -60,17 +69,6 @@ SVG_NS = "{http://www.w3.org/2000/svg}"
 pytestmark = pytest.mark.skipif(
     importlib.util.find_spec("playwright") is None, reason="needs playwright"
 )
-
-
-@pytest.fixture(autouse=True, scope="module")
-def _stop_sync_browser() -> Iterator[None]:
-    """Shut the cached sync browser after this module: sync Playwright keeps an event
-    loop running, which breaks later asyncio.run() tests in the same process.
-    """
-    yield
-    from pymatviz.widgets._headless import _shutdown_browser
-
-    _shutdown_browser()
 
 
 NACL = Structure.from_spacegroup(
@@ -286,3 +284,93 @@ def test_widget_renders_and_exports(
     # static files drop keyboard/pointer wiring and keep 0.01 px coordinates
     assert not re.search(r' (tabindex|role|data-[\w-]+)="', markup)
     assert not re.search(r' (d|x|y|cx|cy|points)="[^"]*\d\.\d{3}', markup)
+
+
+def test_event_loops_work_around_sync_export() -> None:
+    """Sync exports leave no event loop running in the caller's thread, so
+    asyncio.run() works afterwards, and work from inside a running loop (Jupyter)
+    without nest_asyncio.
+    """
+    widget = pmv.elements_hist(["Fe2O3", "NaCl"])
+    assert b"<svg" in widget.to_img(fmt="svg", timeout=TIMEOUT)
+    with pytest.raises(RuntimeError, match="no running event loop"):
+        asyncio.get_running_loop()
+    assert asyncio.run(asyncio.sleep(0, result="ran")) == "ran"
+
+    async def export_in_loop() -> bytes:
+        """Export synchronously while this thread's loop runs, as a notebook cell."""
+        return widget.to_img(fmt="png", dpi=72, timeout=TIMEOUT)
+
+    assert asyncio.run(export_in_loop()).startswith(b"\x89PNG")
+
+
+class _QuietHandler(SimpleHTTPRequestHandler):
+    """Static file server for the split bundle, without request logs."""
+
+    def log_message(self, format: str, *args: object) -> None:  # noqa: A002
+        """Drop request logs."""
+
+
+class _ChunkServer(ThreadingHTTPServer):
+    """Accepts the browser's burst of parallel chunk requests: socketserver's default
+    listen backlog of 5 refuses some, failing a dynamic import at random.
+    """
+
+    request_queue_size = 256
+
+
+@pytest.mark.parametrize(
+    ("widget_cls", "loads_three"),
+    [(ScatterPlotWidget, False), (ScatterPlot3DWidget, True)],
+)
+def test_split_bundle_loads_only_its_widget_chunks(
+    widget_cls: type[MatterVizWidget],
+    loads_three: bool,
+    request: pytest.FixtureRequest,
+) -> None:
+    """The split build, imported by URL (remote _esm, to_html's esm_url), renders
+    each widget from its entry plus that widget's chunks: three.js only for 3D.
+    """
+    from playwright.sync_api import sync_playwright
+
+    widget = WIDGET_CASES[widget_cls][0](request)
+    with contextlib.ExitStack() as stack:
+        if build_dir := os.environ.get("MATTERVIZ_ANYWIDGET_DIR"):
+            handler = functools.partial(_QuietHandler, directory=build_dir)
+            server = stack.enter_context(_ChunkServer(("127.0.0.1", 0), handler))
+            threading.Thread(target=server.serve_forever, daemon=True).start()
+            stack.callback(server.shutdown)
+            origin = f"http://127.0.0.1:{server.server_port}"
+        else:  # the pinned remote split build (CI has no local one)
+            esm_url = _cdn_url(MATTERVIZ_ANYWIDGET_VERSION, "split/matterviz.js")
+            origin = esm_url.removesuffix("/split/matterviz.js")
+            try:
+                urllib.request.urlopen(esm_url, timeout=10).close()  # noqa: S310
+            except urllib.error.HTTPError:  # reachable but missing: a real failure
+                raise
+            except OSError as exc:
+                pytest.skip(f"split bundle unreachable (offline?): {exc}")
+        html = widget.to_html(esm_url=f"{origin}/split/matterviz.js")
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch()
+            page = browser.new_page()
+            errors: list[str] = []
+            page.on("pageerror", lambda exc: errors.append(str(exc)))
+            fetched: list[str] = []
+            page.on("request", lambda req: fetched.append(req.url))
+            # same origin as the bundle, so its module imports need no CORS
+            page.route(f"{origin}/page.html", lambda route: route.fulfill(body=html))
+            page.goto(f"{origin}/page.html")
+            page.wait_for_selector(
+                ".matterviz-widget svg, .matterviz-widget canvas",
+                timeout=TIMEOUT * 1000,
+            )
+            page.wait_for_load_state("networkidle")
+            browser.close()
+    assert errors == []
+    chunks = [url.removeprefix(f"{origin}/") for url in fetched if url.endswith(".js")]
+    assert chunks[0] == "split/matterviz.js"
+    assert all(chunk.startswith("split/") for chunk in chunks), chunks
+    component = widget_cls.__name__.removesuffix("Widget")
+    assert any(chunk.startswith(f"split/{component}-") for chunk in chunks), chunks
+    assert any("three" in chunk for chunk in chunks) == loads_three, chunks

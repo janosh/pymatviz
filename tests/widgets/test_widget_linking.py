@@ -253,7 +253,7 @@ def test_link_periodic_table_highlights_and_filters_scatter() -> None:
     """
     frames = [
         Structure(Lattice.cubic(3), species, ((0, 0, 0), (0.5,) * 3))
-        for species in (("Fe", "O"), ("Li", "O"), ("Fe", "Fe"))
+        for species in (("Fe", "O"), ("Li", "O"), ("Li", "Li"))
     ]
     xs = list(range(len(frames)))
     # without point_ids no point could dim, so linking refuses
@@ -266,21 +266,26 @@ def test_link_periodic_table_highlights_and_filters_scatter() -> None:
     # a structure dict takes the serialized path, pymatgen ones their composition
     link_selection(scatter, ptable, structures=[*frames[:2], frames[2].as_dict()])
     assert ptable.active_elements == ["Fe", "O"]  # initial sync to index 0
-    scatter.active_point = {"series_idx": 0, "point_idx": 1}
-    assert ptable.active_elements == ["Li", "O"]
-    assert scatter.highlighted_ids is None  # index sync doesn't filter
+    # the frontend toggles clicks relative to the shown elements: clicking Li
+    # writes [Fe, O, Li], which filters by Li alone, not by all three
+    ptable.active_elements = ["Fe", "O", "Li"]
+    assert (ptable.active_elements, scatter.highlighted_ids) == (["Li"], [1, 2])
 
     for clicked, expected_ids in (
+        (["Li", "O"], [1]),
         (["O"], [0, 1]),
-        (["Fe", "O"], [0]),
         ([], None),
         (None, None),
     ):
         ptable.active_elements = clicked  # as written by frontend tile clicks
         assert scatter.highlighted_ids == expected_ids
 
+    scatter.active_point = {"series_idx": 0, "point_idx": 1}
+    assert ptable.active_elements == ["Li", "O"]
+    assert scatter.highlighted_ids is None  # index sync doesn't filter
+    ptable.active_elements = ["Li"]  # un-clicking O after a broadcast filters by O
+    assert (ptable.active_elements, scatter.highlighted_ids) == (["O"], [0, 1])
+
     # selecting a point after filtering shows that structure, so the filter clears
-    ptable.active_elements = ["Fe"]
-    assert scatter.highlighted_ids == [0, 2]
     scatter.active_point = {"series_idx": 0, "point_idx": 2}
-    assert (ptable.active_elements, scatter.highlighted_ids) == (["Fe"], None)
+    assert (ptable.active_elements, scatter.highlighted_ids) == (["Li"], None)

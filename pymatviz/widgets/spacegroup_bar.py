@@ -9,6 +9,7 @@ from typing import Any
 import numpy as np
 import traitlets as tl
 
+from pymatviz.widgets._traits import optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -71,8 +72,8 @@ class SpacegroupBarPlotWidget(MatterVizWidget):
     orientation = tl.CaselessStrEnum(
         values=["vertical", "horizontal"], default_value="vertical"
     ).tag(sync=True)
-    x_axis = tl.Dict(allow_none=True).tag(sync=True)
-    y_axis = tl.Dict(allow_none=True).tag(sync=True)
+    x_axis = optional_trait(tl.Dict)
+    y_axis = optional_trait(tl.Dict)
 
     def __init__(self, data: Any = None, **kwargs: Any) -> None:
         """Initialize a space group bar plot widget.

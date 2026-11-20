@@ -126,7 +126,7 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
     step_labels = tl.Union(
         [tl.Int(), tl.List()], allow_none=True, default_value=None
     ).tag(sync=True)
-    property_labels = tl.Dict(allow_none=True).tag(sync=True)
+    property_labels = optional_trait(tl.Dict)
 
     def __init__(self, trajectory: Any = None, **kwargs: Any) -> None:
         """Initialize the TrajectoryWidget.
@@ -160,7 +160,6 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
 
         normalized = self._normalize_trajectory(proposal["value"])
         if normalized is not None and is_binary_envelope(normalized, "trajectory"):
-            self._require_binary_bundle("trajectory")
             stress = normalized.get("arrays", {}).get("frame_stress", {})
             if len(stress.get("shape", ())) == 2 and not _supports_frame_stress(
                 self._resolve_assets()[0]

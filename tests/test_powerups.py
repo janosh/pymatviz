@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -382,3 +383,20 @@ def test_annotate_metrics_r2_adj_two_points() -> None:
         make_widget(), [1.0, 2.0], [1.1, 1.9], metrics=["R2_adj"]
     )
     assert widget.annotation == "R²_adj = nan"
+
+
+@pytest.mark.parametrize(
+    ("name", "sklearn_name"),
+    [("R2", "r2_score"), ("MAPE", "mean_absolute_percentage_error")],
+)
+def test_builtin_metrics_match_sklearn(name: str, sklearn_name: str) -> None:
+    """Built-in R2/MAPE match sklearn bit for bit, constant targets warn-free."""
+    import sklearn.metrics
+
+    xs, ys = np.append(y_true, 0.0), np.append(y_pred, 0.1)
+    expected = getattr(sklearn.metrics, sklearn_name)(xs, ys)
+    assert powerups.BUILTIN_METRICS[name](xs, ys) == expected
+    with warnings.catch_warnings():  # constant targets: nan/inf, no RuntimeWarning
+        warnings.simplefilter("error")
+        powerups.BUILTIN_METRICS[name](np.ones(3), np.array([1.0, 2.0, 1.0]))
+        powerups.BUILTIN_METRICS[name](np.ones(3), np.ones(3))
