@@ -87,12 +87,22 @@ def test_rainclouds_options(
 
 
 def test_rainclouds_with_dataframe() -> None:
-    """(DataFrame, column) tuples, Series and lists are all accepted."""
+    """(DataFrame, column) tuples, Series, lists and number tuples are accepted."""
     df_in = pd.DataFrame({"value": [1.0, 2.0, 4.0], "other": [0, 0, 0]})
     widget = pmv.rainclouds(
-        {"df": (df_in, "value"), "series": df_in["value"] * 2, "list": [3, 5]}
+        {
+            "df": (df_in, "value"),
+            "series": df_in["value"] * 2,
+            "list": [3, 5],
+            "tuple": (6, 7),
+        }
     )
-    assert [srs["y"] for srs in widget.series] == [[1, 2, 4], [2, 4, 8], [3, 5]]
+    assert [srs["y"] for srs in widget.series] == [
+        [1, 2, 4],
+        [2, 4, 8],
+        [3, 5],
+        [6, 7],
+    ]
 
 
 @pytest.mark.parametrize(

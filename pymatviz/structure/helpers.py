@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import html
 import warnings
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
-from pymatgen.core import Composition
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 
@@ -14,37 +13,28 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
     import ipywidgets as ipw
-    from pymatgen.core import IStructure, Site, Species, Structure
-    from pymatgen.core.periodic_table import Element
+    from pymatgen.core import Composition, IStructure, Site, Species, Structure
+    from pymatgen.core.periodic_table import DummySpecies, Element
 
 
 NO_SYM_MSG = "Symmetry could not be determined, skipping standardization"
 MIN_ASE_CELL_VOLUME = 1e-6  # Å³
 
 
-def get_site_species(site: Site) -> Composition | Species | Element:
-    """Get species/composition from a site (handles ordered and disordered sites)."""
-    return cast(
-        "Composition | Species | Element", getattr(site, "specie", site.species)
-    )
+def get_site_species(site: Site) -> Composition | Species | Element | DummySpecies:
+    """Species of an ordered site, composition of a disordered one."""
+    return site.specie if site.is_ordered else site.species
 
 
 def get_site_elements(site: Site) -> set[str]:
-    """Get element symbols from a site (handles ordered and disordered sites)."""
-    species = get_site_species(site)
-    if isinstance(species, Composition):
-        return {getattr(sp, "symbol", str(sp)) for sp in species}
-    return {getattr(species, "symbol", str(species))}
+    """Element symbols on a site (several for disordered sites)."""
+    return {species.symbol for species in site.species}
 
 
 def get_site_symbol(site: Site) -> str:
-    """Get single element symbol for a site (picks highest occupancy for disordered)."""
-    species = get_site_species(site)
-
-    if isinstance(species, Composition):
-        el_amt_dict = species.get_el_amt_dict()
-        return max(el_amt_dict, key=el_amt_dict.__getitem__) if el_amt_dict else "X"
-    return species.symbol
+    """Element symbol of a site, the highest-occupancy one for disordered sites."""
+    el_amt_dict = site.species.get_el_amt_dict()
+    return max(el_amt_dict, key=el_amt_dict.__getitem__)
 
 
 def standardize_struct(struct: Structure | IStructure) -> Structure | IStructure:
@@ -87,15 +77,10 @@ def widget_grid(widgets: Mapping[Any, ipw.DOMWidget], n_cols: int) -> ipw.GridBo
 
 
 def add_vacuum_if_needed(struct: Any) -> Any:
-    """Add vacuum to ASE Atoms if they lack a proper cell."""
+    """Center ASE Atoms without a proper cell (e.g. molecules) in 10 Å of vacuum."""
     from pymatviz.process_data import is_ase_atoms
 
-    if is_ase_atoms(struct) and (
-        not hasattr(struct, "cell")
-        or struct.cell is None
-        or (hasattr(struct.cell, "volume") and struct.cell.volume < MIN_ASE_CELL_VOLUME)
-    ):
-        # No proper cell - add vacuum for molecular systems
+    if is_ase_atoms(struct) and struct.cell.volume < MIN_ASE_CELL_VOLUME:
         struct = struct.copy()
         struct.center(vacuum=10.0)
     return struct

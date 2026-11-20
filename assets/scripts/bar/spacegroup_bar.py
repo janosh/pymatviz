@@ -21,4 +21,4 @@ df_phonons[Key.spg_symbol] = df_sym["number"].map(pmv.utils.spg_num_to_from_symb
 
 # %% Spacegroup histograms from numbers and symbols
 pmv.spacegroup_bar(df_phonons[Key.spg_num]).show()
-pmv.spacegroup_bar(df_phonons[Key.spg_symbol], log=True).show()
+pmv.spacegroup_bar(df_phonons[Key.spg_symbol], log_y=True).show()

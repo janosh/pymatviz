@@ -148,6 +148,9 @@ def test_custom_styling() -> None:
     assert widget.series[0]["color"] == "red"
     assert widget.series[0]["line_style"] == {"width": 2, "dash": ""}
     assert widget.series[1]["line_style"] == {"dash": "4 4"}
+    # a partial axis option merges over the default axis label instead of replacing it
+    widget = roc_curve(targets, probs, x_axis={"scale_type": "log"})
+    assert widget.x_axis == {"label": "False Positive Rate", "scale_type": "log"}
 
 
 @pytest.mark.parametrize("targets", [[0, 1, 0, 1], [0, 0, 0, 1], [0, 1, 1, 1]])

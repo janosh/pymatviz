@@ -11,6 +11,7 @@ from scipy.stats import norm
 
 from pymatviz.powerups import add_identity_line
 from pymatviz.process_data import df_to_arrays
+from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 
 
@@ -75,7 +76,7 @@ def qq_gaussian(
     *,
     df: pd.DataFrame | None = None,
     identity_line: bool | dict[str, Any] = True,
-    **widget_options: Any,
+    **kwargs: Any,
 ) -> ScatterPlotWidget:
     """Q-Q Gaussian plot for uncertainty calibration assessment.
 
@@ -91,7 +92,7 @@ def qq_gaussian(
         df: DataFrame containing data columns.
         identity_line: Show the perfect calibration line y = x. A dict is passed
             to add_identity_line(), e.g. {"style": {"color": "blue"}}.
-        **widget_options: Passed to ScatterPlotWidget.
+        **kwargs: Passed to ScatterPlotWidget, e.g. x_axis, y_axis, styles.
 
     Returns:
         ScatterPlotWidget: Q-Q calibration plot.
@@ -135,14 +136,16 @@ def qq_gaussian(
 
     widget = ScatterPlotWidget(
         series=series,
-        **{
-            "fill_regions": fill_regions,
-            "x_axis": {"label": "Theoretical Quantile"},
-            "y_axis": {"label": "Observed Quantile"},
-            "x_range": [0, 1],
-            "y_range": [0, 1],
-        }
-        | widget_options,
+        **with_defaults(
+            {
+                "fill_regions": fill_regions,
+                "x_axis": {"label": "Theoretical Quantile"},
+                "y_axis": {"label": "Observed Quantile"},
+                "x_range": [0, 1],
+                "y_range": [0, 1],
+            },
+            kwargs,
+        ),
     )
     if identity_line:
         line_kwargs = identity_line if isinstance(identity_line, dict) else {}
@@ -159,7 +162,7 @@ def error_decay_with_uncert(
     df: pd.DataFrame | None = None,
     n_rand: int = 100,
     percentiles: bool = True,
-    **widget_options: Any,
+    **kwargs: Any,
 ) -> ScatterPlotWidget:
     """Error decay plot as the most uncertain samples are excluded.
 
@@ -174,7 +177,7 @@ def error_decay_with_uncert(
         df: DataFrame containing data columns.
         n_rand: Number of random shuffles for the random baseline band (mean ± std).
         percentiles: Show excluded samples as a percentage rather than a count.
-        **widget_options: Passed to ScatterPlotWidget.
+        **kwargs: Passed to ScatterPlotWidget, e.g. x_axis, y_axis, styles.
 
     Returns:
         ScatterPlotWidget: Error decay plot.
@@ -229,13 +232,17 @@ def error_decay_with_uncert(
     }
     return ScatterPlotWidget(
         series=series,
-        **{
-            "error_bands": [error_band],
-            "x_axis": {
-                "label": "Excluded samples (%)" if percentiles else "Excluded samples"
+        **with_defaults(
+            {
+                "error_bands": [error_band],
+                "x_axis": {
+                    "label": "Excluded samples (%)"
+                    if percentiles
+                    else "Excluded samples"
+                },
+                "y_axis": {"label": "MAE"},
+                "y_range": [0, None],
             },
-            "y_axis": {"label": "MAE"},
-            "y_range": [0, None],
-        }
-        | widget_options,
+            kwargs,
+        ),
     )

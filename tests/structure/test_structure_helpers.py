@@ -4,6 +4,7 @@ import ipywidgets as ipw
 import pytest
 from pymatgen.core import (
     Composition,
+    DummySpecies,
     Element,
     Lattice,
     PeriodicSite,
@@ -34,6 +35,13 @@ from pymatviz.structure.helpers import (
             Composition,
             {"Fe", "Co", "Ni"},
             "Ni",
+        ),
+        (DummySpecies("X"), DummySpecies, {"X"}, "X"),
+        (
+            Composition({"Li": 0.75, DummySpecies("X"): 0.25}),
+            Composition,
+            {"Li", "X"},
+            "Li",
         ),
     ],
 )

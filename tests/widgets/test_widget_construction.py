@@ -814,6 +814,7 @@ def test_xrd_widget_labeled_patterns() -> None:
         ([{"x": [1], "y": [2], "label": "no-z"}], ValueError, "missing required key"),
         (["not-a-dict"], TypeError, "must be a dict"),
         ([{1: [0], "y": [1], "z": [2]}], TypeError, "non-string keys"),
+        ([{"x": [1, 2], "y": [2], "z": [3]}], ValueError, "mismatched x/y/z lengths"),
     ],
 )
 def test_scatter_plot_3d_rejects_invalid_series(

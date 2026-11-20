@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Literal, get_args
+from typing import TYPE_CHECKING, Literal
 
 import pandas as pd
 
@@ -16,7 +16,6 @@ if TYPE_CHECKING:
     from pymatgen.io.ase import MSONAtoms
     from pymatgen.phonon.dos import PhononDos
 
-type Xyz = tuple[float, float, float]
 # Quoted unions: PEP 695 treats a bare `"Name"` as Literal, not a forward ref
 type AnyStructure = (
     "Structure | IStructure | Molecule | IMolecule | MSONAtoms | AseAtoms"
@@ -42,9 +41,6 @@ type ElemValues = (
     | Sequence["str | Composition"]
 )
 
-SetMode = Literal["union", "intersection", "strict"]
-SET_MODE = SET_UNION, SET_INTERSECTION, SET_STRICT = get_args(SetMode)
-
 type Rgb256ColorType = tuple[int, int, int]  # 8-bit RGB
 type RgbColorType = tuple[float, float, float] | str  # normalized to [0, 1]
 type RgbAColorType = (  # normalized to [0, 1] with alpha
@@ -55,6 +51,3 @@ type RgbAColorType = (  # normalized to [0, 1] with alpha
 )
 type ColorType = RgbColorType | RgbAColorType
 FormulaGroupBy = Literal["formula", "reduced_formula", "chem_sys"]
-Corner = Literal["top-left", "top-right", "bottom-left", "bottom-right"]
-VALID_CORNERS = TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT = get_args(Corner)
-ShowCounts = Literal["value", "percent", "value+percent", False]

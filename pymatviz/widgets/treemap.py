@@ -11,8 +11,8 @@ from pymatviz.widgets.matterviz import MatterVizWidget
 class TreemapWidget(HierarchyPlotTraits, MatterVizWidget):
     """MatterViz widget for zoomable treemap charts of hierarchical data.
 
-    Data is a nested node dict (or list of root nodes) with plotly-like
-    semantics: ``{"label": ..., "value": ..., "children": [...]}`` plus
+    Data is a nested node dict (or list of root nodes) like
+    ``{"label": ..., "value": ..., "children": [...]}`` with
     optional ``id``, ``color``, ``pattern``, and ``metadata`` keys. Clicking a
     cell zooms into it (breadcrumb pathbar zooms back out); ``zoom_root_id``
     syncs both ways: zooming in the UI notifies Python and setting it from

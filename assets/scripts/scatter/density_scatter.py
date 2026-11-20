@@ -53,7 +53,7 @@ widget = pmv.density_scatter(
     conductivity,
     xlabel="Bond Length (Å)",
     ylabel="Conductivity (S/cm)",
-    log_density=True,
+    log=True,
     identity_line=False,
     best_fit_line=False,
     stats=False,

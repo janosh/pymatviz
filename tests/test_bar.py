@@ -50,13 +50,13 @@ def test_spacegroup_bar(
         ({"y_axis": {"label": "N"}}, "y_axis", "x_axis"),
     ],
 )
-@pytest.mark.parametrize("log", [True, False])
-def test_spacegroup_bar_log(
-    kwargs: dict[str, Any], log_axis: str, cat_axis: str, log: bool
+@pytest.mark.parametrize("log_y", [True, False])
+def test_spacegroup_bar_log_y(
+    kwargs: dict[str, Any], log_axis: str, cat_axis: str, log_y: bool
 ) -> None:
-    """log=True log-scales only the count axis, keeping user axis options."""
-    widget = spacegroup_bar([1, 225, 225], log=log, **kwargs)
-    expected = ({"scale_type": "log"} if log else {}) | kwargs.get(log_axis, {})
+    """log_y=True log-scales only the count axis, keeping user axis options."""
+    widget = spacegroup_bar([1, 225, 225], log_y=log_y, **kwargs)
+    expected = ({"scale_type": "log"} if log_y else {}) | kwargs.get(log_axis, {})
     assert getattr(widget, log_axis) == expected
     assert getattr(widget, cat_axis) == {}
 

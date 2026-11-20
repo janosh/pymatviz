@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pymatviz.process_data import normalize_spacegroups
+from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.bar_plot import bar_axis_defaults
 from pymatviz.widgets.spacegroup_bar import SpacegroupBarPlotWidget
 
@@ -21,7 +22,7 @@ def spacegroup_bar(
     data: Sequence[int | float | str | Structure] | pd.Series,
     *,
     show_counts: bool = True,
-    log: bool = False,
+    log_y: bool = False,
     **kwargs: Any,
 ) -> SpacegroupBarPlotWidget:
     """Bar chart of space group frequencies shaded by crystal system.
@@ -35,9 +36,9 @@ def spacegroup_bar(
             integral numbers (1-230), or pymatgen structures/ASE Atoms.
         show_counts (bool, optional): Whether to annotate each crystal system region
             with its total count. Defaults to True.
-        log (bool, optional): Whether to log scale the count axis. Defaults to False.
+        log_y (bool): Whether to log scale the count axis. Defaults to False.
         **kwargs: SpacegroupBarPlotWidget traits, e.g. ``orientation``,
-            ``show_legend``, ``x_axis``, ``y_axis`` (merged over the log default).
+            ``show_legend``, ``x_axis``, ``y_axis`` (merged over the log_y default).
 
     Returns:
         SpacegroupBarPlotWidget: The space group bar plot.
@@ -47,6 +48,8 @@ def spacegroup_bar(
     """
     spg_nums = normalize_spacegroups(data).tolist()
 
-    log_axis = {"scale_type": "log"} if log else {}
-    kwargs |= bar_axis_defaults(kwargs, category={}, value=log_axis)
-    return SpacegroupBarPlotWidget(spg_nums, show_counts=show_counts, **kwargs)
+    log_axis = {"scale_type": "log"} if log_y else {}
+    axes = bar_axis_defaults(kwargs, category={}, value=log_axis)
+    return SpacegroupBarPlotWidget(
+        spg_nums, show_counts=show_counts, **with_defaults(axes, kwargs)
+    )

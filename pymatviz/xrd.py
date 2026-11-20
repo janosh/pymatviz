@@ -77,24 +77,25 @@ def xrd_pattern(
     Returns:
         XrdWidget: The MatterViz XRD plot.
     """
-    if isinstance(patterns, DiffractionPattern | IStructure) or is_ase_atoms(patterns):
-        pattern = _to_diffraction_pattern("XRD Pattern", patterns, wavelength)
-        if not np.any(pattern.y > 0):
-            raise ValueError("At least one diffraction intensity must be positive")
-        return XrdWidget(patterns=pattern, **kwargs)
-    if not isinstance(patterns, Mapping):
+    is_single = isinstance(patterns, DiffractionPattern | IStructure) or is_ase_atoms(
+        patterns
+    )
+    labeled = {"XRD Pattern": patterns} if is_single else patterns
+    if not isinstance(labeled, Mapping):
         raise TypeError(
             "patterns must be a DiffractionPattern, Structure, ASE Atoms, or mapping "
             f"of labels to patterns/structures, got {type(patterns).__name__}"
         )
-    if not patterns:
+    if not labeled:
         raise ValueError("patterns must not be empty")
     computed = {
         str(label): _to_diffraction_pattern(str(label), value, wavelength)
-        for label, value in patterns.items()
+        for label, value in labeled.items()
     }
-    if len(computed) != len(patterns):
-        raise ValueError(f"Labels must be unique as strings, got {list(patterns)}")
+    if len(computed) != len(labeled):
+        raise ValueError(f"Labels must be unique as strings, got {list(labeled)}")
     if not any(np.any(pattern.y > 0) for pattern in computed.values()):
         raise ValueError("At least one diffraction intensity must be positive")
-    return XrdWidget(patterns=computed, **kwargs)
+    return XrdWidget(
+        patterns=computed.popitem()[1] if is_single else computed, **kwargs
+    )

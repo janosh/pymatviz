@@ -9,6 +9,7 @@ import sklearn.metrics as skm
 from numpy.typing import ArrayLike
 
 from pymatviz.process_data import df_to_arrays
+from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 
 
@@ -134,7 +135,7 @@ def roc_curve(
     df: pd.DataFrame | None = None,
     *,
     no_skill: dict[str, Any] | Literal[False] | None = None,
-    **widget_options: Any,
+    **kwargs: Any,
 ) -> ScatterPlotWidget:
     """Plot receiver operating characteristic (ROC) curves, one per classifier,
     sorted by AUC (descending).
@@ -150,7 +151,7 @@ def roc_curve(
             probs_positive columns
         no_skill (dict[str, Any] | False): matterviz RefLine overrides (e.g. style,
             annotation) for the no-skill diagonal, or False to hide it.
-        **widget_options: Passed to ScatterPlotWidget.
+        **kwargs: Passed to ScatterPlotWidget, e.g. x_axis, y_axis, styles.
 
     Returns:
         ScatterPlotWidget: ROC curves with point metadata holding the thresholds.
@@ -190,14 +191,16 @@ def roc_curve(
         )
     return ScatterPlotWidget(
         series=series,
-        **{
-            "ref_lines": ref_lines,
-            "x_axis": {"label": "False Positive Rate"},
-            "y_axis": {"label": "True Positive Rate"},
-            "x_range": [0, 1.05],
-            "y_range": [0, 1.05],
-        }
-        | widget_options,
+        **with_defaults(
+            {
+                "ref_lines": ref_lines,
+                "x_axis": {"label": "False Positive Rate"},
+                "y_axis": {"label": "True Positive Rate"},
+                "x_range": [0, 1.05],
+                "y_range": [0, 1.05],
+            },
+            kwargs,
+        ),
     )
 
 
@@ -207,7 +210,7 @@ def precision_recall_curve(
     df: pd.DataFrame | None = None,
     *,
     no_skill: dict[str, Any] | Literal[False] | None = None,
-    **widget_options: Any,
+    **kwargs: Any,
 ) -> ScatterPlotWidget:
     """Plot precision-recall curves, one per classifier, sorted by F1 score
     (descending, at a 0.5 threshold).
@@ -224,7 +227,7 @@ def precision_recall_curve(
         no_skill (dict[str, Any] | False): matterviz RefLine overrides (e.g. style,
             annotation) for the no-skill baselines (one horizontal line per distinct
             positive-class prevalence), or False to hide them.
-        **widget_options: Passed to ScatterPlotWidget.
+        **kwargs: Passed to ScatterPlotWidget, e.g. x_axis, y_axis, styles.
 
     Returns:
         ScatterPlotWidget: PR curves with point metadata holding thresholds and F1.
@@ -270,10 +273,12 @@ def precision_recall_curve(
             )
     return ScatterPlotWidget(
         series=series,
-        **{
-            "ref_lines": ref_lines,
-            "x_axis": {"label": "Recall"},
-            "y_axis": {"label": "Precision"},
-        }
-        | widget_options,
+        **with_defaults(
+            {
+                "ref_lines": ref_lines,
+                "x_axis": {"label": "Recall"},
+                "y_axis": {"label": "Precision"},
+            },
+            kwargs,
+        ),
     )

@@ -22,20 +22,18 @@ if TYPE_CHECKING:
 X_COL, Y_COL, *_ = df_regr
 
 
-@pytest.mark.parametrize("log_density", [True, False, None])
+@pytest.mark.parametrize("log", [True, False, None])
 @pytest.mark.parametrize("n_bins", [None, False, 50])
 @pytest.mark.parametrize("density", ["kde", "empirical", None])
 def test_density_scatter(
     df_or_arrays: DfOrArrays,
-    log_density: bool | None,
+    log: bool | None,
     n_bins: int | Literal[False] | None,
     density: Literal["kde", "empirical"] | None,
 ) -> None:
     """Density scatter colors points by density and adds parity powerups."""
     df, x, y = df_or_arrays
-    widget = pmv.density_scatter(
-        x, y, df=df, log_density=log_density, n_bins=n_bins, density=density
-    )
+    widget = pmv.density_scatter(x, y, df=df, log=log, n_bins=n_bins, density=density)
     assert isinstance(widget, ScatterPlotWidget)
     assert widget.x_axis == {"label": x if isinstance(x, str) else "Actual"}
     assert widget.y_axis == {"label": y if isinstance(y, str) else "Predicted"}
@@ -47,7 +45,7 @@ def test_density_scatter(
         np.testing.assert_array_equal(np.sort(srs["x"]), np.sort(df_regr[X_COL]))
     if density == "empirical" and not n_bins:
         assert set(colors) == {1}
-    assert widget.color_scale["type"] == ("log" if log_density else "linear")
+    assert widget.color_scale["type"] == ("log" if log else "linear")
     assert widget.color_bar == {"title": "Point density"}
     assert [line["type"] for line in widget.ref_lines] == ["diagonal", "segment"]
     assert widget.annotation.startswith("MAE = ")
@@ -104,18 +102,24 @@ def test_binned_density_plots(
 
 
 @pytest.mark.parametrize(
-    ("kwargs", "match"),
+    ("plot_func", "kwargs", "match"),
     [
-        ({"x": [], "y": []}, "at least one finite"),
-        ({"x": [np.nan, 1], "y": [1, np.nan]}, "at least one finite"),
-        ({"x": [np.nan], "y": [1]}, "at least one finite"),
-        ({"x": [1, 2], "y": [1]}, "equal length"),
-        ({"x": [1, 2], "y": [1, 2], "bins": 0}, "bins=0 must be a positive int"),
+        (pmv.density_hexbin, {"x": [], "y": []}, "at least one finite"),
+        (pmv.density_hexbin, {"x": [np.nan, 1], "y": [1, np.nan]}, "at least one"),
+        (pmv.density_hexbin, {"x": [np.nan], "y": [1]}, "at least one finite"),
+        (pmv.density_scatter, {"x": [np.nan], "y": [1]}, "at least one finite"),
+        (pmv.density_scatter, {"x": [1, 2], "y": [1]}, "equal length"),
+        (
+            pmv.density_hexbin_with_hist,
+            {"x": [1, 2], "y": [1, 2], "bins": 0},
+            "bins=0 must be a positive int",
+        ),
     ],
 )
-def test_density_hexbin_invalid_inputs(kwargs: dict[str, Any], match: str) -> None:
+def test_density_plots_invalid_inputs(
+    plot_func: Callable[..., Any], kwargs: dict[str, Any], match: str
+) -> None:
     """Empty, non-finite or mismatched inputs and bad marginal bins raise."""
-    plot_func = pmv.density_hexbin_with_hist if "bins" in kwargs else pmv.density_hexbin
     with pytest.raises(ValueError, match=match):
         plot_func(**kwargs)
 
@@ -143,13 +147,6 @@ def test_density_scatter_collinear_kde(
     assert sum(widget.series[0]["color_values"]) == 3  # counts of all 3 points
 
 
-@pytest.mark.parametrize("plot_func", [pmv.density_scatter, pmv.density_hexbin])
-def test_density_plots_empty_input(plot_func: Callable[..., Any]) -> None:
-    """Empty or all-NaN input raises a clear error."""
-    with pytest.raises(ValueError, match="at least one finite"):
-        plot_func([np.nan], [1.0])
-
-
 def test_density_scatter_single_point() -> None:
     """A single point falls back to empirical density and skips the auto fit."""
     single_point_df = pd.DataFrame({X_COL: [1.0], Y_COL: [1.0]})
@@ -162,17 +159,15 @@ def test_density_scatter_single_point() -> None:
 @pytest.mark.parametrize(
     ("density_vals", "expected_log"), [([1, 1, 1], False), ([1, 1000], True)]
 )
-def test_density_scatter_auto_log_density(
-    density_vals: list[int], expected_log: bool
-) -> None:
-    """log_density=None turns on log colors when densities span > 2 decades."""
+def test_density_scatter_auto_log(density_vals: list[int], expected_log: bool) -> None:
+    """log=None turns on log colors when densities span > 2 decades."""
     xs = np.repeat(np.arange(len(density_vals), dtype=float), density_vals)
     widget = pmv.density_scatter(xs, xs, n_bins=len(density_vals), stats=False)
     assert widget.color_scale["type"] == ("log" if expected_log else "linear")
 
 
-def test_density_scatter_widget_options() -> None:
-    """Widget options override the defaults."""
+def test_density_scatter_kwargs() -> None:
+    """Extra kwargs go to the widget, overriding defaults."""
     widget = pmv.density_scatter(
         [1, 2, 3],
         [1, 2, 4],

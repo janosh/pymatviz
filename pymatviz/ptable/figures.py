@@ -33,9 +33,6 @@ type LineData = (
 type ElemData = LineData | Mapping[str, LineData]
 type TileLabels = Mapping[str, str] | Callable[[Any], str | None]
 
-# plotly scatter modes -> matterviz tile_plot_config.mode
-_SCATTER_MODES = dict(markers="markers", lines="line")
-_SCATTER_MODES["lines+markers"] = "line+markers"
 # qualitative palette (d3 schemeSet2) for named series of ptable_scatter
 _SERIES_COLORS = (
     "#66c2a5",
@@ -252,8 +249,7 @@ def ptable_hists(
         x_range (tuple[float | None, float | None]): Range binned for all tiles,
             values outside it are dropped. A None end fits the data (keep the
             other end on its side of the data, else matterviz finds lo >= hi
-            and throws). Defaults to
-            None (min to max of all values).
+            and throws). Defaults to None (min to max of all values).
         log_y (bool): Bar heights on a log(1 + count) scale. Defaults to False.
         color_scale (str | dict | None): matterviz ColorScale coloring bars by bin
             position, shown in a color bar. None draws bars in the text color
@@ -300,7 +296,7 @@ def ptable_hists(
 def ptable_scatter(
     data: Mapping[str, ElemData],
     *,
-    mode: Literal["markers", "lines", "lines+markers"] = "markers",
+    mode: Literal["markers", "line", "line+markers"] = "markers",
     x_range: tuple[float | None, float | None] | None = None,
     y_range: tuple[float | None, float | None] | None = None,
     color_scale: ColorScale = "interpolateViridis",
@@ -322,8 +318,8 @@ def ptable_scatter(
                name gets its own color (unless it has color_values), shared
                across elements. matterviz shows no legend for the names.
             Points with NaN/±inf coordinates are dropped and break lines.
-        mode ("markers" | "lines" | "lines+markers"): How to draw points. Defaults
-            to "markers".
+        mode ("markers" | "line" | "line+markers"): Draw points as markers, lines
+            through them or both. Defaults to "markers".
         x_range (tuple[float | None, float | None]): x range shared by all tiles,
             a None end fits the data (as in ptable_hists). Points outside are
             dropped. Defaults to None.
@@ -341,15 +337,11 @@ def ptable_scatter(
         PeriodicTableWidget: Interactive periodic table of scatter/line plots.
 
     Raises:
-        ValueError: For an unknown mode, keys that aren't element symbols, series
-            that aren't 2- or 3-tuples of numeric 1D arrays or arrays of differing
-            lengths.
-        TraitError: For ranges with lo >= hi, an invalid color_scale, or numeric
-            heatmap_values beside color_values.
+        ValueError: For keys that aren't element symbols, series that aren't 2- or
+            3-tuples of numeric 1D arrays or arrays of differing lengths.
+        TraitError: For an unknown mode, ranges with lo >= hi, an invalid
+            color_scale, or numeric heatmap_values beside color_values.
     """
-    if mode not in _SCATTER_MODES:
-        raise ValueError(f"{mode=} must be one of {list(_SCATTER_MODES)}")
-
     series_names = sorted(
         {name for elem in data.values() if isinstance(elem, Mapping) for name in elem}
     )
@@ -382,7 +374,7 @@ def ptable_scatter(
         else to_series(elem, f"ptable_scatter: {symbol}", None)
         for symbol, elem in data.items()
     }
-    config: dict[str, Any] = {"mode": _SCATTER_MODES[mode]}
+    config: dict[str, Any] = {"mode": mode}
     # matterviz rejects a tile color scale beside numeric heatmap_values, so only set
     # it when some series has color_values to map
     if any(

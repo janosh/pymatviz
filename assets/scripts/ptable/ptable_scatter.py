@@ -42,7 +42,7 @@ widget.show()
 
 # %% Lines on a shared y range
 widget = pmv.ptable_scatter(
-    rand_sine_data, mode="lines", y_range=(-1.5, 1.5), color="crimson"
+    rand_sine_data, mode="line", y_range=(-1.5, 1.5), color="crimson"
 )
 widget.show()
 
@@ -53,6 +53,6 @@ widget = pmv.ptable_scatter(
         sym: {"sin": (xs, ys), "cos": (xs, np.cos(xs))}
         for sym, (xs, ys) in list(rand_sine_data.items())[:54]
     },
-    mode="lines+markers",
+    mode="line+markers",
 )
 widget.show()

@@ -283,8 +283,6 @@ class PeriodicTableWidget(MatterVizWidget):
                 "tile_plot_config.color_scale, not both"
             )
 
-    _DEFAULT_STYLE = "width: 100%; max-width: 900px; aspect-ratio: 18/10;"
-
     def __init__(
         self,
         heatmap_values: dict[str, Any] | list[Any] | None = None,
@@ -296,9 +294,12 @@ class PeriodicTableWidget(MatterVizWidget):
             heatmap_values: Element-keyed dict or list of values to color-map
                 onto the periodic table. A value can be a list of 2-4 numbers to
                 split the tile into segments.
-            **kwargs: Additional widget properties.
+            **kwargs: Widget traits, e.g. ``color_scale``, ``color_bar``, ``labels``,
+                ``missing``, ``tile_plots``, ``tile_plot_config``, ``tile_props``.
         """
-        kwargs.setdefault("style", self._DEFAULT_STYLE)
+        kwargs.setdefault(
+            "style", "width: 100%; max-width: 900px; aspect-ratio: 18/10;"
+        )
         normalize_json_kwargs(kwargs, ("color_scale", "color_bar"), "PeriodicTable")
         super().__init__(
             widget_type="periodic_table",

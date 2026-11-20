@@ -156,7 +156,7 @@ class HierarchyPlotTraits(PlotControlsTraits):
     other_label = optional_trait(tl.Unicode)  # label for the aggregated "Other" cell
     max_depth = optional_trait(tl.Int)  # levels shown below the zoom root (0 = all)
     show_labels = optional_trait(tl.Bool)
-    # label content (plotly textinfo equivalent)
+    # what each segment's label shows
     label_text = optional_trait(
         tl.CaselessStrEnum,
         values=[

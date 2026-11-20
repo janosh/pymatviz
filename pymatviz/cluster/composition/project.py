@@ -60,19 +60,12 @@ def project_vectors(
 
     n_samples = data.shape[0]
     if n_samples < n_components:
-        raise ValueError("Not enough samples")
+        raise ValueError(f"Need at least {n_components=} samples, got {n_samples}")
 
-    def standardize(arr: np.ndarray) -> np.ndarray:
-        """Standardize columns to zero mean and unit variance, guarding std=0."""
-        mean = np.nanmean(arr, axis=0)
-        std = np.nanstd(arr, axis=0)
-        # Replace 0s with 1s before division to avoid division by zero
-        std = np.where(std == 0, 1, std)
-        return (arr - mean) / std
-
-    if scale_data:
-        # Handle missing values in standardization, replace remaining NaNs with 0
-        data = np.nan_to_num(standardize(data), nan=0.0)
+    if scale_data:  # standardize columns (std=0 kept as is), NaNs become 0
+        std = np.nanstd(data, axis=0)
+        data = (data - np.nanmean(data, axis=0)) / np.where(std == 0, 1, std)
+        data = np.nan_to_num(data, nan=0.0)
 
     if method == "pca":
         # Exact SVD by default: svd_solver="auto" silently switches to randomized SVD
@@ -97,17 +90,17 @@ def project_vectors(
         reducer = TSNE(**tsne_kwargs)
 
     elif method == "umap":
+        if n_samples < n_components + 2:
+            raise ValueError(
+                f"UMAP needs at least n_components + 2 = {n_components + 2} samples, "
+                f"got {n_samples}"
+            )
         try:
             from umap import UMAP
         except ImportError:
             raise ImportError(
                 "UMAP requires the 'umap-learn' package: pip install umap-learn"
             ) from None
-        if n_samples < n_components + 2:
-            raise ValueError(
-                f"UMAP needs at least n_components + 2 = {n_components + 2} samples, "
-                f"got {n_samples}"
-            )
         reducer = UMAP(
             n_components=n_components,
             random_state=random_state,

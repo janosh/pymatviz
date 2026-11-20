@@ -98,8 +98,8 @@ class ProjectionMethod(LabelEnum):
 
 
 ShowChemSys = Literal["color", "shape", "color+shape"]
-# matterviz ScaleType: a name or {"type": "arcsinh", "threshold": float}
-ColorScale = Literal["linear", "log", "arcsinh"] | dict[str, Any]
+# matterviz ColorScale: a d3 interpolator name or a {scheme, type, ...} dict
+type ColorScale = str | dict[str, Any]
 
 
 def _composition_strings(
@@ -129,7 +129,6 @@ def cluster_compositions(
     | EmbeddingCallable = EmbeddingMethod.magpie,
     projection: ProjectionMethod | ProjectionCallable | str,
     n_components: int = 2,
-    color_scheme: str = "interpolateViridis",
     marker_size: float = 8,
     show_chem_sys: ShowChemSys | None = None,
     color_discrete_map: Mapping[str, ColorType] | None = None,
@@ -137,9 +136,10 @@ def cluster_compositions(
     projection_kwargs: dict[str, Any] | None = None,
     sort: bool | int | Callable[[np.ndarray], np.ndarray] = True,
     show_projection_stats: bool = True,
-    color_scale: ColorScale = "linear",
+    log: bool = False,
+    color_scale: ColorScale = "interpolateViridis",
     annotate_points: Callable[[pd.Series], str | dict[str, Any] | None] | None = None,
-    **widget_options: Any,
+    **kwargs: Any,
 ) -> ClusterScatterPlot | ClusterScatterPlot3D:
     """Plot chemical composition clusters with optional property coloring.
 
@@ -186,8 +186,6 @@ def cluster_compositions(
               If using this option, the column must contain numpy arrays or lists of
               length equal to n_components.
         n_components (int): Projection dimensions (2 or 3) (default: 2)
-        color_scheme (str): d3 interpolator for continuous property colors
-            (default: "interpolateViridis")
         marker_size (float): Marker diameter in px (default: 8)
         show_chem_sys (ShowChemSys | None): How to visualize chemical systems
             (one legend series per system):
@@ -218,17 +216,19 @@ def cluster_compositions(
             the axis titles. In 2D, t-SNE (perplexity, learning rate), UMAP
             (n_neighbors, min_dist), Isomap (n_neighbors, metric) and Kernel PCA
             (kernel, gamma) parameters are shown in an annotation badge.
-        color_scale (str | dict): matterviz scale type for property colors
-            (default: "linear"): "linear", "log" (non-positive values are left
-            uncolored), "arcsinh" (handles large positive and negative values,
-            linear for |x| < 1) or {"type": "arcsinh", "threshold": float} to set
-            where the arcsinh scale turns from linear to logarithmic.
+        log (bool): Log-scale property colors, leaving non-positive values
+            uncolored (default: False).
+        color_scale (str | dict): matterviz ColorScale for numeric property colors:
+            a d3 interpolator name or a dict with keys scheme and type ("linear",
+            "log", "arcsinh" for large positive and negative values, linear for
+            |x| < 1, or {"type": "arcsinh", "threshold": float} to set where it turns
+            logarithmic) (default: "interpolateViridis").
         annotate_points (Callable[[pd.Series], str | dict[str, Any] | None] | None):
             2D only. Function returning a text label for each point (or a matterviz
             LabelStyle dict like {"text": ..., "font_size": "10px"}, or None for no
             label). Takes a pandas Series of a df_in row plus the projected
             coordinates (e.g., 'pca1', 'pca2').
-        **widget_options: Passed to ScatterPlotWidget or ScatterPlot3DWidget
+        **kwargs: Passed to ScatterPlotWidget or ScatterPlot3DWidget
             (depending on n_components)
 
     Returns:
@@ -269,11 +269,16 @@ def cluster_compositions(
             "function or column name."
         )
 
-    scale_type = color_scale["type"] if isinstance(color_scale, dict) else color_scale
-    if scale_type not in ("linear", "log", "arcsinh"):
+    scale = {"scheme": color_scale} if isinstance(color_scale, str) else color_scale
+    scale = {"scheme": "interpolateViridis", "type": "log" if log else "linear"} | scale
+    scale_type = (
+        scale["type"]["type"] if isinstance(scale["type"], dict) else scale["type"]
+    )
+    if scale_type not in ("linear", "log", "arcsinh") or (log and scale_type != "log"):
         raise ValueError(
-            f"{color_scale=} must be 'linear', 'log', 'arcsinh' or an arcsinh config "
-            "dict like {'type': 'arcsinh', 'threshold': 1}"
+            f"color scale type {scale['type']!r} must be 'linear', 'log' (or omitted "
+            f"with {log=}), 'arcsinh' or a dict like {{'type': 'arcsinh', "
+            "'threshold': 1}"
         )
 
     # Check if projection is a column name in the DataFrame
@@ -312,37 +317,25 @@ def cluster_compositions(
     ):
         properties = properties.astype(float)
 
-    # Check if pre-computed coordinates are provided in a DataFrame column
+    projector: Projector = None
+    embeddings: np.ndarray | None = None
     if using_precomputed_coords:
-        # Use pre-computed coordinates from the specified column
         projected = np.array([np.array(coords) for coords in df_in[projection]])
-        projector = None
-        embeddings = None  # We don't need to calculate embeddings
-
-        # For hover text, we still need composition strings
         comp_strs = _composition_strings(compositions, strict=False)
-    else:  # No pre-computed coordinates, follow normal embedding and projection flow
-        # Handle embeddings based on the type of data in the composition column
-        first_val = compositions.iloc[0]
-
-        if isinstance(first_val, (list, np.ndarray)):
-            # Direct pre-computed embeddings in composition_col
-            comp_strs = df_in.index.tolist()  # Use DataFrame index for compositions
+    else:
+        if isinstance(compositions.iloc[0], (list, np.ndarray)):
+            # composition_col holds pre-computed embeddings, label points by index
+            comp_strs = df_in.index.tolist()
             embeddings = np.array([np.array(val) for val in compositions])
-        elif isinstance(embedding_method, str) and embedding_method in df_in:
-            # Using a specified column for embeddings
-            comp_strs = _composition_strings(compositions)
-
-            embeddings = np.array([np.array(val) for val in df_in[embedding_method]])
         else:
-            # Convert compositions to strings for consistent handling
             comp_strs = _composition_strings(compositions)
-
-            if callable(embedding_method):
-                # Use custom embedding function
+            if isinstance(embedding_method, str) and embedding_method in df_in:
+                embeddings = np.array(
+                    [np.array(val) for val in df_in[embedding_method]]
+                )
+            elif callable(embedding_method):
                 embedding_fn = cast("EmbeddingCallable", embedding_method)
                 embeddings = embedding_fn(compositions, **embedding_kwargs)
-            # Use built-in embedding methods
             elif embedding_method == "one-hot":
                 embeddings = one_hot_encode(compositions, **embedding_kwargs)
             else:
@@ -360,18 +353,12 @@ def cluster_compositions(
                     **embedding_kwargs,
                 )
 
-        # Project embeddings
         if callable(projection):
-            # Use custom projection function
             projection_fn = cast("ProjectionCallable", projection)
             projected = projection_fn(
-                embeddings,
-                n_components=n_components,
-                **projection_kwargs,
+                embeddings, n_components=n_components, **projection_kwargs
             )
-            projector = None
         else:
-            # Use built-in projection methods
             try:
                 projection_method = ProjectionMethod(projection)
             except (TypeError, ValueError) as exc:
@@ -454,7 +441,7 @@ def cluster_compositions(
                 (numeric_props > 0) & np.isfinite(numeric_props)
             ):
                 raise ValueError(
-                    "color_scale='log' needs at least one positive finite value in "
+                    "Log color scale needs at least one positive finite value in "
                     f"{prop_name=}, got {numeric_props.tolist()}"
                 )
         else:
@@ -565,17 +552,17 @@ def cluster_compositions(
     }
     options: dict[str, Any] = axes | {"show_legend": len(series) > 1}
     if numeric_props is not None:
-        options["color_scale"] = {"scheme": color_scheme, "type": color_scale}
+        options["color_scale"] = scale
     if n_components == 2:
         if numeric_props is not None:
             options["color_bar"] = {"title": prop_name}
         if stats_lines:
             options["annotation"] = "\n".join(stats_lines)
         widget: ClusterScatterPlot | ClusterScatterPlot3D = ClusterScatterPlot(
-            series=series, **options | widget_options
+            series=series, **options | kwargs
         )
     else:
-        widget = ClusterScatterPlot3D(series=series, **options | widget_options)
+        widget = ClusterScatterPlot3D(series=series, **options | kwargs)
     widget.projector = projector
     widget.embeddings = embeddings
     return widget

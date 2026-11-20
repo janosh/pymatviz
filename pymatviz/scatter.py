@@ -11,6 +11,7 @@ import scipy.stats
 
 from pymatviz.powerups import enhance_parity_plot
 from pymatviz.process_data import bin_df_cols, df_to_arrays
+from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.binned_scatter_plot import BinnedScatterPlotWidget
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 
@@ -99,14 +100,14 @@ def density_scatter(
     *,
     df: pd.DataFrame | None = None,
     density: Literal["kde", "empirical"] | None = None,
-    log_density: bool | None = None,
+    log: bool | None = None,
     n_bins: int | Literal[False] | None = None,
     xlabel: str | None = None,
     ylabel: str | None = None,
     identity_line: bool | dict[str, Any] = True,
     best_fit_line: bool | dict[str, Any] | None = None,
     stats: bool | dict[str, Any] = True,
-    **widget_options: Any,
+    **kwargs: Any,
 ) -> ScatterPlotWidget:
     """Parity scatter plot with points colored by density.
 
@@ -120,7 +121,7 @@ def density_scatter(
         density ("kde" | "empirical" | None): Density estimate used for colors.
             Defaults to "empirical" (bin counts) when binning, else "kde" (Gaussian
             kernel density estimate).
-        log_density (bool | None): Log-scale the color mapping. None (default)
+        log (bool | None): Log-scale the color mapping. None (default)
             enables it when positive densities span more than 2 decades.
         n_bins (int | False | None): Number of bins per axis. None (default) bins
             into 200 bins only for more than 1000 points.
@@ -133,7 +134,7 @@ def density_scatter(
             adds it if R² > 0.3.
         stats (bool | dict): Show MAE and R² of the unbinned data. A dict is passed
             to annotate_metrics(). Defaults to True.
-        **widget_options: Passed to ScatterPlotWidget, e.g. color_scale, color_bar
+        **kwargs: Passed to ScatterPlotWidget, e.g. color_scale, color_bar
             (default title "Point density") or point styles via styles.
 
     Returns:
@@ -145,14 +146,12 @@ def density_scatter(
     plot_x, plot_y, point_density = _point_density(
         xs, ys, density or ("empirical" if n_bins else "kde"), n_bins
     )
-    if log_density is None:
+    if log is None:
         positive = point_density[point_density > 0]
-        log_density = bool(
-            positive.size and np.log10(positive.max() / positive.min()) > 2
-        )
+        log = bool(positive.size and np.log10(positive.max() / positive.min()) > 2)
     color_scale = {
         "scheme": "interpolateViridis",
-        "type": "log" if log_density else "linear",
+        "type": "log" if log else "linear",
     }
     widget = ScatterPlotWidget(
         series=[
@@ -163,13 +162,15 @@ def density_scatter(
                 "markers": "points",
             }
         ],
-        **{
-            "x_axis": {"label": xlabel},
-            "y_axis": {"label": ylabel},
-            "color_scale": color_scale,
-            "color_bar": {"title": DENSITY_COL},
-        }
-        | widget_options,
+        **with_defaults(
+            {
+                "x_axis": {"label": xlabel},
+                "y_axis": {"label": ylabel},
+                "color_scale": color_scale,
+                "color_bar": {"title": DENSITY_COL},
+            },
+            kwargs,
+        ),
     )
     return enhance_parity_plot(
         widget,
@@ -192,7 +193,7 @@ def density_hexbin(
     stats: bool | dict[str, Any] = True,
     xlabel: str | None = None,
     ylabel: str | None = None,
-    **widget_options: Any,
+    **kwargs: Any,
 ) -> BinnedScatterPlotWidget:
     """Parity plot of points binned into a screen-space density map. Bins are
     recomputed on zoom and switch to individual points when few remain in view.
@@ -211,23 +212,24 @@ def density_hexbin(
             annotate_metrics(). Defaults to True.
         xlabel (str, optional): x-axis label. Auto-detected if None.
         ylabel (str, optional): y-axis label. Auto-detected if None.
-        **widget_options: Passed to BinnedScatterPlotWidget, e.g. marginals,
+        **kwargs: Passed to BinnedScatterPlotWidget, e.g. marginals,
             color_bar or density (merged with bin_px).
 
     Returns:
         BinnedScatterPlotWidget: The binned density widget.
     """
     xs, ys, xlabel, ylabel = _parity_data(x, y, df, xlabel, ylabel)
-    density = {"bin_px": bin_px} if bin_px is not None else {}
-    widget_options["density"] = density | widget_options.get("density", {})
     widget = BinnedScatterPlotWidget(
         series=[{"x": xs, "y": ys}],
-        **{
-            "x_axis": {"label": xlabel},
-            "y_axis": {"label": ylabel},
-            "color_bar": {"title": "Count"},
-        }
-        | widget_options,
+        **with_defaults(
+            {
+                "x_axis": {"label": xlabel},
+                "y_axis": {"label": ylabel},
+                "color_bar": {"title": "Count"},
+                "density": {"bin_px": bin_px} if bin_px is not None else {},
+            },
+            kwargs,
+        ),
     )
     return enhance_parity_plot(
         widget,

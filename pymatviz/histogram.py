@@ -8,6 +8,7 @@ import numpy as np
 
 from pymatviz.enums import ElemCountMode
 from pymatviz.process_data import count_elements
+from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.bar_plot import BarPlotWidget, bar_axis_defaults
 
 
@@ -76,13 +77,14 @@ def elements_hist(
     axes = bar_axis_defaults(kwargs, category={"label": "Element"}, value=count_axis)
     return BarPlotWidget(
         [series],
-        **axes
-        | {
-            "bar": {"opacity": opacity, "stroke_width": 1, "stroke_color": "black"}
-            | (kwargs.pop("bar", None) or {}),
-            "show_legend": False,
-        }
-        | kwargs,
+        **with_defaults(
+            axes
+            | {
+                "bar": {"opacity": opacity, "stroke_width": 1, "stroke_color": "black"},
+                "show_legend": False,
+            },
+            kwargs,
+        ),
     )
 
 
@@ -163,11 +165,13 @@ def histogram(
     )
     return BarPlotWidget(
         series,
-        **axes
-        | {
-            "bar": {"border_radius": 0} | (kwargs.pop("bar", None) or {}),
-            "mode": "overlay",
-            "show_legend": len(series) > 1,
-        }
-        | kwargs,
+        **with_defaults(
+            axes
+            | {
+                "bar": {"border_radius": 0},
+                "mode": "overlay",
+                "show_legend": len(series) > 1,
+            },
+            kwargs,
+        ),
     )

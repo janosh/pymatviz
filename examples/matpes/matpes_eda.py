@@ -187,7 +187,7 @@ widget.show()
 
 
 # %% spacegroup histogram
-pmv.spacegroup_bar(df_r2scan[Key.spg_num], log=True).show()
+pmv.spacegroup_bar(df_r2scan[Key.spg_num], log_y=True).show()
 
 
 # %% most calcs missing r2SCAN results have 4 sites, almost all 2 or 3-site r2SCAN calcs

@@ -186,26 +186,13 @@ def test_find_package_path(
         assert found_path == ""
 
 
-def test_find_package_path_fallbacks(dummy_pkg_path: Path) -> None:
-    """Test fallback mechanisms in find_package_path using mocking."""
-    target_pkg = "my_pkg"
-    expected_abs_path = str(dummy_pkg_path / target_pkg).replace("\\", "/")
-
-    # When importlib.resources fails, fall back to scanning sys.path
-    # (dummy_pkg_path was prepended to sys.path by the fixture)
-    with patch("importlib.resources.files", side_effect=ImportError, create=True):
-        found_path = pmv.treemap.py_pkg.find_package_path(target_pkg)
-        assert found_path.replace("\\", "/") == expected_abs_path
-
-    with (
-        patch("importlib.resources.files", side_effect=ImportError, create=True),
-        patch("site.getsitepackages", return_value=[str(dummy_pkg_path.parent)]),
-        patch("os.path.isdir") as mock_isdir,
-    ):
-        expected_site_path = str(dummy_pkg_path.parent / target_pkg)
-        mock_isdir.side_effect = lambda p: p == expected_site_path
-        found_path = pmv.treemap.py_pkg.find_package_path(target_pkg)
-        assert found_path.replace("\\", "/") == expected_site_path.replace("\\", "/")
+def test_find_package_path_sys_path_fallback(dummy_pkg_path: Path) -> None:
+    """Scan sys.path (prepended with dummy_pkg_path) when importlib can't import."""
+    with patch("importlib.resources.files", side_effect=ModuleNotFoundError):
+        found_path = pmv.treemap.py_pkg.find_package_path("my_pkg")
+    assert found_path.replace("\\", "/") == str(dummy_pkg_path / "my_pkg").replace(
+        "\\", "/"
+    )
 
 
 @pytest.mark.parametrize(
@@ -452,12 +439,6 @@ def test_normalize_package_input() -> None:
     import numpy.random
 
     assert pmv.treemap.py_pkg._normalize_package_input(numpy.random) == "numpy"
-
-    class MockObj:
-        pass
-
-    mock_obj = MockObj()
-    assert pmv.treemap.py_pkg._normalize_package_input(mock_obj) == str(mock_obj)
 
 
 def _write_package_files(pkg_dir: Path, files: dict[str, int]) -> None:

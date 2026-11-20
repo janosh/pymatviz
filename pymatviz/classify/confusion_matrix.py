@@ -5,6 +5,7 @@ from typing import Any
 
 import numpy as np
 
+from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.heatmap_matrix import HeatmapMatrixWidget
 
 
@@ -39,7 +40,7 @@ def confusion_matrix(
     normalize: bool = True,
     float_fmt: str = "",
     metrics: Mapping[str, str | None] | Sequence[str] = ("Acc",),
-    **widget_options: Any,
+    **kwargs: Any,
 ) -> HeatmapMatrixWidget:
     """Plot a confusion matrix from a pre-computed matrix or raw class labels.
 
@@ -64,7 +65,7 @@ def confusion_matrix(
             and, for 2 classes, "Prec", "Rec", "F1" and "MCC" (Matthews correlation
             coefficient), taking the second label as the positive class.
             Defaults to ("Acc",).
-        **widget_options: Passed to HeatmapMatrixWidget, e.g. color_scale (default
+        **kwargs: Passed to HeatmapMatrixWidget, e.g. color_scale (default
             "interpolateBlues"), color_bar (default None: hidden), tile_size or
             x_axis/y_axis.
 
@@ -125,13 +126,15 @@ def confusion_matrix(
         x_items=list(x_labels),
         y_items=list(y_labels),
         values=conf_mat_arr.tolist(),
-        **{
-            "show_values": float_fmt,
-            "color_scale": "interpolateBlues",
-            "x_axis": {"label": x_title},
-            "y_axis": {"label": "Actual"},
-            "gap": "4px",
-            "color_bar": None,  # cells print their values
-        }
-        | widget_options,
+        **with_defaults(
+            {
+                "show_values": float_fmt,
+                "color_scale": "interpolateBlues",
+                "x_axis": {"label": x_title},
+                "y_axis": {"label": "Actual"},
+                "gap": "4px",
+                "color_bar": None,  # cells print their values
+            },
+            kwargs,
+        ),
     )

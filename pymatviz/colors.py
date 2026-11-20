@@ -174,25 +174,6 @@ def _normalize_rgb(
     }
 
 
-# Element type based colors
-ELEM_TYPE_COLORS: Final = {
-    "Diatomic Nonmetal": "green",
-    "Noble Gas": "purple",
-    "Alkali Metal": "red",
-    "Alkaline Earth Metal": "orange",
-    "Metalloid": "darkgreen",
-    "Polyatomic Nonmetal": "teal",
-    "Transition Metal": "blue",
-    "Post Transition Metal": "cyan",
-    "Lanthanide": "brown",
-    "Actinide": "gray",
-    "Nonmetal": "green",
-    "Halogen": "teal",
-    "Metal": "lightblue",
-    "Alkaline Metal": "magenta",
-    "Transactinide": "olive",
-}
-
 # The following element-based colors are copied from matterviz:
 # https://github.com/janosh/matterviz/blob/85a044cd/src/lib/colors.ts#L20-L242
 ELEM_COLORS_JMOL_256: dict[str, Rgb256ColorType] = {

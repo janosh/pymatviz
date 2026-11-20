@@ -13,6 +13,23 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 
+def with_defaults(defaults: dict[str, Any], kwargs: dict[str, Any]) -> dict[str, Any]:
+    """Return widget kwargs over a plot function's defaults, merging dict-valued
+    options one level deep, so ``x_axis={"scale_type": "log"}`` keeps the default
+    axis label instead of replacing the whole dict. Any other user value (including
+    None) replaces its default.
+    """
+    return (
+        defaults
+        | kwargs
+        | {
+            key: default | kwargs[key]
+            for key, default in defaults.items()
+            if isinstance(default, dict) and isinstance(kwargs.get(key), dict)
+        }
+    )
+
+
 def _normalize_ferrox_hkls(hkls_data: Any) -> Any:
     """Normalize Ferrox HKL payload into widget-compatible shape.
 

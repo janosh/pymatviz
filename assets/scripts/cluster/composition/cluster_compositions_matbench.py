@@ -228,7 +228,7 @@ for (
         embed_method=embed_method,
         projection=proj_method,
         n_components=n_components,
-        color_scale="log" if data_name == "matbench_dielectric" else "linear",
+        log=data_name == "matbench_dielectric",
     )
     img_name = f"{data_name}-{embed_method}-{proj_method}-{n_components}d".replace(
         "_", "-"

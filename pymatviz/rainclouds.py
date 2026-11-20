@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pandas as pd
 
+from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.box_plot import BoxPlotWidget
 
 
@@ -76,12 +77,11 @@ def rainclouds(
 
     series: list[dict[str, Any]] = []
     for label, data_itm in data.items():
-        raw_values = data_itm
-        if isinstance(data_itm, tuple) and len(data_itm) == 2:
-            df_i, col = data_itm
-            if isinstance(df_i, pd.DataFrame):
-                raw_values = df_i[col]
-        values = np.asarray(raw_values, dtype=float)
+        match data_itm:
+            case (pd.DataFrame() as df_i, col):
+                values = np.asarray(df_i[col], dtype=float)
+            case _:
+                values = np.asarray(data_itm, dtype=float)
         if values.ndim != 1 or len(values) == 0:
             raise ValueError(f"rainclouds data for {label!r} must be a non-empty 1D")
         entry: dict[str, Any] = {
@@ -105,10 +105,9 @@ def rainclouds(
         "point_side": "negative",  # rain falls opposite the cloud
         "points": "strip" if show_points else "none",
         "violin_width": width_viol,
-        "violin_style": {"opacity": alpha} | (kwargs.pop("violin_style", None) or {}),
-        "sample_style": {"radius": point_size, "opacity": 0.5}
-        | (kwargs.pop("sample_style", None) or {}),
+        "violin_style": {"opacity": alpha},
+        "sample_style": {"radius": point_size, "opacity": 0.5},
         # samples are drawn as rain, not as separate outlier markers
         "show_outliers": not show_points,
     }
-    return BoxPlotWidget(series, **defaults | kwargs)
+    return BoxPlotWidget(series, **with_defaults(defaults, kwargs))

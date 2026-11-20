@@ -138,8 +138,8 @@ def test_confusion_matrix_label_order() -> None:
     assert [item["label"] for item in ints.x_items] == ["1", "0"]
 
 
-def test_confusion_matrix_widget_options(sample_conf_mat: np.ndarray) -> None:
-    """Widget options override the defaults."""
+def test_confusion_matrix_kwargs(sample_conf_mat: np.ndarray) -> None:
+    """Extra kwargs go to the widget, overriding defaults."""
     widget = confusion_matrix(
         sample_conf_mat,
         x_labels=("N", "P"),

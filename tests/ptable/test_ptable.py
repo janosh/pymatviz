@@ -273,12 +273,9 @@ def test_ptable_hists_raises(data: dict[str, Any], err_msg: str) -> None:
         pmv.ptable_hists(data)
 
 
-@pytest.mark.parametrize(
-    ("mode", "mv_mode"),
-    [("markers", "markers"), ("lines", "line"), ("lines+markers", "line+markers")],
-)
-def test_ptable_scatter_modes_and_series(mode: Any, mv_mode: str) -> None:
-    """(x, y[, color]) tuples become x/y series; plotly modes map to matterviz."""
+@pytest.mark.parametrize("mode", ["markers", "line", "line+markers"])
+def test_ptable_scatter_modes_and_series(mode: Any) -> None:
+    """(x, y[, color]) tuples become x/y series; mode passes to tile_plot_config."""
     data = {
         "Fe": ([1, 2], [3.0, np.nan]),
         "O": (np.array([1.0, 2.0]), np.array([4.0, 5.0]), [0.1, 0.2]),
@@ -291,7 +288,7 @@ def test_ptable_scatter_modes_and_series(mode: Any, mv_mode: str) -> None:
         "O": {"x": [1.0, 2.0], "y": [4.0, 5.0], "color_values": [0.1, 0.2]},
     }
     assert widget.tile_plot_config == {
-        "mode": mv_mode,
+        "mode": mode,
         "color_scale": "interpolateViridis",
         "x_range": [0, None],
         "y_range": [None, 9],
@@ -337,7 +334,7 @@ def test_ptable_scatter_without_color_values() -> None:
 @pytest.mark.parametrize(
     ("data", "kwargs", "err_type", "err_msg"),
     [
-        ({"Fe": ([1], [2])}, dict(mode="bars"), ValueError, "mode='bars' must be"),
+        ({"Fe": ([1], [2])}, dict(mode="lines"), tl.TraitError, "mode must be one of"),
         ({"Fe": ([1],)}, {}, ValueError, "must be an (x, y) or (x, y, color_values)"),
         ({"fe": ([1], [2])}, {}, ValueError, "keys must be element symbols"),
         ({"Fe": ([1], [2], ["red"])}, {}, ValueError, "must be a 1D numeric array:"),

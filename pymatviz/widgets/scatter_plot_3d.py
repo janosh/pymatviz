@@ -55,31 +55,20 @@ class ScatterPlot3DWidget(PlotControlsTraits, MatterVizWidget):
                 ``label``, ``color``, ``size`` fields.
             **kwargs: Additional widget properties.
         """
-        if series is not None:
-            for idx, entry in enumerate(series):
-                if not isinstance(entry, dict):
-                    raise TypeError(
-                        f"ScatterPlot3D series entry at index {idx} must be a "
-                        f"dict, got {type(entry).__name__}."
-                    )
-                if not all(isinstance(key, str) for key in entry):
-                    raise TypeError(
-                        f"ScatterPlot3D series entry at index {idx} has "
-                        f"non-string keys: {list(entry)}"
-                    )
-                missing = {"x", "y", "z"} - entry.keys()
-                if missing:
-                    raise ValueError(
-                        f"ScatterPlot3D series entry at index {idx} is missing "
-                        f"required key(s): {sorted(missing)}. "
-                        f"Got keys: {sorted(entry)}."
-                    )
-                lengths = {axis: len(entry[axis]) for axis in ("x", "y", "z")}
-                if len(set(lengths.values())) > 1:
-                    raise ValueError(
-                        f"ScatterPlot3D series entry at index {idx} has "
-                        f"mismatched x/y/z lengths: {lengths}."
-                    )
+        for idx, entry in enumerate(series or []):
+            prefix = f"ScatterPlot3D series entry at index {idx}"
+            if not isinstance(entry, dict):
+                raise TypeError(f"{prefix} must be a dict, got {type(entry).__name__}")
+            if not all(isinstance(key, str) for key in entry):
+                raise TypeError(f"{prefix} has non-string keys: {list(entry)}")
+            if missing := {"x", "y", "z"} - entry.keys():
+                raise ValueError(
+                    f"{prefix} is missing required key(s): {sorted(missing)}. "
+                    f"Got keys: {sorted(entry)}"
+                )
+            lengths = {axis: len(entry[axis]) for axis in "xyz"}
+            if len(set(lengths.values())) > 1:
+                raise ValueError(f"{prefix} has mismatched x/y/z lengths: {lengths}")
 
         normalize_json_kwargs(kwargs, self._JSON_KWARGS, "ScatterPlot3D")
         super().__init__(

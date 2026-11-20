@@ -10,16 +10,14 @@ import ast
 import os
 import sys
 from collections.abc import Callable, Iterable, Sequence
-from typing import TYPE_CHECKING, Any, Literal, NamedTuple, get_args
+from types import ModuleType
+from typing import Any, Literal, NamedTuple, get_args
 
 import numpy as np
 import pandas as pd
 
 from pymatviz.widgets.treemap import TreemapWidget
 
-
-if TYPE_CHECKING:
-    from types import ModuleType
 
 ModuleFormatter = Callable[[str, int, int], str]
 type GroupBy = Literal["file", "directory", "module"]
@@ -93,13 +91,9 @@ def default_module_formatter(module: str, count: int, total: int) -> str:
     return f"{module} ({count:,} lines{percent_str})"
 
 
-def _normalize_package_input(package: str | Any) -> str:
-    """Convert package input (string name or module object) to package name string."""
-    if isinstance(package, str):
-        return package
-    if hasattr(package, "__name__"):
-        return package.__name__.split(".")[0]
-    return str(package)
+def _normalize_package_input(package: str | ModuleType) -> str:
+    """Top-level package name of a package name or module object."""
+    return package if isinstance(package, str) else package.__name__.split(".")[0]
 
 
 def _code_lines(lines: Iterable[str], comment_prefixes: tuple[str, ...]) -> int:
@@ -127,41 +121,21 @@ def count_lines(file_path: str, comment_prefixes: tuple[str, ...] = ("#",)) -> i
 
 
 def find_package_path(package_name: str) -> str:
-    """Find the filesystem path for an installed Python package."""
+    """Directory of an installed or sys.path-importable Python package, or "" if
+    not found.
+    """
+    from importlib import resources
+
     try:
-        from importlib import resources
+        if os.path.isdir(package_root := str(resources.files(package_name))):
+            return package_root
+    except (ModuleNotFoundError, TypeError):
+        pass  # not importable as a package, look for its directory on sys.path
 
-        package_root = resources.files(package_name)
-        if package_root and os.path.isdir(str(package_root)):
-            return str(package_root)
-    except (ImportError, ModuleNotFoundError, TypeError):
-        pass
-
-    # Try sys.path for packages added to path (e.g. in tests)
     for path_entry in sys.path:
-        if path_entry and os.path.isdir(package_path := f"{path_entry}/{package_name}"):
-            return package_path
-
-    # Try common locations if importlib approach fails
-    current_dir = os.path.abspath(os.getcwd())
-    possible_paths = [
-        f"{current_dir}/{package_name}",
-        f"{current_dir}/src/{package_name}",
-    ]
-
-    try:  # Also try site-packages
-        import site
-
-        site_packages = site.getsitepackages()[0]
-        possible_paths.append(f"{site_packages}/{package_name}")
-    except (ImportError, IndexError):
-        pass
-
-    for path in possible_paths:
-        if os.path.isdir(path):
-            return path
-
-    return ""  # If we can't find package, return empty string
+        if os.path.isdir(package_path := f"{path_entry or '.'}/{package_name}"):
+            return os.path.abspath(package_path)
+    return ""
 
 
 def _analyze_py_file(file_path: str, package_name: str) -> dict[str, int]:
@@ -525,8 +499,7 @@ def py_pkg_treemap(
     if isinstance(color_by, dict) and not color_by:
         raise ValueError("color_by dict must map file paths to values, got empty dict")
 
-    # Normalize input to handle both single and multiple strings or ModuleType objects
-    pkg_list = packages if isinstance(packages, (list, tuple)) else [packages]
+    pkg_list = [packages] if isinstance(packages, str | ModuleType) else packages
     package_names = [_normalize_package_input(pkg) for pkg in pkg_list]
 
     if source_dir:
@@ -546,7 +519,7 @@ def py_pkg_treemap(
         metrics_keys = ModuleStats._fields
         df_modules["cell_value"] = df_modules.apply(
             lambda row: cell_size_fn(
-                ModuleStats(**{key: row[key] for key in metrics_keys if key in row})
+                ModuleStats(**{key: row[key] for key in metrics_keys})
             ),
             axis=1,
         )

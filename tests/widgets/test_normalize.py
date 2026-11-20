@@ -22,6 +22,7 @@ from pymatviz.widgets._normalize import (
     normalize_plot_series,
     normalize_xrd_pattern,
     structure_to_dict,
+    with_defaults,
 )
 
 
@@ -480,3 +481,32 @@ def test_normalize_histogram_series_values() -> None:
         {"values": [0.5], "visible": False},
         {"values": [], "label": "empty"},
     ]
+
+
+@pytest.mark.parametrize(
+    ("defaults", "kwargs", "expected"),
+    [
+        # a dict option merges one level deep, so a partial axis keeps the default label
+        (
+            {"x_axis": {"label": "X", "format": "d"}},
+            {"x_axis": {"scale_type": "log"}},
+            {"x_axis": {"label": "X", "format": "d", "scale_type": "log"}},
+        ),
+        # user keys win on conflict, extra user options pass through
+        (
+            {"x_axis": {"label": "X"}, "gap": "4px"},
+            {"x_axis": {"label": "Y"}, "show_legend": False},
+            {"x_axis": {"label": "Y"}, "gap": "4px", "show_legend": False},
+        ),
+        # None or a non-dict replaces a dict default outright
+        ({"color_bar": {"title": "T"}}, {"color_bar": None}, {"color_bar": None}),
+        ({"x_range": [0, 1]}, {"x_range": [2, 3]}, {"x_range": [2, 3]}),
+    ],
+)
+def test_with_defaults(
+    defaults: dict[str, Any], kwargs: dict[str, Any], expected: dict[str, Any]
+) -> None:
+    """with_defaults merges dict options one level deep, other values replace."""
+    defaults_copy, kwargs_copy = copy.deepcopy(defaults), copy.deepcopy(kwargs)
+    assert with_defaults(defaults, kwargs) == expected
+    assert (defaults, kwargs) == (defaults_copy, kwargs_copy)  # inputs left untouched

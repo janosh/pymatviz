@@ -45,7 +45,7 @@ pmv.ptable_heatmap(df_2d[Key.formula], log=True, color_bar={"title": title}).sho
 
 
 # %%
-pmv.spacegroup_bar(df_2d[Key.spg_num], log=True).show()
+pmv.spacegroup_bar(df_2d[Key.spg_num], log_y=True).show()
 
 
 # %%

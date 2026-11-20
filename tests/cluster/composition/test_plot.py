@@ -101,27 +101,36 @@ def test_cluster_compositions_property(
 
 
 @pytest.mark.parametrize(
-    ("color_scale", "expected_color_values"),
+    ("log", "color_scale", "expected_type", "expected_color_values"),
     [
-        ("log", [3.0, 1.0, 4.0, None, 5.0, None]),
-        ("arcsinh", [3.0, 1.0, 4.0, -2.0, 5.0, 0.0]),
-        ({"type": "arcsinh", "threshold": 0.1}, [3.0, 1.0, 4.0, -2.0, 5.0, 0.0]),
+        (True, "interpolateViridis", "log", [3.0, 1.0, 4.0, None, 5.0, None]),
+        (False, {"type": "log"}, "log", [3.0, 1.0, 4.0, None, 5.0, None]),
+        (False, {"type": "arcsinh"}, "arcsinh", [3.0, 1.0, 4.0, -2.0, 5.0, 0.0]),
+        (
+            False,
+            {"type": {"type": "arcsinh", "threshold": 0.1}},
+            {"type": "arcsinh", "threshold": 0.1},
+            [3.0, 1.0, 4.0, -2.0, 5.0, 0.0],
+        ),
     ],
 )
 def test_color_scale(
     df_prop: pd.DataFrame,
+    log: bool,
     color_scale: ColorScale,
+    expected_type: str | dict[str, Any],
     expected_color_values: list[float | None],
 ) -> None:
     """Scale types go to matterviz; log leaves non-positive values uncolored."""
     widget = pmv.cluster_compositions(
         df_prop,
         prop_name="property",
+        log=log,
         color_scale=color_scale,
         sort=False,
         **BASE_KWARGS,
     )
-    assert widget.color_scale["type"] == color_scale
+    assert widget.color_scale == {"scheme": "interpolateViridis", "type": expected_type}
     assert widget.series[0]["color_values"] == expected_color_values
 
 
@@ -236,15 +245,20 @@ def test_projection_stats(
             "annotate_points needs n_components=2",
         ),
         ({"show_chem_sys": "size"}, ValueError, "show_chem_sys='size' must be"),
-        ({"color_scale": "sqrt"}, ValueError, "color_scale='sqrt' must be"),
+        ({"color_scale": {"type": "sqrt"}}, ValueError, "type 'sqrt' must be"),
+        (
+            {"log": True, "color_scale": {"type": "arcsinh"}},
+            ValueError,
+            "type 'arcsinh' must be 'linear', 'log' \\(or omitted with log=True\\)",
+        ),
         (
             {
                 "df_in": pd.DataFrame({"composition": ["Fe", "Cu"], "prop": [-1, 0]}),
                 "prop_name": "prop",
-                "color_scale": "log",
+                "log": True,
             },
             ValueError,
-            "color_scale='log' needs at least one positive finite value",
+            "Log color scale needs at least one positive finite value",
         ),
         ({"prop_name": "missing"}, ValueError, "prop_name='missing' not found"),
         (
@@ -351,12 +365,12 @@ def test_non_finite_property_values(df_prop: pd.DataFrame) -> None:
     assert widget.series[0]["color_values"][1] is None
 
 
-def test_widget_options(df_prop: pd.DataFrame) -> None:
+def test_cluster_compositions_kwargs(df_prop: pd.DataFrame) -> None:
     """Extra keyword arguments go to the widget, overriding defaults."""
     widget = pmv.cluster_compositions(
         df_prop,
         prop_name="property",
-        color_scheme="interpolatePlasma",
+        color_scale="interpolatePlasma",
         marker_size=12,
         color_bar={"title": "E (eV)"},
         **BASE_KWARGS,

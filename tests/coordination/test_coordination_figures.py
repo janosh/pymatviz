@@ -4,7 +4,12 @@ from collections import Counter
 from typing import TYPE_CHECKING, Any
 
 import pytest
-from pymatgen.analysis.local_env import CrystalNN, NearNeighbors, VoronoiNN
+from pymatgen.analysis.local_env import (
+    CrystalNN,
+    CutOffDictNN,
+    NearNeighbors,
+    VoronoiNN,
+)
 from pymatgen.core import Lattice, Structure
 
 from pymatviz.coordination import coordination_hist, coordination_vs_cutoff_line
@@ -246,8 +251,26 @@ def test_coordination_vs_cutoff_line_disordered_structure() -> None:
             TypeError,
             "Invalid strategy=",
         ),
+        *(
+            (
+                Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]]),
+                {"strategy": strategy},
+                TypeError,
+                "expected \\(min_cutoff, max_cutoff\\)",
+            )
+            for strategy in [(1, 2, 3), (True, 3), ("1", 3)]
+        ),
+        (
+            Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]]),
+            {"strategy": CutOffDictNN()},
+            TypeError,
+            "Could not determine cutoff",
+        ),
     ],
-    ids=["empty_list", "invalid_str", "invalid_strategy"],
+    ids=[
+        *("empty_list", "invalid_str", "invalid_strategy", "3_tuple", "bool", "str"),
+        "nn_without_cutoff",
+    ],
 )
 def test_coordination_vs_cutoff_line_invalid_inputs(
     structs: Any, kwargs: dict[str, Any], err_cls: type[Exception], match: str

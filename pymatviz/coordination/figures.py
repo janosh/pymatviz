@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import Counter
 from inspect import isclass
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import numpy as np
 from pymatgen.analysis.local_env import NearNeighbors
@@ -19,6 +19,7 @@ from pymatviz.coordination.helpers import (
 from pymatviz.enums import ElemColorScheme
 from pymatviz.process_data import normalize_structures
 from pymatviz.structure.helpers import get_site_elements
+from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.bar_plot import BarPlotWidget, bar_axis_defaults
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 
@@ -169,7 +170,7 @@ def coordination_hist(
         category={"label": "Coordination Number", "format": "d"},
         value={"label": "Count", "format": "d", "range": [0, None]},
     )
-    return BarPlotWidget(series, **axes | {"mode": "stacked"} | kwargs)
+    return BarPlotWidget(series, **with_defaults(axes | {"mode": "stacked"}, kwargs))
 
 
 def coordination_vs_cutoff_line(
@@ -208,45 +209,29 @@ def coordination_vs_cutoff_line(
     """
     struct_dict = normalize_structures(structures)
 
-    # Determine cutoff range based on strategy
-    if (
-        isinstance(strategy, tuple)
-        and len(strategy) == 2
-        and isinstance(strategy[0], int | float)
-        and isinstance(strategy[1], int | float)
-        and not isinstance(strategy[0], bool)
-        and not isinstance(strategy[1], bool)
-    ):
+    if isinstance(strategy, tuple):
+        if len(strategy) != 2 or not all(
+            isinstance(cutoff, int | float) and not isinstance(cutoff, bool)
+            for cutoff in strategy
+        ):
+            raise TypeError(f"Invalid {strategy=}, expected (min_cutoff, max_cutoff)")
         cutoff_range = (float(strategy[0]), float(strategy[1]))
-
     elif isinstance(strategy, NearNeighbors) or (
         isclass(strategy) and issubclass(strategy, NearNeighbors)
     ):
+        # The strategy only sets the max cutoff (e.g. VoronoiNN.cutoff or the upper
+        # CrystalNN.distance_cutoffs), CNs are counted within each radial cutoff.
         nn_instance = strategy if isinstance(strategy, NearNeighbors) else strategy()
-        if hasattr(nn_instance, "cutoff"):
-            max_cutoff = nn_instance.cutoff
-        elif hasattr(nn_instance, "distance_cutoffs"):
-            distance_cutoffs = nn_instance.distance_cutoffs
-            if (
-                isinstance(distance_cutoffs, (list, tuple))
-                and len(distance_cutoffs) > 1
-            ):
-                max_cutoff = distance_cutoffs[1]
-            else:
-                max_cutoff = (
-                    distance_cutoffs
-                    if isinstance(distance_cutoffs, (int, float))
-                    else 5.0
-                )
-        else:
-            raise AttributeError(f"Could not determine cutoff for {nn_instance=}")
-        # cast since hasattr narrowing types the cutoff attributes as plain object
-        cutoff_range = (0.0, cast("float", max_cutoff))
-
+        max_cutoff = getattr(nn_instance, "cutoff", None)
+        if max_cutoff is None:
+            max_cutoff = (getattr(nn_instance, "distance_cutoffs", None) or [None])[-1]
+        if not isinstance(max_cutoff, int | float):
+            raise TypeError(f"Could not determine cutoff for {nn_instance=}")
+        cutoff_range = (0.0, float(max_cutoff))
     else:
         raise TypeError(
-            f"Invalid {strategy=}. Expected float, tuple of floats, NearNeighbors "
-            "instance, or NearNeighbors subclass."
+            f"Invalid {strategy=}. Expected tuple of floats, NearNeighbors instance, "
+            "or NearNeighbors subclass."
         )
 
     cutoffs = np.linspace(cutoff_range[0], cutoff_range[1], num_points)
@@ -277,11 +262,11 @@ def coordination_vs_cutoff_line(
 
     return ScatterPlotWidget(
         series,
-        **{
-            "x_axis": {"label": "Cutoff Distance (Å)"}
-            | (kwargs.pop("x_axis", None) or {}),
-            "y_axis": {"label": "Coordination Number"}
-            | (kwargs.pop("y_axis", None) or {}),
-        }
-        | kwargs,
+        **with_defaults(
+            {
+                "x_axis": {"label": "Cutoff Distance (Å)"},
+                "y_axis": {"label": "Coordination Number"},
+            },
+            kwargs,
+        ),
     )
