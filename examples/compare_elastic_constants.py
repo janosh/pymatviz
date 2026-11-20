@@ -14,7 +14,6 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-import plotly.express as px
 from ase.units import GPa
 from emmet.core.elasticity import ElasticityDoc
 from mace.calculators import mace_mp
@@ -29,7 +28,6 @@ try:
 except ImportError:
     raise SystemExit(0) from None
 
-pmv.set_plotly_template("pymatviz_white")
 checkpoint = "https://github.com/ACEsuit/mace-foundations/releases/download/mace_matpes_0/MACE-matpes-pbe-omat-ft.model"
 
 
@@ -110,14 +108,16 @@ calculator = mace_mp(model=checkpoint)
 elasticity_calc = ElasticityCalc(calculator, relax_structure=True)
 ml_results = elasticity_calc.calc(structure)
 
-fig_ml = px.imshow(ml_results["elastic_tensor"].voigt / GPa, text_auto=".2f")
-fig_ml.layout.coloraxis.colorbar.title.update(
-    text="ML Elastic Tensor [GPa]", side="right"
-)
-fig_ml.show()
-
-fig_pbe = px.imshow(np.asarray(elastic_doc.elastic_tensor.raw), text_auto=".2f")
-fig_pbe.layout.coloraxis.colorbar.title.update(
-    text="PBE Elastic Tensor [GPa]", side="right"
-)
-fig_pbe.show()
+voigt_labels = [str(idx) for idx in range(1, 7)]  # Voigt notation indices
+for tensor, title in (
+    (ml_results["elastic_tensor"].voigt / GPa, "ML Elastic Tensor [GPa]"),
+    (np.asarray(elastic_doc.elastic_tensor.raw), "PBE Elastic Tensor [GPa]"),
+):
+    widget = pmv.HeatmapMatrixWidget(
+        x_items=voigt_labels,
+        y_items=voigt_labels,
+        values=np.asarray(tensor).tolist(),
+        show_values=".2f",
+        color_bar={"title": title},
+    )
+    widget.show()

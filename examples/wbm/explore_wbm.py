@@ -8,7 +8,6 @@ See also https://matbench-discovery.materialsproject.org/data.
 from typing import get_args
 
 import pandas as pd
-import plotly.express as px
 
 import pymatviz as pmv
 from pymatviz.enums import Key
@@ -52,34 +51,26 @@ for idx, df in df_wbm.groupby("batch_idx"):
 # %%
 df_wbm_non_metals = df_wbm.query("bandgap_pbe > 0")
 
-fig = px.violin(
-    df_wbm_non_metals,
-    color=Key.crystal_system,
-    x=Key.crystal_system,
-    y="e_form_per_atom_wbm",
-    hover_name=Key.formula,
-).update_traces(jitter=1)
-
-x_ticks = {}  # custom x axis tick labels
+# Energy distribution by crystal system
+# MatterViz has no rich-text tick labels, so per-group counts go into series labels
+series = []
 for cry_sys, df_group in sorted(
     df_wbm_non_metals.groupby(Key.crystal_system),
     key=lambda x: crystal_systems.index(x[0]),
 ):
-    x_ticks[cry_sys] = (
-        f"<b>{cry_sys}</b><br>"
-        f"{len(df_group):,} = {len(df_group) / len(df_wbm_non_metals):.0%}<br>"
-    )
+    frac = len(df_group) / len(df_wbm_non_metals)
+    label = f"{cry_sys} {len(df_group):,} = {frac:.0%}"
+    series += [{"y": df_group["e_form_per_atom_wbm"], "label": label}]
 
-
-fig.layout.title = dict(text="<b>Energy distribution by crystal system</b>", x=0.5)
-fig.layout.margin = dict(b=10, l=10, r=10, t=50)
-fig.layout.showlegend = False
-fig.layout.xaxis = dict(
-    tickvals=list(range(len(crystal_systems))), ticktext=list(x_ticks.values())
+widget = pmv.BoxPlotWidget(
+    series,
+    kind="violin",
+    title="Energy distribution by crystal system",
+    show_legend=False,
+    y_axis={"label": "e_form_per_atom_wbm"},
 )
-fig.update_traces(hoverinfo="skip", hovertemplate=None)
-fig.show()
-# pmv.save_fig(fig, "wbm-energy-violin-by-crystal-sys.pdf")
+widget.show()
+# widget.to_img("wbm-energy-violin-by-crystal-sys.pdf")
 
 
 # %%
@@ -88,13 +79,19 @@ widget.show()
 widget.to_img("wbm-spacegroup-sunburst.pdf")
 
 
-# %%
-fig = px.scatter(df_wbm, x=Key.spg_num, y=Key.volume, color=Key.crystal_system)
-fig.layout.title = "WBM volume by spacegroup number"
-fig.show()
-
-
-# %%
-fig = px.scatter(df_wbm, x=Key.spg_num, y=Key.energy, color=Key.crystal_system)
-fig.layout.title = "WBM energy by spacegroup number"
-fig.show()
+# %% WBM volume and energy by spacegroup number
+for y_key in (Key.volume, Key.energy):
+    widget = pmv.ScatterPlotWidget(
+        series=[
+            {
+                "x": df_group[Key.spg_num],
+                "y": df_group[y_key],
+                "label": cry_sys,
+                "markers": "points",
+            }
+            for cry_sys, df_group in df_wbm.groupby(Key.crystal_system)
+        ],
+        x_axis={"label": Key.spg_num.label},
+        y_axis={"label": y_key.label},
+    )
+    widget.show()

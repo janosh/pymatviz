@@ -24,15 +24,11 @@ https://ml.materialsproject.org/projects/matbench_expt_gap
 # %%
 from __future__ import annotations
 
-import plotly.express as px
 from matminer.datasets import load_dataset
 from pymatgen.core import Composition
 
 import pymatviz as pmv
 from pymatviz.enums import Key
-
-
-pmv.set_plotly_template("pymatviz_white")
 
 
 # %%
@@ -65,15 +61,20 @@ title = "Elements in Matbench experimental band gap dataset"
 pmv.ptable_heatmap(elem_counts, log=True, color_bar={"title": title}).show()
 
 
-# %%
-fig = px.scatter(
-    df_gap,
-    x=Key.n_atoms,
-    y=gap_expt_key,
-    color=Key.n_elements,
-    size="mean_mass",
-    hover_name=Key.composition,
-    log_x=True,
+# %% marker size = mean atomic mass, color = number of elements
+df_plot = df_gap.dropna(subset="mean_mass")  # mean_atomic_prop returns None on error
+widget = pmv.ScatterPlotWidget(
+    series=[
+        {
+            "x": df_plot[Key.n_atoms],
+            "y": df_plot[gap_expt_key],
+            "color_values": df_plot[Key.n_elements],
+            "size_values": df_plot["mean_mass"],
+            "markers": "points",
+        }
+    ],
+    x_axis={"label": Key.n_atoms.label, "scale_type": "log"},
+    y_axis={"label": "Experimental band gap (eV)"},
+    color_bar={"title": Key.n_elements.label},
 )
-fig.layout.title.update(text="Marker size = mean atomic mass", x=0.45, y=0.97)
-fig.show()
+widget.show()

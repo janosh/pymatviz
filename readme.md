@@ -55,7 +55,7 @@ See the Jupyter notebooks under [`examples/`](examples) for how to use `pymatviz
 
 ## Periodic Table
 
-See [`pymatviz/ptable/figures.py`](pymatviz/ptable/figures.py). The module supports heatmaps, heatmap splits (multiple values per element), histograms, scatter plots and line plots. All visualizations are interactive through [Plotly](https://plotly.com) and support displaying additional data on hover.
+See [`pymatviz/ptable/figures.py`](pymatviz/ptable/figures.py). The module supports heatmaps, heatmap splits (multiple values per element), histograms, scatter plots and line plots. All visualizations are interactive [MatterViz](https://github.com/janosh/matterviz) widgets: hovering a tile shows its plot enlarged with axes.
 
 |                                     [`ptable_heatmap(atomic_masses)`](pymatviz/ptable/figures.py#L68)                                     | [`ptable_heatmap(compositions, log=True)`](pymatviz/ptable/figures.py#L68) [![fig-icon]](assets/scripts/ptable/ptable_heatmap.py) |
 | :---------------------------------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------------------: |

@@ -24,9 +24,6 @@ import pymatviz as pmv
 from pymatviz.enums import Key
 
 
-pmv.set_plotly_template("pymatviz_white")
-
-
 # %% Download data (if needed)
 if os.path.isfile("camd-2022-wo-features.csv.bz2"):
     print("Loading local data...")
@@ -54,8 +51,13 @@ pmv.ptable_heatmap(elem_counts, log=True, color_bar={"title": title}).show()
 
 
 # %%
-fig = df_camd.data_source.value_counts().plot.bar(backend="plotly")
-fig.show()
+source_counts = df_camd.data_source.value_counts()
+widget = pmv.BarPlotWidget(
+    series=[{"x": list(map(str, source_counts.index)), "y": source_counts.to_numpy()}],
+    x_axis={"label": "Data source"},
+    y_axis={"label": "Count"},
+)
+widget.show()
 
 
 # %%

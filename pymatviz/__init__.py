@@ -1,16 +1,13 @@
 """pymatviz: A Python package for visualizing materials data.
 
-Importing this module has side-effects that apply (usually) sensible global
-defaults for plotly like increasing font size, prettier
-axis labels with sub/superscripts.
+Plot functions return MatterViz anywidgets that render in notebooks and export
+to HTML or static images (``widget.to_html()``, ``widget.to_img()``).
 """
 
 from __future__ import annotations
 
 import builtins
 from importlib.metadata import PackageNotFoundError, version
-
-import plotly.express as px
 
 from pymatviz import (
     bar,
@@ -22,7 +19,6 @@ from pymatviz import (
     coordination,
     data,
     enums,
-    io,
     notebook,
     phonons,
     powerups,
@@ -33,7 +29,6 @@ from pymatviz import (
     scatter,
     structure,
     sunburst,
-    templates,
     treemap,
     typing,
     uncertainty,
@@ -49,7 +44,6 @@ from pymatviz.cluster.composition import cluster_compositions
 from pymatviz.coordination import coordination_hist, coordination_vs_cutoff_line
 from pymatviz.enums import Key, angstrom_per_atom, cubic_angstrom, eV
 from pymatviz.histogram import elements_hist, histogram
-from pymatviz.io import save_fig
 from pymatviz.notebook import notebook_mode
 from pymatviz.phonons import phonon_bands, phonon_bands_and_dos, phonon_dos
 from pymatviz.process_data import (
@@ -76,11 +70,6 @@ from pymatviz.scatter import (
 )
 from pymatviz.structure import structure_3d
 from pymatviz.sunburst import chem_env_sunburst, chem_sys_sunburst, spacegroup_sunburst
-from pymatviz.templates import (
-    pmv_dark_template,
-    pmv_white_template,
-    set_plotly_template,
-)
 from pymatviz.treemap import chem_env_treemap, chem_sys_treemap, py_pkg_treemap
 from pymatviz.uncertainty import error_decay_with_uncert, qq_gaussian
 from pymatviz.utils import PKG_DIR, ROOT, df_ptable, html_tag, si_fmt, si_fmt_int
@@ -88,10 +77,13 @@ from pymatviz.widgets import (
     BandsAndDosWidget,
     BandStructureWidget,
     BarPlotWidget,
+    BinnedScatterPlotWidget,
+    BoxPlotWidget,
     BrillouinZoneWidget,
     ChemPotDiagramWidget,
     CompositionWidget,
     ConvexHullWidget,
+    CoordinationBarPlotWidget,
     DosWidget,
     FermiSurfaceWidget,
     HeatmapMatrixWidget,
@@ -99,6 +91,7 @@ from pymatviz.widgets import (
     PeriodicTableWidget,
     PhaseDiagramWidget,
     RdfPlotWidget,
+    SankeyWidget,
     ScatterPlot3DWidget,
     ScatterPlotWidget,
     SpacegroupBarPlotWidget,
@@ -122,9 +115,5 @@ except PackageNotFoundError:
 
 
 IS_IPYTHON = hasattr(builtins, "__IPYTHON__")
-
-px.defaults.labels |= {
-    "gap expt": "Experimental band gap (eV)",
-} | {key: key.label for key in Key}
 
 notebook_mode(on=IS_IPYTHON)

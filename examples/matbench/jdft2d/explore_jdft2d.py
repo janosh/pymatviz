@@ -30,12 +30,10 @@ df_2d.describe()
 
 
 # %%
-fig = df_2d["exfoliation_en"].hist(nbins=200, log_y=True, opacity=0.8, backend="plotly")
-title = "<b>Exfoliation energy histogram of the Matbench Jarvis DFT 2D dataset</b>"
-fig.layout.title.update(text=title, x=0.5)
-fig.layout.showlegend = False
-fig.show()
-# pmv.save_fig(fig, "jdft2d-exfoliation-energy-hist.pdf")
+# Exfoliation energy histogram of the Matbench Jarvis DFT 2D dataset
+widget = pmv.histogram(df_2d["exfoliation_en"], bins=200, log_y=True)
+widget.show()
+# widget.to_img("jdft2d-exfoliation-energy-hist.pdf")
 
 
 # %%

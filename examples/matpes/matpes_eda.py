@@ -9,8 +9,6 @@ import os
 
 import numpy as np
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
 from pymatgen.core import Composition, Structure
 from tqdm import tqdm
 
@@ -18,7 +16,6 @@ import pymatviz as pmv
 from pymatviz.enums import Files, Key
 
 
-pmv.set_plotly_template("pymatviz_dark")
 module_dir = os.path.dirname(__file__)
 AWS_URL = "https://s3.us-east-1.amazonaws.com/materialsproject-contribs/MatPES_2025_1"
 MATPES_DIR = f"{module_dir}/../../paper/data/matpes"
@@ -50,16 +47,13 @@ for df_data, expected_rows in ((df_r2scan, N_R2SCAN), (df_pbe, N_PBE)):
 
 
 # %% plot histogram of energies
-fig = go.Figure()
-
-fig.add_histogram(x=df_r2scan[Key.energy], name="r2scan", opacity=0.8)
-fig.add_histogram(x=df_pbe[Key.energy], name="pbe", opacity=0.8)
-
-fig.layout.xaxis.title = Key.energy.label
-fig.layout.margin = dict(l=5, r=5, t=5, b=5)
-fig.layout.legend.update(x=0, y=1)
-fig.show()
-# pmv.save_fig(fig, "energy-hist.pdf")
+widget = pmv.histogram(
+    {"r2scan": df_r2scan[Key.energy], "pbe": df_pbe[Key.energy]},
+    x_axis={"label": Key.energy.label},
+    bar={"opacity": 0.8},
+)
+widget.show()
+# widget.to_img("energy-hist.pdf")
 
 # @janosh 2024-05-15: initially surprised by the difference in r2SCAN and PBE energy
 # distributions. how could energy differences between two similar chemistries always be
@@ -83,21 +77,23 @@ widget.show()
 
 
 # %% plot histograms of absolute sum of forces on each atom
-total_force_col = "Σ|force<sub>i</sub>| (eV/Å)"
+total_force_col = "Σ|force_i| (eV/Å)"
 df_pbe[total_force_col] = df_pbe[Key.forces].map(lambda arr: np.abs(arr).sum(axis=1))
 df_r2scan[total_force_col] = df_r2scan[Key.forces].map(
     lambda arr: np.abs(arr).sum(axis=1)
 )
 
-fig = go.Figure()
-fig.add_histogram(x=df_r2scan[total_force_col].explode(), name="r2scan", opacity=0.8)
-fig.add_histogram(x=df_pbe[total_force_col].explode(), name="pbe", opacity=0.8)
-
-fig.update_layout(xaxis_title=total_force_col, margin=dict(l=5, r=5, t=5, b=5))
-fig.layout.legend.update(x=0, y=1)
-fig.update_yaxes(type="log")
-fig.show()
-# pmv.save_fig(fig, "forces-hist.pdf")
+widget = pmv.histogram(
+    {
+        "r2scan": np.concatenate(df_r2scan[total_force_col].to_list()),
+        "pbe": np.concatenate(df_pbe[total_force_col].to_list()),
+    },
+    log_y=True,
+    x_axis={"label": total_force_col},
+    bar={"opacity": 0.8},
+)
+widget.show()
+# widget.to_img("forces-hist.pdf")
 
 
 # %% plot element counts
@@ -196,15 +192,15 @@ pmv.spacegroup_bar(df_r2scan[Key.spg_num], log=True).show()
 
 # %% most calcs missing r2SCAN results have 4 sites, almost all 2 or 3-site r2SCAN calcs
 # completed
-fig = go.Figure()
-
-fig.add_histogram(x=df_r2scan[Key.n_sites], name="r2scan", opacity=0.8)
-fig.add_histogram(x=df_pbe[Key.n_sites], name="pbe", opacity=0.8)
-
-fig.layout.legend.update(x=0, y=1)
-fig.layout.xaxis.title = Key.n_sites.label
-fig.layout.yaxis.title = "count"
-fig.show()
+max_sites = max(df_r2scan[Key.n_sites].max(), df_pbe[Key.n_sites].max())
+widget = pmv.histogram(
+    {"r2scan": df_r2scan[Key.n_sites], "pbe": df_pbe[Key.n_sites]},
+    bins=np.arange(0.5, max_sites + 1.5).tolist(),  # one bin per integer site count
+    x_axis={"label": Key.n_sites.label},
+    y_axis={"label": "count"},
+    bar={"opacity": 0.8},
+)
+widget.show()
 
 
 # %% plot absolute forces projected onto elements
@@ -243,13 +239,18 @@ pmv.ptable_heatmap_splits(
 # %%
 df_e_atoms = pd.read_csv(f"{module_dir}/2024-10-30-MatPES-atomic-energies.csv")
 
-fig = px.line(
-    df_e_atoms.round(3),
-    x=Key.element,
-    y=[Key.pbe.label, Key.r2scan.label],
-    markers=True,
+widget = pmv.BarPlotWidget(
+    series=[
+        {
+            "x": df_e_atoms[Key.element].astype(str).to_list(),
+            "y": df_e_atoms[col],
+            "label": col,
+            "render_mode": "line",
+            "markers": "line+points",
+        }
+        for col in (Key.pbe.label, Key.r2scan.label)
+    ],
+    x_axis={"label": Key.element.label},
+    y_axis={"label": "Cohesive Energy (eV/atom)"},
 )
-fig.layout.yaxis.title = "Cohesive Energy (eV/atom)"
-fig.layout.legend.update(x=0, y=0, title="")
-fig.layout.xaxis.range = [-1, len(df_e_atoms)]
-fig.show()
+widget.show()

@@ -49,13 +49,13 @@ widget.show()
 # %%
 ax, *_ = df_carrier.hist(bins=50, log=True, figsize=[30, 16]).flat
 ax.figure.suptitle(data_name, y=1.05)
-# pmv.save_fig(ax, "carrier-transport-hists.pdf")
+# ax.figure.savefig("carrier-transport-hists.pdf")
 
 
 # %%
 ax, *_ = df_carrier.filter(like="S.").hist(bins=50, log=True, figsize=[18, 8]).flat
 ax.figure.suptitle(f"{data_name} histograms for n- and p-type Seebeck coefficients")
-pmv.save_fig(ax, "carrier-transport-seebeck-n+p.pdf")
+ax.figure.savefig("carrier-transport-seebeck-n+p.pdf")
 
 
 # %%
@@ -80,7 +80,7 @@ dependent_vars = [
 
 ax, *_ = df_carrier[dependent_vars].hist(bins=50, log=True, figsize=[30, 16]).flat
 ax.figure.suptitle(f"{data_name} dependent variables", y=1.05)
-# pmv.save_fig(ax.flat[0], "carrier-transport-hists-dependent-vars.pdf")
+# ax.figure.savefig("carrier-transport-hists-dependent-vars.pdf")
 
 
 # %%

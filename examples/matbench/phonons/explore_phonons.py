@@ -33,12 +33,10 @@ df_phonon[[Key.spg_symbol, Key.spg_num]] = [
 
 
 # %%
-fig = df_phonon[last_dos_peak].hist(bins=50, backend="plotly")
-fig.layout.title.update(
-    text="Last phonon DOS peak histogram of Matbench Phonons dataset"
-)
-fig.show()
-# pmv.save_fig(fig, "phonons-last-dos-peak-hist.pdf")
+# Last phonon DOS peak histogram of the Matbench Phonons dataset
+widget = pmv.histogram(df_phonon[last_dos_peak], bins=50)
+widget.show()
+# widget.to_img("phonons-last-dos-peak-hist.pdf")
 
 
 # %%

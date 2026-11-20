@@ -23,12 +23,10 @@ df_e_form = load_dataset("matbench_mp_e_form")
 
 
 # %%
-fig = df_e_form["e_form"].hist(log_y=True, backend="plotly")
-title = "<b>Formation energy histogram of the Matbench formation energy dataset</b>"
-fig.layout.title.update(text=title, x=0.5)
-fig.layout.showlegend = False
-fig.show()
-# pmv.save_fig(fig, "mp-e-form-hist.pdf")
+# Formation energy histogram of the Matbench formation energy dataset
+widget = pmv.histogram(df_e_form["e_form"], log_y=True)
+widget.show()
+# widget.to_img("mp-e-form-hist.pdf")
 
 
 # %%

@@ -40,7 +40,6 @@ for category, msg in {
 }.items():
     warnings.filterwarnings("ignore", category=category, message=msg)
 
-pmv.set_plotly_template("pymatviz_white")
 module_dir = os.path.dirname(__file__)
 
 # --- Configuration ---
