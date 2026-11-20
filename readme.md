@@ -93,7 +93,7 @@ See [`examples/mprester_ptable.ipynb`](examples/mprester_ptable.ipynb).
 
 ### Composition Clustering
 
-| [`cluster_compositions(compositions, properties, embedding_method, projection_method, n_components=2)`](pymatviz/cluster/composition/plot.py#L290) [![fig-icon]](assets/scripts/cluster/composition/cluster_compositions_matbench.py) | [`cluster_compositions(compositions, properties, embedding_method, projection_method, n_components=3)`](pymatviz/cluster/composition/plot.py#L290) |
+| [`cluster_compositions(compositions, properties, embedding_method, projection_method, n_components=2)`](pymatviz/cluster/composition/plot.py#L122) [![fig-icon]](assets/scripts/cluster/composition/cluster_compositions_matbench.py) | [`cluster_compositions(compositions, properties, embedding_method, projection_method, n_components=3)`](pymatviz/cluster/composition/plot.py#L122) |
 | :-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                                                                                 ![matbench-perovskites-magpie-pca-2d]                                                                                                 |                                                       ![matbench-perovskites-magpie-tsne-3d]                                                       |
 
@@ -109,26 +109,21 @@ Dimensionality reduction methods: **PCA** (linear), **t-SNE** (non-linear), **UM
 Example usage:
 
 ```py
+import pandas as pd
 import pymatviz as pmv
-from pymatgen.core import Composition
 
-compositions = ("Fe2O3", "Al2O3", "SiO2", "TiO2")
-
-# Create embeddings
-embeddings = pmv.cluster.composition.one_hot_encode(compositions)
-comp_emb_map = dict(zip(compositions, embeddings, strict=True))
-
-# Plot with optional property coloring
-fig = pmv.cluster_compositions(
-    compositions=comp_emb_map,
-    properties=[1.0, 2.0, 3.0, 4.0],  # Optional property values
-    prop_name="Property",  # Optional property label
+df_comp = pd.DataFrame(
+    {"composition": ["Fe2O3", "Al2O3", "SiO2", "TiO2"], "property": [1.0, 2.0, 3.0, 4.0]}
+)
+widget = pmv.cluster_compositions(
+    df_comp,
+    prop_name="property",  # optional property to color points by
     embedding_method="one-hot",  # or "magpie", "matscholar_el", "megnet_el", etc.
-    projection_method="pca",  # or "tsne", "umap", "isomap", "kernel_pca", etc.
-    show_chem_sys="shape",  # works best for small number of compositions; "color" | "shape" | "color+shape" | None
+    projection="pca",  # or "tsne", "umap", "isomap", "kernel_pca", etc.
+    show_chem_sys="shape",  # "color" | "shape" | "color+shape" | None
     n_components=2,  # or 3 for 3D plots
 )
-fig.show()
+widget.show()
 ```
 
 ## Structure Clustering
@@ -357,23 +352,23 @@ See [`pymatviz/scatter.py`](pymatviz/scatter.py).
 
 See [`pymatviz/uncertainty.py`](pymatviz/uncertainty.py).
 
-|             [`qq_gaussian(y_true, y_pred, y_std)`](pymatviz/uncertainty.py#L70) [![fig-icon]](assets/scripts/uncertainty/qq_gaussian.py)              |       [`qq_gaussian(y_true, y_pred, y_std: dict)`](pymatviz/uncertainty.py#L70)        |
+|             [`qq_gaussian(y_true, y_pred, y_std)`](pymatviz/uncertainty.py#L71) [![fig-icon]](assets/scripts/uncertainty/qq_gaussian.py)              |       [`qq_gaussian(y_true, y_pred, y_std: dict)`](pymatviz/uncertainty.py#L71)        |
 | :---------------------------------------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------: |
 |                                                                    ![qq-gaussian]                                                                     |                                ![qq-gaussian-multiple]                                 |
-| [`error_decay_with_uncert(y_true, y_pred, y_std)`](pymatviz/uncertainty.py#L163) [![fig-icon]](assets/scripts/uncertainty/error_decay_with_uncert.py) | [`error_decay_with_uncert(y_true, y_pred, y_std: dict)`](pymatviz/uncertainty.py#L163) |
+| [`error_decay_with_uncert(y_true, y_pred, y_std)`](pymatviz/uncertainty.py#L154) [![fig-icon]](assets/scripts/uncertainty/error_decay_with_uncert.py) | [`error_decay_with_uncert(y_true, y_pred, y_std: dict)`](pymatviz/uncertainty.py#L154) |
 |                                                              ![error-decay-with-uncert]                                                               |                          ![error-decay-with-uncert-multiple]                           |
 
 ## Classification
 
 See [`pymatviz/classify/confusion_matrix.py`](pymatviz/classify/confusion_matrix.py).
 
-| [`confusion_matrix(conf_mat, ...)`](pymatviz/classify/confusion_matrix.py#L16) | [`confusion_matrix(y_true, y_pred, ...)`](pymatviz/classify/confusion_matrix.py#L16) [![fig-icon]](assets/scripts/classify/confusion_matrix.py) |
+| [`confusion_matrix(conf_mat, ...)`](pymatviz/classify/confusion_matrix.py#L32) | [`confusion_matrix(y_true, y_pred, ...)`](pymatviz/classify/confusion_matrix.py#L32) [![fig-icon]](assets/scripts/classify/confusion_matrix.py) |
 | :----------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------------------------------------------: |
 |                         ![stability-confusion-matrix]                          |                                                       ![crystal-system-confusion-matrix]                                                        |
 
 See [`pymatviz/classify/curves.py`](pymatviz/classify/curves.py).
 
-| [`roc_curve(targets, probs_positive)`](pymatviz/classify/curves.py#L120) [![fig-icon]](assets/scripts/classify/roc_curve.py) | [`precision_recall_curve(targets, probs_positive)`](pymatviz/classify/curves.py#L203) [![fig-icon]](assets/scripts/classify/precision_recall_curve.py) |
+| [`roc_curve(targets, probs_positive)`](pymatviz/classify/curves.py#L131) [![fig-icon]](assets/scripts/classify/roc_curve.py) | [`precision_recall_curve(targets, probs_positive)`](pymatviz/classify/curves.py#L204) [![fig-icon]](assets/scripts/classify/precision_recall_curve.py) |
 | :-------------------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                                ![roc-curve-plotly-multiple]                                                 |                                                       ![precision-recall-curve-plotly-multiple]                                                        |
 

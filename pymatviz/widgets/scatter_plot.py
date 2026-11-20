@@ -40,6 +40,7 @@ class ScatterPlotWidget(CartesianPlotTraits, MatterVizWidget):
     hover_config = optional_trait(tl.Dict)
     label_placement_config = optional_trait(tl.Dict)
     point_tween = optional_trait(tl.Dict)
+    annotation = optional_trait(tl.Unicode)  # text badge auto-placed in free space
     line_tween = optional_trait(tl.Dict)
 
     # Interaction state (two-way synced with the frontend for ipywidgets linking).

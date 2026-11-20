@@ -67,17 +67,19 @@ fig.show()
 # Update: Seems fine actually. Parity plot reveals this nice collection of bands which
 # looks like within each chemical system, you indeed get consistent energy differences.
 # just across different systems, the zero-level energies differ wildly
-fig = go.Figure()
-
-fig.add_scatter(
-    x=df_r2scan[Key.energy].head(1000),
-    y=df_pbe.loc[df_r2scan.index][Key.energy].head(1000),
-    mode="markers",
+widget = pmv.ScatterPlotWidget(
+    series=[
+        {
+            "x": df_r2scan[Key.energy].head(1000),
+            "y": df_pbe.loc[df_r2scan.index][Key.energy].head(1000),
+            "markers": "points",
+        }
+    ],
+    x_axis={"label": f"r2SCAN {Key.energy.label}"},
+    y_axis={"label": f"PBE {Key.energy.label}"},
 )
-fig.layout.xaxis.title = f"r2SCAN {Key.energy.label}"
-fig.layout.yaxis.title = f"PBE {Key.energy.label}"
-pmv.powerups.add_identity_line(fig, retain_xy_limits=True)
-fig.show()
+pmv.powerups.add_identity_line(widget)
+widget.show()
 
 
 # %% plot histograms of absolute sum of forces on each atom
