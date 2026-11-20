@@ -50,18 +50,16 @@ def test_box_plot_series_normalized() -> None:
 
 
 @pytest.mark.parametrize(
-    ("series", "err", "match"),
+    ("series", "match"),
     [
-        ([{"x": [1]}], ValueError, "key 'y'"),
-        ([{"y": [1, float("nan")]}], ValueError, "finite"),
-        ({"y": [1]}, TypeError, "list"),
+        ([{"x": [1]}], "key 'y'"),
+        ([{"y": [1, float("nan")]}], "finite"),
+        ({"y": [1]}, "list"),
     ],
 )
-def test_box_plot_rejects_invalid_series(
-    series: Any, err: type[Exception], match: str
-) -> None:
+def test_box_plot_rejects_invalid_series(series: Any, match: str) -> None:
     """Invalid series raise on init and leave assigned series unchanged."""
-    with pytest.raises(err, match=match):
+    with pytest.raises(tl.TraitError, match=match):
         BoxPlotWidget(series)
     widget = BoxPlotWidget([{"y": [1, 2]}])
     with pytest.raises(tl.TraitError, match=match):

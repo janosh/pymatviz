@@ -24,6 +24,6 @@ df_keys = pd.DataFrame(
 df_keys = df_keys.sort_values(["Category", "Key"], ignore_index=True)
 df_keys.index += 1
 
-# MatterViz has no table widget, so print the table instead of rendering a plotly one
+# MatterViz has no table widget, so print the table
 with pd.option_context("display.max_rows", None, "display.max_colwidth", 60):
     print(df_keys.to_string())

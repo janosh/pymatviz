@@ -75,16 +75,24 @@ BINARY_SERIES_MIN_POINTS = 10_000
 _SERIES_COLUMNS = {"x": True, "y": True, "color_values": False, "size_values": False}
 
 
-def plot_series_envelope(entry: Mapping[str, Any], name: str) -> dict[str, Any] | None:
+def plot_series_envelope(
+    entry: Mapping[str, Any], name: str, keys: tuple[str, ...] = ("x", "y")
+) -> dict[str, Any] | None:
     """Binary plot-series envelope for a large numeric series, else None (stays JSON).
 
-    Numeric 1D columns in ``_SERIES_COLUMNS`` become float64 arrays, every other field
-    stays JSON. Categorical x, non-numeric y or fewer than
-    ``BINARY_SERIES_MIN_POINTS`` points return None.
+    Numeric 1D columns in ``_SERIES_COLUMNS`` and the columns of a numeric per-point
+    ``metadata`` DataFrame (as ``metadata.<column>``) become float64 arrays, every
+    other field stays JSON. A series whose required ``keys`` (``x``/``y``, or the
+    raw ``y`` samples of box plots) aren't all numeric, or with fewer than
+    ``BINARY_SERIES_MIN_POINTS`` points, returns None.
 
     Raises:
         ValueError: If column lengths differ or x/y hold non-finite values.
     """
+    import pandas as pd
+
+    from pymatviz.widgets._normalize import check_metadata_frame, metadata_records
+
     columns = {
         key: arr
         for key in _SERIES_COLUMNS
@@ -92,15 +100,26 @@ def plot_series_envelope(entry: Mapping[str, Any], name: str) -> dict[str, Any] 
         and (arr := np.asarray(entry[key])).dtype.kind in "iuf"
         and arr.ndim == 1
     }
-    if not {"x", "y"} <= columns.keys() or len(columns["x"]) < BINARY_SERIES_MIN_POINTS:
+    if not set(keys) <= columns.keys():
         return None
+    if (n_points := len(columns[keys[0]])) < BINARY_SERIES_MIN_POINTS:
+        return None
+    # a numeric per-point metadata DataFrame travels as metadata.<column> arrays
+    finite = dict(_SERIES_COLUMNS)
+    if isinstance(meta := entry.get("metadata"), pd.DataFrame):
+        check_metadata_frame(meta, n_points, name)
+        if all(dtype.kind in "iuf" for dtype in meta.dtypes):
+            columns |= {f"metadata.{col}": meta[col].to_numpy() for col in meta}
+            finite |= dict.fromkeys(columns.keys() - finite.keys(), False)
+            entry = {key: val for key, val in entry.items() if key != "metadata"}
+        else:
+            records = metadata_records(meta, n_points, name)
+            entry = {**entry, "metadata": records}
     lengths = {key: len(arr) for key, arr in columns.items()}
     if len(set(lengths.values())) > 1:
         raise ValueError(f"{name} columns must share one length, got {lengths}")
     arrays = {
-        key: binary_array(
-            arr, "float64", name=f"{name}.{key}", finite=_SERIES_COLUMNS[key]
-        )
+        key: binary_array(arr, "float64", name=f"{name}.{key}", finite=finite[key])
         for key, arr in columns.items()
     }
     fields = normalize_plot_json(

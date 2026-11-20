@@ -1,6 +1,6 @@
 """ROC and precision-recall curves of binary classifiers."""
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Mapping
 from typing import Any, Literal, cast
 
 import numpy as np
@@ -119,9 +119,7 @@ def _classifier_series(
         # undefined rates (e.g. FPR without negative samples) are NaN: not plottable
         finite = np.isfinite(series["x"]) & np.isfinite(series["y"])
         series["x"], series["y"] = series["x"][finite], series["y"][finite]
-        series["metadata"] = [
-            meta for meta, keep in zip(series["metadata"], finite, strict=True) if keep
-        ]
+        series["metadata"] = series["metadata"][finite]
         line_style = {"width": 2, "dash": LINE_DASHES[idx % len(LINE_DASHES)]}
         series |= {"markers": "line", "line_style": line_style} | series_kwargs
         scored_series.append((score, series))
@@ -129,17 +127,14 @@ def _classifier_series(
     return [series for _, series in scored_series]
 
 
-def _point_metadata(**columns: Sequence[float]) -> list[dict[str, float | None]]:
-    """Per-point metadata dicts, with non-finite values (e.g. sklearn's inf first ROC
-    threshold) as None since widget payloads must be JSON.
+def _point_metadata(**columns: ArrayLike) -> pd.DataFrame:
+    """Per-point metadata as columns (one row per curve point). Widgets turn
+    non-finite values (e.g. sklearn's inf first ROC threshold) into None, and send
+    large curves' columns as binary arrays instead of per-point JSON dicts.
     """
-    return [
-        {
-            key: float(val) if np.isfinite(val) else None
-            for key, val in zip(columns, vals, strict=True)
-        }
-        for vals in zip(*columns.values(), strict=True)
-    ]
+    return pd.DataFrame(
+        {key: np.asarray(vals, dtype=float) for key, vals in columns.items()}
+    )
 
 
 def roc_curve(
@@ -267,14 +262,18 @@ def precision_recall_curve(
     def build_series(
         name: str, tgt: np.ndarray, probs: np.ndarray
     ) -> tuple[dict[str, Any], float]:
-        prec_curve, recall_curve, thresholds = skm.precision_recall_curve(tgt, probs)
+        # drop thresholds that don't change the plotted step curve (like roc_curve
+        # does by default): 200k samples otherwise sync ~200k points of metadata
+        prec_curve, recall_curve, thresholds = skm.precision_recall_curve(
+            tgt, probs, drop_intermediate=True
+        )
         baselines.setdefault(float(np.mean(tgt == 1)), []).append(name)
         with np.errstate(divide="ignore", invalid="ignore"):
             f1_curve = 2 * (prec_curve * recall_curve) / (prec_curve + recall_curve)
         f1_curve = np.nan_to_num(f1_curve)  # 0/0 where precision = recall = 0
         f1_score = float(skm.f1_score(tgt, (probs >= 0.5).astype(float)))
         # the last PR point (recall 0, precision 1) has no threshold
-        thresholds = [*thresholds, np.nan]
+        thresholds = np.append(thresholds, np.nan)
         label = f"{name} · F1={f1_score:.2f}" if name else f"F1={f1_score:.2f}"
         series = {
             "x": recall_curve,

@@ -26,8 +26,13 @@ structures = {
 
 
 # %% render the Brillouin zone of one structure per crystal system
-for struct in structures.values():
-    display(pmv.brillouin_zone_3d(struct, show_vectors=True))
+for (mp_id, _formula, system), struct in structures.items():
+    widget = pmv.brillouin_zone_3d(struct, show_vectors=True)
+    display(widget)
+    if system in {"cubic", "hexagonal", "monoclinic", "orthorhombic"}:  # in readme
+        widget.to_img(
+            f"{pmv.ROOT}/assets/png/brillouin-{system}-{mp_id}.png", width=500
+        )
 
 
 # %% pass ase.Atoms

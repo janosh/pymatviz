@@ -97,7 +97,8 @@ def process_dataset(
         with gzip.open(cache_file, mode="rt") as file:
             embeddings_dict = json.load(file)
 
-    if embeddings_dict is None:
+    # recompute when the cache predates the dataset (e.g. new or reformatted entries)
+    if embeddings_dict is None or not set(compositions) <= embeddings_dict.keys():
         # Create embeddings
         if embed_method == "one-hot":
             embeddings = pcc.one_hot_encode(compositions)
@@ -133,7 +134,7 @@ def process_dataset(
 
     embed_col = "embeddings"
     if embed_col not in df_plot:
-        df_plot[embed_col] = [embeddings_dict.get(comp) for comp in compositions]
+        df_plot[embed_col] = [embeddings_dict[comp] for comp in compositions]
 
     return pmv.cluster_compositions(
         df_in=df_plot,
@@ -235,3 +236,5 @@ for (
     )
     widget.to_html(f"{plot_dir}/{img_name}.html")
     widget.show()
+    if data_name == "matbench_perovskites":  # shown in the readme
+        widget.to_img(f"{pmv.ROOT}/assets/png/{img_name}.png", width=600)

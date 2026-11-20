@@ -21,6 +21,10 @@ for n_splits in range(2, 5):
         color_bar={"title": f"Periodic table heatmap with {n_splits}-fold split"},
     )
     widget.show()
+    if n_splits < 4:  # readme shows the 2- and 3-fold splits
+        widget.to_img(
+            f"{pmv.ROOT}/assets/png/ptable-heatmap-splits-{n_splits}.png", width=1000
+        )
 
 
 # %% Sparse data with NaN segments: absent elements and NaN splits stay uncolored

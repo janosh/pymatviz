@@ -29,7 +29,9 @@ batio3 = Structure(
     coords=[(0, 0, 0), (0.5, 0.5, 0.5), (0.5, 0.5, 0), (0.5, 0, 0.5), (0, 0.5, 0.5)],
 )
 batio3.add_oxidation_state_by_element({"Ba": 2, "Ti": 4, "O": -2})
-display(pmv.structure_3d(batio3, show_bonds=True, cell_edge_color="white"))
+widget = pmv.StructureWidget(structure=batio3, show_bonds=True, cell_edge_color="white")
+display(widget)
+widget.to_img(f"{pmv.ROOT}/assets/png/batio3-structure-3d.png", width=500)
 
 
 # %% Disordered sites are drawn as spheres split by species occupancy
@@ -42,7 +44,11 @@ hea_structure = Structure(
     species=["Co", "Cr", "Fe", "Ni", "Mn"],
     coords=[(0, 0, 0), (0.5, 0.5, 0), (0.5, 0, 0.5), (0, 0.5, 0.5), (0.5, 0.5, 0.5)],
 )
-display(pmv.structure_3d(hea_structure.make_supercell([2, 3, 2], in_place=False)))
+widget = pmv.StructureWidget(
+    structure=hea_structure.make_supercell([2, 3, 2], in_place=False)
+)
+display(widget)
+widget.to_img(f"{pmv.ROOT}/assets/png/hea-structure-3d.png", width=500)
 
 
 # %% Li-ion battery cathode material with Li vacancies: Li0.8CoO2
@@ -51,7 +57,9 @@ lco_supercell = Structure(
     species=[Species("Li", 0.8), "Co", "O", "O"],  # Partially occupied Li site
     coords=[(0, 0, 0), (0, 0, 0.5), (0, 0, 0.25), (0, 0, 0.75)],
 ).make_supercell([3, 3, 1])
-display(pmv.structure_3d(lco_supercell, color_scheme="Jmol"))
+widget = pmv.StructureWidget(structure=lco_supercell, color_scheme="Jmol")
+display(widget)
+widget.to_img(f"{pmv.ROOT}/assets/png/lco-structure-3d.png", width=500)
 
 
 # %% Conventional standard cell of a structure with negative fractional coordinates

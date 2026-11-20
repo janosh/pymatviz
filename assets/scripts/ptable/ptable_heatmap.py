@@ -25,6 +25,7 @@ df_expt_gap = load_dataset("matbench_expt_gap")
 # %% Atomic masses (the Series name titles the color bar)
 widget = pmv.ptable_heatmap(pmv.df_ptable[Key.atomic_mass])
 widget.show()
+widget.to_img(f"{pmv.ROOT}/assets/png/ptable-heatmap-atomic-mass.png", width=1000)
 
 
 # %% Element counts as percentages of all atoms in the dataset
@@ -39,6 +40,7 @@ widget = pmv.ptable_heatmap(
     color_bar={"title": "Elements in Matbench experimental band gaps"},
 )
 widget.show()
+widget.to_img(f"{pmv.ROOT}/assets/png/ptable-heatmap-log.png", width=1000)
 
 
 # %% Specific heat on a log scale, excluding light elements

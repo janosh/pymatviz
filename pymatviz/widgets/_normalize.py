@@ -12,6 +12,8 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    import pandas as pd
+
 
 def with_defaults(defaults: dict[str, Any], kwargs: dict[str, Any]) -> dict[str, Any]:
     """Return widget kwargs over a plot function's defaults, merging dict-valued
@@ -181,6 +183,44 @@ def normalize_json_kwargs(
             kwargs[key] = normalize_plot_json(kwargs[key], f"{component}.{key}")
 
 
+def check_metadata_frame(frame: pd.DataFrame, n_points: int, label: str) -> None:
+    """Validate a per-point metadata DataFrame: one row per point and at least one,
+    uniquely named column (a duplicate name would select a 2D block).
+
+    Raises:
+        ValueError: For a wrong row count, no columns or duplicate column names.
+    """
+    if len(frame) != n_points:
+        raise ValueError(
+            f"{label}.metadata DataFrame needs one row per point ({n_points}), got "
+            f"{len(frame)}"
+        )
+    if frame.columns.empty or frame.columns.has_duplicates:
+        raise ValueError(
+            f"{label}.metadata DataFrame needs uniquely named columns, got "
+            f"{frame.columns.tolist()}"
+        )
+
+
+def metadata_records(
+    frame: pd.DataFrame, n_points: int, label: str
+) -> list[dict[str, Any]]:
+    """Per-point metadata dicts from a DataFrame with one row per point. Missing and
+    non-finite numbers become None, as JSON metadata carries them. Values must be
+    JSON-serializable (e.g. no timestamps).
+
+    Raises:
+        ValueError: If check_metadata_frame rejects the frame.
+    """
+    import numpy as np
+
+    check_metadata_frame(frame, n_points, label)
+    missing = frame.isna()
+    numeric = frame.select_dtypes("number").columns
+    missing[numeric] |= ~np.isfinite(frame[numeric].to_numpy(dtype=float))
+    return frame.astype(object).mask(missing, None).to_dict("records")
+
+
 def normalize_plot_series(
     series_data: Any,
     *,
@@ -191,7 +231,9 @@ def normalize_plot_series(
     """Normalize and validate plot series payloads (``None`` passes through).
 
     Entries are dicts with ``x`` and ``y`` lists of equal length (``x`` all strings
-    for categorical axes or all numeric, ``y`` numeric, both finite). With
+    for categorical axes or all numeric, ``y`` numeric, both finite). Per-point
+    ``metadata`` may be a pandas DataFrame with one row per point (columnar, so
+    binary series send numeric columns as arrays). With
     ``samples_key`` (histograms bin ``values``), entries must instead hold raw
     samples under that key. Raises TypeError for wrong container/entry/sample types and
     ValueError for missing keys, length mismatches and non-finite numbers.
@@ -203,6 +245,8 @@ def normalize_plot_series(
             f"{component_name} 'series' must be a list/tuple of dicts, got "
             f"{type(series_data)}."
         )
+    import pandas as pd
+
     # lazy: _binary imports this module
     from pymatviz.widgets._binary import is_binary_envelope, plot_series_envelope
 
@@ -218,7 +262,7 @@ def normalize_plot_series(
         if (
             binary
             and isinstance(series_entry, dict)
-            and (envelope := plot_series_envelope(series_entry, name)) is not None
+            and (envelope := plot_series_envelope(series_entry, name, keys)) is not None
         ):
             normalized_series.append(envelope)
             continue
@@ -227,7 +271,12 @@ def normalize_plot_series(
                 f"{component_name} series entries must be dicts. "
                 f"Got type {type(series_entry)} at index {series_index}."
             )
-        entry = normalize_plot_json(series_entry, f"{component_name}.series")
+        raw_entry = series_entry
+        if isinstance(meta := series_entry.get("metadata"), pd.DataFrame):
+            n_points = len(series_entry.get(keys[0], ()))
+            records = metadata_records(meta, n_points, name)
+            raw_entry = {**series_entry, "metadata": records}
+        entry = normalize_plot_json(raw_entry, f"{component_name}.series")
         if not all(key in entry for key in keys):
             what = f"key '{samples_key}'" if samples_key else "keys 'x' and 'y'"
             raise ValueError(

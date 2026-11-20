@@ -6,7 +6,7 @@ from typing import Any
 
 import traitlets as tl
 
-from pymatviz.widgets._normalize import normalize_json_kwargs, normalize_plot_series
+from pymatviz.widgets._normalize import normalize_json_kwargs
 from pymatviz.widgets._traits import CartesianPlotTraits, optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
@@ -57,13 +57,8 @@ class BoxPlotWidget(CartesianPlotTraits, MatterVizWidget):
 
     @tl.validate("series")
     def _validate_series(self, proposal: dict[str, Any]) -> list[dict[str, Any]] | None:
-        """Normalize replacement series (raw samples in ``y``) before syncing."""
-        try:
-            return normalize_plot_series(
-                proposal["value"], component_name="BoxPlot", samples_key="y"
-            )
-        except (TypeError, ValueError) as exc:
-            raise tl.TraitError(str(exc)) from exc
+        """Normalize series (raw samples in ``y``, binary when large) before syncing."""
+        return self._binary_series(proposal["value"], "BoxPlot", samples_key="y")
 
     def __init__(
         self,
@@ -86,8 +81,6 @@ class BoxPlotWidget(CartesianPlotTraits, MatterVizWidget):
         normalize_json_kwargs(kwargs, json_keys, "BoxPlot")
         super().__init__(
             widget_type="box_plot",
-            series=normalize_plot_series(
-                series, component_name="BoxPlot", samples_key="y"
-            ),
+            series=series,
             **kwargs,
         )

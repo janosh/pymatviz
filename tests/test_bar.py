@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections import Counter
 from typing import TYPE_CHECKING, Any
 
 import pandas as pd
@@ -25,8 +24,9 @@ if TYPE_CHECKING:
             pd.Series([225, 2, 1, 225, 62], dtype="Float64", name="spacegroup"),
             {1: 1, 2: 1, 62: 1, 225: 2},
         ),
+        (pd.Series([225, 2, 225], dtype=object), {2: 1, 225: 2}),
     ],
-    ids=["all-groups", "integers", "floats", "symbols", "nullable-series"],
+    ids=["all-groups", "integers", "floats", "symbols", "nullable-series", "object"],
 )
 @pytest.mark.parametrize("show_counts", [True, False])
 def test_spacegroup_bar(
@@ -34,11 +34,11 @@ def test_spacegroup_bar(
     counts: dict[int, int],
     show_counts: bool,
 ) -> None:
-    """Inputs normalize to integer space group numbers with unchanged counts."""
+    """Inputs sync as per-space-group counts keyed by ascending number strings."""
     widget = spacegroup_bar(data, show_counts=show_counts)
     assert isinstance(widget, SpacegroupBarPlotWidget)
-    assert all(type(spg) is int for spg in widget.data)
-    assert Counter(widget.data) == counts
+    assert widget.data == {str(spg): count for spg, count in sorted(counts.items())}
+    assert all(type(count) is int for count in widget.data.values())
     assert widget.show_counts is show_counts
 
 
@@ -64,8 +64,8 @@ def test_spacegroup_bar_log_y(
 def test_spacegroup_bar_structures(structures: Sequence[Any]) -> None:
     """Structures are converted to space group numbers in Python."""
     widget = spacegroup_bar(structures)
-    assert len(widget.data) == len(structures)
-    assert all(1 <= spg <= 230 for spg in widget.data)
+    assert sum(widget.data.values()) == len(structures)
+    assert all(1 <= int(spg) <= 230 for spg in widget.data)
 
 
 @pytest.mark.parametrize(

@@ -371,8 +371,9 @@ def _esm_blob_loader_js(esm_content: str) -> str:
 # Binary buffers arrive base64-encoded; decode each synchronously (no fetch of a data:
 # URL, which a strict CSP blocks) to the DataView a live comm gives
 _REVIVE_BUFFERS_JS = """\
-const { trajectory, volumetric_data = [], series = [] } = widget_data;
-for (const envelope of [trajectory, ...volumetric_data, ...series]) {
+// unset traits arrive as null, which destructuring defaults would let through
+const { trajectory, volumetric_data, series } = widget_data;
+for (const envelope of [trajectory, ...(volumetric_data ?? []), ...(series ?? [])]) {
   if (envelope?.format !== "matterviz-binary-v1") continue;
   for (const spec of Object.values(envelope.arrays)) {
     const raw = atob(spec.data);
@@ -691,6 +692,35 @@ _SVG_EXTRACT_JS = """\
     });
     if (!cloned.hasAttribute('xmlns'))
         cloned.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    // Keyboard/pointer wiring means nothing in a static file and was ~40%% of a bar
+    // chart's bytes: drop it, keeping the root's aria-label as the figure's name
+    const geometry_attrs = new Set(['d', 'x', 'y', 'x1', 'x2', 'y1', 'y2', 'cx', 'cy',
+        'r', 'rx', 'ry', 'width', 'height', 'points']);
+    for (const node of [cloned, ...cloned.querySelectorAll('*')]) {
+        for (const { name, value } of [...node.attributes]) {
+            if (name === 'role' || name === 'tabindex' || name.startsWith('data-')
+                || (name.startsWith('aria-') && node !== cloned))
+                node.removeAttribute(name);
+            // 0.01 px is far below what any viewer resolves, and d3 emits 16 digits.
+            // The lookbehind keeps compact path data like 1.9.9999 (1.9 and .9999)
+            // from merging; transforms stay exact since scale/matrix terms aren't px
+            else if (geometry_attrs.has(name))
+                node.setAttribute(name, value.replace(/(?<![\\d.])-?\\d*\\.\\d{3,}/g,
+                    (num) => String(+(+num).toFixed(2))));
+        }
+        if (!node.style) continue;
+        node.style.removeProperty('cursor');
+        node.style.removeProperty('touch-action');
+        if (!node.style.length) node.removeAttribute('style');
+    }
+    // CSS sizes chart SVGs (width: 100%%), which a standalone file loses: without
+    // its rendered px size an <img> falls back to 300x150 and crops the chart
+    const box = best.getBoundingClientRect();
+    const [width, height] = [box.width, box.height].map((px) => +px.toFixed(2));
+    cloned.setAttribute('width', width);
+    cloned.setAttribute('height', height);
+    if (!cloned.hasAttribute('viewBox'))
+        cloned.setAttribute('viewBox', `0 0 ${width} ${height}`);
     return '<?xml version="1.0" encoding="UTF-8"?>\\n'
         + new XMLSerializer().serializeToString(cloned);
 }

@@ -59,18 +59,18 @@ See [`pymatviz/ptable/figures.py`](pymatviz/ptable/figures.py). The module suppo
 
 |                                     [`ptable_heatmap(atomic_masses)`](pymatviz/ptable/figures.py#L104)                                     | [`ptable_heatmap(compositions, log=True)`](pymatviz/ptable/figures.py#L104) [![fig-icon]](assets/scripts/ptable/ptable_heatmap.py) |
 | :---------------------------------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------------------: |
-|                                                 ![ptable-heatmap-plotly-more-hover-data]                                                  |                                                   ![ptable-heatmap-plotly-log]                                                    |
+|                                                 ![ptable-heatmap-atomic-mass]                                                  |                                                   ![ptable-heatmap-log]                                                    |
 |               [`ptable_hists(data)`](pymatviz/ptable/figures.py#L268) [![fig-icon]](assets/scripts/ptable/ptable_hists.py)                | [`ptable_scatter(data, mode="markers")`](pymatviz/ptable/figures.py#L338) [![fig-icon]](assets/scripts/ptable/ptable_scatter.py) |
-|                                                          ![ptable-hists-plotly]                                                           |                                                 ![ptable-scatter-plotly-markers]                                                  |
+|                                                          ![ptable-hists]                                                           |                                                 ![ptable-scatter-markers]                                                  |
 | [`ptable_heatmap_splits(2_vals_per_elem)`](pymatviz/ptable/figures.py#L204) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_splits.py) |                            [`ptable_heatmap_splits(3_vals_per_elem)`](pymatviz/ptable/figures.py#L204)                            |
-|                                                     ![ptable-heatmap-splits-plotly-2]                                                     |                                                 ![ptable-heatmap-splits-plotly-3]                                                 |
+|                                                     ![ptable-heatmap-splits-2]                                                     |                                                 ![ptable-heatmap-splits-3]                                                 |
 
-[ptable-heatmap-plotly-log]: assets/svg/ptable-heatmap-plotly-log.svg
-[ptable-heatmap-plotly-more-hover-data]: assets/svg/ptable-heatmap-plotly-more-hover-data.svg
-[ptable-heatmap-splits-plotly-2]: assets/svg/ptable-heatmap-splits-plotly-2.svg
-[ptable-heatmap-splits-plotly-3]: assets/svg/ptable-heatmap-splits-plotly-3.svg
-[ptable-hists-plotly]: assets/svg/ptable-hists-plotly.svg
-[ptable-scatter-plotly-markers]: assets/svg/ptable-scatter-plotly-markers.svg
+[ptable-heatmap-log]: assets/png/ptable-heatmap-log.png
+[ptable-heatmap-atomic-mass]: assets/png/ptable-heatmap-atomic-mass.png
+[ptable-heatmap-splits-2]: assets/png/ptable-heatmap-splits-2.png
+[ptable-heatmap-splits-3]: assets/png/ptable-heatmap-splits-3.png
+[ptable-hists]: assets/png/ptable-hists.png
+[ptable-scatter-markers]: assets/png/ptable-scatter-markers.png
 
 ### Dash app using `ptable_heatmap()`
 
@@ -88,8 +88,8 @@ See [`examples/mprester_ptable.ipynb`](examples/mprester_ptable.ipynb).
 
 [phonon-bands]: assets/svg/phonon-bands-mp-2758.svg
 [phonon-dos]: assets/svg/phonon-dos-mp-2758.svg
-[phonon-bands-and-dos-mp-2758]: assets/svg/phonon-bands-and-dos-mp-2758.svg
-[phonon-bands-and-dos-mp-23907]: assets/svg/phonon-bands-and-dos-mp-23907.svg
+[phonon-bands-and-dos-mp-2758]: assets/png/phonon-bands-and-dos-mp-2758.png
+[phonon-bands-and-dos-mp-23907]: assets/png/phonon-bands-and-dos-mp-23907.png
 
 ### Composition Clustering
 
@@ -97,8 +97,8 @@ See [`examples/mprester_ptable.ipynb`](examples/mprester_ptable.ipynb).
 | :-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                                                                                 ![matbench-perovskites-magpie-pca-2d]                                                                                                 |                                                       ![matbench-perovskites-magpie-tsne-3d]                                                       |
 
-[matbench-perovskites-magpie-pca-2d]: assets/svg/matbench-perovskites-magpie-pca-2d.svg
-[matbench-perovskites-magpie-tsne-3d]: assets/svg/matbench-perovskites-magpie-tsne-3d.svg
+[matbench-perovskites-magpie-pca-2d]: assets/png/matbench-perovskites-magpie-pca-2d.png
+[matbench-perovskites-magpie-tsne-3d]: assets/png/matbench-perovskites-magpie-tsne-3d.png
 
 Visualize 2D or 3D relationships between compositions and properties using multiple embedding and dimensionality reduction techniques:
 
@@ -137,12 +137,12 @@ See [`pymatviz/structure/figures.py`](pymatviz/structure/figures.py).
 |                            [`structure_3d(hea_structure)`](pymatviz/structure/figures.py)                            | [`structure_3d(lco_supercell)`](pymatviz/structure/figures.py) [![fig-icon]](assets/scripts/structure/structure_3d.py) |
 | :------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------------------: |
 |                                                 ![hea-structure-3d]                                                  |                                                  ![lco-structure-3d]                                                   |
-| [`structure_3d(six_structs)`](pymatviz/structure/figures.py) [![fig-icon]](assets/scripts/structure/structure_3d.py) | |
-|                                          ![matbench-phonons-structures-3d]                                           | |
+| [`structure_3d(batio3)`](pymatviz/structure/figures.py) [![fig-icon]](assets/scripts/structure/structure_3d.py) | |
+|                                          ![batio3-structure-3d]                                           | |
 
-[matbench-phonons-structures-3d]: assets/svg/matbench-phonons-structures-3d.svg
-[hea-structure-3d]: assets/svg/hea-structure-3d.svg
-[lco-structure-3d]: assets/svg/lco-structure-3d.svg
+[batio3-structure-3d]: assets/png/batio3-structure-3d.png
+[hea-structure-3d]: assets/png/hea-structure-3d.png
+[lco-structure-3d]: assets/png/lco-structure-3d.png
 
 ## Interactive Widgets
 
@@ -204,10 +204,10 @@ See [`pymatviz/brillouin.py`](pymatviz/brillouin.py).
 | [`brillouin_zone_3d(monoclinic_struct)`](pymatviz/brillouin.py#L47) [![fig-icon]](assets/scripts/brillouin/brillouin_zone_3d.py) | [`brillouin_zone_3d(orthorhombic_struct)`](pymatviz/brillouin.py#L47) |
 |                                                ![brillouin-monoclinic-mp-1183089]                                                |                  ![brillouin-orthorhombic-mp-1183085]                 |
 
-[brillouin-cubic-mp-10018]: assets/svg/brillouin-cubic-mp-10018.svg
-[brillouin-hexagonal-mp-862690]: assets/svg/brillouin-hexagonal-mp-862690.svg
-[brillouin-monoclinic-mp-1183089]: assets/svg/brillouin-monoclinic-mp-1183089.svg
-[brillouin-orthorhombic-mp-1183085]: assets/svg/brillouin-orthorhombic-mp-1183085.svg
+[brillouin-cubic-mp-10018]: assets/png/brillouin-cubic-mp-10018.png
+[brillouin-hexagonal-mp-862690]: assets/png/brillouin-hexagonal-mp-862690.png
+[brillouin-monoclinic-mp-1183089]: assets/png/brillouin-monoclinic-mp-1183089.png
+[brillouin-orthorhombic-mp-1183085]: assets/png/brillouin-orthorhombic-mp-1183085.png
 
 ## X-Ray Diffraction
 
@@ -235,14 +235,14 @@ See [`pymatviz/rdf/figures.py`](pymatviz/rdf/figures.py).
 
 See [`pymatviz/coordination/figures.py`](pymatviz/coordination/figures.py).
 
-|              [`coordination_hist(struct_dict)`](pymatviz/coordination/figures.py#L70)              |            [`coordination_hist(struct_dict, by_element=True)`](pymatviz/coordination/figures.py#L70) [![fig-icon]](assets/scripts/coordination/coordination_hist.py)             |
+|              [`coordination_hist(struct_dict)`](pymatviz/coordination/figures.py#L70)              |            [`coordination_hist(struct_dict, split_mode="by_element")`](pymatviz/coordination/figures.py#L70) [![fig-icon]](assets/scripts/coordination/coordination_hist.py)             |
 | :------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
-|                                    ![coordination-hist-single]                                     |                                                                  ![coordination-hist-by-structure-and-element]                                                                   |
+|                                    ![coordination-hist-single]                                     |                                                                  ![coordination-hist-by-element]                                                                   |
 | [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination/figures.py#L173) | [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination/figures.py#L173) [![fig-icon]](assets/scripts/coordination/coordination_vs_cutoff_line.py#L52) |
 |                                  ![coordination-vs-cutoff-single]                                  |                                                                        ![coordination-vs-cutoff-multiple]                                                                        |
 
 [coordination-hist-single]: assets/svg/coordination-hist-single.svg
-[coordination-hist-by-structure-and-element]: assets/svg/coordination-hist-by-structure-and-element.svg
+[coordination-hist-by-element]: assets/svg/coordination-hist-by-element.svg
 [coordination-vs-cutoff-single]: assets/svg/coordination-vs-cutoff-single.svg
 [coordination-vs-cutoff-multiple]: assets/svg/coordination-vs-cutoff-multiple.svg
 
@@ -301,12 +301,11 @@ See [`pymatviz/rainclouds.py`](pymatviz/rainclouds.py).
 
 See [`pymatviz/sankey.py`](pymatviz/sankey.py).
 
-| [`sankey_from_2_df_cols(df_perovskites)`](pymatviz/sankey.py#L17) [![fig-icon]](examples/matbench_perovskites_eda.ipynb) | [`sankey_from_2_df_cols(df_space_groups)`](pymatviz/sankey.py#L17) |
-| :----------------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------: |
-|                                          ![sankey-moyopy-vs-aflow-spacegroups]                                           |                ![sankey-crystal-sys-to-spg-symbol]                 |
+| [`sankey_from_2_df_cols(df_space_groups, [crystal_system, spg_num])`](pymatviz/sankey.py#L17) [![fig-icon]](assets/scripts/sankey/sankey_from_2_df_cols.py) |
+| :---: |
+| ![sankey-crystal-sys-to-spg-num] |
 
-[sankey-moyopy-vs-aflow-spacegroups]: assets/svg/sankey-moyopy-vs-aflow-spacegroups.svg
-[sankey-crystal-sys-to-spg-symbol]: assets/svg/sankey-crystal-sys-to-spg-symbol.svg
+[sankey-crystal-sys-to-spg-num]: assets/svg/sankey-crystal-sys-to-spg-num.svg
 
 ## Bar Plots
 
@@ -314,10 +313,10 @@ See [`pymatviz/bar.py`](pymatviz/bar.py).
 
 | [`spacegroup_bar([65, 134, 225, ...])`](pymatviz/bar.py#L29) [![fig-icon]](assets/scripts/bar/spacegroup_bar.py) | [`spacegroup_bar(["C2/m", "P-43m", "Fm-3m", ...])`](pymatviz/bar.py#L29) |
 | :--------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------: |
-|                                              ![spg-num-hist-plotly]                                              |                        ![spg-symbol-hist-plotly]                         |
+|                                              ![spg-num-bar]                                              |                        ![spg-symbol-bar]                         |
 
-[spg-symbol-hist-plotly]: assets/svg/spg-symbol-hist-plotly.svg
-[spg-num-hist-plotly]: assets/svg/spg-num-hist-plotly.svg
+[spg-symbol-bar]: assets/svg/spg-symbol-bar.svg
+[spg-num-bar]: assets/svg/spg-num-bar.svg
 
 ## Histograms
 
@@ -325,9 +324,9 @@ See [`pymatviz/histogram.py`](pymatviz/histogram.py).
 
 | [`elements_hist(compositions, log_y=True, show_values='count')`](pymatviz/histogram.py#L24) [![fig-icon]](assets/scripts/histogram/elements_hist.py) | [`histogram({'key1': values1, 'key2': values2})`](pymatviz/histogram.py#L93) [![fig-icon]](assets/scripts/histogram/histogram.py) |
 | :-----------------------------------------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------------------: |
-|                                                                 ![elements-hist]                                                                  |                                                         ![histogram-ecdf]                                                         |
+|                                                                 ![elements-hist]                                                                  |                                                         ![histogram]                                                         |
 
-[histogram-ecdf]: assets/svg/histogram-ecdf.svg
+[histogram]: assets/svg/histogram.svg
 
 ## Scatter Plots
 
@@ -364,14 +363,14 @@ See [`pymatviz/classify/confusion_matrix.py`](pymatviz/classify/confusion_matrix
 
 See [`pymatviz/classify/curves.py`](pymatviz/classify/curves.py).
 
-| [`roc_curve(targets, probs_positive)`](pymatviz/classify/curves.py#L145) [![fig-icon]](assets/scripts/classify/roc_curve.py) | [`precision_recall_curve(targets, probs_positive)`](pymatviz/classify/curves.py#L233) [![fig-icon]](assets/scripts/classify/precision_recall_curve.py) |
+| [`roc_curve(targets, probs_positive)`](pymatviz/classify/curves.py#L140) [![fig-icon]](assets/scripts/classify/roc_curve.py) | [`precision_recall_curve(targets, probs_positive)`](pymatviz/classify/curves.py#L228) [![fig-icon]](assets/scripts/classify/precision_recall_curve.py) |
 | :-------------------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------------------------------: |
-|                                                ![roc-curve-plotly-multiple]                                                 |                                                       ![precision-recall-curve-plotly-multiple]                                                        |
+|                                                ![roc-curve-multiple]                                                 |                                                       ![precision-recall-curve-multiple]                                                        |
 
-[roc-curve-plotly-multiple]: assets/svg/roc-curve-plotly-multiple.svg
-[precision-recall-curve-plotly-multiple]: assets/svg/precision-recall-curve-plotly-multiple.svg
-[stability-confusion-matrix]: assets/svg/stability-confusion-matrix.svg
-[crystal-system-confusion-matrix]: assets/svg/crystal-system-confusion-matrix.svg
+[roc-curve-multiple]: assets/svg/roc-curve-multiple.svg
+[precision-recall-curve-multiple]: assets/svg/precision-recall-curve-multiple.svg
+[stability-confusion-matrix]: assets/png/stability-confusion-matrix.png
+[crystal-system-confusion-matrix]: assets/png/crystal-system-confusion-matrix.png
 [error-decay-with-uncert-multiple]: assets/svg/error-decay-with-uncert-multiple.svg
 [error-decay-with-uncert]: assets/svg/error-decay-with-uncert.svg
 [elements-hist]: assets/svg/elements-hist.svg

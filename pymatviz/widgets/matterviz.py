@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import dataclasses
 import json
 import os
@@ -278,6 +279,14 @@ def clear_widget_cache(version_override: str | None = None) -> None:
         shutil.rmtree(cache_root)
 
 
+def static_png_bundle(widget: MatterVizWidget, **img_kwargs: Any) -> dict[str, str]:
+    """MIME bundle of the widget as a base64 PNG (img_kwargs go to to_img, e.g.
+    width, dpi) plus a plain-text fallback.
+    """
+    png = base64.b64encode(widget.to_img(fmt="png", **img_kwargs)).decode("ascii")
+    return {"image/png": png, "text/plain": f"<{type(widget).__name__}>"}
+
+
 class MatterVizWidget(AnyWidget):
     """Base widget class that lazily loads and caches MatterViz widget assets.
 
@@ -348,7 +357,7 @@ class MatterVizWidget(AnyWidget):
 
         Raises:
             TypeError: For kwargs that aren't traits of this widget (typos or
-                options removed with plotly would otherwise be silently dropped).
+                unsupported options would otherwise be silently dropped).
         """
         if unknown := kwargs.keys() - self.trait_names() - {"model_id"}:
             raise TypeError(f"Unknown {type(self).__name__} options: {sorted(unknown)}")
@@ -397,24 +406,23 @@ class MatterVizWidget(AnyWidget):
         if isinstance(esm_url, str):
             self._esm = esm_url
 
+    def _repr_mimebundle_(
+        self, **kwargs: Any
+    ) -> tuple[dict[str, Any], dict[str, Any]] | None:
+        """Notebook display: the live widget, or with the ``PYMATVIZ_STATIC`` env var
+        set a PNG rendered in headless Chromium, for executed notebooks viewed
+        without a widget frontend (GitHub, nbconvert HTML on the docs site).
+        """
+        if os.environ.get("PYMATVIZ_STATIC"):
+            return static_png_bundle(self), {}
+        return super()._repr_mimebundle_(**kwargs)
+
     def show(self) -> None:
-        """Display this widget in notebook environments.
-
-        Safe to call as the last expression in a cell — returns None to
-        prevent Jupyter from auto-displaying a second copy.
-
-        When the ``PYMATVIZ_STATIC`` env var is set, renders a static PNG
-        via headless Chromium instead of the interactive widget protocol.
-        Useful for CI notebook execution where outputs must be viewable
-        without a live widget frontend (e.g. GitHub .ipynb rendering).
+        """Display this widget in notebook environments (a static PNG when
+        ``PYMATVIZ_STATIC`` is set). Returns None, so as a cell's last expression
+        Jupyter doesn't display a second copy.
         """
         from IPython.display import display as ipython_display
-
-        if os.environ.get("PYMATVIZ_STATIC"):
-            from IPython.display import Image
-
-            ipython_display(Image(data=self.to_img(fmt="png")))
-            return
 
         ipython_display(self)
 
@@ -575,7 +583,7 @@ class MatterVizWidget(AnyWidget):
             )
 
     def _binary_series(
-        self, value: Any, component_name: str
+        self, value: Any, component_name: str, samples_key: str | None = None
     ) -> list[dict[str, Any]] | None:
         """Normalize plot series, sending large numeric ones as binary envelopes.
 
@@ -587,7 +595,10 @@ class MatterVizWidget(AnyWidget):
 
         try:
             series = normalize_plot_series(
-                value, component_name=component_name, binary=True
+                value,
+                component_name=component_name,
+                samples_key=samples_key,
+                binary=True,
             )
         except (TypeError, ValueError) as exc:
             raise tl.TraitError(str(exc)) from exc

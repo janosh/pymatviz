@@ -20,5 +20,7 @@ df_phonons[Key.spg_symbol] = df_sym["number"].map(pmv.utils.spg_num_to_from_symb
 
 
 # %% Spacegroup histograms from numbers and symbols
-pmv.spacegroup_bar(df_phonons[Key.spg_num]).show()
-pmv.spacegroup_bar(df_phonons[Key.spg_symbol], log_y=True).show()
+for key, kwargs in ((Key.spg_num, {}), (Key.spg_symbol, {"log_y": True})):
+    widget = pmv.spacegroup_bar(df_phonons[key], **kwargs)
+    widget.show()
+    widget.to_img(f"{pmv.ROOT}/assets/svg/{key.replace('_', '-')}-bar.svg", width=600)

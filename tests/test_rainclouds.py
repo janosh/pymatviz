@@ -5,6 +5,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import pytest
+import traitlets as tl
 
 import pymatviz as pmv
 from pymatviz.widgets.box_plot import BoxPlotWidget
@@ -106,19 +107,24 @@ def test_rainclouds_with_dataframe() -> None:
 
 
 @pytest.mark.parametrize(
-    ("data", "kwargs", "match"),
+    ("data", "kwargs", "err", "match"),
     [
-        ({"a": [1, 2]}, {"show_violin": False, "show_box": False}, "show_violin"),
-        ({}, {}, "at least one dataset"),
-        ({"a": []}, {}, "non-empty"),
-        ({"a": [1, float("nan")]}, {}, "finite"),
+        (
+            {"a": [1, 2]},
+            {"show_violin": False, "show_box": False},
+            ValueError,
+            "show_violin",
+        ),
+        ({}, {}, ValueError, "at least one dataset"),
+        ({"a": []}, {}, ValueError, "non-empty"),
+        ({"a": [1, float("nan")]}, {}, tl.TraitError, "finite"),  # widget validation
     ],
 )
 def test_rainclouds_invalid(
-    data: dict[str, Any], kwargs: dict[str, Any], match: str
+    data: dict[str, Any], kwargs: dict[str, Any], err: type[Exception], match: str
 ) -> None:
     """Invalid options and empty datasets raise."""
-    with pytest.raises(ValueError, match=match):
+    with pytest.raises(err, match=match):
         pmv.rainclouds(data, **kwargs)
 
 

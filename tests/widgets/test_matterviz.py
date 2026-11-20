@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import builtins
 import io
 import os
@@ -519,31 +520,28 @@ def test_show_interactive(static_val: str | None) -> None:
 
 @pytest.mark.parametrize("static_val", ["1", "0"], ids=["val_1", "val_0"])
 @pytest.mark.usefixtures("_clean_asset_cache")
-def test_show_static_png(static_val: str) -> None:
-    """show() renders static PNG when PYMATVIZ_STATIC is any non-empty string.
-
-    Note: "0" is truthy in Python strings, so PYMATVIZ_STATIC=0 still
-    enables static mode. Only unsetting or setting to "" disables it.
+def test_static_png_repr(static_val: str) -> None:
+    """With PYMATVIZ_STATIC set to any non-empty string ("0" too), notebooks display
+    widgets (bare expressions and show() alike) as a PNG instead of live state.
     """
     fake_png = b"\x89PNG fake image bytes"
-    mock_image_cls = MagicMock()
-    mock_image_instance = MagicMock()
-    mock_image_cls.return_value = mock_image_instance
-
     with (
         patch(f"{DOTTED_PATH}.fetch_widget_asset", return_value="content"),
         patch(f"{DOTTED_PATH}._in_marimo_runtime", return_value=False),
         patch.dict(os.environ, {"PYMATVIZ_STATIC": static_val}, clear=False),
-        patch("IPython.display.display") as mock_display,
-        patch("IPython.display.Image", mock_image_cls),
     ):
         widget = matterviz.MatterVizWidget()
         with patch.object(widget, "to_img", return_value=fake_png) as mock_to_img:
-            widget.show()
+            bundle = widget._repr_mimebundle_()
 
     mock_to_img.assert_called_once_with(fmt="png")
-    mock_image_cls.assert_called_once_with(data=fake_png)
-    mock_display.assert_called_once_with(mock_image_instance)
+    assert bundle == (
+        {
+            "image/png": base64.b64encode(fake_png).decode("ascii"),
+            "text/plain": "<MatterVizWidget>",
+        },
+        {},
+    )
 
 
 # === _in_marimo_runtime ===

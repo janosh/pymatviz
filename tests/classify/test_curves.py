@@ -248,7 +248,11 @@ def test_curve_threshold_metadata() -> None:
     assert [meta["threshold"] for meta in roc_meta[1:]] == roc_thresholds[1:].tolist()
 
     pr_series = precision_recall_curve(targets, probs, no_skill=False).series[0]
-    prec, recall, pr_thresholds = skm.precision_recall_curve(targets, probs)
+    # collinear points that don't change the plotted curve are dropped
+    prec, recall, pr_thresholds = skm.precision_recall_curve(
+        targets, probs, drop_intermediate=True
+    )
+    assert len(pr_thresholds) < len(skm.precision_recall_curve(targets, probs)[2])
     pr_meta = pr_series["metadata"]
     assert [meta["threshold"] for meta in pr_meta] == [*pr_thresholds.tolist(), None]
     expected_f1 = 2 * prec * recall / (prec + recall)

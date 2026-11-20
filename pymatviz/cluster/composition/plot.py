@@ -7,6 +7,7 @@ import warnings
 from typing import TYPE_CHECKING, Any, Literal, Protocol, cast
 
 import numpy as np
+import pandas as pd
 from pandas.api.types import is_bool_dtype, is_numeric_dtype
 from pymatgen.core import Composition
 from sklearn.decomposition import PCA
@@ -31,7 +32,6 @@ CHEM_SYS_SYMBOLS = (
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Mapping, Sequence
 
-    import pandas as pd
     from sklearn.decomposition import KernelPCA
     from sklearn.manifold import TSNE, Isomap
 
@@ -446,7 +446,9 @@ def cluster_compositions(
                     f"{prop_name=}, got {numeric_props.tolist()}"
                 )
         else:
-            categories = [str(val) for val in properties]
+            # one "nan" category for missing values, whichever missing marker
+            # (None, NaN, pd.NA) the pandas version stores in object/str columns
+            categories = ["nan" if pd.isna(val) else str(val) for val in properties]
 
     plot_order = np.arange(len(df_in))  # df_in position of each plotted point
     if sort and numeric_props is not None:

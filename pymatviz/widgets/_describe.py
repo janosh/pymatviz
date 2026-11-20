@@ -228,8 +228,8 @@ def _describe_xrd(data: Mapping[str, Any]) -> dict[str, Any]:
 
 def _describe_spacegroup_bar(data: Mapping[str, Any]) -> dict[str, Any]:
     """Total and unique space-group entry counts."""
-    values = data.get("data") or []
-    return {"n_entries": len(values), "n_unique": len(set(values))}
+    counts = data.get("data") or {}
+    return {"n_entries": sum(counts.values()), "n_unique": len(counts)}
 
 
 def _describe_spectral(

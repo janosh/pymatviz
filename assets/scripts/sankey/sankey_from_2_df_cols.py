@@ -9,8 +9,7 @@ from pymatviz.enums import Key
 
 
 # %% Sankey diagram of crystal systems and space groups
-data_name = "matbench_phonons"
-df_phonons = load_dataset(data_name)
+df_phonons = load_dataset("matbench_phonons")
 
 df_sym = pd.DataFrame(
     struct.get_symmetry_dataset(backend="moyopy", return_raw_dataset=True).as_dict()
@@ -33,4 +32,4 @@ widget = pmv.sankey_from_2_df_cols(
     link_color_mode="gradient",
 )
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/svg/sankey-{data_name}.svg", width=700)
+widget.to_img(f"{pmv.ROOT}/assets/svg/sankey-crystal-sys-to-spg-num.svg", width=700)

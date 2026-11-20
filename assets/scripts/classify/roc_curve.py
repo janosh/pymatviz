@@ -43,4 +43,4 @@ classifiers = {
 
 widget = pmv.roc_curve(targets=y_binary, probs_positive=classifiers)
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/svg/roc-curve-plotly-multiple.svg", width=500)
+widget.to_img(f"{pmv.ROOT}/assets/svg/roc-curve-multiple.svg", width=500)

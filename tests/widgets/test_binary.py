@@ -10,9 +10,11 @@ from typing import Any
 
 import numpy as np
 import pytest
+import traitlets as tl
 
 from pymatviz import (
     BinnedScatterPlotWidget,
+    BoxPlotWidget,
     ScatterPlotWidget,
     StructureWidget,
     TrajectoryWidget,
@@ -145,6 +147,57 @@ def test_large_plot_series_sync_as_binary(widget_cls: type) -> None:
     assert widget.series == [small]
 
 
+def test_large_box_samples_sync_as_binary() -> None:
+    """Box/raincloud samples (y only) of large series sync as binary arrays."""
+    samples = np.random.default_rng(seed=0).normal(size=_N_BIG)
+    (envelope, small) = BoxPlotWidget(
+        series=[{"y": samples, "label": "a"}, {"y": [1, 2]}]
+    ).series
+    assert envelope["kind"] == "plot-series"
+    assert envelope["label"] == "a"
+    np.testing.assert_array_equal(decode_envelope(envelope)["y"], samples)
+    assert small == {"y": [1, 2]}
+
+
+def test_plot_series_metadata_frame() -> None:
+    """A per-point metadata DataFrame becomes metadata.<col> arrays on binary series
+    and per-point dicts (non-finite as None) on JSON series.
+    """
+    import pandas as pd
+
+    xs = np.arange(_N_BIG, dtype=float)
+    meta = pd.DataFrame({"threshold": np.r_[np.inf, xs[1:]], "f1": np.nan})
+    (envelope,) = ScatterPlotWidget(
+        series=[{"x": xs, "y": xs, "metadata": meta}]
+    ).series
+    assert "metadata" not in envelope
+    arrays = decode_envelope(envelope)
+    np.testing.assert_array_equal(arrays["metadata.threshold"], meta["threshold"])
+    assert np.isnan(arrays["metadata.f1"]).all()
+
+    small = {"x": [1, 2], "y": [3, 4]}
+    frame = pd.DataFrame({"threshold": [np.inf, 0.5], "name": ["a", None]})
+    (json_series,) = ScatterPlotWidget(series=[small | {"metadata": frame}]).series
+    assert json_series["metadata"] == [
+        {"threshold": None, "name": "a"},
+        {"threshold": 0.5, "name": None},
+    ]
+    # non-numeric columns keep a large series' metadata as JSON records
+    labels = pd.DataFrame({"name": ["a"] * _N_BIG})
+    (mixed,) = ScatterPlotWidget(series=[{"x": xs, "y": xs, "metadata": labels}]).series
+    assert mixed["metadata"][0] == {"name": "a"}
+    assert "x" in mixed["arrays"]
+    dupes = pd.DataFrame([[1.0, 2.0]] * _N_BIG, columns=pd.Index(["a", "a"]))
+    for points, frame, match in [
+        (small, pd.DataFrame({"a": [1, 2, 3]}), r"one row per point \(2\), got 3"),
+        ({"x": xs, "y": xs}, pd.DataFrame({"a": [1.0]}), r"\(10000\), got 1"),
+        ({"x": xs, "y": xs}, dupes, r"uniquely named columns, got \['a', 'a'\]"),
+        (small, pd.DataFrame(index=range(2)), r"uniquely named columns, got \[\]"),
+    ]:
+        with pytest.raises(tl.TraitError, match=match):
+            ScatterPlotWidget(series=[points | {"metadata": frame}])
+
+
 @pytest.mark.parametrize(
     ("series", "match"),
     [
@@ -160,8 +213,6 @@ def test_large_plot_series_sync_as_binary(widget_cls: type) -> None:
 )
 def test_invalid_large_plot_series(series: dict[str, Any], match: str) -> None:
     """Large series with ragged columns or non-finite x/y raise on assignment."""
-    import traitlets as tl
-
     with pytest.raises(tl.TraitError, match=match):
         ScatterPlotWidget(series=[series])
 
@@ -397,6 +448,14 @@ def test_volume_envelope_round_trip() -> None:
     assert widget.volumetric_data[0]["extra"] == "x"
 
 
+def _run_node(script: str) -> str:
+    """Run a script in node via stdin (a large series' base64 overflows argv)."""
+    cmd = ["node", "-"]
+    return subprocess.run(  # noqa: S603
+        cmd, input=script, capture_output=True, text=True, check=True
+    ).stdout
+
+
 @pytest.mark.skipif(shutil.which("node") is None, reason="needs node")
 def test_headless_json_embeds_buffers_as_base64() -> None:
     """Headless exports revive only binary array data as DataViews."""
@@ -427,15 +486,14 @@ console.log(JSON.stringify([data instanceof DataView,
   widget_data.volumetric_data[0].arrays.values.data instanceof DataView,
   widget_data.series[0].arrays.y.data instanceof DataView,
   widget_data.metadata, Array.from(new Float32Array(data.buffer))]));"""
-    result = subprocess.run(  # noqa: S603
-        ["node", "-e", script],  # noqa: S607
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    traj_view, vol_view, series_view, metadata, floats = json.loads(result.stdout)
+    traj_view, vol_view, series_view, metadata, floats = json.loads(_run_node(script))
     assert traj_view
     assert vol_view
     assert series_view
     assert metadata == marker
     np.testing.assert_array_equal(floats, _POSITIONS[:1].astype(np.float32).ravel())
+    # unset traits sync as null and must not break the revive loop
+    nulls = {"trajectory": None, "volumetric_data": None, "series": None}
+    null_script = f"const widget_data = {_widget_data_json(nulls)};\n"
+    null_script += f"{_REVIVE_BUFFERS_JS}console.log('ok')"
+    assert _run_node(null_script).strip() == "ok"

@@ -42,8 +42,10 @@ CoordinationBarPlotWidget(three_structs, strategy="electroneg_ratio").show()
 for split_mode in CnSplitMode:
     widget = pmv.coordination_hist(three_structs, split_mode=split_mode)
     widget.show()
-    svg_name = f"coordination-hist-{split_mode.value.replace('_', '-')}"
-    widget.to_img(f"{pmv.ROOT}/assets/svg/{svg_name}.svg", width=700)
+    if split_mode == CnSplitMode.by_element:  # shown in the readme
+        widget.to_img(
+            f"{pmv.ROOT}/assets/svg/coordination-hist-by-element.svg", width=700
+        )
 
 
 # %% Side-by-side bars per structure with custom element colors

@@ -181,7 +181,6 @@ from pymatviz.widgets.xrd import XrdWidget
             "fermi_surface",
             "color_bar",
         ),
-        (SpacegroupBarPlotWidget, {"data": [225, 166, 62]}, "spacegroup_bar", "data"),
         (
             ChemPotDiagramWidget,
             {"entries": [{"name": "Li2O", "energy": -14.3}]},
@@ -350,7 +349,7 @@ def test_to_dict_reflects_runtime_mutations() -> None:
         (HeatmapMatrixWidget, "color_scale", None),
         (HeatmapMatrixWidget, "tile_size", "50px"),
         (HeatmapMatrixWidget, "gap", "0px"),
-        (SpacegroupBarPlotWidget, "data", []),
+        (SpacegroupBarPlotWidget, "data", {}),
         (SpacegroupBarPlotWidget, "show_counts", True),
         (SpacegroupBarPlotWidget, "show_legend", False),
         (SpacegroupBarPlotWidget, "orientation", "vertical"),
@@ -540,7 +539,7 @@ def test_structure_viz_vector_props(
             SpacegroupBarPlotWidget,
             {"data": np.array([225, 166, 62])},
             "data",
-            [225, 166, 62],
+            {"62": 1, "166": 1, "225": 1},
         ),
         (
             BrillouinZoneWidget,
@@ -576,17 +575,22 @@ def test_widget_normalizes_numpy_values(
 
 
 def test_spacegroup_bar_data_inputs() -> None:
-    """SpacegroupBarPlotWidget normalizes supported data inputs."""
+    """SpacegroupBarPlotWidget counts every input form per space group number."""
     pd = pytest.importorskip("pandas")
-    widget = SpacegroupBarPlotWidget(data=pd.Series([225, 166, 62]))
-    assert widget.data == [225, 166, 62]
-    widget = SpacegroupBarPlotWidget(data={225: np.int64(2), 166: 0, "P2_1/c": 1})
-    assert widget.data == [225, 225, "P2_1/c"]
-    for bad_data, error_cls, match in [
-        ({225: -1}, ValueError, "non-negative"),
-        ({225: 1.5}, TypeError, "integer"),
+    widget = SpacegroupBarPlotWidget(data=pd.Series([225, 166, 62, 225]))
+    assert widget.data == {"62": 1, "166": 1, "225": 2}
+    # number, symbol and synced digit-string keys of one group merge; zeros drop
+    widget.data = {225: np.int64(2), "Fm-3m": 1, "225": 1, 166: 0, "P2_1/c": 1}
+    assert widget.data == {"14": 1, "225": 4}
+    widget.data = widget.data  # re-validating the synced form is a no-op
+    assert widget.data == {"14": 1, "225": 4}
+    assert SpacegroupBarPlotWidget().data == {}
+    for bad_data, match in [
+        ({225: -1}, "non-negative"),
+        ({225: 1.5}, "integers"),
+        ({"not-a-spg": 1}, "Invalid"),
     ]:
-        with pytest.raises(error_cls, match=match):
+        with pytest.raises(tl.TraitError, match=match):
             SpacegroupBarPlotWidget(data=bad_data)
 
 
@@ -1168,8 +1172,7 @@ def test_hierarchy_vector_and_html_exports(chart: str, tmp_path: Any) -> None:
         style="width: 700px; height: 480px;",
     )
     svg = widget.to_img(fmt="svg").decode()
-    assert f"data-{chart}-node-idx=" in svg
-    assert "Fe-O" in svg
+    assert all(label in svg for label in ("Fe-O", "Li-O", "Si"))
     pdf = widget.to_img(fmt="pdf")
     assert pdf.startswith(b"%PDF-")
     assert b"/Font" in pdf
@@ -1197,7 +1200,9 @@ def test_hierarchy_vector_and_html_exports(chart: str, tmp_path: Any) -> None:
         svg_path = tmp_path / f"{chart}.svg"
         svg_path.write_text(svg)
         page.goto(svg_path.as_uri())
-        assert shapes.evaluate_all(paint) == live_styles
+        # the exported file drops the live chart's role, so match its shapes directly
+        file_shapes = page.locator("svg :is(path, rect, circle, text, tspan)")
+        assert file_shapes.evaluate_all(paint) == live_styles
 
 
 @_skip_no_playwright
@@ -1231,11 +1236,23 @@ def test_svg_export_keeps_use_instance_paint(tmp_path: Any) -> None:
 
 @_skip_no_playwright
 def test_headless_bar_plot_svg(bar_plot_widget: BarPlotWidget) -> None:
-    """BarPlotWidget.to_img(fmt='svg') returns chart SVG, not a toolbar icon."""
-    svg_text = bar_plot_widget.to_img(fmt="svg").decode("utf-8")
+    """BarPlotWidget.to_img(fmt='svg') returns a standalone-sized chart SVG."""
+    import re
+
+    svg_text = bar_plot_widget.to_img(fmt="svg", width=600).decode("utf-8")
     assert svg_text.startswith("<?xml")
     assert len(svg_text) > 2000, f"SVG too small ({len(svg_text)} chars)"
     assert "<g" in svg_text, "No <g> groups -- likely an icon"
+    # CSS-sized charts get their rendered px size, else <img> shows them at 300x150
+    root = re.search(r"<svg[^>]*>", svg_text)
+    assert root is not None
+    size = dict(re.findall(r' (width|height|viewBox)="([^"]+)"', root.group()))
+    assert float(size["width"]) == 600
+    assert ' aria-label="' in root.group()  # the figure keeps its accessible name
+    assert size["viewBox"] == f"0 0 {size['width']} {size['height']}"
+    # static files drop keyboard/pointer wiring and keep 0.01 px coordinates
+    assert not re.search(r' (tabindex|role|data-[\w-]+)="', svg_text)
+    assert not re.search(r' d="[^"]*\.\d{3}', svg_text)
 
 
 @_skip_no_playwright
@@ -1259,7 +1276,7 @@ def test_headless_scatter_vector_export(marker_renderer: str) -> None:
     svg_text = widget.to_img(fmt="svg", dpi=144).decode("utf-8")
     assert "<foreignObject" not in svg_text
     if marker_renderer == "svg":
-        assert svg_text.count('data-roving-key="') == 3
+        assert len(re.findall(r'<path [^>]*class="marker\b', svg_text)) == 3
         return
     data_uris = re.findall(
         r'<image [^>]*href="data:image/png;base64,([^"]+)"', svg_text
@@ -1570,6 +1587,6 @@ def _widget_subclasses(cls: type = MatterVizWidget) -> list[type]:
     ],
 )
 def test_unknown_kwargs_raise(make_widget: Any) -> None:
-    """Typos and removed plotly-only options raise instead of being dropped."""
+    """Typos and unsupported options raise instead of being dropped."""
     with pytest.raises(TypeError, match=r"Unknown \w+ options: \['bogus'\]"):
         make_widget(bogus=1)

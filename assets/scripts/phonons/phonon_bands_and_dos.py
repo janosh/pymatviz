@@ -27,5 +27,6 @@ for mp_id, formula in (("mp-2758", "Sr4Se4"), ("mp-23907", "H2")):
         sigma=0.05,
         style="height: 500px",
     )
-    # no to_img: SVG export keeps only one panel and fails on the WebGL zone
     widget.show()
+    # PNG since the Brillouin zone inset renders with WebGL
+    widget.to_img(f"{pmv.ROOT}/assets/png/phonon-bands-and-dos-{mp_id}.png", width=900)

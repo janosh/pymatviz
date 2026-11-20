@@ -161,7 +161,7 @@ def test_histogram_bin_geometry(
     ("series_name", "expected_title"),
     [(None, "Value"), ("my_col", "my_col"), (0, "0"), ("", "")],
 )
-def test_histogram_series_xaxis_title(
+def test_histogram_series_x_axis_label(
     series_name: str | int | None, expected_title: str
 ) -> None:
     """Histogram uses series name as x-axis title; only None falls back to 'Value'."""

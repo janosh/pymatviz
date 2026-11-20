@@ -1,7 +1,4 @@
-"""Confusion matrix examples.
-
-HeatmapMatrix renders HTML cells: export with widget.to_img(fmt="png"), not SVG.
-"""
+"""Confusion matrix examples (HTML cells, so they export as PNG, not SVG)."""
 
 # %%
 import numpy as np
@@ -31,6 +28,7 @@ widget = pmv.confusion_matrix(
     metrics={"Prec": ".1%", "F1": ".0%", "MCC": ".2f"},
 )
 widget.show()
+widget.to_img(f"{pmv.ROOT}/assets/png/stability-confusion-matrix.png", width=500)
 
 
 # %% Multi-class crystal system classification
@@ -52,3 +50,4 @@ widget = pmv.confusion_matrix(
     tile_size="90px",
 )
 widget.show()
+widget.to_img(f"{pmv.ROOT}/assets/png/crystal-system-confusion-matrix.png", width=500)
