@@ -234,28 +234,16 @@ def print_split_stats(df_in: pd.DataFrame, split: pd.Series, split_name: str) ->
         test_count = split_counts["test"].get(el, 0)
         element_split_counts[el] = (train_count, val_count, test_count)
 
-    common_kwargs = dict(y=0.75, len=0.17, tickangle=0, orientation="h")
-    # Create periodic table heatmap
-    fig = pmv.ptable_heatmap_splits(
+    # Periodic table with tiles split into train (top), val (middle), test (bottom)
+    title = f"{split_name} element counts in train (top), val, test (bottom)"
+    widget = pmv.ptable_heatmap_splits(
         element_split_counts,
-        colorbar=(
-            dict(title="Train count<br>", x=0.2, tickformat="~s", **common_kwargs),
-            dict(title="Val count<br>", x=0.38, tickformat="~s", **common_kwargs),
-            dict(title="Test count<br>", x=0.56, tickformat="~s", **common_kwargs),
-        ),
-        nan_color="rgba(0,0,0,0)",  # Make zero-value tiles transparent
-        symbol_kwargs=dict(font_color="gray"),
-        hover_fmt=lambda x: f"{x:,.0f}",  # Format hover values with thousands separator
+        color_scale={"scheme": "interpolateViridis", "type": "log"},
+        color_bar={"title": title},
     )
-    title = f"Element counts in train/val/test splits for {split_name}"
-    fig.layout.margin.update(t=10, b=10, l=10, r=10)
-    fig.layout.title.update(text=title, x=0.5, y=0.95)
-    fig.layout.paper_bgcolor = "white"
-    fig.show()
+    widget.show()
     os.makedirs(f"{module_dir}/figs/splits", exist_ok=True)
-    pmv.save_fig(
-        fig, f"{module_dir}/figs/splits/{split_name}-element-counts.png", scale=2
-    )
+    widget.to_img(f"{module_dir}/figs/splits/{split_name}-element-counts.png", dpi=300)
 
 
 if __name__ == "__main__":

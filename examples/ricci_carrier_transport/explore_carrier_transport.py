@@ -38,11 +38,12 @@ df_carrier[[Key.spg_symbol, Key.spg_num]] = [
 
 
 # %%
-fig = pmv.ptable_heatmap(df_carrier.pretty_formula.dropna(), log=True)
-title = f"{data_name} elemental prevalence"
-fig.layout.title.update(text=title)
-fig.show()
-# pmv.save_fig(fig, "carrier-transport-ptable-heatmap.pdf")
+widget = pmv.ptable_heatmap(
+    df_carrier.pretty_formula.dropna(),
+    log=True,
+    color_bar={"title": f"{data_name} elemental prevalence"},
+)
+widget.show()
 
 
 # %%

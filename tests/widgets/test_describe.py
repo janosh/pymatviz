@@ -138,6 +138,10 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
         # empty/None data is tolerated
         (pmv.ScatterPlotWidget(), {"n_series": 0, "n_points": 0, "x_range": None}),
         (pmv.PeriodicTableWidget(), {"n_elements": 0, "value_range": None}),
+        (
+            pmv.PeriodicTableWidget(tile_plots={"Fe": {"values": [1]}}),
+            {"n_elements": 0, "n_tile_plots": 1, "value_range": None},
+        ),
         (pmv.HeatmapMatrixWidget(), {"shape": [0, 0], "value_range": None}),
     ],
 )
@@ -231,6 +235,10 @@ def test_describe_unknown_widget_type() -> None:
         ({"widget_type": "scatter_plot", "n_series": 3}, "scatter_plot: 3 series"),
         ({"widget_type": "convex_hull", "n_entries": 5}, "convex_hull: 5 entries"),
         ({"widget_type": "treemap", "n_nodes": 4}, "treemap: 4 nodes"),
+        (
+            {"widget_type": "periodic_table", "n_elements": 0, "n_tile_plots": 3},
+            "periodic_table: 3 tile plots",
+        ),
         ({"widget_type": "xrd"}, "xrd"),
     ],
 )
@@ -250,6 +258,7 @@ def test_short_summary(report: dict[str, Any], expected: str) -> None:
         (pmv.HistogramWidget(series=[{"values": []}, {"values": []}]), True),
         (pmv.PeriodicTableWidget(), True),
         (pmv.PeriodicTableWidget(heatmap_values={"Fe": 1}), False),
+        (pmv.PeriodicTableWidget(tile_plots={"Fe": {"x": [1], "y": [2]}}), False),
         (pmv.DosWidget(), True),
         (pmv.DosWidget(doses={"energies": [0]}), False),
         (pmv.BandStructureWidget(), True),

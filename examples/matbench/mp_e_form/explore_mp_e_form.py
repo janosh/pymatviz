@@ -34,8 +34,5 @@ fig.show()
 # %%
 df_e_form[Key.formula] = df_e_form[Key.structure].map(lambda struct: struct.formula)
 
-fig = pmv.ptable_heatmap(df_e_form[Key.formula], log=True)
-title = "<b>Elemental prevalence in the Matbench formation energy dataset</b>"
-fig.layout.title.update(text=title, x=0.5)
-fig.show()
-# pmv.save_fig(fig, "mp_e_form-ptable-heatmap.pdf")
+title = "Elemental prevalence in the Matbench formation energy dataset"
+pmv.ptable_heatmap(df_e_form[Key.formula], log=True, color_bar={"title": title}).show()
