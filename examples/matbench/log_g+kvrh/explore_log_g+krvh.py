@@ -140,13 +140,7 @@ pmv.ptable_heatmap(df_grvh[Key.formula], log=True, color_bar={"title": title}).s
 
 
 # %%
-fig = pmv.spacegroup_bar(df_grvh[Key.spg_num])
-fig.layout.margin.update(b=10, l=10, r=10, t=50)
-fig.layout.title.update(
-    text="Spacegroup histogram of the Matbench bulk/shear modulus datasets"
-)
-fig.show()
-# pmv.save_fig(fig, "gvrh-spacegroup-hist.pdf")
+pmv.spacegroup_bar(df_grvh[Key.spg_num]).show()
 
 
 # %%

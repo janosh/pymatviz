@@ -15,6 +15,21 @@ from pymatviz.widgets._traits import (
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
+def bar_axis_defaults(
+    kwargs: dict[str, Any], *, category: dict[str, Any], value: dict[str, Any]
+) -> dict[str, dict[str, Any]]:
+    """Pop the user's ``x_axis``/``y_axis`` from ``kwargs`` and merge them over the
+    category and value axis defaults, keyed by the axis each lands on: the category
+    axis is x for vertical bars and y for ``orientation="horizontal"``.
+    """
+    horizontal = str(kwargs.get("orientation")).lower() == "horizontal"
+    cat_key, val_key = ("y_axis", "x_axis") if horizontal else ("x_axis", "y_axis")
+    return {
+        cat_key: category | (kwargs.pop(cat_key, None) or {}),
+        val_key: value | (kwargs.pop(val_key, None) or {}),
+    }
+
+
 class BarPlotWidget(CartesianPlotTraits, MatterVizWidget):
     """MatterViz widget wrapper for grouped/stacked/overlay bar plots."""
 

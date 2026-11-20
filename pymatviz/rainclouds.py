@@ -1,22 +1,18 @@
-"""Raincloud plots."""
+"""Raincloud plots as MatterViz box plot widgets."""
 
 from __future__ import annotations
 
-import warnings
-from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
-import plotly.colors as pc
-import plotly.graph_objects as go
-from plotly.express.colors import qualitative
-from plotly.subplots import make_subplots
-from scipy import stats
+
+from pymatviz.widgets.box_plot import BoxPlotWidget
 
 
 if TYPE_CHECKING:
-    from typing import Literal
+    from collections.abc import Mapping, Sequence
+    from typing import Any, Literal
 
 
 def rainclouds(
@@ -24,209 +20,95 @@ def rainclouds(
         str, Sequence[float] | np.ndarray | pd.Series | tuple[pd.DataFrame, str]
     ],
     *,
-    orientation: Literal["h", "v"] = "h",
+    orientation: Literal["horizontal", "vertical"] = "horizontal",
     alpha: float = 0.7,
-    width_viol: float = 0.3,
-    width_box: float = 0.05,
-    jitter: float = 0.01,
-    point_size: float = 3,
+    width_viol: float = 0.6,
+    width_box: float = 0.1,
+    point_size: float = 2,
     bw: float = 0.2,
-    cut: float = 0.0,
-    scale: Literal["area", "count", "width"] = "area",
-    rain_offset: float = -0.25,
-    offset: float | None = None,
-    hover_data: (
-        Sequence[str]
-        | Mapping[str, Sequence[str] | Mapping[str, Sequence[object]]]
-        | None
-    ) = None,
     show_violin: bool = True,
     show_box: bool = True,
     show_points: bool = True,
-) -> go.Figure:
-    """Create a raincloud plot for multiple datasets using Plotly.
+    **kwargs: Any,
+) -> BoxPlotWidget:
+    """Raincloud plot (half violin, box and jittered samples) per dataset.
 
     This plot type was proposed in https://wellcomeopenresearch.org/articles/4-63/v2.
-    It is a vertical stack of:
-
-    1. violin plot (the cloud)
-    2. box plot (the umbrella)
-    3. strip plot (the rain)
+    Each dataset is drawn as a one-sided violin (the cloud), a box plot (the
+    umbrella) and jittered samples on the opposite side (the rain). Quartiles,
+    whiskers and the KDE are computed in the frontend from the raw samples. Each
+    violin is scaled to its own maximum density.
 
     Args:
-        data (dict[str, Union[Sequence[float], tuple[pd.DataFrame, str]]]): A dictionary
-            where keys are labels and values are either sequences of float data or
-            tuples containing a DataFrame and the column name to plot. Dataframes can
-            hold additional columns to be used in hover tooltips.
-        orientation ("h" | "v", optional): Orientation of the plot.
-            "h" for horizontal, "v" for vertical. Defaults to "h".
-        alpha (float, optional): Transparency of the violin plots. Defaults to 0.7.
-        width_viol (float, optional): Width of the violin plots. Defaults to 0.3.
-        width_box (float, optional): Width of the box plots. Defaults to 0.05.
-        jitter (float, optional): Amount of jitter for the strip plot. Defaults to 0.01.
-        point_size (float, optional): Size of the points in the strip plot.
-            Defaults to 3.
-        bw (float, optional): Bandwidth for the KDE. Defaults to 0.2.
-        cut (float, optional): Distance past extreme data points to extend KDE. Defaults
-            to 0.0.
-        scale ("area" | "count" | "width", optional): Method to scale the width
-            of each violin. "area" normalizes by integral so all violins have equal area
-            "count" scales by sample size, "width" normalizes by max so all violins have
-            equal max width. Defaults to "area".
-        rain_offset (float, optional): Shift the strip plot position. Defaults to -0.25.
-        offset (float | None, optional): Shift the violin plot position.
-            Defaults to None.
-        hover_data: Extra hover data. Pass None to show only plotted values. For
-            DataFrame-backed data, pass column names like ["temperature", "pressure"],
-            or a mapping from trace label to column names or per-point arrays, e.g.
-            {"train": ["temperature"]} or {"train": {"source": ["DFT", "ML"]}}.
-        show_violin (bool, optional): Whether to show the violin plot. Defaults to True.
+        data (dict[str, Sequence[float] | tuple[pd.DataFrame, str]]): Map from labels
+            to either sequences of floats or (DataFrame, column name) tuples.
+        orientation ("horizontal" | "vertical", optional): "horizontal" draws
+            distributions along the x-axis stacked vertically, "vertical" along the
+            y-axis. Invalid values raise ``traitlets.TraitError``. Defaults to
+            "horizontal".
+        alpha (float, optional): Opacity of the violins. Defaults to 0.7.
+        width_viol (float, optional): Violin width as fraction of each category slot.
+            Defaults to 0.6.
+        width_box (float, optional): Box width as fraction of each category slot.
+            Defaults to 0.1.
+        point_size (float, optional): Radius of the rain points in px. Defaults to 2.
+        bw (float, optional): KDE bandwidth as a multiple of each dataset's sample
+            standard deviation (scipy's ``gaussian_kde(bw_method=bw)`` convention).
+            Defaults to 0.2.
+        show_violin (bool, optional): Whether to show the violin. Defaults to True.
         show_box (bool, optional): Whether to show the box plot. Defaults to True.
-        show_points (bool, optional): Whether to show the strip plot points.
-            Defaults to True.
+        show_points (bool, optional): Whether to show the samples. Defaults to True.
+        **kwargs: BoxPlotWidget traits, e.g. ``points`` (``"swarm"``),
+            ``whisker_mode``, ``show_mean``, ``x_axis``, ``y_axis``, ``style``.
+            ``violin_style`` and ``sample_style`` are merged over the defaults.
 
     Returns:
-        go.Figure: The Plotly figure containing the raincloud plot.
+        BoxPlotWidget: one series per dataset.
+
+    Raises:
+        ValueError: If data is empty, neither violin nor box is shown, or a dataset
+            is empty or holds non-finite values.
     """
+    if not data:
+        raise ValueError("rainclouds needs at least one dataset")
+    if not (show_violin or show_box):
+        raise ValueError("rainclouds needs show_violin or show_box (or both)")
 
-    def rgba_from_hex(hex_color: str, alpha: float) -> str:
-        """Convert hex color to rgba."""
-        rgb = pc.hex_to_rgb(hex_color)
-        return f"rgba({rgb[0]},{rgb[1]},{rgb[2]},{alpha})"
-
-    fig = make_subplots(rows=1, cols=1)
-
-    offset = max(width_box / 1.8, 0.15) + 0.05 if offset is None else offset
-    positions = np.arange(len(data)) * 0.6
-
-    for idx, (label, data_itm) in enumerate(data.items()):
-        color = qualitative.Plotly[idx % len(qualitative.Plotly)]
-        rgba_color = rgba_from_hex(color, alpha)
-        pos = positions[idx]
-        df_i: pd.DataFrame | None = None
-        col: str | None = None
-        values = data_itm
-        if (
-            isinstance(data_itm, tuple)
-            and len(data_itm) == 2
-            and isinstance(data_itm[0], pd.DataFrame)
-            and isinstance(data_itm[1], str)
-        ):
+    series: list[dict[str, Any]] = []
+    for label, data_itm in data.items():
+        raw_values = data_itm
+        if isinstance(data_itm, tuple) and len(data_itm) == 2:
             df_i, col = data_itm
-            values = df_i[col]
+            if isinstance(df_i, pd.DataFrame):
+                raw_values = df_i[col]
+        values = np.asarray(raw_values, dtype=float)
+        if values.ndim != 1 or len(values) == 0:
+            raise ValueError(f"rainclouds data for {label!r} must be a non-empty 1D")
+        entry: dict[str, Any] = {
+            "y": values,
+            "label": str(label),
+            "box_width": width_box,
+        }
+        # scipy's scalar bw_method scales the sample std; MatterViz takes value units
+        std = values.std(ddof=1) if len(values) > 1 else 0.0
+        if show_violin and std > 0:
+            entry["bandwidth"] = bw * std
+        series.append(entry)
 
-        if show_violin:  # the cloud
-            kde = stats.gaussian_kde(values, bw_method=bw)
-            numeric_values = np.asarray(values, dtype=float)
-            x_range = np.linspace(
-                numeric_values.min() - cut, numeric_values.max() + cut, 100
-            )
-            y_range = kde(x_range)
-
-            if scale == "area":
-                # normalize by integral so all violins have equal area
-                y_range /= np.trapezoid(y_range, x_range)
-            elif scale == "count":
-                y_range *= len(values) / y_range.max()
-            elif scale == "width":
-                # normalize by max so all violins have equal max width
-                y_range /= y_range.max()
-
-            x_data = np.concatenate([x_range, x_range[::-1]])
-            y_data = np.concatenate(
-                [
-                    [pos] * len(x_range),
-                    (pos + y_range * width_viol)[::-1],
-                ]
-            )
-
-            fig.add_scatter(
-                x=x_data if orientation == "h" else y_data,
-                y=y_data if orientation == "h" else x_data,
-                fill="toself",
-                fillcolor=rgba_color,
-                line=dict(color="rgba(255,255,255,0)"),
-                showlegend=True,
-                name=label,
-                legendgroup=label,
-                hoverinfo="x+y",
-                hoverlabel=dict(namelength=-1),
-                hovertemplate=(f"{label}<br>%{{x:.3g}}<br>%{{y:.3g}}<extra></extra>"),
-            )
-
-        if show_box:  # the umbrella
-            fig.add_box(
-                x=values if orientation == "h" else [pos - offset / 2] * len(values),
-                y=[pos - offset / 2] * len(values) if orientation == "h" else values,
-                name=label,
-                boxpoints=False,
-                width=width_box,
-                fillcolor=rgba_color,
-                line=dict(color=color),
-                orientation=orientation,
-                showlegend=not show_violin,
-                legendgroup=label,
-            )
-
-        if show_points:  # the rain
-            rng = np.random.default_rng(seed=0)
-            jitter_values = rng.normal(0, jitter, size=len(values))
-            hover_key = col or "value"
-            hover_text = [f"{label}<br>{hover_key}: {val:.3g}" for val in values]
-
-            # per-label hover spec for mappings, shared column names otherwise
-            extra_hover = (
-                hover_data.get(label) if isinstance(hover_data, Mapping) else hover_data
-            )
-            if isinstance(extra_hover, Mapping):
-                for hover_col, col_data in extra_hover.items():
-                    if isinstance(col_data, (str, bytes)):
-                        continue
-                    col_values = list(col_data)
-                    if len(col_values) != len(hover_text):
-                        warnings.warn(
-                            f"Skipping hover column {hover_col!r}: "
-                            f"{len(col_values)=} != {len(hover_text)=}",
-                            stacklevel=2,
-                        )
-                        continue
-                    for val_idx, val in enumerate(col_values):
-                        hover_text[val_idx] += f"<br>{hover_col}: {val}"
-            elif df_i is not None and extra_hover and not isinstance(extra_hover, str):
-                for hover_col in extra_hover:
-                    # skip the primary column, its value is already shown
-                    if hover_col in df_i and hover_col != col:
-                        for val_idx, val in enumerate(df_i[hover_col]):
-                            hover_text[val_idx] += f"<br>{hover_col}: {val}"
-
-            fig.add_scatter(
-                x=values if orientation == "h" else pos + rain_offset + jitter_values,
-                y=pos + rain_offset + jitter_values if orientation == "h" else values,
-                mode="markers",
-                marker=dict(color=color, size=point_size, opacity=0.5),
-                showlegend=not (show_violin or show_box),
-                name=label,
-                legendgroup=label,
-                hoverinfo="text",
-                hovertext=hover_text,
-            )
-
-    labels = list(data)
-    max_label_len = max(len(label) for label in labels)
-
-    if orientation == "h":
-        fig.update_yaxes(
-            ticktext=labels,
-            tickvals=positions,
-            tickangle=0,
-        )
-        fig.update_xaxes(zeroline=False)
-    else:
-        fig.update_xaxes(
-            ticktext=labels,
-            tickvals=positions,
-            tickangle=-90 if max_label_len > 10 else 0,
-        )
-        fig.update_yaxes(zeroline=False)
-
-    return fig
+    kind = (
+        "violin+box" if show_violin and show_box else "violin" if show_violin else "box"
+    )
+    defaults: dict[str, Any] = {
+        "orientation": orientation,
+        "kind": kind,
+        "side": "positive",
+        "point_side": "negative",  # rain falls opposite the cloud
+        "points": "strip" if show_points else "none",
+        "violin_width": width_viol,
+        "violin_style": {"opacity": alpha} | (kwargs.pop("violin_style", None) or {}),
+        "sample_style": {"radius": point_size, "opacity": 0.5}
+        | (kwargs.pop("sample_style", None) or {}),
+        # samples are drawn as rain, not as separate outlier markers
+        "show_outliers": not show_points,
+    }
+    return BoxPlotWidget(series, **defaults | kwargs)

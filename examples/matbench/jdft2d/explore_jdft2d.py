@@ -47,12 +47,7 @@ pmv.ptable_heatmap(df_2d[Key.formula], log=True, color_bar={"title": title}).sho
 
 
 # %%
-fig = pmv.spacegroup_bar(df_2d[Key.spg_num], log=True)
-title = "Spacegroup histogram of the JARVIS DFT 2D dataset"
-fig.layout.title.update(text=title, y=0.98)
-fig.layout.margin.update(b=10, l=10, r=10, t=70)
-fig.show()
-# pmv.save_fig(fig, "jdft2d-spacegroup-hist.pdf")
+pmv.spacegroup_bar(df_2d[Key.spg_num], log=True).show()
 
 
 # %%

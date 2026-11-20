@@ -233,10 +233,10 @@ See [`pymatviz/rdf/figures.py`](pymatviz/rdf/figures.py).
 
 See [`pymatviz/coordination/figures.py`](pymatviz/coordination/figures.py).
 
-|              [`coordination_hist(struct_dict)`](pymatviz/coordination/figures.py#L60)              |            [`coordination_hist(struct_dict, by_element=True)`](pymatviz/coordination/figures.py#L60) [![fig-icon]](assets/scripts/coordination/coordination_hist.py)             |
+|              [`coordination_hist(struct_dict)`](pymatviz/coordination/figures.py#L72)              |            [`coordination_hist(struct_dict, by_element=True)`](pymatviz/coordination/figures.py#L72) [![fig-icon]](assets/scripts/coordination/coordination_hist.py)             |
 | :------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                    ![coordination-hist-single]                                     |                                                                  ![coordination-hist-by-structure-and-element]                                                                   |
-| [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination/figures.py#L319) | [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination/figures.py#L319) [![fig-icon]](assets/scripts/coordination/coordination_vs_cutoff_line.py#L52) |
+| [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination/figures.py#L175) | [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination/figures.py#L175) [![fig-icon]](assets/scripts/coordination/coordination_vs_cutoff_line.py#L52) |
 |                                  ![coordination-vs-cutoff-single]                                  |                                                                        ![coordination-vs-cutoff-multiple]                                                                        |
 
 [coordination-hist-single]: assets/svg/coordination-hist-single.svg
@@ -288,7 +288,7 @@ For coverage coloring, pass a `color_by` dictionary mapping file paths to covera
 
 See [`pymatviz/rainclouds.py`](pymatviz/rainclouds.py).
 
-| [`rainclouds(two_key_dict)`](pymatviz/rainclouds.py#L22) [![fig-icon]](assets/scripts/rainclouds/rainclouds.py) | [`rainclouds(three_key_dict)`](pymatviz/rainclouds.py#L22) |
+| [`rainclouds(two_key_dict)`](pymatviz/rainclouds.py#L18) [![fig-icon]](assets/scripts/rainclouds/rainclouds.py) | [`rainclouds(three_key_dict)`](pymatviz/rainclouds.py#L18) |
 | :-------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------: |
 |                                              ![rainclouds-bimodal]                                              |                   ![rainclouds-trimodal]                   |
 
@@ -299,7 +299,7 @@ See [`pymatviz/rainclouds.py`](pymatviz/rainclouds.py).
 
 See [`pymatviz/sankey.py`](pymatviz/sankey.py).
 
-| [`sankey_from_2_df_cols(df_perovskites)`](pymatviz/sankey.py#L18) [![fig-icon]](examples/matbench_perovskites_eda.ipynb) | [`sankey_from_2_df_cols(df_space_groups)`](pymatviz/sankey.py#L18) |
+| [`sankey_from_2_df_cols(df_perovskites)`](pymatviz/sankey.py#L17) [![fig-icon]](examples/matbench_perovskites_eda.ipynb) | [`sankey_from_2_df_cols(df_space_groups)`](pymatviz/sankey.py#L17) |
 | :----------------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------: |
 |                                          ![sankey-moyopy-vs-aflow-spacegroups]                                           |                ![sankey-crystal-sys-to-spg-symbol]                 |
 
@@ -321,7 +321,7 @@ See [`pymatviz/bar.py`](pymatviz/bar.py).
 
 See [`pymatviz/histogram.py`](pymatviz/histogram.py).
 
-| [`elements_hist(compositions, log_y=True, show_values='count')`](pymatviz/histogram.py#L23) [![fig-icon]](assets/scripts/histogram/elements_hist.py) | [`histogram({'key1': values1, 'key2': values2})`](pymatviz/histogram.py#L90) [![fig-icon]](assets/scripts/histogram/histogram.py) |
+| [`elements_hist(compositions, log_y=True, show_values='count')`](pymatviz/histogram.py#L23) [![fig-icon]](assets/scripts/histogram/elements_hist.py) | [`histogram({'key1': values1, 'key2': values2})`](pymatviz/histogram.py#L89) [![fig-icon]](assets/scripts/histogram/histogram.py) |
 | :-----------------------------------------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------------------: |
 |                                                                 ![elements-hist]                                                                  |                                                         ![histogram-ecdf]                                                         |
 

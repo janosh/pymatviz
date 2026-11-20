@@ -13,45 +13,20 @@ from pymatviz.structure import helpers
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Hashable
+    from collections.abc import Callable
     from typing import Any
 
-    from pymatgen.core import IMolecule, IStructure, Site, Structure
+    from pymatgen.core import IMolecule, IStructure, Site
 
 
 class CnSplitMode(LabelEnum):
-    """How to split the coordination number histogram into subplots."""
+    """How to split coordination number histograms into bar series. Values match
+    MatterViz's CoordinationBarPlot ``split_mode``.
+    """
 
-    none = "none", "None"
-    by_element = "by element", "By element"
-    by_structure = "by structure", "By structure"
-    by_structure_and_element = "by structure and element", "By structure and element"
-
-
-def create_hover_text(
-    *,
-    struct_key: Hashable,
-    elem_symbol: str,
-    cn: int,
-    count: int,
-    hover_data: dict[str, str],
-    data: dict[str, Any],
-    is_single_structure: bool,
-) -> str:
-    """Create hover text for a single bar in the histogram."""
-    hover_text = f"Formula: {struct_key}<br>" if not is_single_structure else ""
-    hover_text += f"Element: {elem_symbol}<br>" if elem_symbol else ""
-    hover_text += f"Coordination number: {cn}<br>Count: {count}"
-
-    for key, label in hover_data.items():
-        values = dict.fromkeys(
-            str(value) if value is not None else "N/A"
-            for site_cn, value in zip(data["cn"], data["hover_data"][key], strict=True)
-            if site_cn == cn
-        )
-        hover_text += f"<br>{label}: {', '.join(values) or 'N/A'}"
-
-    return hover_text
+    none = "none", "All sites"
+    by_element = "by_element", "By element"
+    by_structure = "by_structure", "By structure"
 
 
 def normalize_get_neighbors(
@@ -97,14 +72,14 @@ def calculate_average_cn(
 
 
 def coordination_nums_in_structure(
-    structure: Structure,
+    structure: IStructure | IMolecule,
     strategy: float | NearNeighbors | type[NearNeighbors] = 3.0,
     group_by: Literal["element", "specie", "site"] = "element",
 ) -> dict[str, list[int]]:
     """Get coordination numbers (CN) for each element in a structure.
 
     Args:
-        structure (Structure): A pymatgen Structure object
+        structure (IStructure | IMolecule): A pymatgen structure or molecule
         strategy (float | NearNeighbors | type[NearNeighbors]): Neighbor-finding
             strategy. Can be one of:
             - float: Cutoff distance for neighbor search in Angstroms

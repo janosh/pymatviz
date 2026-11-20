@@ -1,22 +1,18 @@
 from __future__ import annotations
 
-import re
-import sys
-from typing import TYPE_CHECKING, Any, Literal
+from typing import Any
 
 import numpy as np
 import pandas as pd
 import pytest
 
 import pymatviz as pmv
-
-
-if TYPE_CHECKING:
-    from collections.abc import Sequence
+from pymatviz.widgets.box_plot import BoxPlotWidget
 
 
 @pytest.fixture
 def sample_data() -> dict[str, np.ndarray]:
+    """Three normal samples of different size, location and spread."""
     rng = np.random.default_rng(seed=0)
     return {
         "A": rng.normal(0, 1, 100),
@@ -25,206 +21,99 @@ def sample_data() -> dict[str, np.ndarray]:
     }
 
 
-@pytest.fixture
-def sample_dataframe() -> pd.DataFrame:
-    rng = np.random.default_rng(seed=0)
-    return pd.DataFrame(
-        {
-            "value": rng.normal(0, 1, 100),
-            "category": rng.choice(["X", "Y", "Z"], 100),
-            "extra": rng.uniform(0, 1, 100),
-        }
-    )
-
-
-def test_rainclouds_style_options(sample_data: dict[str, np.ndarray]) -> None:
-    fig = pmv.rainclouds(
-        sample_data,
-        alpha=0.5,
-        width_viol=0.4,
-        width_box=0.2,
-        jitter=0.02,
-        point_size=5,
-        scale="width",
-        offset=0.3,
-    )
-    violin_trace, box_trace, points_trace = fig.data[:3]
-
-    assert len(fig.data) == len(sample_data) * 3
-    assert violin_trace.fillcolor.endswith(",0.5)")
-    assert max(violin_trace.y) - min(violin_trace.y) == pytest.approx(0.4, abs=0.01)
-    assert box_trace.width == 0.2
-    assert box_trace.y[0] == pytest.approx(-0.15)
-    assert points_trace.marker.size == 5
-    assert np.std(points_trace.y) > 0
+def test_rainclouds_series_and_bandwidth(sample_data: dict[str, np.ndarray]) -> None:
+    """One series per dataset with raw samples and scipy-convention bandwidth."""
+    widget = pmv.rainclouds(sample_data, bw=0.3, width_box=0.2)
+    assert isinstance(widget, BoxPlotWidget)
+    assert [srs["label"] for srs in widget.series] == list(sample_data)
+    for srs, values in zip(widget.series, sample_data.values(), strict=True):
+        np.testing.assert_array_equal(srs["y"], values)
+        # scipy gaussian_kde(bw_method=0.3) kernel std = 0.3 * sample std (ddof=1)
+        assert srs["bandwidth"] == pytest.approx(0.3 * values.std(ddof=1), rel=1e-15)
+        assert srs["box_width"] == 0.2
 
 
 @pytest.mark.parametrize(
-    ("data_input", "expected_traces"),
+    ("kwargs", "expected"),
     [
-        ({"A": [1, 2, 3], "B": [4, 5, 6]}, 6),  # 2 groups, 3 traces each
-        ({"A": [1, 2, 3, 10]}, 3),  # 1 group, 3 traces
-    ],
-)
-def test_rainclouds_data_shapes(
-    data_input: dict[str, Sequence[float]], expected_traces: int
-) -> None:
-    """Each group adds a violin, box and strip trace."""
-    fig = pmv.rainclouds(data_input)
-    assert len(fig.data) == expected_traces
-
-
-def test_rainclouds_with_dataframe(sample_dataframe: pd.DataFrame) -> None:
-    data = {
-        "X": (sample_dataframe, "value"),
-        "Y": sample_dataframe[sample_dataframe["category"] == "Y"]["value"],
-    }
-    fig = pmv.rainclouds(data, hover_data=["category", "extra"])
-    assert len(fig.data) == 6
-
-
-def test_rainclouds_accepts_two_item_series_with_non_default_index() -> None:
-    """Rainclouds treats two-item Series as data, not DataFrame-column tuples."""
-    fig = pmv.rainclouds({"S": pd.Series([1.0, 2.0], index=[10, 11])})
-    assert len(fig.data) == 3
-
-
-@pytest.mark.parametrize(
-    ("orientation", "expected_axis"), [("h", "yaxis"), ("v", "xaxis")]
-)
-@pytest.mark.parametrize("label_length", [5, 10, 11, 30])
-def test_rainclouds_orientation(
-    sample_data: dict[str, np.ndarray],
-    orientation: Literal["h", "v"],
-    expected_axis: str,
-    label_length: int,
-) -> None:
-    """Keep y-axis labels horizontal; rotate long x-axis labels."""
-    data = {
-        label.ljust(label_length, "x"): values for label, values in sample_data.items()
-    }
-    fig = pmv.rainclouds(data, orientation=orientation)
-    axis = getattr(fig.layout, expected_axis)
-    assert axis.ticktext == tuple(data)
-    assert axis.tickangle == (-90 if orientation == "v" and label_length > 10 else 0)
-
-
-@pytest.mark.parametrize(
-    ("scale", "expected_max"),
-    [("area", None), ("count", 100 * 0.3), ("width", 0.3)],
-)
-def test_rainclouds_scale(
-    sample_data: dict[str, np.ndarray],
-    scale: Literal["area", "count", "width"],
-    expected_max: float | None,
-) -> None:
-    """Violin widths scale by area, sample count (100 points) or unit max width."""
-    fig = pmv.rainclouds(sample_data, scale=scale)
-    violin_trace = next(
-        trace
-        for trace in fig.data
-        if trace.type == "scatter" and trace.fill == "toself"
-    )
-    y_range = np.array(violin_trace.y)
-    assert y_range.min() == 0  # first violin sits at position 0
-    if expected_max is None:
-        assert y_range.max() <= 1
-    else:  # rescaling by max is exact up to a few float64 ulps
-        np.testing.assert_allclose(y_range.max(), expected_max, rtol=1e-14, atol=0)
-
-
-@pytest.mark.parametrize(
-    ("hover_data", "expected_first", "expected_last"),
-    [
-        (None, ["value"], ["value"]),
-        (["category"], ["value", "category"], ["value", "category"]),
-        ({"Group": ["extra"]}, ["value", "extra"], ["value", "extra"]),
-        (
-            {"Group": {"source": [f"source-{idx}" for idx in range(100)]}},
-            ["value", "source: source-0"],
-            ["value", "source: source-99"],
-        ),
-    ],
-)
-def test_rainclouds_hover_data(
-    sample_dataframe: pd.DataFrame,
-    hover_data: (
-        Sequence[str] | dict[str, Sequence[str] | dict[str, Sequence[object]]] | None
-    ),
-    expected_first: Sequence[str],
-    expected_last: Sequence[str],
-) -> None:
-    data = {"Group": (sample_dataframe, "value")}
-    fig = pmv.rainclouds(data, hover_data=hover_data)
-    scatter_trace = next(
-        trace for trace in fig.data if getattr(trace, "mode", None) == "markers"
-    )
-    assert all(text in scatter_trace.hovertext[0] for text in expected_first)
-    assert all(text in scatter_trace.hovertext[-1] for text in expected_last)
-
-
-@pytest.mark.parametrize(
-    ("data_input", "expected_msg"),
-    [
-        ({"A": "not a sequence"}, "`dataset` input should have multiple elements"),
-        ({"X": [1], "Y": [2]}, "`dataset` input should have multiple elements"),
         (
             {},
-            "max() iterable argument is empty"
-            if sys.version_info >= (3, 12)
-            else "max() arg is an empty sequence",
+            {
+                "orientation": "horizontal",
+                "kind": "violin+box",
+                "side": "positive",
+                "point_side": "negative",
+                "points": "strip",
+                "show_outliers": False,
+                "violin_width": 0.6,
+                "violin_style": {"opacity": 0.7},
+                "sample_style": {"radius": 2, "opacity": 0.5},
+            },
+        ),
+        ({"orientation": "vertical"}, {"orientation": "vertical"}),
+        (  # user style dicts merge over the alpha/point_size defaults
+            {
+                "alpha": 0.4,
+                "violin_style": {"stroke_width": 2},
+                "sample_style": {"radius": 5},
+            },
+            {
+                "violin_style": {"opacity": 0.4, "stroke_width": 2},
+                "sample_style": {"radius": 5, "opacity": 0.5},
+            },
+        ),
+        ({"show_box": False}, {"kind": "violin"}),
+        ({"show_violin": False}, {"kind": "box"}),
+        ({"show_points": False}, {"points": "none", "show_outliers": True}),
+        (
+            {"points": "swarm", "side": "negative"},
+            {"points": "swarm", "side": "negative"},
+        ),
+        (
+            {"alpha": 0.4, "point_size": 5, "width_viol": 0.5},
+            {"violin_style": {"opacity": 0.4}, "violin_width": 0.5},
         ),
     ],
 )
-def test_rainclouds_invalid_input(
-    data_input: dict[str, Any], expected_msg: str
+def test_rainclouds_options(
+    sample_data: dict[str, np.ndarray], kwargs: dict[str, Any], expected: dict[str, Any]
 ) -> None:
-    with pytest.raises(ValueError, match=re.escape(expected_msg)):
-        pmv.rainclouds(data_input)
+    """Raincloud options map onto BoxPlotWidget traits; kwargs override defaults."""
+    widget = pmv.rainclouds(sample_data, **kwargs)
+    for key, val in expected.items():
+        assert getattr(widget, key) == val, key
+    if "point_size" in kwargs:
+        assert widget.sample_style["radius"] == kwargs["point_size"]
+
+
+def test_rainclouds_with_dataframe() -> None:
+    """(DataFrame, column) tuples, Series and lists are all accepted."""
+    df_in = pd.DataFrame({"value": [1.0, 2.0, 4.0], "other": [0, 0, 0]})
+    widget = pmv.rainclouds(
+        {"df": (df_in, "value"), "series": df_in["value"] * 2, "list": [3, 5]}
+    )
+    assert [srs["y"] for srs in widget.series] == [[1, 2, 4], [2, 4, 8], [3, 5]]
 
 
 @pytest.mark.parametrize(
-    ("show_violin", "show_box", "show_points", "n_expected_traces"),
+    ("data", "kwargs", "match"),
     [
-        (True, True, True, 3),
-        (False, True, True, 2),
-        (True, False, True, 2),
-        (True, True, False, 2),
-        (False, False, True, 1),
-        (False, True, False, 1),
-        (True, False, False, 1),
-        (False, False, False, 0),
+        ({"a": [1, 2]}, {"show_violin": False, "show_box": False}, "show_violin"),
+        ({}, {}, "at least one dataset"),
+        ({"a": []}, {}, "non-empty"),
+        ({"a": [1, float("nan")]}, {}, "finite"),
     ],
 )
-@pytest.mark.parametrize("orientation", ["h", "v"])
-def test_rainclouds_trace_visibility(
-    sample_data: dict[str, np.ndarray],
-    show_violin: bool,
-    show_box: bool,
-    show_points: bool,
-    n_expected_traces: int,
-    orientation: Literal["h", "v"],
+def test_rainclouds_invalid(
+    data: dict[str, Any], kwargs: dict[str, Any], match: str
 ) -> None:
-    fig = pmv.rainclouds(
-        sample_data,
-        show_violin=show_violin,
-        show_box=show_box,
-        show_points=show_points,
-        orientation=orientation,
-    )
-    assert len(fig.data) == len(sample_data) * n_expected_traces
-    assert [trace.name for trace in fig.data if trace.showlegend] == (
-        list(sample_data) if n_expected_traces else []
-    )
-    category_axis = fig.layout.yaxis if orientation == "h" else fig.layout.xaxis
-    assert category_axis.range is None  # Autorange includes jitter and offsets.
+    """Invalid options and empty datasets raise."""
+    with pytest.raises(ValueError, match=match):
+        pmv.rainclouds(data, **kwargs)
 
 
-def test_rainclouds_hover_no_duplicate_primary_value() -> None:
-    """Primary column value appears exactly once in hover text (regression: it
-    was appended twice and hover columns leaked between groups).
-    """
-    df1, df2 = pd.DataFrame({"v1": [1.0, 2.0]}), pd.DataFrame({"v2": [4.0, 5.0]})
-    fig = pmv.rainclouds({"G1": (df1, "v1"), "G2": (df2, "v2")})
-    points = [trc for trc in fig.data if getattr(trc, "mode", "") == "markers"]
-    assert [trc.hovertext[0] for trc in points] == ["G1<br>v1: 1", "G2<br>v2: 4"]
+@pytest.mark.parametrize("values", [[3.0], [2.0, 2.0, 2.0]])
+def test_rainclouds_zero_spread_uses_default_bandwidth(values: list[float]) -> None:
+    """Zero-variance samples omit bandwidth so MatterViz picks a positive one."""
+    (srs,) = pmv.rainclouds({"a": values}).series
+    assert "bandwidth" not in srs

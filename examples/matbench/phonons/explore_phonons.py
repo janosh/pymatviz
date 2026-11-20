@@ -50,8 +50,4 @@ pmv.ptable_heatmap(df_phonon[Key.formula], log=True, color_bar={"title": title})
 
 
 # %%
-fig = pmv.spacegroup_bar(df_phonon[Key.spg_num])
-fig.layout.title.update(text="Spacegroup histogram of Matbench Phonons dataset", y=0.98)
-fig.layout.margin.update(b=10, l=10, r=10, t=60)
-fig.show()
-# pmv.save_fig(fig, "phonons-spacegroup-hist.pdf")
+pmv.spacegroup_bar(df_phonon[Key.spg_num]).show()

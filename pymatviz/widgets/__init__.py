@@ -10,10 +10,12 @@ from pymatviz.widgets.band_structure import BandStructureWidget
 from pymatviz.widgets.bands_and_dos import BandsAndDosWidget
 from pymatviz.widgets.bar_plot import BarPlotWidget
 from pymatviz.widgets.binned_scatter_plot import BinnedScatterPlotWidget
+from pymatviz.widgets.box_plot import BoxPlotWidget
 from pymatviz.widgets.brillouin_zone import BrillouinZoneWidget
 from pymatviz.widgets.chem_pot_diagram import ChemPotDiagramWidget
 from pymatviz.widgets.composition import CompositionWidget
 from pymatviz.widgets.convex_hull import ConvexHullWidget
+from pymatviz.widgets.coordination_bar_plot import CoordinationBarPlotWidget
 from pymatviz.widgets.dos import DosWidget
 from pymatviz.widgets.fermi_surface import FermiSurfaceWidget
 from pymatviz.widgets.heatmap_matrix import HeatmapMatrixWidget
@@ -24,6 +26,7 @@ from pymatviz.widgets.mime import register_matterviz_widgets
 from pymatviz.widgets.periodic_table import PeriodicTableWidget
 from pymatviz.widgets.phase_diagram import PhaseDiagramWidget
 from pymatviz.widgets.rdf_plot import RdfPlotWidget
+from pymatviz.widgets.sankey import SankeyWidget
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 from pymatviz.widgets.scatter_plot_3d import ScatterPlot3DWidget
 from pymatviz.widgets.spacegroup_bar import SpacegroupBarPlotWidget
