@@ -9,6 +9,7 @@ from __future__ import annotations
 from pymatviz.widgets.band_structure import BandStructureWidget
 from pymatviz.widgets.bands_and_dos import BandsAndDosWidget
 from pymatviz.widgets.bar_plot import BarPlotWidget
+from pymatviz.widgets.binned_scatter_plot import BinnedScatterPlotWidget
 from pymatviz.widgets.brillouin_zone import BrillouinZoneWidget
 from pymatviz.widgets.chem_pot_diagram import ChemPotDiagramWidget
 from pymatviz.widgets.composition import CompositionWidget

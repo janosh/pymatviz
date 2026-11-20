@@ -82,20 +82,18 @@ df_ml[g_vrh_ref_col] = pd.Series(
 # filter unrealistic values
 df_ml = df_ml.query(f"0 <= {k_vrh_ref_col} < 1e4 and 0 <= {g_vrh_ref_col} < 1e4")
 
-# Bulk modulus plot
-fig = px.scatter(df_ml, x=k_vrh_ref_col, y=k_vrh_pred_col)
-fig.layout.title.update(text="MACE vs MP Bulk Modulus VRH", x=0.5)
-
-pmv.powerups.enhance_parity_plot(fig)
-fig.layout.margin.t = 30
-fig.show()
-
-# Shear modulus plot
-fig = px.scatter(df_ml, x=g_vrh_ref_col, y=g_vrh_pred_col)
-fig.layout.title.update(text="MACE vs MP Shear Modulus VRH", x=0.5)
-pmv.powerups.enhance_parity_plot(fig)
-fig.layout.margin.t = 30
-fig.show()
+# Bulk and shear modulus parity plots
+for ref_col, pred_col, title in (
+    (k_vrh_ref_col, k_vrh_pred_col, "MACE vs MP Bulk Modulus VRH"),
+    (g_vrh_ref_col, g_vrh_pred_col, "MACE vs MP Shear Modulus VRH"),
+):
+    widget = pmv.ScatterPlotWidget(
+        series=[{"x": df_ml[ref_col], "y": df_ml[pred_col], "markers": "points"}],
+        x_axis={"label": ref_col},
+        y_axis={"label": pred_col},
+    )
+    pmv.powerups.enhance_parity_plot(widget, stats={"prefix": f"{title}\n"})
+    widget.show()
 
 # df_ml.to_csv(f"elastic-constants-{checkpoint.split('/')[-1]}.csv", index=False)
 

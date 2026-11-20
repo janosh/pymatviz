@@ -7,10 +7,11 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 from scipy.stats import norm
 
+from pymatviz.powerups import add_identity_line
 from pymatviz.process_data import df_to_arrays
+from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 
 
 if TYPE_CHECKING:
@@ -73,25 +74,29 @@ def qq_gaussian(
     y_std: ArrayLike | Mapping[str, ArrayLike] | str | Sequence[str],
     *,
     df: pd.DataFrame | None = None,
-    fig: go.Figure | None = None,
     identity_line: bool | dict[str, Any] = True,
-) -> go.Figure:
+    **widget_options: Any,
+) -> ScatterPlotWidget:
     """Q-Q Gaussian plot for uncertainty calibration assessment.
 
+    Plots the observed vs expected proportion of z-scored residuals below each
+    standard normal quantile. The area between each curve and the diagonal (the
+    miscalibration area) is shaded and shown in the legend.
+
     Args:
-        y_true: Ground truth targets
-        y_pred: Model predictions
-        y_std: Positive standard deviations (single array or dict for multiple)
-        df: DataFrame containing data columns
-        fig: Existing plotly figure to add to
-        identity_line: Show perfect calibration line
+        y_true: Ground truth targets (array or df column name).
+        y_pred: Model predictions (array or df column name).
+        y_std: Positive standard deviations: one array/column, or a dict (or list of
+            df column names) of several uncertainty estimates to compare.
+        df: DataFrame containing data columns.
+        identity_line: Show the perfect calibration line y = x. A dict is passed
+            to add_identity_line(), e.g. {"style": {"color": "blue"}}.
+        **widget_options: Passed to ScatterPlotWidget.
 
     Returns:
-        go.Figure: plotly Figure with Q-Q plot
+        ScatterPlotWidget: Q-Q calibration plot.
     """
     y_true, y_pred, y_std = _load_regression_data(y_true, y_pred, y_std, df)
-
-    fig = fig or go.Figure()
     res = y_pred - y_true
     if len(res) == 0:
         raise ValueError("Q-Q calibration requires non-empty data")
@@ -99,22 +104,8 @@ def qq_gaussian(
     exp_proportions = np.linspace(eps, 1 - eps, 100)
     quantiles = norm.ppf(exp_proportions)
 
-    if identity_line:
-        line_props = (
-            identity_line.get("line_kwargs", {})
-            if isinstance(identity_line, dict)
-            else {}
-        )
-        fig.add_scatter(
-            x=[0, 1],
-            y=[0, 1],
-            mode="lines",
-            name="Perfect calibration",
-            line=dict(color=line_props.get("color", "red"), width=1, dash="dash"),
-            showlegend=False,
-        )
-
-    for key, std in y_std.items():
+    series, fill_regions = [], []
+    for series_idx, (key, std) in enumerate(y_std.items()):
         if np.any(std <= 0):
             raise ValueError(f"Uncertainties for {key!r} must be positive")
         z_scored = np.sort(res / std)
@@ -122,42 +113,42 @@ def qq_gaussian(
         miscal_area = np.trapezoid(
             np.abs(obs_proportions - exp_proportions), x=exp_proportions
         )
-
-        # Invisible reference line for fill
-        fig.add_scatter(
-            x=exp_proportions,
-            y=exp_proportions,
-            mode="lines",
-            line=dict(width=0),
-            showlegend=False,
-            hoverinfo="skip",
+        series.append(
+            {
+                "x": exp_proportions,
+                "y": obs_proportions,
+                "markers": "line",
+                "label": f"{key} (miscal: {miscal_area:.2f})",
+                "line_style": {"width": 2},
+                "metadata": {"miscal_area": float(miscal_area)},
+            }
+        )
+        fill_regions.append(
+            {
+                "upper": {"type": "series", "series_idx": series_idx},
+                "lower": {"type": "data", "values": exp_proportions},
+                "fill": "gray",
+                "fill_opacity": 0.2,
+                "show_in_legend": False,
+            }
         )
 
-        # Q-Q line with fill
-        fig.add_scatter(
-            x=exp_proportions,
-            y=obs_proportions,
-            mode="lines",
-            name=f"{key} (miscal: {miscal_area:.2f})",
-            line=dict(width=2),
-            opacity=0.8,
-            fill="tonexty",
-            fillcolor="rgba(128,128,128,0.2)",
-        )
-
-    fig.update_layout(
-        xaxis=dict(title="Theoretical Quantile", range=[0, 1]),
-        yaxis=dict(title="Observed Quantile", range=[0, 1]),
-        legend=dict(
-            x=0.02,
-            y=0.98,
-            xanchor="left",
-            yanchor="top",
-            bgcolor="rgba(255,255,255,0.8)",
-            borderwidth=0,
-        ),
+    widget = ScatterPlotWidget(
+        series=series,
+        **{
+            "fill_regions": fill_regions,
+            "x_axis": {"label": "Theoretical Quantile"},
+            "y_axis": {"label": "Observed Quantile"},
+            "x_range": [0, 1],
+            "y_range": [0, 1],
+        }
+        | widget_options,
     )
-    return fig
+    if identity_line:
+        line_kwargs = identity_line if isinstance(identity_line, dict) else {}
+        style = {"color": "red"} | line_kwargs.get("style", {})
+        add_identity_line(widget, **line_kwargs | {"style": style})
+    return widget
 
 
 def error_decay_with_uncert(
@@ -168,25 +159,27 @@ def error_decay_with_uncert(
     df: pd.DataFrame | None = None,
     n_rand: int = 100,
     percentiles: bool = True,
-    fig: go.Figure | None = None,
-) -> go.Figure:
-    """Error decay plot as uncertain samples are excluded.
+    **widget_options: Any,
+) -> ScatterPlotWidget:
+    """Error decay plot as the most uncertain samples are excluded.
+
+    Compares the MAE of the retained samples when excluding them in order of
+    decreasing uncertainty to the optimal (decreasing error) and random orders.
 
     Args:
-        y_true: Ground truth targets
-        y_pred: Model predictions
-        y_std: Uncertainties (single array or dict for multiple)
-        df: DataFrame containing data columns
-        n_rand: Random shuffles for baseline
-        percentiles: Show excluded samples as a percentage rather than a count
-        fig: Existing plotly figure to add to
+        y_true: Ground truth targets (array or df column name).
+        y_pred: Model predictions (array or df column name).
+        y_std: Uncertainties: one array/column, or a dict (or list of df column
+            names) of several uncertainty estimates to compare.
+        df: DataFrame containing data columns.
+        n_rand: Number of random shuffles for the random baseline band (mean ± std).
+        percentiles: Show excluded samples as a percentage rather than a count.
+        **widget_options: Passed to ScatterPlotWidget.
 
     Returns:
-        Plotly figure with error decay plot
+        ScatterPlotWidget: Error decay plot.
     """
     y_true, y_pred, y_std = _load_regression_data(y_true, y_pred, y_std, df)
-
-    fig = fig or go.Figure()
     abs_err = np.abs(y_true - y_pred)
     n_samples = len(abs_err)
     if n_samples == 0 or n_rand < 1:
@@ -203,54 +196,46 @@ def error_decay_with_uncert(
     if percentiles:
         xs *= 100 / n_samples
 
-    for key, std in y_std.items():
-        decay = abs_err[np.argsort(std)].cumsum() / retained
-        fig.add_scatter(x=xs, y=decay[sample_indices], mode="lines", name=key)
+    if reserved := {"error", "random"} & set(y_std):
+        raise ValueError(f"y_std keys {sorted(reserved)} clash with baseline labels")
+    decays = {
+        key: abs_err[np.argsort(std)].cumsum() / retained for key, std in y_std.items()
+    }
+    decays["error"] = np.sort(abs_err).cumsum() / retained  # optimal decay
+    series: list[dict[str, Any]] = [
+        {"x": xs, "y": decay[sample_indices], "markers": "line", "label": key}
+        for key, decay in decays.items()
+    ]
 
-    # Optimal error-based decay
-    decay_optimal = np.sort(abs_err).cumsum() / retained
-    fig.add_scatter(x=xs, y=decay_optimal[sample_indices], mode="lines", name="error")
-
-    rand_mean = abs_err.mean()
     abs_err_tile = np.tile(abs_err, [n_rand, 1])
     rng = np.random.default_rng(seed=0)
     for row in abs_err_tile:
         rng.shuffle(row)
     rand_std = (abs_err_tile.cumsum(1).std(0) / retained)[sample_indices]
-
-    # Random mean line
-    fig.add_scatter(
-        x=[xs[-1], xs[0]],
-        y=[rand_mean, rand_mean],
-        mode="lines",
-        name="random (mean)",
-        line=dict(dash="dash"),
-        showlegend=False,
+    series.append(
+        {
+            "x": xs,
+            "y": np.full(len(xs), abs_err.mean()),
+            "markers": "line",
+            "label": "random",
+            "line_style": {"dash": "6 4"},
+        }
     )
-
-    # Random confidence interval
-    fig.add_scatter(
-        x=xs,
-        y=rand_mean + rand_std,
-        mode="lines",
-        line=dict(width=0),
-        showlegend=False,
-        hoverinfo="skip",
+    error_band = {
+        "series": {"type": "series", "series_idx": len(series) - 1},
+        "error": rand_std,
+        "fill": "gray",
+        "fill_opacity": 0.2,
+    }
+    return ScatterPlotWidget(
+        series=series,
+        **{
+            "error_bands": [error_band],
+            "x_axis": {
+                "label": "Excluded samples (%)" if percentiles else "Excluded samples"
+            },
+            "y_axis": {"label": "MAE"},
+            "y_range": [0, None],
+        }
+        | widget_options,
     )
-    fig.add_scatter(
-        x=xs,
-        y=rand_mean - rand_std,
-        mode="lines",
-        fill="tonexty",
-        fillcolor="rgba(128,128,128,0.2)",
-        line=dict(width=0),
-        name="random",
-        hoverinfo="skip",
-    )
-
-    fig.layout.xaxis = dict(
-        title="Excluded samples (%)" if percentiles else "Excluded samples"
-    )
-    fig.layout.yaxis = dict(title="MAE", rangemode="tozero")
-
-    return fig

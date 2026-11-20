@@ -1,4 +1,4 @@
-"""Plotly density hexbin examples."""
+"""Binned density parity plot examples."""
 
 # %%
 from __future__ import annotations
@@ -6,21 +6,16 @@ from __future__ import annotations
 import pymatviz as pmv
 
 
-pmv.set_plotly_template("pymatviz_white")
 y_true, y_pred, _y_std = pmv.data.regression()
 
 
-# %% density hexbin
-fig = pmv.density_hexbin(
-    y_true, y_pred, best_fit_line={"annotate_params": {}}, gridsize=40
-)
-fig.show()
-# pmv.io.save_and_compress_svg(fig, "density-scatter-hex")
+# %% Binned density parity plot, bins recomputed on zoom
+widget = pmv.density_hexbin(y_true, y_pred, best_fit_line=True, bin_px=8)
+widget.show()
+widget.to_img(f"{pmv.ROOT}/assets/svg/density-hexbin.svg", width=500)
 
 
-# %% density hexbin with hist
-fig = pmv.density_hexbin_with_hist(
-    y_true, y_pred, best_fit_line={"annotate_params": {}}
-)
-fig.show()
-# pmv.io.save_and_compress_svg(fig, "density-scatter-hex-with-hist")
+# %% With marginal histograms
+widget = pmv.density_hexbin_with_hist(y_true, y_pred, best_fit_line=True, bin_px=8)
+widget.show()
+widget.to_img(f"{pmv.ROOT}/assets/svg/density-hexbin-with-hist.svg", width=500)

@@ -1,93 +1,166 @@
-"""Powerups for plotly figures."""
+"""Powerups for MatterViz scatter widgets: identity and best-fit lines, metric
+annotations and ECDF lines.
+"""
 
 from __future__ import annotations
 
-import warnings
-from collections.abc import Callable, Mapping, Sequence, Sized
+from collections.abc import Mapping, Sequence
 from numbers import Real
-from typing import TYPE_CHECKING, Any, Literal, cast, get_args
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
-import plotly.express as px
-import plotly.graph_objects as go
-import sklearn
-from sklearn.metrics import mean_absolute_percentage_error as mape
-from sklearn.metrics import r2_score
+import sklearn.metrics
+from sklearn.metrics import mean_absolute_percentage_error, r2_score
 
-from pymatviz.utils import annotate, get_fig_xy_range, get_font_color, luminance
-from pymatviz.utils.plotting import PRETTY_LABELS
+from pymatviz.widgets._normalize import normalize_plot_series
+from pymatviz.widgets.binned_scatter_plot import BinnedScatterPlotWidget
+from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from numpy.typing import ArrayLike
 
-TracePredicate = Callable[[go.Scatter], bool]
-TraceSelector = int | slice | Sequence[int] | TracePredicate
-AnnotationMode = Literal["per_trace", "combined", "none"]
+# series indices to read x/y data from, None for all series
+type SeriesSelector = int | np.integer | Sequence[int] | None
+
+PARITY_WIDGETS = (ScatterPlotWidget, BinnedScatterPlotWidget)
+PRETTY_METRIC_LABELS = {"R2": "R²", "R2_adj": "R²_adj"}
+BUILTIN_METRICS: dict[str, Callable[[np.ndarray, np.ndarray], float]] = {
+    "MAE": lambda xs, ys: np.abs(xs - ys).mean(),
+    "RMSE": lambda xs, ys: ((xs - ys) ** 2).mean() ** 0.5,
+    "MSE": lambda xs, ys: ((xs - ys) ** 2).mean(),
+    "MAPE": mean_absolute_percentage_error,
+    "R2": r2_score,
+    # adjusted R2 is undefined for n <= 2 samples (zero/negative denominator)
+    "R2_adj": lambda xs, ys: (
+        1 - (1 - r2_score(xs, ys)) * (len(xs) - 1) / (len(xs) - 2)
+        if len(xs) > 2
+        else float("nan")
+    ),
+}
 
 
-def _is_faceted(fig: go.Figure) -> bool:
-    """Whether any trace sits on a subplot other than the primary x-axis."""
-    return any(getattr(trace, "xaxis", None) not in (None, "x") for trace in fig.data)
+def _check_widget(widget: Any, types: tuple[type, ...] = PARITY_WIDGETS) -> None:
+    """Raise TypeError unless widget is an instance of one of types."""
+    if not isinstance(widget, types):
+        names = " | ".join(cls.__name__ for cls in types)
+        raise TypeError(f"widget must be {names}, got {type(widget).__name__}")
 
 
-def annotate_metrics(
-    xs: ArrayLike | Sequence[ArrayLike],
-    ys: ArrayLike | Sequence[ArrayLike],
-    fig: go.Figure | None = None,
+def _selected_series(
+    widget: ScatterPlotWidget | BinnedScatterPlotWidget, series: SeriesSelector
+) -> list[dict[str, Any]]:
+    """Series dicts picked by index (None: all series except y2 ones, which hold
+    ECDF lines from add_ecdf_line rather than parity data).
+    """
+    all_series = widget.series or []
+    if series is None:
+        indices = [
+            idx for idx, srs in enumerate(all_series) if srs.get("y_axis") != "y2"
+        ]
+    else:
+        indices = [series] if isinstance(series, (int, np.integer)) else list(series)
+        if bad := [
+            idx
+            for idx in indices
+            if isinstance(idx, bool) or not 0 <= idx < len(all_series)
+        ]:
+            raise IndexError(
+                f"series indices {bad} out of range for {len(all_series)} series"
+            )
+    if not indices:
+        raise ValueError(f"{type(widget).__name__} has no series to read data from")
+    return [all_series[int(idx)] for idx in indices]
+
+
+def _resolve_xy(
+    widget: ScatterPlotWidget | BinnedScatterPlotWidget,
+    xs: ArrayLike,
+    ys: ArrayLike,
+    series: SeriesSelector,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Explicit xs/ys as float arrays, else the concatenated selected series data."""
+    xs_arr, ys_arr = np.asarray(xs, dtype=float), np.asarray(ys, dtype=float)
+    if xs_arr.size or ys_arr.size:
+        if xs_arr.ndim != 1 or xs_arr.shape != ys_arr.shape:
+            raise ValueError(
+                f"xs and ys must be 1D with equal length, got {xs_arr.shape=}, "
+                f"{ys_arr.shape=}"
+            )
+        return xs_arr, ys_arr
+    picked = _selected_series(widget, series)
+    return (
+        np.concatenate([np.asarray(srs["x"], dtype=float) for srs in picked]),
+        np.concatenate([np.asarray(srs["y"], dtype=float) for srs in picked]),
+    )
+
+
+def _append_annotation(
+    widget: ScatterPlotWidget | BinnedScatterPlotWidget, text: str
+) -> None:
+    """Add a line block to the widget's free-space annotation badge."""
+    widget.annotation = "\n".join(filter(None, (widget.annotation, text)))
+
+
+def _add_ref_line(
+    widget: ScatterPlotWidget | BinnedScatterPlotWidget, line: dict[str, Any]
+) -> None:
+    """Append a reference line to a ScatterPlot's ref_lines or a BinnedScatterPlot's
+    overlays. BinnedScatterPlot overlay lines render no labels, so a line annotation
+    moves into the widget's annotation badge there.
+    """
+    if isinstance(widget, BinnedScatterPlotWidget):
+        line = dict(line)
+        if anno := line.pop("annotation", None):
+            _append_annotation(widget, anno["text"])
+        overlays = dict(widget.overlays or {})
+        overlays["ref_lines"] = [*overlays.get("ref_lines", []), line]
+        widget.overlays = overlays
+    else:
+        widget.ref_lines = [*(widget.ref_lines or []), line]
+
+
+def annotate_metrics[Widget: ScatterPlotWidget | BinnedScatterPlotWidget](
+    widget: Widget,
+    xs: ArrayLike = (),
+    ys: ArrayLike = (),
+    *,
+    series: SeriesSelector = None,
     metrics: Mapping[str, float | str] | Sequence[str] = ("MAE", "R2"),
     prefix: str = "",
     suffix: str = "",
     fmt: str = ".3",
-    **kwargs: Any,
-) -> go.Figure:
-    """Provide a set of x and y values of equal length and an optional Figure
-    object on which to print the values' mean absolute error and R^2
-    coefficient of determination.
+) -> Widget:
+    """Show regression metrics of ys vs xs in the widget's annotation badge.
 
     Args:
-        xs (array): x values. For faceted figures, either one array (or None to
-            skip) per trace, or empty to use each trace's data.
-        ys (array): y values, same shape as xs.
-        fig (go.Figure | None, optional): plotly Figure on which to add the annotation.
-            Defaults to None.
-        metrics (Mapping[str, float | str] | Sequence[str], optional): Metrics to
-            show. A sequence of metric names (built-in MAE, RMSE, MSE, MAPE, R2,
-            R2_adj or any sklearn.metrics function name) computed from xs and ys and
-            labeled by name. A mapping of labels to either precomputed numbers
-            (shown as is) or metric names (computed), e.g.
-            {"Mean abs. error": "MAE", "Custom": 1.23}. Defaults to ("MAE", "R2").
-        prefix (str, optional): Title or other string to prepend to metrics.
-            Defaults to "".
-        suffix (str, optional): Text to append after metrics. Defaults to "".
-        fmt (str, optional): f-string float format for metrics. Defaults to '.3'.
-        **kwargs: Additional arguments to pass to annotate().
+        widget (ScatterPlotWidget | BinnedScatterPlotWidget): Widget to annotate.
+        xs (array): x values. Defaults to the x data of the selected series.
+        ys (array): y values, same shape as xs. Defaults to the selected series' y.
+        series (int | Sequence[int] | None): Series to read data from when xs/ys are
+            not given. Defaults to all series (concatenated).
+        metrics (Mapping[str, float | str] | Sequence[str]): Metrics to show. A
+            sequence of metric names (built-in MAE, RMSE, MSE, MAPE, R2, R2_adj or
+            any sklearn.metrics function name) computed from xs and ys and labeled
+            by name. A mapping of labels to either precomputed numbers (shown as is)
+            or metric names (computed), e.g. {"Mean abs. error": "MAE", "Custom":
+            1.23}. Defaults to ("MAE", "R2").
+        prefix (str): Text before the metrics, e.g. a title line ending in a newline.
+        suffix (str): Text after the metrics.
+        fmt (str): Format spec for metric values. Defaults to ".3".
 
     Returns:
-        go.Figure: The annotated figure.
+        ScatterPlotWidget | BinnedScatterPlotWidget: The annotated widget.
     """
+    _check_widget(widget)
     if isinstance(metrics, str):
         metrics = [metrics]
-    if not isinstance(fig, go.Figure):
-        raise TypeError(f"{fig=} must be instance of go.Figure")
     if not isinstance(metrics, (Mapping, list, tuple, set)):
         raise TypeError(
             f"metrics must be dict|list|tuple|set, not {type(metrics).__name__}"
         )
-
-    funcs = {
-        "MAE": lambda x, y: np.abs(x - y).mean(),
-        "RMSE": lambda x, y: (((x - y) ** 2).mean()) ** 0.5,
-        "MSE": lambda x, y: ((x - y) ** 2).mean(),
-        "MAPE": mape,
-        "R2": r2_score,
-        # adjusted R2 is undefined for n <= 2 samples (zero/negative denominator)
-        "R2_adj": lambda x, y: (
-            1 - (1 - r2_score(x, y)) * (len(x) - 1) / (len(x) - 2)
-            if len(x) > 2
-            else float("nan")
-        ),
-    }
     # label -> precomputed number or name of the metric to compute
     label_to_metric: dict[str, float | str] = (
         {str(label): val for label, val in metrics.items()}
@@ -102,775 +175,248 @@ def annotate_metrics(
         raise TypeError(
             f"metrics values must be numbers or metric names, got {bad_vals}"
         )
-    metric_names = {val for val in label_to_metric.values() if isinstance(val, str)}
-    for name in metric_names - set(funcs):
-        if func := getattr(sklearn.metrics, name, None):
+    funcs = dict(BUILTIN_METRICS)
+    for name in {val for val in label_to_metric.values() if isinstance(val, str)}:
+        if name not in funcs:
+            if (func := getattr(sklearn.metrics, name, None)) is None:
+                raise ValueError(f"Unrecognized metric {name!r}")
             funcs[name] = func
-    if bad_names := metric_names - set(funcs):
-        raise ValueError(f"Unrecognized metrics: {bad_names}")
 
-    def calculate_metrics(
-        xs: ArrayLike | Sequence[ArrayLike], ys: ArrayLike | Sequence[ArrayLike]
-    ) -> str:
-        xs = np.asarray(xs)
-        ys = np.asarray(ys)
-        if xs.shape != ys.shape:
-            raise ValueError(
-                f"xs and ys must have the same shape. Got {xs.shape} and {ys.shape}"
-            )
-        nan_mask = np.isnan(xs) | np.isnan(ys)
-        xs, ys = xs[~nan_mask], ys[~nan_mask]
-        text = prefix
-        for label, metric in label_to_metric.items():
-            value = funcs[metric](xs, ys) if isinstance(metric, str) else metric
-            text += f"{PRETTY_LABELS.get(label, label)} = {float(value):{fmt}}<br>"
-        return text + suffix
-
-    if _is_faceted(fig):  # one annotation per trace, placed in the trace's subplot
-        n_traces = len(fig.data)
-        if (  # one array (or None to skip) per trace
-            isinstance(xs, (list, tuple))
-            and isinstance(ys, (list, tuple))
-            and len(xs) == len(ys) == n_traces
-            and all(sub_xs is None or np.ndim(sub_xs) == 1 for sub_xs in xs)
-        ):
-            trace_data = list(zip(xs, ys, strict=True))
-        elif all(isinstance(vals, Sized) and len(vals) == 0 for vals in (xs, ys)):
-            # empty xs/ys: use each trace's data
-            trace_data = [(trace.x, trace.y) for trace in fig.data]
-        else:
-            raise ValueError(
-                f"Faceted figures need one xs/ys array (or None) per trace ({n_traces} "
-                f"traces) or empty xs/ys to use trace data, got {type(xs).__name__} xs"
-            )
-        texts = [
-            "" if sub_xs is None else calculate_metrics(sub_xs, sub_ys)
-            for sub_xs, sub_ys in trace_data
-        ]
-        return annotate(texts, fig, **kwargs)
-
-    return annotate(calculate_metrics(xs, ys), fig, **kwargs)
+    xs_arr, ys_arr = _resolve_xy(widget, xs, ys, series)
+    finite = np.isfinite(xs_arr) & np.isfinite(ys_arr)
+    xs_arr, ys_arr = xs_arr[finite], ys_arr[finite]
+    lines = [
+        f"{PRETTY_METRIC_LABELS.get(label, label)} = "
+        f"{float(funcs[metric](xs_arr, ys_arr) if isinstance(metric, str) else metric):{fmt}}"  # noqa: E501
+        for label, metric in label_to_metric.items()
+    ]
+    _append_annotation(widget, prefix + "\n".join(lines) + suffix)
+    return widget
 
 
-def add_identity_line(
-    fig: go.Figure,
-    *,
-    line_kwargs: dict[str, Any] | None = None,
-    traces: TraceSelector = lambda _: True,
-    retain_xy_limits: bool = False,
-    **kwargs: Any,
-) -> go.Figure:
-    """Add a y=x line shape to the background layer of a plotly figure spanning
-    the overlap of the x and y ranges of the traces specified by traces.
+def add_identity_line[Widget: ScatterPlotWidget | BinnedScatterPlotWidget](
+    widget: Widget, *, style: dict[str, Any] | None = None
+) -> Widget:
+    """Add a dashed y = x reference line spanning the whole plot.
 
     Args:
-        fig (go.Figure): plotly figure to add the identity line to.
-        line_kwargs (dict[str, Any], optional): Keyword arguments for customizing the
-            line shape will be passed to fig.add_shape(line=line_kwargs). Defaults to
-            dict(color="gray", width=1, dash="dash").
-        traces (TraceSelector, optional): Which trace(s) to use for determining
-            the x/y range. Can be int, slice, sequence of ints, or a function that takes
-            a trace and returns True/False. By default, applies to all traces.
-        retain_xy_limits (bool, optional): If True, the x/y-axis limits will be retained
-            after adding the identity line. Defaults to False.
-        **kwargs: Additional arguments are passed to fig.add_shape().
-
-    Raises:
-        TypeError: If fig is not a plotly figure.
-        ValueError: If fig is a plotly figure and no valid traces are found.
+        widget (ScatterPlotWidget | BinnedScatterPlotWidget): Widget to add it to.
+        style (dict, optional): matterviz RefLineStyle overrides (color, width, dash,
+            opacity). Defaults to a 1px gray dashed line.
 
     Returns:
-        go.Figure: Figure with added identity line.
+        ScatterPlotWidget | BinnedScatterPlotWidget: The widget.
     """
-    if not isinstance(fig, go.Figure):
-        raise TypeError(f"{fig=} must be instance of go.Figure")
-
-    (x_min, x_max), (y_min, y_max) = get_fig_xy_range(fig=fig, traces=traces)
-
-    # y=x is only visible where the x and y ranges overlap; spanning beyond would
-    # stretch the shorter axis
-    line_min, line_max = max(x_min, y_min), min(x_max, y_max)
-    if line_min >= line_max:
-        warnings.warn(
-            f"Skipping identity line: x range {(x_min, x_max)} and y range "
-            f"{(y_min, y_max)} don't overlap",
-            UserWarning,
-            stacklevel=2,
-        )
-        return fig
-
-    if fig._grid_ref is not None:
-        kwargs.setdefault("row", "all")
-        kwargs.setdefault("col", "all")
-
-    line_defaults = dict(color="gray", width=1, dash="dash")
-    if "line" in kwargs:
-        line_defaults.update(kwargs.pop("line"))
-    if line_kwargs:
-        line_defaults.update(line_kwargs)
-
-    fig.add_shape(
-        type="line",
-        x0=line_min,
-        y0=line_min,
-        x1=line_max,
-        y1=line_max,
-        layer="below",
-        line=line_defaults,
-        **kwargs,
+    _check_widget(widget)
+    line_style = {"color": "gray", "width": 1, "dash": "6 4"} | (style or {})
+    _add_ref_line(
+        widget,
+        {
+            "type": "diagonal",
+            "slope": 1,
+            "intercept": 0,
+            "style": line_style,
+            "label": "y = x",
+            "z_index": "below-points",
+        },
     )
-    if retain_xy_limits:  # plotly expects log axis ranges in log10 units
-        for (low, high), axis, update_axes in (
-            ((x_min, x_max), fig.layout.xaxis, fig.update_xaxes),
-            ((y_min, y_max), fig.layout.yaxis, fig.update_yaxes),
-        ):
-            is_log = axis.type == "log"
-            update_axes(range=np.log10([low, high]) if is_log else [low, high])
-
-    return fig
+    return widget
 
 
-def _has_xy_data(trace: go.Scatter) -> bool:
-    """Check if a trace has non-empty x and y data."""
-    return (
-        hasattr(trace, "x")
-        and hasattr(trace, "y")
-        and trace.x is not None
-        and trace.y is not None
-        and len(trace.x) > 0
-        and len(trace.y) > 0
-    )
-
-
-def _get_valid_traces(
-    fig: go.Figure,
-    traces: TraceSelector,
-    validate_trace: Callable[[go.Scatter], bool] = _has_xy_data,
-) -> list[int]:
-    """Helper to get valid trace indices from a trace selector.
-
-    Args:
-        fig (go.Figure): The figure containing traces to filter
-        traces (TraceSelector): Trace selector (int, slice, sequence, or callable)
-        validate_trace (Callable[[go.Scatter], bool]): Function to validate if a
-            trace is usable. Defaults to requiring both x and y data.
-
-    Returns:
-        list[int]: valid trace indices
-    """
-    # Select traces
-    selected_traces: list[int] = []
-    if isinstance(traces, int):
-        if 0 <= traces < len(fig.data):
-            selected_traces = [traces]
-        else:
-            raise ValueError(
-                f"Trace index {traces} out of bounds (0-{len(fig.data) - 1})"
-            )
-    elif isinstance(traces, slice):
-        selected_traces = list(range(*traces.indices(len(fig.data))))
-    elif isinstance(traces, (list, tuple)):
-        # At runtime, we validate indices are integers and in bounds
-        selected_traces = [
-            idx for idx in traces if isinstance(idx, int) and 0 <= idx < len(fig.data)
-        ]
-        if not selected_traces:
-            valid_range = f"0-{len(fig.data) - 1}"
-            raise ValueError(f"No valid trace indices in {traces}, {valid_range=}")
-    elif callable(traces):
-        trace_predicate = cast("TracePredicate", traces)
-        selected_traces = [
-            idx for idx, trace in enumerate(fig.data) if trace_predicate(trace)
-        ]
-        if not selected_traces:
-            raise ValueError("No traces matched the filtering function")
-    else:
-        actual = type(traces).__name__
-        raise TypeError(
-            f"traces must be int, slice, sequence, or callable, got {actual}"
-        )
-
-    # Filter for traces with valid data according to validator
-    valid_traces = [idx for idx in selected_traces if validate_trace(fig.data[idx])]
-
-    if not valid_traces:
-        raise ValueError("No valid traces with required data found")
-
-    return valid_traces
-
-
-def _get_trace_color(trace: go.Scatter, default_color: str = "navy") -> str:
-    """Extract color from trace, first checking marker then line."""
-    marker_color = getattr(getattr(trace, "marker", None), "color", None)
-    if isinstance(marker_color, str):  # skip per-point color arrays
-        return marker_color
-    line_color = getattr(getattr(trace, "line", None), "color", None)
-    return line_color if isinstance(line_color, str) else default_color
-
-
-def add_best_fit_line(
-    fig: go.Figure,
-    *,
+def add_best_fit_line[Widget: ScatterPlotWidget | BinnedScatterPlotWidget](
+    widget: Widget,
     xs: ArrayLike = (),
     ys: ArrayLike = (),
-    traces: TraceSelector = lambda _: True,
-    line_kwargs: dict[str, Any] | None = None,
-    annotate_params: bool | dict[str, Any] = True,
-    annotation_mode: AnnotationMode = "per_trace",
-    xref: str = "x",
-    yref: str = "y",
-    **kwargs: Any,
-) -> go.Figure:
-    """Add line of best fit according to least squares to a plotly figure.
+    *,
+    series: SeriesSelector = None,
+    style: dict[str, Any] | None = None,
+    annotate_params: bool = True,
+) -> Widget:
+    """Add a least-squares fit line spanning the x range of the fitted data.
 
     Args:
-        fig (go.Figure): plotly figure to add the best fit line to.
-        xs (array, optional): x-values to use for fitting. Defaults to () which
-            means use the x-values of traces selected by the traces parameter.
-        ys (array, optional): y-values to use for fitting. Defaults to () which
-            means use the y-values of traces selected by the traces parameter.
-        traces (TraceSelector, optional): Which trace(s) to use. Can be int, slice,
-            sequence of ints, or a function that takes a trace and returns True/False.
-            By default, applies to all traces. Only used when xs and ys not provided.
-        line_kwargs (dict[str, Any], optional): Keyword arguments for customizing the
-            line shape. Will be passed to fig.add_shape(line=line_kwargs).
-            Defaults to None.
-        annotate_params (bool | dict[str, Any], optional): Pass dict to customize
-            the annotation of the best fit line. Set to False to disable annotation.
-            Defaults to True.
-        annotation_mode (AnnotationMode, optional): How to fit trace data. Options:
-            - "per_trace": Each selected trace gets its own fit line and annotation
-            - "combined": Selected traces in the same subplot share one fit line and
-              annotation, replacing previous fit annotations
-            - "none": Fit lines per trace without annotations
-            Faceted figures get separate fits per subplot in all modes.
-            Defaults to "per_trace".
-        xref (str, optional): x-axis of the subplot to draw directly passed xs/ys
-            on, e.g. "x2". Defaults to "x".
-        yref (str, optional): y-axis matching xref, e.g. "y2". Defaults to "y".
-        **kwargs: Additional arguments are passed to fig.add_shape(). color sets
-            the fit line color for directly passed xs/ys and traces without a color.
+        widget (ScatterPlotWidget | BinnedScatterPlotWidget): Widget to add it to.
+        xs (array): x values to fit. Defaults to the selected series' x data.
+        ys (array): y values to fit. Defaults to the selected series' y data.
+        series (int | Sequence[int] | None): Series to fit (combined) when xs/ys are
+            not given. Defaults to all series. Call once per series index for
+            separate fits.
+        style (dict, optional): matterviz RefLineStyle overrides (color, width, dash,
+            opacity). The color defaults to the explicit "color" of a single fitted
+            series (series=int), else the theme text color.
+        annotate_params (bool): Label the line with its equation
+            "LS fit: y = ax + b". Defaults to True.
 
     Raises:
-        TypeError: If fig is not a plotly figure.
-        ValueError: If fig is a plotly figure and xs and ys are not provided and
-            no valid traces are found.
+        ValueError: If fewer than 2 finite points remain to fit.
 
     Returns:
-        go.Figure: Figure with added best fit line.
+        ScatterPlotWidget | BinnedScatterPlotWidget: The widget.
     """
-    if not isinstance(fig, go.Figure):
-        raise TypeError(f"{fig=} must be instance of go.Figure")
-
-    default_color = "navy" if luminance(get_font_color(fig)) < 0.7 else "lightskyblue"
-    line_color = kwargs.pop(
-        "color",
-        annotate_params.get("color", default_color)
-        if isinstance(annotate_params, dict)
-        else default_color,
-    )
-
-    # Continue annotation offsets per subplot; combined mode replaces old fit labels.
-    def is_fit_label(anno: go.layout.Annotation) -> bool:
-        """Whether an annotation was added by a previous add_best_fit_line call."""
-        return "LS fit: y =" in (anno.text or "")
-
-    if annotation_mode == "combined":
-        fig.layout.annotations = [
-            anno for anno in fig.layout.annotations if not is_fit_label(anno)
-        ]
-    labels_per_subplot: dict[str, int] = {}
-    for anno in fig.layout.annotations:
-        if is_fit_label(anno):
-            anno_x = (anno.xref or "x").removesuffix(" domain").replace("paper", "x")
-            labels_per_subplot[anno_x] = labels_per_subplot.get(anno_x, 0) + 1
-
-    def add_fit_line(
-        data_xs: ArrayLike,
-        data_ys: ArrayLike,
-        color: str,
-        xref: str = "x",
-        yref: str = "y",
-    ) -> None:
-        """Fit the finite data points and add the fit line and optional label."""
-        arr_xs, arr_ys = np.asarray(data_xs, dtype=float), np.asarray(data_ys, float)
-        finite = np.isfinite(arr_xs) & np.isfinite(arr_ys)
-        if (n_finite := int(finite.sum())) < 2:
-            warnings.warn(
-                f"Skipping best fit line: needs >= 2 finite points, got {n_finite} "
-                f"of {len(arr_xs)} on {xref=}",
-                UserWarning,
-                stacklevel=3,
-            )
-            return
-        arr_xs, arr_ys = arr_xs[finite], arr_ys[finite]
-        slope, intercept = np.polyfit(arr_xs, arr_ys, 1)
-        x_min, x_max = float(arr_xs.min()), float(arr_xs.max())
-        y0, y1 = slope * x_min + intercept, slope * x_max + intercept
-
-        plotly_line_defaults = dict(color=color, width=2, dash="dash")
-        if line_kwargs:
-            plotly_line_defaults.update(line_kwargs)
-        fig.add_shape(
-            **dict(
-                type="line",
-                x0=x_min,
-                y0=y0,
-                x1=x_max,
-                y1=y1,
-                xref=xref,
-                yref=yref,
-                line=plotly_line_defaults,
-            )
-            | kwargs
+    _check_widget(widget)
+    xs_arr, ys_arr = _resolve_xy(widget, xs, ys, series)
+    finite = np.isfinite(xs_arr) & np.isfinite(ys_arr)
+    if (n_finite := int(finite.sum())) < 2:
+        raise ValueError(
+            f"Best fit line needs >= 2 finite points, got {n_finite} of {len(xs_arr)}"
         )
+    xs_arr, ys_arr = xs_arr[finite], ys_arr[finite]
+    if np.ptp(xs_arr) == 0:
+        raise ValueError(f"Best fit line needs varying x values, all are {xs_arr[0]}")
+    slope, intercept = np.polyfit(xs_arr, ys_arr, 1)
+    x_min, x_max = float(xs_arr.min()), float(xs_arr.max())
 
-        if not annotate_params or annotation_mode == "none":
-            return
-
+    color = "currentColor"
+    no_explicit_data = not np.size(xs) and not np.size(ys)
+    if no_explicit_data and isinstance(series, (int, np.integer)):
+        color = (widget.series or [])[series].get("color", color)
+    line_style = {"color": color, "width": 2, "dash": "8 4"} | (style or {})
+    line: dict[str, Any] = {
+        "type": "segment",
+        "p1": [x_min, float(slope * x_min + intercept)],
+        "p2": [x_max, float(slope * x_max + intercept)],
+        "style": line_style,
+        "label": "LS fit",
+        "metadata": {"slope": float(slope), "intercept": float(intercept)},
+    }
+    if annotate_params:
         sign = "+" if intercept >= 0 else "-"
         text = f"LS fit: y = {slope:.2g}x {sign} {abs(intercept):.2g}"
-
-        n_labels = labels_per_subplot.get(xref, 0)
-        labels_per_subplot[xref] = n_labels + 1
-
-        plotly_anno_defaults: dict[str, Any] = dict(
-            x=0.98,
-            y=0.02 + 0.05 * n_labels,
-            xref=f"{xref} domain",
-            yref=f"{yref} domain",
-            xanchor="right",
-            yanchor="bottom",
-            showarrow=False,
-            font=dict(color=color),
-        )
-
-        if isinstance(annotate_params, dict):
-            anno_params = dict(annotate_params)
-            anno_color = anno_params.pop("color", None)
-            plotly_anno_defaults.update(anno_params)
-            if anno_color is not None:
-                font = plotly_anno_defaults["font"]
-                if not isinstance(font, dict):  # e.g. a plotly Font object
-                    font = font.to_plotly_json()
-                plotly_anno_defaults["font"] = font | {"color": anno_color}
-
-        fig.add_annotation(text=text, **plotly_anno_defaults)
-
-    # CASE 1: Custom data provided directly
-    xs_arr, ys_arr = np.asarray(xs), np.asarray(ys)
-    if len(xs_arr) > 0 and len(ys_arr) > 0:
-        add_fit_line(xs_arr, ys_arr, line_color, xref, yref)
-        return fig
-
-    # CASE 2: Fit trace data, grouped by subplot (a single group if not faceted).
-    # Combined mode fits all selected traces of a subplot together, per_trace (and
-    # none) fits each trace with >= 2 points separately.
-    subplot_traces: dict[tuple[str, str], list[Any]] = {}
-    for trace_idx in dict.fromkeys(_get_valid_traces(fig, traces)):
-        trace = fig.data[trace_idx]
-        refs = (getattr(trace, "xaxis", None) or "x", getattr(trace, "yaxis", None))
-        subplot_traces.setdefault((refs[0], refs[1] or "y"), []).append(trace)
-
-    for (sub_xref, sub_yref), group in subplot_traces.items():
-        if annotation_mode == "combined":
-            all_xs = np.concatenate([trace.x for trace in group])
-            all_ys = np.concatenate([trace.y for trace in group])
-            color = _get_trace_color(group[0], line_color)
-            add_fit_line(all_xs, all_ys, color, sub_xref, sub_yref)
-            continue
-        for trace in group:
-            if len(trace.x) < 2 or len(trace.y) < 2:
-                continue
-            color = _get_trace_color(trace, line_color)
-            add_fit_line(trace.x, trace.y, color, sub_xref, sub_yref)
-
-    return fig
+        line["annotation"] = {
+            "text": text,
+            "position": "end",
+            "side": "below",
+            "color": line_style["color"],
+        }
+    _add_ref_line(widget, line)
+    return widget
 
 
-def enhance_parity_plot(
-    fig: go.Figure | None = None,
+def enhance_parity_plot[Widget: ScatterPlotWidget | BinnedScatterPlotWidget](
+    widget: Widget,
     xs: ArrayLike = (),
     ys: ArrayLike = (),
     *,
+    series: SeriesSelector = None,
     identity_line: bool | dict[str, Any] = True,
     best_fit_line: bool | dict[str, Any] | None = None,
-    stats: bool | dict[str, Any] | None = True,
-    traces: TraceSelector = lambda _: True,
-    annotation_mode: AnnotationMode = "combined",
-) -> go.Figure | None:
-    """Add parity plot powerups to a plotly figure, including
-    identity line (y=x), best-fit line, and pred vs ref statistics (MAE, R², ...).
+    stats: bool | dict[str, Any] = True,
+) -> Widget:
+    """Add parity plot powerups: identity line (y = x), least-squares best-fit line
+    and regression metrics (MAE, R², ...).
 
     Args:
-        xs (array): x-values to use for fitting best-fit line and computing stats.
-        ys (array): y-values to use for fitting best-fit line and computing stats.
-        fig (go.Figure | None): plotly Figure to add powerups to. Defaults to None.
-        identity_line (bool | dict[str, Any], optional): Whether to add a parity line
-            (y=x). Pass a dict to customize line properties. Defaults to True.
-        best_fit_line (bool | dict[str, Any] | None, optional): Whether to add a
-            best-fit line. Pass a dict to customize line properties. If None (default),
-            will be enabled if R² > 0.3.
-        stats (bool | dict[str, Any] | None, optional): Whether to display text box(es)
-            with metrics (MAE, R², etc). Pass a dict to customize text box properties,
-            or None to disable. Defaults to True.
-        traces (TraceSelector, optional): Specifies which trace(s) to use. Can be int,
-            slice, sequence of ints, or a function that takes a trace and returns bool.
-            By default, applies to all traces. Only used when xs and ys not provided.
-        annotation_mode (AnnotationMode, optional): How to display metric annotations.
-            Defaults to "combined". Options:
-            - "per_trace": Each selected trace gets its own annotation
-            - "combined": All selected traces are combined into a single annotation
-            - "none": Only add identity line and best-fit line, don't show annotations
+        widget (ScatterPlotWidget | BinnedScatterPlotWidget): Widget to enhance.
+        xs (array): x values for the fit and metrics. Defaults to the selected series.
+        ys (array): y values for the fit and metrics. Defaults to the selected series.
+        series (int | Sequence[int] | None): Series to read data from when xs/ys are
+            not given. Defaults to all series (combined).
+        identity_line (bool | dict): Whether to add y = x. A dict is passed as
+            add_identity_line() kwargs. Defaults to True.
+        best_fit_line (bool | dict | None): Whether to add a best-fit line. A dict is
+            passed as add_best_fit_line() kwargs. None (default) adds it if R² > 0.3.
+        stats (bool | dict): Whether to show metrics. A dict is passed as
+            annotate_metrics() kwargs. Defaults to True.
 
     Returns:
-        go.Figure: The enhanced figure.
-
-    Raises:
-        ValueError: If xs and ys are not provided and fig is not a plotly figure where
-            the data can be directly accessed.
+        ScatterPlotWidget | BinnedScatterPlotWidget: The enhanced widget.
     """
-    # Convert to numpy arrays early for array operations
-    xs_arr, ys_arr = np.asarray(xs), np.asarray(ys)
-
-    # Add identity line if requested
-    if identity_line and fig is not None:
-        identity_kwargs = identity_line if isinstance(identity_line, dict) else {}
-        add_identity_line(fig, traces=traces, **identity_kwargs)
-
-    # Early return if no stats or best-fit line needed and manual data not provided
-    if (
-        not stats
-        and best_fit_line in (False, None)
-        and len(xs_arr) == 0
-        and len(ys_arr) == 0
+    _check_widget(widget)
+    for name, opt in (
+        ("identity_line", identity_line),
+        ("best_fit_line", best_fit_line),
+        ("stats", stats),
     ):
-        return fig
-
-    has_data = len(xs_arr) > 0 and len(ys_arr) > 0
-    if not has_data:
-        if not isinstance(fig, go.Figure):
-            raise TypeError(
-                "this powerup can only get x/y data from the figure directly "
-                "for plotly figures."
-            )
-        valid_traces = _get_valid_traces(fig, traces)
-        if annotation_mode == "combined":
-            xs_arr = np.concatenate([fig.data[idx].x for idx in valid_traces])
-            ys_arr = np.concatenate([fig.data[idx].y for idx in valid_traces])
-
-    if has_data or annotation_mode == "combined":
-        if best_fit_line is None:
-            best_fit_line = r2_score(xs_arr, ys_arr) > 0.3
-        # trace-derived data on faceted figures is fitted/annotated per subplot
-        per_subplot = not has_data and fig is not None and _is_faceted(fig)
-        if best_fit_line and fig is not None:
-            fit_kwargs = {} if isinstance(best_fit_line, bool) else best_fit_line
-            if per_subplot:
-                add_best_fit_line(
-                    fig, traces=traces, annotation_mode="combined", **fit_kwargs
-                )
-            else:
-                add_best_fit_line(fig, xs=xs_arr, ys=ys_arr, **fit_kwargs)
-        if stats and annotation_mode != "none" and fig is not None:
-            stats_kwargs = {} if isinstance(stats, bool) else stats
-            stat_xs, stat_ys = ((), ()) if per_subplot else (xs_arr, ys_arr)
-            annotate_metrics(stat_xs, stat_ys, fig=fig, **stats_kwargs)
-        return fig
-
-    if annotation_mode == "per_trace" and fig is not None:
-        # faceted figures get all per-trace stats in one call, so annotate() places
-        # each in its trace's subplot (stacked if a subplot has several traces)
-        faceted_stats: list[tuple[Any, Any]] | None = (
-            [(None, None)] * len(fig.data) if _is_faceted(fig) else None
+        if not isinstance(opt, (bool, dict, type(None))):
+            raise TypeError(f"{name} must be bool or dict, got {type(opt).__name__}")
+    if identity_line:
+        add_identity_line(
+            widget, **identity_line if isinstance(identity_line, dict) else {}
         )
-        per_trace_stats_kwargs = {} if isinstance(stats, bool) else stats or {}
-        for trace_idx in dict.fromkeys(valid_traces):
-            trace = fig.data[trace_idx]
-            trace_xs, trace_ys = np.array(trace.x), np.array(trace.y)
-            if len(trace_xs) < 2 or len(trace_ys) < 2:
-                continue
+    if not best_fit_line and not stats and best_fit_line is not None:
+        return widget
 
-            if best_fit_line is not False:
-                line_style: dict[str, Any] = {"color": _get_trace_color(trace, "navy")}
-                if isinstance(best_fit_line, dict):
-                    line_style |= best_fit_line
-                add_best_fit_line(fig, xs=trace_xs, ys=trace_ys, line_kwargs=line_style)
-
-            if stats and faceted_stats is not None:
-                faceted_stats[trace_idx] = (trace_xs, trace_ys)
-            elif stats:
-                annotate_metrics(trace_xs, trace_ys, fig=fig, **per_trace_stats_kwargs)
-
-        if stats and faceted_stats is not None:
-            stat_xs, stat_ys = zip(*faceted_stats, strict=True)
-            annotate_metrics(
-                list(stat_xs), list(stat_ys), fig=fig, **per_trace_stats_kwargs
-            )
-
-        return fig
-
-    if annotation_mode != "none":
-        raise ValueError(
-            f"Unknown {annotation_mode=}. Must be one of {get_args(AnnotationMode)}"
+    xs_arr, ys_arr = _resolve_xy(widget, xs, ys, series)
+    if best_fit_line is None:
+        finite = np.isfinite(xs_arr) & np.isfinite(ys_arr)
+        best_fit_line = (
+            finite.sum() > 1 and r2_score(xs_arr[finite], ys_arr[finite]) > 0.3
         )
+    if best_fit_line:
+        fit_kwargs = best_fit_line if isinstance(best_fit_line, dict) else {}
+        add_best_fit_line(widget, xs, ys, series=series, **fit_kwargs)
+    if stats:
+        stats_kwargs = stats if isinstance(stats, dict) else {}
+        annotate_metrics(widget, xs_arr, ys_arr, **stats_kwargs)
+    return widget
 
-    return fig
+
+def _ecdf_xy(values: ArrayLike) -> tuple[np.ndarray, np.ndarray]:
+    """Empirical CDF vertices: sorted finite values and fractions <= each value."""
+    sorted_vals = np.sort(np.asarray(values, dtype=float).ravel())
+    sorted_vals = sorted_vals[np.isfinite(sorted_vals)]
+    if not sorted_vals.size:
+        raise ValueError("ECDF needs at least one finite value")
+    return sorted_vals, np.arange(1, sorted_vals.size + 1) / sorted_vals.size
 
 
 def add_ecdf_line(
-    fig: go.Figure,
+    widget: ScatterPlotWidget,
     values: ArrayLike = (),
-    traces: TraceSelector = lambda _: True,
-    trace_kwargs: dict[str, Any] | None = None,
-    **kwargs: Any,
-) -> go.Figure:
-    """Add an empirical cumulative distribution function (ECDF) line to a plotly figure.
+    *,
+    series: SeriesSelector = None,
+    label: str = "Cumulative",
+    line_style: dict[str, Any] | None = None,
+) -> ScatterPlotWidget:
+    """Add empirical cumulative distribution function (ECDF) step lines on a right
+    y2 axis spanning [0, 1].
 
     Args:
-        fig (go.Figure): plotly figure to add the ECDF line to.
-        values (array, optional): Values to compute the ECDF from. Defaults to () which
-            means use the x-values of traces selected by the traces parameter.
-        traces (TraceSelector, optional): Specifies which trace(s) to use. Can be int,
-            slice, sequence of ints, or a function that takes a trace and returns bool.
-            By default, applies to all traces. Only used when values is not provided.
-        trace_kwargs (dict[str, Any], optional): Passed to trace_ecdf.update().
-            Defaults to None. Use e.g. to set trace name (default "Cumulative") or
-            line_color (default "gray"). Applied to every added ECDF trace.
-        **kwargs: Passed to fig.add_trace().
+        widget (ScatterPlotWidget): Widget to add the ECDF series to.
+        values (array): Values to compute one ECDF from. Defaults to the x data of
+            each selected series (one ECDF per series, matching its color).
+        series (int | Sequence[int] | None): Series whose x data to use when values
+            is not given. Defaults to all series.
+        label (str): Legend label and y2 axis title. Per-series ECDFs of several
+            series are labeled "{label} ({series label})". Defaults to "Cumulative".
+        line_style (dict, optional): matterviz LineStyle overrides (color, width,
+            dash) applied to every added ECDF series.
 
     Returns:
-        go.Figure: Figure with added ECDF line(s).
+        ScatterPlotWidget: The widget.
     """
-    trace_kwargs = trace_kwargs or {}
-    if not isinstance(fig, go.Figure):
-        raise TypeError(f"{fig=} must be instance of go.Figure")
-
-    # Check if we have a subplot structure and get base name for traces
-    has_subplots = fig._grid_ref is not None
-    base_name = trace_kwargs.get("name", "Cumulative")
-    xlabel = fig.layout.xaxis.title.text or "x"
-    hovertemplate = f"{xlabel}: %{{x}}<br>Percent: %{{y:.2%}}<extra></extra>"
-    yaxis_defaults = dict(
-        title=base_name, side="right", overlaying="y", range=(0, 1), showgrid=False
-    )
-
-    # Convert to numpy array for array operations
-    values_arr = np.asarray(values) if values is not None else np.array([])
-
-    # If explicit values are provided, just add one ECDF line
-    if len(values_arr) > 0:
-        ecdf_trace = px.ecdf(values_arr).data[0]
-        fig.add_trace(ecdf_trace, **kwargs)
-
-        fig.data[-1].hovertemplate = hovertemplate
-
-        name = base_name
-        trace_names = [trace.name for trace in fig.data[:-1]]
-        name_suffix = 1
-        while name in trace_names:
-            name_suffix += 1
-            name = f"{base_name} {name_suffix}"
-
-        line_defaults = dict(
-            color=trace_kwargs.get("line_color", "gray"),
-            dash=trace_kwargs.get("line", {}).get("dash", "solid"),
-        )
-        current_trace_kwargs: dict[str, Any] = {
-            "yaxis": "y2",
-            "name": name,
-            "line": line_defaults,
-        } | trace_kwargs
-        if isinstance(line_kwargs := trace_kwargs.get("line"), dict):
-            current_trace_kwargs["line"] = line_defaults | line_kwargs
-
-        fig.data[-1].update(**current_trace_kwargs)
-
-        yaxis_defaults["title"] = name
-        line_dict = current_trace_kwargs.get("line", {})
-        if isinstance(line_dict, dict) and (color := line_dict.get("color")):
-            yaxis_defaults["color"] = color
-
-        if not hasattr(fig.layout, "yaxis2"):
-            fig.layout.yaxis2 = yaxis_defaults
-        else:
-            for key, value in yaxis_defaults.items():
-                setattr(fig.layout.yaxis2, key, value)
-
-        return fig
-
-    def is_horizontal(trace: Any) -> bool:
-        """Bars/histograms with values on the y-axis (histograms with only y data)."""
-        if getattr(trace, "orientation", None) == "h":
-            return True
-        return isinstance(trace, go.Histogram) and trace.x is None
-
-    def validate_ecdf_trace(trace: go.Scatter) -> bool:
-        """Histograms only need samples on their value axis, others need x and y."""
-        if isinstance(trace, go.Histogram):
-            values = trace.y if is_horizontal(trace) else trace.x
-            return values is not None and len(values) > 0
-        return _has_xy_data(trace)
-
-    selected_traces = _get_valid_traces(fig, traces, validate_ecdf_trace)
-    is_single_trace = len(selected_traces) == 1
-
-    # Set up secondary y-axis if it doesn't exist yet
-    if not hasattr(fig.layout, "yaxis2"):
-        fig.layout.yaxis2 = yaxis_defaults
-
-    for trace_idx in selected_traces:
-        target_trace = fig.data[trace_idx]
-
-        # Extract values from the trace
-        # horizontal bars/histograms have their values on the y-axis, so their ECDF
-        # runs along a secondary top x-axis instead of the right y-axis
-        horizontal = is_horizontal(target_trace)
-        if isinstance(target_trace, (go.Histogram, go.Scatter, go.Scattergl)):
-            ecdf_trace = (
-                px.ecdf(y=target_trace.y, orientation="h")
-                if horizontal
-                else px.ecdf(target_trace.x)
-            ).data[0]
-        elif isinstance(target_trace, go.Bar):  # bar lengths weight their positions
-            positions, lengths = target_trace.x, target_trace.y
-            if horizontal:
-                positions, lengths = lengths, positions
-            if len(positions) == len(lengths) + 1:  # bin edges, bars at left edges
-                positions = positions[:-1]
-            ecdf_trace = (
-                px.ecdf(x=lengths, y=positions, orientation="h")
-                if horizontal
-                else px.ecdf(x=positions, y=lengths)
-            ).data[0]
-        else:
-            cls = type(target_trace)
-            qual_name = f"{cls.__module__}.{cls.__qualname__}"
-            raise TypeError(
-                f"Cannot auto-determine x-values for ECDF from {qual_name}. "
-                "Pass values explicitly or use supported trace types."
+    _check_widget(widget, (ScatterPlotWidget,))
+    if np.size(values):
+        sources: list[tuple[ArrayLike, str, str | None]] = [(values, label, None)]
+    else:
+        picked = _selected_series(widget, series)
+        sources = [
+            (
+                srs["x"],
+                f"{label} ({srs['label']})"
+                if len(picked) > 1 and srs.get("label")
+                else label,
+                srs.get("color"),
             )
-
-        ecdf_trace.hovertemplate = (
-            f"{fig.layout.yaxis.title.text or 'y'}: %{{y}}<br>"
-            "Percent: %{x:.2%}<extra></extra>"
-            if horizontal
-            else hovertemplate
+            for srs in picked
+        ]
+    new_series = []
+    for source, series_label, color in sources:
+        xs, fractions = _ecdf_xy(source)
+        # explicit post-step (hv) vertices since matterviz' step curve steps midway
+        style = {"width": 2} | ({"color": color} if color else {}) | (line_style or {})
+        new_series.append(
+            {
+                "x": np.repeat(xs, 2)[1:],
+                "y": np.repeat(fractions, 2)[:-1],
+                "y_axis": "y2",
+                "markers": "line",
+                "label": series_label,
+                "line_style": style,
+            }
         )
-
-        colorway = fig.layout.colorway or px.colors.qualitative.Plotly
-        default_color = colorway[trace_idx % len(colorway)]
-        target_color = _get_trace_color(target_trace, default_color)
-
-        legendgroup = target_trace.legendgroup or str(trace_idx)
-
-        trace_name = base_name
-        if not is_single_trace and getattr(target_trace, "name", None):
-            trace_name = f"{base_name} ({target_trace.name})"
-
-        # Build the trace using the determined target_color
-        line_opts = {
-            "color": target_color,
-            "dash": trace_kwargs.get("line", {}).get("dash", "solid"),
-        }
-
-        axis_kwarg = dict(xaxis="x2") if horizontal else dict(yaxis="y2")
-        ecdf_trace.update(
-            dict(name=trace_name, legendgroup=legendgroup, line=line_opts) | axis_kwarg
-        )
-        if horizontal and not hasattr(fig.layout, "xaxis2"):
-            fig.layout.xaxis2 = dict(
-                title=base_name,
-                side="top",
-                overlaying="x",
-                range=(0, 1),
-                showgrid=False,
-            )
-
-        # For subplots, we just need to ensure we use the correct xaxis
-        # If trace has a specific xaxis, copy it to maintain subplot structure
-        if has_subplots and not horizontal and hasattr(target_trace, "xaxis"):
-            ecdf_trace["xaxis"] = target_trace.xaxis
-
-        fig.add_trace(ecdf_trace, **kwargs)
-
-        # Apply user overrides, merging line dicts into the existing line style
-        current_trace_kwargs = dict(trace_kwargs)
-        if isinstance(line_kwargs := trace_kwargs.get("line"), dict):
-            line = ecdf_trace.line
-            current_line = dict(color=line.color, dash=line.dash, width=line.width)
-            current_trace_kwargs["line"] = current_line | line_kwargs
-
-        if current_trace_kwargs:
-            fig.data[-1].update(**current_trace_kwargs)
-
-    # Make sure yaxis2 has color set if specified in trace_kwargs
-    line_settings = trace_kwargs.get("line")
-    yaxis2_color = (
-        line_settings.get("color") if isinstance(line_settings, dict) else None
-    )
-    if not isinstance(yaxis2_color, str):
-        yaxis2_color = trace_kwargs.get("line_color")
-    if isinstance(yaxis2_color, str):
-        fig.layout.yaxis2.update(color=yaxis2_color)
-
-    return fig
-
-
-def _button_menu(
-    direction: str, method: str, buttons: Mapping[str, dict[str, Any]]
-) -> dict[str, Any]:
-    """Plotly updatemenu of buttons applying {label: args} via method."""
-    return dict(
-        type="buttons",
-        direction=direction,
-        buttons=[
-            dict(args=[args], label=label, method=method)
-            for label, args in buttons.items()
-        ],
-        pad={"r": 10, "t": 10},
-        showactive=True,
-        x=1,
-        xanchor="right",
-        y=1,
-        yanchor="top",
-    )
-
-
-# updatemenus to apply to a plotly figure like fig.layout.updatemenus = [toggle_grid].
-# Use e.g. toggle_log_linear_y_axis | dict(x=1, y=0, ...) to customize.
-toggle_log_linear_y_axis = _button_menu(
-    "left",
-    "relayout",
-    {"Linear Y": {"yaxis.type": "linear"}, "Log Y": {"yaxis.type": "log"}},
-)
-toggle_log_linear_x_axis = _button_menu(
-    "left",
-    "relayout",
-    {"Linear X": {"xaxis.type": "linear"}, "Log X": {"xaxis.type": "log"}},
-)
-toggle_grid = _button_menu(
-    "left",
-    "relayout",
-    {
-        f"{label} Grid": {"xaxis.showgrid": show, "yaxis.showgrid": show}
-        for label, show in (("Show", True), ("Hide", False))
-    },
-)
-select_colorscale = _button_menu(
-    "down",
-    "restyle",
-    {name: {"colorscale": name} for name in ("Viridis", "Plasma", "Inferno", "Magma")},
-)
-select_marker_mode = _button_menu(
-    "down",
-    "restyle",
-    {
-        label: {"type": "scatter", "mode": mode}
-        for label, mode in (
-            ("Scatter", "markers"),
-            ("Line", "lines"),
-            ("Line+Markers", "lines+markers"),
-        )
-    },
-)
+    new_series = normalize_plot_series(new_series, component_name="ScatterPlot") or []
+    widget.series = [*(widget.series or []), *new_series]
+    widget.y2_axis = {"label": label} | (widget.y2_axis or {})
+    widget.y2_range = [0, 1]
+    return widget
