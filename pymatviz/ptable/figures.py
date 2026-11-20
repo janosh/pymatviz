@@ -12,7 +12,11 @@ from pandas.api.types import is_numeric_dtype
 from pymatviz.enums import ElemCountMode
 from pymatviz.process_data import count_elements
 from pymatviz.utils import df_ptable
-from pymatviz.widgets.periodic_table import PeriodicTableWidget, nullable_floats
+from pymatviz.widgets.periodic_table import (
+    SPLIT_LAYOUTS,
+    PeriodicTableWidget,
+    nullable_floats,
+)
 
 
 if TYPE_CHECKING:
@@ -101,7 +105,9 @@ def ptable_heatmap(
             missing or excluded elements. Defaults to None ("excl." on excluded
             tiles).
         **kwargs: Passed to PeriodicTableWidget, e.g. color_bar=dict(title="count")
-            (None hides it), missing=dict(color="#eee") or style.
+            (None hides it), missing=dict(color="#eee"), style or tile_props, e.g.
+            tile_props=dict(float_fmt=".2f") for value labels (d3-format spec,
+            default: matterviz's auto format) or dict(show_number=False).
 
     Returns:
         PeriodicTableWidget: Interactive periodic table heatmap.
@@ -160,31 +166,37 @@ def ptable_heatmap(
 def ptable_heatmap_splits(
     data: pd.DataFrame | pd.Series | Mapping[str, XYArray],
     *,
+    split_layout: str | None = None,
     color_scale: ColorScale = "interpolateViridis",
     **kwargs: Any,
 ) -> PeriodicTableWidget:
     """Periodic table heatmap with each element tile split into 2-4 segments.
 
-    matterviz picks the split by segment count: 2 diagonal (top-left, bottom-right),
-    3 horizontal strips (top to bottom), 4 quadrants (reading order). All segments
-    share one color scale and color bar. Each segment shows its value.
+    All segments share one color scale and color bar. Each segment shows its value.
 
     Args:
         data (pd.DataFrame | pd.Series | dict[str, Sequence[float]]): Map from
             element symbols to 2-4 values each, e.g. {"Fe": [1, 2], "Co": [3, 4]}.
             For a DataFrame, the index holds element symbols and each column is a
             segment. NaN/±inf segments are left uncolored.
+        split_layout (str | None): How tiles are split, by number of values:
+            2 "diagonal" (top-left, bottom-right), 3 "horizontal" (strips top to
+            bottom) or "vertical" (left to right), 4 "quadrant" (reading order) or
+            "triangular" (top, right, bottom, left). Defaults to None, the first
+            layout listed for the count.
         color_scale (str | dict): matterviz ColorScale, see ``ptable_heatmap``.
             Defaults to "interpolateViridis".
-        **kwargs: Passed to PeriodicTableWidget, e.g. color_bar=dict(title="...")
-            or missing=dict(color="#eee").
+        **kwargs: Passed to PeriodicTableWidget, e.g. color_bar=dict(title="..."),
+            missing=dict(color="#eee") or tile_props=dict(float_fmt=".2f") to
+            format value labels (d3-format spec).
 
     Returns:
         PeriodicTableWidget: Interactive periodic table with split tiles.
 
     Raises:
-        ValueError: If data is empty, has keys that aren't element symbols, or not
-            all elements have the same number (2, 3 or 4) of values.
+        ValueError: If data is empty, has keys that aren't element symbols, not
+            all elements have the same number (2, 3 or 4) of values, or
+            split_layout doesn't support that number.
     """
     rows = data.T.to_dict("list") if isinstance(data, pd.DataFrame) else dict(data)
     if not rows:
@@ -202,8 +214,16 @@ def ptable_heatmap_splits(
     for symbol, values in heatmap_values.items():
         if len(values) != n_splits:
             raise ValueError(f"{symbol}: got {len(values)} values, expected {n_splits}")
+    if split_layout not in (None, *SPLIT_LAYOUTS[n_splits]):
+        raise ValueError(
+            f"{split_layout=} invalid for {n_splits} values per element, use one of "
+            f"{SPLIT_LAYOUTS[n_splits]}"
+        )
     return PeriodicTableWidget(
-        heatmap_values=heatmap_values, color_scale=color_scale, **kwargs
+        heatmap_values=heatmap_values,
+        split_layout=split_layout,
+        color_scale=color_scale,
+        **kwargs,
     )
 
 

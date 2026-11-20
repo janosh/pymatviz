@@ -17,6 +17,27 @@ from pymatviz.widgets.matterviz import MatterVizWidget
 # numeric arrays a tile plot series may hold, per series kind
 _HIST_KEYS, _XY_KEYS = frozenset({"values"}), frozenset({"x", "y", "color_values"})
 _TILE_PLOT_MODES = ("markers", "line", "line+markers")
+# matterviz split layouts per heat value count, the first being its default
+SPLIT_LAYOUTS: dict[int, tuple[str, ...]] = {
+    2: ("diagonal",),
+    3: ("horizontal", "vertical"),
+    4: ("quadrant", "triangular"),
+}
+# ElementTile props the table sets per tile, so tile_props can't override them
+_TABLE_TILE_PROPS = frozenset(
+    {
+        "element",
+        "segments",
+        "split_layout",
+        "style",
+        "role",
+        "tabindex",
+        "href",
+        "active",
+        "backdrop",
+        "label",
+    }
+)
 
 
 class _ColorScaleCheck(tl.HasTraits):
@@ -211,6 +232,24 @@ class PeriodicTableWidget(MatterVizWidget):
     # color bar, exclusive with heatmap_values), log_y (log(1 + count) bar heights),
     # x_range/y_range ([min, max] shared by all tiles, a None end fits the data).
     tile_plot_config = tl.Dict(default_value=None, allow_none=True).tag(sync=True)
+    # how tiles with 2-4 heat values are split (None: matterviz default per count, see
+    # SPLIT_LAYOUTS); a layout not valid for a tile's count falls back to the default
+    split_layout = tl.Enum(
+        sorted({layout for layouts in SPLIT_LAYOUTS.values() for layout in layouts}),
+        default_value=None,
+        allow_none=True,
+    ).tag(sync=True)
+    # ElementTile props for every tile, e.g. {"float_fmt": ".1%"} (d3-format spec of
+    # value labels), show_symbol, show_number, show_name, symbol_style, text_color
+    tile_props = tl.Dict(default_value=None, allow_none=True).tag(sync=True)
+
+    @tl.validate("tile_props")
+    def _validate_tile_props(self, proposal: dict[str, Any]) -> Any:
+        """Reject props the table sets on each tile itself."""
+        props = normalize_plot_json(proposal["value"], "PeriodicTable.tile_props")
+        if clash := sorted(set(props or {}) & _TABLE_TILE_PROPS):
+            raise tl.TraitError(f"tile_props can't set {clash}, the table sets them")
+        return props
 
     @tl.validate("tile_plots")
     def _validate_tile_plots(self, proposal: dict[str, Any]) -> Any:

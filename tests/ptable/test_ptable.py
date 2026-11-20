@@ -147,6 +147,45 @@ def test_ptable_heatmap_splits(n_splits: int) -> None:
     assert widget.color_scale == "interpolateViridis"
 
 
+@pytest.mark.parametrize(
+    ("n_splits", "split_layout"),
+    [(2, "diagonal"), (3, "vertical"), (4, "triangular"), (4, None)],
+)
+def test_ptable_heatmap_splits_layout_and_tile_props(
+    n_splits: int, split_layout: str | None
+) -> None:
+    """split_layout valid for the value count and tile_props pass to the widget."""
+    widget = pmv.ptable_heatmap_splits(
+        {"Fe": list(range(n_splits))},
+        split_layout=split_layout,
+        tile_props={"float_fmt": ".2f", "show_number": False},
+    )
+    assert widget.split_layout == split_layout
+    assert widget.tile_props == {"float_fmt": ".2f", "show_number": False}
+
+
+@pytest.mark.parametrize(
+    ("n_splits", "split_layout"), [(2, "vertical"), (3, "quadrant"), (4, "diagonal")]
+)
+def test_ptable_heatmap_splits_invalid_layout(n_splits: int, split_layout: str) -> None:
+    """A split_layout matterviz doesn't support for the value count raises."""
+    with pytest.raises(ValueError, match=f"{split_layout=} invalid for {n_splits}"):
+        pmv.ptable_heatmap_splits(
+            {"Fe": list(range(n_splits))}, split_layout=split_layout
+        )
+
+
+def test_tile_props_validation() -> None:
+    """tile_props rejects props the table sets per tile and normalizes numpy values."""
+    widget = PeriodicTableWidget(tile_props={"show_symbol": np.False_})
+    assert widget.tile_props == {"show_symbol": False}
+    for key in ("label", "split_layout", "style", "segments"):
+        with pytest.raises(tl.TraitError, match=f"tile_props can't set \\['{key}'\\]"):
+            widget.tile_props = {key: "x", "float_fmt": ".1f"}
+    with pytest.raises(tl.TraitError):
+        PeriodicTableWidget(split_layout="grid")
+
+
 def test_ptable_heatmap_splits_dataframe_and_series() -> None:
     """DataFrame rows (index = elements) and Series of lists give the same values."""
     df_splits = pd.DataFrame(

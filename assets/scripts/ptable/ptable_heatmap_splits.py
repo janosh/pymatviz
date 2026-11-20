@@ -32,3 +32,13 @@ widget = pmv.ptable_heatmap_splits(
     sparse_data, missing={"color": "#ddd"}, color_bar={"title": "Metric"}
 )
 widget.show()
+
+
+# %% 4 values per element as triangles (top, right, bottom, left), 1-decimal labels
+widget = pmv.ptable_heatmap_splits(
+    {elem.symbol: np_rng.normal(size=4) for elem in list(Element)[:56]},
+    split_layout="triangular",
+    tile_props={"float_fmt": ".1f", "show_number": False},
+    color_bar={"title": "Metric"},
+)
+widget.show()
