@@ -35,10 +35,9 @@ def rainclouds(
 
     This plot type was proposed in https://wellcomeopenresearch.org/articles/4-63/v2.
     Each dataset is drawn as a one-sided violin (the cloud), a box plot (the
-    umbrella) and jittered samples (the rain). MatterViz jitters the samples within
-    the violin's half of the slot, so the rain overlays the cloud rather than
-    falling below it. Quartiles, whiskers and the KDE are computed in the frontend
-    from the raw samples. Each violin is scaled to its own maximum density.
+    umbrella) and jittered samples on the opposite side (the rain). Quartiles,
+    whiskers and the KDE are computed in the frontend from the raw samples. Each
+    violin is scaled to its own maximum density.
 
     Args:
         data (dict[str, Sequence[float] | tuple[pd.DataFrame, str]]): Map from labels
@@ -103,6 +102,7 @@ def rainclouds(
         "orientation": orientation,
         "kind": kind,
         "side": "positive",
+        "point_side": "negative",  # rain falls opposite the cloud
         "points": "strip" if show_points else "none",
         "violin_width": width_viol,
         "violin_style": {"opacity": alpha} | (kwargs.pop("violin_style", None) or {}),

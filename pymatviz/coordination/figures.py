@@ -19,7 +19,7 @@ from pymatviz.coordination.helpers import (
 from pymatviz.enums import ElemColorScheme
 from pymatviz.process_data import normalize_structures
 from pymatviz.structure.helpers import get_site_elements
-from pymatviz.widgets.bar_plot import PLOT_COLORS, BarPlotWidget, bar_axis_defaults
+from pymatviz.widgets.bar_plot import BarPlotWidget, bar_axis_defaults
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 
 
@@ -147,16 +147,17 @@ def coordination_hist(
     cn_values = list(range(min(all_cns), max(all_cns) + 1))
     elem_colors = _element_colors(element_color_scheme)
     series: list[dict[str, Any]] = []
-    for idx, (label, counts) in enumerate(groups.items()):
+    for label, counts in groups.items():
         entry: dict[str, Any] = {
             "x": cn_values,
             "y": [counts.get(cn, 0) for cn in cn_values],
             "label": label,
-            "color": PLOT_COLORS[idx % len(PLOT_COLORS)],
             "bar_width": 0.8,
         }
         if split_mode == CnSplitMode.by_element:
-            entry["color"] = elem_colors.get(label, entry["color"])
+            # elements missing from the scheme (e.g. dummy species) take the palette
+            if color := elem_colors.get(label):
+                entry["color"] = color
             if annotate_bars:
                 entry["labels"] = [
                     label if counts.get(cn) else None for cn in cn_values

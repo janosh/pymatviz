@@ -74,6 +74,7 @@ def test_box_plot_rejects_invalid_series(
     [
         ("kind", "violin+box", "raincloud"),
         ("side", "positive", "left"),
+        ("point_side", "negative", "below"),
         ("points", "swarm", "all"),
         ("whisker_mode", "percentile", "iqr"),
         ("bandwidth", "scott", "auto"),

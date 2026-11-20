@@ -8,7 +8,7 @@ import numpy as np
 
 from pymatviz.enums import ElemCountMode
 from pymatviz.process_data import count_elements
-from pymatviz.widgets.bar_plot import PLOT_COLORS, BarPlotWidget, bar_axis_defaults
+from pymatviz.widgets.bar_plot import BarPlotWidget, bar_axis_defaults
 
 
 if TYPE_CHECKING:
@@ -149,10 +149,9 @@ def histogram(
             "x": centers,
             "y": np.histogram(vals, bins=bin_edges, density=density)[0],
             "label": str(label),
-            "color": PLOT_COLORS[idx % len(PLOT_COLORS)],
             "bar_width": bin_width * widths,
         }
-        for idx, (label, vals) in enumerate(data_arrays.items())
+        for label, vals in data_arrays.items()
     ]
 
     count_axis = {

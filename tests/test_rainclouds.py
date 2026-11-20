@@ -42,6 +42,7 @@ def test_rainclouds_series_and_bandwidth(sample_data: dict[str, np.ndarray]) -> 
                 "orientation": "horizontal",
                 "kind": "violin+box",
                 "side": "positive",
+                "point_side": "negative",
                 "points": "strip",
                 "show_outliers": False,
                 "violin_width": 0.6,

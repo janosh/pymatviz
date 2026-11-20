@@ -15,8 +15,9 @@ class BoxPlotWidget(CartesianPlotTraits, MatterVizWidget):
     """MatterViz widget for box, violin and raincloud plots of raw distributions.
 
     Each series holds the raw samples in ``y``; quartiles, whiskers and the KDE are
-    computed in the frontend. ``kind="violin+box"`` with ``side="positive"`` and
-    ``points="strip"`` draws a raincloud (half violin, box and jittered samples).
+    computed in the frontend. ``kind="violin+box"`` with ``side="positive"``,
+    ``points="strip"`` and ``point_side="negative"`` draws a raincloud (half violin
+    above, jittered samples below the box).
 
     Examples:
         >>> from pymatviz.widgets import BoxPlotWidget
@@ -48,6 +49,10 @@ class BoxPlotWidget(CartesianPlotTraits, MatterVizWidget):
     )
     violin_width = optional_trait(tl.Float)  # fraction of the category slot
     violin_style = optional_trait(tl.Dict)  # {opacity, stroke_width}
+    # which half of the slot strip/swarm points occupy; None follows a half violin
+    point_side = optional_trait(
+        tl.CaselessStrEnum, values=["both", "positive", "negative"]
+    )
     kde_clip = optional_trait(tl.List)  # hard KDE bounds [low, high], None = open
 
     @tl.validate("series")

@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 from pymatviz.histogram import elements_hist, histogram
-from pymatviz.widgets.bar_plot import PLOT_COLORS, BarPlotWidget
+from pymatviz.widgets.bar_plot import BarPlotWidget
 from tests.conftest import df_regr, y_true
 
 
@@ -100,7 +100,8 @@ def test_histogram_dict_shares_bin_edges() -> None:
     assert widget.bar == {"border_radius": 0, "opacity": 0.3}
     assert [srs["label"] for srs in widget.series] == ["a", "b"]
     assert widget.series[0]["x"] == widget.series[1]["x"] == [1, 3, 5, 7, 9]
-    assert [srs["color"] for srs in widget.series] == list(PLOT_COLORS[:2])
+    # uncolored so MatterViz cycles its palette across series
+    assert all("color" not in srs for srs in widget.series)
     assert widget.series[0]["y"] == [2, 0, 0, 0, 0]
     assert widget.series[1]["y"] == [0, 0, 0, 0, 2]
     assert widget.show_legend is True

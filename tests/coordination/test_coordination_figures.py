@@ -11,7 +11,7 @@ from pymatviz.coordination import coordination_hist, coordination_vs_cutoff_line
 from pymatviz.coordination.figures import _element_colors
 from pymatviz.coordination.helpers import CnSplitMode, coordination_nums_in_structure
 from pymatviz.enums import ElemColorScheme
-from pymatviz.widgets.bar_plot import PLOT_COLORS, BarPlotWidget
+from pymatviz.widgets.bar_plot import BarPlotWidget
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 
 
@@ -92,8 +92,9 @@ def test_coordination_hist_literal_counts(
     assert {srs["label"]: srs["y"] for srs in widget.series} == {
         label: [counts[0], 0, counts[1]] for label, counts in expected.items()
     }
-    if split_mode == "by_structure":
-        assert [srs["color"] for srs in widget.series] == list(PLOT_COLORS[:2])
+    # element colors for by_element, else uncolored so MatterViz cycles its palette
+    has_colors = [("color" in srs) for srs in widget.series]
+    assert all(has_colors) if split_mode == "by_element" else not any(has_colors)
     assert widget.mode == "stacked"
     assert widget.x_axis["range"] == [3, 7]
 
