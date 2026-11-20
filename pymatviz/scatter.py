@@ -134,8 +134,9 @@ def density_scatter(
             adds it if R² > 0.3.
         stats (bool | dict): Show MAE and R² of the unbinned data. A dict is passed
             to annotate_metrics(). Defaults to True.
-        **kwargs: Passed to ScatterPlotWidget, e.g. color_scale, color_bar
-            (default title "Point density") or point styles via styles.
+        **kwargs: Passed to ScatterPlotWidget, e.g. color_scale (a scheme name or
+            dict merged over the default Viridis scale with the log/linear type),
+            color_bar (default title "Point density") or point styles via styles.
 
     Returns:
         ScatterPlotWidget: The density scatter widget.
@@ -153,6 +154,8 @@ def density_scatter(
         "scheme": "interpolateViridis",
         "type": "log" if log else "linear",
     }
+    if isinstance(kwargs.get("color_scale"), str):  # bare scheme keeps the log type
+        kwargs["color_scale"] = {"scheme": kwargs["color_scale"]}
     widget = ScatterPlotWidget(
         series=[
             {
@@ -269,13 +272,18 @@ def density_scatter_with_hist(
         df (pd.DataFrame, optional): DataFrame with x and y columns.
         bins (int): Number of bins per marginal histogram. Defaults to 100.
         bin_px (float): Density bin size in screen pixels. Defaults to 1.5.
-        **kwargs: Passed to density_hexbin().
+        **kwargs: Passed to density_hexbin(). A marginals dict is merged over the
+            default top/right histograms per side.
 
     Returns:
         BinnedScatterPlotWidget: Density widget with marginal histograms.
     """
     return density_hexbin(
-        x, y, df=df, bin_px=bin_px, marginals=_histogram_marginals(bins), **kwargs
+        x,
+        y,
+        df=df,
+        bin_px=bin_px,
+        **with_defaults({"marginals": _histogram_marginals(bins)}, kwargs),
     )
 
 
@@ -294,9 +302,12 @@ def density_hexbin_with_hist(
         y (array | str): y-values or dataframe column name.
         df (pd.DataFrame, optional): DataFrame with x and y columns.
         bins (int): Number of bins per marginal histogram. Defaults to 100.
-        **kwargs: Passed to density_hexbin(), e.g. bin_px.
+        **kwargs: Passed to density_hexbin(), e.g. bin_px. A marginals dict is
+            merged over the default top/right histograms per side.
 
     Returns:
         BinnedScatterPlotWidget: Density widget with marginal histograms.
     """
-    return density_hexbin(x, y, df=df, marginals=_histogram_marginals(bins), **kwargs)
+    return density_hexbin(
+        x, y, df=df, **with_defaults({"marginals": _histogram_marginals(bins)}, kwargs)
+    )

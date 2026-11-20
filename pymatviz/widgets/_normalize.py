@@ -182,7 +182,11 @@ def normalize_json_kwargs(
 
 
 def normalize_plot_series(
-    series_data: Any, *, component_name: str, samples_key: str | None = None
+    series_data: Any,
+    *,
+    component_name: str,
+    samples_key: str | None = None,
+    binary: bool = False,
 ) -> list[dict[str, Any]] | None:
     """Normalize and validate plot series payloads (``None`` passes through).
 
@@ -199,9 +203,25 @@ def normalize_plot_series(
             f"{component_name} 'series' must be a list/tuple of dicts, got "
             f"{type(series_data)}."
         )
+    # lazy: _binary imports this module
+    from pymatviz.widgets._binary import is_binary_envelope, plot_series_envelope
+
     normalized_series: list[dict[str, Any]] = []
     keys = (samples_key,) if samples_key else ("x", "y")
     for series_index, series_entry in enumerate(series_data):
+        # with binary=True, large numeric series (and already encoded ones) skip the
+        # per-value JSON conversion
+        if binary and is_binary_envelope(series_entry, "plot-series"):
+            normalized_series.append(series_entry)
+            continue
+        name = f"{component_name}.series[{series_index}]"
+        if (
+            binary
+            and isinstance(series_entry, dict)
+            and (envelope := plot_series_envelope(series_entry, name)) is not None
+        ):
+            normalized_series.append(envelope)
+            continue
         if not isinstance(series_entry, dict):
             raise TypeError(
                 f"{component_name} series entries must be dicts. "

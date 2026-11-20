@@ -10,12 +10,7 @@ import numpy as np
 from pymatgen.analysis.local_env import NearNeighbors
 
 from pymatviz.colors import ELEM_COLORS_JMOL
-from pymatviz.coordination.helpers import (
-    CnSplitMode,
-    calculate_average_cn,
-    coordination_nums_in_structure,
-    normalize_get_neighbors,
-)
+from pymatviz.coordination.helpers import CnSplitMode, coordination_nums_in_structure
 from pymatviz.enums import ElemColorScheme
 from pymatviz.process_data import normalize_structures
 from pymatviz.structure.helpers import get_site_elements
@@ -34,6 +29,8 @@ if TYPE_CHECKING:
 
 # Line dash per structure in coordination_vs_cutoff_line (colors encode elements)
 _STRUCT_DASHES = ("none", "6 3", "2 3", "8 3 2 3", "12 4")
+# pymatgen's get_neighbor_list numerical_tol: neighbors up to r + tol count as within r
+_NEIGHBOR_TOL = 1e-8
 
 
 def _element_colors(
@@ -235,23 +232,29 @@ def coordination_vs_cutoff_line(
         )
 
     cutoffs = np.linspace(cutoff_range[0], cutoff_range[1], num_points)
-    neighbor_fns = [normalize_get_neighbors(strategy=cutoff) for cutoff in cutoffs]
     elem_colors = _element_colors(element_color_scheme)
     multi_struct = len(struct_dict) > 1
 
     series: list[dict[str, Any]] = []
     for struct_idx, (struct_name, structure) in enumerate(struct_dict.items()):
-        elements = sorted(
-            {elem for site in structure for elem in get_site_elements(site)}
-        )
+        # One neighbor query per site at the largest cutoff instead of one per
+        # cutoff. A site's CN at a cutoff counts neighbors within it, up to
+        # pymatgen's get_neighbors tolerance, so boundary neighbors (e.g. periodic
+        # images at exactly the cutoff) count as they would for get_neighbors(r=...).
+        max_cutoff = cutoffs[-1] + _NEIGHBOR_TOL
+        cn_rows = []
+        for site in structure:
+            nns = structure.get_neighbors(site, r=max_cutoff)  # ty: ignore[invalid-argument-type]
+            dists = np.sort([nn.nn_distance for nn in nns])
+            cn_rows += [np.searchsorted(dists, cutoffs + _NEIGHBOR_TOL, side="right")]
+        site_cns = np.array(cn_rows)
+        site_elements = [get_site_elements(site) for site in structure]
         dash = _STRUCT_DASHES[struct_idx % len(_STRUCT_DASHES)]
-        for element in elements:
+        for element in sorted(set().union(*site_elements)):
+            has_elem = [element in elems for elems in site_elements]
             entry: dict[str, Any] = {
                 "x": cutoffs,
-                "y": [
-                    calculate_average_cn(structure, element, get_neighbors_fn)
-                    for get_neighbors_fn in neighbor_fns
-                ],
+                "y": site_cns[has_elem].mean(axis=0),
                 "label": element,
                 "markers": "line",
                 "line_style": {"color": elem_colors.get(element), "dash": dash},

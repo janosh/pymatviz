@@ -41,6 +41,16 @@ class BarPlotWidget(CartesianPlotTraits, MatterVizWidget):
     color_scale = color_scale_trait()
     size_scale = optional_trait(tl.Dict)  # line-marker size scaling
 
+    @tl.validate("series")
+    def _validate_series(self, proposal: dict[str, Any]) -> list[dict[str, Any]] | None:
+        """Normalize replacement series like the constructor (arrays to lists, reject
+        non-finite values) before syncing.
+        """
+        try:
+            return normalize_plot_series(proposal["value"], component_name="BarPlot")
+        except (TypeError, ValueError) as exc:
+            raise tl.TraitError(str(exc)) from exc
+
     def __init__(
         self,
         series: list[dict[str, Any]] | tuple[dict[str, Any], ...] | None = None,

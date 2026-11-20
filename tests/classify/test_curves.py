@@ -114,17 +114,40 @@ def test_invalid_inputs(
 
 
 @pytest.mark.parametrize(
+    ("curve_func", "targets", "missing"),
+    [
+        (roc_curve, np.ones(4), r"\[0\]"),
+        (roc_curve, [0, 0, np.nan, 0], r"\[1\]"),
+        (precision_recall_curve, np.zeros(4), r"\[1\]"),
+    ],
+)
+def test_single_class_targets_raise(
+    curve_func: Callable[..., ScatterPlotWidget], targets: ArrayLike, missing: str
+) -> None:
+    """Curves undefined for single-class targets raise naming the classifier."""
+    probs = {"Model A": [0.1, 0.9, 0.8, 0.2]}
+    with pytest.raises(
+        ValueError, match=rf"'Model A' has no targets of class {missing}"
+    ):
+        curve_func(targets, probs)
+
+
+def test_pr_curve_all_positive_targets() -> None:
+    """All-positive targets give a defined PR curve with precision 1."""
+    widget = precision_recall_curve(np.ones(4), [0.1, 0.9, 0.8, 0.2], no_skill=False)
+    assert set(widget.series[0]["y"]) == {1.0}
+
+
+@pytest.mark.parametrize(
     "edge_case",
     [
-        (np.ones(4), np.array([0.1, 0.9, 0.8, 0.2])),
-        (np.zeros(4), np.array([0.1, 0.9, 0.8, 0.2])),
         (np.array([0, 1, 0, 1]), np.array([0.0, 1.0, 0.0, 1.0])),
         (np.array([0, 1, 0, 1]), np.array([1.0, 0.0, 1.0, 0.0])),
         (np.array([0, 1, 0, 1]), np.full(4, 0.5)),
     ],
 )
 def test_edge_cases(edge_case: tuple[Sequence[float], Sequence[float]]) -> None:
-    """Single-class targets and degenerate probabilities don't raise."""
+    """Degenerate probabilities don't raise."""
     targets, probs = edge_case
     precision_recall_curve(targets, probs, no_skill=False)
     roc_curve(targets, probs, no_skill=False)
@@ -154,7 +177,15 @@ def test_custom_styling() -> None:
 
 
 @pytest.mark.parametrize("targets", [[0, 1, 0, 1], [0, 0, 0, 1], [0, 1, 1, 1]])
-@pytest.mark.parametrize("no_skill", [None, False, {"style": {"color": "red"}}])
+@pytest.mark.parametrize(
+    "no_skill",
+    [
+        None,
+        False,
+        {"style": {"color": "red"}},
+        {"style": {"width": 3}, "annotation": {"position": "start"}},
+    ],
+)
 def test_no_skill_line(
     targets: list[int], no_skill: dict[str, Any] | Literal[False] | None
 ) -> None:
@@ -169,10 +200,17 @@ def test_no_skill_line(
     (pr_line,) = widget_pr.ref_lines
     (roc_line,) = widget_roc.ref_lines
     assert (pr_line["type"], pr_line["y"]) == ("horizontal", np.mean(targets))
-    assert pr_line["annotation"]["text"] == "No skill"
     assert (roc_line["p1"], roc_line["p2"]) == ([0, 0], [1, 1])
-    color = "red" if no_skill else "gray"
-    assert pr_line["style"]["color"] == roc_line["style"]["color"] == color
+    # overrides merge one level deep into the default style and annotation
+    overrides = no_skill or {}
+    for line in (pr_line, roc_line):
+        assert line["annotation"]["text"] == "No skill"
+        assert line["annotation"]["color"] == "gray"
+        assert line["style"] == {"color": "gray", "dash": "6 4"} | overrides.get(
+            "style", {}
+        )
+        if "annotation" in overrides:
+            assert line["annotation"]["position"] == "start"
 
 
 @pytest.mark.parametrize(
@@ -247,3 +285,19 @@ def test_curve_does_not_mutate_input_dicts(
 
     assert "probs_positive" in model_kwargs  # caller dict untouched
     assert model_kwargs["color"] == "red"
+
+
+def test_curve_labels_match_sklearn() -> None:
+    """ROC AUC and PR F1 (positive for probs >= 0.5) in labels match sklearn."""
+    rng = np.random.default_rng(seed=0)
+    targets = rng.integers(0, 2, size=200)
+    probs = np.clip(0.3 * targets + rng.random(size=200) * 0.7, 0, 1)
+    probs[:20] = 0.5  # ties at the threshold count as positive predictions
+    roc_label = roc_curve(targets, {"m": probs}).series[0]["label"]
+    assert roc_label == f"m · AUC={skm.roc_auc_score(targets, probs):.2f}"
+    pr_label = precision_recall_curve(targets, {"m": probs}).series[0]["label"]
+    expected_f1 = skm.f1_score(targets, probs >= 0.5)
+    assert pr_label == f"m · F1={expected_f1:.2f}"
+    # with np.round, 0.5 -> 0 would predict all negative: F1=0.00 instead of 0.80
+    half_label = precision_recall_curve([0, 1, 1], np.full(3, 0.5)).series[0]["label"]
+    assert half_label == f"F1={skm.f1_score([0, 1, 1], [1, 1, 1]):.2f}" == "F1=0.80"

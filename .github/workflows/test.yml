@@ -163,15 +163,12 @@ jobs:
           # Keep viewers and asset writes out of this construction-only smoke test.
           mkdir -p "$RUNNER_TEMP/example-hooks"
           cat > "$RUNNER_TEMP/example-hooks/sitecustomize.py" <<'PY'
-          import plotly.graph_objects as go
-          import pymatviz as pmv
           from pymatviz.widgets.matterviz import MatterVizWidget
 
           def skip(*args, **kwargs):
               pass
 
-          go.Figure.show = pmv.save_fig = pmv.io.save_fig = pmv.io.save_and_compress_svg = skip
-          MatterVizWidget.show = MatterVizWidget.to_img = skip
+          MatterVizWidget.show = MatterVizWidget.to_img = MatterVizWidget.to_html = skip
           PY
           export PYTHONPATH="$RUNNER_TEMP/example-hooks${PYTHONPATH:+:$PYTHONPATH}"
           failed=0

@@ -258,7 +258,7 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
                 f"mapping, got {type(value).__name__}"
             )
         if payloads:
-            self._require_binary_bundle()
+            self._require_binary_bundle("volume")
         ids = [payload["id"] for payload in payloads]
         if dupes := sorted({vol_id for vol_id in ids if ids.count(vol_id) > 1}):
             raise ValueError(

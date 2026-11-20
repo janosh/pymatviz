@@ -653,14 +653,44 @@ def test_sankey_flow_data(
     flow_data = pmv_pd.sankey_flow_data(
         df_flows, ["src", "tgt"], labels_with_counts=labels_with_counts
     )
+    columns = ["src", "src", "tgt", "tgt"]
     assert flow_data == {
-        "source": ["A", "A", "B"],
-        "target": ["C", "A", "C"],
-        "value": [2, 1, 1],
-        "labels": expected_labels,
-        "source_indices": [0, 0, 1],
-        "target_indices": [2, 3, 2],
+        "nodes": [
+            {"id": idx, "label": label, "metadata": {"column": col}}
+            for idx, (label, col) in enumerate(
+                zip(expected_labels, columns, strict=True)
+            )
+        ],
+        "links": [
+            {"source": 0, "target": 2, "value": 2},
+            {"source": 0, "target": 3, "value": 1},
+            {"source": 1, "target": 2, "value": 1},
+        ],
     }
+
+
+@pytest.mark.parametrize(
+    ("labels_with_counts", "expected_labels"),
+    [
+        (True, ["a: 2", "b: 1", "x: 2", "y: 1"]),
+        ("percent", ["a: 66.7%", "b: 33.3%", "x: 66.7%", "y: 33.3%"]),
+    ],
+)
+def test_sankey_flow_data_labels_match_flows_with_nan(
+    labels_with_counts: bool | str, expected_labels: list[str]
+) -> None:
+    """Rows missing either value count toward neither node labels nor links."""
+    df_flows = pd.DataFrame(
+        {"src": ["a", "a", "a", "b", None], "tgt": ["x", "x", None, "y", "y"]}
+    )
+    flow_data = pmv_pd.sankey_flow_data(
+        df_flows, ["src", "tgt"], labels_with_counts=labels_with_counts
+    )
+    assert [node["label"] for node in flow_data["nodes"]] == expected_labels
+    assert flow_data["links"] == [
+        {"source": 0, "target": 2, "value": 2},
+        {"source": 1, "target": 3, "value": 1},
+    ]
 
 
 @pytest.mark.parametrize(
@@ -676,9 +706,8 @@ def test_sankey_flow_data_keeps_column_values(
 ) -> None:
     """Node values keep each column's own type instead of a shared dtype."""
     df_flows = pd.DataFrame({"src": source, "tgt": target})
-    assert pmv_pd.sankey_flow_data(df_flows, ["src", "tgt"])["labels"] == (
-        expected_labels
-    )
+    nodes = pmv_pd.sankey_flow_data(df_flows, ["src", "tgt"])["nodes"]
+    assert [node["label"] for node in nodes] == expected_labels
 
 
 def test_sankey_flow_data_invalid_cols_raises() -> None:

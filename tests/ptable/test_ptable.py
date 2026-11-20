@@ -43,7 +43,11 @@ def test_ptable_heatmap_count_mode(
 
 @pytest.mark.parametrize(
     ("heat_mode", "scale", "title"),
-    [("value", 1, "Count"), ("fraction", 1 / 4, "Count"), ("percent", 25, "Count (%)")],
+    [
+        ("value", 1, "Count"),
+        ("fraction", 1 / 4, "Count (fraction)"),
+        ("percent", 25, "Count (%)"),
+    ],
 )
 def test_ptable_heatmap_heat_mode(heat_mode: Any, scale: float, title: str) -> None:
     """Fraction/percent normalize by the finite sum, Series name titles color bar."""
@@ -100,16 +104,19 @@ def test_ptable_heatmap_exclude_and_fill() -> None:
 
 
 @pytest.mark.parametrize(
-    ("srs", "color_bar"),
+    ("srs", "title"),
     [
-        (pd.Series(["Fe2O3", "FeO"], name="composition"), {}),  # not numeric
-        (pd.Series({"Fe": 1.0}, name=0), {"title": "0 (%)"}),  # falsy name kept
-        (pd.Series({"Fe": 1.0}), {}),  # unnamed
+        (pd.Series(["Fe2O3", "FeO"], name="composition"), "Share (%)"),  # not numeric
+        (pd.Series({"Fe": 1.0}, name=0), "0 (%)"),  # falsy name kept
+        (pd.Series({"Fe": 1.0}), "Share (%)"),  # unnamed
+        ({"Fe": 1.0}, "Share (%)"),
     ],
 )
-def test_ptable_heatmap_series_title(srs: pd.Series, color_bar: dict[str, str]) -> None:
-    """Only a named numeric Series titles the color bar."""
-    assert pmv.ptable_heatmap(srs, heat_mode="percent").color_bar == color_bar
+def test_ptable_heatmap_series_title(srs: Any, title: str) -> None:
+    """A named numeric Series titles the color bar, percent mode always shows (%)."""
+    assert pmv.ptable_heatmap(srs, heat_mode="percent").color_bar == {"title": title}
+    plain = pmv.ptable_heatmap(srs).color_bar
+    assert plain == ({"title": "0"} if title == "0 (%)" else {})
 
 
 @pytest.mark.parametrize(
@@ -175,13 +182,45 @@ def test_ptable_heatmap_splits_invalid_layout(n_splits: int, split_layout: str) 
         )
 
 
-def test_tile_props_validation() -> None:
-    """tile_props rejects props the table sets per tile and normalizes numpy values."""
-    widget = PeriodicTableWidget(tile_props={"show_symbol": np.False_})
-    assert widget.tile_props == {"show_symbol": False}
-    for key in ("label", "split_layout", "style", "segments"):
-        with pytest.raises(tl.TraitError, match=f"tile_props can't set \\['{key}'\\]"):
-            widget.tile_props = {key: "x", "float_fmt": ".1f"}
+@pytest.mark.parametrize(
+    ("tile_props", "match"),
+    [
+        ({"show_symbol": np.False_}, None),  # numpy values normalized
+        ({"role": "img", "tabindex": -1, "style": "opacity: 0.5"}, None),
+        ({"aria-hidden": "true", "data-x": 1, "float_fmt": ".1f"}, None),
+        *[
+            ({key: "x"}, f"tile_props can't set \\['{key}'\\]")
+            for key in [
+                "active",
+                "backdrop",
+                "element",
+                "href",
+                "label",
+                "segments",
+                "split_layout",
+            ]
+        ],
+        ({"show_nmae": False}, r"tile_props: unknown keys \['show_nmae'\]"),
+        ({"onclick": "x"}, r"unknown keys \['onclick'\]"),
+    ],
+)
+def test_tile_props_validation(tile_props: dict[str, Any], match: str | None) -> None:
+    """tile_props allows ElementTile/HTML props, rejects table-set and unknown keys."""
+    widget = PeriodicTableWidget()
+    if match is None:
+        widget.tile_props = tile_props
+        assert widget.tile_props == tile_props
+        assert not any(
+            isinstance(val, np.generic) for val in widget.tile_props.values()
+        )
+        return
+    with pytest.raises(tl.TraitError, match=match):
+        widget.tile_props = tile_props
+    assert widget.tile_props is None
+
+
+def test_split_layout_rejects_unknown() -> None:
+    """split_layout must be a layout matterviz knows."""
     with pytest.raises(tl.TraitError):
         PeriodicTableWidget(split_layout="grid")
 
@@ -223,12 +262,16 @@ def test_ptable_heatmap_splits_raises(data: dict[str, Any], err_msg: str) -> Non
     ],
 )
 def test_ptable_hists_data(data: Any) -> None:
-    """Dicts, Series and DataFrames become histogram series without non-finite."""
+    """Dicts, Series and DataFrames bin to shared counts, skipping non-finite."""
     widget = pmv.ptable_hists(data)
-    assert widget.tile_plots == {"Fe": {"values": [1.0, 2.0]}, "O": {"values": [3.0]}}
+    # bins of width 0.1 over [1, 3]: 2.0 opens bin 10, the right edge 3.0 closes bin 19
+    fe_counts, o_counts = [0.0] * 20, [0.0] * 20
+    fe_counts[0] = fe_counts[10] = o_counts[19] = 1.0
+    assert widget.tile_plots == {"Fe": {"counts": fe_counts}, "O": {"counts": o_counts}}
     assert widget.tile_plot_config == {
         "bins": 20,
         "log_y": False,
+        "x_range": [1.0, 3.0],
         "color_scale": "interpolateRdBu",
     }
     assert widget.heatmap_values is None
@@ -246,7 +289,9 @@ def test_ptable_hists_config_and_labels() -> None:
         labels=lambda vals: f"n={len(vals)}" if len(vals) > 1 else None,
         color_bar={"title": "E"},
     )
-    assert widget.tile_plot_config == {"bins": 7, "log_y": True, "x_range": [None, 3.5]}
+    assert widget.tile_plot_config == {"bins": 7, "log_y": True, "x_range": [1.0, 3.5]}
+    assert sum(widget.tile_plots["Fe"]["counts"]) == 3
+    assert sum(widget.tile_plots["O"]["counts"]) == 0  # 4.0 lies outside x_range
     assert widget.labels == {"Fe": "n=3"}
     assert widget.color_bar == {"title": "E"}
     assert pmv.ptable_hists(data, labels={"Fe": "a"}).labels == {"Fe": "a"}
@@ -273,6 +318,43 @@ def test_ptable_hists_raises(data: dict[str, Any], err_msg: str) -> None:
         pmv.ptable_hists(data)
 
 
+@pytest.mark.parametrize(
+    ("data", "x_range", "expected"),
+    [
+        ({"Fe": [1, 2, np.inf]}, (None, 5), [1.0, 5]),  # inf ignored
+        ({"Fe": [3, 3]}, (None, 10), [2.5, 10]),  # equal values padded by 0.5
+        ({"Fe": [np.nan]}, (-1, None), [-1, 1.0]),  # no data: [0, 1]
+        ({"Fe": [1, 2]}, (5, None), "x_range=(5, None) resolves to [5, 2.0]"),
+        ({"Fe": [1, 2]}, (None, 0), "x_range=(None, 0) resolves to [1.0, 0]"),
+        ({"Fe": [1, 2]}, (2, 2), "x_range=(2, 2) resolves to [2, 2]"),
+    ],
+)
+def test_ptable_hists_x_range_resolved(
+    data: dict[str, Any], x_range: tuple[Any, Any], expected: list[float] | str
+) -> None:
+    """None x_range ends are filled from finite data, lo >= hi raises ValueError."""
+    if isinstance(expected, str):
+        with pytest.raises(ValueError, match=re.escape(expected)):
+            pmv.ptable_hists(data, x_range=x_range)
+        return
+    assert pmv.ptable_hists(data, x_range=x_range).tile_plot_config["x_range"] == (
+        expected
+    )
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "match"),
+    [
+        (dict(x_range=(5, None)), "x_range=(5, None) resolves to [5, 2.0]"),
+        (dict(y_range=(None, -1)), "y_range=(None, -1) resolves to [3.0, -1]"),
+    ],
+)
+def test_ptable_scatter_range_raises(kwargs: dict[str, Any], match: str) -> None:
+    """One-sided ranges that end up lo >= hi raise in Python, not the frontend."""
+    with pytest.raises(ValueError, match=re.escape(match)):
+        pmv.ptable_scatter({"Fe": ([1, 2], [3, 4])}, **kwargs)
+
+
 @pytest.mark.parametrize("mode", ["markers", "line", "line+markers"])
 def test_ptable_scatter_modes_and_series(mode: Any) -> None:
     """(x, y[, color]) tuples become x/y series; mode passes to tile_plot_config."""
@@ -290,8 +372,8 @@ def test_ptable_scatter_modes_and_series(mode: Any) -> None:
     assert widget.tile_plot_config == {
         "mode": mode,
         "color_scale": "interpolateViridis",
-        "x_range": [0, None],
-        "y_range": [None, 9],
+        "x_range": [0, 2.0],  # None ends filled from finite data
+        "y_range": [3.0, 9],
         "color": "red",
     }
 
@@ -308,6 +390,10 @@ def test_ptable_scatter_named_series_and_labels() -> None:
     assert fe_b["color"] == "#fc8d62"
     assert "color" not in widget.tile_plots["O"][0]  # color_values win
     assert widget.labels == {"Fe": "2 lines", "O": "1 lines"}
+    # names of mixed types sort by str instead of raising TypeError
+    mixed_names = {"Fe": {1: ([1], [2]), "a": ([1], [3])}}
+    mixed = pmv.ptable_scatter(mixed_names)  # ty: ignore[invalid-argument-type]
+    assert [srs["color"] for srs in mixed.tile_plots["Fe"]] == ["#66c2a5", "#fc8d62"]
 
 
 def test_ptable_scatter_without_color_values() -> None:
@@ -373,8 +459,10 @@ def test_normalize_tile_plots() -> None:
     ("plots", "err_type", "err_msg"),
     [
         ({"Fe": [1, 2]}, TypeError, "tile_plots['Fe'][0] must be a dict, got int"),
-        ({"Fe": {"x": [1]}}, ValueError, "needs keys {values} or {x, y"),
-        ({"Fe": {"values": [1], "x": [1]}}, ValueError, "needs keys {values} or"),
+        ({"Fe": {"x": [1]}}, ValueError, "needs keys {values}, {counts} or {x, y"),
+        ({"Fe": {"values": [1], "x": [1]}}, ValueError, "needs keys {values}, {c"),
+        ({"Fe": {"counts": [1, -1]}}, ValueError, "counts must be finite and non-neg"),
+        ({"Fe": {"counts": [1, np.nan]}}, ValueError, "counts must be finite"),
         ({"Fe": {"values": [1], "size": 2}}, ValueError, "got ['size', 'values']"),
         ({"Fe": {"values": 1}}, ValueError, "must be a 1D numeric array"),
         ({"Fe": {"values": [[1]]}}, ValueError, "must be a 1D numeric array"),
@@ -388,7 +476,12 @@ def test_normalize_tile_plots() -> None:
         (
             {"Fe": {"values": [1]}, "O": {"x": [1], "y": [1]}},
             ValueError,
-            "mixes histogram and x/y series",
+            "mixes ['histogram', 'x/y'] series",
+        ),
+        (
+            {"Fe": {"values": [1]}, "O": {"counts": [1]}},
+            ValueError,
+            "mixes ['counts', 'histogram'] series",
         ),
     ],
 )

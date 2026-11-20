@@ -371,8 +371,8 @@ def _esm_blob_loader_js(esm_content: str) -> str:
 # Binary buffers arrive base64-encoded; decode each synchronously (no fetch of a data:
 # URL, which a strict CSP blocks) to the DataView a live comm gives
 _REVIVE_BUFFERS_JS = """\
-const volumes = widget_data.volumetric_data ?? [];
-for (const envelope of [widget_data.trajectory, ...volumes]) {
+const { trajectory, volumetric_data = [], series = [] } = widget_data;
+for (const envelope of [trajectory, ...volumetric_data, ...series]) {
   if (envelope?.format !== "matterviz-binary-v1") continue;
   for (const spec of Object.values(envelope.arrays)) {
     const raw = atob(spec.data);

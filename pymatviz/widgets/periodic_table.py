@@ -16,6 +16,7 @@ from pymatviz.widgets.matterviz import MatterVizWidget
 
 # numeric arrays a tile plot series may hold, per series kind
 _HIST_KEYS, _XY_KEYS = frozenset({"values"}), frozenset({"x", "y", "color_values"})
+_COUNT_KEYS = frozenset({"counts"})
 _TILE_PLOT_MODES = ("markers", "line", "line+markers")
 # matterviz split layouts per heat value count, the first being its default
 SPLIT_LAYOUTS: dict[int, tuple[str, ...]] = {
@@ -23,21 +24,36 @@ SPLIT_LAYOUTS: dict[int, tuple[str, ...]] = {
     3: ("horizontal", "vertical"),
     4: ("quadrant", "triangular"),
 }
-# ElementTile props the table sets per tile, so tile_props can't override them
+# ElementTile props the table sets per tile, so tile_props can't override them.
+# Mirrors the tile_props Omit<...> list in matterviz
+# src/lib/periodic-table/PeriodicTable.svelte. (role, tabindex and style are allowed
+# there: the table only overrides role/tabindex on interactive tiles and appends
+# tile_props.style to its grid placement.)
 _TABLE_TILE_PROPS = frozenset(
+    {"active", "backdrop", "element", "href", "label", "segments", "split_layout"}
+)
+# JSON-settable props tile_props may hold: ElementTile's own (matterviz
+# src/lib/element/ElementTile.svelte $props minus _TABLE_TILE_PROPS and callbacks)
+# plus HTML attributes it spreads onto the tile element. aria-* and data-* keys pass
+# too. Anything else is likely a typo the frontend would silently ignore.
+_TILE_PROPS = frozenset(
     {
-        "element",
-        "segments",
-        "split_layout",
+        "show_symbol",
+        "show_number",
+        "show_name",
+        "symbol_style",
+        "text_color",
+        "float_fmt",
         "style",
+        "class",
         "role",
         "tabindex",
-        "href",
-        "active",
-        "backdrop",
-        "label",
+        "title",
     }
 )
+# matterviz TILE_PLOT_GRID (src/lib/periodic-table/tile-plots.ts): tile plots draw on
+# a grid this many units wide, so it caps tile_plot_config.bins
+_TILE_PLOT_GRID = 1000
 
 
 class _ColorScaleCheck(tl.HasTraits):
@@ -46,8 +62,8 @@ class _ColorScaleCheck(tl.HasTraits):
     color_scale = color_scale_trait()
 
 
-def nullable_floats(values: Any, label: str) -> list[float | None]:
-    """1D numeric array as a JSON list with NaN/±inf as None (matterviz skips nulls).
+def float_array(values: Any, label: str) -> np.ndarray[Any, np.dtype[np.float64]]:
+    """Validate values as a 1D numeric array and return it as float64.
 
     Raises:
         ValueError: If values isn't a 1D numeric array.
@@ -58,7 +74,19 @@ def nullable_floats(values: Any, label: str) -> list[float | None]:
         raise ValueError(f"{label} must be a 1D numeric array: {exc}") from exc
     if arr.ndim != 1:
         raise ValueError(f"{label} must be a 1D numeric array, got {values!r}")
-    return [float(val) if np.isfinite(val) else None for val in arr.tolist()]
+    return arr
+
+
+def nullable_floats(values: Any, label: str) -> list[float | None]:
+    """1D numeric array as a JSON list with NaN/±inf as None (matterviz skips nulls).
+
+    Raises:
+        ValueError: If values isn't a 1D numeric array.
+    """
+    arr = float_array(values, label)
+    out = arr.astype(object)
+    out[~np.isfinite(arr)] = None
+    return out.tolist()
 
 
 def normalize_tile_plots(
@@ -66,15 +94,18 @@ def normalize_tile_plots(
 ) -> dict[str, dict[str, Any] | list[dict[str, Any]]] | None:
     """Validate ``tile_plots`` and convert its arrays to JSON lists.
 
-    Each value is one series dict or a list of them: ``{"values"}`` (histogram) or
+    Each value is one series dict or a list of them: ``{"values"}`` (histogram),
+    ``{"counts"}`` (pre-binned histogram: one non-negative count per
+    ``tile_plot_config.bins`` bin over an explicit ``x_range``) or
     ``{"x", "y", "color_values"?}`` (markers/line), each with an optional CSS
     ``color``. Arrays may be numpy; NaN and ±inf become None, which matterviz skips.
 
     Raises:
         TypeError: If a series isn't a dict or its color isn't a string.
         ValueError: For keys that aren't element symbols, series with neither or
-            both kinds of keys, unknown keys, x/y/color_values of different lengths
-            or mixed series kinds across tiles.
+            several kinds of keys, unknown keys, x/y/color_values of different
+            lengths, counts that aren't finite and non-negative or mixed series
+            kinds across tiles.
     """
     if tile_plots is None:
         return None
@@ -93,11 +124,14 @@ def normalize_tile_plots(
             arr_keys = set(series) - {"color"}
             if arr_keys == _HIST_KEYS:
                 kinds.add("histogram")
+            elif arr_keys == _COUNT_KEYS:
+                kinds.add("counts")
             elif {"x", "y"} <= arr_keys <= _XY_KEYS:
                 kinds.add("x/y")
             else:
                 raise ValueError(
-                    f"{label} needs keys {{values}} or {{x, y, color_values?}} (plus "
+                    f"{label} needs keys {{values}}, {{counts}} or "
+                    f"{{x, y, color_values?}} (plus "
                     f"optional color), got {sorted(series)}"
                 )
             if not isinstance(series.get("color", ""), str):
@@ -107,6 +141,11 @@ def normalize_tile_plots(
                 for key, val in series.items()
                 if key in arr_keys
             }
+            if any(count is None or count < 0 for count in arrays.get("counts", ())):
+                raise ValueError(
+                    f"{label}.counts must be finite and non-negative, got "
+                    f"{list(series['counts'])}"
+                )
             if len({len(arr) for arr in arrays.values()}) > 1:
                 lengths = {key: len(arr) for key, arr in arrays.items()}
                 raise ValueError(f"{label}: array lengths differ {lengths}")
@@ -115,7 +154,7 @@ def normalize_tile_plots(
             )
         normalized[str(symbol)] = out if is_list else out[0]
     if len(kinds) > 1:
-        raise ValueError("tile_plots mixes histogram and x/y series, use one kind")
+        raise ValueError(f"tile_plots mixes {sorted(kinds)} series, use one kind")
     return normalized
 
 
@@ -135,9 +174,13 @@ def normalize_tile_plot_config(
     if extra := sorted(set(config) - allowed):
         raise tl.TraitError(f"tile_plot_config: unknown keys {extra}, use {allowed}")
     bins = config.get("bins", 20)
-    if isinstance(bins, bool) or not isinstance(bins, int) or not 1 <= bins <= 1000:
+    if (
+        isinstance(bins, bool)
+        or not isinstance(bins, int)
+        or not 1 <= bins <= _TILE_PLOT_GRID
+    ):
         raise tl.TraitError(
-            f"tile_plot_config.bins must be an int in [1, 1000], {bins=}"
+            f"tile_plot_config.bins must be an int in [1, {_TILE_PLOT_GRID}], {bins=}"
         )
     if config.get("mode", "markers") not in _TILE_PLOT_MODES:
         raise tl.TraitError(f"tile_plot_config.mode must be one of {_TILE_PLOT_MODES}")
@@ -245,10 +288,20 @@ class PeriodicTableWidget(MatterVizWidget):
 
     @tl.validate("tile_props")
     def _validate_tile_props(self, proposal: dict[str, Any]) -> Any:
-        """Reject props the table sets on each tile itself."""
+        """Reject props the table sets on each tile itself and unknown props."""
         props = normalize_plot_json(proposal["value"], "PeriodicTable.tile_props")
-        if clash := sorted(set(props or {}) & _TABLE_TILE_PROPS):
+        keys = set(props or {})
+        if clash := sorted(keys & _TABLE_TILE_PROPS):
             raise tl.TraitError(f"tile_props can't set {clash}, the table sets them")
+        if unknown := sorted(
+            key
+            for key in keys - _TILE_PROPS
+            if not str(key).startswith(("aria-", "data-"))
+        ):
+            raise tl.TraitError(
+                f"tile_props: unknown keys {unknown}, use {sorted(_TILE_PROPS)} "
+                "or aria-*/data-* attributes"
+            )
         return props
 
     @tl.validate("tile_plots")

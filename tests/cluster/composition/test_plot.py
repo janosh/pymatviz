@@ -296,6 +296,14 @@ def test_precomputed_coordinates(df_prop: pd.DataFrame, n_components: int) -> No
     for dim, axis in enumerate("xyz"[:n_components]):
         np.testing.assert_array_equal(df_points[axis], coords[:, dim])
     assert widget.x_axis == {"label": "Component 1"}
+    # partial axis options merge over the default axis label instead of dropping it
+    widget = pmv.cluster_compositions(
+        df_prop,
+        projection="coords",
+        n_components=n_components,
+        x_axis={"range": [-3, 3]},
+    )
+    assert widget.x_axis == {"label": "Component 1", "range": [-3, 3]}
 
 
 def test_custom_embedding_and_projection(df_prop: pd.DataFrame) -> None:

@@ -85,6 +85,7 @@ def _classifier_series(
     df: pd.DataFrame | None,
     *,
     build_series: Callable[[str, np.ndarray, np.ndarray], tuple[dict[str, Any], float]],
+    required_classes: tuple[float, ...],
 ) -> list[dict[str, Any]]:
     """One line series per classifier, sorted by a score (descending).
 
@@ -94,6 +95,11 @@ def _classifier_series(
         df (pd.DataFrame | None): Optional DataFrame holding both columns.
         build_series (Callable): Given (name, targets_no_nan, probs_no_nan), returns
             the series dict (x, y, label, metadata) and the score to sort by.
+        required_classes (tuple[float, ...]): Target classes each classifier's
+            non-NaN rows must contain for its curve to be defined.
+
+    Raises:
+        ValueError: If a classifier's targets lack any of required_classes.
     """
     targets, curves_dict = _standardize_input(targets, probs_positive, df)
     targets = np.asarray(targets, dtype=float)
@@ -102,6 +108,13 @@ def _classifier_series(
         series_kwargs = dict(curve_cfg)  # don't mutate caller-supplied dicts
         curve_probs = np.asarray(series_kwargs.pop("probs_positive"), dtype=float)
         no_nan = ~np.isnan(targets) & ~np.isnan(curve_probs)
+        present = set(np.unique(targets[no_nan]).tolist())
+        if missing := sorted(set(required_classes) - present):
+            raise ValueError(
+                f"Classifier {name or 'probs_positive'!r} has no targets of class "
+                f"{missing} (after dropping NaN rows, got classes {sorted(present)}), "
+                "so its curve is undefined"
+            )
         series, score = build_series(name, targets[no_nan], curve_probs[no_nan])
         # undefined rates (e.g. FPR without negative samples) are NaN: not plottable
         finite = np.isfinite(series["x"]) & np.isfinite(series["y"])
@@ -150,8 +163,12 @@ def roc_curve(
         df (pd.DataFrame | None): Optional DataFrame containing targets and
             probs_positive columns
         no_skill (dict[str, Any] | False): matterviz RefLine overrides (e.g. style,
-            annotation) for the no-skill diagonal, or False to hide it.
+            annotation, merged one level deep into the defaults) for the no-skill
+            diagonal, or False to hide it.
         **kwargs: Passed to ScatterPlotWidget, e.g. x_axis, y_axis, styles.
+
+    Raises:
+        ValueError: If a classifier's targets lack either class.
 
     Returns:
         ScatterPlotWidget: ROC curves with point metadata holding the thresholds.
@@ -171,23 +188,32 @@ def roc_curve(
         }
         return series, roc_auc
 
-    series = _classifier_series(targets, probs_positive, df, build_series=build_series)
+    # ROC rates need both classes (FPR is 0/0 without negatives, TPR without positives)
+    series = _classifier_series(
+        targets,
+        probs_positive,
+        df,
+        build_series=build_series,
+        required_classes=(0, 1),
+    )
     ref_lines = []
     if no_skill is not False:
         ref_lines.append(
-            {
-                "type": "segment",
-                "p1": [0, 0],
-                "p2": [1, 1],
-                "style": {"color": "gray", "dash": "6 4"},
-                "label": "No skill",
-                "annotation": {
-                    "text": "No skill",
-                    "position": "center",
-                    "color": "gray",
+            with_defaults(
+                {
+                    "type": "segment",
+                    "p1": [0, 0],
+                    "p2": [1, 1],
+                    "style": {"color": "gray", "dash": "6 4"},
+                    "label": "No skill",
+                    "annotation": {
+                        "text": "No skill",
+                        "position": "center",
+                        "color": "gray",
+                    },
                 },
-            }
-            | (no_skill or {})
+                no_skill or {},
+            )
         )
     return ScatterPlotWidget(
         series=series,
@@ -213,7 +239,7 @@ def precision_recall_curve(
     **kwargs: Any,
 ) -> ScatterPlotWidget:
     """Plot precision-recall curves, one per classifier, sorted by F1 score
-    (descending, at a 0.5 threshold).
+    (descending, predicting positive for probabilities >= 0.5).
 
     Args:
         targets (ArrayLike | str): Ground truth binary labels
@@ -225,9 +251,13 @@ def precision_recall_curve(
         df (pd.DataFrame | None): Optional DataFrame containing targets and
             probs_positive columns
         no_skill (dict[str, Any] | False): matterviz RefLine overrides (e.g. style,
-            annotation) for the no-skill baselines (one horizontal line per distinct
-            positive-class prevalence), or False to hide them.
+            annotation, merged one level deep) for the no-skill baselines (one
+            horizontal line per distinct positive-class prevalence), or False to
+            hide them.
         **kwargs: Passed to ScatterPlotWidget, e.g. x_axis, y_axis, styles.
+
+    Raises:
+        ValueError: If a classifier's targets have no positives.
 
     Returns:
         ScatterPlotWidget: PR curves with point metadata holding thresholds and F1.
@@ -242,7 +272,7 @@ def precision_recall_curve(
         with np.errstate(divide="ignore", invalid="ignore"):
             f1_curve = 2 * (prec_curve * recall_curve) / (prec_curve + recall_curve)
         f1_curve = np.nan_to_num(f1_curve)  # 0/0 where precision = recall = 0
-        f1_score = float(skm.f1_score(tgt, np.round(probs)))
+        f1_score = float(skm.f1_score(tgt, (probs >= 0.5).astype(float)))
         # the last PR point (recall 0, precision 1) has no threshold
         thresholds = [*thresholds, np.nan]
         label = f"{name} · F1={f1_score:.2f}" if name else f"F1={f1_score:.2f}"
@@ -254,7 +284,10 @@ def precision_recall_curve(
         }
         return series, f1_score
 
-    series = _classifier_series(targets, probs_positive, df, build_series=build_series)
+    # recall is 0/0 without positives, while all-positive targets give a valid curve
+    series = _classifier_series(
+        targets, probs_positive, df, build_series=build_series, required_classes=(1,)
+    )
     ref_lines = []
     if no_skill is not False:
         for prevalence, names in baselines.items():
@@ -262,14 +295,20 @@ def precision_recall_curve(
                 f"No skill ({', '.join(names)})" if len(baselines) > 1 else "No skill"
             )
             ref_lines.append(
-                {
-                    "type": "horizontal",
-                    "y": prevalence,
-                    "style": {"color": "gray", "dash": "6 4"},
-                    "label": label,
-                    "annotation": {"text": label, "position": "end", "color": "gray"},
-                }
-                | (no_skill or {})
+                with_defaults(
+                    {
+                        "type": "horizontal",
+                        "y": prevalence,
+                        "style": {"color": "gray", "dash": "6 4"},
+                        "label": label,
+                        "annotation": {
+                            "text": label,
+                            "position": "end",
+                            "color": "gray",
+                        },
+                    },
+                    no_skill or {},
+                )
             )
     return ScatterPlotWidget(
         series=series,

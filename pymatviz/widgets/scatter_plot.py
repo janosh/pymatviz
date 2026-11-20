@@ -6,7 +6,7 @@ from typing import Any
 
 import traitlets as tl
 
-from pymatviz.widgets._normalize import normalize_json_kwargs, normalize_plot_series
+from pymatviz.widgets._normalize import normalize_json_kwargs
 from pymatviz.widgets._traits import (
     CartesianPlotTraits,
     color_bar_trait,
@@ -82,6 +82,11 @@ class ScatterPlotWidget(CartesianPlotTraits, MatterVizWidget):
         normalize_json_kwargs(kwargs, json_keys, "ScatterPlot")
         super().__init__(
             widget_type="scatter_plot",
-            series=normalize_plot_series(series, component_name="ScatterPlot"),
+            series=series,
             **kwargs,
         )
+
+    @tl.validate("series")
+    def _validate_series(self, proposal: dict[str, Any]) -> list[dict[str, Any]] | None:
+        """Normalize series on init and reassignment, binary when large."""
+        return self._binary_series(proposal["value"], "ScatterPlot")

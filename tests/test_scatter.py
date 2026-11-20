@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pandas as pd
 import pytest
+import sklearn.metrics as skm
 
 import pymatviz as pmv
 from pymatviz.widgets.binned_scatter_plot import BinnedScatterPlotWidget
@@ -48,7 +49,11 @@ def test_density_scatter(
     assert widget.color_scale["type"] == ("log" if log else "linear")
     assert widget.color_bar == {"title": "Point density"}
     assert [line["type"] for line in widget.ref_lines] == ["diagonal", "segment"]
-    assert widget.annotation.startswith("MAE = ")
+    # metrics of the unbinned data, also when binning
+    true_vals, pred_vals = df_regr[X_COL], df_regr[Y_COL]
+    mae = skm.mean_absolute_error(true_vals, pred_vals)
+    r2_val = skm.r2_score(true_vals, pred_vals)
+    assert widget.annotation == f"MAE = {mae:.3}\nR² = {r2_val:.3}"
 
 
 @pytest.mark.parametrize("plot_func", [pmv.density_scatter, pmv.density_hexbin])
@@ -99,6 +104,12 @@ def test_binned_density_plots(
         assert widget.marginals["top"] == {"type": "histogram", "bins": 100}
     expected_bin_px = 1.5 if plot_func is pmv.density_scatter_with_hist else None
     assert widget.density.get("bin_px") == expected_bin_px
+    if with_hist:  # user marginals merge per side over the default histograms
+        custom = plot_func(x, y, df=df, marginals={"right": None}, stats=False)
+        assert custom.marginals == {
+            "top": {"type": "histogram", "bins": 100},
+            "right": None,
+        }
 
 
 @pytest.mark.parametrize(
@@ -177,6 +188,12 @@ def test_density_scatter_kwargs() -> None:
         identity_line=False,
     )
     assert widget.color_bar == {"title": "Count"}
-    assert widget.color_scale == "interpolatePlasma"
+    # a bare scheme name keeps the automatic log/linear color scale type
+    assert widget.color_scale == {"scheme": "interpolatePlasma", "type": "linear"}
+    xs = np.repeat([0.0, 1.0], [1, 1000])
+    log_widget = pmv.density_scatter(
+        xs, xs, n_bins=2, stats=False, color_scale="interpolatePlasma"
+    )
+    assert log_widget.color_scale == {"scheme": "interpolatePlasma", "type": "log"}
     assert widget.annotation == "RMSE = 0.58"
     assert [line["type"] for line in widget.ref_lines] == ["segment"]

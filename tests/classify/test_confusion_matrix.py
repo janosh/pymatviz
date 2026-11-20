@@ -96,6 +96,10 @@ def test_confusion_matrix_multi_class() -> None:
             {"y_true": [0, 1], "y_pred": [1, 1], "y_labels": ("1", "0")},
             "y_labels must equal",
         ),
+        (
+            {"y_true": [0, "a"], "y_pred": ["a", 0]},
+            r"mutually sortable \(one type\), got types \['int', 'str'\]",
+        ),
     ],
 )
 def test_confusion_matrix_errors(kwargs: dict, match: str) -> None:

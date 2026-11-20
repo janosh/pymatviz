@@ -186,9 +186,6 @@ class HierarchyPlotTraits(PlotControlsTraits):
         self, data: dict[str, Any] | list[dict[str, Any]] | None = None, **kwargs: Any
     ) -> None:
         """Display labeled nodes with leaf values and optional children."""
-        unknown = kwargs.keys() - self.trait_names() - {"version_override", "model_id"}
-        if unknown:
-            raise TypeError(f"Unknown {type(self).__name__} options: {sorted(unknown)}")
         super().__init__(widget_type=self._chart_type, data=data, **kwargs)
 
     @tl.validate("data", "legend", "padding")

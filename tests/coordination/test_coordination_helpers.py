@@ -7,7 +7,6 @@ from pymatgen.analysis.local_env import CrystalNN, NearNeighbors, VoronoiNN
 from pymatgen.core import Lattice, Structure
 
 from pymatviz.coordination.helpers import (
-    calculate_average_cn,
     coordination_nums_in_structure,
     normalize_get_neighbors,
 )
@@ -42,18 +41,6 @@ def test_normalize_get_neighbors_invalid_input() -> None:
     """Test normalize_get_neighbors with invalid input."""
     with pytest.raises(TypeError, match="Invalid strategy="):
         normalize_get_neighbors(strategy="invalid")  # ty: ignore[invalid-argument-type]
-
-
-@pytest.mark.parametrize(("element", "expected_cn"), [("Na", 6.0), ("K", 0)])
-def test_calculate_average_cn(element: str, expected_cn: float) -> None:
-    """Average CN per element, 0 for elements absent from the structure."""
-    struct = Structure(
-        Lattice.cubic(4.0),
-        ["Na", "Na", "Cl", "Cl"],
-        [[0, 0, 0], [0.5, 0, 0], [0.5, 0.5, 0.5], [0, 0.5, 0.5]],
-    )
-    get_neighbors = normalize_get_neighbors(strategy=3.0)
-    assert calculate_average_cn(struct, element, get_neighbors) == expected_cn
 
 
 @pytest.mark.parametrize(

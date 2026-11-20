@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -47,7 +48,6 @@ def test_error_decay_with_uncert(
         np.array([9, 1, 8]),
         np.array([1, 2, 3]),
         percentiles=percentiles,
-        n_rand=5,
     )
     uncert_series, _, random_series = nonmonotonic.series
     # Retaining 1, 2, then 3 samples must preserve the uncertainty order.
@@ -67,13 +67,25 @@ def test_error_decay_reserved_keys(key: str) -> None:
         error_decay_with_uncert(y_true, y_pred, {key: np.ones(len(y_true))})
 
 
-@pytest.mark.parametrize(("n_samples", "n_rand"), [(0, 5), (3, 0)])
-def test_error_decay_invalid_sampling(n_samples: int, n_rand: int) -> None:
-    """Reject empty data and missing random baseline samples."""
-    with pytest.raises(ValueError, match="non-empty data and n_rand >= 1"):
-        error_decay_with_uncert(
-            np.zeros(n_samples), np.ones(n_samples), np.ones(n_samples), n_rand=n_rand
-        )
+def test_error_decay_empty_data() -> None:
+    """Reject empty data."""
+    with pytest.raises(ValueError, match="needs non-empty data"):
+        error_decay_with_uncert(np.zeros(0), np.ones(0), np.ones(0))
+
+
+@pytest.mark.parametrize("abs_err", [[3.0], [1.0, 4.0], [0.5, 2.0, 2.0, 7.0, 1.5]])
+def test_error_decay_random_band_exact(abs_err: list[float]) -> None:
+    """Random band equals the std of the running MAE over all exclusion orders."""
+    abs_err_arr = np.array(abs_err)
+    n_samples = len(abs_err_arr)
+    perms = np.array(list(itertools.permutations(abs_err_arr)))
+    expected = perms.cumsum(axis=1).std(axis=0) / np.arange(1, n_samples + 1)
+    widget = error_decay_with_uncert(
+        np.zeros(n_samples), abs_err_arr, np.ones(n_samples), percentiles=False
+    )
+    np.testing.assert_allclose(
+        widget.error_bands[0]["error"], expected, rtol=1e-12, atol=1e-15
+    )
 
 
 @pytest.mark.parametrize("y_std", [xs, {"foo": xs, "bar": 0.1 * xs}])
@@ -120,6 +132,10 @@ def test_qq_gaussian_multiple_uncertainties() -> None:
     }
     labels = [srs["label"] for srs in qq_gaussian(y_true, y_pred, uncertainties).series]
     assert [label.split(" (")[0] for label in labels] == list(uncertainties)
+
+    frame = pd.DataFrame({"true": y_true, "pred": y_pred, "sigma": 0.1})
+    (column_series,) = qq_gaussian("true", "pred", "sigma", df=frame).series
+    assert column_series["label"].startswith("sigma (miscal: ")
 
     extreme = qq_gaussian(np.zeros(2), np.full(2, 100), np.ones(2))
     assert extreme.series[-1]["label"] == "std (miscal: 0.50)"

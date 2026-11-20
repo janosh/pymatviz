@@ -127,8 +127,6 @@ def test_spacegroup_sunburst_reports_moyopy_conversion_failure(
     [
         # Edge cases for max_slices
         (None, "other", 7, None),  # no limit
-        (0, "other", 7, None),  # treated as None
-        (-1, "other", 7, None),  # negative treated as None
         (10, "other", 7, None),  # greater than number of systems
         # Normal cases with "other" mode. max_slices applies per crystal system:
         # spg 1-2 are triclinic (2 entries), spg 3-7 monoclinic (5 entries)
@@ -169,6 +167,13 @@ def test_spacegroup_sunburst_max_slices(
         (label, val) for label, val in space_groups.items() if "more not shown" in label
     )
     assert others == sorted(expected_others or [])
+
+
+@pytest.mark.parametrize("max_slices", [0, -1])
+def test_spacegroup_sunburst_rejects_limit_below_one(max_slices: int) -> None:
+    """max_slices below 1 raises instead of silently meaning no limit."""
+    with pytest.raises(ValueError, match=f"at least 1 or None, got limit={max_slices}"):
+        pmv.spacegroup_sunburst([1, 2], max_slices=max_slices)
 
 
 def test_spacegroup_sunburst_invalid_limit_mode() -> None:

@@ -15,6 +15,8 @@ from pymatviz.utils import df_ptable
 from pymatviz.widgets.periodic_table import (
     SPLIT_LAYOUTS,
     PeriodicTableWidget,
+    float_array,
+    normalize_tile_plot_config,
     nullable_floats,
 )
 
@@ -62,6 +64,43 @@ def _tile_labels(
     return {sym: str(text) for sym, text in texts.items() if text not in (None, "")}
 
 
+def _resolve_range(
+    name: str,
+    axis_range: tuple[float | None, float | None],
+    arrays: Sequence[np.ndarray[Any, Any]],
+) -> list[float]:
+    """Fill the None ends of a tile plot axis range from the finite data.
+
+    Mirrors matterviz resolve_range (src/lib/periodic-table/tile-plots.ts): the data
+    extent is padded by 0.5 when all values are equal and is [0, 1] without data.
+    Resolving here raises in Python instead of deferring a one-sided range that
+    ends up lo >= hi to a frontend error.
+
+    Raises:
+        ValueError: If the resolved range isn't finite with lo < hi.
+    """
+    if len(axis_range) != 2:
+        raise ValueError(f"{name} must be (lo, hi), got {axis_range!r}")
+    finite = [arr[np.isfinite(arr)] for arr in arrays]
+    finite = [arr for arr in finite if arr.size]
+    if finite:
+        data_lo = float(min(arr.min() for arr in finite))
+        data_hi = float(max(arr.max() for arr in finite))
+        if data_lo == data_hi:
+            data_lo, data_hi = data_lo - 0.5, data_hi + 0.5
+    else:
+        data_lo, data_hi = 0.0, 1.0
+    lo, hi = axis_range
+    lo = data_lo if lo is None else lo
+    hi = data_hi if hi is None else hi
+    if not (np.isfinite(lo) and np.isfinite(hi) and lo < hi):
+        raise ValueError(
+            f"{name}={axis_range} resolves to [{lo}, {hi}] with None ends taken from "
+            f"the data range [{data_lo}, {data_hi}], need finite lo < hi"
+        )
+    return [lo, hi]
+
+
 def ptable_heatmap(
     values: ElemValues,
     *,
@@ -89,8 +128,8 @@ def ptable_heatmap(
             to None, leaving them uncolored (styled by ``missing``).
         heat_mode ("value" | "fraction" | "percent"): Show values as is, or normalized
             to a fraction or percentage of their (finite) sum, making heatmaps of
-            different data comparable. "percent" suffixes the color bar title with
-            " (%)". Defaults to "value".
+            different data comparable. Both default the color bar title to
+            "<Series name or Share> (%)" or "(fraction)". Defaults to "value".
         log (bool): Log-spaced colors. Values <= 0 are left uncolored. Can't be
             combined with heat_mode "fraction" or "percent". Defaults to False.
         color_scale (str | dict): matterviz ColorScale: a d3 interpolator name like
@@ -131,7 +170,9 @@ def ptable_heatmap(
         counts = counts / total
         if heat_mode == "percent":
             counts *= 100
-            title = None if title is None else f"{title} (%)"
+        # tiles show bare numbers, so the color bar title carries the unit
+        unit = "%" if heat_mode == "percent" else "fraction"
+        title = f"{'Share' if title is None else title} ({unit})"
     heatmap_values = {
         str(symbol): val
         for symbol, val in zip(
@@ -238,7 +279,9 @@ def ptable_hists(
 
     All histograms share the same bins (numpy edge semantics: each bin includes its
     left edge, the last one also its right edge), so tiles compare at a glance.
-    Hover a tile to see its histogram enlarged with axes.
+    Binning runs here in NumPy, so only per-bin counts reach the browser however
+    many values each element has. Hover a tile to see its histogram enlarged with
+    axes.
 
     Args:
         data (pd.DataFrame | pd.Series | dict[str, Sequence[float]]): Map from
@@ -247,9 +290,9 @@ def ptable_hists(
             values are skipped.
         bins (int): Number of bins (1-1000). Defaults to 20.
         x_range (tuple[float | None, float | None]): Range binned for all tiles,
-            values outside it are dropped. A None end fits the data (keep the
-            other end on its side of the data, else matterviz finds lo >= hi
-            and throws). Defaults to None (min to max of all values).
+            values outside it are dropped. A None end is filled from the finite data
+            (padded by 0.5 if all values are equal). Defaults to None (min to max
+            of all values).
         log_y (bool): Bar heights on a log(1 + count) scale. Defaults to False.
         color_scale (str | dict | None): matterviz ColorScale coloring bars by bin
             position, shown in a color bar. None draws bars in the text color
@@ -264,29 +307,28 @@ def ptable_hists(
         PeriodicTableWidget: Interactive periodic table of histograms.
 
     Raises:
-        ValueError: For keys that aren't element symbols or values that aren't 1D
-            numeric arrays.
-        TraitError: For bins outside [1, 1000], an x_range with lo >= hi, an
-            invalid color_scale, or numeric heatmap_values beside a color_scale.
+        ValueError: For keys that aren't element symbols, values that aren't 1D
+            numeric arrays or an x_range that resolves to lo >= hi.
+        TraitError: For bins outside [1, 1000], an invalid color_scale, or numeric
+            heatmap_values beside a color_scale.
     """
     columns = data.to_dict("list") if isinstance(data, pd.DataFrame) else dict(data)
     elem_values = {  # finite values only, so labels callables get clean arrays
-        str(symbol): np.array(
-            [
-                val
-                for val in nullable_floats(vals, f"ptable_hists: {symbol}")
-                if val is not None
-            ]
-        )
+        str(symbol): (arr := float_array(vals, f"ptable_hists: {symbol}"))[
+            np.isfinite(arr)
+        ]
         for symbol, vals in columns.items()
     }
-    config: dict[str, Any] = {"bins": bins, "log_y": log_y}
-    if x_range is not None:
-        config["x_range"] = list(x_range)
+    lo, hi = _resolve_range("x_range", x_range or (None, None), [*elem_values.values()])
+    config: dict[str, Any] = {"bins": bins, "log_y": log_y, "x_range": [lo, hi]}
     if color_scale is not None:
         config["color_scale"] = color_scale
+    normalize_tile_plot_config(config)  # reject bad bins before np.histogram
     return PeriodicTableWidget(
-        tile_plots={symbol: {"values": vals} for symbol, vals in elem_values.items()},
+        tile_plots={
+            symbol: {"counts": np.histogram(vals, bins=bins, range=(lo, hi))[0]}
+            for symbol, vals in elem_values.items()
+        },
         tile_plot_config=config,
         labels=_tile_labels(labels, elem_values),
         **kwargs,
@@ -338,12 +380,14 @@ def ptable_scatter(
 
     Raises:
         ValueError: For keys that aren't element symbols, series that aren't 2- or
-            3-tuples of numeric 1D arrays or arrays of differing lengths.
-        TraitError: For an unknown mode, ranges with lo >= hi, an invalid
-            color_scale, or numeric heatmap_values beside color_values.
+            3-tuples of numeric 1D arrays, arrays of differing lengths or ranges
+            that resolve to lo >= hi.
+        TraitError: For an unknown mode, an invalid color_scale, or numeric
+            heatmap_values beside color_values.
     """
-    series_names = sorted(
-        {name for elem in data.values() if isinstance(elem, Mapping) for name in elem}
+    series_names = sorted(  # key=str: names may mix types, e.g. 1 and "a"
+        {name for elem in data.values() if isinstance(elem, Mapping) for name in elem},
+        key=str,
     )
     name_colors = {
         name: _SERIES_COLORS[idx % len(_SERIES_COLORS)]
@@ -374,18 +418,23 @@ def ptable_scatter(
         else to_series(elem, f"ptable_scatter: {symbol}", None)
         for symbol, elem in data.items()
     }
+    all_series = [
+        series
+        for plot in tile_plots.values()
+        for series in (plot if isinstance(plot, list) else [plot])
+    ]
     config: dict[str, Any] = {"mode": mode}
     # matterviz rejects a tile color scale beside numeric heatmap_values, so only set
     # it when some series has color_values to map
-    if any(
-        "color_values" in series
-        for plot in tile_plots.values()
-        for series in (plot if isinstance(plot, list) else [plot])
-    ):
+    if any("color_values" in series for series in all_series):
         config["color_scale"] = color_scale
     for key, axis_range in (("x_range", x_range), ("y_range", y_range)):
-        if axis_range is not None:
-            config[key] = list(axis_range)
+        if axis_range is None:
+            continue  # matterviz fits the data
+        coords = [  # non-numeric arrays raise, _resolve_range skips non-finite
+            float_array(srs[key[0]], f"ptable_scatter: {key}") for srs in all_series
+        ]
+        config[key] = _resolve_range(key, axis_range, coords)
     if color is not None:
         config["color"] = color
     return PeriodicTableWidget(

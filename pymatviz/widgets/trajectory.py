@@ -160,7 +160,7 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
 
         normalized = self._normalize_trajectory(proposal["value"])
         if normalized is not None and is_binary_envelope(normalized, "trajectory"):
-            self._require_binary_bundle()
+            self._require_binary_bundle("trajectory")
             stress = normalized.get("arrays", {}).get("frame_stress", {})
             if len(stress.get("shape", ())) == 2 and not _supports_frame_stress(
                 self._resolve_assets()[0]

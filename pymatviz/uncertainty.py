@@ -29,6 +29,8 @@ def _load_regression_data(
 ) -> tuple[np.ndarray, np.ndarray, dict[str, np.ndarray]]:
     """Resolve y_true/y_pred/y_std into arrays, pulling columns from df when given."""
     row_mask = None
+    # a single df column is labeled by its name, a lone array as "std"
+    std_name = y_std if isinstance(y_std, str) else "std"
     if isinstance(y_std, str) or (
         df is not None
         and isinstance(y_std, Sequence | pd.Index)
@@ -44,7 +46,7 @@ def _load_regression_data(
     std_arrays = {
         str(key): np.asarray(std)
         for key, std in (
-            y_std if isinstance(y_std, Mapping) else {"std": y_std}
+            y_std if isinstance(y_std, Mapping) else {std_name: y_std}
         ).items()
     }
     if row_mask is not None:
@@ -160,14 +162,16 @@ def error_decay_with_uncert(
     y_std: ArrayLike | Mapping[str, ArrayLike] | str | Sequence[str],
     *,
     df: pd.DataFrame | None = None,
-    n_rand: int = 100,
     percentiles: bool = True,
     **kwargs: Any,
 ) -> ScatterPlotWidget:
     """Error decay plot as the most uncertain samples are excluded.
 
     Compares the MAE of the retained samples when excluding them in order of
-    decreasing uncertainty to the optimal (decreasing error) and random orders.
+    decreasing uncertainty to the optimal (decreasing error) and random orders. The
+    random baseline is the mean absolute error with a band of the exact standard
+    deviation of the running MAE over random exclusion orders (sampling without
+    replacement), so no shuffling is needed.
 
     Args:
         y_true: Ground truth targets (array or df column name).
@@ -175,7 +179,6 @@ def error_decay_with_uncert(
         y_std: Uncertainties: one array/column, or a dict (or list of df column
             names) of several uncertainty estimates to compare.
         df: DataFrame containing data columns.
-        n_rand: Number of random shuffles for the random baseline band (mean ± std).
         percentiles: Show excluded samples as a percentage rather than a count.
         **kwargs: Passed to ScatterPlotWidget, e.g. x_axis, y_axis, styles.
 
@@ -185,10 +188,8 @@ def error_decay_with_uncert(
     y_true, y_pred, y_std = _load_regression_data(y_true, y_pred, y_std, df)
     abs_err = np.abs(y_true - y_pred)
     n_samples = len(abs_err)
-    if n_samples == 0 or n_rand < 1:
-        raise ValueError(
-            f"Expected non-empty data and n_rand >= 1, got {n_samples=}, {n_rand=}"
-        )
+    if n_samples == 0:
+        raise ValueError("error_decay_with_uncert needs non-empty data")
     retained = np.arange(1, n_samples + 1)
     sample_indices = (
         np.linspace(0, n_samples - 1, min(100, n_samples), dtype=int)
@@ -210,11 +211,11 @@ def error_decay_with_uncert(
         for key, decay in decays.items()
     ]
 
-    abs_err_tile = np.tile(abs_err, [n_rand, 1])
-    rng = np.random.default_rng(seed=0)
-    for row in abs_err_tile:
-        rng.shuffle(row)
-    rand_std = (abs_err_tile.cumsum(1).std(0) / retained)[sample_indices]
+    # std of the mean of k samples drawn without replacement from n with population
+    # variance s^2: s * sqrt((n - k) / (k * (n - 1))), 0 for k = n (finite population
+    # correction). This is the n_shuffles -> inf limit of shuffling abs_err.
+    finite_pop_corr = (n_samples - retained) / (retained * max(n_samples - 1, 1))
+    rand_std = (abs_err.std() * np.sqrt(finite_pop_corr))[sample_indices]
     series.append(
         {
             "x": xs,

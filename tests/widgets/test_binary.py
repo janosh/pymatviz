@@ -1,4 +1,4 @@
-"""Tests for the matterviz-binary-v1 trajectory and volume encoders."""
+"""Tests for the matterviz-binary-v1 trajectory, volume and plot-series encoders."""
 
 from __future__ import annotations
 
@@ -11,8 +11,18 @@ from typing import Any
 import numpy as np
 import pytest
 
-from pymatviz import StructureWidget, TrajectoryWidget
-from pymatviz.widgets._binary import BINARY_FORMAT, binary_array, volume_envelope
+from pymatviz import (
+    BinnedScatterPlotWidget,
+    ScatterPlotWidget,
+    StructureWidget,
+    TrajectoryWidget,
+)
+from pymatviz.widgets._binary import (
+    BINARY_FORMAT,
+    BINARY_SERIES_MIN_POINTS,
+    binary_array,
+    volume_envelope,
+)
 from pymatviz.widgets._headless import _REVIVE_BUFFERS_JS, _widget_data_json
 from tests.widgets.conftest import decode_envelope
 
@@ -82,6 +92,17 @@ def test_envelope_kind_mismatch_raises() -> None:
             {"trajectory": {"format": BINARY_FORMAT, "kind": "trajectory"}},
         ),
         (StructureWidget, {"volumetric_data": [{"id": "mask", "grid": [[[True]]]}]}),
+        (
+            ScatterPlotWidget,
+            {
+                "series": [
+                    {
+                        "x": np.arange(BINARY_SERIES_MIN_POINTS),
+                        "y": np.zeros(BINARY_SERIES_MIN_POINTS),
+                    }
+                ]
+            },
+        ),
     ],
 )
 def test_pinned_bundle_needs_decoder(
@@ -93,6 +114,56 @@ def test_pinned_bundle_needs_decoder(
     monkeypatch.setattr(matterviz, "fetch_widget_asset", lambda *_args: "old bundle")
     with pytest.raises(ValueError, match=r"0\.8\.0.*lacks matterviz-binary-v1"):
         widget_type(version_override="0.8.0", **kwargs)
+
+
+_N_BIG = BINARY_SERIES_MIN_POINTS
+
+
+@pytest.mark.parametrize("widget_cls", [ScatterPlotWidget, BinnedScatterPlotWidget])
+def test_large_plot_series_sync_as_binary(widget_cls: type) -> None:
+    """Large numeric series sync as plot-series envelopes, others as JSON."""
+    x_vals = np.arange(_N_BIG, dtype=np.int32)
+    colors = np.full(_N_BIG, np.nan)
+    big = {"x": x_vals, "y": x_vals * 0.5, "color_values": colors, "label": "big"}
+    small = {"x": [1, 2], "y": [3.0, 4.0]}
+    categorical = {"x": ["a"] * _N_BIG, "y": np.ones(_N_BIG)}
+    widget = widget_cls(series=[big, small, categorical])
+    envelope, small_out, cat_out = widget.series
+    assert envelope["format"] == BINARY_FORMAT
+    assert envelope["kind"] == "plot-series"
+    assert envelope["label"] == "big"
+    arrays = decode_envelope(envelope)
+    assert set(arrays) == {"x", "y", "color_values"}
+    assert all(arr.dtype == np.float64 for arr in arrays.values())
+    np.testing.assert_array_equal(arrays["y"], x_vals * 0.5)
+    assert np.isnan(arrays["color_values"]).all()  # gaps allowed off x/y
+    assert small_out == small
+    assert cat_out["x"][0] == "a"
+    widget.series = [envelope]  # ready envelopes pass through on reassignment
+    assert widget.series[0] is envelope
+    widget.series = [small]
+    assert widget.series == [small]
+
+
+@pytest.mark.parametrize(
+    ("series", "match"),
+    [
+        (
+            {"x": np.arange(_N_BIG), "y": np.arange(_N_BIG + 1)},
+            r"share one length, got \{'x': 10000, 'y': 10001\}",
+        ),
+        (
+            {"x": np.arange(_N_BIG), "y": np.r_[np.nan, np.ones(_N_BIG - 1)]},
+            r"series\[0\]\.y has non-finite value",
+        ),
+    ],
+)
+def test_invalid_large_plot_series(series: dict[str, Any], match: str) -> None:
+    """Large series with ragged columns or non-finite x/y raise on assignment."""
+    import traitlets as tl
+
+    with pytest.raises(tl.TraitError, match=match):
+        ScatterPlotWidget(series=[series])
 
 
 def _fallback_cases() -> list[Any]:
@@ -336,8 +407,15 @@ def test_headless_json_embeds_buffers_as_base64() -> None:
     ).trajectory
     marker = {"__matterviz_buffer_b64__": "ordinary metadata"}
     volume = volume_envelope(_POSITIONS, id="grid")
+    xs = np.arange(_N_BIG)
+    (series,) = ScatterPlotWidget(series=[{"x": xs, "y": xs}]).series
     data_json = _widget_data_json(
-        {"trajectory": payload, "volumetric_data": [volume], "metadata": marker}
+        {
+            "trajectory": payload,
+            "volumetric_data": [volume],
+            "series": [series, {"x": [1], "y": [2]}],
+            "metadata": marker,
+        }
     )
     encoded = json.loads(data_json)["trajectory"]["arrays"]["positions"]["data"]
     assert base64.b64decode(encoded) == bytes(payload["arrays"]["positions"]["data"])
@@ -347,6 +425,7 @@ def test_headless_json_embeds_buffers_as_base64() -> None:
 const {{ data }} = widget_data.trajectory.arrays.positions;
 console.log(JSON.stringify([data instanceof DataView,
   widget_data.volumetric_data[0].arrays.values.data instanceof DataView,
+  widget_data.series[0].arrays.y.data instanceof DataView,
   widget_data.metadata, Array.from(new Float32Array(data.buffer))]));"""
     result = subprocess.run(  # noqa: S603
         ["node", "-e", script],  # noqa: S607
@@ -354,8 +433,9 @@ console.log(JSON.stringify([data instanceof DataView,
         text=True,
         check=True,
     )
-    traj_view, vol_view, metadata, floats = json.loads(result.stdout)
+    traj_view, vol_view, series_view, metadata, floats = json.loads(result.stdout)
     assert traj_view
     assert vol_view
+    assert series_view
     assert metadata == marker
     np.testing.assert_array_equal(floats, _POSITIONS[:1].astype(np.float32).ravel())

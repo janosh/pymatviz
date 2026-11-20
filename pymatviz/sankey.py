@@ -33,7 +33,8 @@ def sankey_from_2_df_cols(
         cols (list[str]): 2-tuple of source and target column names. Source
             corresponds to left, target to right side of the diagram.
         labels_with_counts (bool | "percent", optional): Whether to append value
-            counts (or percentages) to node labels. Defaults to True.
+            counts (or percentages of rows with values in both columns) to node
+            labels. Rows missing either value are left out. Defaults to True.
         **kwargs: SankeyWidget traits, e.g. ``orientation``, ``node_align``,
             ``link_color_mode``, ``value_format``, ``style``.
 
@@ -44,25 +45,6 @@ def sankey_from_2_df_cols(
         SankeyWidget: The Sankey diagram.
     """
     flow_data = sankey_flow_data(df, cols, labels_with_counts=labels_with_counts)
-    if not flow_data["value"]:
+    if not flow_data["links"]:
         raise ValueError(f"No rows with values in both {cols=} to draw flows from")
-    # sankey_flow_data numbers source nodes first, then target nodes
-    first_target = min(flow_data["target_indices"])
-    nodes = [
-        {
-            "id": idx,
-            "label": str(label),
-            "metadata": {"column": cols[0] if idx < first_target else cols[1]},
-        }
-        for idx, label in enumerate(flow_data["labels"])
-    ]
-    links = [
-        {"source": src, "target": tgt, "value": val}
-        for src, tgt, val in zip(
-            flow_data["source_indices"],
-            flow_data["target_indices"],
-            flow_data["value"],
-            strict=True,
-        )
-    ]
-    return SankeyWidget({"nodes": nodes, "links": links}, **kwargs)
+    return SankeyWidget(flow_data, **kwargs)

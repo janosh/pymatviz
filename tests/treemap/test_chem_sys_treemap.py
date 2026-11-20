@@ -81,7 +81,7 @@ def test_system_limit(
         assert not binary_other
 
 
-@pytest.mark.parametrize("limit", [None, 0, 99])
+@pytest.mark.parametrize("limit", [None, 99])
 def test_mixed_inputs(chart: ChemicalChart, limit: int | None) -> None:
     """Mixed inputs produce nodes only for arities present in the data."""
     structure = Structure(

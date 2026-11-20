@@ -141,13 +141,90 @@ def test_add_best_fit_line(
         fit_x = np.concatenate([srs["x"] for srs in picked])
         fit_y = np.concatenate([srs["y"] for srs in picked])
     slope, intercept = np.polyfit(fit_x, fit_y, 1)
-    assert line["metadata"] == {"slope": slope, "intercept": intercept}
+    assert line["metadata"] == {
+        "slope": slope,
+        "intercept": intercept,
+        "log_x": False,
+        "log_y": False,
+    }
     assert line["p1"] == [min(fit_x), slope * min(fit_x) + intercept]
     assert line["p2"] == [max(fit_x), slope * max(fit_x) + intercept]
     assert line["style"]["color"] == line["annotation"]["color"] == expected_color
     sign = "+" if intercept >= 0 else "-"
     expected_text = f"LS fit: y = {slope:.2g}x {sign} {abs(intercept):.2g}"
     assert line["annotation"]["text"] == expected_text
+
+
+@pytest.mark.parametrize(
+    ("x_scale", "y_scale", "text"),
+    [
+        ("log", "log", "LS fit: log10(y) = 1.5·log10(x) + 0.48"),
+        ("linear", {"type": "log"}, "LS fit: log10(y) = 0.2x + 0.48"),
+        ("log", "linear", "LS fit: y = 2·log10(x) + 3"),
+    ],
+)
+@pytest.mark.parametrize("widget_cls", [ScatterPlotWidget, BinnedScatterPlotWidget])
+def test_add_best_fit_line_log_axes(
+    x_scale: str | dict[str, str],
+    y_scale: str | dict[str, str],
+    text: str,
+    widget_cls: type,
+) -> None:
+    """On log axes the fit is linear in log10 space and spans the positive data."""
+    log_x = x_scale == "log"
+    log_y = y_scale != "linear"
+    xs = np.array([-1.0, 0.0, 1.0, 2.0, 5.0, 10.0])  # x <= 0 not shown on log x
+    pos = xs > 0
+    if log_x and log_y:  # power law y = 3 x^1.5
+        ys = 3 * np.abs(xs) ** 1.5
+    elif log_y:  # exponential y = 3 * 10^(0.2 x)
+        ys = 3 * 10 ** (0.2 * xs)
+    else:  # logarithmic y = 2 log10(x) + 3, placeholder where x <= 0
+        ys = np.where(pos, 2 * np.log10(np.where(pos, xs, 1)) + 3, -5)
+    widget = widget_cls(
+        series=[{"x": xs, "y": ys}],
+        x_axis={"scale_type": x_scale},
+        y_axis={"scale_type": y_scale},
+    )
+    powerups.add_best_fit_line(widget)
+    lines = (
+        widget.overlays["ref_lines"]
+        if widget_cls is BinnedScatterPlotWidget
+        else widget.ref_lines
+    )
+    (line,) = lines
+    fit_xs = xs[pos] if log_x else xs
+    true_y = dict(zip(xs.tolist(), ys.tolist(), strict=True))
+    for point, x_val in ((line["p1"], fit_xs.min()), (line["p2"], fit_xs.max())):
+        np.testing.assert_allclose(point, [x_val, true_y[x_val]], rtol=1e-12, atol=0)
+    assert (line["metadata"]["log_x"], line["metadata"]["log_y"]) == (log_x, log_y)
+    anno_text = (
+        widget.annotation
+        if widget_cls is BinnedScatterPlotWidget
+        else line["annotation"]["text"]
+    )
+    assert anno_text == text
+
+
+@pytest.mark.parametrize(
+    ("axes", "match"),
+    [
+        ({"x_axis": {"scale_type": "arcsinh"}}, "x_axis scale_type='arcsinh'"),
+        (
+            {"y_axis": {"scale_type": {"type": "arcsinh", "threshold": 2}}},
+            "y_axis scale_type=",
+        ),
+        (
+            {"x_axis": {"scale_type": "log"}, "y_axis": {"scale_type": "log"}},
+            r"needs >= 2 finite points \(positive on log axes\), got 1 of 3",
+        ),
+    ],
+)
+def test_add_best_fit_line_unsupported_axes(axes: dict[str, Any], match: str) -> None:
+    """Non linear/log scales and too few positive points on log axes raise."""
+    widget = ScatterPlotWidget(series=[{"x": [-1, 1, 2], "y": [1, 2, -3]}], **axes)
+    with pytest.raises(ValueError, match=match):
+        powerups.add_best_fit_line(widget)
 
 
 def test_add_best_fit_line_options_and_errors() -> None:
@@ -201,6 +278,30 @@ def test_enhance_parity_plot(
         assert widget.ref_lines[0]["style"]["color"] == "red"
     if isinstance(best_fit_line, dict):
         assert "annotation" not in widget.ref_lines[1]
+
+
+def test_enhance_parity_plot_forwards_data_kwargs() -> None:
+    """Stats and best-fit dicts may select series or pass their own xs/ys."""
+    widget = powerups.enhance_parity_plot(
+        make_widget(2),
+        identity_line=False,
+        best_fit_line={"series": 1},
+        stats={"series": 0, "metrics": ["MAE"]},
+    )
+    srs0, srs1 = widget.series
+    expected_mae = np.abs(np.asarray(srs0["x"]) - np.asarray(srs0["y"])).mean()
+    assert widget.annotation == f"MAE = {expected_mae:.3}"
+    slope, _ = np.polyfit(srs1["x"], srs1["y"], 1)
+    np.testing.assert_allclose(
+        widget.ref_lines[0]["metadata"]["slope"], slope, rtol=1e-12, atol=0
+    )
+    explicit = powerups.enhance_parity_plot(
+        make_widget(),
+        identity_line=False,
+        best_fit_line=False,
+        stats={"xs": [1.0, 2.0], "ys": [1.5, 2.5], "metrics": ["MAE"]},
+    )
+    assert explicit.annotation == "MAE = 0.5"
 
 
 def test_enhance_parity_plot_series_color() -> None:
@@ -258,6 +359,13 @@ def test_add_ecdf_line_ignores_own_ecdf_series() -> None:
     assert [srs["label"] for srs in widget.series] == ["s0", *["Cumulative"] * 2]
     powerups.annotate_metrics(widget)
     assert widget.annotation == "MAE = 0.121\nR² = 0.785"
+
+
+def test_add_ecdf_line_keeps_y2_range() -> None:
+    """A user-set y2_range survives adding ECDF lines."""
+    widget = ScatterPlotWidget(series=make_series(), y2_range=[0, 0.5])
+    powerups.add_ecdf_line(widget)
+    assert widget.y2_range == [0, 0.5]
 
 
 def test_add_ecdf_line_raises() -> None:

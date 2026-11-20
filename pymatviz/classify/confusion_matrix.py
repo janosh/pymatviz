@@ -80,7 +80,14 @@ def confusion_matrix(
     ):
         raise ValueError("Must provide either conf_mat or both y_true and y_pred")
     if y_true is not None and y_pred is not None:
-        classes = sorted({*y_true, *y_pred})
+        try:
+            classes = sorted({*y_true, *y_pred})
+        except TypeError as exc:
+            label_types = sorted({type(val).__name__ for val in (*y_true, *y_pred)})
+            raise ValueError(
+                f"y_true and y_pred labels must be mutually sortable (one type), got "
+                f"types {label_types}"
+            ) from exc
         if x_labels is not None:  # order classes like x_labels (matched as strings)
             class_of = {str(cls): cls for cls in classes}
             if sorted(class_of) != sorted(map(str, x_labels)):

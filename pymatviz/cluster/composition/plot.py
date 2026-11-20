@@ -14,6 +14,7 @@ from sklearn.decomposition import PCA
 from pymatviz.cluster.composition.embed import matminer_featurize, one_hot_encode
 from pymatviz.cluster.composition.project import project_vectors
 from pymatviz.enums import LabelEnum
+from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 from pymatviz.widgets.scatter_plot_3d import ScatterPlot3DWidget
 
@@ -559,10 +560,10 @@ def cluster_compositions(
         if stats_lines:
             options["annotation"] = "\n".join(stats_lines)
         widget: ClusterScatterPlot | ClusterScatterPlot3D = ClusterScatterPlot(
-            series=series, **options | kwargs
+            series=series, **with_defaults(options, kwargs)
         )
     else:
-        widget = ClusterScatterPlot3D(series=series, **options | kwargs)
+        widget = ClusterScatterPlot3D(series=series, **with_defaults(options, kwargs))
     widget.projector = projector
     widget.embeddings = embeddings
     return widget

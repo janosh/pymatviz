@@ -12,7 +12,6 @@ import pandas as pd
 import scipy.stats
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 from pymatgen.core import Composition, IStructure, Structure
-from pymatgen.io.phonopy import get_pmg_structure
 
 from pymatviz.enums import ElemCountMode, Key
 from pymatviz.utils import df_ptable
@@ -321,6 +320,8 @@ def normalize_structures(
         if isinstance(item, (IStructure, IMolecule)):
             return item
         if is_phonopy_atoms(item):  # convert PhonopyAtoms to pymatgen Structure
+            from pymatgen.io.phonopy import get_pmg_structure
+
             return get_pmg_structure(item)
         raise TypeError(
             "Item must be a pymatgen Structure, IStructure, Molecule, IMolecule, "
@@ -640,23 +641,25 @@ def sankey_flow_data(
     cols: list[str],
     *,
     labels_with_counts: bool | str = True,
-) -> dict[str, Any]:
-    """Extract flow data from DataFrame columns for Sankey diagrams.
+) -> dict[str, list[dict[str, Any]]]:
+    """Count (source, target) value pairs in two DataFrame columns as Sankey data.
+
+    Only rows with values in both columns form links. Node counts (and percentage
+    denominators) come from those same rows, so each node's label matches the total
+    flow through it.
 
     Args:
         df (pd.DataFrame): DataFrame containing source and target columns.
         cols (list[str]): 2-element list of [source_col, target_col] column names.
         labels_with_counts (bool | "percent"): Whether to append counts to labels.
-            If "percent", shows percentages instead of counts. Defaults to True.
+            If "percent", shows percentages of linked rows instead. Defaults to True.
 
     Returns:
-        dict with keys:
-            - "source": list of source node values
-            - "target": list of target node values
-            - "value": list of flow values (counts)
-            - "labels": list of node labels (with optional counts)
-            - "source_indices": list of source node indices for links
-            - "target_indices": list of target node indices for links
+        dict[str, list[dict]]: SankeyWidget data with keys
+            - "nodes": ``{"id", "label", "metadata": {"column"}}`` per distinct value,
+              source-column nodes first. A value in both columns gets one node per
+              side, so no link is a self-loop.
+            - "links": ``{"source", "target", "value"}`` with node ids and row counts.
 
     Raises:
         ValueError: If cols doesn't have exactly 2 elements.
@@ -666,31 +669,36 @@ def sankey_flow_data(
             f"{cols=} should specify exactly two columns: (source_col, target_col)"
         )
 
+    # value_counts drops rows with NaN in either column
     df_flows = df[list(cols)].value_counts().reset_index()
     # per-column tolist, to_numpy would coerce mixed int/float columns to one dtype
     source, target, value = (df_flows[col].tolist() for col in df_flows)
 
-    # Each column is one side of the diagram, so a value in both gets two nodes
-    source_vals = list(dict.fromkeys(source))  # preserves order
-    target_vals = list(dict.fromkeys(target))
-    source_idx = {val: idx for idx, val in enumerate(source_vals)}
-    target_idx = {val: idx + len(source_vals) for idx, val in enumerate(target_vals)}
+    # Each column is one side of the diagram, so a value in both gets two nodes.
+    # Dicts keep first-seen order and each column's own value types.
+    side_counts: list[dict[Any, int]] = [{}, {}]
+    for src_val, tgt_val, count in zip(source, target, value, strict=True):
+        for counts, val in zip(side_counts, (src_val, tgt_val), strict=True):
+            counts[val] = counts.get(val, 0) + count
 
-    labels = [*source_vals, *target_vals]
-    if labels_with_counts:
-        as_percent = labels_with_counts == "percent"
-        fmt = ".1%" if as_percent else "d"
-        source_counts = df[cols[0]].value_counts(normalize=as_percent).to_dict()
-        target_counts = df[cols[1]].value_counts(normalize=as_percent).to_dict()
-        labels = [f"{val}: {source_counts[val]:{fmt}}" for val in source_vals] + [
-            f"{val}: {target_counts[val]:{fmt}}" for val in target_vals
-        ]
+    as_percent = labels_with_counts == "percent"
+    n_linked = sum(value)
+    nodes: list[dict[str, Any]] = []
+    node_ids: list[dict[Any, int]] = [{}, {}]
+    for col, counts, ids in zip(cols, side_counts, node_ids, strict=True):
+        for val, count in counts.items():
+            label = str(val)
+            if as_percent:
+                label += f": {count / n_linked:.1%}"
+            elif labels_with_counts:
+                label += f": {count:d}"
+            ids[val] = len(nodes)
+            nodes.append(
+                {"id": len(nodes), "label": label, "metadata": {"column": col}}
+            )
 
-    return {
-        "source": source,
-        "target": target,
-        "value": value,
-        "labels": labels,
-        "source_indices": [source_idx[val] for val in source],
-        "target_indices": [target_idx[val] for val in target],
-    }
+    links = [
+        {"source": node_ids[0][src_val], "target": node_ids[1][tgt_val], "value": count}
+        for src_val, tgt_val, count in zip(source, target, value, strict=True)
+    ]
+    return {"nodes": nodes, "links": links}

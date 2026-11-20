@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 def test_sankey_from_2_df_cols(
     df_float: pd.DataFrame, labels_with_counts: bool | Literal["percent"]
 ) -> None:
-    """Nodes, links and column metadata mirror sankey_flow_data."""
+    """Widget data is sankey_flow_data and links cover every row."""
     widget = pmv.sankey_from_2_df_cols(
         df_float, ["A", "B"], labels_with_counts=labels_with_counts, node_align="left"
     )
@@ -26,17 +26,8 @@ def test_sankey_from_2_df_cols(
     flow = pmv.sankey_flow_data(
         df_float, ["A", "B"], labels_with_counts=labels_with_counts
     )
-    nodes, links = widget.data["nodes"], widget.data["links"]
-    assert [node["label"] for node in nodes] == list(map(str, flow["labels"]))
-    assert [node["id"] for node in nodes] == list(range(len(nodes)))
-    n_sources = len(set(flow["source"]))
-    assert [node["metadata"]["column"] for node in nodes] == ["A"] * n_sources + [
-        "B"
-    ] * (len(nodes) - n_sources)
-    assert [(lnk["source"], lnk["target"], lnk["value"]) for lnk in links] == list(
-        zip(flow["source_indices"], flow["target_indices"], flow["value"], strict=True)
-    )
-    assert sum(lnk["value"] for lnk in links) == len(df_float)
+    assert widget.data == flow
+    assert sum(lnk["value"] for lnk in widget.data["links"]) == len(df_float)
 
 
 def test_sankey_shared_values_get_two_nodes() -> None:

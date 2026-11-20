@@ -43,7 +43,8 @@ def elements_hist(
         log_y (bool, optional): Whether y-axis is log or linear. Default = False.
         keep_top (int | None): Display only the top n elements by prevalence.
         show_values ("percent"|"count"|None): "percent" (default) labels bars with
-            their share of the total count, "count" with the count, None hides labels.
+            their share of the total count (incl. elements dropped by keep_top),
+            "count" with the count, None hides labels.
         bar_width (float): Width of bars as fraction of available space. Default = 0.7.
         opacity (float): Bar opacity between 0 and 1. Default = 0.8.
         **kwargs: BarPlotWidget traits, e.g. ``x_axis``, ``y_axis``, ``bar`` (merged
@@ -54,6 +55,7 @@ def elements_hist(
     """
     elem_counts = count_elements(formulas, count_mode)
     non_zero = elem_counts[elem_counts > 0].sort_values(ascending=False)
+    total_count = non_zero.sum()  # percent labels are shares of all elements
     if keep_top is not None:
         non_zero = non_zero.head(keep_top)
 
@@ -65,7 +67,7 @@ def elements_hist(
         "bar_width": bar_width,
     }
     if show_values == "percent":
-        series["labels"] = [f"{val / counts.sum():.0%}" for val in counts]
+        series["labels"] = [f"{val / total_count:.0%}" for val in counts]
     elif show_values == "count":
         series["labels"] = [
             f"{val:,.0f}" if val.is_integer() else f"{val:.3g}" for val in counts
@@ -108,7 +110,8 @@ def histogram(
 
     Args:
         values: Values to bin. Accepts a sequence, NumPy array, pandas Series, or dict
-            of named series. Dict keys are used as legend labels.
+            of named series. Dict keys are used as legend labels. NaN/inf values
+            raise a ValueError rather than being silently dropped.
         bins (int | sequence | str, optional): Number of bins, bin edges or a NumPy
             binning rule like "auto". Defaults to 200.
         x_range (tuple, optional): The range of values to include in the histogram.
@@ -133,6 +136,12 @@ def histogram(
         if vals.ndim != 1 or len(vals) == 0:
             raise ValueError(
                 f"histogram values for {label!r} must be a non-empty 1D array."
+            )
+        if not np.isfinite(vals).all():
+            n_bad = int((~np.isfinite(vals)).sum())
+            raise ValueError(
+                f"histogram values for {label!r} contain {n_bad} non-finite "
+                "(NaN/inf) entries. Drop or replace them before plotting."
             )
 
     all_values = np.concatenate(list(data_arrays.values()))

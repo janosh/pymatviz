@@ -68,6 +68,47 @@ def binary_array(
     }
 
 
+# Series with at least this many points sync as binary plot-series envelopes: as JSON
+# a 1e6-point scatter is ~41 MB and ~0.3 s of Python-side list building; binary 16 MB
+BINARY_SERIES_MIN_POINTS = 10_000
+# numeric columns sent as arrays (x and y must be finite, color/size may hold NaN gaps)
+_SERIES_COLUMNS = {"x": True, "y": True, "color_values": False, "size_values": False}
+
+
+def plot_series_envelope(entry: Mapping[str, Any], name: str) -> dict[str, Any] | None:
+    """Binary plot-series envelope for a large numeric series, else None (stays JSON).
+
+    Numeric 1D columns in ``_SERIES_COLUMNS`` become float64 arrays, every other field
+    stays JSON. Categorical x, non-numeric y or fewer than
+    ``BINARY_SERIES_MIN_POINTS`` points return None.
+
+    Raises:
+        ValueError: If column lengths differ or x/y hold non-finite values.
+    """
+    columns = {
+        key: arr
+        for key in _SERIES_COLUMNS
+        if key in entry
+        and (arr := np.asarray(entry[key])).dtype.kind in "iuf"
+        and arr.ndim == 1
+    }
+    if not {"x", "y"} <= columns.keys() or len(columns["x"]) < BINARY_SERIES_MIN_POINTS:
+        return None
+    lengths = {key: len(arr) for key, arr in columns.items()}
+    if len(set(lengths.values())) > 1:
+        raise ValueError(f"{name} columns must share one length, got {lengths}")
+    arrays = {
+        key: binary_array(
+            arr, "float64", name=f"{name}.{key}", finite=_SERIES_COLUMNS[key]
+        )
+        for key, arr in columns.items()
+    }
+    fields = normalize_plot_json(
+        {key: val for key, val in entry.items() if key not in arrays}, name
+    )
+    return {"format": BINARY_FORMAT, "kind": "plot-series", "arrays": arrays, **fields}
+
+
 def _numbers_ok(numbers: np.ndarray) -> bool:
     """Whether atomic numbers are integers in 1..118, what matterviz can render (a
     DummySpecies' Z is a hash).

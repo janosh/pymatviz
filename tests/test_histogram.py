@@ -28,7 +28,8 @@ from tests.conftest import df_regr, y_true
             ["58%", "25%", "8%", "8%"],
             "log",
         ),
-        ({"keep_top": 2}, ["O", "Fe"], [7, 3], ["70%", "30%"], "linear"),
+        # percent labels stay shares of all elements, not just the kept ones
+        ({"keep_top": 2}, ["O", "Fe"], [7, 3], ["58%", "25%"], "linear"),
         (
             {"show_values": "count"},
             ["O", "Fe", "Li", "P"],
@@ -114,10 +115,12 @@ def test_histogram_dict_shares_bin_edges() -> None:
         ({}, "must not be empty"),
         ([], "non-empty 1D"),
         ([[1, 2], [3, 4]], "non-empty 1D"),
+        ([1, np.nan, 3], r"'Value' contain 1 non-finite"),
+        ({"ok": [1, 2], "bad": [np.inf, -np.inf]}, r"'bad' contain 2 non-finite"),
     ],
 )
 def test_histogram_rejects_invalid_values(values: Any, match: str) -> None:
-    """Histogram rejects empty and non-1D inputs."""
+    """Histogram rejects empty, non-1D and non-finite inputs, naming the series."""
     with pytest.raises(ValueError, match=match):
         histogram(values)
 

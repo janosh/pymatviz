@@ -47,30 +47,6 @@ def normalize_get_neighbors(
     )
 
 
-def calculate_average_cn(
-    structure: IStructure | IMolecule,
-    element: str,
-    get_neighbors: Callable[[Site, Any], list[Any]],
-) -> float:
-    """Calculate the average coordination number for a given element in a structure.
-
-    Args:
-        structure (IStructure | IMolecule): A pymatgen structure-like object.
-        element (str): Element symbol to calculate average CN for.
-        get_neighbors (Callable[[Site, Any], list[Any]]):
-            Function to get neighbors for a site.
-
-    Returns:
-        Average coordination number for the given element. Returns 0 if element is not
-        present in the structure.
-    """
-    element_sites = [
-        site for site in structure if element in helpers.get_site_elements(site)
-    ]
-    cn_sum = sum(len(get_neighbors(site, structure)) for site in element_sites)
-    return cn_sum / len(element_sites) if element_sites else 0
-
-
 def coordination_nums_in_structure(
     structure: IStructure | IMolecule,
     strategy: float | NearNeighbors | type[NearNeighbors] = 3.0,

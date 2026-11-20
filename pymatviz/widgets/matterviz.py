@@ -344,8 +344,14 @@ class MatterVizWidget(AnyWidget):
             version_override: Fetch assets for this ``matterviz-anywidget``
                 version (or ``"main"``) instead of ``MATTERVIZ_ANYWIDGET_VERSION``.
                 Prefer ``configure_assets()`` for global overrides.
-            **kwargs: Passed through to AnyWidget.
+            **kwargs: Widget traits, passed through to AnyWidget.
+
+        Raises:
+            TypeError: For kwargs that aren't traits of this widget (typos or
+                options removed with plotly would otherwise be silently dropped).
         """
+        if unknown := kwargs.keys() - self.trait_names() - {"model_id"}:
+            raise TypeError(f"Unknown {type(self).__name__} options: {sorted(unknown)}")
         if version_override is not None:
             self._esm = fetch_widget_asset("matterviz.js", version_override)
             self._css = fetch_widget_asset("matterviz.css", version_override)
@@ -550,23 +556,44 @@ class MatterVizWidget(AnyWidget):
             self._esm, self._css = self._asset_sources
         return self._asset_sources
 
-    def _require_binary_bundle(self) -> None:
+    def _require_binary_bundle(self, kind: str) -> None:
         """Check explicitly pinned npm bundles before sending binary data.
 
         Raises:
-            ValueError: If the selected bundle predates the binary protocol.
+            ValueError: If the selected bundle predates the binary protocol or
+                cannot decode envelopes of this kind.
         """
         from pymatviz.widgets._binary import BINARY_FORMAT
 
         url = self._export_esm_url or _cdn_url(MATTERVIZ_ANYWIDGET_VERSION)
-        if (
-            url.startswith(f"{_ANYWIDGET_CDN}@")
-            and BINARY_FORMAT not in self._resolve_assets()[0]
+        if url.startswith(f"{_ANYWIDGET_CDN}@") and not all(
+            marker in self._resolve_assets()[0] for marker in (BINARY_FORMAT, kind)
         ):
             raise ValueError(
-                f"Widget bundle {url} lacks {BINARY_FORMAT}. "
+                f"Widget bundle {url} lacks {BINARY_FORMAT} {kind!r} envelopes. "
                 "Select version 'main' or a binary-capable release."
             )
+
+    def _binary_series(
+        self, value: Any, component_name: str
+    ) -> list[dict[str, Any]] | None:
+        """Normalize plot series, sending large numeric ones as binary envelopes.
+
+        Raises:
+            tl.TraitError: For invalid series.
+        """
+        from pymatviz.widgets._binary import is_binary_envelope
+        from pymatviz.widgets._normalize import normalize_plot_series
+
+        try:
+            series = normalize_plot_series(
+                value, component_name=component_name, binary=True
+            )
+        except (TypeError, ValueError) as exc:
+            raise tl.TraitError(str(exc)) from exc
+        if any(is_binary_envelope(entry, "plot-series") for entry in series or ()):
+            self._require_binary_bundle("plot-series")
+        return series
 
     def describe(self) -> dict[str, Any]:
         """Return structured, machine-parseable facts about this widget's data.

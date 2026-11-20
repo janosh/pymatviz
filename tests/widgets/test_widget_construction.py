@@ -14,6 +14,7 @@ import pytest
 import traitlets as tl
 from pymatgen.core import Lattice, Molecule, Structure
 
+import pymatviz as pmv
 from pymatviz.widgets._traits import BONDING_STRATEGIES, ELEMENT_COLOR_SCHEMES
 from pymatviz.widgets.band_structure import BandStructureWidget
 from pymatviz.widgets.bands_and_dos import BandsAndDosWidget
@@ -434,6 +435,33 @@ def test_histogram_series_updates_reject_invalid(
         widget.series = series
     assert widget.to_dict() == old_state
     observer.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("series", "expected"),
+    [
+        (
+            ({"x": np.array([1, 2]), "y": pd.Series([3.0, 4.0]), "label": "b"},),
+            [{"x": [1, 2], "y": [3.0, 4.0], "label": "b"}],
+        ),
+        ([{"x": [1, 2], "y": np.array([np.nan, 2.0])}], "non-finite"),
+        ([{"x": [1, 2]}], "must include keys 'x' and 'y'"),
+    ],
+)
+def test_bar_plot_series_updates_normalize(series: Any, expected: Any) -> None:
+    """Reassigned BarPlotWidget series normalize like the constructor or raise."""
+    widget = BarPlotWidget(series=[{"x": [0], "y": [1]}])
+    if isinstance(expected, str):
+        old_state = widget.to_dict()
+        with pytest.raises(tl.TraitError, match=expected):
+            widget.series = series
+        assert widget.to_dict() == old_state
+        return
+    widget.series = series
+    assert widget.series == BarPlotWidget(series=series).series == expected
+    assert json.loads(json.dumps(widget.get_state(), allow_nan=False))["series"] == (
+        expected
+    )
 
 
 @pytest.mark.parametrize("series", [None, [], [{"values": []}]])
@@ -1512,3 +1540,36 @@ def test_to_html_inline_renders_offline(tmp_path: Any) -> None:
     blank_frac = png_blank_fraction(png_bytes)
     assert blank_frac is not None
     assert blank_frac < 0.99  # real chart, not a blank frame
+
+
+def _widget_subclasses(cls: type = MatterVizWidget) -> list[type]:
+    """All MatterVizWidget subclasses, recursively."""
+    return [
+        sub
+        for child in cls.__subclasses__()
+        for sub in (child, *_widget_subclasses(child))
+    ]
+
+
+@pytest.mark.parametrize(
+    "make_widget",
+    [
+        *(
+            pytest.param(cls, id=cls.__name__)
+            for cls in sorted(set(_widget_subclasses()), key=lambda cls: cls.__name__)
+            # validates its exactly-one-of data args before reaching the base init
+            if cls.__name__ != "FermiSurfaceWidget"
+        ),
+        pytest.param(
+            lambda **kw: pmv.ptable_hists({"Fe": [1.0]}, **kw), id="ptable_hists"
+        ),
+        pytest.param(
+            lambda **kw: pmv.density_scatter([1.0, 2.0], [1.0, 2.0], **kw),
+            id="density_scatter",
+        ),
+    ],
+)
+def test_unknown_kwargs_raise(make_widget: Any) -> None:
+    """Typos and removed plotly-only options raise instead of being dropped."""
+    with pytest.raises(TypeError, match=r"Unknown \w+ options: \['bogus'\]"):
+        make_widget(bogus=1)

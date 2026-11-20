@@ -57,12 +57,12 @@ See the Jupyter notebooks under [`examples/`](examples) for how to use `pymatviz
 
 See [`pymatviz/ptable/figures.py`](pymatviz/ptable/figures.py). The module supports heatmaps, heatmap splits (multiple values per element), histograms, scatter plots and line plots. All visualizations are interactive [MatterViz](https://github.com/janosh/matterviz) widgets: hovering a tile shows its plot enlarged with axes.
 
-|                                     [`ptable_heatmap(atomic_masses)`](pymatviz/ptable/figures.py#L65)                                     | [`ptable_heatmap(compositions, log=True)`](pymatviz/ptable/figures.py#L65) [![fig-icon]](assets/scripts/ptable/ptable_heatmap.py) |
+|                                     [`ptable_heatmap(atomic_masses)`](pymatviz/ptable/figures.py#L104)                                     | [`ptable_heatmap(compositions, log=True)`](pymatviz/ptable/figures.py#L104) [![fig-icon]](assets/scripts/ptable/ptable_heatmap.py) |
 | :---------------------------------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------------------: |
 |                                                 ![ptable-heatmap-plotly-more-hover-data]                                                  |                                                   ![ptable-heatmap-plotly-log]                                                    |
-|               [`ptable_hists(data)`](pymatviz/ptable/figures.py#L227) [![fig-icon]](assets/scripts/ptable/ptable_hists.py)                | [`ptable_scatter(data, mode="markers")`](pymatviz/ptable/figures.py#L296) [![fig-icon]](assets/scripts/ptable/ptable_scatter.py) |
+|               [`ptable_hists(data)`](pymatviz/ptable/figures.py#L268) [![fig-icon]](assets/scripts/ptable/ptable_hists.py)                | [`ptable_scatter(data, mode="markers")`](pymatviz/ptable/figures.py#L338) [![fig-icon]](assets/scripts/ptable/ptable_scatter.py) |
 |                                                          ![ptable-hists-plotly]                                                           |                                                 ![ptable-scatter-plotly-markers]                                                  |
-| [`ptable_heatmap_splits(2_vals_per_elem)`](pymatviz/ptable/figures.py#L163) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_splits.py) |                            [`ptable_heatmap_splits(3_vals_per_elem)`](pymatviz/ptable/figures.py#L163)                            |
+| [`ptable_heatmap_splits(2_vals_per_elem)`](pymatviz/ptable/figures.py#L204) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_splits.py) |                            [`ptable_heatmap_splits(3_vals_per_elem)`](pymatviz/ptable/figures.py#L204)                            |
 |                                                     ![ptable-heatmap-splits-plotly-2]                                                     |                                                 ![ptable-heatmap-splits-plotly-3]                                                 |
 
 [ptable-heatmap-plotly-log]: assets/svg/ptable-heatmap-plotly-log.svg
@@ -93,7 +93,7 @@ See [`examples/mprester_ptable.ipynb`](examples/mprester_ptable.ipynb).
 
 ### Composition Clustering
 
-| [`cluster_compositions(compositions, properties, embedding_method, projection_method, n_components=2)`](pymatviz/cluster/composition/plot.py#L122) [![fig-icon]](assets/scripts/cluster/composition/cluster_compositions_matbench.py) | [`cluster_compositions(compositions, properties, embedding_method, projection_method, n_components=3)`](pymatviz/cluster/composition/plot.py#L122) |
+| [`cluster_compositions(compositions, properties, embedding_method, projection_method, n_components=2)`](pymatviz/cluster/composition/plot.py#L123) [![fig-icon]](assets/scripts/cluster/composition/cluster_compositions_matbench.py) | [`cluster_compositions(compositions, properties, embedding_method, projection_method, n_components=3)`](pymatviz/cluster/composition/plot.py#L123) |
 | :-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                                                                                 ![matbench-perovskites-magpie-pca-2d]                                                                                                 |                                                       ![matbench-perovskites-magpie-tsne-3d]                                                       |
 
@@ -177,7 +177,9 @@ widget.describe()  # machine-readable facts: counts, ranges, formula, chemical s
 widget.render_report()  # headless render health check: blank fraction, warnings
 ```
 
-`to_img` and `render_report` require [Playwright](https://playwright.dev/python): `pip install pymatviz[export] && playwright install chromium` (on Linux CI runners without Chromium system libraries, use `playwright install --with-deps chromium`). Widget exports run in Chromium without Kaleido. Static export of Plotly figures still requires Kaleido. Set the `PYMATVIZ_STATIC` env var to make `widget.show()` render static PNGs instead of live widgets (useful for CI notebook execution).
+Given several structures, `structure_3d` and `brillouin_zone_3d` return an `ipywidgets.GridBox` of widgets: export each of its `.children`.
+
+`to_img` and `render_report` require [Playwright](https://playwright.dev/python): `pip install pymatviz[export] && playwright install chromium` (on Linux CI runners without Chromium system libraries, use `playwright install --with-deps chromium`). Exports render in headless Chromium. Set the `PYMATVIZ_STATIC` env var to make `widget.show()` render static PNGs instead of live widgets (useful for CI notebook execution).
 
 Widget constructor kwargs mirror the props of the matching MatterViz component one-to-one (e.g. `BandStructureWidget(band_structs=...)`, `DosWidget(doses=...)`, `HeatmapMatrixWidget(color_scale={"type": "log"})`), and every plot widget takes `show_controls`, `controls_open`, `controls_toggle_props` and `controls_pane_props` for its control pane. The frontend is the prebuilt [`matterviz-anywidget`](https://www.npmjs.com/package/matterviz-anywidget) bundle selected by `MATTERVIZ_ANYWIDGET_VERSION` in [`pymatviz/widgets/matterviz.py`](pymatviz/widgets/matterviz.py): `"main"` between releases (matterviz main's bundle from `matterviz.janosh.dev/anywidget/`, re-fetched each session), a published npm version in releases (fetched from jsDelivr and cached on disk); set `MATTERVIZ_ANYWIDGET_DIR` to a local `matterviz/extensions/anywidget/build` to develop against an unreleased MatterViz.
 
@@ -233,10 +235,10 @@ See [`pymatviz/rdf/figures.py`](pymatviz/rdf/figures.py).
 
 See [`pymatviz/coordination/figures.py`](pymatviz/coordination/figures.py).
 
-|              [`coordination_hist(struct_dict)`](pymatviz/coordination/figures.py#L73)              |            [`coordination_hist(struct_dict, by_element=True)`](pymatviz/coordination/figures.py#L73) [![fig-icon]](assets/scripts/coordination/coordination_hist.py)             |
+|              [`coordination_hist(struct_dict)`](pymatviz/coordination/figures.py#L70)              |            [`coordination_hist(struct_dict, by_element=True)`](pymatviz/coordination/figures.py#L70) [![fig-icon]](assets/scripts/coordination/coordination_hist.py)             |
 | :------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                    ![coordination-hist-single]                                     |                                                                  ![coordination-hist-by-structure-and-element]                                                                   |
-| [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination/figures.py#L176) | [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination/figures.py#L176) [![fig-icon]](assets/scripts/coordination/coordination_vs_cutoff_line.py#L52) |
+| [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination/figures.py#L173) | [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination/figures.py#L173) [![fig-icon]](assets/scripts/coordination/coordination_vs_cutoff_line.py#L52) |
 |                                  ![coordination-vs-cutoff-single]                                  |                                                                        ![coordination-vs-cutoff-multiple]                                                                        |
 
 [coordination-hist-single]: assets/svg/coordination-hist-single.svg
@@ -321,7 +323,7 @@ See [`pymatviz/bar.py`](pymatviz/bar.py).
 
 See [`pymatviz/histogram.py`](pymatviz/histogram.py).
 
-| [`elements_hist(compositions, log_y=True, show_values='count')`](pymatviz/histogram.py#L24) [![fig-icon]](assets/scripts/histogram/elements_hist.py) | [`histogram({'key1': values1, 'key2': values2})`](pymatviz/histogram.py#L91) [![fig-icon]](assets/scripts/histogram/histogram.py) |
+| [`elements_hist(compositions, log_y=True, show_values='count')`](pymatviz/histogram.py#L24) [![fig-icon]](assets/scripts/histogram/elements_hist.py) | [`histogram({'key1': values1, 'key2': values2})`](pymatviz/histogram.py#L93) [![fig-icon]](assets/scripts/histogram/histogram.py) |
 | :-----------------------------------------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------------------: |
 |                                                                 ![elements-hist]                                                                  |                                                         ![histogram-ecdf]                                                         |
 
@@ -346,10 +348,10 @@ See [`pymatviz/scatter.py`](pymatviz/scatter.py).
 
 See [`pymatviz/uncertainty.py`](pymatviz/uncertainty.py).
 
-|             [`qq_gaussian(y_true, y_pred, y_std)`](pymatviz/uncertainty.py#L72) [![fig-icon]](assets/scripts/uncertainty/qq_gaussian.py)              |       [`qq_gaussian(y_true, y_pred, y_std: dict)`](pymatviz/uncertainty.py#L72)        |
+|             [`qq_gaussian(y_true, y_pred, y_std)`](pymatviz/uncertainty.py#L74) [![fig-icon]](assets/scripts/uncertainty/qq_gaussian.py)              |       [`qq_gaussian(y_true, y_pred, y_std: dict)`](pymatviz/uncertainty.py#L74)        |
 | :---------------------------------------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------: |
 |                                                                    ![qq-gaussian]                                                                     |                                ![qq-gaussian-multiple]                                 |
-| [`error_decay_with_uncert(y_true, y_pred, y_std)`](pymatviz/uncertainty.py#L157) [![fig-icon]](assets/scripts/uncertainty/error_decay_with_uncert.py) | [`error_decay_with_uncert(y_true, y_pred, y_std: dict)`](pymatviz/uncertainty.py#L157) |
+| [`error_decay_with_uncert(y_true, y_pred, y_std)`](pymatviz/uncertainty.py#L159) [![fig-icon]](assets/scripts/uncertainty/error_decay_with_uncert.py) | [`error_decay_with_uncert(y_true, y_pred, y_std: dict)`](pymatviz/uncertainty.py#L159) |
 |                                                              ![error-decay-with-uncert]                                                               |                          ![error-decay-with-uncert-multiple]                           |
 
 ## Classification
@@ -362,7 +364,7 @@ See [`pymatviz/classify/confusion_matrix.py`](pymatviz/classify/confusion_matrix
 
 See [`pymatviz/classify/curves.py`](pymatviz/classify/curves.py).
 
-| [`roc_curve(targets, probs_positive)`](pymatviz/classify/curves.py#L132) [![fig-icon]](assets/scripts/classify/roc_curve.py) | [`precision_recall_curve(targets, probs_positive)`](pymatviz/classify/curves.py#L207) [![fig-icon]](assets/scripts/classify/precision_recall_curve.py) |
+| [`roc_curve(targets, probs_positive)`](pymatviz/classify/curves.py#L145) [![fig-icon]](assets/scripts/classify/roc_curve.py) | [`precision_recall_curve(targets, probs_positive)`](pymatviz/classify/curves.py#L233) [![fig-icon]](assets/scripts/classify/precision_recall_curve.py) |
 | :-------------------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                                ![roc-curve-plotly-multiple]                                                 |                                                       ![precision-recall-curve-plotly-multiple]                                                        |
 

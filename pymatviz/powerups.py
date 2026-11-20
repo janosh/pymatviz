@@ -223,6 +223,28 @@ def add_identity_line[Widget: ScatterPlotWidget | BinnedScatterPlotWidget](
     return widget
 
 
+def _log_axes(
+    widget: ScatterPlotWidget | BinnedScatterPlotWidget,
+) -> tuple[bool, bool]:
+    """Whether the widget's x and y axes are log-scaled.
+
+    Raises:
+        ValueError: For scale types other than linear and log (e.g. arcsinh, time),
+            where a least-squares line has no simple straight-segment form.
+    """
+    log_flags = []
+    for axis in ("x", "y"):
+        scale_type = (getattr(widget, f"{axis}_axis") or {}).get("scale_type")
+        name = scale_type.get("type") if isinstance(scale_type, Mapping) else scale_type
+        if name not in (None, "linear", "log"):
+            raise ValueError(
+                f"Best fit line supports linear and log axes, got {axis}_axis "
+                f"scale_type={scale_type!r}"
+            )
+        log_flags.append(name == "log")
+    return log_flags[0], log_flags[1]
+
+
 def add_best_fit_line[Widget: ScatterPlotWidget | BinnedScatterPlotWidget](
     widget: Widget,
     xs: ArrayLike = (),
@@ -233,6 +255,12 @@ def add_best_fit_line[Widget: ScatterPlotWidget | BinnedScatterPlotWidget](
     annotate_params: bool = True,
 ) -> Widget:
     """Add a least-squares fit line spanning the x range of the fitted data.
+
+    The fit is done in the space the widget's axes display (log10 of values on log
+    axes, read from x_axis/y_axis scale_type at call time), so the fit is a straight
+    line on screen: y = ax + b on linear axes, a power law log10(y) = a log10(x) + b
+    on log-log axes, and exponential/logarithmic fits on semi-log axes. Points with
+    non-positive values on a log axis are dropped since they can't be displayed.
 
     Args:
         widget (ScatterPlotWidget | BinnedScatterPlotWidget): Widget to add it to.
@@ -245,26 +273,43 @@ def add_best_fit_line[Widget: ScatterPlotWidget | BinnedScatterPlotWidget](
             opacity). The color defaults to the explicit "color" of a single fitted
             series (series=int), else the theme text color.
         annotate_params (bool): Label the line with its equation
-            "LS fit: y = ax + b". Defaults to True.
+            "LS fit: y = ax + b" (with log10(x) and/or log10(y) on log axes).
+            Defaults to True.
 
     Raises:
-        ValueError: If fewer than 2 finite points remain to fit.
+        ValueError: If fewer than 2 finite points (positive on log axes) remain
+            to fit, or an axis has a scale_type other than linear or log.
 
     Returns:
         ScatterPlotWidget | BinnedScatterPlotWidget: The widget.
     """
     _check_widget(widget)
+    log_x, log_y = _log_axes(widget)
     xs_arr, ys_arr = _resolve_xy(widget, xs, ys, series)
-    finite = np.isfinite(xs_arr) & np.isfinite(ys_arr)
-    if (n_finite := int(finite.sum())) < 2:
+    keep = np.isfinite(xs_arr) & np.isfinite(ys_arr)
+    if log_x:
+        keep &= xs_arr > 0
+    if log_y:
+        keep &= ys_arr > 0
+    if (n_keep := int(keep.sum())) < 2:
+        positive = " (positive on log axes)" if log_x or log_y else ""
         raise ValueError(
-            f"Best fit line needs >= 2 finite points, got {n_finite} of {len(xs_arr)}"
+            f"Best fit line needs >= 2 finite points{positive}, got {n_keep} of "
+            f"{len(xs_arr)}"
         )
-    xs_arr, ys_arr = xs_arr[finite], ys_arr[finite]
+    xs_arr, ys_arr = xs_arr[keep], ys_arr[keep]
     if np.ptp(xs_arr) == 0:
         raise ValueError(f"Best fit line needs varying x values, all are {xs_arr[0]}")
-    slope, intercept = np.polyfit(xs_arr, ys_arr, 1)
+    # fit in display space, where the fit is straight and so is a segment
+    fit_xs = np.log10(xs_arr) if log_x else xs_arr
+    fit_ys = np.log10(ys_arr) if log_y else ys_arr
+    slope, intercept = np.polyfit(fit_xs, fit_ys, 1)
     x_min, x_max = float(xs_arr.min()), float(xs_arr.max())
+
+    def fit_y(x_val: float) -> float:
+        """Fitted y at data-space x, mapped back from display space."""
+        y_val = slope * (np.log10(x_val) if log_x else x_val) + intercept
+        return float(10**y_val if log_y else y_val)
 
     color = "currentColor"
     no_explicit_data = not np.size(xs) and not np.size(ys)
@@ -273,15 +318,22 @@ def add_best_fit_line[Widget: ScatterPlotWidget | BinnedScatterPlotWidget](
     line_style = {"color": color, "width": 2, "dash": "8 4"} | (style or {})
     line: dict[str, Any] = {
         "type": "segment",
-        "p1": [x_min, float(slope * x_min + intercept)],
-        "p2": [x_max, float(slope * x_max + intercept)],
+        "p1": [x_min, fit_y(x_min)],
+        "p2": [x_max, fit_y(x_max)],
         "style": line_style,
         "label": "LS fit",
-        "metadata": {"slope": float(slope), "intercept": float(intercept)},
+        "metadata": {
+            "slope": float(slope),
+            "intercept": float(intercept),
+            "log_x": log_x,
+            "log_y": log_y,
+        },
     }
     if annotate_params:
         sign = "+" if intercept >= 0 else "-"
-        text = f"LS fit: y = {slope:.2g}x {sign} {abs(intercept):.2g}"
+        x_term = "·log10(x)" if log_x else "x"
+        y_term = "log10(y)" if log_y else "y"
+        text = f"LS fit: {y_term} = {slope:.2g}{x_term} {sign} {abs(intercept):.2g}"
         line["annotation"] = {
             "text": text,
             "position": "end",
@@ -316,7 +368,8 @@ def enhance_parity_plot[Widget: ScatterPlotWidget | BinnedScatterPlotWidget](
         best_fit_line (bool | dict | None): Whether to add a best-fit line. A dict is
             passed as add_best_fit_line() kwargs. None (default) adds it if R² > 0.3.
         stats (bool | dict): Whether to show metrics. A dict is passed as
-            annotate_metrics() kwargs. Defaults to True.
+            annotate_metrics() kwargs. Defaults to True. Dicts for best_fit_line and
+            stats may override xs, ys and series.
 
     Returns:
         ScatterPlotWidget | BinnedScatterPlotWidget: The enhanced widget.
@@ -336,18 +389,19 @@ def enhance_parity_plot[Widget: ScatterPlotWidget | BinnedScatterPlotWidget](
     if not best_fit_line and not stats and best_fit_line is not None:
         return widget
 
-    xs_arr, ys_arr = _resolve_xy(widget, xs, ys, series)
+    data_kwargs: dict[str, Any] = {"xs": xs, "ys": ys, "series": series}
     if best_fit_line is None:
+        xs_arr, ys_arr = _resolve_xy(widget, xs, ys, series)
         finite = np.isfinite(xs_arr) & np.isfinite(ys_arr)
         best_fit_line = (
             finite.sum() > 1 and r2_score(xs_arr[finite], ys_arr[finite]) > 0.3
         )
     if best_fit_line:
         fit_kwargs = best_fit_line if isinstance(best_fit_line, dict) else {}
-        add_best_fit_line(widget, xs, ys, series=series, **fit_kwargs)
+        add_best_fit_line(widget, **data_kwargs | fit_kwargs)
     if stats:
         stats_kwargs = stats if isinstance(stats, dict) else {}
-        annotate_metrics(widget, xs_arr, ys_arr, **stats_kwargs)
+        annotate_metrics(widget, **data_kwargs | stats_kwargs)
     return widget
 
 
@@ -369,7 +423,7 @@ def add_ecdf_line(
     line_style: dict[str, Any] | None = None,
 ) -> ScatterPlotWidget:
     """Add empirical cumulative distribution function (ECDF) step lines on a right
-    y2 axis spanning [0, 1].
+    y2 axis spanning [0, 1] (unless the widget already sets y2_range).
 
     Args:
         widget (ScatterPlotWidget): Widget to add the ECDF series to.
@@ -418,5 +472,6 @@ def add_ecdf_line(
     new_series = normalize_plot_series(new_series, component_name="ScatterPlot") or []
     widget.series = [*(widget.series or []), *new_series]
     widget.y2_axis = {"label": label} | (widget.y2_axis or {})
-    widget.y2_range = [0, 1]
+    if widget.y2_range is None:
+        widget.y2_range = [0, 1]
     return widget
