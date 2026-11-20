@@ -1,91 +1,110 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import numpy as np
 import pandas as pd
 import pytest
 
 from pymatviz.histogram import elements_hist, histogram
+from pymatviz.widgets.bar_plot import PLOT_COLORS, BarPlotWidget
 from tests.conftest import df_regr, y_true
 
 
-if TYPE_CHECKING:
-    from collections.abc import Sequence
-
-
 @pytest.mark.parametrize(
-    ("kwargs", "expected_x", "expected_y", "expected_text", "expected_yaxis"),
+    ("kwargs", "expected_x", "expected_y", "expected_labels", "scale_type"),
     [
         (
             {},
             ["O", "Fe", "Li", "P"],
             [7, 3, 1, 1],
-            ("58%", "25%", "8%", "8%"),
+            ["58%", "25%", "8%", "8%"],
             "linear",
         ),
         (
             {"log_y": True},
             ["O", "Fe", "Li", "P"],
             [7, 3, 1, 1],
-            ("58%", "25%", "8%", "8%"),
+            ["58%", "25%", "8%", "8%"],
             "log",
         ),
-        ({"keep_top": 2}, ["O", "Fe"], [7, 3], ("70%", "30%"), "linear"),
+        ({"keep_top": 2}, ["O", "Fe"], [7, 3], ["70%", "30%"], "linear"),
         (
             {"show_values": "count"},
             ["O", "Fe", "Li", "P"],
             [7, 3, 1, 1],
-            ("7", "3", "1", "1"),
+            ["7", "3", "1", "1"],
             "linear",
         ),
         ({"show_values": None}, ["O", "Fe", "Li", "P"], [7, 3, 1, 1], None, "linear"),
     ],
 )
-def test_hist_elemental_prevalence(
+def test_elements_hist(
     kwargs: dict[str, Any],
     expected_x: list[str],
     expected_y: list[int],
-    expected_text: tuple[str, ...] | None,
-    expected_yaxis: str,
+    expected_labels: list[str] | None,
+    scale_type: str,
 ) -> None:
-    """Test elements histogram counts, labels, and y-axis options."""
-    fig = elements_hist(
-        ["Fe2O3", "LiFePO4"], bar_width=0.5, opacity=0.9, marker_line_width=3, **kwargs
+    """Element counts, bar labels, log axis and style options reach the widget."""
+    widget = elements_hist(
+        ["Fe2O3", "LiFePO4"],
+        bar_width=0.5,
+        opacity=0.9,
+        y_axis={"format": "d"},
+        bar={"stroke_width": 3},
+        **kwargs,
     )
-    trace = fig.data[0]
+    assert isinstance(widget, BarPlotWidget)
+    (series,) = widget.series
+    assert series["x"] == expected_x
+    assert series["y"] == expected_y
+    assert series.get("labels") == expected_labels
+    assert series["bar_width"] == 0.5
+    assert widget.y_axis["scale_type"] == scale_type
+    assert widget.y_axis["format"] == "d"  # user axis config merged over defaults
+    assert widget.bar == {"opacity": 0.9, "stroke_width": 3, "stroke_color": "black"}
+    assert widget.show_legend is False
 
-    assert list(trace.x) == expected_x
-    assert list(trace.y) == expected_y
-    assert trace.text == expected_text
-    assert fig.layout.yaxis.type == expected_yaxis
 
-    assert trace.width == 0.5
-    assert trace.opacity == 0.9
-    assert trace.marker.line.width == 3
+def test_elements_hist_invalid_show_values() -> None:
+    """Unknown show_values raise instead of silently showing count labels."""
+    with pytest.raises(ValueError, match="Invalid show_values"):
+        elements_hist(["Fe2O3"], show_values="fraction")  # ty: ignore[invalid-argument-type]
 
 
 @pytest.mark.parametrize("log_y", [True, False])
 @pytest.mark.parametrize("bins", [20, 100])
 @pytest.mark.parametrize("values", [y_true, df_regr.y_true])
-def test_histogram(
-    values: Sequence[float] | np.ndarray | pd.Series, log_y: bool, bins: int
-) -> None:
-    """Test histogram function with Plotly backend."""
-    fig = histogram(values, log_y=log_y, bins=bins)
+def test_histogram(values: Any, log_y: bool, bins: int) -> None:
+    """Counts match np.histogram over the data range and axes are configured."""
+    widget = histogram(values, log_y=log_y, bins=bins)
+    (series,) = widget.series
+    counts, edges = np.histogram(np.asarray(values), bins=bins)
+    np.testing.assert_array_equal(series["y"], counts)
+    np.testing.assert_allclose(series["x"], (edges[:-1] + edges[1:]) / 2, rtol=1e-15)
+    assert widget.y_axis == {
+        "label": "Count",
+        "scale_type": "log" if log_y else "linear",
+    }
+    assert widget.x_axis == {"label": getattr(values, "name", None) or "Value"}
+    assert widget.mode == "overlay"
+    assert widget.show_legend is False
 
-    dev_fig = fig.full_figure_for_development(warn=False)
-    y_min, y_max = dev_fig.layout.yaxis.range
-    y_min_exp, y_max_exp = {
-        (True, 20): (0.257799370, 1.12241187),
-        (True, 100): (-0.03344777, 0.63550776),
-        (False, 20): (0, 12.6315789),
-        (False, 100): (0, 4.21052631),
-    }[log_y, bins]
-    assert y_min == pytest.approx(y_min_exp)
-    assert y_max == pytest.approx(y_max_exp)
 
-    assert fig.layout.yaxis.title.text == "Count"
+def test_histogram_dict_shares_bin_edges() -> None:
+    """Dict input bins every series on edges spanning all values, with a legend."""
+    widget = histogram(
+        {"a": [0, 1], "b": [9, 10]}, bins=5, mode="grouped", bar={"opacity": 0.3}
+    )
+    assert widget.bar == {"border_radius": 0, "opacity": 0.3}
+    assert [srs["label"] for srs in widget.series] == ["a", "b"]
+    assert widget.series[0]["x"] == widget.series[1]["x"] == [1, 3, 5, 7, 9]
+    assert [srs["color"] for srs in widget.series] == list(PLOT_COLORS[:2])
+    assert widget.series[0]["y"] == [2, 0, 0, 0, 0]
+    assert widget.series[1]["y"] == [0, 0, 0, 0, 2]
+    assert widget.show_legend is True
+    assert widget.mode == "grouped"  # kwargs override defaults
 
 
 @pytest.mark.parametrize(
@@ -104,8 +123,8 @@ def test_histogram_rejects_invalid_values(values: Any, match: str) -> None:
 
 def test_histogram_preserves_zero_x_range_boundary() -> None:
     """Histogram treats zero x_range bounds as explicit values."""
-    fig = histogram([1, 2, 3], x_range=(0, None), bins=3, bin_width=1)
-    assert fig.data[0].x[0] - fig.data[0].width[0] / 2 == 0
+    (series,) = histogram([1, 2, 3], x_range=(0, None), bins=3).series
+    assert series["x"][0] - series["bar_width"][0] / 2 == 0
 
 
 @pytest.mark.parametrize(
@@ -125,22 +144,13 @@ def test_histogram_bin_geometry(
     density: bool,
 ) -> None:
     """Bin centers and widths preserve counts and density area for uneven bins."""
-    trace = histogram(
-        values,
-        bins=bins,
-        density=density,
-        bin_width=1,
-        opacity=0.3,
-        marker_line_width=2,
-    ).data[0]
-    assert trace.opacity == 0.3
-    assert trace.marker.line.width == 2
-    np.testing.assert_array_equal(trace.x, centers)
-    np.testing.assert_array_equal(trace.width, widths)
+    (series,) = histogram(values, bins=bins, density=density, bin_width=0.5).series
+    np.testing.assert_array_equal(series["x"], centers)
+    np.testing.assert_array_equal(series["bar_width"], 0.5 * np.array(widths))
     expected = (
         np.array(counts) / (len(values) * np.array(widths)) if density else counts
     )
-    np.testing.assert_allclose(trace.y, expected, rtol=1e-14, atol=0)
+    np.testing.assert_allclose(series["y"], expected, rtol=1e-14, atol=0)
 
 
 @pytest.mark.parametrize(
@@ -151,6 +161,29 @@ def test_histogram_series_xaxis_title(
     series_name: str | int | None, expected_title: str
 ) -> None:
     """Histogram uses series name as x-axis title; only None falls back to 'Value'."""
-    fig = histogram(pd.Series([1.0, 2.0, 3.0], name=series_name))
-    assert fig.layout.xaxis.title.text == expected_title
-    assert fig.data[0].name == expected_title
+    widget = histogram(pd.Series([1.0, 2.0, 3.0], name=series_name))
+    assert widget.x_axis["label"] == expected_title
+    assert widget.series[0]["label"] == expected_title
+
+
+@pytest.mark.parametrize("orientation", ["horizontal", "HORIZONTAL"])
+@pytest.mark.parametrize(
+    ("func", "cat_label", "count_label"),
+    [("histogram", "Value", "Count"), ("elements_hist", "Element", "Element Count")],
+)
+def test_horizontal_swaps_axis_defaults(
+    func: str, cat_label: str, count_label: str, orientation: str
+) -> None:
+    """Horizontal bars (any case) put category defaults on y, count/log on x."""
+    if func == "histogram":
+        widget = histogram([1.0, 2.0, 3.0], log_y=True, orientation=orientation)
+    else:
+        widget = elements_hist(["Fe2O3"], log_y=True, orientation=orientation)
+    assert widget.x_axis == {"label": count_label, "scale_type": "log"}
+    assert widget.y_axis == {"label": cat_label}
+
+
+def test_elements_hist_large_counts() -> None:
+    """Integer counts keep all digits; fractional counts use 3 significant digits."""
+    widget = elements_hist(pd.Series({"O": 1_234_567, "Fe": 2.5}), show_values="count")
+    assert widget.series[0]["labels"] == ["1,234,567", "2.5"]

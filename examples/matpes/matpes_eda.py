@@ -201,11 +201,7 @@ fig.show()
 
 
 # %% spacegroup histogram
-fig = pmv.spacegroup_bar(
-    df_r2scan[Key.spg_num], title="r2SCAN spacegroup histogram", log=True
-)
-fig.show()
-# pmv.save_fig(fig, "r2scan-spacegroup-hist.pdf")
+pmv.spacegroup_bar(df_r2scan[Key.spg_num], log=True).show()
 
 
 # %% most calcs missing r2SCAN results have 4 sites, almost all 2 or 3-site r2SCAN calcs

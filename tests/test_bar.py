@@ -1,18 +1,17 @@
 from __future__ import annotations
 
-from itertools import pairwise
-from typing import TYPE_CHECKING
+from collections import Counter
+from typing import TYPE_CHECKING, Any
 
-import numpy as np
 import pandas as pd
 import pytest
 
 from pymatviz.bar import spacegroup_bar
+from pymatviz.widgets.spacegroup_bar import SpacegroupBarPlotWidget
 
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-    from typing import Literal
 
 
 @pytest.mark.parametrize(
@@ -26,88 +25,54 @@ if TYPE_CHECKING:
             pd.Series([225, 2, 1, 225, 62], dtype="Float64", name="spacegroup"),
             {1: 1, 2: 1, 62: 1, 225: 2},
         ),
-        (pd.Series([225.0, 225.0], name="Counts"), {225: 2}),
     ],
-    ids=[
-        "all-groups",
-        "integers",
-        "floats",
-        "symbols",
-        "nullable-series",
-        "counts-name",
-    ],
+    ids=["all-groups", "integers", "floats", "symbols", "nullable-series"],
 )
-@pytest.mark.parametrize(
-    ("xticks", "show_counts", "show_empty_bins", "log"),
-    [
-        ("all", True, True, True),
-        ("all", False, False, False),
-        ("crys_sys_edges", False, False, False),
-        ("crys_sys_edges", True, True, False),
-        (1, True, False, True),
-        (50, False, True, False),
-    ],
-)
+@pytest.mark.parametrize("show_counts", [True, False])
 def test_spacegroup_bar(
     data: Sequence[int | float | str] | pd.Series,
     counts: dict[int, int],
-    xticks: Literal["all", "crys_sys_edges", 1, 50],
     show_counts: bool,
-    show_empty_bins: bool,
-    log: bool,
 ) -> None:
-    """Normalize inputs and align counts, ticks, and crystal-system boundaries."""
-    fig = spacegroup_bar(
-        data,
-        xticks=xticks,
-        show_counts=show_counts,
-        show_empty_bins=show_empty_bins,
-        log=log,
-    )
-    y_min, y_max = fig.layout.yaxis.range
-    assert y_min == 0
-    expected_max = max(counts.values()) * 1.05
-    assert y_max == (np.log10(expected_max) if log else expected_max)
-    assert fig.layout.xaxis.title.text == "International Spacegroup Number"
-
-    numbers = list(range(1, 231)) if show_empty_bins else sorted(counts)
-    positions = numbers if show_empty_bins else list(range(len(numbers)))
-    heights = [counts.get(number, 0) for number in numbers]
-    assert [value for trace in fig.data for value in trace.x] == positions
-    assert [value for trace in fig.data for value in trace.y] == heights
-    assert fig.layout.xaxis.range == (positions[0] - 0.5, positions[-1] + 0.5)
-
-    boundaries = [2, 15, 74, 142, 167, 194, 230]
-    group_ends = sorted(
-        {sum(number <= end for number in numbers) for end in boundaries} - {0}
-    )
-    if isinstance(xticks, int):
-        indices = sorted(range(len(numbers)), key=lambda idx: -heights[idx])[:xticks]
-    elif xticks == "crys_sys_edges":
-        indices = [end - 1 for end in group_ends]
-    else:
-        indices = list(range(len(numbers)))
-    assert list(fig.layout.xaxis.tickvals) == [positions[idx] for idx in indices]
-    assert list(fig.layout.xaxis.ticktext) == [numbers[idx] for idx in indices]
-
-    edges = [positions[0] - 0.5, *[positions[end - 1] + 0.5 for end in group_ends]]
-    assert [(shape.x0, shape.x1) for shape in fig.layout.shapes] == list(
-        pairwise(edges)
-    )
+    """Inputs normalize to integer space group numbers with unchanged counts."""
+    widget = spacegroup_bar(data, show_counts=show_counts)
+    assert isinstance(widget, SpacegroupBarPlotWidget)
+    assert all(type(spg) is int for spg in widget.data)
+    assert Counter(widget.data) == counts
+    assert widget.show_counts is show_counts
 
 
 @pytest.mark.parametrize(
-    ("data", "expected_yshifts"),
+    ("kwargs", "log_axis", "cat_axis"),
     [
-        ([1, 2, *range(3, 16)], [0, 0]),  # widths 2 + 13 = 15 leave room
-        ([1, *range(3, 16)], [0, 16]),  # widths 1 + 13 = 14 overlap
-        ([1, 2, 3, 16, *range(17, 75)], [0, 16, 0]),  # 2 + 1 overlap, 59 is wide
+        ({}, "y_axis", "x_axis"),
+        ({"orientation": "horizontal"}, "x_axis", "y_axis"),
+        ({"y_axis": {"label": "N"}}, "y_axis", "x_axis"),
     ],
 )
-def test_spacegroup_bar_count_label_shift(
-    data: list[int], expected_yshifts: list[int]
+@pytest.mark.parametrize("log", [True, False])
+def test_spacegroup_bar_log(
+    kwargs: dict[str, Any], log_axis: str, cat_axis: str, log: bool
 ) -> None:
-    """Odd crystal systems' count labels shift up if it and the previous are narrow."""
-    fig = spacegroup_bar(data)
-    count_annos = [anno for anno in fig.layout.annotations if "%" in anno.text]
-    assert [anno.yshift for anno in count_annos] == expected_yshifts
+    """log=True log-scales only the count axis, keeping user axis options."""
+    widget = spacegroup_bar([1, 225, 225], log=log, **kwargs)
+    expected = ({"scale_type": "log"} if log else {}) | kwargs.get(log_axis, {})
+    assert getattr(widget, log_axis) == expected
+    assert getattr(widget, cat_axis) == {}
+
+
+def test_spacegroup_bar_structures(structures: Sequence[Any]) -> None:
+    """Structures are converted to space group numbers in Python."""
+    widget = spacegroup_bar(structures)
+    assert len(widget.data) == len(structures)
+    assert all(1 <= spg <= 230 for spg in widget.data)
+
+
+@pytest.mark.parametrize(
+    ("data", "match"),
+    [([], "empty"), ([1, 231], "must be in"), (["not-a-spg"], "Invalid")],
+)
+def test_spacegroup_bar_invalid(data: list[Any], match: str) -> None:
+    """Empty and invalid inputs raise instead of being dropped by the frontend."""
+    with pytest.raises(ValueError, match=match):
+        spacegroup_bar(data)

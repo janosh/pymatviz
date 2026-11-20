@@ -23,7 +23,9 @@ gauss2 = np_rng.normal(10, 2, rand_regression_size)
 
 
 # %% ECDF line
-fig = pmv.histogram({"Gaussian 1": gauss1, "Gaussian 2": gauss2}, bins=200)
+fig = go.Figure()
+for name, gauss in {"Gaussian 1": gauss1, "Gaussian 2": gauss2}.items():
+    fig.add_histogram(x=gauss, name=name, nbinsx=200, opacity=0.7)
 powerups.add_ecdf_line(fig)
 fig.layout.title.update(text="Histogram with ECDF Lines", x=0.5)
 fig.layout.margin.t = 50

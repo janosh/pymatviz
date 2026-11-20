@@ -83,7 +83,4 @@ ax.figure.suptitle(f"{data_name} dependent variables", y=1.05)
 
 
 # %%
-fig = pmv.spacegroup_bar(df_carrier[Key.spg_num])
-fig.layout.title.update(text="Spacegroup distribution in the {data_name}")
-fig.show()
-# pmv.save_fig(fig, "carrier-transport-spacegroup-hist.pdf")
+pmv.spacegroup_bar(df_carrier[Key.spg_num]).show()

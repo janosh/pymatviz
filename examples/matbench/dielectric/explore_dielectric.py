@@ -61,11 +61,7 @@ fig.show()
 
 
 # %%
-fig = pmv.spacegroup_bar(df_diel[Key.spg_num])
-fig.layout.title.update(text="<b>Space group histogram</b>")
-fig.layout.margin.update(b=10, l=10, r=10, t=50)
-# pmv.save_fig(fig, "dielectric-spacegroup-hist.pdf")
-fig.show()
+pmv.spacegroup_bar(df_diel[Key.spg_num]).show()
 
 
 # %%
