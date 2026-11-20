@@ -252,7 +252,9 @@ def test_ase_stress_transfer(
 
     widget = TrajectoryWidget()
     monkeypatch.setattr(
-        widget, "_resolve_assets", lambda: ("matterviz-binary-v1 frame_stress", "")
+        widget,
+        "_resolve_assets",
+        lambda: ("matterviz-binary-v1 trajectory frame_stress", ""),
     )
     widget.trajectory = frames
     encoded = widget.trajectory
@@ -260,7 +262,9 @@ def test_ase_stress_transfer(
     assert wire.dtype == np.dtype("<f8")
     np.testing.assert_array_equal(wire, tensors.reshape(2, -1))
 
-    monkeypatch.setattr(widget, "_resolve_assets", lambda: ("matterviz-binary-v1", ""))
+    monkeypatch.setattr(
+        widget, "_resolve_assets", lambda: ("matterviz-binary-v1 trajectory", "")
+    )
     widget.trajectory = frames
     np.testing.assert_array_equal(
         [frame["metadata"]["stress"] for frame in widget.trajectory["frames"]], tensors
@@ -281,7 +285,9 @@ def test_partial_or_conflicting_stress_stays_json(
     atoms = Atoms("H")
     widget = TrajectoryWidget()
     monkeypatch.setattr(
-        widget, "_resolve_assets", lambda: ("matterviz-binary-v1 frame_stress", "")
+        widget,
+        "_resolve_assets",
+        lambda: ("matterviz-binary-v1 trajectory frame_stress", ""),
     )
     widget.trajectory = [
         {"structure": atoms, "stress": [1] * 6},
