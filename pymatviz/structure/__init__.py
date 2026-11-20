@@ -1,4 +1,4 @@
-"""2D and 3D plots of Structures."""
+"""Interactive 3D plots of crystal structures."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from typing import Final
 from pymatgen.core import IStructure, Lattice
 from pymatgen.core.periodic_table import DummySpecies
 
-from pymatviz.structure.figures import structure_2d, structure_3d
+from pymatviz.structure.figures import structure_3d
 
 
 """Disordered structures for testing and examples."""

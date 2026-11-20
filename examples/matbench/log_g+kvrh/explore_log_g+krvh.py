@@ -153,11 +153,10 @@ fig.show()
 
 
 # %%
-fig = pmv.spacegroup_sunburst(df_grvh[Key.spg_num], show_counts="percent")
-title = "Spacegroup sunburst of the Matbench bulk/shear modulus datasets"
-fig.layout.title.update(text=title, x=0.5)
-# pmv.save_fig(fig, "gvrh-spacegroup-sunburst.pdf")
-fig.show()
+# Spacegroup sunburst of the Matbench bulk/shear modulus datasets
+widget = pmv.spacegroup_sunburst(df_grvh[Key.spg_num], label_text="label+percent")
+# widget.to_img("gvrh-spacegroup-sunburst.pdf")
+widget.show()
 
 
 # %%

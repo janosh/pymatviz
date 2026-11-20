@@ -596,13 +596,11 @@ sys.modules["moyopy.interface"] = None
 import pymatviz as pmv
 from pymatgen.core import IStructure, Lattice, Structure
 from pymatviz.process_data import normalize_spacegroups
-from pymatviz.structure.helpers import get_subplot_title
 
 structure = Structure(Lattice.cubic(3), ["Si"], [[0, 0, 0]])
 immutable = IStructure.from_sites(structure)
 assert normalize_spacegroups([structure, immutable]).tolist() == [221, 221]
-assert get_subplot_title(immutable, 0, 1, None)["text"] == "1. Si1 (spg=221)"
-assert "221" in pmv.spacegroup_sunburst([structure]).data[0].labels
+assert pmv.spacegroup_sunburst([immutable]).data[0]["children"][0]["label"] == "221"
 pmv.StructureWidget(structure=structure.as_dict())
 """,
         ],
