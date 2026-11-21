@@ -6,7 +6,7 @@ from typing import Any
 
 import traitlets as tl
 
-from pymatviz.widgets._traits import optional_trait
+from pymatviz.widgets._traits import CAMERA_PROJECTIONS, optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -50,7 +50,7 @@ class BrillouinZoneWidget(MatterVizWidget):
     show_ibz = optional_trait(tl.Bool)
     ibz_color = optional_trait(tl.Unicode)
     ibz_opacity = optional_trait(tl.Float)
-    camera_projection = optional_trait(tl.Unicode)
+    camera_projection = optional_trait(tl.CaselessStrEnum, values=CAMERA_PROJECTIONS)
 
     def __init__(
         self,

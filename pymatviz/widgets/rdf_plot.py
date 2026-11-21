@@ -27,7 +27,9 @@ class RdfPlotWidget(PlotControlsTraits, MatterVizWidget):
 
     patterns = tl.Any(allow_none=True).tag(sync=True)
     structures = tl.Any(allow_none=True).tag(sync=True)
-    mode = tl.Unicode(default_value="element_pairs").tag(sync=True)
+    mode = tl.CaselessStrEnum(
+        ["element_pairs", "full"], default_value="element_pairs"
+    ).tag(sync=True)
     show_reference_line = tl.Bool(default_value=True).tag(sync=True)
     cutoff = tl.Float(default_value=15).tag(sync=True)
     n_bins = tl.Int(default_value=75).tag(sync=True)

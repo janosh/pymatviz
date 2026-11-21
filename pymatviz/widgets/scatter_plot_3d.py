@@ -9,6 +9,7 @@ import traitlets as tl
 from pymatviz.widgets._binary import is_binary_envelope, plot_series_envelope
 from pymatviz.widgets._normalize import normalize_json_kwargs, normalize_plot_json
 from pymatviz.widgets._traits import (
+    CAMERA_PROJECTIONS,
     PlotControlsTraits,
     color_scale_trait,
     optional_trait,
@@ -39,7 +40,9 @@ class ScatterPlot3DWidget(PlotControlsTraits, MatterVizWidget):
     size_scale = optional_trait(tl.Dict)
     legend = optional_trait(tl.Dict)
     show_legend = optional_trait(tl.Bool)
-    camera_projection = tl.Unicode(default_value="perspective").tag(sync=True)
+    camera_projection = tl.CaselessStrEnum(
+        CAMERA_PROJECTIONS, default_value="perspective"
+    ).tag(sync=True)
     # matterviz InstanceTween {duration, easing, ...} animating point changes
     point_tween = optional_trait(tl.Dict)
 

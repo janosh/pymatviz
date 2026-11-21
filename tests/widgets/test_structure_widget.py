@@ -66,7 +66,7 @@ def test_widget_invalid_structure_handling(invalid_structure: Any) -> None:
     ("property_name", "test_values"),
     [
         ("atom_radius", [1.0, 1.5, 2.0]),
-        ("show_bonds", [True, False]),
+        ("show_bonds", ["always", "never", "crystals"]),
         ("color_scheme", ["Jmol", "Vesta", "Dark Mode"]),
         ("style", [None, "width: 400px; height: 600px", "width: 600px; height: 800px"]),
         ("show_controls", [True, False]),

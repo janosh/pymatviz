@@ -7,7 +7,12 @@ from typing import Any
 import traitlets as tl
 
 from pymatviz.widgets._normalize import _to_dict
-from pymatviz.widgets._traits import PlotControlsTraits, optional_trait
+from pymatviz.widgets._traits import (
+    DOS_NORMALIZATIONS,
+    DOS_SPIN_MODES,
+    PlotControlsTraits,
+    optional_trait,
+)
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -27,7 +32,7 @@ class DosWidget(PlotControlsTraits, MatterVizWidget):
         >>> widget = DosWidget(
         ...     doses={"PBE": dos_pbe, "HSE": dos_hse},
         ...     sigma=0.05,
-        ...     spin_mode="combined",
+        ...     spin_mode="overlay",
         ...     style="height: 500px;",
         ... )
     """
@@ -41,10 +46,10 @@ class DosWidget(PlotControlsTraits, MatterVizWidget):
     # frequencies), eV for electronic DOS. matterviz reads sigma in the data unit
     # whatever frequency unit the plot displays.
     sigma = optional_trait(tl.Float, min=0.0)
-    normalize = optional_trait(tl.Unicode)
-    orientation = optional_trait(tl.Unicode)
+    normalize = optional_trait(tl.CaselessStrEnum, values=DOS_NORMALIZATIONS)
+    orientation = optional_trait(tl.CaselessStrEnum, values=["vertical", "horizontal"])
     show_legend = optional_trait(tl.Bool)
-    spin_mode = optional_trait(tl.Unicode)
+    spin_mode = optional_trait(tl.CaselessStrEnum, values=DOS_SPIN_MODES)
 
     def __init__(self, doses: Any | None = None, **kwargs: Any) -> None:
         """Initialize the DosWidget.

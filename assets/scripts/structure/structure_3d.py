@@ -19,7 +19,7 @@ supercells = {
     key: struct.make_supercell(2, in_place=False)
     for key, struct in df_phonons[Key.structure].head(6).items()
 }
-display(pmv.structure_3d(supercells, show_bonds=True, color_scheme="Jmol"))
+display(pmv.structure_3d(supercells, show_bonds="always", color_scheme="Jmol"))
 
 
 # %% BaTiO3 = https://materialsproject.org/materials/mp-5020
@@ -29,7 +29,9 @@ batio3 = Structure(
     coords=[(0, 0, 0), (0.5, 0.5, 0.5), (0.5, 0.5, 0), (0.5, 0, 0.5), (0, 0.5, 0.5)],
 )
 batio3.add_oxidation_state_by_element({"Ba": 2, "Ti": 4, "O": -2})
-widget = pmv.StructureWidget(structure=batio3, show_bonds=True, cell_edge_color="white")
+widget = pmv.StructureWidget(
+    structure=batio3, show_bonds="always", cell_edge_color="white"
+)
 display(widget)
 widget.to_img(f"{pmv.ROOT}/assets/png/batio3-structure-3d.png", width=500)
 

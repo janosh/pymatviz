@@ -660,7 +660,9 @@ def test_init_marimo_assets(
     ):
         widget = matterviz.MatterVizWidget()
 
-    remote_js, remote_css = matterviz._bundle_sources("main")
+    remote_js, remote_css = matterviz._bundle_sources(
+        matterviz.MATTERVIZ_ANYWIDGET_VERSION
+    )
     expected = {"virtual": virtual_url, "text": "/* js */", "remote": remote_js}
     assert widget._esm == expected[expected_esm]
     assert widget._css == ("/* css */" if local else remote_css)

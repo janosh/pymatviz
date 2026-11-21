@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 # Bundle matching the Python traits (test_js_prop_parity.py). "main" tracks
 # matterviz main's bundle on its docs site; releases must pin a published npm
 # version (fetched from jsDelivr) so installed wheels keep a fixed frontend.
-MATTERVIZ_ANYWIDGET_VERSION = "main"
+MATTERVIZ_ANYWIDGET_VERSION = "0.10.0"
 _ANYWIDGET_CDN = "https://cdn.jsdelivr.net/npm/matterviz-anywidget"
 # matterviz's gh-pages workflow deploys main's bundle here on every push to main
 _ANYWIDGET_MAIN_URL = "https://matterviz.janosh.dev/anywidget"
@@ -218,7 +218,8 @@ def configure_assets(
 
 def fetch_widget_asset(filename: str, version_override: str | None = None) -> str:
     """Fetch a widget asset (``matterviz.js``/``matterviz.css``, or the bundle's
-    ``widget-model-keys.json`` trait contract) as source text.
+    ``widget-model-keys.json``/``widget-model-schema.json`` trait contract) as
+    source text.
 
     The bundle lives in the ``matterviz-anywidget`` npm package (built from
     ``matterviz/extensions/anywidget``); this repo no longer builds it. Resolution

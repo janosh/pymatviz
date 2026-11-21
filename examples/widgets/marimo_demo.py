@@ -123,7 +123,7 @@ def _(Lattice, Structure, pmv):
             [2 / 3, 1 / 3, 0.875],
         ],
     )
-    pmv.StructureWidget(structure=_struct, show_bonds=True, style="height: 400px;")
+    pmv.StructureWidget(structure=_struct, show_bonds="always", style="height: 400px;")
     return (_struct,)
 
 
@@ -156,7 +156,7 @@ def _(_struct, pmv):
     )
     pmv.StructureWidget(
         structure=_struct_multi_vec,
-        show_bonds=True,
+        show_bonds="always",
         vector_configs={
             "force_DFT": {"color": "#e74c3c"},
             "force_MLFF": {"color": "#3498db"},
@@ -454,7 +454,7 @@ def _(matterviz_traj_dir_url, pmv):
         display_mode="structure+plot",
         vector_scale=0.5,
         vector_color="#ff4444",
-        show_bonds=True,
+        show_bonds="always",
         bonding_strategy="electroneg_ratio",
         style="height: 600px;",
     )
@@ -517,7 +517,7 @@ def _(iso_settings, matterviz_iso_dir_url, pmv):
     pmv.StructureWidget(
         data_url=f"{matterviz_iso_dir_url}/caffeine-HOMO.cube.gz",
         isosurface_settings=iso_settings("scalar", 0.02, 0.7, show_negative=True),
-        show_bonds=True,
+        show_bonds="always",
         style="height: 500px;",
     )
 

@@ -41,7 +41,12 @@ class BinnedScatterPlotWidget(MatterVizWidget):
     # True/"histogram"/"kde"/"cdf"/"rug" or a per-side {top, right, ...} map of those
     # or MarginalConfig dicts
     marginals = optional_trait(
-        tl.Union, trait_types=[tl.Bool(), tl.Unicode(), tl.Dict()]
+        tl.Union,
+        trait_types=[
+            tl.Bool(),
+            tl.CaselessStrEnum(["histogram", "kde", "cdf", "rug"]),
+            tl.Dict(),
+        ],
     )
     annotation = optional_trait(tl.Unicode)  # text badge auto-placed in free space
     fullscreen_toggle = optional_trait(tl.Bool)

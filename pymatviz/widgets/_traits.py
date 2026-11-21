@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
 import traitlets as tl
@@ -14,7 +13,23 @@ from pymatviz.widgets._normalize import normalize_plot_json
 # BONDING_STRATEGIES (src/lib/structure/bonding.ts). The renderer throws on any other
 # name, so traits validate against these (case-insensitively, stored canonical).
 ELEMENT_COLOR_SCHEMES = ("Vesta", "Jmol", "Alloy", "Pastel", "Muted", "Dark Mode")
-BONDING_STRATEGIES = ("electroneg_ratio", "explicit_only")
+BONDING_STRATEGIES = ("electroneg_ratio", "explicit_only", "pair_cutoffs")
+# Mirror matterviz's SHOW_BONDS_OPTIONS and CameraProjection (src/lib/settings.ts),
+# the Dos NormalizationMode and SpinMode (src/lib/spectral/types.ts)
+SHOW_BONDS_MODES = ("always", "crystals", "molecules", "never")
+CAMERA_PROJECTIONS = ("perspective", "orthographic")
+DOS_NORMALIZATIONS = ("max", "sum", "integral")
+DOS_SPIN_MODES = ("mirror", "overlay", "up_only", "down_only")
+# Mirror matterviz's D3InterpolateName (src/lib/colors/scale-names.ts): the
+# d3-scale-chromatic interpolators, e.g. "interpolateViridis" (not plain "viridis")
+_D3_NAMES = (
+    "Blues", "BrBG", "BuGn", "BuPu", "Cividis", "Cool", "CubehelixDefault", "GnBu",
+    "Greens", "Greys", "Inferno", "Magma", "OrRd", "Oranges", "PRGn", "PiYG",
+    "Plasma", "PuBu", "PuBuGn", "PuOr", "PuRd", "Purples", "Rainbow", "RdBu",
+    "RdGy", "RdPu", "RdYlBu", "RdYlGn", "Reds", "Sinebow", "Spectral", "Turbo",
+    "Viridis", "Warm", "YlGn", "YlGnBu", "YlOrBr", "YlOrRd",
+)  # fmt: skip
+D3_INTERPOLATORS = tuple(f"interpolate{name}" for name in _D3_NAMES)
 # Mirror matterviz's ExportFormat (src/lib/io/export.ts)
 EXPORT_FORMATS = ("png", "svg", "csv", "json", "md", "tex")
 CONTROLS_MODES = ("always", "hover", "never")  # svelte-widgets ControlsConfig.mode
@@ -32,19 +47,6 @@ def optional_trait(trait_cls: Any, **kwargs: Any) -> Any:
     return trait_cls(allow_none=True, default_value=None, **kwargs).tag(sync=True)
 
 
-class D3Interpolator(tl.Unicode):
-    """d3-scale-chromatic interpolator name; matterviz throws on any other string."""
-
-    info_text = "a d3 interpolator name like 'interpolateViridis'"
-
-    def validate(self, obj: Any, value: Any) -> str:
-        """Reject strings that aren't ``interpolate<Name>``, e.g. plain ``viridis``."""
-        value = super().validate(obj, value)
-        if not re.fullmatch(r"interpolate[A-Z]\w*", value):
-            self.error(obj, value)
-        return value
-
-
 def color_scale_trait() -> Any:
     """Synced matterviz ``ColorScale``: a d3 interpolator name or a config dict.
 
@@ -57,8 +59,8 @@ def color_scale_trait() -> Any:
     return optional_trait(
         tl.Union,
         trait_types=[
-            D3Interpolator(),
-            tl.Dict(per_key_traits={"scheme": D3Interpolator()}),
+            tl.CaselessStrEnum(D3_INTERPOLATORS),
+            tl.Dict(per_key_traits={"scheme": tl.CaselessStrEnum(D3_INTERPOLATORS)}),
         ],
     )
 
@@ -80,7 +82,8 @@ class StructureVizTraits(tl.HasTraits):
     # Atom visualization
     atom_radius = optional_trait(tl.Float)
     show_atoms = tl.Bool(default_value=True).tag(sync=True)
-    show_bonds = optional_trait(tl.Bool)
+    # None defers to the frontend default ("always")
+    show_bonds = optional_trait(tl.CaselessStrEnum, values=SHOW_BONDS_MODES)
     show_site_labels = optional_trait(tl.Bool)
     show_site_indices = optional_trait(tl.Bool)
     same_size_atoms = optional_trait(tl.Bool)

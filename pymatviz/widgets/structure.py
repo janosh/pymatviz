@@ -147,7 +147,7 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
         >>> widget = StructureWidget(
         ...     structure=structure_data,
         ...     atom_radius=0.8,
-        ...     show_bonds=True,
+        ...     show_bonds="always",
         ...     color_scheme="Jmol",
         ...     style="border-radius: 10px; width: 100%; height: 600px;",
         ... )
@@ -203,8 +203,9 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
     # Two-way synced isosurface view state (active volume id, structure/slice view,
     # plane). None selects the first volume.
     active_volume_id = optional_trait(tl.Unicode)
+    # "structure", "slice" (2D volume slice) or "split" (both side by side)
     display_mode = tl.CaselessStrEnum(
-        ["structure", "slice"], default_value="structure"
+        ["structure", "slice", "split"], default_value="structure"
     ).tag(sync=True)
     slice_settings = tl.Dict(default_value={}).tag(sync=True)
 

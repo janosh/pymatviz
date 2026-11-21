@@ -16,11 +16,11 @@ from tests.conftest import SI_ATOMS, SI_STRUCTS
 def test_structure_3d_single(fe3co4_disordered: IStructure) -> None:
     """A single structure gives one widget with every kwarg set as a trait."""
     widget = pmv.structure_3d(
-        fe3co4_disordered, show_bonds=True, color_scheme="jmol", style="height: 9em"
+        fe3co4_disordered, show_bonds="always", color_scheme="jmol", style="height: 9em"
     )
     assert isinstance(widget, StructureWidget)
     assert (widget.show_bonds, widget.color_scheme, widget.style) == (
-        True,
+        "always",
         "Jmol",
         "height: 9em",
     )
