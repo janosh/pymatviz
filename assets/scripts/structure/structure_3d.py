@@ -64,4 +64,4 @@ widget.to_img(f"{pmv.ROOT}/assets/png/lco-structure-3d.png", width=500)
 
 # %% Conventional standard cell of a structure with negative fractional coordinates
 shifted = Structure(Lattice.cubic(4), ["Fe", "O"], [[-0.1, 0, 0], [0.5, 0.5, 0.5]])
-display(pmv.structure_3d(shifted, standardize_struct=True, show_image_atoms=False))
+display(pmv.structure_3d(shifted, cell_type="conventional", show_image_atoms=False))

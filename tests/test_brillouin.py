@@ -37,11 +37,53 @@ def test_seekpath_primitive(pmg_struct: Structure) -> None:
         np.testing.assert_allclose(primitive.volume, FCC_CU.volume / 4, rtol=1e-12)
 
 
+def test_seekpath_primitive_disordered_sites() -> None:
+    """Sites with different partial occupancies but one majority element stay
+    inequivalent, so no spurious body-centering halves the cell.
+    """
+    species = [{"Fe": 0.75, "Co": 0.25}, {"Fe": 0.75, "Ni": 0.25}]
+    struct = Structure(Lattice.cubic(3), species, [[0, 0, 0], [0.5, 0.5, 0.5]])
+    primitive = seekpath_primitive(struct)
+    assert sorted(str(site.species) for site in primitive) == sorted(
+        str(site.species) for site in struct
+    )
+    np.testing.assert_allclose(primitive.volume, struct.volume, rtol=1e-12)
+
+
+@pytest.mark.parametrize(
+    ("oxi_states", "expected_species"),
+    [({"Cu": 2}, ["Cu2+"]), ([1, 2, 1, 2], ["Cu"])],  # uniform vs mixed valence
+)
+def test_seekpath_primitive_oxidation_states(
+    oxi_states: dict[str, float] | list[float], expected_species: list[str]
+) -> None:
+    """Oxidation states don't split symmetry types: decorated fcc Cu reduces to the
+    same 1-atom primitive cell as undecorated, keeping uniform oxidation states.
+    """
+    struct = FCC_CU.copy()
+    if isinstance(oxi_states, dict):
+        struct.add_oxidation_state_by_element(oxi_states)
+    else:
+        struct.add_oxidation_state_by_site(oxi_states)
+    primitive = seekpath_primitive(struct)
+    np.testing.assert_allclose(
+        primitive.lattice.matrix,
+        seekpath_primitive(FCC_CU).lattice.matrix,
+        rtol=0,
+        atol=1e-12,
+    )
+    assert [str(site.species) for site in primitive] == [
+        f"{spec}1" for spec in expected_species
+    ]
+
+
 def test_brillouin_zone_3d_single() -> None:
     """A single structure returns one widget showing its primitive cell's zone."""
     widget = brillouin_zone_3d(FCC_CU, show_vectors=True, surface_opacity=0.4)
     assert isinstance(widget, BrillouinZoneWidget)
     assert (widget.show_vectors, widget.surface_opacity) == (True, 0.4)
+    # the high-symmetry path the plotly plot drew comes from MatterViz by default
+    assert (widget.default_k_path, widget.k_path) == (True, None)
     np.testing.assert_allclose(
         widget.structure["lattice"]["matrix"],
         seekpath_primitive(FCC_CU).lattice.matrix,

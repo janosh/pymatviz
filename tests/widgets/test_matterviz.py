@@ -147,6 +147,10 @@ def test_bundle_sources_split_remote_js(
         f"{tmp_path}/matterviz.js",
         f"{tmp_path}/matterviz.css",
     )
+    # a dev dir without the bundle (typo, unbuilt) fails instead of using the CDN
+    monkeypatch.setenv("MATTERVIZ_ANYWIDGET_DIR", str(tmp_path / "missing"))
+    with pytest.raises(FileNotFoundError, match="MATTERVIZ_ANYWIDGET_DIR has no"):
+        matterviz._bundle_sources(version)
 
 
 @pytest.mark.parametrize(
@@ -318,8 +322,8 @@ def test_configure_assets_with_version() -> None:
 
 @pytest.mark.usefixtures("_clean_asset_cache")
 def test_to_html_references_configured_version() -> None:
-    """to_html(inline=False) points JS at the configured version's CDN URL and
-    fetches only its CSS (not the ~6 MB JS).
+    """to_html(inline=False) points JS and CSS at the configured version's CDN
+    URLs and downloads neither.
 
     Guards against pairing the pinned-default JS with custom-version CSS.
     """
@@ -328,10 +332,13 @@ def test_to_html_references_configured_version() -> None:
         configure_assets(version="0.10.6")
         html = matterviz.MatterVizWidget().to_html(inline=False)
 
-    mock_fetch.assert_called_once_with("matterviz.css", "0.10.6")
+    mock_fetch.assert_not_called()
     assert "matterviz-anywidget@0.10.6/build/split/matterviz.js" in html  # configured
     assert f"@{matterviz.MATTERVIZ_ANYWIDGET_VERSION}/" not in html  # not pinned
-    assert "/* matterviz.css@0.10.6 */" in html  # configured CSS inlined -> matches JS
+    assert (
+        'href="https://cdn.jsdelivr.net/npm/matterviz-anywidget@0.10.6/build/matterviz.css"'
+        in html
+    )
 
 
 @pytest.mark.parametrize("explicit_css", [True, False], ids=["css_src", "derived"])
@@ -614,21 +621,9 @@ def test_marimo_esm_url_returns_none_without_virtual_files() -> None:
     mods["marimo._output.data.data"].js.assert_not_called()
 
 
-def test_marimo_esm_url_returns_none_for_non_virtual_file() -> None:
-    """Returns None when js() returns a non-./@file/ URL (e.g. data URL)."""
-    mods = _mock_marimo_modules(vfile_url="data:text/javascript;base64,abc")
-    with patch.dict("sys.modules", mods):
-        assert _marimo_esm_url("code") is None
-
-
-@pytest.mark.parametrize(
-    "request_val",
-    [None, MagicMock(base_url="not-a-dict"), MagicMock(base_url={"scheme": 123})],
-    ids=["no_request", "base_url_not_dict", "scheme_not_str"],
-)
-def test_marimo_esm_url_falls_back_to_relative(request_val: Any) -> None:
-    """Falls back to relative ./@file/ URL when request context is unavailable."""
-    mods = _mock_marimo_modules(request=request_val)
+def test_marimo_esm_url_relative_without_request() -> None:
+    """Returns the relative ./@file/ URL when marimo has no request context."""
+    mods = _mock_marimo_modules(request=None)
     with patch.dict("sys.modules", mods):
         assert _marimo_esm_url("code") == "./@file/12345-abc.js"
 

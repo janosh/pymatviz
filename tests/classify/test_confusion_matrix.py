@@ -62,6 +62,26 @@ def test_confusion_matrix_metrics(
     """Requested metrics with their formats are appended to the x-axis title."""
     widget = confusion_matrix(sample_conf_mat, x_labels=("N", "P"), metrics=metrics)
     assert widget.x_axis == {"label": expected_title}
+    # rows in another class order are aligned for metrics, not for display
+    flipped = confusion_matrix(
+        sample_conf_mat[::-1], x_labels=("N", "P"), y_labels=("P", "N"), metrics=metrics
+    )
+    assert flipped.x_axis == {"label": expected_title}
+    assert flipped.values == widget.values[::-1]
+    # disjoint axis names (no shared class) are aligned by position
+    named = confusion_matrix(
+        sample_conf_mat,
+        x_labels=("Pred N", "Pred P"),
+        y_labels=("True N", "True P"),
+        metrics=metrics,
+    )
+    assert named.x_axis == {"label": expected_title}
+    assert named.values == widget.values
+    # int64 counts whose MCC denominator product overflows (2**64)
+    big = confusion_matrix(
+        np.eye(2, dtype=np.int64) * 65_536, x_labels=("N", "P"), metrics=("MCC",)
+    )
+    assert big.x_axis == {"label": "Predicted (MCC=100.0%)"}
 
 
 def test_confusion_matrix_multi_class() -> None:
@@ -95,6 +115,10 @@ def test_confusion_matrix_multi_class() -> None:
         (
             {"y_true": [0, 1], "y_pred": [1, 1], "y_labels": ("1", "0")},
             "y_labels must equal",
+        ),
+        (
+            {"conf_mat": np.eye(2), "x_labels": ("A", "B"), "y_labels": ("A", "C")},
+            "metrics need x_labels and y_labels to name the same classes",
         ),
         (
             {"y_true": [0, "a"], "y_pred": ["a", 0]},

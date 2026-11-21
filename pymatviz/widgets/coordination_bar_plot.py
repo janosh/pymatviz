@@ -34,7 +34,7 @@ class CoordinationBarPlotWidget(PlotControlsTraits, MatterVizWidget):
         >>> CoordinationBarPlotWidget({"NaCl": nacl}, split_mode="by_element")
     """
 
-    # {label: structure dict} (or a list of structure dicts)
+    # a structure dict or {label: structure dict}
     structures = tl.Any(allow_none=True).tag(sync=True)
     strategy = optional_trait(tl.CaselessStrEnum, values=BONDING_STRATEGIES)
     split_mode = optional_trait(
@@ -53,11 +53,10 @@ class CoordinationBarPlotWidget(PlotControlsTraits, MatterVizWidget):
     y_axis = optional_trait(tl.Dict)
 
     @tl.validate("structures")
-    def _validate_structures(
-        self, proposal: dict[str, Any]
-    ) -> dict[str, dict[str, Any] | None] | list[dict[str, Any] | None] | None:
-        """Convert structures to the ``{label: dict}`` or list form MatterViz takes,
-        on construction and on later assignment.
+    def _validate_structures(self, proposal: dict[str, Any]) -> dict[str, Any] | None:
+        """Convert structures to the bare structure dict or ``{label: dict}`` form
+        MatterViz takes (sequences labeled ``Structure 1``, ...), on construction and
+        on later assignment.
         """
         structures = proposal["value"]
         if structures is None:
@@ -69,8 +68,11 @@ class CoordinationBarPlotWidget(PlotControlsTraits, MatterVizWidget):
                     str(key): structure_to_dict(val) for key, val in structures.items()
                 }
             if isinstance(structures, (list, tuple)):
-                return [structure_to_dict(struct) for struct in structures]
-            return [structure_to_dict(structures)]
+                return {
+                    f"Structure {idx}": structure_to_dict(struct)
+                    for idx, struct in enumerate(structures, start=1)
+                }
+            return structure_to_dict(structures)
         except TypeError as exc:
             raise tl.TraitError(str(exc)) from exc
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import math
 import re
 import subprocess
 import sys
@@ -56,6 +57,25 @@ def test_count_elements(
     series = pmv_pd.count_elements(inputs, count_mode=count_mode)
     expected = pd.Series(counts, index=pmv.df_ptable.index, name="count")
     pd.testing.assert_series_equal(series, expected, check_dtype=False)
+
+
+@pytest.mark.parametrize(
+    "count_mode",
+    [ElemCountMode.composition, ElemCountMode.fractional_composition],
+)
+def test_count_elements_exact_sums(count_mode: ElemCountMode) -> None:
+    """Element sums over many formulas are exactly rounded (math.fsum)."""
+    formulas = ["LiFePO4", "Ba0.5Sr0.5TiO3", "Fe2O3", "NaCl"] * 251
+    attr = "element_composition" if count_mode == "composition" else count_mode
+    amounts: dict[str, list[float]] = {}
+    for formula in formulas:
+        for elem, amt in getattr(Composition(formula), attr).as_dict().items():
+            amounts.setdefault(elem, []).append(amt)
+    expected = {elem: math.fsum(vals) for elem, vals in amounts.items()}
+    counts = pmv_pd.count_elements(formulas, count_mode=count_mode)
+    assert counts.dropna().to_dict() == expected
+    assert counts.dtype == float
+    assert counts.index.equals(pmv.df_ptable.index)
 
 
 @pytest.mark.parametrize("index_type", [int, float, str])
@@ -472,6 +492,7 @@ def test_bin_df_cols(
     density_col: str,
     expected_n_rows: int,
     df_float: pd.DataFrame,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     idx_col = "index"
     # don't move this below df_float.copy() line
@@ -483,16 +504,19 @@ def test_bin_df_cols(
     df_float_orig = copy.deepcopy(df_float)
 
     bin_counts_col = "bin_counts"
+    capsys.readouterr()
     df_binned = pmv_pd.bin_df_cols(
         df_float,
         bin_by_cols,
         group_by_cols=group_by_cols,
         n_bins=n_bins,
-        verbose=verbose,
+        **({"verbose": True} if verbose else {}),  # quiet by default
         bin_counts_col=bin_counts_col,
         density_col=density_col,
     )
 
+    stdout = capsys.readouterr().out
+    assert ("sample reduction from binning" in stdout) is verbose
     assert len(df_binned) == expected_n_rows, f"{len(df_binned)=} {expected_n_rows=}"
     assert len(df_binned) <= len(df_float), f"{len(df_binned)=} {len(df_float)=}"
     assert df_binned.index.name == idx_col
@@ -544,6 +568,12 @@ def test_bin_df_cols_raises() -> None:
         (pd.Series([225, 1, 62], dtype="Float64"), [225, 1, 62]),
         (pd.Series([1, 225, 167]), [1, 225, 167]),
         (["Fm-3m", "P1", "Pnma"], [225, 1, 62]),  # Hermann-Mauguin symbols -> numbers
+        # full, spaced and spaceless symbols from the lookup table (pymatgen rejects
+        # "P4/m2_1/nc") plus looser spellings only pymatgen parses, repeated
+        (
+            ["P 1 2_1/c 1", "P4/m2_1/nc", "P2_1/c", "R-3m:H", "P2_1/c", "F m -3 m"],
+            [14, 128, 14, 166, 14, 225],
+        ),
     ],
 )
 @pytest.mark.parametrize("as_series", [False, True])
@@ -619,6 +649,8 @@ def test_normalize_spacegroups_invalid_number_raises(
     data = [1, invalid_val, 225]
     if as_nullable_series:
         data = pd.Series(data, dtype="Float64")
+    elif not pd.isna(invalid_val):  # object dtype must not truncate 2.5 to 2
+        data = pd.Series(data, dtype=object)
     match = "missing values" if pd.isna(invalid_val) else r"must be in \[1, 230\]"
     with pytest.raises(ValueError, match=match):
         pmv_pd.normalize_spacegroups(data)
@@ -629,6 +661,7 @@ def test_normalize_spacegroups_invalid_number_raises(
     [
         ([], "Cannot normalize empty spacegroup data"),
         (["Fm-3m", "InvalidSymbol", "P1"], "InvalidSymbol"),
+        (["P2_1/c", "Fm-3m", "P1_bad"], "P1_bad"),
     ],
 )
 def test_normalize_spacegroups_raises(data: list[str], match: str) -> None:
@@ -701,12 +734,15 @@ def test_sankey_flow_data_labels_match_flows_with_nan(
         ([("A",)], ["B"], ["('A',): 1", "B: 1"]),
     ],
 )
+@pytest.mark.parametrize("cols", [["src", "tgt"], ["count", "tgt"]])
 def test_sankey_flow_data_keeps_column_values(
-    source: list[Any], target: list[Any], expected_labels: list[str]
+    source: list[Any], target: list[Any], expected_labels: list[str], cols: list[str]
 ) -> None:
-    """Node values keep each column's own type instead of a shared dtype."""
-    df_flows = pd.DataFrame({"src": source, "tgt": target})
-    nodes = pmv_pd.sankey_flow_data(df_flows, ["src", "tgt"])["nodes"]
+    """Node values keep each column's own type instead of a shared dtype, also for
+    a column named like value_counts' "count" result.
+    """
+    df_flows = pd.DataFrame(dict(zip(cols, (source, target), strict=True)))
+    nodes = pmv_pd.sankey_flow_data(df_flows, cols)["nodes"]
     assert [node["label"] for node in nodes] == expected_labels
 
 

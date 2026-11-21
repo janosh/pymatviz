@@ -43,7 +43,7 @@ class BarPlotWidget(CartesianPlotTraits, MatterVizWidget):
 
     @tl.validate("series")
     def _validate_series(self, proposal: dict[str, Any]) -> list[dict[str, Any]] | None:
-        """Normalize replacement series like the constructor (arrays to lists, reject
+        """Normalize series on init and reassignment (arrays to lists, reject
         non-finite values) before syncing.
         """
         try:
@@ -66,8 +66,4 @@ class BarPlotWidget(CartesianPlotTraits, MatterVizWidget):
         """
         json_keys = (*self._JSON_KWARGS, "bar", "line", "color_scale", "size_scale")
         normalize_json_kwargs(kwargs, json_keys, "BarPlot")
-        super().__init__(
-            widget_type="bar_plot",
-            series=normalize_plot_series(series, component_name="BarPlot"),
-            **kwargs,
-        )
+        super().__init__(widget_type="bar_plot", series=series, **kwargs)

@@ -470,8 +470,10 @@ def cluster_compositions(
             raise TypeError(f"Invalid sort parameter type: {type(sort).__name__}")
 
     def finite_or_none(value: Any) -> Any:
-        """JSON-safe point values: non-finite floats as None."""
-        if isinstance(value, float | np.floating) and not math.isfinite(value):
+        """JSON-safe point values: non-finite floats and missing markers as None."""
+        if value is pd.NA or (
+            isinstance(value, float | np.floating) and not math.isfinite(value)
+        ):
             return None
         return value.item() if isinstance(value, np.generic) else value
 

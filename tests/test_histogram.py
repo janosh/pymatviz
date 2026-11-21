@@ -107,6 +107,16 @@ def test_histogram_dict_shares_bin_edges() -> None:
     assert widget.series[1]["y"] == [0, 0, 0, 0, 2]
     assert widget.show_legend is True
     assert widget.mode == "grouped"  # kwargs override defaults
+    density = histogram({"a": [0, 1], "b": [9, 10]}, bins=5, density=True)
+    for srs, vals in zip(density.series, ([0, 1], [9, 10]), strict=True):
+        expected = np.histogram(vals, bins=np.linspace(0, 10, 6), density=True)[0]
+        np.testing.assert_allclose(srs["y"], expected, rtol=1e-15, atol=0)
+    # a series without values in x_range has zero counts but no defined density
+    in_out: dict[str, list[float]] = {"inside": [0.25], "outside": [10.0]}
+    counts = histogram(in_out, bins=2, x_range=(0, 1))
+    assert [srs["y"] for srs in counts.series] == [[1, 0], [0, 0]]
+    with pytest.raises(ValueError, match=r"undefined for series \['outside'\]"):
+        histogram(in_out, bins=2, x_range=(0, 1), density=True)
 
 
 @pytest.mark.parametrize(

@@ -105,11 +105,16 @@ def test_sankey_data() -> None:
 
 
 def test_coordination_structure_inputs(si_struct: Structure) -> None:
-    """Single, list, dict and dict-of-dict structure inputs all reach JS as dicts."""
+    """Single structures reach JS as a bare structure dict, sequences and mappings
+    as {label: dict}, the entry forms MatterViz's to_structure_entries reads.
+    """
     as_dict = si_struct.as_dict()
-    assert CoordinationBarPlotWidget(si_struct).structures == [as_dict]
-    assert CoordinationBarPlotWidget(as_dict).structures == [as_dict]
-    assert CoordinationBarPlotWidget([si_struct, as_dict]).structures == [as_dict] * 2
+    assert CoordinationBarPlotWidget(si_struct).structures == as_dict
+    assert CoordinationBarPlotWidget(as_dict).structures == as_dict
+    assert CoordinationBarPlotWidget([si_struct, as_dict]).structures == {
+        "Structure 1": as_dict,
+        "Structure 2": as_dict,
+    }
     widget = CoordinationBarPlotWidget({1: si_struct}, strategy="explicit_only")
     assert widget.structures == {"1": as_dict}
     assert widget.strategy == "explicit_only"
@@ -119,6 +124,6 @@ def test_coordination_structure_inputs(si_struct: Structure) -> None:
     with pytest.raises(tl.TraitError):
         widget.split_mode = "by_structure_and_element"
     widget.structures = si_struct  # assignment converts too, keeping JSON syncable
-    assert widget.structures == [as_dict]
+    assert widget.structures == as_dict
     with pytest.raises(tl.TraitError, match="structure must be"):
         CoordinationBarPlotWidget(["not a structure"])

@@ -94,25 +94,30 @@ def _classifier_series(
         df (pd.DataFrame | None): Optional DataFrame holding both columns.
         build_series (Callable): Given (name, targets_no_nan, probs_no_nan), returns
             the series dict (x, y, label, metadata) and the score to sort by.
-        required_classes (tuple[float, ...]): Target classes each classifier's
-            non-NaN rows must contain for its curve to be defined.
+        required_classes (tuple[float, ...]): Classes (0 negative, 1 positive) each
+            classifier's non-NaN rows must contain for its curve to be defined.
 
     Raises:
-        ValueError: If a classifier's targets lack any of required_classes.
+        ValueError: If targets hold more than 2 classes or a classifier's targets
+            lack any of required_classes.
     """
     targets, curves_dict = _standardize_input(targets, probs_positive, df)
     targets = np.asarray(targets, dtype=float)
+    if (n_classes := len(np.unique(targets[~np.isnan(targets)]))) > 2:
+        raise ValueError(f"targets must be binary, got {n_classes} classes")
+    # 1 is the positive class, the other (e.g. 0 or -1) negative, NaN stays NaN
+    targets = np.where(np.isnan(targets), np.nan, targets == 1)
     scored_series = []
     for idx, (name, curve_cfg) in enumerate(curves_dict.items()):
         series_kwargs = dict(curve_cfg)  # don't mutate caller-supplied dicts
         curve_probs = np.asarray(series_kwargs.pop("probs_positive"), dtype=float)
         no_nan = ~np.isnan(targets) & ~np.isnan(curve_probs)
         present = set(np.unique(targets[no_nan]).tolist())
-        if missing := sorted(set(required_classes) - present):
+        if missing := [f"{cls:g}" for cls in required_classes if cls not in present]:
             raise ValueError(
                 f"Classifier {name or 'probs_positive'!r} has no targets of class "
-                f"{missing} (after dropping NaN rows, got classes {sorted(present)}), "
-                "so its curve is undefined"
+                f"{' and '.join(missing)} (after dropping NaN rows, got classes "
+                f"{sorted(present)}), so its curve is undefined"
             )
         series, score = build_series(name, targets[no_nan], curve_probs[no_nan])
         # undefined rates (e.g. FPR without negative samples) are NaN: not plottable

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from collections.abc import Mapping
 from operator import index
 from typing import Any
@@ -36,14 +37,17 @@ def spacegroup_counts(data: Any) -> dict[str, int]:
             raise TypeError(f"Space group counts must be integers, got {data}") from exc
         if (counts < 0).any():
             raise ValueError(f"Space group counts must be non-negative, got {data}")
-        # keys one by one: they may mix numbers, symbols and (as synced) digit strings
-        numbers = np.array(
-            [
-                normalize_spacegroups([int(key) if str(key).isdigit() else key]).iloc[0]
-                for key in data
-            ],
-            dtype=int,
-        )
+        # keys may mix numbers, symbols and (as synced) digit strings, so normalize
+        # them in one batch per key type
+        keys = [int(key) if str(key).isdigit() else key for key in data]
+        positions_by_type: defaultdict[type, list[int]] = defaultdict(list)
+        for pos, key in enumerate(keys):
+            positions_by_type[type(key)].append(pos)
+        numbers = np.empty(len(keys), dtype=int)
+        for positions in positions_by_type.values():
+            numbers[positions] = normalize_spacegroups(
+                [keys[pos] for pos in positions]
+            ).to_numpy(dtype=int)
     else:
         # object-dtype inputs (e.g. structure-derived columns) stay object after
         # normalizing, which bincount rejects

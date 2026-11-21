@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import subprocess
+import sys
 from typing import Any
 
 import pytest
-from pymatgen.core import Lattice, Structure
+from pymatgen.core import Structure
 
 import pymatviz as pmv
 from pymatviz import notebook
@@ -31,136 +33,94 @@ def test_objects(
     }
 
 
-@pytest.mark.parametrize("enable", [True, False])
-def test_notebook_mode_toggle(enable: bool) -> None:
-    """Test enabling and disabling notebook integration."""
-    pmv.notebook_mode(on=not enable)
-    pmv.notebook_mode(on=enable)
+WIDGET_MIME = "application/vnd.jupyter.widget-view+json"
 
-    assert hasattr(Structure, "_ipython_display_") == enable
-    assert hasattr(Structure, "_repr_mimebundle_") == enable
 
-    if enable:
-        assert callable(Structure._ipython_display_)  # ty: ignore[missing-attribute]
-        assert callable(Structure._repr_mimebundle_)  # ty: ignore[missing-attribute]
+@pytest.fixture
+def shell() -> Any:
+    """IPython shell with notebook_mode turned off again after each test."""
+    from IPython.core.interactiveshell import InteractiveShell
 
-    for module_name, class_name in [
-        ("ase.atoms", "Atoms"),
-        ("pymatgen.analysis.diffraction.xrd", "DiffractionPattern"),
-        ("pymatgen.phonon.bandstructure", "PhononBandStructureSymmLine"),
-        ("pymatgen.phonon.dos", "PhononDos"),
-        ("phonopy.phonon.dos", "TotalDos"),
-    ]:
-        try:
-            cls = getattr(__import__(module_name, fromlist=[class_name]), class_name)
-            assert hasattr(cls, "_ipython_display_") == enable
-            assert hasattr(cls, "_repr_mimebundle_") == enable
-        except ImportError:
-            pass
-
+    ipython = InteractiveShell.instance()
+    yield ipython
     pmv.notebook_mode(on=False)
-
-
-@pytest.mark.parametrize("attr", ["_ipython_display_", "_repr_mimebundle_"])
-def test_notebook_mode_preserves_external_hooks(
-    monkeypatch: pytest.MonkeyPatch, attr: str
-) -> None:
-    """Disabling restores prior hooks without overwriting third-party replacements."""
-    pmv.notebook_mode(on=False)
-    original = object()
-    monkeypatch.setattr(Structure, attr, original, raising=False)
-    pmv.notebook_mode(on=False)
-    assert getattr(Structure, attr) is original
-    try:
-        pmv.notebook_mode(on=True)
-        pmv.notebook_mode(on=True)
-        pmv.notebook_mode(on=False)
-        assert getattr(Structure, attr) is original
-
-        pmv.notebook_mode(on=True)
-        replacement = object()
-        setattr(Structure, attr, replacement)
-        pmv.notebook_mode(on=False)
-        assert getattr(Structure, attr) is replacement
-    finally:
-        pmv.notebook_mode(on=False)
 
 
 @pytest.mark.parametrize("obj_name", ["structure", "ase_atoms", "diffraction_pattern"])
-def test_object_notebook_display(
-    test_objects: dict[str, Any], obj_name: str, monkeypatch: pytest.MonkeyPatch
+def test_notebook_mode_formats_objects(
+    shell: Any, test_objects: dict[str, Any], obj_name: str
 ) -> None:
-    """Test _ipython_display_ and _repr_mimebundle_ for supported types."""
+    """With notebook_mode on, supported objects format as widgets; off, they don't."""
     obj = test_objects[obj_name]
     pmv.notebook_mode(on=True)
-    published_data: list[dict[str, str]] = []
-    monkeypatch.setattr(
-        "IPython.display.publish_display_data",
-        published_data.append,
+    pmv.notebook_mode(on=True)  # idempotent
+    data, _metadata = shell.display_formatter.format(obj)
+    assert WIDGET_MIME in data
+    pmv.notebook_mode(on=False)
+    data, _metadata = shell.display_formatter.format(obj)
+    assert WIDGET_MIME not in data
+
+
+def test_notebook_mode_preserves_third_party_printers(
+    shell: Any, structures: tuple[Structure, Structure]
+) -> None:
+    """Turning off restores a prior printer and keeps one installed meanwhile."""
+    formatter = shell.display_formatter.mimebundle_formatter
+    key = ("pymatgen.core.structure", "Structure")
+    prior = lambda _obj: {"text/plain": "prior"}
+    formatter.for_type_by_name(*key, prior)
+    pmv.notebook_mode(on=True)
+    assert formatter.lookup(structures[0]) is notebook._widget_mime_bundle
+    pmv.notebook_mode(on=False)
+    assert formatter.lookup(structures[0]) is prior
+
+    pmv.notebook_mode(on=True)
+    replacement = lambda _obj: {"text/plain": "replacement"}
+    formatter.for_type(Structure, replacement)
+    pmv.notebook_mode(on=False)
+    assert formatter.lookup(structures[0]) is replacement
+    formatter.pop(Structure)
+
+
+def test_notebook_mode_imports_nothing() -> None:
+    """Importing pymatviz in a kernel registers display types by name, importing
+    none of the optional or heavy modules they live in.
+    """
+    code = (
+        "import sys\nfrom IPython.core.interactiveshell import InteractiveShell\n"
+        "InteractiveShell.instance()\nimport pymatviz as pmv\n"
+        "from pymatviz import notebook\n"
+        "assert notebook._previous_printers, 'notebook_mode did not run'\n"
+        "print(sorted(mod for mod in ('ase', 'pymatgen.phonon.dos', "
+        "'pymatgen.analysis.diffraction.core', 'phonopy') if mod in sys.modules))"
     )
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, "-c", code], capture_output=True, text=True, check=True
+    )
+    assert result.stdout.strip() == "[]"
 
-    try:
-        obj._ipython_display_()
-        assert len(published_data) == 1
-        assert "text/plain" in published_data[0]
 
-        mime_bundle = obj._repr_mimebundle_()
-        assert isinstance(mime_bundle, dict)
-        assert "text/plain" in mime_bundle
-    finally:
-        pmv.notebook_mode(on=False)
+def test_notebook_mode_needs_ipython(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Outside IPython, notebook_mode raises instead of silently doing nothing."""
+    monkeypatch.setattr("IPython.get_ipython", lambda: None)
+    with pytest.raises(RuntimeError, match="needs a running IPython session"):
+        pmv.notebook_mode(on=True)
 
 
 class UnknownType:
     """Type without a registered MatterViz widget."""
 
 
-@pytest.mark.parametrize(
-    ("obj", "has_widget"),
-    [
-        (Structure(Lattice.cubic(3), ["Fe", "Fe"], [[0, 0, 0], [0.5] * 3]), True),
-        (UnknownType(), False),
-    ],
-)
-def test_widget_mime_bundle(obj: object, has_widget: bool) -> None:
-    """Registered types get widget MIME, others fall back to plain text."""
-    result = notebook._widget_mime_bundle(obj)
-    assert "text/plain" in result
-    assert ("application/vnd.jupyter.widget-view+json" in result) is has_widget
-    if not has_widget:
-        assert result == {"text/plain": repr(obj)}
+def test_widget_mime_bundle(structures: tuple[Structure, Structure]) -> None:
+    """Registered types get widget MIME; others raise instead of a silent repr."""
+    bundle = notebook._widget_mime_bundle(structures[0])
+    assert isinstance(bundle, tuple)
+    assert WIDGET_MIME in bundle[0]
+    with pytest.raises(ValueError, match="No widget"):
+        notebook._widget_mime_bundle(UnknownType())
 
 
-def test_fallback_without_widgets(
-    structures: tuple[Structure, Structure], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Fall back to plain text when the widget module fails to import."""
-    original_import = __import__
-
-    def mock_import(name: str, *args: Any, **kwargs: Any) -> Any:
-        if name.startswith("pymatviz.widgets"):
-            raise ImportError(f"No module named {name!r}")
-        return original_import(name, *args, **kwargs)
-
-    published_data: list[dict[str, str]] = []
-    monkeypatch.setattr(
-        "IPython.display.publish_display_data",
-        published_data.append,
-    )
-
-    pmv.notebook_mode(on=True)
-    monkeypatch.setattr("builtins.__import__", mock_import)
-    try:
-        expected = {"text/plain": repr(structures[0])}
-        structures[0]._ipython_display_()  # ty: ignore[missing-attribute]
-        assert published_data == [expected]
-        assert structures[0]._repr_mimebundle_() == expected  # ty: ignore[missing-attribute]
-    finally:
-        monkeypatch.undo()
-        pmv.notebook_mode(on=False)
-
-
-def test_phonopy_dos_integration(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_phonopy_dos_integration(shell: Any) -> None:
     """Test phonopy TotalDos notebook integration."""
     pytest.importorskip("phonopy", reason="phonopy not available")
 
@@ -171,19 +131,5 @@ def test_phonopy_dos_integration(monkeypatch: pytest.MonkeyPatch) -> None:
     phonopy_nacl.run_total_dos()
 
     pmv.notebook_mode(on=True)
-    published_data: list[dict[str, str]] = []
-    monkeypatch.setattr(
-        "IPython.display.publish_display_data",
-        published_data.append,
-    )
-
-    try:
-        from phonopy.phonon.dos import TotalDos
-
-        assert hasattr(TotalDos, "_ipython_display_")
-        phonopy_nacl.total_dos._ipython_display_()  # ty: ignore[missing-attribute]
-        assert len(published_data) == 1
-        assert "text/plain" in published_data[0]
-        assert "application/vnd.jupyter.widget-view+json" in published_data[0]
-    finally:
-        pmv.notebook_mode(on=False)
+    data, _metadata = shell.display_formatter.format(phonopy_nacl.total_dos)
+    assert WIDGET_MIME in data

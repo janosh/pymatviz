@@ -30,7 +30,7 @@ class HistogramWidget(CartesianPlotTraits, MatterVizWidget):
 
     @tl.validate("series")
     def _validate_series(self, proposal: dict[str, Any]) -> list[dict[str, Any]] | None:
-        """Normalize replacements before syncing, including batched updates."""
+        """Normalize series on init and reassignment, including batched updates."""
         try:
             return normalize_plot_series(
                 proposal["value"], component_name="Histogram", samples_key="values"
@@ -54,11 +54,4 @@ class HistogramWidget(CartesianPlotTraits, MatterVizWidget):
                 ``CartesianPlotTraits``), ``bar``.
         """
         normalize_json_kwargs(kwargs, (*self._JSON_KWARGS, "bar"), "Histogram")
-        super().__init__(
-            widget_type="histogram",
-            # Preserve the constructor's existing TypeError/ValueError behavior.
-            series=normalize_plot_series(
-                series, component_name="Histogram", samples_key="values"
-            ),
-            **kwargs,
-        )
+        super().__init__(widget_type="histogram", series=series, **kwargs)

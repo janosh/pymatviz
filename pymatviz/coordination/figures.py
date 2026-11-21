@@ -9,7 +9,11 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from pymatviz.colors import ELEM_COLORS_JMOL
-from pymatviz.coordination.helpers import CnSplitMode, coordination_nums_in_structure
+from pymatviz.coordination.helpers import (
+    CnSplitMode,
+    coordination_nums_in_structure,
+    normalize_get_neighbors,
+)
 from pymatviz.enums import ElemColorScheme
 from pymatviz.process_data import normalize_structures
 from pymatviz.structure.helpers import get_site_elements
@@ -239,14 +243,13 @@ def coordination_vs_cutoff_line(
 
     series: list[dict[str, Any]] = []
     for struct_idx, (struct_name, structure) in enumerate(struct_dict.items()):
-        # One neighbor query per site at the largest cutoff instead of one per
-        # cutoff. A site's CN at a cutoff counts neighbors within it, up to
+        # One neighbor search for all sites at the largest cutoff instead of one per
+        # site and cutoff. A site's CN at a cutoff counts neighbors within it, up to
         # pymatgen's get_neighbors tolerance, so boundary neighbors (e.g. periodic
         # images at exactly the cutoff) count as they would for get_neighbors(r=...).
-        max_cutoff = cutoffs[-1] + _NEIGHBOR_TOL
+        max_cutoff = cutoffs.max() + _NEIGHBOR_TOL  # cutoffs may descend
         cn_rows = []
-        for site in structure:
-            nns = structure.get_neighbors(site, r=max_cutoff)  # ty: ignore[invalid-argument-type]
+        for nns in normalize_get_neighbors(max_cutoff)(structure):
             dists = np.sort([nn.nn_distance for nn in nns])
             cn_rows += [np.searchsorted(dists, cutoffs + _NEIGHBOR_TOL, side="right")]
         site_cns = np.array(cn_rows)

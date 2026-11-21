@@ -319,6 +319,14 @@ def test_enhance_parity_plot_auto_best_fit_line() -> None:
     widget = ScatterPlotWidget(series=[{"x": rng.random(50), "y": rng.random(50)}])
     powerups.enhance_parity_plot(widget)
     assert [line["type"] for line in widget.ref_lines] == ["diagonal"]
+    # R² = 1, but a log y axis leaves one positive point: skipped, not raised
+    log_y = ScatterPlotWidget(
+        series=[{"x": [-2, -1, 1], "y": [-2, -1, 1]}], y_axis={"scale_type": "log"}
+    )
+    powerups.enhance_parity_plot(log_y)
+    assert [line["type"] for line in log_y.ref_lines] == ["diagonal"]
+    with pytest.raises(ValueError, match="needs >= 2 finite points"):
+        powerups.enhance_parity_plot(log_y, best_fit_line=True)
 
 
 @pytest.mark.parametrize("values", [(), [3, 1, 2, 2]])
@@ -358,6 +366,10 @@ def test_add_ecdf_line_ignores_own_ecdf_series() -> None:
     powerups.add_ecdf_line(widget)
     powerups.add_ecdf_line(widget)
     assert [srs["label"] for srs in widget.series] == ["s0", *["Cumulative"] * 2]
+    # a differently labeled ECDF shares the [0, 1] y2 axis with earlier ones
+    powerups.add_ecdf_line(widget, [3, 1, 2], label="Reference")
+    assert widget.series[-1]["label"] == "Reference"
+    assert widget.y2_axis == {"label": "Cumulative"}
     powerups.annotate_metrics(widget)
     assert widget.annotation == "MAE = 0.121\nR² = 0.785"
 
@@ -367,6 +379,18 @@ def test_add_ecdf_line_keeps_y2_range() -> None:
     widget = ScatterPlotWidget(series=make_series(), y2_range=[0, 0.5])
     powerups.add_ecdf_line(widget)
     assert widget.y2_range == [0, 0.5]
+
+
+@pytest.mark.parametrize("y2_axis", [None, {"label": "Temperature"}])
+def test_add_ecdf_line_rejects_foreign_y2_series(
+    y2_axis: dict[str, str] | None,
+) -> None:
+    """An ECDF can't share the y2 axis with other data, whose range it would clip."""
+    temps = {"x": [0, 1], "y": [20, 90], "y_axis": "y2", "label": "T"}
+    widget = ScatterPlotWidget(series=[*make_series(), temps], y2_axis=y2_axis)
+    with pytest.raises(ValueError, match="y2 axis already plots 'T' with values"):
+        powerups.add_ecdf_line(widget)
+    assert widget.y2_range is None
 
 
 def test_add_ecdf_line_raises() -> None:
@@ -400,3 +424,38 @@ def test_builtin_metrics_match_sklearn(name: str, sklearn_name: str) -> None:
         warnings.simplefilter("error")
         powerups.BUILTIN_METRICS[name](np.ones(3), np.array([1.0, 2.0, 1.0]))
         powerups.BUILTIN_METRICS[name](np.ones(3), np.ones(3))
+
+
+@pytest.mark.parametrize("n_points", [50, 20_000])
+@pytest.mark.parametrize(
+    "func",
+    [
+        powerups.annotate_metrics,
+        powerups.add_best_fit_line,
+        powerups.add_ecdf_line,
+        powerups.enhance_parity_plot,
+    ],
+)
+def test_powerups_read_json_and_binary_series(func: Any, n_points: int) -> None:
+    """Powerups read small JSON and large binary series; large ECDFs sync binary."""
+    from pymatviz.widgets._binary import BINARY_FORMAT, series_column
+
+    xs = np.random.default_rng(seed=0).normal(size=n_points)
+    widget = ScatterPlotWidget(series=[{"x": xs, "y": 1.1 * xs + 0.1, "label": "a"}])
+    is_binary = n_points >= 10_000
+    assert (widget.series[0].get("format") == BINARY_FORMAT) is is_binary
+    func(widget)
+    if func is powerups.add_ecdf_line:
+        ecdf = widget.series[-1]
+        assert (ecdf.get("format") == BINARY_FORMAT) is is_binary
+        assert ecdf["label"] == "Cumulative"
+        np.testing.assert_array_equal(series_column(ecdf, "x")[::2], np.sort(xs))
+        assert series_column(ecdf, "y")[-1] == 1
+    if func in (powerups.add_best_fit_line, powerups.enhance_parity_plot):
+        fit = widget.ref_lines[-1]["metadata"]
+        np.testing.assert_allclose(  # exact line y = 1.1x + 0.1, f64 lstsq round-off
+            [fit["slope"], fit["intercept"]], [1.1, 0.1], rtol=0, atol=1e-12
+        )
+    if func in (powerups.annotate_metrics, powerups.enhance_parity_plot):
+        mae = float(np.abs(xs - (1.1 * xs + 0.1)).mean())
+        assert f"MAE = {mae:.3}" in widget.annotation

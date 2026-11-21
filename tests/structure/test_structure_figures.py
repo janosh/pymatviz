@@ -27,14 +27,15 @@ def test_structure_3d_single(fe3co4_disordered: IStructure) -> None:
     assert widget.structure == fe3co4_disordered.as_dict()
 
 
-@pytest.mark.parametrize("standardize", [True, False])
-def test_structure_3d_standardize(standardize: bool) -> None:
-    """standardize_struct shows the conventional standard cell."""
+@pytest.mark.parametrize("cell_type", ["original", "conventional", "primitive"])
+def test_structure_3d_cell_type(cell_type: str) -> None:
+    """cell_type reaches MatterViz, which standardizes; the input cell is synced."""
     struct = Structure(Lattice.cubic(4), ["Fe", "O"], [[-0.1, 0, 0], [0.5, 0.5, 0.5]])
-    widget = pmv.structure_3d(struct, standardize_struct=standardize)
+    struct.add_site_property("force", [[1, 0, 0], [0, 1, 0]])
+    widget = pmv.structure_3d(struct, cell_type=cell_type)
     assert isinstance(widget, StructureWidget)
-    frac_coords = [site["abc"] for site in widget.structure["sites"]]
-    assert (min(min(abc) for abc in frac_coords) < 0) is not standardize
+    assert widget.cell_type == cell_type
+    assert widget.structure == struct.as_dict()
 
 
 @pytest.mark.parametrize(

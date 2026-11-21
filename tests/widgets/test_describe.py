@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from typing import Any
 
+import numpy as np
 import pytest
 from pymatgen.core import Lattice, Structure
 
@@ -93,6 +94,16 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
             pmv.XrdWidget(patterns={"x": [10, 20, 30], "y": [100, 50, 75]}),
             {"n_peaks": 3, "two_theta_range": [10.0, 30.0]},
         ),
+        # {label: pattern} overlays sum peaks across patterns
+        (
+            pmv.XrdWidget(
+                patterns={
+                    "computed": {"x": [10, 20], "y": [100, 50]},
+                    "measured": {"x": [15, 40, 60], "y": [1, 2, 3]},
+                }
+            ),
+            {"n_peaks": 5, "two_theta_range": [10.0, 60.0]},
+        ),
         (
             pmv.DosWidget(
                 doses={
@@ -125,15 +136,36 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
             ),
             {"n_nodes": 4, "n_leaves": 2, "max_depth": 3},
         ),
+        # pymatgen band structure dicts key bands by spin: lines summed over spins
         (
             pmv.BandStructureWidget(
-                band_structs={"bands": {"up": [[-1]], "down": [[0]]}}
+                band_structs={"bands": {"1": [[-1, 0], [1, 2]], "-1": [[0, 1]]}}
             ),
+            {"n_bands": 3},
+        ),
+        (
+            pmv.BandStructureWidget(
+                band_structs={
+                    "PBE": {"bands": {"1": [[-1]], "-1": [[0]]}},
+                    "HSE": {"bands": [[1], [2]]},
+                }
+            ),
+            {"n_bands": 4},
+        ),
+        (
+            pmv.BandStructureWidget(band_structs={"bands": {"1": "bad"}}),
             {"n_bands": None},
         ),
         (
             pmv.DosWidget(doses={"energies": {"up": [-1], "down": [0]}}),
             {"n_energies": None},
+        ),
+        # binary series (>= 10k points) are decoded
+        (
+            pmv.ScatterPlotWidget(
+                series=[{"x": np.arange(10_000), "y": -np.arange(10_000)}]
+            ),
+            {"n_points": 10_000, "x_range": [0, 9999], "y_range": [-9999, 0]},
         ),
         # empty/None data is tolerated
         (pmv.ScatterPlotWidget(), {"n_series": 0, "n_points": 0, "x_range": None}),
@@ -252,6 +284,10 @@ def test_short_summary(report: dict[str, Any], expected: str) -> None:
     [
         (pmv.ScatterPlotWidget(), True),
         (pmv.ScatterPlotWidget(series=[{"x": [0, 1], "y": [1, 2]}]), False),
+        (
+            pmv.ScatterPlotWidget(series=[{"x": np.ones(10**4), "y": np.ones(10**4)}]),
+            False,
+        ),
         # Histogram blank-state detection uses sample arrays.
         (pmv.HistogramWidget(), True),
         (pmv.HistogramWidget(series=[{"values": [1, 2, 3]}]), False),

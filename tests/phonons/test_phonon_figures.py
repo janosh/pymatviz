@@ -5,15 +5,18 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 import pytest
+from pymatgen.phonon.dos import PhononDos
 
 import pymatviz as pmv
 
 
 if TYPE_CHECKING:
     from phonopy import Phonopy
-    from pymatgen.phonon.dos import CompletePhononDos, PhononDos
+    from pymatgen.phonon.dos import CompletePhononDos
 
     from tests.conftest import BandsDoses
+
+GRID_012 = PhononDos([0, 1, 2], [1, 2, 1])
 
 # skipif, not pytest.importorskip: the phonopy_nacl fixture imports phonopy at setup
 needs_phonopy = pytest.mark.skipif(
@@ -62,6 +65,12 @@ def test_phonon_dos(
     normalize: Literal["max", "sum", "integral"] | None,
 ) -> None:
     """Raw DOS data goes to the widget, smearing and normalization as traits."""
+    if stack:  # MatterViz stacks by index, so stacked DOS must share a grid
+        freqs = next(iter(phonon_doses.values())).frequencies
+        phonon_doses = {
+            label: PhononDos(freqs, dos.densities)
+            for label, dos in phonon_doses.items()
+        }
     widget = pmv.phonon_dos(phonon_doses, stack=stack, sigma=sigma, normalize=normalize)
     assert isinstance(widget, pmv.DosWidget)
     assert (widget.stack, widget.sigma, widget.normalize) == (stack, sigma, normalize)
@@ -81,6 +90,13 @@ def test_phonon_dos(
         (dict(normalize="invalid"), ValueError, "Invalid normalize='invalid'"),
         (dict(project="invalid"), ValueError, "Invalid project='invalid'"),
         (dict(project="element"), TypeError, "project='element' requires Complete"),
+        (
+            dict(
+                doses={"a": GRID_012, "b": PhononDos([0, 2, 4], [1, 2, 1])}, stack=True
+            ),
+            ValueError,
+            r"one frequency grid, but \['b'\] differ from 'a'",
+        ),
     ],
 )
 def test_phonon_dos_raises(
@@ -150,10 +166,15 @@ def test_phonon_bands_and_dos(phonon_bands_doses_mp_2758: BandsDoses) -> None:
     """Bands and DOS share labels, single inputs pass unlabeled."""
     bands = phonon_bands_doses_mp_2758["bands"]
     doses = phonon_bands_doses_mp_2758["doses"]
-    widget = pmv.phonon_bands_and_dos(bands, doses, sigma=0.1, stack=True)
+    widget = pmv.phonon_bands_and_dos(bands, doses, sigma=0.1, stack=False)
     assert isinstance(widget, pmv.BandsAndDosWidget)
     assert set(widget.band_structs) == set(widget.doses) == {"DFT", "MACE"}
-    assert (widget.sigma, widget.stack) == (0.1, True)
+    assert (widget.sigma, widget.stack) == (0.1, False)
+    # DFT and MACE DOS use different frequency grids, which MatterViz can't stack
+    with pytest.raises(ValueError, match=r"one frequency grid, but \['MACE'\]"):
+        pmv.phonon_bands_and_dos(bands, doses, stack=True)
+    shared_grid = dict.fromkeys(doses, doses["DFT"])
+    assert pmv.phonon_bands_and_dos(bands, shared_grid, stack=True).stack is True
 
     widget = pmv.phonon_bands_and_dos(bands["DFT"], doses["DFT"])
     assert "bands" in widget.band_structs
@@ -217,8 +238,19 @@ def test_phonon_bands_drop_eigendisplacements(
     bands = phonon_bands_doses_mp_2758["bands"]["DFT"]
     bands.eigendisplacements = np.ones((*bands.bands.shape, bands.nb_bands // 3, 3))
     assert "eigendisplacements" in bands.as_dict()
+
+    class Unserializable:
+        """Eigendisplacements that fail when as_dict() splits them into lists."""
+
+        @property
+        def real(self) -> None:
+            """Raise like a (slow) list conversion would happen."""
+            raise AssertionError("eigendisplacements were serialized")
+
+    bands.eigendisplacements = sentinel = Unserializable()  # ty: ignore[invalid-assignment]
     widget = pmv.phonon_bands(bands)
     assert "eigendisplacements" not in widget.band_structs
+    assert bands.eigendisplacements is sentinel  # input not mutated
     combined = pmv.phonon_bands_and_dos(
         bands, phonon_bands_doses_mp_2758["doses"]["DFT"]
     )

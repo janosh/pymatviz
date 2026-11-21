@@ -15,6 +15,7 @@ import traitlets as tl
 from pymatviz import (
     BinnedScatterPlotWidget,
     BoxPlotWidget,
+    ScatterPlot3DWidget,
     ScatterPlotWidget,
     StructureWidget,
     TrajectoryWidget,
@@ -127,6 +128,26 @@ def test_large_box_samples_sync_as_binary() -> None:
     assert small == {"y": [1, 2]}
 
 
+def test_large_scatter_plot_3d_series_sync_as_binary() -> None:
+    """Large 3D series sync as binary envelopes with a finite z column."""
+    xs = np.arange(_N_BIG, dtype=float)
+    widget = ScatterPlot3DWidget(
+        series=[{"x": xs, "y": -xs, "z": 2 * xs, "label": "big"}]
+    )
+    (envelope,) = widget.series
+    assert envelope["kind"] == "plot-series"
+    assert envelope["label"] == "big"
+    arrays = decode_envelope(envelope)
+    assert set(arrays) == {"x", "y", "z"}
+    np.testing.assert_array_equal(arrays["z"], 2 * xs)
+    assert widget.describe()["z_range"] == [0, 2 * (_N_BIG - 1)]
+    widget.series = [envelope]  # ready envelopes pass through
+    assert widget.series[0] is envelope
+    with pytest.raises(tl.TraitError, match=r"series\[0\]\.z has non-finite"):
+        widget.series = [{"x": xs, "y": xs, "z": np.r_[np.nan, xs[1:]]}]
+    assert widget.series[0] is envelope
+
+
 def test_plot_series_metadata_frame() -> None:
     """A per-point metadata DataFrame becomes metadata.<col> arrays on binary series
     and per-point dicts (non-finite as None) on JSON series.
@@ -144,11 +165,17 @@ def test_plot_series_metadata_frame() -> None:
     assert np.isnan(arrays["metadata.f1"]).all()
 
     small = {"x": [1, 2], "y": [3, 4]}
-    frame = pd.DataFrame({"threshold": [np.inf, 0.5], "name": ["a", None]})
+    frame = pd.DataFrame(
+        {
+            "threshold": [np.inf, 0.5],
+            "name": ["a", None],
+            "measurement": pd.Series([-np.inf, "unavailable"], dtype=object),
+        }
+    )
     (json_series,) = ScatterPlotWidget(series=[small | {"metadata": frame}]).series
     assert json_series["metadata"] == [
-        {"threshold": None, "name": "a"},
-        {"threshold": 0.5, "name": None},
+        {"threshold": None, "name": "a", "measurement": None},
+        {"threshold": 0.5, "name": None, "measurement": "unavailable"},
     ]
     # non-numeric columns keep a large series' metadata as JSON records
     labels = pd.DataFrame({"name": ["a"] * _N_BIG})
@@ -160,6 +187,8 @@ def test_plot_series_metadata_frame() -> None:
         (small, pd.DataFrame({"a": [1, 2, 3]}), r"one row per point \(2\), got 3"),
         ({"x": xs, "y": xs}, pd.DataFrame({"a": [1.0]}), r"\(10000\), got 1"),
         ({"x": xs, "y": xs}, dupes, r"uniquely named columns, got \['a', 'a'\]"),
+        # 1 and "1" would both sync as metadata.1
+        ({"x": xs, "y": xs}, pd.DataFrame({1: xs, "1": xs}), r"got \[1, '1'\]"),
         (small, pd.DataFrame(index=range(2)), r"uniquely named columns, got \[\]"),
     ]:
         with pytest.raises(tl.TraitError, match=match):

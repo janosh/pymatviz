@@ -9,15 +9,12 @@ from pymatgen.core import (
     Lattice,
     PeriodicSite,
     Species,
-    Structure,
 )
 
 from pymatviz.structure.helpers import (
-    NO_SYM_MSG,
     get_site_elements,
     get_site_species,
     get_site_symbol,
-    standardize_struct,
     widget_grid,
 )
 
@@ -55,35 +52,6 @@ def test_get_site_species_elements_symbol(
     assert isinstance(get_site_species(site), expected_type)
     assert get_site_elements(site) == expected_elements
     assert get_site_symbol(site) == expected_symbol
-
-
-def test_standardize_struct(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Standardization keeps site properties and warns if symmetry is undetermined."""
-    struct = Structure(Lattice.cubic(4), ["Fe", "O"], [[-0.1, 0, 0], [0.5, 0.5, 0.5]])
-    struct.add_site_property("force", [[1, 0, 0], [0, 1, 0]])
-
-    std_struct = standardize_struct(struct)
-    assert std_struct is not struct
-    assert all(site.frac_coords.min() >= 0 for site in std_struct)
-    # site properties used to be dropped, silently removing force/magmom vectors
-    assert sorted(map(tuple, std_struct.site_properties["force"])) == [
-        (0, 1, 0),
-        (1, 0, 0),
-    ]
-
-    class FailingSpacegroupAnalyzer:
-        """Stand-in for SpacegroupAnalyzer when spglib can't find symmetry."""
-
-        def __init__(self, _struct: Structure) -> None:
-            raise ValueError("Unable to determine symmetry")
-
-    monkeypatch.setattr(
-        "pymatgen.symmetry.analyzer.SpacegroupAnalyzer", FailingSpacegroupAnalyzer
-    )
-    with pytest.warns(
-        UserWarning, match=f"{NO_SYM_MSG} for Fe1 O1: Unable to determine symmetry"
-    ):
-        assert standardize_struct(struct) is struct
 
 
 @pytest.mark.parametrize(

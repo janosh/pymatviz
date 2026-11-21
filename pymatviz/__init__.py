@@ -116,4 +116,8 @@ except PackageNotFoundError:
 
 IS_IPYTHON = hasattr(builtins, "__IPYTHON__")
 
-notebook_mode(on=IS_IPYTHON)
+if IS_IPYTHON:
+    from IPython import get_ipython
+
+    if get_ipython() is not None:  # a kernel, not just IPython's builtins flag
+        notebook_mode(on=True)

@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from pymatviz.widgets._normalize import normalize_plot_series
+from pymatviz.widgets._binary import series_column
 from pymatviz.widgets.binned_scatter_plot import BinnedScatterPlotWidget
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 
@@ -104,8 +104,12 @@ def _resolve_xy(
         return xs_arr, ys_arr
     picked = _selected_series(widget, series)
     return (
-        np.concatenate([np.asarray(srs["x"], dtype=float) for srs in picked]),
-        np.concatenate([np.asarray(srs["y"], dtype=float) for srs in picked]),
+        np.concatenate(
+            [np.asarray(series_column(srs, "x"), dtype=float) for srs in picked]
+        ),
+        np.concatenate(
+            [np.asarray(series_column(srs, "y"), dtype=float) for srs in picked]
+        ),
     )
 
 
@@ -259,6 +263,18 @@ def _log_axes(
     return log_flags[0], log_flags[1]
 
 
+def _fit_mask(
+    xs_arr: np.ndarray, ys_arr: np.ndarray, *, log_x: bool, log_y: bool
+) -> np.ndarray:
+    """Points a best-fit line can use: finite, and positive on log axes."""
+    keep = np.isfinite(xs_arr) & np.isfinite(ys_arr)
+    if log_x:
+        keep &= xs_arr > 0
+    if log_y:
+        keep &= ys_arr > 0
+    return keep
+
+
 def add_best_fit_line[Widget: ScatterPlotWidget | BinnedScatterPlotWidget](
     widget: Widget,
     xs: ArrayLike = (),
@@ -300,11 +316,7 @@ def add_best_fit_line[Widget: ScatterPlotWidget | BinnedScatterPlotWidget](
     _check_widget(widget)
     log_x, log_y = _log_axes(widget)
     xs_arr, ys_arr = _resolve_xy(widget, xs, ys, series)
-    keep = np.isfinite(xs_arr) & np.isfinite(ys_arr)
-    if log_x:
-        keep &= xs_arr > 0
-    if log_y:
-        keep &= ys_arr > 0
+    keep = _fit_mask(xs_arr, ys_arr, log_x=log_x, log_y=log_y)
     if (n_keep := int(keep.sum())) < 2:
         positive = " (positive on log axes)" if log_x or log_y else ""
         raise ValueError(
@@ -380,7 +392,8 @@ def enhance_parity_plot[Widget: ScatterPlotWidget | BinnedScatterPlotWidget](
         identity_line (bool | dict): Whether to add y = x. A dict is passed as
             add_identity_line() kwargs. Defaults to True.
         best_fit_line (bool | dict | None): Whether to add a best-fit line. A dict is
-            passed as add_best_fit_line() kwargs. None (default) adds it if R² > 0.3.
+            passed as add_best_fit_line() kwargs. None (default) adds it if R² > 0.3
+            and the axes leave >= 2 fittable points with varying x.
         stats (bool | dict): Whether to show metrics. A dict is passed as
             annotate_metrics() kwargs. Defaults to True. Dicts for best_fit_line and
             stats may override xs, ys and series.
@@ -407,10 +420,14 @@ def enhance_parity_plot[Widget: ScatterPlotWidget | BinnedScatterPlotWidget](
     if best_fit_line is None:
         xs_arr, ys_arr = _resolve_xy(widget, xs, ys, series)
         finite = np.isfinite(xs_arr) & np.isfinite(ys_arr)
-        best_fit_line = (
+        best_fit_line = bool(
             finite.sum() > 1
             and BUILTIN_METRICS["R2"](xs_arr[finite], ys_arr[finite]) > 0.3
         )
+        if best_fit_line:  # skip, rather than fail, fits the axes leave ill-posed
+            log_x, log_y = _log_axes(widget)
+            fit_xs = xs_arr[_fit_mask(xs_arr, ys_arr, log_x=log_x, log_y=log_y)]
+            best_fit_line = fit_xs.size > 1 and bool(np.ptp(fit_xs) > 0)
     if best_fit_line:
         fit_kwargs = best_fit_line if isinstance(best_fit_line, dict) else {}
         add_best_fit_line(widget, **data_kwargs | fit_kwargs)
@@ -453,15 +470,30 @@ def add_ecdf_line(
 
     Returns:
         ScatterPlotWidget: The widget.
+
+    Raises:
+        ValueError: If the y2 axis already holds non-ECDF data (y values outside
+            [0, 1], e.g. a temperature), whose range the ECDF would clip.
     """
     _check_widget(widget, (ScatterPlotWidget,))
+    # earlier ECDFs (any label) keep y2 within [0, 1], other y2 data is foreign
+    for srs in widget.series or []:
+        if srs.get("y_axis") != "y2":
+            continue
+        y_vals = np.asarray(series_column(srs, "y"), dtype=float)
+        if ((y_vals < 0) | (y_vals > 1)).any():
+            y2_label = (widget.y2_axis or {}).get("label")
+            raise ValueError(
+                f"widget's y2 axis already plots {srs.get('label') or y2_label!r} "
+                f"with values outside [0, 1], so it can't also hold the ECDF {label!r}"
+            )
     if np.size(values):
         sources: list[tuple[ArrayLike, str, str | None]] = [(values, label, None)]
     else:
         picked = _selected_series(widget, series)
         sources = [
             (
-                srs["x"],
+                series_column(srs, "x"),
                 f"{label} ({srs['label']})"
                 if len(picked) > 1 and srs.get("label")
                 else label,
@@ -484,7 +516,7 @@ def add_ecdf_line(
                 "line_style": style,
             }
         )
-    new_series = normalize_plot_series(new_series, component_name="ScatterPlot") or []
+    # the widget's series validator normalizes them (binary for large ECDFs)
     widget.series = [*(widget.series or []), *new_series]
     widget.y2_axis = {"label": label} | (widget.y2_axis or {})
     if widget.y2_range is None:

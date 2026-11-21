@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import functools
 import itertools
+import math
+from collections import defaultdict
 from collections.abc import Hashable, Mapping, Sequence
 from numbers import Number
 from typing import TYPE_CHECKING, Any, Final
@@ -89,10 +91,17 @@ def count_elements(
             attr = (
                 "element_composition" if count_mode == Key.composition else count_mode
             )
-            srs = pd.DataFrame(
-                getattr(Composition(formula, allow_negative=True), attr).as_dict()
-                for formula in srs
-            ).sum()  # sum up element occurrences
+            # collect each element's amounts and sum them with exactly rounded fsum
+            # (faster than summing a wide DataFrame of mostly-NaN dict rows)
+            elem_amounts: defaultdict[str, list[float]] = defaultdict(list)
+            for formula in srs:
+                comp = getattr(Composition(formula, allow_negative=True), attr)
+                for elem, amount in comp.as_dict().items():
+                    elem_amounts[elem].append(amount)
+            srs = pd.Series(
+                {elem: math.fsum(amounts) for elem, amounts in elem_amounts.items()},
+                dtype=float,
+            )
     else:
         raise ValueError(
             "Expected values to be map from element symbols to heatmap values or "
@@ -449,7 +458,7 @@ def bin_df_cols(
     n_bins: int | Sequence[int] = 100,
     bin_counts_col: str = "bin_counts",
     density_col: str = "",
-    verbose: bool = True,
+    verbose: bool = False,
 ) -> pd.DataFrame:
     """Bin columns of a DataFrame.
 
@@ -460,24 +469,17 @@ def bin_df_cols(
         n_bins (int): Number of bins to use. Defaults to 100.
         bin_counts_col (str): Column name for bin counts. Defaults to "bin_counts".
         density_col (str): Column name for density values. Defaults to "".
-        verbose (bool): If True, report df length reduction. Defaults to True.
+        verbose (bool): If True, print df length reduction. Defaults to False.
 
     Returns:
         pd.DataFrame: Binned DataFrame with original index name and values.
     """
-    # Create a copy of the input DataFrame to avoid modifying the original
-    df_in = df_in.copy()
-
     if isinstance(n_bins, int):
         # broadcast integer n_bins to all bin_by_cols
         n_bins = [n_bins] * len(bin_by_cols)
 
     if len(bin_by_cols) != len(n_bins):
         raise ValueError(f"{len(bin_by_cols)=} != {len(n_bins)=}")
-
-    cut_cols = [f"{col}_bins" for col in bin_by_cols]
-    for col, bins, cut_col in zip(bin_by_cols, n_bins, cut_cols, strict=True):
-        df_in[cut_col] = pd.cut(df_in[col].values, bins=bins)
 
     # Preserve the original index
     orig_index_name = df_in.index.name or "index"
@@ -486,7 +488,15 @@ def bin_df_cols(
     if orig_index_name not in df_in:
         df_in = df_in.reset_index()
 
-    group = df_in.groupby(by=[*cut_cols, *group_by_cols], observed=True)
+    # Bins are separate group keys rather than added columns, so df_in needn't be
+    # copied to stay unmodified
+    bin_keys = [
+        pd.Series(pd.cut(df_in[col].values, bins=bins), index=df_in.index).rename(
+            f"{col}_bins"
+        )
+        for col, bins in zip(bin_by_cols, n_bins, strict=True)
+    ]
+    group = df_in.groupby(by=[*bin_keys, *group_by_cols], observed=True)
 
     df_bin = group.first().dropna()
     df_bin[bin_counts_col] = group.size()
@@ -565,7 +575,9 @@ def normalize_spacegroups(
     if len(data) == 0:
         raise ValueError("Cannot normalize empty spacegroup data")
 
-    result = pd.Series(data)
+    # infer_objects lets object-dtype numbers (e.g. [225.5, 2]) reach the range and
+    # integrality check below instead of being truncated by a later int cast
+    result = pd.Series(data).infer_objects()
     if result.isna().any():
         raise ValueError("Space group data must not contain missing values")
     first_item = result.iloc[0]
@@ -584,12 +596,23 @@ def normalize_spacegroups(
 
     # Convert Hermann-Mauguin symbols to space group numbers
     if isinstance(first_item, str):
-        from pymatgen.symmetry.groups import SpaceGroup
+        from pymatviz.utils.data import hm_symbol_to_spg_num_map
 
-        try:
-            return result.map(lambda symbol: SpaceGroup(symbol).int_number)
-        except ValueError as exc:
-            raise ValueError(f"Invalid Hermann-Mauguin symbol: {exc}") from exc
+        numbers = result.map(hm_symbol_to_spg_num_map)
+        if (missing := numbers.isna()).any():
+            # pymatgen parses looser spellings (e.g. "P2_1/c", "R-3m:H") the
+            # moyopy-derived lookup table lacks, but is slow, so only parse unique
+            # misses
+            from pymatgen.symmetry.groups import SpaceGroup
+
+            parsed: dict[str, int] = {}
+            for symbol in result[missing].unique():
+                try:
+                    parsed[symbol] = SpaceGroup(symbol).int_number
+                except ValueError as exc:
+                    raise ValueError(f"Invalid Hermann-Mauguin symbol: {exc}") from exc
+            numbers = numbers.fillna(result.map(parsed))
+        return numbers.astype(int)
 
     return result
 
@@ -676,10 +699,12 @@ def sankey_flow_data(
             f"{cols=} should specify exactly two columns: (source_col, target_col)"
         )
 
-    # value_counts drops rows with NaN in either column
-    df_flows = df[list(cols)].value_counts().reset_index()
-    # per-column tolist, to_numpy would coerce mixed int/float columns to one dtype
-    source, target, value = (df_flows[col].tolist() for col in df_flows)
+    # value_counts drops rows with NaN in either column. Its index levels keep each
+    # column's dtype (to_numpy would coerce mixed int/float columns to one), and
+    # unlike reset_index, they can't clash with a column named "count".
+    flows = df[list(cols)].value_counts()
+    source, target = (flows.index.get_level_values(lvl).tolist() for lvl in (0, 1))
+    value = flows.tolist()
 
     # Each column is one side of the diagram, so a value in both gets two nodes.
     # Dicts keep first-seen order and each column's own value types.

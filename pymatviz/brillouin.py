@@ -5,7 +5,7 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING, Any
 
-from pymatgen.core import Element, Structure
+from pymatgen.core import Structure
 
 from pymatviz.widgets.brillouin_zone import BrillouinZoneWidget
 
@@ -21,16 +21,31 @@ if TYPE_CHECKING:
 
 def seekpath_primitive(structure: Structure | IStructure) -> Structure:
     """Seekpath's standardized primitive cell, whose first Brillouin zone carries the
-    standard high-symmetry k-path labels.
+    standard high-symmetry k-path labels. Each distinct element occupancy is its own
+    symmetry type, so disordered sites with different occupancies stay inequivalent
+    while oxidation states (e.g. Fe2+ vs Fe3+) don't lower the symmetry. Primitive
+    sites keep their input species if all input sites of their type share it, else
+    (mixed oxidation states) the element occupancy.
     """
     import seekpath
 
-    from pymatviz.structure.helpers import get_site_symbol
-
+    type_keys = list(
+        dict.fromkeys(site.species.element_composition for site in structure)
+    )
+    type_nums = [
+        type_keys.index(site.species.element_composition) for site in structure
+    ]
+    type_species: list[set[Any]] = [set() for _ in type_keys]
+    for site, type_num in zip(structure, type_nums, strict=True):
+        type_species[type_num].add(site.species)
+    species_of_type = [
+        next(iter(species)) if len(species) == 1 else type_key
+        for type_key, species in zip(type_keys, type_species, strict=True)
+    ]
     spglib_cell = (
         structure.lattice.matrix,
         structure.frac_coords,
-        [Element(get_site_symbol(site)).number for site in structure],
+        [type_num + 1 for type_num in type_nums],
     )
     with warnings.catch_warnings():
         warnings.filterwarnings(
@@ -39,7 +54,10 @@ def seekpath_primitive(structure: Structure | IStructure) -> Structure:
         seekpath_dict = seekpath.get_path(spglib_cell)
     return Structure(
         seekpath_dict["primitive_lattice"],
-        seekpath_dict["primitive_types"],
+        [
+            species_of_type[type_num - 1]
+            for type_num in seekpath_dict["primitive_types"]
+        ],
         seekpath_dict["primitive_positions"],
     )
 

@@ -16,14 +16,15 @@ from pymatviz.widgets.xrd import XrdWidget
 # Direct mapping: pymatgen class -> (widget class, constructor kwarg name)
 _AUTO_DISPLAY: dict[type, tuple[type, str]] = {}
 
-# (module_path, class_names, widget_class, param_name) for deferred import.
+# (defining module, class_names, widget_class, param_name) for deferred import: the
+# module that defines each class, so IPython can match types by name without imports.
 # Note: PhaseDiagramWidget is NOT auto-registered here — it visualizes isobaric
 # binary phase diagrams (T vs x), NOT pymatgen's PhaseDiagram (energy convex hull).
 # Use ConvexHullWidget for pymatgen PhaseDiagram objects.
 _CLASS_SPECS: list[tuple[str, list[str], type, str]] = [
     # Structures (pymatgen, ASE, phonopy)
     (
-        "pymatgen.core",
+        "pymatgen.core.structure",
         ["Structure", "IStructure", "Molecule", "IMolecule"],
         StructureWidget,
         "structure",
@@ -49,7 +50,7 @@ _CLASS_SPECS: list[tuple[str, list[str], type, str]] = [
     ("phonopy.phonon.dos", ["TotalDos"], DosWidget, "doses"),
     # XRD
     (
-        "pymatgen.analysis.diffraction.xrd",
+        "pymatgen.analysis.diffraction.core",
         ["DiffractionPattern"],
         XrdWidget,
         "patterns",
@@ -57,7 +58,7 @@ _CLASS_SPECS: list[tuple[str, list[str], type, str]] = [
     # PhaseDiagram -> ConvexHull
     ("pymatgen.analysis.phase_diagram", ["PhaseDiagram"], ConvexHullWidget, "entries"),
     # Composition
-    ("pymatgen.core", ["Composition"], CompositionWidget, "composition"),
+    ("pymatgen.core.composition", ["Composition"], CompositionWidget, "composition"),
 ]
 
 

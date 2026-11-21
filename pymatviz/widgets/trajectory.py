@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from functools import lru_cache
 from typing import Any
 
 import numpy as np
@@ -23,12 +22,6 @@ from pymatviz.widgets._traits import (
     optional_trait,
 )
 from pymatviz.widgets.matterviz import MatterVizWidget
-
-
-@lru_cache(maxsize=1)
-def _supports_frame_stress(esm: str) -> bool:
-    """Detect the optional binary stress channel once per loaded renderer bundle."""
-    return "frame_stress" in esm
 
 
 def _unwrap_monty_arrays(value: Any, *, nested: bool = False) -> Any:
@@ -71,7 +64,7 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
         ... ]
         >>> widget = TrajectoryWidget(trajectory=trajectory_with_props)
 
-        A pymatgen ``Trajectory`` (or its ``as_dict()``) is parsed by the frontend:
+        A pymatgen ``Trajectory`` syncs as binary arrays (its ``as_dict()`` as JSON):
         >>> widget = TrajectoryWidget(trajectory=Trajectory.from_file("XDATCAR"))
 
         With custom visualization options:
@@ -145,9 +138,8 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
                 matterviz's own parsers produce.
                 Structure sequences and pymatgen Trajectories sync as a
                 ``matterviz-binary-v1`` envelope when representable. Custom widget
-                bundles must support this format. Bundles with the ``frame_stress``
-                channel also transfer six-component or 3x3 frame stresses as float64,
-                preserving component order and units. Older bundles use JSON for them.
+                bundles must support this format. Six-component or 3x3 frame
+                stresses travel as float64 ``frame_stress`` (order and units kept).
                 Serialized trajectory dicts stay JSON.
             **kwargs: Additional widget properties
         """
@@ -160,13 +152,6 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
 
         normalized = self._normalize_trajectory(proposal["value"])
         if normalized is not None and is_binary_envelope(normalized, "trajectory"):
-            stress = normalized.get("arrays", {}).get("frame_stress", {})
-            if len(stress.get("shape", ())) == 2 and not _supports_frame_stress(
-                self._resolve_assets()[0]
-            ):
-                raise ValueError(
-                    "Selected widget bundle lacks the binary frame_stress channel"
-                )
             return normalized
         return normalize_plot_json(normalized, "trajectory")
 
@@ -193,11 +178,11 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
     @staticmethod
     def _attach_forces(frame: dict[str, Any], frame_idx: int) -> dict[str, Any]:
         """Move per-atom forces from frame metadata (``force`` or ``forces``) to each
-        site's ``properties.force`` (matterviz 0.8 ignores vectors in frame metadata)
-        and record ``force_max``/``force_norm`` (max and RMS of the per-atom force
-        norms, like matterviz's parsers) from the sites' ``force``/``forces`` vectors
-        unless the metadata already has them. Returns a new frame; inputs are not
-        mutated.
+        site's ``properties.force`` (MatterViz draws site vectors, not frame
+        metadata ones) and record ``force_max``/``force_norm`` (max and RMS of the
+        per-atom force norms, like matterviz's parsers) from the sites'
+        ``force``/``forces`` vectors unless the metadata already has them. Returns
+        a new frame; inputs are not mutated.
 
         Raises:
             ValueError: If both ``force`` and ``forces`` are given, or the forces are
@@ -304,11 +289,7 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
         """Convert a sequence of structures or ``{"structure", **props}`` dicts to a
         matterviz trajectory dict with one frame per item.
         """
-        if envelope := trajectory_to_envelope(
-            items,
-            metadata,
-            frame_stress=_supports_frame_stress(self._resolve_assets()[0]),
-        ):
+        if envelope := trajectory_to_envelope(items, metadata):
             return envelope
         frames: list[dict[str, Any]] = []
         for step_idx, item in enumerate(items):
@@ -424,10 +405,7 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
                     f"time_step value must be finite and > 0, got {step!r}"
                 )
             if is_pymatgen:
-                if envelope := trajectory_to_envelope(
-                    trajectory,
-                    frame_stress=_supports_frame_stress(self._resolve_assets()[0]),
-                ):
+                if envelope := trajectory_to_envelope(trajectory):
                     return envelope
                 trajectory = trajectory.as_dict()
             return self._pymatgen_json(trajectory)

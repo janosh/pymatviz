@@ -230,6 +230,9 @@ def test_coordination_vs_cutoff_line_single_structure(nacl: Structure) -> None:
     widget = coordination_vs_cutoff_line(nacl, strategy=(2, 3), num_points=3)
     assert all("legend_group" not in srs for srs in widget.series)
     assert [srs["y"] for srs in widget.series] == [[0, 0, 6], [0, 0, 6]]
+    # descending cutoffs query neighbors out to the largest one
+    widget = coordination_vs_cutoff_line(nacl, strategy=(3, 2), num_points=3)
+    assert [srs["y"] for srs in widget.series] == [[6, 0, 0], [6, 0, 0]]
 
 
 @pytest.mark.parametrize(
@@ -248,13 +251,15 @@ def test_coordination_vs_cutoff_line_single_structure(nacl: Structure) -> None:
         ),
     ],
 )
-def test_coordination_vs_cutoff_line_one_query_per_site(
+def test_coordination_vs_cutoff_line_one_neighbor_search(
     structure: Structure,
     strategy: tuple[float, float],
     num_points: int,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """One neighbor query per site gives the same mean CNs as one per cutoff."""
+    """One neighbor search for all sites gives the same mean CNs as one per site
+    and cutoff.
+    """
     cutoffs = np.linspace(*strategy, num_points)
     expected = {
         elem: [
@@ -272,19 +277,19 @@ def test_coordination_vs_cutoff_line_one_query_per_site(
         for elem in sorted({site.specie.symbol for site in structure})
     }
     n_calls = 0
-    get_neighbors = Structure.get_neighbors
+    get_all_neighbors = Structure.get_all_neighbors
 
-    def counting_get_neighbors(self: Structure, *args: Any, **kwargs: Any) -> Any:
-        """Count calls to Structure.get_neighbors."""
+    def counting_get_all_neighbors(self: Structure, *args: Any, **kwargs: Any) -> Any:
+        """Count calls to Structure.get_all_neighbors (get_neighbors calls it too)."""
         nonlocal n_calls
         n_calls += 1
-        return get_neighbors(self, *args, **kwargs)
+        return get_all_neighbors(self, *args, **kwargs)
 
-    monkeypatch.setattr(Structure, "get_neighbors", counting_get_neighbors)
+    monkeypatch.setattr(Structure, "get_all_neighbors", counting_get_all_neighbors)
     widget = coordination_vs_cutoff_line(
         structure, strategy=strategy, num_points=num_points
     )
-    assert n_calls == len(structure)
+    assert n_calls == 1
     assert {srs["label"]: srs["y"] for srs in widget.series} == expected
 
 

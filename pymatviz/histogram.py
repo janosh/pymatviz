@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -94,7 +95,7 @@ def histogram(
     values: Sequence[float]
     | np.ndarray
     | pd.Series
-    | dict[str, Sequence[float] | np.ndarray | pd.Series],
+    | Mapping[str, Sequence[float] | np.ndarray | pd.Series],
     *,
     bins: int | Sequence[float] | str = 200,
     x_range: tuple[float | None, float | None] | None = None,
@@ -128,7 +129,7 @@ def histogram(
         BarPlotWidget: one overlaid bar series per distribution.
     """
     x_axis_title = "Value" if (name := getattr(values, "name", None)) is None else name
-    data = values if isinstance(values, dict) else {x_axis_title: values}
+    data = values if isinstance(values, Mapping) else {x_axis_title: values}
     data_arrays = {label: np.asarray(vals, dtype=float) for label, vals in data.items()}
     if not data_arrays:
         raise ValueError("histogram values must not be empty.")
@@ -155,14 +156,22 @@ def histogram(
     widths = np.diff(bin_edges)
     centers = bin_edges[:-1] + widths / 2
 
+    counts = {
+        label: np.histogram(vals, bins=bin_edges)[0]
+        for label, vals in data_arrays.items()
+    }
+    if density and (empty := [label for label, cnt in counts.items() if not cnt.any()]):
+        raise ValueError(
+            f"density=True is undefined for series {empty} with no values in {x_range=}"
+        )
     series = [
         {
             "x": centers,
-            "y": np.histogram(vals, bins=bin_edges, density=density)[0],
+            "y": cnt / (cnt.sum() * widths) if density else cnt,
             "label": str(label),
             "bar_width": bin_width * widths,
         }
-        for label, vals in data_arrays.items()
+        for label, cnt in counts.items()
     ]
 
     count_axis = {

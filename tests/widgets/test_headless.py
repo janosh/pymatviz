@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import importlib.util
+import json
 import os
 import threading
 from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import numpy as np
 import pytest
 
 import pymatviz.widgets._headless as headless_mod
@@ -463,20 +465,42 @@ def _scatter() -> ScatterPlotWidget:
     )
 
 
-def test_build_interactive_html_requires_one_esm_source() -> None:
-    """build_interactive_html demands exactly one of esm_url / esm_content."""
-    for kwargs in ({}, {"esm_url": "x", "esm_content": "y"}):
-        with pytest.raises(ValueError, match="exactly one of esm_url or esm_content"):
-            build_interactive_html(
-                {"widget_type": "scatter_plot"}, "/* css */", **kwargs
-            )
+@pytest.mark.parametrize(
+    ("kwargs", "match"),
+    [
+        ({"css_content": ""}, "esm_url or esm_content"),
+        ({"css_content": "", "esm_url": "x", "esm_content": "y"}, "esm_url or esm"),
+        ({"esm_url": "x"}, "css_url or css_content"),
+        ({"esm_url": "x", "css_url": "y", "css_content": "z"}, "css_url or css"),
+    ],
+)
+def test_build_interactive_html_requires_one_source_each(
+    kwargs: dict[str, str], match: str
+) -> None:
+    """build_interactive_html demands exactly one ESM and one CSS source."""
+    with pytest.raises(ValueError, match=f"exactly one of {match}"):
+        build_interactive_html({"widget_type": "scatter_plot"}, **kwargs)
+
+
+def test_widget_data_json_numpy_scalars_and_unknown_types() -> None:
+    """Numpy scalars encode as Python values; other objects raise, not stringify."""
+    from pymatviz.widgets._headless import _widget_data_json
+
+    data = {"idx": np.int64(141), "val": np.float32(0.5), "flag": np.bool_(1)}
+    assert json.loads(_widget_data_json(data)) == {"idx": 141, "val": 0.5, "flag": True}
+    with pytest.raises(TypeError, match="object is not JSON serializable"):
+        _widget_data_json({"bad": object()})
 
 
 def test_to_html_default_uses_cdn_url(monkeypatch: pytest.MonkeyPatch) -> None:
     """Default to_html references the default-version bundle URL + widget data."""
     monkeypatch.delenv("MATTERVIZ_ANYWIDGET_DIR", raising=False)
     html = _scatter().to_html()
-    assert _bundle_sources(MATTERVIZ_ANYWIDGET_VERSION)[0] in html  # split entry
+    esm_url, css_url = _bundle_sources(MATTERVIZ_ANYWIDGET_VERSION)
+    assert esm_url in html  # split entry
+    # the CSS is linked like the JS, not downloaded and inlined
+    assert f'<link rel="stylesheet" href="{css_url}">' in html
+    assert len(html) < 20_000
     assert '"scatter_plot"' in html
     assert "const esm_blob" not in html  # external, not inlined
 

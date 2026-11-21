@@ -70,11 +70,17 @@ def _cdn_url(version: str, filename: str = "matterviz.js") -> str:
 
 
 def _bundle_source(version: str, filename: str = "matterviz.js") -> str:
-    """Select the actual bundle source for both loading and standalone export."""
-    dev_dir = os.environ.get("MATTERVIZ_ANYWIDGET_DIR")
-    if dev_dir and os.path.isfile(path := f"{dev_dir}/{filename}"):
-        return path
-    return _cdn_url(version, filename)
+    """Select the actual bundle source for both loading and standalone export.
+
+    Raises:
+        FileNotFoundError: If ``MATTERVIZ_ANYWIDGET_DIR`` is set but lacks the file
+            (a typo would otherwise silently test the remote bundle).
+    """
+    if not (dev_dir := os.environ.get("MATTERVIZ_ANYWIDGET_DIR")):
+        return _cdn_url(version, filename)
+    if not os.path.isfile(path := f"{dev_dir}/{filename}"):
+        raise FileNotFoundError(f"MATTERVIZ_ANYWIDGET_DIR has no {filename}: {path}")
+    return path
 
 
 def _bundle_sources(bundle: _Bundle) -> tuple[str, str]:
@@ -132,42 +138,24 @@ def _in_marimo_runtime() -> bool:
 
 
 def _marimo_esm_url(esm_text: str) -> str | None:
-    """Resolve ESM text to a marimo virtual-file URL, or None if unsupported."""
+    """Serve ESM text as a marimo virtual file and return its absolute URL, or None
+    if marimo is absent or lacks virtual files (``js()`` would then inline the
+    ~6 MB bundle as a data URL).
+    """
     try:
         from marimo._output.data.data import js  # ty: ignore[import-not-found]
         from marimo._runtime.context import get_context  # ty: ignore[import-not-found]
     except ImportError:
         return None
-
-    # Virtual files required — without them js() creates ~4.5 MB data URLs
-    try:
-        if not get_context().virtual_files_supported:
-            return None
-    except (RuntimeError, AttributeError):
+    context = get_context()
+    if not context.virtual_files_supported:
         return None
-
-    try:
-        relative_url = js(esm_text).url
-    except (AttributeError, RuntimeError, TypeError, ValueError):
-        return None
-
-    if not relative_url or not relative_url.startswith("./@file/"):
-        return None
-
-    # Resolve ./@file/ to absolute URL via request context, fall back to relative
-    try:
-        request = get_context().request
-    except (RuntimeError, AttributeError, TypeError):
+    relative_url = js(esm_text).url
+    if context.request is None:
         return relative_url
-    if request is None:
-        return relative_url
-    base = request.base_url
-    if not isinstance(base, dict):
-        return relative_url
-    scheme, netloc = base.get("scheme"), base.get("netloc")
-    if not isinstance(scheme, str) or not isinstance(netloc, str):
-        return relative_url
-    return urljoin(f"{scheme}://{netloc}{base.get('path', '/')}", relative_url)
+    base = context.request.base_url
+    path = base.get("path", "/")
+    return urljoin(f"{base['scheme']}://{base['netloc']}{path}", relative_url)
 
 
 def _read_asset_source(src: str) -> str:
@@ -615,7 +603,7 @@ class MatterVizWidget(AnyWidget):
 
         Args:
             filename: Optional path to write the HTML to (parent dirs created).
-            inline: If True, embed the ~4.5 MB ESM bundle in the file (opens via
+            inline: If True, embed the ~6 MB ESM bundle in the file (opens via
                 ``file://`` offline). If False (default), reference an external
                 URL (small file, requires internet + a CORS-enabled JS host;
                 will not load via ``file://``).
@@ -647,22 +635,21 @@ class MatterVizWidget(AnyWidget):
         # mismatch); a local source has no public URL, so it is inlined instead
         if not inline and esm_url is None and _is_url(self._sources[0]):
             esm_url = self._sources[0]
-        # build_interactive_html takes exactly one of esm_url / esm_content, and a
-        # referenced remote bundle needs only its CSS text, not the ~6 MB JS
+        # a referenced bundle links its CSS too when that is remote; anything
+        # local is inlined. build_interactive_html takes one ESM and one CSS source
+        esm_content = css_content = css_url = None
         if esm_url is None:
             esm_content, css_content = self._resolve_assets()
+        elif _is_url(self._sources[1]):
+            css_url = self._sources[1]
         else:
-            esm_content = None
-            css_content = (
-                self._asset_sources[1]
-                if self._asset_sources
-                else _load_bundle(self._bundle, "css")
-            )
+            css_content = _load_bundle(self._bundle, "css")
 
         report = self.describe()
         html = build_interactive_html(
             self._frontend_state(),
-            css_content,
+            css_content=css_content,
+            css_url=css_url,
             esm_url=esm_url,
             esm_content=esm_content,
             title=short_summary(report),

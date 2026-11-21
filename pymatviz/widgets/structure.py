@@ -185,6 +185,11 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
     structure_string = optional_trait(tl.Unicode)
 
     show_image_atoms = tl.Bool(default_value=True).tag(sync=True)
+    # Cell shown: the input cell or MatterViz's (moyo) conventional/primitive standard
+    # cell, which carries site properties over with vectors rotated into its frame
+    cell_type = tl.CaselessStrEnum(
+        ["original", "conventional", "primitive"], default_value="original"
+    ).tag(sync=True)
 
     # Isosurface: a list of pymatgen VolumetricData objects or dicts (see
     # volume_to_envelopes), or a {prefix: volume} mapping namespacing ids as

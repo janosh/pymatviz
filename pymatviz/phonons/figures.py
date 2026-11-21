@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Literal
 
+import numpy as np
+
 from pymatviz.process_data import normalize_phonon_bands
 from pymatviz.widgets.band_structure import BandStructureWidget
 from pymatviz.widgets.bands_and_dos import BandsAndDosWidget
@@ -30,11 +32,27 @@ def _bands_docs(band_structs: BandsInput) -> dict[str, dict[str, Any]]:
     """Band structure dicts without eigendisplacements, which the band plot doesn't
     use but which can grow the widget state to hundreds of MB.
     """
-    docs = {}
-    for label, bands in normalize_phonon_bands(band_structs).items():
-        docs[label] = bands.as_dict()
-        docs[label].pop("eigendisplacements", None)
-    return docs
+    from pymatviz.widgets._normalize import _as_dict
+
+    return {
+        label: _as_dict(bands)
+        for label, bands in normalize_phonon_bands(band_structs).items()
+    }
+
+
+def _check_stack_grids(dos_dict: Mapping[str, PhononDos]) -> None:
+    """Raise ValueError unless all DOS share one frequency grid, since MatterViz
+    stacks curves by index.
+    """
+    grids = {label: dos.frequencies for label, dos in dos_dict.items()}
+    first_label, first_grid = next(iter(grids.items()))
+    if mismatched := [
+        label for label, grid in grids.items() if not np.array_equal(grid, first_grid)
+    ]:
+        raise ValueError(
+            f"stack=True needs all DOS on one frequency grid, but {mismatched} "
+            f"differ from {first_label!r}"
+        )
 
 
 def _unwrap_single[T](labeled: dict[str, T]) -> T | dict[str, T]:
@@ -154,7 +172,8 @@ def phonon_dos(
 
     Raises:
         ValueError: If doses is empty, normalize or project is invalid, or stacking a
-            projection would also stack its total or several DOS onto each other.
+            projection would also stack its total or several DOS onto each other,
+            or stacked DOS have different frequency grids.
         TypeError: If a DOS is unsupported or project is set for a DOS that isn't a
             CompletePhononDos.
     """
@@ -169,6 +188,8 @@ def phonon_dos(
             f"got {show_total=} and {n_labels} DOS"
         )
     dos_dict = _dos_dict(doses, project, show_total=show_total)
+    if stack:
+        _check_stack_grids(dos_dict)
     return DosWidget(
         doses=_unwrap_single(dos_dict),
         stack=stack,
@@ -199,12 +220,15 @@ def phonon_bands_and_dos(
         BandsAndDosWidget: MatterViz combined band structure and DOS plot.
 
     Raises:
-        ValueError: If band_structs and doses keys don't match.
+        ValueError: If band_structs and doses keys don't match, or stacked DOS have
+            different frequency grids.
     """
     bands = _bands_docs(band_structs)
     dos_dict = _dos_dict(doses, None, show_total=False)
     if (band_keys := set(bands)) != (dos_keys := set(dos_dict)):
         raise ValueError(f"{band_keys=} and {dos_keys=} must be identical")
+    if kwargs.get("stack"):
+        _check_stack_grids(dos_dict)
     return BandsAndDosWidget(
         band_structs=_unwrap_single(bands), doses=_unwrap_single(dos_dict), **kwargs
     )

@@ -13,6 +13,7 @@ def _classification_metrics(conf_mat: np.ndarray) -> dict[str, float]:
     """Accuracy, plus precision, recall, F1 and MCC for binary confusion matrices
     (rows = true, columns = predicted, class 1 positive).
     """
+    conf_mat = np.asarray(conf_mat, dtype=float)  # int64 MCC products overflow
     metrics = {"Acc": conf_mat.diagonal().sum() / conf_mat.sum()}
     if conf_mat.shape == (2, 2):
         tn, fp, fn, tp = conf_mat.ravel()
@@ -120,7 +121,19 @@ def confusion_matrix(
     metric_fmts: Mapping[str, str | None] = (
         metrics if isinstance(metrics, Mapping) else dict.fromkeys(metrics)
     )
-    available = _classification_metrics(conf_mat_arr)
+    # metrics need true and predicted classes in the same order on both axes: rows
+    # naming the same classes as columns are reordered to match, differently named
+    # axes (e.g. "Pred stable" vs "True stable") are aligned by position
+    x_strs, y_strs = list(map(str, x_labels)), list(map(str, y_labels))
+    metrics_mat = conf_mat_arr
+    if metric_fmts and x_strs != y_strs and not set(x_strs).isdisjoint(y_strs):
+        if sorted(x_strs) != sorted(y_strs) or len(set(x_strs)) != len(x_strs):
+            raise ValueError(
+                f"metrics need x_labels and y_labels to name the same classes (or "
+                f"disjoint ones aligned by position), got {x_strs=} and {y_strs=}"
+            )
+        metrics_mat = conf_mat_arr[[y_strs.index(label) for label in x_strs]]
+    available = _classification_metrics(metrics_mat)
     if unknown := set(metric_fmts) - set(available):
         raise ValueError(
             f"Unknown metrics {sorted(unknown)}. Available: {', '.join(available)}"

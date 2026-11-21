@@ -69,9 +69,28 @@ def _normalize_ferrox_hkls(hkls_data: Any) -> Any:
 _UNREAD_KEYS = frozenset({"projections", "pdos", "eigendisplacements"})
 
 
+# Empty stand-ins set on a shallow copy so as_dict() never builds those lists
+_UNREAD_ATTRS = {
+    "projections": {},
+    "pdos": {},
+    "eigendisplacements": (),
+    "nac_eigendisplacements": [],
+}
+
+
 def _as_dict(obj: Any) -> dict[str, Any]:
-    """``obj.as_dict()`` without the fields MatterViz never reads."""
-    return {key: val for key, val in obj.as_dict().items() if key not in _UNREAD_KEYS}
+    """``obj.as_dict()`` without the fields MatterViz never reads, serialized from a
+    shallow copy with those fields emptied (the input is not mutated). Emptying them
+    also drops what pymatgen derives from them: ``atom_dos``/``spd_dos`` of a
+    CompleteDos and the ``structure`` of a projected band structure.
+    """
+    import copy
+
+    view = copy.copy(obj)
+    for attr, empty in _UNREAD_ATTRS.items():
+        if attr in vars(view):
+            setattr(view, attr, empty)
+    return {key: val for key, val in view.as_dict().items() if key not in _UNREAD_KEYS}
 
 
 def _to_dict(obj: Any, label: str) -> dict[str, Any] | None:
@@ -195,7 +214,8 @@ def normalize_json_kwargs(
 
 def check_metadata_frame(frame: pd.DataFrame, n_points: int, label: str) -> None:
     """Validate a per-point metadata DataFrame: one row per point and at least one,
-    uniquely named column (a duplicate name would select a 2D block).
+    uniquely named column (a duplicate name would select a 2D block). Names must
+    stay unique as the strings they sync as (columns 1 and "1" would merge).
 
     Raises:
         ValueError: For a wrong row count, no columns or duplicate column names.
@@ -205,7 +225,7 @@ def check_metadata_frame(frame: pd.DataFrame, n_points: int, label: str) -> None
             f"{label}.metadata DataFrame needs one row per point ({n_points}), got "
             f"{len(frame)}"
         )
-    if frame.columns.empty or frame.columns.has_duplicates:
+    if frame.columns.empty or frame.columns.map(str).has_duplicates:
         raise ValueError(
             f"{label}.metadata DataFrame needs uniquely named columns, got "
             f"{frame.columns.tolist()}"
@@ -228,6 +248,10 @@ def metadata_records(
     missing = frame.isna()
     numeric = frame.select_dtypes("number").columns
     missing[numeric] |= ~np.isfinite(frame[numeric].to_numpy(dtype=float))
+    for col in frame.select_dtypes(object).columns:  # e.g. [inf, "unavailable"]
+        missing[col] |= frame[col].map(
+            lambda val: isinstance(val, float | np.floating) and not np.isfinite(val)
+        )
     return frame.astype(object).mask(missing, None).to_dict("records")
 
 
@@ -437,11 +461,8 @@ def normalize_convex_hull_entries(obj: Any) -> list[dict[str, Any]] | None:
                 "energy": entry.energy,
                 "energy_per_atom": entry.energy_per_atom,
             }
-            try:
-                entry_dict["e_above_hull"] = obj.get_e_above_hull(entry)
-                entry_dict["is_stable"] = entry in obj.stable_entries
-            except (ValueError, KeyError):
-                pass
+            entry_dict["e_above_hull"] = obj.get_e_above_hull(entry)
+            entry_dict["is_stable"] = entry in obj.stable_entries
             entries.append(entry_dict)
         return entries
 

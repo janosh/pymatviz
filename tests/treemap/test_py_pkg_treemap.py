@@ -186,9 +186,14 @@ def test_find_package_path(
         assert found_path == ""
 
 
-def test_find_package_path_sys_path_fallback(dummy_pkg_path: Path) -> None:
-    """Scan sys.path (prepended with dummy_pkg_path) when importlib can't import."""
-    with patch("importlib.resources.files", side_effect=ModuleNotFoundError):
+@pytest.mark.parametrize("import_error", [ModuleNotFoundError, ImportError])
+def test_find_package_path_sys_path_fallback(
+    dummy_pkg_path: Path, import_error: type[ImportError]
+) -> None:
+    """Scan sys.path (prepended with dummy_pkg_path) when importlib can't import,
+    also for a package whose __init__ raises ImportError.
+    """
+    with patch("importlib.resources.files", side_effect=import_error):
         found_path = pmv.treemap.py_pkg.find_package_path("my_pkg")
     assert found_path.replace("\\", "/") == str(dummy_pkg_path / "my_pkg").replace(
         "\\", "/"

@@ -178,13 +178,19 @@ def test_color_discrete_map(df_prop: pd.DataFrame) -> None:
     assert colors == {"Al-O": None, "Au": None, "Cu": None, "Fe-O": "red"}
 
 
-def test_categorical_property(df_prop: pd.DataFrame) -> None:
-    """Non-numeric properties (missing values included) split points into one
-    series per category, colored per category also when split by system shape.
+@pytest.mark.parametrize(
+    ("dtype", "missing"), [(object, None), (object, np.nan), ("string", pd.NA)]
+)
+def test_categorical_property(df_prop: pd.DataFrame, dtype: Any, missing: Any) -> None:
+    """Non-numeric properties (missing values included, None, NaN or pd.NA) split
+    points into one series per category, colored per category also when split by
+    system shape.
     """
-    df_prop.loc[5, "category"] = None
+    df_prop["category"] = df_prop["category"].astype(dtype)
+    df_prop.loc[5, "category"] = missing
     widget = pmv.cluster_compositions(df_prop, prop_name="category", **BASE_KWARGS)
     assert [srs["label"] for srs in widget.series] == ["a", "b", "nan"]
+    assert widget.series[-1]["metadata"][0]["category"] is None
     shapes = pmv.cluster_compositions(
         df_prop, prop_name="category", show_chem_sys="shape", **BASE_KWARGS
     )

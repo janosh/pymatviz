@@ -24,7 +24,6 @@ def structure_3d(
     | Sequence[AnyStructure]
     | pd.Series,
     *,
-    standardize_struct: bool = False,
     n_cols: int = 3,
     **kwargs: Any,
 ) -> StructureWidget | ipw.GridBox:
@@ -33,12 +32,11 @@ def structure_3d(
     Args:
         struct (AnyStructure | Mapping | Sequence | pd.Series): A pymatgen Structure,
             ASE Atoms or PhonopyAtoms, or a sequence, mapping or Series of them.
-        standardize_struct (bool): Whether to show each structure's conventional
-            standard cell. Defaults to False.
         n_cols (int): Number of grid columns when plotting several structures.
             Defaults to 3.
         **kwargs: Passed to every StructureWidget, e.g. ``show_bonds``,
-            ``color_scheme``, ``atom_radius``, ``show_image_atoms`` or ``style``.
+            ``color_scheme``, ``atom_radius``, ``show_image_atoms``, ``style`` or
+            ``cell_type="conventional"`` to show the conventional standard cell.
 
     Returns:
         StructureWidget | ipw.GridBox: The widget for a single structure. For several,
@@ -51,12 +49,7 @@ def structure_3d(
     """
     structures = normalize_periodic_structures(struct)
     widgets = {
-        key: StructureWidget(
-            structure=helpers.standardize_struct(struct_i)
-            if standardize_struct
-            else struct_i,
-            **kwargs,
-        )
+        key: StructureWidget(structure=struct_i, **kwargs)
         for key, struct_i in structures.items()
     }
     if len(widgets) == 1:

@@ -356,7 +356,7 @@ def test_histogram_widget_delegates_series_validation() -> None:
     """HistogramWidget requires sample arrays in `values`."""
     widget = HistogramWidget(series=[{"values": np.array([2, 1]), "label": "a"}])
     assert widget.to_dict()["series"] == [{"values": [2.0, 1.0], "label": "a"}]
-    with pytest.raises(ValueError, match="must include key 'values'"):
+    with pytest.raises(tl.TraitError, match="must include key 'values'"):
         HistogramWidget(series=[{"x": [0, 1], "y": [2, 3]}])
 
 
@@ -551,9 +551,10 @@ def test_widget_normalizes_numpy_values(
     assert type(result) is type(expected)
 
 
-def test_spacegroup_bar_data_inputs() -> None:
+def test_spacegroup_bar_data_inputs(monkeypatch: pytest.MonkeyPatch) -> None:
     """SpacegroupBarPlotWidget counts every input form per space group number."""
-    pd = pytest.importorskip("pandas")
+    import pymatviz.process_data as pmv_pd
+
     widget = SpacegroupBarPlotWidget(data=pd.Series([225, 166, 62, 225]))
     assert widget.data == {"62": 1, "166": 1, "225": 2}
     # number, symbol and synced digit-string keys of one group merge; zeros drop
@@ -561,6 +562,22 @@ def test_spacegroup_bar_data_inputs() -> None:
     assert widget.data == {"14": 1, "225": 4}
     widget.data = widget.data  # re-validating the synced form is a no-op
     assert widget.data == {"14": 1, "225": 4}
+    # mapping keys normalize in one batch per key type (numbers, symbols), not one
+    # call per key
+    n_calls = 0
+    normalize = pmv_pd.normalize_spacegroups
+
+    def counting_normalize(*args: Any) -> Any:
+        """Count normalize_spacegroups calls."""
+        nonlocal n_calls
+        n_calls += 1
+        return normalize(*args)
+
+    monkeypatch.setattr(pmv_pd, "normalize_spacegroups", counting_normalize)
+    widget.data = {"Fm-3m": 1, "P2_1/c": 2, "Pnma": 3}
+    assert (widget.data, n_calls) == ({"14": 2, "62": 3, "225": 1}, 1)
+    widget.data = {225: 1, np.int64(62): 2, "225": 3, "Fm-3m": 4, "P 1 21/c 1": 5}
+    assert (widget.data, n_calls) == ({"14": 5, "62": 2, "225": 8}, 3)
     assert SpacegroupBarPlotWidget().data == {}
     for bad_data, match in [
         ({225: -1}, "non-negative"),
@@ -818,20 +835,29 @@ def test_xrd_widget_labeled_patterns() -> None:
 
 
 @pytest.mark.parametrize(
-    ("series", "exc_type", "match"),
+    ("series", "match"),
     [
-        ([{"x": [1], "y": [2], "label": "no-z"}], ValueError, "missing required key"),
-        (["not-a-dict"], TypeError, "must be a dict"),
-        ([{1: [0], "y": [1], "z": [2]}], TypeError, "non-string keys"),
-        ([{"x": [1, 2], "y": [2], "z": [3]}], ValueError, "mismatched x/y/z lengths"),
+        ([{"x": [1], "y": [2], "label": "no-z"}], "missing required key"),
+        (["not-a-dict"], "must be a dict"),
+        ([{1: [0], "y": [1], "z": [2]}], "non-string keys"),
+        ([{"x": [1, 2], "y": [2], "z": [3]}], "mismatched x/y/z lengths"),
+        ([{"x": np.array([1, np.nan]), "y": [2, 3], "z": [3, 4]}], "non-finite"),
     ],
 )
-def test_scatter_plot_3d_rejects_invalid_series(
-    series: list[Any], exc_type: type[Exception], match: str
-) -> None:
-    """ScatterPlot3DWidget rejects malformed series entries."""
-    with pytest.raises(exc_type, match=match):
+def test_scatter_plot_3d_rejects_invalid_series(series: list[Any], match: str) -> None:
+    """ScatterPlot3DWidget rejects malformed series on init and reassignment, keeping
+    prior data, and normalizes valid reassignments to JSON.
+    """
+    with pytest.raises(tl.TraitError, match=match):
         ScatterPlot3DWidget(series=series)
+    widget = ScatterPlot3DWidget(series=[{"x": [1], "y": [2], "z": [3]}])
+    with pytest.raises(tl.TraitError, match=match):
+        widget.series = series
+    assert widget.series == [{"x": [1], "y": [2], "z": [3]}]
+    widget.series = [
+        {"x": np.array([1.5]), "y": (2,), "z": np.array([3], dtype=np.float32)}
+    ]
+    assert widget.series == [{"x": [1.5], "y": [2], "z": [3.0]}]
 
 
 # === FermiSurfaceWidget input validation ===

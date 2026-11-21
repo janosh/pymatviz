@@ -1,11 +1,15 @@
-"""Calculate and compare Phonon DOS and band structure using MACE and ORB v3."""
+"""Calculate and compare Phonon DOS and band structure using MACE and ORB v3.
+
+Saving the PDFs needs a headless browser: run ``playwright install chromium`` once
+before starting the calculations.
+"""
 
 # /// script
 # dependencies = [
 #     "mace-torch>=0.3.11",
 #     "orb-models>=0.5.2",
 #     "phonopy>=2.35",
-#     "pymatviz>=0.15.1",
+#     "pymatviz[export]>=0.15.1",
 #     "seekpath",
 #     "ase",
 # ]

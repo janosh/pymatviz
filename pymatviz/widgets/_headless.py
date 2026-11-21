@@ -360,16 +360,23 @@ async def _render_widget(inputs: _RenderInputs) -> bytes:
 
 def _widget_data_json(widget_data: Mapping[str, Any]) -> str:
     """Widget data as JSON safe to embed in a ``<script>`` (``</`` escaped), with
-    binary arrays base64-encoded for ``_REVIVE_BUFFERS_JS``.
+    binary arrays base64-encoded for ``_REVIVE_BUFFERS_JS`` and numpy scalars as
+    their Python values (as Jupyter's comm serializer does).
+
+    Raises:
+        TypeError: For any other non-JSON value, instead of stringifying it.
     """
-    return json.dumps(
-        widget_data,
-        default=lambda obj: (
-            base64.b64encode(obj).decode("ascii")
-            if isinstance(obj, (bytes, bytearray, memoryview))
-            else str(obj)
-        ),
-    ).replace("</", r"<\/")
+    import numpy as np
+
+    def default(obj: Any) -> Any:
+        """Encode buffers and numpy scalars, reject anything else."""
+        if isinstance(obj, (bytes, bytearray, memoryview)):
+            return base64.b64encode(obj).decode("ascii")
+        if isinstance(obj, np.generic):
+            return obj.item()
+        raise TypeError(f"{type(obj).__name__} is not JSON serializable: {obj!r}")
+
+    return json.dumps(widget_data, default=default).replace("</", r"<\/")
 
 
 @functools.lru_cache(maxsize=_MAX_WARM_PAGES)  # base64 of a multi-MB bundle is slow
@@ -599,8 +606,9 @@ def _build_html(esm_content: str, css_content: str) -> str:
 
 def build_interactive_html(
     widget_data: dict[str, Any],
-    css_content: str,
     *,
+    css_content: str | None = None,
+    css_url: str | None = None,
     esm_url: str | None = None,
     esm_content: str | None = None,
     title: str = "MatterViz widget",
@@ -610,12 +618,15 @@ def build_interactive_html(
 
     Exactly one ESM source must be given: ``esm_url`` (imported by URL, so the host
     must serve it with CORS and a JS MIME type) or ``esm_content`` (inlined as a
-    base64 ``blob:`` URL: self-contained, opens offline). CSS is always inlined.
+    base64 ``blob:`` URL: self-contained, opens offline). Likewise exactly one of
+    ``css_url`` (linked) or ``css_content`` (inlined).
     Client-side interactions work; controls that round-trip through a Python kernel
     don't (the anywidget model is a no-op mock).
     """
     if (esm_url is None) == (esm_content is None):
         raise ValueError("provide exactly one of esm_url or esm_content")
+    if (css_url is None) == (css_content is None):
+        raise ValueError("provide exactly one of css_url or css_content")
     esm_loader = (
         f"const esm_url = {json.dumps(esm_url)};"
         if esm_content is None
@@ -627,12 +638,14 @@ def build_interactive_html(
         f"\n<title>{html_mod.escape(title)}</title>"
         f'\n<meta name="description" content="{html_mod.escape(description)}">'
     )
+    if css_url is not None:
+        head += f'\n<link rel="stylesheet" href="{html_mod.escape(css_url)}">'
     script = (
         f"{esm_loader}\n{_MOUNT_FN_JS}const el = document.getElementById("
         f'"widget-root");\nmount({_widget_data_json(widget_data)}, el, {no_worker});'
     )
     style = html_mod.escape(widget_data.get("style") or "width: 100%; height: 600px;")
-    return _html_page(css_content, script, head, style)
+    return _html_page(css_content or "", script, head, style)
 
 
 def _png_to_pdf(png_bytes: bytes, scale: float = 1.0) -> bytes:

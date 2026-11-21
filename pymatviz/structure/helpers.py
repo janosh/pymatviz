@@ -1,10 +1,9 @@
-"""Site, standardization and layout helpers for structure plots."""
+"""Site and layout helpers for structure plots."""
 
 from __future__ import annotations
 
 import html
 import os
-import warnings
 from typing import TYPE_CHECKING, Any
 
 import ipywidgets as ipw
@@ -13,11 +12,10 @@ import ipywidgets as ipw
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from pymatgen.core import Composition, IStructure, Site, Species, Structure
+    from pymatgen.core import Composition, Site, Species
     from pymatgen.core.periodic_table import DummySpecies, Element
 
 
-NO_SYM_MSG = "Symmetry could not be determined, skipping standardization"
 MIN_ASE_CELL_VOLUME = 1e-6  # Å³
 
 
@@ -35,24 +33,6 @@ def get_site_symbol(site: Site) -> str:
     """Element symbol of a site, the highest-occupancy one for disordered sites."""
     el_amt_dict = site.species.get_el_amt_dict()
     return max(el_amt_dict, key=el_amt_dict.__getitem__)
-
-
-def standardize_struct(struct: Structure | IStructure) -> Structure | IStructure:
-    """Convert to the conventional standard cell, carrying over site properties
-    (forces, magmoms, ...). Warns with NO_SYM_MSG and returns the input unchanged if
-    spglib can't determine the symmetry.
-    """
-    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
-
-    try:
-        return SpacegroupAnalyzer(struct).get_conventional_standard_structure(
-            keep_site_properties=True
-        )
-    except ValueError as exc:
-        warnings.warn(
-            f"{NO_SYM_MSG} for {struct.formula}: {exc}", UserWarning, stacklevel=2
-        )
-    return struct
 
 
 class WidgetGrid(ipw.GridBox):

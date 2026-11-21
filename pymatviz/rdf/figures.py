@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pymatviz.process_data import normalize_periodic_structures
-from pymatviz.rdf.helpers import calculate_rdf
+from pymatviz.rdf.helpers import calculate_rdf, partial_rdfs
 from pymatviz.widgets.rdf_plot import RdfPlotWidget
 
 
@@ -148,13 +148,14 @@ def element_pair_rdfs(
             )
 
     multiple = len(struct_dict) > 1
-    pairs = sorted({tuple(sorted(pair)) for pair in element_pairs})
+    pairs = sorted({(min(el1, el2), max(el1, el2)) for el1, el2 in element_pairs})
     entries = []
     for label, struct in struct_dict.items():
-        for el1, el2 in pairs:
-            if not {el1, el2} <= struct.chemical_system_set:
-                continue  # an all-zero curve for elements this structure lacks
-            rdf = calculate_rdf(struct, el1, el2, cutoff=cutoff, n_bins=n_bins)
+        # skip pairs with elements this structure lacks (all-zero curves)
+        struct_elems = struct.chemical_system_set
+        struct_pairs = [pair for pair in pairs if set(pair) <= struct_elems]
+        pair_rdfs = partial_rdfs(struct, struct_pairs, cutoff=cutoff, n_bins=n_bins)
+        for (el1, el2), rdf in zip(struct_pairs, pair_rdfs, strict=True):
             color = colors[len(entries) % len(colors)] if colors else None
             entries.append(
                 _rdf_entry(

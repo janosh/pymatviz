@@ -238,10 +238,8 @@ def test_trajectory_widget_property_extraction(
 
 
 @pytest.mark.parametrize("shape", [(6,), (3, 3)])
-def test_ase_stress_transfer(
-    shape: tuple[int, ...], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Transfer raw ASE stress losslessly with compatible renderers."""
+def test_ase_stress_transfer(shape: tuple[int, ...]) -> None:
+    """Transfer raw ASE stress losslessly as binary frame_stress."""
     from ase import Atoms
     from ase.calculators.singlepoint import SinglePointCalculator
 
@@ -251,44 +249,22 @@ def test_ase_stress_transfer(
         atoms.calc = SinglePointCalculator(atoms, stress=stress)
 
     widget = TrajectoryWidget()
-    monkeypatch.setattr(
-        widget,
-        "_resolve_assets",
-        lambda: ("matterviz-binary-v1 trajectory frame_stress", ""),
-    )
     widget.trajectory = frames
     encoded = widget.trajectory
     wire = decode_envelope(encoded)["frame_stress"]
     assert wire.dtype == np.dtype("<f8")
     np.testing.assert_array_equal(wire, tensors.reshape(2, -1))
 
-    monkeypatch.setattr(
-        widget, "_resolve_assets", lambda: ("matterviz-binary-v1 trajectory", "")
-    )
-    widget.trajectory = frames
-    np.testing.assert_array_equal(
-        [frame["metadata"]["stress"] for frame in widget.trajectory["frames"]], tensors
-    )
-    with pytest.raises(ValueError, match="lacks the binary frame_stress channel"):
-        widget.trajectory = encoded
-
 
 @pytest.mark.parametrize(
     "extra", [{}, {"stress": np.eye(3)}, {"stress": np.ones(6), "frame_stress": 42}]
 )
-def test_partial_or_conflicting_stress_stays_json(
-    extra: dict[str, Any], monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_partial_or_conflicting_stress_stays_json(extra: dict[str, Any]) -> None:
     """Keep missing stresses, mixed shapes, and user-defined channels intact."""
     from ase import Atoms
 
     atoms = Atoms("H")
     widget = TrajectoryWidget()
-    monkeypatch.setattr(
-        widget,
-        "_resolve_assets",
-        lambda: ("matterviz-binary-v1 trajectory frame_stress", ""),
-    )
     widget.trajectory = [
         {"structure": atoms, "stress": [1] * 6},
         {"structure": atoms, **extra},

@@ -116,9 +116,10 @@ def test_invalid_inputs(
 @pytest.mark.parametrize(
     ("curve_func", "targets", "missing"),
     [
-        (roc_curve, np.ones(4), r"\[0\]"),
-        (roc_curve, [0, 0, np.nan, 0], r"\[1\]"),
-        (precision_recall_curve, np.zeros(4), r"\[1\]"),
+        (roc_curve, np.ones(4), "0"),
+        (roc_curve, [0, 0, np.nan, 0], "1"),
+        (roc_curve, [-1, -1, -1, -1], "1"),
+        (precision_recall_curve, np.zeros(4), "1"),
     ],
 )
 def test_single_class_targets_raise(
@@ -127,7 +128,7 @@ def test_single_class_targets_raise(
     """Curves undefined for single-class targets raise naming the classifier."""
     probs = {"Model A": [0.1, 0.9, 0.8, 0.2]}
     with pytest.raises(
-        ValueError, match=rf"'Model A' has no targets of class {missing}"
+        ValueError, match=rf"'Model A' has no targets of class {missing} \("
     ):
         curve_func(targets, probs)
 
@@ -299,6 +300,12 @@ def test_curve_labels_match_sklearn() -> None:
     probs[:20] = 0.5  # ties at the threshold count as positive predictions
     roc_label = roc_curve(targets, {"m": probs}).series[0]["label"]
     assert roc_label == f"m · AUC={skm.roc_auc_score(targets, probs):.2f}"
+    # -1 is also taken as the negative class (sklearn's f1_score rejects it)
+    pm_targets, pm_probs = [-1, 1, -1, 1, np.nan], [0.1, 0.9, 0.6, 0.8, 0.3]
+    assert roc_curve(pm_targets, pm_probs).series[0]["label"] == "AUC=1.00"
+    pm_pr = precision_recall_curve(pm_targets, pm_probs)
+    assert pm_pr.series[0]["label"] == "F1=0.80"
+    assert pm_pr.ref_lines[0]["y"] == 0.5  # prevalence of the +1 class
     pr_label = precision_recall_curve(targets, {"m": probs}).series[0]["label"]
     expected_f1 = skm.f1_score(targets, probs >= 0.5)
     assert pr_label == f"m · F1={expected_f1:.2f}"

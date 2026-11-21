@@ -129,8 +129,8 @@ def find_package_path(package_name: str) -> str:
     try:
         if os.path.isdir(package_root := str(resources.files(package_name))):
             return package_root
-    except (ModuleNotFoundError, TypeError):
-        pass  # not importable as a package, look for its directory on sys.path
+    except (ImportError, TypeError):
+        pass  # not importable (or broken): look for its directory on sys.path
 
     for path_entry in sys.path:
         if os.path.isdir(package_path := f"{path_entry or '.'}/{package_name}"):

@@ -13,9 +13,109 @@ from pymatviz.process_data import normalize_periodic_structures
 
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from typing import Literal
 
+    from pymatgen.core import IStructure
+
     from pymatviz.typing import AnyStructure
+
+
+def partial_rdfs(
+    struct: IStructure,
+    pairs: Sequence[tuple[str | None, str | None]],
+    cutoff: float = 15,
+    n_bins: int = 75,
+    pbc: tuple[Literal[0, 1], Literal[0, 1], Literal[0, 1]] = (1, 1, 1),
+) -> list[tuple[np.ndarray, np.ndarray]]:
+    """Partial radial distribution functions of several (center, neighbor) species
+    pairs from one neighbor search.
+
+    Args:
+        struct (IStructure): Periodic pymatgen structure.
+        pairs (Sequence[tuple[str | None, str | None]]): (center, neighbor) element
+            symbols, None meaning all sites. (None, None) gives the full RDF.
+        cutoff (float, optional): Maximum distance for RDF calculation. Default is 15 Å.
+        n_bins (int, optional): Number of bins. Default is 75.
+        pbc (tuple[int, int, int], optional): Periodic boundary conditions as any
+            3-tuple of 0s/1s. Defaults to (1, 1, 1).
+
+    Returns:
+        list[tuple[np.ndarray, np.ndarray]]: (radii, g(r)) per pair, all-zero g(r)
+            for pairs whose species no site contains.
+
+    Raises:
+        ValueError: If cutoff is not positive and finite, n_bins is not a positive
+            integer, or pbc does not contain three 0/1 flags.
+    """
+    if not np.isfinite(cutoff) or cutoff <= 0:
+        raise ValueError(f"{cutoff=} must be positive and finite")
+    if not isinstance(n_bins, int | np.integer) or n_bins <= 0:
+        raise ValueError(f"{n_bins=} must be positive and integral")
+    pbc_array = np.asarray(pbc)
+    if pbc_array.shape != (3,) or not np.isin(pbc_array, [0, 1]).all():
+        raise ValueError(f"{pbc=} must contain three 0/1 flags")
+
+    bin_size = cutoff / n_bins
+    radii = np.linspace(0, cutoff, n_bins + 1)[1:]
+
+    # Import here to avoid circular import
+    from pymatviz.structure.helpers import get_site_elements
+
+    # site_has[species][idx]: whether site idx contains species (all sites for None,
+    # disordered sites contain several elements)
+    site_elements = [get_site_elements(site) for site in struct]
+    site_has = {
+        species: np.array([not species or species in elems for elems in site_elements])
+        for species in {species for pair in pairs for species in pair}
+    }
+    # pairs with a species no site contains have all-zero g(r)
+    live_pairs = {
+        (center, neighbor)
+        for center, neighbor in pairs
+        if site_has[center].any() and site_has[neighbor].any()
+    }
+    if not live_pairs:
+        return [(radii, np.zeros_like(radii)) for _ in pairs]
+
+    # search neighbors only around sites that center some pair
+    center_sites = np.flatnonzero(
+        np.logical_or.reduce([site_has[center] for center, _ in live_pairs])
+    )
+    center_ids, neighbor_ids, _, distances = find_points_in_spheres(
+        all_coords=struct.cart_coords,
+        center_coords=struct.cart_coords[center_sites],
+        r=cutoff,
+        pbc=pbc_array.astype(int),
+        lattice=struct.lattice.matrix,
+    )
+    # Exclude the zero-distance self-pair, but count its periodic images.
+    in_range = (distances > 1e-10) & (distances < cutoff)
+    bin_indices = np.minimum((distances[in_range] / bin_size).astype(int), n_bins - 1)
+    center_ids = center_sites[center_ids[in_range]]
+    # flat (neighbor site, bin) index of each neighbor
+    site_bin_ids = neighbor_ids[in_range] * n_bins + bin_indices
+    shell_volumes = 4 * np.pi * radii**2 * bin_size
+    # histogram neighbor (site, bin) counts once per center species, then sum the
+    # rows of each neighbor species' sites (integer counts, so exact)
+    site_hists: dict[str | None, np.ndarray] = {}
+    rdfs = []
+    for center, neighbor in pairs:
+        if (center, neighbor) not in live_pairs:
+            rdfs.append((radii, np.zeros_like(radii)))
+            continue
+        is_center, is_neighbor = site_has[center], site_has[neighbor]
+        if center not in site_hists:
+            site_hists[center] = np.bincount(
+                site_bin_ids[is_center[center_ids]], minlength=len(struct) * n_bins
+            ).reshape(len(struct), n_bins)
+        rdf = site_hists[center][is_neighbor].sum(axis=0).astype(float)
+        # Neighbor density is N/V without a -1 correction: periodic self-images
+        # count. Approximate shell volume using its outer radius and thickness.
+        rdf /= is_center.sum() * is_neighbor.sum()
+        rdf /= shell_volumes / struct.volume
+        rdfs.append((radii, rdf))
+    return rdfs
 
 
 def calculate_rdf(
@@ -53,59 +153,5 @@ def calculate_rdf(
         TypeError: If structure is unsupported or not periodic (e.g. a Molecule).
     """
     struct = next(iter(normalize_periodic_structures(structure).values()))
-
-    if not np.isfinite(cutoff) or cutoff <= 0:
-        raise ValueError(f"{cutoff=} must be positive and finite")
-    if not isinstance(n_bins, int | np.integer) or n_bins <= 0:
-        raise ValueError(f"{n_bins=} must be positive and integral")
-    pbc_array = np.asarray(pbc)
-    if pbc_array.shape != (3,) or not np.isin(pbc_array, [0, 1]).all():
-        raise ValueError(f"{pbc=} must contain three 0/1 flags")
-
-    bin_size = cutoff / n_bins
-    radii = np.linspace(0, cutoff, n_bins + 1)[1:]
-
-    # Import here to avoid circular import
-    from pymatviz.structure.helpers import get_site_elements
-
-    def species_indices(species: str | None) -> list[int]:
-        """Indices of sites containing species (all sites if species is None)."""
-        return [
-            idx
-            for idx, site in enumerate(struct)
-            if not species or species in get_site_elements(site)
-        ]
-
-    center_indices = species_indices(center_species)
-    neighbor_indices = species_indices(neighbor_species)
-
-    if not center_indices or not neighbor_indices:
-        return radii, np.zeros_like(radii)
-
-    center_neighbors = find_points_in_spheres(
-        all_coords=struct.cart_coords,
-        center_coords=struct.cart_coords[center_indices],
-        r=cutoff,
-        pbc=pbc_array.astype(int),
-        lattice=struct.lattice.matrix,
-    )
-
-    # Exclude the zero-distance self-pair, but count its periodic images.
-    _, neighbor_ids, _, distances = center_neighbors
-    selected = np.zeros(len(struct), dtype=bool)
-    selected[neighbor_indices] = True
-    distances = distances[
-        selected[neighbor_ids] & (distances > 1e-10) & (distances < cutoff)
-    ]
-    bin_indices = np.minimum((distances / bin_size).astype(int), n_bins - 1)
-    rdf = np.bincount(bin_indices, minlength=n_bins).astype(float)
-
-    # Neighbor density is N/V without a -1 correction: periodic self-images count.
-    normalization = len(center_indices) * len(neighbor_indices)
-
-    # Approximate shell volume using its outer radius and thickness.
-    rdf /= normalization
-    shell_volumes = 4 * np.pi * radii**2 * bin_size
-    rdf /= shell_volumes / struct.volume
-
-    return radii, rdf
+    pair = (center_species, neighbor_species)
+    return partial_rdfs(struct, [pair], cutoff=cutoff, n_bins=n_bins, pbc=pbc)[0]

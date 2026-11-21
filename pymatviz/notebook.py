@@ -5,87 +5,51 @@ from __future__ import annotations
 from typing import Any
 
 
-_MISSING = object()
-_original_display_hooks: dict[tuple[type, str], Any] = {}
+# Printers notebook_mode replaced, restored when it is turned off
+_previous_printers: dict[tuple[str, str], Any] = {}
 
 
-def _widget_mime_bundle(obj: Any) -> dict[str, Any]:
-    """Create a MIME bundle by wrapping the object in a MatterViz widget.
-
-    Args:
-        obj: A pymatgen/ASE/phonopy object registered for auto-display.
-
-    Returns:
-        MIME bundle dict for IPython display.
+def _widget_mime_bundle(obj: Any) -> dict[str, Any] | tuple[dict, dict] | None:
+    """MIME bundle of the MatterViz widget for a registered object. Errors propagate:
+    IPython shows the traceback and falls back to the object's own repr.
     """
-    try:
-        from pymatviz.widgets.mime import create_widget
+    from pymatviz.widgets.mime import create_widget
 
-        mime_bundle = create_widget(obj)._repr_mimebundle_()
-    except (ImportError, ValueError, TypeError, OSError, RuntimeError, AttributeError):
-        return {"text/plain": repr(obj)}
-
-    if isinstance(mime_bundle, tuple):
-        mime_bundle = mime_bundle[0]
-    if not isinstance(mime_bundle, dict):
-        return {"text/plain": repr(obj)}
-    return {**mime_bundle, "text/plain": mime_bundle.get("text/plain", repr(obj))}
-
-
-def _ipython_display(self: Any) -> None:
-    """Generic IPython display method that renders via MatterViz widgets."""
-    from IPython.display import publish_display_data
-
-    publish_display_data(_widget_mime_bundle(self))
-
-
-def _repr_mimebundle(
-    self: Any,
-    include: tuple[str, ...] = (),  # noqa: ARG001
-    exclude: tuple[str, ...] = (),  # noqa: ARG001
-) -> dict[str, Any]:
-    """Generic MIME bundle method that renders via MatterViz widgets."""
-    return _widget_mime_bundle(self)
+    return create_widget(obj)._repr_mimebundle_()
 
 
 def notebook_mode(*, on: bool) -> None:
-    """Enable or disable pymatviz notebook display for pymatgen classes.
+    """Enable or disable pymatviz notebook display for pymatgen/ASE/phonopy objects.
 
-    When enabled, pymatgen objects returned from notebook cells automatically
-    render as interactive MatterViz widgets.
-
-    Works in Jupyter notebooks, JupyterLab, Marimo, VSCode interactive windows,
-    and other notebook environments that support IPython display protocols.
+    When enabled, those objects returned from IPython cells (Jupyter, JupyterLab,
+    VS Code interactive windows) render as interactive MatterViz widgets. Types are
+    registered by name with IPython's MIME-bundle formatter, so nothing is imported
+    until such an object is displayed. marimo renders them via ``_display_``.
 
     Args:
-        on: If True, enable automatic rendering. If False, restore prior display hooks.
+        on: If True, enable automatic rendering. If False, restore prior printers.
+
+    Raises:
+        RuntimeError: Outside an IPython session.
     """
-    from importlib import import_module
+    from IPython import get_ipython
 
     from pymatviz.widgets.mime import _CLASS_SPECS
 
-    hooks = {
-        "_ipython_display_": _ipython_display,
-        "_repr_mimebundle_": _repr_mimebundle,
-    }
-    if not on:
-        for (cls, attr), original in _original_display_hooks.items():
-            if cls.__dict__.get(attr) is hooks[attr]:
-                if original is _MISSING:
-                    delattr(cls, attr)
-                else:
-                    setattr(cls, attr, original)
-        _original_display_hooks.clear()
-        return
-
+    if (shell := get_ipython()) is None:
+        raise RuntimeError("notebook_mode needs a running IPython session")
+    formatter = shell.display_formatter.mimebundle_formatter
     for module_path, class_names, _widget_cls, _param in _CLASS_SPECS:
         for class_name in class_names:
-            try:
-                cls = getattr(import_module(module_path), class_name)
-                for attr, hook in hooks.items():
-                    _original_display_hooks.setdefault(
-                        (cls, attr), cls.__dict__.get(attr, _MISSING)
-                    )
-                    setattr(cls, attr, hook)
-            except (ImportError, AttributeError):
-                pass  # Module not available or crystal_toolkit conflict
+            key = (module_path, class_name)
+            # pop by name also finds printers IPython already resolved to the type
+            current = formatter.pop(f"{module_path}.{class_name}", None)
+            if on:
+                _previous_printers.setdefault(key, current)
+                formatter.for_type_by_name(*key, _widget_mime_bundle)
+            elif current is not _widget_mime_bundle and current is not None:
+                formatter.for_type_by_name(*key, current)  # a third party's, keep it
+            elif (previous := _previous_printers.get(key)) is not None:
+                formatter.for_type_by_name(*key, previous)
+    if not on:
+        _previous_printers.clear()

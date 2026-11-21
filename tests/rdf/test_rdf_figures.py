@@ -76,6 +76,42 @@ def test_element_pair_rdfs_entries(
         np.testing.assert_array_equal(entry["pattern"]["g_r"], g_r)
 
 
+@pytest.mark.parametrize("cutoff", [4.0, 9.0])
+def test_element_pair_rdfs_one_search_matches_calculate_rdf(
+    cutoff: float, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """All pairs (incl. a disordered Fe:Co site) come from one neighbor search and
+    match per-pair calculate_rdf bit for bit. Absent species skip the search.
+    """
+    import pymatviz.rdf.helpers as rdf_helpers
+
+    rng = np.random.default_rng(seed=0)
+    species: list[Any] = ["Si", "O", "Fe", "Li"] * 6 + [{"Fe": 0.5, "Co": 0.5}]
+    struct = Structure(Lattice.cubic(6.0), species, rng.uniform(size=(25, 3)))
+    n_searches = 0
+    find_points = rdf_helpers.find_points_in_spheres
+
+    def counting_find_points(*args: Any, **kwargs: Any) -> Any:
+        """Count neighbor searches."""
+        nonlocal n_searches
+        n_searches += 1
+        return find_points(*args, **kwargs)
+
+    monkeypatch.setattr(rdf_helpers, "find_points_in_spheres", counting_find_points)
+    widget = element_pair_rdfs(struct, cutoff=cutoff, n_bins=40)
+    assert n_searches == 1
+    assert len(widget.patterns) == 15  # 5 elements -> 15 pairs
+    for entry in widget.patterns:
+        el1, el2 = entry["pattern"]["element_pair"]
+        radii, g_r = calculate_rdf(struct, el1, el2, cutoff=cutoff, n_bins=40)
+        np.testing.assert_array_equal(entry["pattern"]["r"], radii)
+        np.testing.assert_array_equal(entry["pattern"]["g_r"], g_r)
+    assert rdf_helpers.partial_rdfs(struct, [], cutoff=cutoff) == []
+    ((_, absent_g_r),) = rdf_helpers.partial_rdfs(struct, [("Zn", "Si")], cutoff=cutoff)
+    assert not absent_g_r.any()
+    assert n_searches == 1 + len(widget.patterns)  # one per calculate_rdf call
+
+
 @pytest.mark.parametrize(
     ("kwargs", "expected_cutoff", "expected_bins"),
     [
