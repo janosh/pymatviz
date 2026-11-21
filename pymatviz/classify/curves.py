@@ -41,11 +41,11 @@ def _standardize_input(
                 f"when passing a DataFrame, targets must be a column name, got "
                 f"{type(targets).__name__}"
             )
-        if isinstance(probs_positive, Mapping):
+        if not isinstance(probs_positive, str):
             raise TypeError(
-                f"when passing a DataFrame, probs_positive must be a column name "
-                f"(str) or array, not dict. Got {type(probs_positive).__name__}. "
-                f"Pass df=None to use dict of predictions."
+                "when passing a DataFrame, probs_positive must be a column name, "
+                f"got {type(probs_positive).__name__}. Pass df=None to use arrays "
+                "or a dict of predictions."
             )
         targets, probs_positive = df_to_arrays(df, targets, probs_positive)
 

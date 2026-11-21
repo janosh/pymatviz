@@ -81,8 +81,15 @@ def sankey_flow_data(
               side, so no link is a self-loop.
             - "links": ``{"source", "target", "value"}`` with node ids and row counts.
     """
-    # value_counts drops rows with NaN and, unlike to_numpy, keeps each column's dtype
-    flows = df[[source, target]].value_counts()
+    # rows with NaN drop out, index levels keep each column's dtype (to_numpy would
+    # not), and observed=True skips unused category pairs (zero-count links)
+    flows = (
+        df[[source, target]]
+        .dropna()
+        .groupby([source, target], observed=True, sort=False)
+        .size()
+        .sort_values(ascending=False, kind="stable")
+    )
     pairs = [(*key, count) for key, count in flows.items()]
 
     # one node per value per side (a value in both columns gets two)

@@ -263,18 +263,24 @@ def test_curve_threshold_metadata() -> None:
 
 
 @pytest.mark.parametrize("curve_func", [precision_recall_curve, roc_curve])
-def test_dict_with_dataframe_raises_error(
-    curve_func: Callable[..., ScatterPlotWidget],
+@pytest.mark.parametrize(
+    "probs",
+    [{"Model A": np.array([0.1, 0.9, 0.2, 0.8])}, np.array([0.1, 0.9, 0.2, 0.8])],
+    ids=["dict", "array"],
+)
+def test_non_column_probs_with_dataframe_raise(
+    curve_func: Callable[..., ScatterPlotWidget], probs: Any
 ) -> None:
-    """Test that passing a dict with a DataFrame raises a clear TypeError."""
+    """With a DataFrame, probs_positive must name a column (arrays could misalign
+    with the rows dropped for NaN).
+    """
     df_clf = pd.DataFrame({"target": [0, 1, 0, 1], "probs": [0.1, 0.9, 0.2, 0.8]})
-    probs_dict = {"Model A": np.array([0.1, 0.9, 0.2, 0.8])}
 
     with pytest.raises(
         TypeError,
         match="when passing a DataFrame, probs_positive must be a column name",
     ):
-        curve_func("target", probs_dict, df=df_clf)
+        curve_func("target", probs, df=df_clf)
 
 
 @pytest.mark.parametrize("curve_func", [precision_recall_curve, roc_curve])

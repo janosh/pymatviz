@@ -99,3 +99,18 @@ def test_sankey_flow_data_keeps_column_values(
     df_flows = pd.DataFrame(dict(zip(cols, (source, target), strict=True)))
     nodes = sankey_flow_data(df_flows, *cols)["nodes"]
     assert [node["label"] for node in nodes] == expected_labels
+
+
+def test_sankey_flow_data_skips_unused_categories() -> None:
+    """Categorical columns link only observed pairs, so all-NaN rows raise."""
+    df_cat = pd.DataFrame(
+        {
+            "src": pd.Categorical(["a", None], categories=["a", "b"]),
+            "tgt": pd.Categorical(["x", "x"], categories=["x", "y"]),
+        }
+    )
+    flow = sankey_flow_data(df_cat, "src", "tgt", labels_with_counts=False)
+    assert [node["label"] for node in flow["nodes"]] == ["a", "x"]
+    assert flow["links"] == [{"source": 0, "target": 1, "value": 1}]
+    with pytest.raises(ValueError, match="No rows with values in both"):
+        pmv.sankey(df_cat.iloc[1:], "src", "tgt")
