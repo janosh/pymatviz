@@ -58,17 +58,6 @@ def is_structure_like(obj: Any) -> bool:
     )
 
 
-def _pymatgen_occupancies(species: Mapping[Any, float]) -> dict[str, float]:
-    """{element: occupancy} of a pymatgen site's species, summing an element's
-    oxidation states and dropping dummy species (vacancies, X).
-    """
-    occupancies: dict[str, float] = {}
-    for specie, occu in species.items():
-        if not is_instance_of(specie, "pymatgen.core.periodic_table.DummySpecies"):
-            occupancies[specie.symbol] = occupancies.get(specie.symbol, 0) + occu
-    return occupancies
-
-
 def to_structure(obj: Any) -> mk.Structure:
     """Convert a matscikit/pymatgen structure or molecule, ASE Atoms or PhonopyAtoms
     to a matscikit Structure. Disordered pymatgen sites become {element: occupancy}
@@ -83,7 +72,8 @@ def to_structure(obj: Any) -> mk.Structure:
         return obj
     if is_pymatgen_structure(obj):
         pmg: Any = obj  # IStructure or IMolecule
-        species = [_pymatgen_occupancies(site.species) for site in pmg]
+        # Composition sums an element's oxidation states and drops vacancies (X)
+        species = [mk.Composition(site.species).as_dict() for site in pmg]
         if is_instance_of(pmg, "pymatgen.core.structure.IStructure"):
             return mk.Structure(
                 pmg.lattice.matrix,
