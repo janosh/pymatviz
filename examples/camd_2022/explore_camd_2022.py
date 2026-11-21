@@ -21,7 +21,6 @@ import requests
 from pymatgen.core import Structure
 
 import pymatviz as pmv
-from pymatviz.enums import Key
 
 
 # %% Download data (if needed)
@@ -43,9 +42,9 @@ df_camd.hist(bins=50)
 
 
 # %%
-df_camd[Key.structure] = df_camd[Key.structure].map(Structure.from_dict)
-df_camd[Key.formula] = [struct.reduced_formula for struct in df_camd[Key.structure]]
-elem_counts = pmv.count_elements(df_camd[Key.formula])
+df_camd["structure"] = df_camd["structure"].map(Structure.from_dict)
+df_camd["formula"] = [struct.reduced_formula for struct in df_camd["structure"]]
+elem_counts = pmv.count_elements(df_camd["formula"])
 title = "Elements in CAMD 2022 dataset"
 pmv.ptable_heatmap(elem_counts, log=True, color_bar={"title": title}).show()
 

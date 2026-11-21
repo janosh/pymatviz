@@ -8,7 +8,6 @@ from operator import itemgetter
 from typing import TYPE_CHECKING, Any, Literal
 
 from pymatviz.composition import count_formulas
-from pymatviz.enums import Key
 from pymatviz.widgets.sunburst import SunburstWidget
 from pymatviz.widgets.treemap import TreemapWidget
 
@@ -70,7 +69,7 @@ def _chem_sys_nodes(
     roots = []
     for arity, group in counts.groupby("arity_name", sort=False):
         # count_formulas orders systems alphabetically, providing a stable tiebreaker.
-        totals = group.groupby(Key.chem_sys, sort=False)[Key.count].sum()
+        totals = group.groupby("chem_sys", sort=False)["count"].sum()
         systems = [
             {"id": f"{arity}/{system}", "label": system, "value": count}
             for system, count in totals.items()
@@ -79,7 +78,7 @@ def _chem_sys_nodes(
         if group_by != "chem_sys":
             by_system = {node["label"]: node for node in children}
             for system, formula, count in zip(
-                group[Key.chem_sys], group[Key.formula], group[Key.count], strict=True
+                group["chem_sys"], group["formula"], group["count"], strict=True
             ):
                 if (node := by_system.get(system)) is not None:
                     node.setdefault("children", []).append(

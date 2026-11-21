@@ -30,7 +30,6 @@ https://hackingmaterials.lbl.gov/matminer/dataset_summary.html
 from matminer.datasets import load_dataset
 
 import pymatviz as pmv
-from pymatviz.enums import Key
 
 
 df_boltz = load_dataset("boltztrap_mp")
@@ -39,12 +38,12 @@ df_boltz.describe()
 
 # %%
 title = "Elements in BoltzTraP MP dataset"
-pmv.ptable_heatmap(df_boltz[Key.formula], log=True, color_bar={"title": title}).show()
+pmv.ptable_heatmap(df_boltz["formula"], log=True, color_bar={"title": title}).show()
 
 
 # %%
 widget = pmv.ptable_heatmap(
-    df_boltz.sort_values("pf_n").tail(100)[Key.formula],
+    df_boltz.sort_values("pf_n").tail(100)["formula"],
     color_bar={"title": "Elements of top 100 n-type power factors"},
 )
 widget.show()

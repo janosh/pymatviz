@@ -18,7 +18,7 @@ from pymatgen.core import Composition
 from sklearn.model_selection import train_test_split
 
 import pymatviz as pmv
-from pymatviz.enums import ElemCountMode, Key
+from pymatviz.enums import ElemCountMode
 
 
 DataSplit = Literal["train", "val", "test"]
@@ -38,7 +38,7 @@ def drop_dupe_formulas(df_in: pd.DataFrame) -> pd.DataFrame:
         pd.DataFrame: with duplicate formulas removed
     """
     df_out = df_in.copy()
-    n_dupes = df_out[Key.composition].duplicated().sum()
+    n_dupes = df_out["composition"].duplicated().sum()
     print(f"\nFound {n_dupes:,} duplicate compositions")
 
     if n_dupes == 0:
@@ -47,11 +47,11 @@ def drop_dupe_formulas(df_in: pd.DataFrame) -> pd.DataFrame:
 
     # Print some examples of duplicates before filtering
     print("\nExample duplicate compositions before filtering:")
-    for comp in df_out[df_out[Key.composition].duplicated(keep=False)][
-        Key.composition
+    for comp in df_out[df_out["composition"].duplicated(keep=False)][
+        "composition"
     ].unique()[:3]:
         print(f"\n{comp}:")
-        dupe_rows = df_out[df_out[Key.composition] == comp]
+        dupe_rows = df_out[df_out["composition"] == comp]
         print(f"NaN counts: {dupe_rows.isna().sum(axis=1)}")
         print(dupe_rows.to_string())
 
@@ -61,7 +61,7 @@ def drop_dupe_formulas(df_in: pd.DataFrame) -> pd.DataFrame:
 
     # Group by composition and keep row with minimum NaN count in each group
     df_out = df_out.assign(nan_count=nan_counts).sort_values("nan_count")
-    df_out = df_out.drop_duplicates(subset=[Key.composition], keep="first")
+    df_out = df_out.drop_duplicates(subset=["composition"], keep="first")
     df_out = df_out.drop(columns=["nan_count"])
 
     print("\nAfter dropping duplicates (keeping most complete rows):")
@@ -80,7 +80,7 @@ def drop_dupe_formulas(df_in: pd.DataFrame) -> pd.DataFrame:
 def get_most_common_elements(df_in: pd.DataFrame, n_elements: int = 3) -> list[str]:
     """Get the n most common elements in the dataset."""
     element_counts: Counter[str] = Counter()
-    for comp in df_in[Key.composition]:
+    for comp in df_in["composition"]:
         element_counts.update(Composition(comp).chemical_system_set)
     return [el for el, _ in element_counts.most_common(n_elements)]
 
@@ -88,7 +88,7 @@ def get_most_common_elements(df_in: pd.DataFrame, n_elements: int = 3) -> list[s
 def get_most_common_systems(df_in: pd.DataFrame, n_systems: int = 3) -> list[str]:
     """Get the N most common chemical systems in the dataset."""
     system_counts: Counter[str] = Counter()
-    for comp in df_in[Key.composition]:
+    for comp in df_in["composition"]:
         system_counts[Composition(comp).chemical_system] += 1
     return [sys for sys, _ in system_counts.most_common(n_systems)]
 
@@ -138,7 +138,7 @@ def create_element_split(
     split = pd.Series("train", index=df_in.index)
 
     # Find compositions containing any of the held-out elements
-    holdout_mask = df_in[Key.composition].map(
+    holdout_mask = df_in["composition"].map(
         lambda comp: any(el in Composition(comp).chemical_system_set for el in elements)
     )
     holdout_idx = df_in.index[holdout_mask]
@@ -171,7 +171,7 @@ def create_system_split(
     split = pd.Series("train", index=df_in.index)
 
     # Find compositions matching any of the held-out systems
-    holdout_mask = df_in[Key.composition].map(
+    holdout_mask = df_in["composition"].map(
         lambda x: "-".join(sorted(Composition(x).chemical_system_set)) in systems
     )
     holdout_idx = df_in.index[holdout_mask]
@@ -199,7 +199,7 @@ def print_split_stats(df_in: pd.DataFrame, split: pd.Series, split_name: str) ->
     split_elements: dict[DataSplit, set[str]] = {name: set() for name in data_splits}
     split_comps: dict[DataSplit, list[str]] = {name: [] for name in data_splits}
 
-    for idx, comp in df_in[Key.composition].items():
+    for idx, comp in df_in["composition"].items():
         split_comps[split[idx]].append(comp)
         split_elements[split[idx]].update(Composition(comp).chemical_system_set)
 
@@ -215,7 +215,7 @@ def print_split_stats(df_in: pd.DataFrame, split: pd.Series, split_name: str) ->
 
     # Count unique systems in each split
     split_systems: dict[DataSplit, set[str]] = {name: set() for name in data_splits}
-    for idx, comp in df_in[Key.composition].items():
+    for idx, comp in df_in["composition"].items():
         system = "-".join(sorted(Composition(comp).chemical_system_set))
         split_systems[split[idx]].add(system)
 
@@ -252,8 +252,8 @@ if __name__ == "__main__":
     df_ward = pd.read_csv(ward_csv_path, na_values=["Unknown", "DifferentMeasurement?"])
 
     # Add material IDs that enumerates rows as ward-1, ward-2, ...
-    df_ward[Key.mat_id] = [f"ward-{idx + 1}" for idx in range(len(df_ward))]
-    df_ward.set_index(Key.mat_id).to_csv(ward_csv_path)
+    df_ward["material_id"] = [f"ward-{idx + 1}" for idx in range(len(df_ward))]
+    df_ward.set_index("material_id").to_csv(ward_csv_path)
     df_ward = df_ward.query("comment.isna()")
 
     # Drop duplicates keeping most complete rows

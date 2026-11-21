@@ -4,7 +4,6 @@
 import pandas as pd
 
 import pymatviz as pmv
-from pymatviz.enums import Key
 
 
 formulas = ["Fe2O3", "Fe4O6", "FeO", "Li2O", "LiFeO2"]
@@ -30,7 +29,7 @@ ward = pd.read_csv(
 ).query("comment.isna()")
 for max_systems, name in ((None, "ward-bmg"), (5, "top-5")):
     widget = pmv.chem_sys_hierarchy(
-        ward[Key.composition],
+        ward["composition"],
         max_systems=max_systems,
         style="height: 480px",
         kind="treemap",

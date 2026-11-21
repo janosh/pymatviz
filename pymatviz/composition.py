@@ -13,7 +13,7 @@ import pandas as pd
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 from pymatgen.core import Composition, Structure
 
-from pymatviz.enums import ElemCountMode, Key
+from pymatviz.enums import ElemCountMode
 from pymatviz.utils import df_ptable
 
 
@@ -76,9 +76,7 @@ def count_elements(
                 )
             ).value_counts()
         else:
-            attr = (
-                "element_composition" if count_mode == Key.composition else count_mode
-            )
+            attr = "element_composition" if count_mode == "composition" else count_mode
             # collect each element's amounts and sum them with exactly rounded fsum
             # (faster than summing a wide DataFrame of mostly-NaN dict rows)
             elem_amounts: defaultdict[str, list[float]] = defaultdict(list)
@@ -115,7 +113,7 @@ def count_elements(
                 f"{atomic_numbers.max()}, expected range [1, 118]."
             )
         srs.index = atomic_numbers.map(
-            df_ptable.reset_index().set_index(Key.atomic_number).symbol
+            df_ptable.reset_index().set_index("atomic_number").symbol
         )
 
     bad_symbols = srs.index.difference(df_ptable.index)
@@ -212,24 +210,24 @@ def count_formulas(
             else _system_and_formula(item, group_by)
             for item in data
         ],
-        columns=pd.Index(["system", Key.formula]),
+        columns=pd.Index(["system", "formula"]),
     )
-    df_systems[Key.arity] = df_systems["system"].map(len)
-    df_systems["arity_name"] = df_systems[Key.arity].map(
+    df_systems["arity"] = df_systems["system"].map(len)
+    df_systems["arity_name"] = df_systems["arity"].map(
         lambda n_elems: (
             arity_names[n_elems - 1]
             if n_elems <= len(arity_names)
             else f"{n_elems}-component"
         )
     )
-    df_systems[Key.chem_sys] = df_systems["system"].str.join("-")
+    df_systems["chem_sys"] = df_systems["system"].str.join("-")
 
-    formula_cols = [Key.formula] if group_by != Key.chem_sys else []
-    group_cols = [Key.arity, "arity_name", Key.chem_sys, *formula_cols]
+    formula_cols = ["formula"] if group_by != "chem_sys" else []
+    group_cols = ["arity", "arity_name", "chem_sys", *formula_cols]
     df_counts = df_systems.value_counts(group_cols).reset_index()
-    df_counts.columns = [*group_cols, Key.count]
+    df_counts.columns = [*group_cols, "count"]
     return (
-        df_counts.sort_values([Key.arity, Key.chem_sys, *formula_cols])
-        .drop(columns=Key.arity)
+        df_counts.sort_values(["arity", "chem_sys", *formula_cols])
+        .drop(columns="arity")
         .reset_index(drop=True)
     )

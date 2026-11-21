@@ -25,7 +25,6 @@ import pymatviz as pmv
 import pymatviz.cluster.composition as pcc
 from pymatviz.cluster.composition import EmbeddingMethod as Embed
 from pymatviz.cluster.composition import ProjectionMethod as Project
-from pymatviz.enums import Key
 
 
 if TYPE_CHECKING:
@@ -75,11 +74,11 @@ def process_dataset(
     df_data = load_dataset(dataset_name)
 
     # Extract compositions and target values
-    if Key.composition in df_data:
-        compositions = df_data[Key.composition].tolist()
+    if "composition" in df_data:
+        compositions = df_data["composition"].tolist()
     else:
         # Extract formula from structure
-        compositions = [struct.formula for struct in df_data[Key.structure]]
+        compositions = [struct.formula for struct in df_data["structure"]]
 
     properties = df_data[target_key].tolist()
 

@@ -7,7 +7,6 @@ from matminer.datasets import load_dataset
 from pymatgen.core import Structure
 
 import pymatviz as pmv
-from pymatviz.enums import Key
 from pymatviz.utils.testing import TEST_FILES, formula_spg_str
 
 
@@ -55,4 +54,4 @@ pmv.coordination_vs_cutoff_line(
 
 
 # %% First 4 matbench_phonons structures
-pmv.coordination_vs_cutoff_line(df_phonon[Key.structure][:4].tolist()).show()
+pmv.coordination_vs_cutoff_line(df_phonon["structure"][:4].tolist()).show()

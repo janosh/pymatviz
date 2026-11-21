@@ -39,7 +39,6 @@ from pymatviz.classify.confusion_matrix import confusion_matrix
 from pymatviz.cluster.composition import cluster_compositions
 from pymatviz.composition import count_elements
 from pymatviz.coordination import coordination_bar_plot, coordination_vs_cutoff_line
-from pymatviz.enums import Key
 from pymatviz.hierarchy import chem_sys_hierarchy
 from pymatviz.histogram import elements_hist, histogram
 from pymatviz.notebook import notebook_mode

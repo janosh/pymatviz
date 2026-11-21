@@ -4,7 +4,6 @@
 import pandas as pd
 
 import pymatviz as pmv
-from pymatviz.enums import Key
 
 
 # Fe2O3 and Fe4O6 share a reduced formula; FeO belongs to the same chemical system.
@@ -19,7 +18,7 @@ ward = pd.read_csv(
     na_values=(),
 ).query("comment.isna()")
 widget = pmv.chem_sys_hierarchy(
-    ward[Key.composition],
+    ward["composition"],
     max_systems=5,
     inner_radius=0.18,
     label_text="label+percent",

@@ -7,7 +7,6 @@ from pymatgen.core import Lattice, Structure
 from pymatgen.core.periodic_table import Species
 
 import pymatviz as pmv
-from pymatviz.enums import Key
 from pymatviz.utils.testing import disordered_demo_structures
 
 
@@ -27,7 +26,7 @@ def show_and_save(widget: pmv.widgets.StructureWidget, name: str) -> None:
 # %% Grid of 2x2x2 supercells of the first 6 Matbench phonon structures
 supercells = {
     key: struct.make_supercell(2, in_place=False)
-    for key, struct in df_phonons[Key.structure].head(6).items()
+    for key, struct in df_phonons["structure"].head(6).items()
 }
 display(
     pmv.widget_grid(

@@ -20,7 +20,6 @@ from matminer.datasets import load_dataset
 from tqdm import tqdm
 
 import pymatviz as pmv
-from pymatviz.enums import Key
 from pymatviz.typing import CrystalSystem
 
 
@@ -30,38 +29,38 @@ crystal_systems = get_args(CrystalSystem)  # ordered triclinic to cubic
 # %%
 df_diel = load_dataset("matbench_dielectric")
 
-df_diel[[Key.spg_symbol, Key.spg_num]] = [
+df_diel[["spg_symbol", "spg_num"]] = [
     struct.get_space_group_info()
-    for struct in tqdm(df_diel[Key.structure], desc="Getting spacegroups")
+    for struct in tqdm(df_diel["structure"], desc="Getting spacegroups")
 ]
 
-proto_label_key = f"{Key.protostructure}_moyo"
-n_wyckoff_pos_key = f"{Key.n_wyckoff_pos}_moyo"
+proto_label_key = "protostructure_moyo"
+n_wyckoff_pos_key = "n_wyckoff_pos_moyo"
 df_diel[proto_label_key] = [
     prototype.get_protostructure_label(struct)
-    for struct in tqdm(df_diel[Key.structure], desc="Getting Wyckoff strings")
+    for struct in tqdm(df_diel["structure"], desc="Getting Wyckoff strings")
 ]
 df_diel[n_wyckoff_pos_key] = df_diel[proto_label_key].map(
     prototype.count_wyckoff_positions
 )
 
-df_diel[Key.crystal_system] = df_diel[Key.spg_num].map(pmv.utils.spg_to_crystal_sys)
+df_diel["crystal_system"] = df_diel["spg_num"].map(pmv.utils.spg_to_crystal_sys)
 
-df_diel[Key.volume] = [x.volume for x in df_diel[Key.structure]]
-df_diel[Key.formula] = [x.formula for x in df_diel[Key.structure]]
+df_diel["volume"] = [x.volume for x in df_diel["structure"]]
+df_diel["formula"] = [x.formula for x in df_diel["structure"]]
 
 
 # %%
 title = "Elements in Matbench Dielectric"
-pmv.ptable_heatmap(df_diel[Key.formula], log=True, color_bar={"title": title}).show()
+pmv.ptable_heatmap(df_diel["formula"], log=True, color_bar={"title": title}).show()
 
 
 # %%
-pmv.spacegroup_bar_plot(df_diel[Key.spg_num]).show()
+pmv.spacegroup_bar_plot(df_diel["spg_num"]).show()
 
 
 # %%
-widget = pmv.spacegroup_sunburst(df_diel[Key.spg_num], label_text="label+percent")
+widget = pmv.spacegroup_sunburst(df_diel["spg_num"], label_text="label+percent")
 # widget.to_img("dielectric-spacegroup-sunburst.pdf")
 widget.show()
 
@@ -75,7 +74,7 @@ def violins_by_crystal_system(
     """
     series = []
     for cry_sys, df_group in sorted(
-        df_diel.groupby(Key.crystal_system), key=lambda x: crystal_systems.index(x[0])
+        df_diel.groupby("crystal_system"), key=lambda x: crystal_systems.index(x[0])
     ):
         label = f"{cry_sys} {len(df_group):,} = {len(df_group) / len(df_diel):.0%}"
         if show_mean:
@@ -110,19 +109,19 @@ widget.show()
 
 
 # %% Matbench Dielectric: Refractive Index vs. Volume (marker size = n)
-df_vol = df_diel.query(f"{Key.volume} < 1500")  # exclude few large-volume outliers
+df_vol = df_diel.query("volume < 1500")  # exclude few large-volume outliers
 widget = pmv.scatter_plot(
     series=[
         {
-            "x": df_group[Key.volume],
+            "x": df_group["volume"],
             "y": df_group["n"],
             "size_values": df_group["n"],
             "label": cry_sys,
             "markers": "points",
         }
-        for cry_sys, df_group in df_vol.groupby(Key.crystal_system)
+        for cry_sys, df_group in df_vol.groupby("crystal_system")
     ],
-    x_axis={"label": Key.volume.label},
+    x_axis={"label": "Volume (Å³)"},
     y_axis={"label": "Refractive index n"},
 )
 # widget.to_img("dielectric-scatter.pdf")

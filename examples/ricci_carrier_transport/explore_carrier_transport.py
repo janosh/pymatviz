@@ -23,17 +23,16 @@ from matminer.datasets import load_dataset
 from tqdm import tqdm
 
 import pymatviz as pmv
-from pymatviz.enums import Key
 
 
 # %%
 df_carrier = load_dataset("ricci_boltztrap_mp_tabular")
-df_carrier = df_carrier.dropna(subset=Key.structure)
+df_carrier = df_carrier.dropna(subset="structure")
 data_name = "Ricci carrier transport dataset"
 
 # Getting space group symbols and numbers (take about 2 min)
-df_carrier[[Key.spg_symbol, Key.spg_num]] = [
-    struct.get_space_group_info() for struct in tqdm(df_carrier[Key.structure])
+df_carrier[["spg_symbol", "spg_num"]] = [
+    struct.get_space_group_info() for struct in tqdm(df_carrier["structure"])
 ]
 
 
@@ -84,4 +83,4 @@ ax.figure.suptitle(f"{data_name} dependent variables", y=1.05)
 
 
 # %%
-pmv.spacegroup_bar_plot(df_carrier[Key.spg_num]).show()
+pmv.spacegroup_bar_plot(df_carrier["spg_num"]).show()

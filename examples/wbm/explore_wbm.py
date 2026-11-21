@@ -10,7 +10,6 @@ from typing import get_args
 import pandas as pd
 
 import pymatviz as pmv
-from pymatviz.enums import Key
 from pymatviz.typing import CrystalSystem
 
 
@@ -23,12 +22,12 @@ __date__ = "2022-08-18"
 
 # %% download wbm-summary.csv (12 MB)
 df_wbm = pd.read_csv("https://figshare.com/ndownloader/files/44225498")
-df_wbm = df_wbm.set_index(Key.mat_id, drop=False)
+df_wbm = df_wbm.set_index("material_id", drop=False)
 
 df_wbm["batch_idx"] = df_wbm.index.str.split("-").str[2].astype(int)
-df_wbm[Key.spg_num] = df_wbm[f"{Key.wyckoff}_spglib"].str.split("_").str[2].astype(int)
-df_wbm[Key.crystal_system] = df_wbm[Key.spg_num].map(pmv.utils.spg_to_crystal_sys)
-df_wbm[Key.energy_per_atom] = df_wbm[Key.energy] / df_wbm[Key.n_sites]
+df_wbm["spg_num"] = df_wbm["wyckoff_spglib"].str.split("_").str[2].astype(int)
+df_wbm["crystal_system"] = df_wbm["spg_num"].map(pmv.utils.spg_to_crystal_sys)
+df_wbm["energy_per_atom"] = df_wbm["energy"] / df_wbm["n_sites"]
 
 
 # %%
@@ -37,7 +36,7 @@ df_wbm.hist(bins=100, figsize=(16, 10))
 
 # %%
 widget = pmv.ptable_heatmap(
-    df_wbm[Key.formula], color_bar={"title": "Elements in WBM dataset"}
+    df_wbm["formula"], color_bar={"title": "Elements in WBM dataset"}
 )
 widget.show()
 
@@ -45,7 +44,7 @@ widget.show()
 # %% plot elemental prevalence heatmap by iteration number of the elemental substitution
 for idx, df in df_wbm.groupby("batch_idx"):
     title = f"Elements in WBM batch {idx} of size {len(df):,}"
-    pmv.ptable_heatmap(df[Key.formula], color_bar={"title": title}).show()
+    pmv.ptable_heatmap(df["formula"], color_bar={"title": title}).show()
 
 
 # %%
@@ -55,7 +54,7 @@ df_wbm_non_metals = df_wbm.query("bandgap_pbe > 0")
 # MatterViz has no rich-text tick labels, so per-group counts go into series labels
 series = []
 for cry_sys, df_group in sorted(
-    df_wbm_non_metals.groupby(Key.crystal_system),
+    df_wbm_non_metals.groupby("crystal_system"),
     key=lambda x: crystal_systems.index(x[0]),
 ):
     frac = len(df_group) / len(df_wbm_non_metals)
@@ -74,24 +73,24 @@ widget.show()
 
 
 # %%
-widget = pmv.spacegroup_sunburst(df_wbm[Key.spg_num], label_text="label+percent")
+widget = pmv.spacegroup_sunburst(df_wbm["spg_num"], label_text="label+percent")
 widget.show()
 widget.to_img("wbm-spacegroup-sunburst.pdf")
 
 
 # %% WBM volume and energy by spacegroup number
-for y_key in (Key.volume, Key.energy):
+for y_key, y_label in {"volume": "Volume (Å³)", "energy": "Energy (eV)"}.items():
     widget = pmv.scatter_plot(
         series=[
             {
-                "x": df_group[Key.spg_num],
+                "x": df_group["spg_num"],
                 "y": df_group[y_key],
                 "label": cry_sys,
                 "markers": "points",
             }
-            for cry_sys, df_group in df_wbm.groupby(Key.crystal_system)
+            for cry_sys, df_group in df_wbm.groupby("crystal_system")
         ],
-        x_axis={"label": Key.spg_num.label},
-        y_axis={"label": y_key.label},
+        x_axis={"label": "Space Group Number"},
+        y_axis={"label": y_label},
     )
     widget.show()

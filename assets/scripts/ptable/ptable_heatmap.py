@@ -10,7 +10,7 @@ import yaml
 from matminer.datasets import load_dataset
 
 import pymatviz as pmv
-from pymatviz.enums import ElemCountMode, Key
+from pymatviz.enums import ElemCountMode
 
 
 rng = np.random.default_rng(seed=0)
@@ -23,7 +23,7 @@ df_expt_gap = load_dataset("matbench_expt_gap")
 
 
 # %% Atomic masses (the Series name titles the color bar)
-widget = pmv.ptable_heatmap(pmv.utils.df_ptable[Key.atomic_mass])
+widget = pmv.ptable_heatmap(pmv.utils.df_ptable["atomic_mass"])
 widget.show()
 widget.to_img(
     f"{pmv.utils.ROOT}/assets/svg/ptable-heatmap-atomic-mass.svg",
@@ -33,13 +33,13 @@ widget.to_img(
 
 
 # %% Element counts as percentages of all atoms in the dataset
-widget = pmv.ptable_heatmap(df_expt_gap[Key.composition], heat_mode="percent")
+widget = pmv.ptable_heatmap(df_expt_gap["composition"], heat_mode="percent")
 widget.show()
 
 
 # %% Element counts on a log color scale
 widget = pmv.ptable_heatmap(
-    df_expt_gap[Key.composition],
+    df_expt_gap["composition"],
     log=True,
     color_bar={"title": "Elements in Matbench experimental band gaps"},
 )
@@ -51,7 +51,7 @@ widget.to_img(
 
 # %% Specific heat on a log scale, excluding light elements
 widget = pmv.ptable_heatmap(
-    pmv.utils.df_ptable[Key.specific_heat_capacity].dropna(),
+    pmv.utils.df_ptable["specific_heat_capacity"].dropna(),
     log=True,
     exclude_elements=["H", "He", "C", "O"],
     color_scale="interpolateYlOrRd",
@@ -62,7 +62,7 @@ widget.show()
 
 # %% Fractional element counts of 30 compositions
 widget = pmv.ptable_heatmap(
-    df_expt_gap[Key.composition][:30],
+    df_expt_gap["composition"][:30],
     count_mode=ElemCountMode.fractional_composition,
     heat_mode="fraction",
     color_scale="interpolatePlasma",
@@ -84,8 +84,8 @@ widget.show()
 
 
 # %% Ratio of element frequencies in 2 datasets (normalized by dataset size)
-gap_counts = pmv.count_elements(df_expt_gap[Key.composition]) / len(df_expt_gap)
-steel_counts = pmv.count_elements(df_steels[Key.composition]) / len(df_steels)
+gap_counts = pmv.count_elements(df_expt_gap["composition"]) / len(df_expt_gap)
+steel_counts = pmv.count_elements(df_steels["composition"]) / len(df_steels)
 widget = pmv.ptable_heatmap(
     gap_counts / steel_counts,
     log=True,  # ratios are better viewed on log scale

@@ -20,15 +20,14 @@ from matminer.datasets import load_dataset
 from tqdm import tqdm
 
 import pymatviz as pmv
-from pymatviz.enums import Key
 
 
 # %%
 df_phonon = load_dataset(data_name := "matbench_phonons")
 last_dos_peak = "last phdos peak"
 
-df_phonon[[Key.spg_symbol, Key.spg_num]] = [
-    struct.get_space_group_info() for struct in tqdm(df_phonon[Key.structure])
+df_phonon[["spg_symbol", "spg_num"]] = [
+    struct.get_space_group_info() for struct in tqdm(df_phonon["structure"])
 ]
 
 
@@ -40,12 +39,12 @@ widget.show()
 
 
 # %%
-df_phonon[Key.formula] = df_phonon[Key.structure].map(lambda cryst: cryst.formula)
-df_phonon[Key.volume] = df_phonon[Key.structure].map(lambda cryst: cryst.volume)
+df_phonon["formula"] = df_phonon["structure"].map(lambda cryst: cryst.formula)
+df_phonon["volume"] = df_phonon["structure"].map(lambda cryst: cryst.volume)
 
 title = "Elemental prevalence in the Matbench phonons dataset"
-pmv.ptable_heatmap(df_phonon[Key.formula], log=True, color_bar={"title": title}).show()
+pmv.ptable_heatmap(df_phonon["formula"], log=True, color_bar={"title": title}).show()
 
 
 # %%
-pmv.spacegroup_bar_plot(df_phonon[Key.spg_num]).show()
+pmv.spacegroup_bar_plot(df_phonon["spg_num"]).show()

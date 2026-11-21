@@ -13,7 +13,7 @@ from pymatgen.core import Composition, Structure
 from tqdm import tqdm
 
 import pymatviz as pmv
-from pymatviz.enums import Files, Key
+from pymatviz.enums import Files
 
 
 module_dir = os.path.dirname(__file__)
@@ -39,17 +39,17 @@ df_pbe = pd.read_json(DataFiles.pbe.file_path)
 for df_data, expected_rows in ((df_r2scan, N_R2SCAN), (df_pbe, N_PBE)):
     if len(df_data) != expected_rows:
         raise ValueError(f"{expected_rows=}, {len(df_data)=}")
-    df_data.index.name = Key.mat_id
-    df_data.rename(columns={"magmom": Key.magmoms}, inplace=True)  # noqa: PD002
-    df_data[Key.structure] = df_data[Key.structure].map(Structure.from_dict)
-    df_data[Key.formula] = [struct.formula for struct in df_data[Key.structure]]
-    df_data[Key.n_sites] = df_data[Key.structure].map(len)
+    df_data.index.name = "material_id"
+    df_data.rename(columns={"magmom": "magmoms"}, inplace=True)  # noqa: PD002
+    df_data["structure"] = df_data["structure"].map(Structure.from_dict)
+    df_data["formula"] = [struct.formula for struct in df_data["structure"]]
+    df_data["n_sites"] = df_data["structure"].map(len)
 
 
 # %% plot histogram of energies
 widget = pmv.histogram(
-    {"r2scan": df_r2scan[Key.energy], "pbe": df_pbe[Key.energy]},
-    x_axis={"label": Key.energy.label},
+    {"r2scan": df_r2scan["energy"], "pbe": df_pbe["energy"]},
+    x_axis={"label": "Energy (eV)"},
     bar={"opacity": 0.8},
 )
 widget.show()
@@ -64,13 +64,13 @@ widget.show()
 widget = pmv.scatter_plot(
     series=[
         {
-            "x": df_r2scan[Key.energy].head(1000),
-            "y": df_pbe.loc[df_r2scan.index][Key.energy].head(1000),
+            "x": df_r2scan["energy"].head(1000),
+            "y": df_pbe.loc[df_r2scan.index]["energy"].head(1000),
             "markers": "points",
         }
     ],
-    x_axis={"label": f"r2SCAN {Key.energy.label}"},
-    y_axis={"label": f"PBE {Key.energy.label}"},
+    x_axis={"label": "r2SCAN Energy (eV)"},
+    y_axis={"label": "PBE Energy (eV)"},
 )
 pmv.powerups.add_identity_line(widget)
 widget.show()
@@ -78,8 +78,8 @@ widget.show()
 
 # %% plot histograms of absolute sum of forces on each atom
 total_force_col = "Σ|force_i| (eV/Å)"
-df_pbe[total_force_col] = df_pbe[Key.forces].map(lambda arr: np.abs(arr).sum(axis=1))
-df_r2scan[total_force_col] = df_r2scan[Key.forces].map(
+df_pbe[total_force_col] = df_pbe["forces"].map(lambda arr: np.abs(arr).sum(axis=1))
+df_r2scan[total_force_col] = df_r2scan["forces"].map(
     lambda arr: np.abs(arr).sum(axis=1)
 )
 
@@ -99,7 +99,7 @@ widget.show()
 # %% plot element counts
 r2scan_elem_counts = locals().get("r2scan_elem_counts")
 if r2scan_elem_counts is None:
-    r2scan_elem_counts = pmv.count_elements(df_r2scan[Key.formula])
+    r2scan_elem_counts = pmv.count_elements(df_r2scan["formula"])
 
 pmv.ptable_heatmap(r2scan_elem_counts).show()
 
@@ -107,7 +107,7 @@ pmv.ptable_heatmap(r2scan_elem_counts).show()
 # %%
 pbe_elem_counts = locals().get("pbe_elem_counts")
 if pbe_elem_counts is None:
-    pbe_elem_counts = pmv.count_elements(df_pbe[Key.formula])
+    pbe_elem_counts = pmv.count_elements(df_pbe["formula"])
 pmv.ptable_heatmap(pbe_elem_counts).show()
 
 
@@ -115,7 +115,7 @@ pmv.ptable_heatmap(pbe_elem_counts).show()
 frac_comp_col = "fractional composition"
 for df_data in (df_r2scan, df_pbe):
     df_data[frac_comp_col] = [
-        Composition(comp).fractional_composition for comp in tqdm(df_data[Key.formula])
+        Composition(comp).fractional_composition for comp in tqdm(df_data["formula"])
     ]
 
 df_r2scan_frac_comp = pd.DataFrame(
@@ -130,7 +130,7 @@ if any(df_r2scan_frac_comp.sum(axis="columns").round(6) != 1):
 
 df_per_elem = pd.DataFrame()
 r2scan_col = "r2SCAN energy"
-col_name = Key.cohesive_energy_per_atom
+col_name = "cohesive_energy_per_atom"
 df_per_elem[r2scan_col] = (
     df_r2scan_frac_comp * df_r2scan[col_name].to_numpy()[:, None]
 ).mean()
@@ -144,7 +144,7 @@ per_elem_cohesive_energy = {
 }
 
 pmv.ptable_heatmap_splits(
-    per_elem_cohesive_energy, color_bar={"title": col_name.label}
+    per_elem_cohesive_energy, color_bar={"title": "Cohesive Energy (eV/atom)"}
 ).show()
 
 
@@ -160,7 +160,7 @@ widget.to_img("ptable-has-pbe-but-no-r2scan.pdf")
 # %% per-elem mean abs magmoms
 df_per_elem_magmoms = pd.DataFrame(
     {site.specie.symbol: abs(site.properties["magmom"]) for site in struct}
-    for struct in df_r2scan[Key.structure]
+    for struct in df_r2scan["structure"]
 ).mean()
 
 pmv.ptable_heatmap(
@@ -173,30 +173,30 @@ for label, df_data in (
     ("r2scan", df_r2scan),
     # ("pbe", df_pbe),
 ):
-    df_data[Key.spg_num] = [
+    df_data["spg_num"] = [
         struct.get_space_group_info()[1]
-        for struct in tqdm(df_data[Key.structure], desc=f"{label} spacegroups")
+        for struct in tqdm(df_data["structure"], desc=f"{label} spacegroups")
     ]
 
 
 # %% high-temperate MLMD frames are expected to have low symmetry (mostly triclinic)
 # space groups of the r2SCAN structures
-widget = pmv.spacegroup_sunburst(df_r2scan[Key.spg_num], label_text="label+percent")
+widget = pmv.spacegroup_sunburst(df_r2scan["spg_num"], label_text="label+percent")
 widget.show()
 # widget.to_img("r2scan-spacegroup-sunburst.pdf")
 
 
 # %% spacegroup histogram
-pmv.spacegroup_bar_plot(df_r2scan[Key.spg_num], log_y=True).show()
+pmv.spacegroup_bar_plot(df_r2scan["spg_num"], log_y=True).show()
 
 
 # %% most calcs missing r2SCAN results have 4 sites, almost all 2 or 3-site r2SCAN calcs
 # completed
-max_sites = max(df_r2scan[Key.n_sites].max(), df_pbe[Key.n_sites].max())
+max_sites = max(df_r2scan["n_sites"].max(), df_pbe["n_sites"].max())
 widget = pmv.histogram(
-    {"r2scan": df_r2scan[Key.n_sites], "pbe": df_pbe[Key.n_sites]},
+    {"r2scan": df_r2scan["n_sites"], "pbe": df_pbe["n_sites"]},
     bins=np.arange(0.5, max_sites + 1.5).tolist(),  # one bin per integer site count
-    x_axis={"label": Key.n_sites.label},
+    x_axis={"label": "Number of Sites"},
     y_axis={"label": "count"},
     bar={"opacity": 0.8},
 )
@@ -204,17 +204,15 @@ widget.show()
 
 
 # %% plot absolute forces projected onto elements
-df_r2scan[Key.forces] = df_r2scan[Key.forces].map(np.abs)
-df_pbe[Key.forces] = df_pbe[Key.forces].map(np.abs)
+df_r2scan["forces"] = df_r2scan["forces"].map(np.abs)
+df_pbe["forces"] = df_pbe["forces"].map(np.abs)
 
 df_r2scan_elem_forces = pd.DataFrame(
     {
         site.specie.symbol: np.linalg.norm(force)
         for site, force in zip(struct, forces, strict=True)
     }
-    for struct, forces in zip(
-        df_r2scan[Key.structure], df_r2scan[Key.forces], strict=True
-    )
+    for struct, forces in zip(df_r2scan["structure"], df_r2scan["forces"], strict=True)
 ).mean()
 
 df_pbe_elem_forces = pd.DataFrame(
@@ -222,7 +220,7 @@ df_pbe_elem_forces = pd.DataFrame(
         site.specie.symbol: np.linalg.norm(force)
         for site, force in zip(struct, forces, strict=True)
     }
-    for struct, forces in zip(df_pbe[Key.structure], df_pbe[Key.forces], strict=True)
+    for struct, forces in zip(df_pbe["structure"], df_pbe["forces"], strict=True)
 ).mean()
 
 
@@ -242,15 +240,15 @@ df_e_atoms = pd.read_csv(f"{module_dir}/2024-10-30-MatPES-atomic-energies.csv")
 widget = pmv.bar_plot(
     series=[
         {
-            "x": df_e_atoms[Key.element].astype(str).to_list(),
+            "x": df_e_atoms["element"].astype(str).to_list(),
             "y": df_e_atoms[col],
             "label": col,
             "render_mode": "line",
             "markers": "line+points",
         }
-        for col in (Key.pbe.label, Key.r2scan.label)
+        for col in ("PBE", "r2SCAN")
     ],
-    x_axis={"label": Key.element.label},
+    x_axis={"label": "Element"},
     y_axis={"label": "Cohesive Energy (eV/atom)"},
 )
 widget.show()

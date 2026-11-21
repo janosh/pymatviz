@@ -11,7 +11,6 @@ https://ml.materialsproject.org/projects/matbench_steels
 from matminer.datasets import load_dataset
 
 import pymatviz as pmv
-from pymatviz.enums import Key
 
 
 # %%
@@ -28,5 +27,5 @@ widget.show()
 # %%
 title = "Elemental prevalence in the Matbench steels dataset"
 pmv.ptable_heatmap(
-    df_steels[Key.composition], log=True, color_bar={"title": title}
+    df_steels["composition"], log=True, color_bar={"title": title}
 ).show()

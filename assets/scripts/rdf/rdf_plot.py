@@ -6,15 +6,14 @@ from matminer.datasets import load_dataset
 from pymatgen.core import Lattice, Structure
 
 import pymatviz as pmv
-from pymatviz.enums import Key
 
 
 # %%
 df_phonons = load_dataset("matbench_phonons")
-df_phonons[Key.n_sites] = df_phonons[Key.structure].map(len)
+df_phonons["n_sites"] = df_phonons["structure"].map(len)
 
 # element-pair RDFs of the 2 largest structures, computed in the browser
-for struct in df_phonons.nlargest(2, Key.n_sites)[Key.structure]:
+for struct in df_phonons.nlargest(2, "n_sites")["structure"]:
     widget = pmv.rdf_plot(struct, bins=100, cutoff=10)
     widget.show()
     formula = struct.formula.replace(" ", "")
