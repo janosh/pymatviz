@@ -30,7 +30,11 @@ from pymatviz.widgets.dos import DosWidget
 from pymatviz.widgets.fermi_surface import FermiSurfaceWidget
 from pymatviz.widgets.heatmap_matrix import HeatmapMatrixWidget
 from pymatviz.widgets.histogram import HistogramWidget
-from pymatviz.widgets.matterviz import MATTERVIZ_ANYWIDGET_VERSION, MatterVizWidget
+from pymatviz.widgets.matterviz import (
+    MATTERVIZ_ANYWIDGET_VERSION,
+    MatterVizWidget,
+    from_json,
+)
 from pymatviz.widgets.periodic_table import PeriodicTableWidget
 from pymatviz.widgets.phase_diagram import PhaseDiagramWidget
 from pymatviz.widgets.rdf_plot import RdfPlotWidget
@@ -42,6 +46,7 @@ from pymatviz.widgets.sunburst import SunburstWidget
 from pymatviz.widgets.trajectory import TrajectoryWidget
 from pymatviz.widgets.treemap import TreemapWidget
 from pymatviz.widgets.xrd import XrdWidget
+from tests.widgets.test_browser_render import WIDGET_CASES
 
 
 if TYPE_CHECKING:
@@ -1637,3 +1642,25 @@ def test_heatmap_matrix_takes_dataframe() -> None:
     assert widget.values == [[1, 2], [3, 4]]  # noqa: PD011
     with pytest.raises(ValueError, match="in the DataFrame, not both"):
         HeatmapMatrixWidget(df_matrix, values=[[0]])
+
+
+@pytest.mark.parametrize("widget_cls", WIDGET_CASES, ids=lambda cls: cls.__name__)
+def test_widget_json_round_trip(
+    widget_cls: type[MatterVizWidget], request: pytest.FixtureRequest, tmp_path: Any
+) -> None:
+    """to_json/from_json restore every widget type with identical traits, binary
+    array buffers included, from JSON text or a file.
+    """
+    widget = WIDGET_CASES[widget_cls][0](request)
+    text = widget.to_json(f"{tmp_path}/widget.json")
+    for source in (text, f"{tmp_path}/widget.json"):
+        restored = from_json(source)
+        # by name: other tests reload widget modules, which swaps the class objects
+        assert type(restored).__name__ == widget_cls.__name__
+        assert json.loads(restored.to_json()) == json.loads(text)  # key order may vary
+
+
+def test_from_json_rejects_unknown_widget_type() -> None:
+    """JSON without a known widget_type raises instead of guessing a class."""
+    with pytest.raises(ValueError, match="Unknown widget_type='nope'"):
+        from_json('{"widget_type": "nope"}')

@@ -163,6 +163,7 @@ widget.to_html("structure.html")  # standalone interactive HTML page (pan/zoom/r
 widget.to_img("structure.png", dpi=150)  # PNG/JPEG/SVG/PDF via headless Chromium
 widget.describe()  # machine-readable facts: counts, ranges, formula, chemical system
 widget.render_report()  # headless render health check: blank fraction, warnings
+widget.to_json("structure.json")  # save the widget; pmv.from_json("structure.json") restores it
 ```
 
 Lay out several widgets with `widget_grid({title: widget, ...}, n_cols=3)`, e.g. one `structure` widget per structure. It returns an `ipywidgets.GridBox` of titled cells: export each widget from its `.children`.

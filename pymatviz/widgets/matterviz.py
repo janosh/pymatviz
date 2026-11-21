@@ -430,6 +430,32 @@ class MatterVizWidget(AnyWidget):
         """Return all public synced traitlet values as a plain dict."""
         return {name: getattr(self, name) for name in self.public_trait_names()}
 
+    def to_json(self, filename: str | None = None) -> str:
+        """This widget's public synced traits as JSON (binary array buffers
+        base64-encoded), which ``from_json`` turns back into an equal widget.
+
+        Args:
+            filename: Optional path to also write the JSON to.
+
+        Returns:
+            The JSON text.
+        """
+        import numpy as np
+
+        def default(obj: Any) -> Any:
+            """Encode binary buffers and numpy values, reject anything else."""
+            if isinstance(obj, (bytes, bytearray, memoryview)):
+                return base64.b64encode(obj).decode("ascii")
+            if isinstance(obj, np.generic | np.ndarray):
+                return obj.tolist()
+            raise TypeError(f"{type(obj).__name__} is not JSON serializable: {obj!r}")
+
+        text = json.dumps(self.to_dict(), default=default)
+        if filename:
+            with open(filename, mode="w", encoding="utf-8") as file:
+                file.write(text)
+        return text
+
     def _frontend_state(self) -> dict[str, Any]:
         """``to_dict()`` plus ``_synced_keys``: the model a headless or exported
         render hands the bundle, which checks the keys like a live one.
@@ -705,3 +731,50 @@ class MatterVizWidget(AnyWidget):
         return dataclasses.replace(
             diag, summary=describe_widget(data), warnings=tuple(check_inputs(data))
         )
+
+
+def _revive_buffers(value: Any) -> Any:
+    """Decode the base64 array buffers of binary envelopes anywhere in value."""
+    from pymatviz.widgets._binary import BINARY_FORMAT
+
+    if isinstance(value, list):
+        return [_revive_buffers(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+    if value.get("format") == BINARY_FORMAT:
+        arrays = {
+            name: spec | {"data": memoryview(base64.b64decode(spec["data"]))}
+            for name, spec in value["arrays"].items()
+        }
+        return value | {"arrays": arrays}
+    return {key: _revive_buffers(val) for key, val in value.items()}
+
+
+def from_json(source: str) -> MatterVizWidget:
+    """Widget saved with ``MatterVizWidget.to_json``.
+
+    Args:
+        source: A path to a JSON file, or the JSON text itself.
+
+    Returns:
+        A widget of the saved type with the saved traits.
+
+    Raises:
+        ValueError: If the JSON names no known widget_type.
+    """
+    import pymatviz.widgets
+
+    if os.path.isfile(source):
+        with open(source, encoding="utf-8") as file:
+            source = file.read()
+    traits = _revive_buffers(json.loads(source))
+    widget_type = traits.pop("widget_type", None)
+    classes = {
+        cls.class_traits()["widget_type"].default_value: cls
+        for cls in vars(pymatviz.widgets).values()
+        if isinstance(cls, type) and issubclass(cls, MatterVizWidget)
+    }
+    classes.pop(None, None)  # MatterVizWidget itself
+    if (widget_cls := classes.get(widget_type)) is None:
+        raise ValueError(f"Unknown {widget_type=}, expected one of {sorted(classes)}")
+    return widget_cls(**traits)
