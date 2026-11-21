@@ -7,6 +7,7 @@ component has a function of the same name in snake_case (``ScatterPlot`` ->
 """
 
 import builtins
+import sys
 from importlib.metadata import PackageNotFoundError, version
 
 from pymatviz import (
@@ -88,12 +89,14 @@ try:
 except PackageNotFoundError:
     __version__ = "n/a"  # package not correctly installed
 
-if hasattr(builtins, "__IPYTHON__"):
+
+if "marimo" in sys.modules or hasattr(builtins, "__IPYTHON__"):
     from IPython import get_ipython
 
-    if get_ipython() is not None:  # a kernel, not just IPython's builtins flag
+    # marimo, or an IPython kernel (not just IPython's builtins flag)
+    if "marimo" in sys.modules or get_ipython() is not None:
         notebook_mode(on=True)
     del get_ipython
 
 # keep the top-level namespace to the public API
-del builtins, PackageNotFoundError, version
+del builtins, sys, PackageNotFoundError, version

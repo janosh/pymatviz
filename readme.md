@@ -180,7 +180,7 @@ Each MatterViz component has a pymatviz function of the same name in snake_case 
 > [!TIP]
 > Checkout the **✅ MatterViz VSCode extension** for using the same viewers directly in VSCode/Cursor editor tabs for rendering local and remote files: [marketplace.visualstudio.com/items?itemName=janosh.matterviz](https://marketplace.visualstudio.com/items?itemName=janosh.matterviz)
 
-Importing `pymatviz` auto-registers all widgets for their respective sets of supported objects via [`register_matterviz_widgets()`](pymatviz/widgets/mime.py).
+In Jupyter, VS Code and marimo, importing `pymatviz` renders pymatgen, ASE and phonopy objects (structures, band structures, DOS, XRD patterns, phase diagrams, compositions) as their widgets. Toggle it with [`notebook_mode(on=False)`](pymatviz/notebook.py).
 
 ## Brillouin Zone
 
