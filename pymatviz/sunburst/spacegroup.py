@@ -59,8 +59,7 @@ def spacegroup_sunburst(
             except (TypeError, ValueError, RuntimeError) as exc:
                 raise TypeError(
                     "Could not determine space group for structure at index "
-                    f"{idx} ({type(struct).__name__}). Pass ordered periodic "
-                    "structures."
+                    f"{idx} ({type(struct).__name__}). Pass periodic structures."
                 ) from exc
         values = spg_nums
     if pd.isna(pd.Series(values, dtype=object)).any():

@@ -268,6 +268,21 @@ def test_normalize_spacegroups_with_structures(
     pd.testing.assert_series_equal(normalize_spacegroups(data), expected)
 
 
+def test_normalize_spacegroups_disordered() -> None:
+    """Disordered structures get the space groups of pymatgen's SpacegroupAnalyzer."""
+    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+
+    from pymatviz.structures import to_pymatgen
+    from pymatviz.utils.testing import disordered_demo_structures
+
+    structs = list(disordered_demo_structures.values())
+    expected = [
+        SpacegroupAnalyzer(to_pymatgen(struct)).get_space_group_number()
+        for struct in structs
+    ]
+    assert normalize_spacegroups(structs).tolist() == expected == [221, 191, 221, 221]
+
+
 def test_core_features_without_pymatgen_or_ase() -> None:
     """Base imports, symmetry, RDF, coordination, compositions, XRD and widgets need
     neither pymatgen nor ASE.

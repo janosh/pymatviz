@@ -93,7 +93,7 @@ def formula_spg_str(struct: Any) -> str:
     """Get a string with formula and space group number for a structure.
 
     Args:
-        struct: An ordered structure (matscikit, pymatgen, ASE, phonopy).
+        struct: A periodic structure (matscikit, pymatgen, ASE, phonopy).
 
     Returns:
         String in format "Formula (spg_number)", e.g. "Na4 Cl4 (225)".

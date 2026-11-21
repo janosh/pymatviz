@@ -222,10 +222,10 @@ def normalize_periodic_structures(
 
 
 def get_spacegroup_number(structure: Any) -> int:
-    """Space group number of an ordered periodic structure-like object.
+    """Space group number of a periodic structure-like object (disordered sites
+    are told apart by species and occupancy).
 
     Raises:
-        ValueError: For disordered structures.
         TypeError: For unsupported or non-periodic inputs.
     """
     struct = next(iter(normalize_periodic_structures(structure).values()))
