@@ -17,13 +17,13 @@ y3 = x1 + np_rng.normal(0, 20, len(x1))  # perfect correlation with high noise
 
 
 # %% Parity plot: identity line, best-fit line and metrics
-widget = pmv.ScatterPlotWidget(series=[{"x": x1, "y": y3, "markers": "points"}])
+widget = pmv.scatter_plot(series=[{"x": x1, "y": y3, "markers": "points"}])
 powerups.enhance_parity_plot(widget)
 widget.show()
 
 
 # %% Several series: combined metrics plus one best-fit line per series
-widget = pmv.ScatterPlotWidget(
+widget = pmv.scatter_plot(
     series=[
         {"x": x1, "y": y_vals, "label": label, "color": color, "markers": "points"}
         for y_vals, label, color in (
@@ -40,7 +40,7 @@ widget.show()
 
 
 # %% Custom metrics with a title and sample count
-widget = pmv.ScatterPlotWidget(series=[{"x": x1, "y": y1, "markers": "points"}])
+widget = pmv.scatter_plot(series=[{"x": x1, "y": y1, "markers": "points"}])
 powerups.annotate_metrics(
     widget,
     metrics={"MAE": "MAE", "RMSE": "RMSE", "Max error": "max_error"},
@@ -53,7 +53,7 @@ widget.show()
 
 # %% ECDF lines of two distributions on a right y2 axis
 gauss1, gauss2 = np_rng.normal(5, 4, 500), np_rng.normal(10, 2, 500)
-widget = pmv.ScatterPlotWidget(
+widget = pmv.scatter_plot(
     series=[
         {
             "x": np.sort(vals),

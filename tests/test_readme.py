@@ -5,6 +5,8 @@ import inspect
 import os
 import re
 
+import pymatviz as pmv
+
 
 def test_no_missing_images() -> None:
     """Every image the readme references exists in the repo."""
@@ -19,14 +21,16 @@ def test_no_missing_images() -> None:
 
 
 def get_function_names_from_file(file_path: str) -> set[str]:
-    """Extract public function and class names defined in a Python file."""
+    """Public functions and classes defined in a Python file, including the
+    top-level pmv names of its widget classes (e.g. structure for StructureWidget).
+    """
     module = importlib.import_module(file_path.removesuffix(".py").replace("/", "."))
     return {
         name
-        for name, obj in inspect.getmembers(
-            module, lambda obj: inspect.isfunction(obj) or inspect.isclass(obj)
-        )
-        if not name.startswith("_") and obj.__module__ == module.__name__
+        for name, obj in [*inspect.getmembers(module), *vars(pmv).items()]
+        if (inspect.isfunction(obj) or inspect.isclass(obj))
+        and not name.startswith("_")
+        and obj.__module__ == module.__name__
     }
 
 

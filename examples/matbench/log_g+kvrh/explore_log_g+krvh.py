@@ -75,7 +75,7 @@ df_grvh[Key.volume] = [x.volume for x in df_grvh[Key.structure]]
 df_grvh[Key.formula] = [x.formula for x in df_grvh[Key.structure]]
 
 # Volume histogram of the Matbench bulk/shear modulus datasets
-widget = pmv.histogram(
+widget = pmv.binned_histogram(
     df_grvh[Key.volume], bins=100, log_y=True, x_axis={"label": Key.volume.label}
 )
 widget.show()
@@ -124,7 +124,7 @@ for idx, structure, target, *_ in df_grvh.query("graph_size == 0").itertuples():
 # %%
 df_grvh[Key.volume] = df_grvh[Key.structure].map(lambda struct: struct.volume)
 
-pmv.histogram(
+pmv.binned_histogram(
     df_grvh[Key.volume], bins=100, log_y=True, x_axis={"label": Key.volume.label}
 ).show()
 
@@ -137,7 +137,7 @@ pmv.ptable_heatmap(df_grvh[Key.formula], log=True, color_bar={"title": title}).s
 
 
 # %%
-pmv.spacegroup_bar(df_grvh[Key.spg_num]).show()
+pmv.spacegroup_bar_plot(df_grvh[Key.spg_num]).show()
 
 
 # %%
@@ -160,7 +160,7 @@ for cry_sys, df_group in sorted(
     )
     series += [{"y": df_group[Key.n_wyckoff_pos], "label": label}]
 
-widget = pmv.BoxPlotWidget(
+widget = pmv.box_plot(
     series,
     kind="violin",
     points="strip",

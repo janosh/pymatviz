@@ -50,7 +50,7 @@ def _to_diffraction_pattern(
     return pattern
 
 
-def xrd_pattern(
+def xrd_plot(
     patterns: PatternOrStruct | Mapping[Any, PatternOrStruct],
     *,
     wavelength: float = cu_k_alpha_wavelength,

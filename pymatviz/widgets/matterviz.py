@@ -587,7 +587,7 @@ class MatterVizWidget(AnyWidget):
         Useful for agents to reason about output and as image alt-text.
 
         Examples:
-            >>> PeriodicTableWidget(heatmap_values={"Fe": 42}).describe()["n_elements"]
+            >>> pmv.periodic_table(heatmap_values={"Fe": 42}).describe()["n_elements"]
             1
         """
         from pymatviz.widgets._describe import describe_widget

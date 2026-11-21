@@ -91,7 +91,7 @@ def elements_hist(
     )
 
 
-def histogram(
+def binned_histogram(
     values: Sequence[float]
     | np.ndarray
     | pd.Series

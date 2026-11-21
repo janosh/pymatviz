@@ -25,7 +25,7 @@ structures = {
 
 # %% render the Brillouin zone of one structure per crystal system
 for (mp_id, _formula, system), struct in structures.items():
-    widget = pmv.BrillouinZoneWidget(structure=struct, show_vectors=True)
+    widget = pmv.brillouin_zone(structure=struct, show_vectors=True)
     display(widget)
     if system in {"cubic", "hexagonal", "monoclinic", "orthorhombic"}:  # in readme
         img_path = f"{pmv.utils.ROOT}/assets/png/brillouin-{system}-{mp_id}.png"
@@ -41,12 +41,12 @@ for (mp_id, _formula, system), struct in structures.items():
 
 # %% pass ase.Atoms
 atoms = AseAtomsAdaptor.get_atoms(next(iter(structures.values())))
-display(pmv.BrillouinZoneWidget(structure=atoms))
+display(pmv.brillouin_zone(structure=atoms))
 
 
 # %% grid of all crystal systems with translucent zones and the irreducible wedge
 zones = {
-    f"{formula} {system}": pmv.BrillouinZoneWidget(
+    f"{formula} {system}": pmv.brillouin_zone(
         structure=struct, surface_opacity=0.4, show_ibz=True
     )
     for (_, formula, system), struct in structures.items()

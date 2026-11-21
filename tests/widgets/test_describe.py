@@ -25,9 +25,7 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
     ("widget", "expected"),
     [
         (
-            pmv.ScatterPlotWidget(
-                series=[{"x": [0, 1, 2], "y": [1, 2, 3], "label": "a"}]
-            ),
+            pmv.scatter_plot(series=[{"x": [0, 1, 2], "y": [1, 2, 3], "label": "a"}]),
             {
                 "n_series": 1,
                 "n_points": 3,
@@ -35,10 +33,10 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
                 "y_range": [1.0, 3.0],
             },
         ),
-        (pmv.BarPlotWidget(series=[{"x": [0, 1], "y": [2, 3]}]), {"n_series": 1}),
+        (pmv.bar_plot(series=[{"x": [0, 1], "y": [2, 3]}]), {"n_series": 1}),
         # Histogram samples use `values` (binned on x); counts are not a y_range.
         (
-            pmv.HistogramWidget(
+            pmv.histogram(
                 series=[
                     {"values": [1, 5, 3], "label": "a"},
                     {"values": [7, 2]},
@@ -48,15 +46,15 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
             | {"x_range": [1.0, 7.0], "y_range": None},
         ),
         (
-            pmv.ScatterPlot3DWidget(series=[{"x": [1, 2], "y": [2, 3], "z": [3, 4]}]),
+            pmv.scatter_plot_3d(series=[{"x": [1, 2], "y": [2, 3], "z": [3, 4]}]),
             {"n_series": 1, "z_range": [3.0, 4.0]},
         ),
         (
-            pmv.StructureWidget(structure=_STRUCT),
+            pmv.structure(structure=_STRUCT),
             {"n_sites": 2, "formula": "Si2", "elements": ["Si"]},
         ),
         (
-            pmv.StructureWidget(
+            pmv.structure(
                 structure=Structure(
                     Lattice.cubic(3), [{"Fe": 0.1}] * 10, [[0, 0, 0]] * 10
                 )
@@ -64,21 +62,19 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
             {"n_sites": 10, "formula": "Fe", "elements": ["Fe"]},
         ),
         (
-            pmv.PeriodicTableWidget(heatmap_values={"Fe": 42, "O": 100}),
+            pmv.periodic_table(heatmap_values={"Fe": 42, "O": 100}),
             {"n_elements": 2, "value_range": [42.0, 100.0]},
         ),
         (
-            pmv.HeatmapMatrixWidget(
-                x_items=["A", "B"], y_items=["A"], values=[[1.0, 0.5]]
-            ),
+            pmv.heatmap_matrix(x_items=["A", "B"], y_items=["A"], values=[[1.0, 0.5]]),
             {"shape": [2, 1], "value_range": [0.5, 1.0]},
         ),
         (
-            pmv.CompositionWidget(composition="Fe2O3"),
+            pmv.composition(composition="Fe2O3"),
             {"formula": "Fe2O3", "elements": ["Fe", "O"]},
         ),
         (
-            pmv.ConvexHullWidget(
+            pmv.convex_hull(
                 entries=[
                     {"composition": {"Li": 1}, "energy": -1.9},
                     {"composition": {"O": 1}, "energy": -3.0},
@@ -87,16 +83,16 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
             {"n_entries": 2, "chemical_system": ["Li", "O"]},
         ),
         (
-            pmv.SpacegroupBarPlotWidget(data=[225, 225, 166]),
+            pmv.widgets.SpacegroupBarPlotWidget(data=[225, 225, 166]),
             {"n_entries": 3, "n_unique": 2},
         ),
         (
-            pmv.XrdWidget(patterns={"x": [10, 20, 30], "y": [100, 50, 75]}),
+            pmv.widgets.XrdWidget(patterns={"x": [10, 20, 30], "y": [100, 50, 75]}),
             {"n_peaks": 3, "two_theta_range": [10.0, 30.0]},
         ),
         # {label: pattern} overlays sum peaks across patterns
         (
-            pmv.XrdWidget(
+            pmv.widgets.XrdWidget(
                 patterns={
                     "computed": {"x": [10, 20], "y": [100, 50]},
                     "measured": {"x": [15, 40, 60], "y": [1, 2, 3]},
@@ -105,7 +101,7 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
             {"n_peaks": 5, "two_theta_range": [10.0, 60.0]},
         ),
         (
-            pmv.DosWidget(
+            pmv.dos(
                 doses={
                     "energies": [-1, 0, 1],
                     "extra": {"energies": [-2, 2]},
@@ -114,11 +110,11 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
             {"n_energies": 3, "energy_range": [-1.0, 1.0]},
         ),
         (
-            pmv.BandStructureWidget(band_structs={"bands": [[-1, 0, 1]]}),
+            pmv.band_structure(band_structs={"bands": [[-1, 0, 1]]}),
             {"n_bands": 1},
         ),
         (
-            pmv.BandsAndDosWidget(
+            pmv.bands_and_dos(
                 band_structs={
                     "first": {"bands": [[-1, 0, 1]]},
                     "second": {"bands": [[-2, -1, 0], [0, 1, 2]]},
@@ -131,20 +127,20 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
             {"n_bands": 3, "n_energies": 5, "energy_range": [-2.0, 2.0]},
         ),
         (
-            pmv.TreemapWidget(
+            pmv.treemap(
                 data={"children": [{"children": [{"value": 2}]}, {"value": 1}]}
             ),
             {"n_nodes": 4, "n_leaves": 2, "max_depth": 3},
         ),
         # pymatgen band structure dicts key bands by spin: lines summed over spins
         (
-            pmv.BandStructureWidget(
+            pmv.band_structure(
                 band_structs={"bands": {"1": [[-1, 0], [1, 2]], "-1": [[0, 1]]}}
             ),
             {"n_bands": 3},
         ),
         (
-            pmv.BandStructureWidget(
+            pmv.band_structure(
                 band_structs={
                     "PBE": {"bands": {"1": [[-1]], "-1": [[0]]}},
                     "HSE": {"bands": [[1], [2]]},
@@ -153,28 +149,28 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
             {"n_bands": 4},
         ),
         (
-            pmv.BandStructureWidget(band_structs={"bands": {"1": "bad"}}),
+            pmv.band_structure(band_structs={"bands": {"1": "bad"}}),
             {"n_bands": None},
         ),
         (
-            pmv.DosWidget(doses={"energies": {"up": [-1], "down": [0]}}),
+            pmv.dos(doses={"energies": {"up": [-1], "down": [0]}}),
             {"n_energies": None},
         ),
         # binary series (>= 10k points) are decoded
         (
-            pmv.ScatterPlotWidget(
+            pmv.scatter_plot(
                 series=[{"x": np.arange(10_000), "y": -np.arange(10_000)}]
             ),
             {"n_points": 10_000, "x_range": [0, 9999], "y_range": [-9999, 0]},
         ),
         # empty/None data is tolerated
-        (pmv.ScatterPlotWidget(), {"n_series": 0, "n_points": 0, "x_range": None}),
-        (pmv.PeriodicTableWidget(), {"n_elements": 0, "value_range": None}),
+        (pmv.scatter_plot(), {"n_series": 0, "n_points": 0, "x_range": None}),
+        (pmv.periodic_table(), {"n_elements": 0, "value_range": None}),
         (
-            pmv.PeriodicTableWidget(tile_plots={"Fe": {"values": [1]}}),
+            pmv.periodic_table(tile_plots={"Fe": {"values": [1]}}),
             {"n_elements": 0, "n_tile_plots": 1, "value_range": None},
         ),
-        (pmv.HeatmapMatrixWidget(), {"shape": [0, 0], "value_range": None}),
+        (pmv.heatmap_matrix(), {"shape": [0, 0], "value_range": None}),
     ],
 )
 def test_describe_widget(widget: Any, expected: dict[str, Any]) -> None:
@@ -192,7 +188,7 @@ def test_describe_widget(widget: Any, expected: dict[str, Any]) -> None:
 def test_serialized_trajectory_facts(monty_coords: bool) -> None:
     """Serialized trajectories count frames, symbols, and decorated site occupancies."""
     coords = [[[0, 0, 0]] * 4] * 3
-    widget = pmv.TrajectoryWidget(
+    widget = pmv.trajectory(
         trajectory={
             "@class": "Trajectory",
             "coords": (
@@ -282,33 +278,33 @@ def test_short_summary(report: dict[str, Any], expected: str) -> None:
 @pytest.mark.parametrize(
     ("widget", "expect_warning"),
     [
-        (pmv.ScatterPlotWidget(), True),
-        (pmv.ScatterPlotWidget(series=[{"x": [0, 1], "y": [1, 2]}]), False),
+        (pmv.scatter_plot(), True),
+        (pmv.scatter_plot(series=[{"x": [0, 1], "y": [1, 2]}]), False),
         (
-            pmv.ScatterPlotWidget(series=[{"x": np.ones(10**4), "y": np.ones(10**4)}]),
+            pmv.scatter_plot(series=[{"x": np.ones(10**4), "y": np.ones(10**4)}]),
             False,
         ),
         # Histogram blank-state detection uses sample arrays.
-        (pmv.HistogramWidget(), True),
-        (pmv.HistogramWidget(series=[{"values": [1, 2, 3]}]), False),
-        (pmv.HistogramWidget(series=[{"values": []}, {"values": []}]), True),
-        (pmv.PeriodicTableWidget(), True),
-        (pmv.PeriodicTableWidget(heatmap_values={"Fe": 1}), False),
-        (pmv.PeriodicTableWidget(tile_plots={"Fe": {"x": [1], "y": [2]}}), False),
-        (pmv.DosWidget(), True),
-        (pmv.DosWidget(doses={"energies": [0]}), False),
-        (pmv.BandStructureWidget(), True),
-        (pmv.BandStructureWidget(band_structs={"bands": [[0]]}), False),
-        (pmv.BandsAndDosWidget(), True),
-        (pmv.BandsAndDosWidget(doses={"energies": [0]}), False),
+        (pmv.histogram(), True),
+        (pmv.histogram(series=[{"values": [1, 2, 3]}]), False),
+        (pmv.histogram(series=[{"values": []}, {"values": []}]), True),
+        (pmv.periodic_table(), True),
+        (pmv.periodic_table(heatmap_values={"Fe": 1}), False),
+        (pmv.periodic_table(tile_plots={"Fe": {"x": [1], "y": [2]}}), False),
+        (pmv.dos(), True),
+        (pmv.dos(doses={"energies": [0]}), False),
+        (pmv.band_structure(), True),
+        (pmv.band_structure(band_structs={"bands": [[0]]}), False),
+        (pmv.bands_and_dos(), True),
+        (pmv.bands_and_dos(doses={"energies": [0]}), False),
         # rdf_plot warns when neither source given, incl. empty (not just None)
-        (pmv.RdfPlotWidget(), True),
-        (pmv.RdfPlotWidget(structures=[]), True),
-        (pmv.RdfPlotWidget(patterns=[]), True),
-        (pmv.RdfPlotWidget(patterns=[{"label": "a", "x": [1.0], "y": [2.0]}]), False),
-        (pmv.SunburstWidget(), True),
-        (pmv.TreemapWidget(), True),
-        (pmv.TreemapWidget(data={"label": "root", "value": 1}), False),
+        (pmv.rdf_plot(), True),
+        (pmv.rdf_plot(structures=[]), True),
+        (pmv.rdf_plot(patterns=[]), True),
+        (pmv.rdf_plot(patterns=[{"label": "a", "x": [1.0], "y": [2.0]}]), False),
+        (pmv.sunburst(), True),
+        (pmv.treemap(), True),
+        (pmv.treemap(data={"label": "root", "value": 1}), False),
     ],
 )
 def test_check_inputs(widget: Any, expect_warning: bool) -> None:

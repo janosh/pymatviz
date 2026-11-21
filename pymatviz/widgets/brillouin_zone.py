@@ -18,15 +18,15 @@ class BrillouinZoneWidget(MatterVizWidget):
 
     Examples:
         From a pymatgen Structure:
-        >>> from pymatviz import BrillouinZoneWidget
-        >>> widget = BrillouinZoneWidget(structure=struct)
+        >>> import pymatviz as pmv
+        >>> widget = pmv.brillouin_zone(structure=struct)
         >>> widget
 
         With pre-computed BZ data:
-        >>> widget = BrillouinZoneWidget(bz_data=bz_dict)
+        >>> widget = pmv.brillouin_zone(bz_data=bz_dict)
 
         With custom options:
-        >>> widget = BrillouinZoneWidget(
+        >>> widget = pmv.brillouin_zone(
         ...     structure=struct,
         ...     show_ibz=True,
         ...     show_vectors=True,

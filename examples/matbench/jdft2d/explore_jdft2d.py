@@ -31,7 +31,7 @@ df_2d.describe()
 
 # %%
 # Exfoliation energy histogram of the Matbench Jarvis DFT 2D dataset
-widget = pmv.histogram(df_2d["exfoliation_en"], bins=200, log_y=True)
+widget = pmv.binned_histogram(df_2d["exfoliation_en"], bins=200, log_y=True)
 widget.show()
 # widget.to_img("jdft2d-exfoliation-energy-hist.pdf")
 
@@ -45,7 +45,7 @@ pmv.ptable_heatmap(df_2d[Key.formula], log=True, color_bar={"title": title}).sho
 
 
 # %%
-pmv.spacegroup_bar(df_2d[Key.spg_num], log_y=True).show()
+pmv.spacegroup_bar_plot(df_2d[Key.spg_num], log_y=True).show()
 
 
 # %%

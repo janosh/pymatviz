@@ -366,7 +366,7 @@ def test_local_bundle_survives_reconfiguration(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Existing widgets export and sync with the local bundle they loaded."""
-    from pymatviz import TrajectoryWidget
+    from pymatviz.widgets import TrajectoryWidget
 
     for ext in ("js", "css"):
         (tmp_path / f"matterviz.{ext}").write_text(f"/* local {ext} */")

@@ -20,7 +20,7 @@ for mp_id, formula in (("mp-2758", "Sr4Se4"), ("mp-23907", "H2")):
         with zopen(path, mode="rt") as file:
             docs[key] = json.loads(file.read(), cls=MontyDecoder)
 
-    widget = pmv.BandsAndDosWidget(
+    widget = pmv.bands_and_dos(
         band_structs={key: doc.phonon_bandstructure for key, doc in docs.items()},
         doses={key: doc.phonon_dos for key, doc in docs.items()},
         structure=next(iter(docs.values())).structure,

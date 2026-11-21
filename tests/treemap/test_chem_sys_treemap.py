@@ -15,7 +15,9 @@ if TYPE_CHECKING:
     from pymatviz.typing import FormulaGroupBy
 
 
-type ChemicalChart = Callable[..., pmv.TreemapWidget | pmv.SunburstWidget]
+type ChemicalChart = Callable[
+    ..., pmv.widgets.TreemapWidget | pmv.widgets.SunburstWidget
+]
 
 
 @pytest.fixture(params=[pmv.chem_sys_treemap, pmv.chem_sys_sunburst])

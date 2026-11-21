@@ -34,7 +34,7 @@ df_phonon[[Key.spg_symbol, Key.spg_num]] = [
 
 # %%
 # Last phonon DOS peak histogram of the Matbench Phonons dataset
-widget = pmv.histogram(df_phonon[last_dos_peak], bins=50)
+widget = pmv.binned_histogram(df_phonon[last_dos_peak], bins=50)
 widget.show()
 # widget.to_img("phonons-last-dos-peak-hist.pdf")
 
@@ -48,4 +48,4 @@ pmv.ptable_heatmap(df_phonon[Key.formula], log=True, color_bar={"title": title})
 
 
 # %%
-pmv.spacegroup_bar(df_phonon[Key.spg_num]).show()
+pmv.spacegroup_bar_plot(df_phonon[Key.spg_num]).show()

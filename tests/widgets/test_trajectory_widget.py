@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 import traitlets as tl
 
-from pymatviz import TrajectoryWidget
+from pymatviz.widgets import TrajectoryWidget
 from tests.widgets.conftest import decode_envelope
 
 

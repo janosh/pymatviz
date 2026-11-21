@@ -216,7 +216,7 @@ structure = Structure(Lattice.cubic(3), ["Si"], [[0, 0, 0]])
 immutable = IStructure.from_sites(structure)
 assert normalize_spacegroups([structure, immutable]).tolist() == [221, 221]
 assert pmv.spacegroup_sunburst([immutable]).data[0]["children"][0]["label"] == "221"
-pmv.StructureWidget(structure=structure.as_dict())
+pmv.structure(structure=structure.as_dict())
 """,
         ],
         check=True,

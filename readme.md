@@ -72,10 +72,10 @@ See [`pymatviz/ptable/figures.py`](pymatviz/ptable/figures.py). The module suppo
 
 ## Phonons
 
-| [`BandStructureWidget(band_structs=bands_dict)`](pymatviz/widgets/band_structure.py) [![fig-icon]](assets/scripts/phonons/phonon_bands.py) |                  [`phonon_dos(doses_dict)`](pymatviz/phonons/figures.py) [![fig-icon]](assets/scripts/phonons/phonon_dos.py)                  |
+| [`band_structure(band_structs=bands_dict)`](pymatviz/widgets/band_structure.py) [![fig-icon]](assets/scripts/phonons/phonon_bands.py) |                  [`phonon_dos(doses_dict)`](pymatviz/phonons/figures.py) [![fig-icon]](assets/scripts/phonons/phonon_dos.py)                  |
 | :-----------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                                   ![phonon-bands]                                                   |                                                                   ![phonon-dos]                                                                    |
-|                 [`BandsAndDosWidget(band_structs=bands_dict, doses=doses_dict)`](pymatviz/widgets/bands_and_dos.py)                  | [`BandsAndDosWidget(band_structs=single_bands, doses=single_dos)`](pymatviz/widgets/bands_and_dos.py) [![fig-icon]](assets/scripts/phonons/phonon_bands_and_dos.py) |
+|                 [`bands_and_dos(band_structs=bands_dict, doses=doses_dict)`](pymatviz/widgets/bands_and_dos.py)                  | [`bands_and_dos(band_structs=single_bands, doses=single_dos)`](pymatviz/widgets/bands_and_dos.py) [![fig-icon]](assets/scripts/phonons/phonon_bands_and_dos.py) |
 |                                           ![phonon-bands-and-dos-mp-2758]                                           |                                                          ![phonon-bands-and-dos-mp-23907]                                                          |
 
 [phonon-bands]: assets/svg/phonon-bands-mp-2758.svg
@@ -126,10 +126,10 @@ On the roadmap but no ETA yet.
 
 See [`pymatviz/widgets/structure.py`](pymatviz/widgets/structure.py).
 
-|                            [`StructureWidget(structure=hea_structure)`](pymatviz/widgets/structure.py)                            | [`StructureWidget(structure=lco_supercell)`](pymatviz/widgets/structure.py) [![fig-icon]](assets/scripts/structure/structure_widget.py) |
+|                            [`structure(structure=hea_structure)`](pymatviz/widgets/structure.py)                            | [`structure(structure=lco_supercell)`](pymatviz/widgets/structure.py) [![fig-icon]](assets/scripts/structure/structure_widget.py) |
 | :------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------------------: |
 |                                                 ![hea-structure-3d]                                                  |                                                  ![lco-structure-3d]                                                   |
-| [`StructureWidget(structure=batio3)`](pymatviz/widgets/structure.py) [![fig-icon]](assets/scripts/structure/structure_widget.py) | [`StructureWidget(structure=mos2)`](pymatviz/widgets/structure.py) [![fig-icon]](assets/scripts/structure/structure_widget.py) |
+| [`structure(structure=batio3)`](pymatviz/widgets/structure.py) [![fig-icon]](assets/scripts/structure/structure_widget.py) | [`structure(structure=mos2)`](pymatviz/widgets/structure.py) [![fig-icon]](assets/scripts/structure/structure_widget.py) |
 |                                          ![batio3-structure-3d]                                           | ![mos2-structure-3d] |
 
 [batio3-structure-3d]: assets/png/batio3-structure-3d.png
@@ -142,23 +142,18 @@ See [`pymatviz/widgets/structure.py`](pymatviz/widgets/structure.py).
 See [`pymatviz/widgets`](pymatviz/widgets). Interactive 3D structure, molecular dynamics trajectory and composition visualization widgets for [Jupyter](https://jupyter.org), [Marimo](https://marimo.io), and VSCode notebooks, powered by [anywidget](https://anywidget.dev) and [MatterViz](https://matterviz.janosh.dev) (<https://github.com/janosh/matterviz>). Supports pymatgen `Structure`, ASE `Atoms`, and `PhonopyAtoms`, as well as ASE, `pymatgen` and plain Python trajectory formats.
 
 ```py
-from pymatviz import StructureWidget, CompositionWidget, TrajectoryWidget
+import pymatviz as pmv
 from pymatgen.core import Structure, Composition
 
 # Interactive 3D structure visualization
-structure = Structure.from_file("structure.cif")
-struct_widget = StructureWidget(structure=structure)
+struct_widget = pmv.structure(Structure.from_file("structure.cif"))
 
 # Interactive composition visualization
-composition = Composition("Fe2O3")
-comp_widget = CompositionWidget(composition=composition)
+comp_widget = pmv.composition(Composition("Fe2O3"))
 
-# Interactive trajectory visualization
-trajectory1 = [struct1, struct2, struct3]  # List of structures
-traj_widget1 = TrajectoryWidget(trajectory=trajectory1)
-
-trajectory2 = [{"structure": struct1, "energy": 1.0}, {"structure": struct2, "energy": 2.0}, {"structure": struct3, "energy": 3.0}]  # dicts with "structure" and property values
-traj_widget2 = TrajectoryWidget(trajectory=trajectory2)
+# Interactive trajectory visualization from structures or dicts of structure and properties
+traj_widget1 = pmv.trajectory([struct1, struct2, struct3])
+traj_widget2 = pmv.trajectory([{"structure": struct1, "energy": 1.0}, {"structure": struct2, "energy": 2.0}])
 ```
 
 All widgets support export and inspection APIs that work in plain Python scripts, CI, and agent workflows — no notebook frontend required:
@@ -170,11 +165,11 @@ widget.describe()  # machine-readable facts: counts, ranges, formula, chemical s
 widget.render_report()  # headless render health check: blank fraction, warnings
 ```
 
-Lay out several widgets with `widget_grid({title: widget, ...}, n_cols=3)`, e.g. one `StructureWidget` per structure. It returns an `ipywidgets.GridBox` of titled cells: export each widget from its `.children`.
+Lay out several widgets with `widget_grid({title: widget, ...}, n_cols=3)`, e.g. one `structure` widget per structure. It returns an `ipywidgets.GridBox` of titled cells: export each widget from its `.children`.
 
 `to_img` and `render_report` require [Playwright](https://playwright.dev/python): `pip install pymatviz[export] && playwright install chromium` (on Linux CI runners without Chromium system libraries, use `playwright install --with-deps chromium`). Exports render in headless Chromium. Set the `PYMATVIZ_STATIC` env var to make `widget.show()` render static PNGs instead of live widgets (useful for CI notebook execution).
 
-Widget constructor kwargs mirror the props of the matching MatterViz component one-to-one (e.g. `BandStructureWidget(band_structs=...)`, `DosWidget(doses=...)`, `HeatmapMatrixWidget(color_scale={"type": "log"})`), and every plot widget takes `show_controls`, `controls_open`, `controls_toggle_props` and `controls_pane_props` for its control pane. The frontend is the prebuilt [`matterviz-anywidget`](https://www.npmjs.com/package/matterviz-anywidget) bundle selected by `MATTERVIZ_ANYWIDGET_VERSION` in [`pymatviz/widgets/matterviz.py`](pymatviz/widgets/matterviz.py): `"main"` between releases (matterviz main's bundle from `matterviz.janosh.dev/anywidget/`, re-fetched each session), a published npm version in releases (fetched from jsDelivr and cached on disk); set `MATTERVIZ_ANYWIDGET_DIR` to a local `matterviz/extensions/anywidget/build` to develop against an unreleased MatterViz.
+Each MatterViz component has a pymatviz function of the same name in snake_case (`ScatterPlot` → `pmv.scatter_plot`, `BrillouinZone` → `pmv.brillouin_zone`), returning its widget. The widget classes live in `pymatviz.widgets` for type hints and `isinstance` checks. Their keyword arguments mirror the props of the matching MatterViz component one-to-one (e.g. `band_structure(band_structs=...)`, `dos(doses=...)`, `heatmap_matrix(color_scale={"type": "log"})`), and every plot widget takes `show_controls`, `controls_open`, `controls_toggle_props` and `controls_pane_props` for its control pane. The frontend is the prebuilt [`matterviz-anywidget`](https://www.npmjs.com/package/matterviz-anywidget) bundle selected by `MATTERVIZ_ANYWIDGET_VERSION` in [`pymatviz/widgets/matterviz.py`](pymatviz/widgets/matterviz.py): `"main"` between releases (matterviz main's bundle from `matterviz.janosh.dev/anywidget/`, re-fetched each session), a published npm version in releases (fetched from jsDelivr and cached on disk); set `MATTERVIZ_ANYWIDGET_DIR` to a local `matterviz/extensions/anywidget/build` to develop against an unreleased MatterViz.
 
 **Examples:**
 
@@ -191,10 +186,10 @@ Importing `pymatviz` auto-registers all widgets for their respective sets of sup
 
 See [`pymatviz/widgets/brillouin_zone.py`](pymatviz/widgets/brillouin_zone.py). MatterViz standardizes any input cell, so the zone and its high-symmetry k-path labels match the Setyawan-Curtarolo convention.
 
-|   [`BrillouinZoneWidget(structure=cubic_struct)`](pymatviz/widgets/brillouin_zone.py) [![fig-icon]](assets/scripts/brillouin/brillouin_zone_widget.py)    |  [`BrillouinZoneWidget(structure=hexagonal_struct)`](pymatviz/widgets/brillouin_zone.py)   |
+|   [`brillouin_zone(structure=cubic_struct)`](pymatviz/widgets/brillouin_zone.py) [![fig-icon]](assets/scripts/brillouin/brillouin_zone_widget.py)    |  [`brillouin_zone(structure=hexagonal_struct)`](pymatviz/widgets/brillouin_zone.py)   |
 | :------------------------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------: |
 |                                                   ![brillouin-cubic-mp-10018]                                                    |                   ![brillouin-hexagonal-mp-862690]                    |
-| [`BrillouinZoneWidget(structure=monoclinic_struct)`](pymatviz/widgets/brillouin_zone.py) [![fig-icon]](assets/scripts/brillouin/brillouin_zone_widget.py) | [`BrillouinZoneWidget(structure=orthorhombic_struct)`](pymatviz/widgets/brillouin_zone.py) |
+| [`brillouin_zone(structure=monoclinic_struct)`](pymatviz/widgets/brillouin_zone.py) [![fig-icon]](assets/scripts/brillouin/brillouin_zone_widget.py) | [`brillouin_zone(structure=orthorhombic_struct)`](pymatviz/widgets/brillouin_zone.py) |
 |                                                ![brillouin-monoclinic-mp-1183089]                                                |                  ![brillouin-orthorhombic-mp-1183085]                 |
 
 [brillouin-cubic-mp-10018]: assets/png/brillouin-cubic-mp-10018.png
@@ -206,7 +201,7 @@ See [`pymatviz/widgets/brillouin_zone.py`](pymatviz/widgets/brillouin_zone.py). 
 
 See [`pymatviz/xrd.py`](pymatviz/xrd.py).
 
-|             [`xrd_pattern(pattern)`](pymatviz/xrd.py#L53) [![fig-icon]](assets/scripts/xrd/xrd_pattern.py)             |  [`xrd_pattern({key1: patt1, key2: patt2})`](pymatviz/xrd.py#L53)   |
+|             [`xrd_plot(pattern)`](pymatviz/xrd.py#L53) [![fig-icon]](assets/scripts/xrd/xrd_plot.py)             |  [`xrd_plot({key1: patt1, key2: patt2})`](pymatviz/xrd.py#L53)   |
 | :--------------------------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------: |
 |                                                     ![xrd-pattern]                                                     |                       ![xrd-pattern-multiple]                       |
 
@@ -241,7 +236,7 @@ See [`pymatviz/coordination/figures.py`](pymatviz/coordination/figures.py).
 
 ## Sunburst
 
-`chem_sys_sunburst` and `chem_env_sunburst` return interactive MatterViz `SunburstWidget` instances. Pass the same nested `data` to `SunburstWidget` or `TreemapWidget` to switch views. Use `widget.to_html("hierarchy.html", inline=True)` for a self-contained interactive file (the default `to_html` loads the MatterViz bundle from the network) or `widget.to_img("hierarchy.svg")` for a vector figure.
+`chem_sys_sunburst` and `chem_env_sunburst` return interactive MatterViz sunburst widgets. Pass the same nested `data` to `pmv.sunburst` or `pmv.treemap` to switch views. Use `widget.to_html("hierarchy.html", inline=True)` for a self-contained interactive file (the default `to_html` loads the MatterViz bundle from the network) or `widget.to_img("hierarchy.svg")` for a vector figure.
 
 | [`spacegroup_sunburst([65, 134, 225, ...])`](pymatviz/sunburst/spacegroup.py) [![fig-icon]](assets/scripts/sunburst/spacegroup_sunburst.py) | [`chem_sys_sunburst(["FeO", "Fe2O3", "LiPO4", ...])`](pymatviz/sunburst/chem_sys.py) [![fig-icon]](assets/scripts/sunburst/chem_sys_sunburst.py) |
 | :-----------------------------------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------------------------: |
@@ -256,7 +251,7 @@ See [`pymatviz/coordination/figures.py`](pymatviz/coordination/figures.py).
 
 ## Treemap
 
-Chemical-system and coordination-environment treemaps return MatterViz `TreemapWidget` instances. `max_systems` limits systems per arity. Set `overflow="drop"` to omit the remaining systems or use the default `"other"` to retain their combined count.
+Chemical-system and coordination-environment treemaps return MatterViz treemap widgets. `max_systems` limits systems per arity. Set `overflow="drop"` to omit the remaining systems or use the default `"other"` to retain their combined count.
 
 | [`chem_sys_treemap(formulas, group_by="formula")`](pymatviz/treemap/chem_sys.py#L19) [![fig-icon]](assets/scripts/treemap/chem_sys_treemap.py) | [`chem_sys_treemap(ward_compositions)`](pymatviz/treemap/chem_sys.py#L19) |
 | :----------------------------------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------: |
@@ -304,7 +299,7 @@ See [`pymatviz/sankey.py`](pymatviz/sankey.py).
 
 See [`pymatviz/bar.py`](pymatviz/bar.py).
 
-| [`spacegroup_bar([65, 134, 225, ...])`](pymatviz/bar.py#L20) [![fig-icon]](assets/scripts/bar/spacegroup_bar.py) | [`spacegroup_bar(["C2/m", "P-43m", "Fm-3m", ...])`](pymatviz/bar.py#L20) |
+| [`spacegroup_bar_plot([65, 134, 225, ...])`](pymatviz/bar.py#L20) [![fig-icon]](assets/scripts/bar/spacegroup_bar_plot.py) | [`spacegroup_bar_plot(["C2/m", "P-43m", "Fm-3m", ...])`](pymatviz/bar.py#L20) |
 | :--------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------: |
 |                                              ![spg-num-bar]                                              |                        ![spg-symbol-bar]                         |
 
@@ -315,7 +310,7 @@ See [`pymatviz/bar.py`](pymatviz/bar.py).
 
 See [`pymatviz/histogram.py`](pymatviz/histogram.py).
 
-| [`elements_hist(compositions, log_y=True, show_values='count')`](pymatviz/histogram.py#L25) [![fig-icon]](assets/scripts/histogram/elements_hist.py) | [`histogram({'key1': values1, 'key2': values2})`](pymatviz/histogram.py#L94) [![fig-icon]](assets/scripts/histogram/histogram.py) |
+| [`elements_hist(compositions, log_y=True, show_values='count')`](pymatviz/histogram.py#L25) [![fig-icon]](assets/scripts/histogram/elements_hist.py) | [`binned_histogram({'key1': values1, 'key2': values2})`](pymatviz/histogram.py#L94) [![fig-icon]](assets/scripts/histogram/binned_histogram.py) |
 | :-----------------------------------------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------------------: |
 |                                                                 ![elements-hist]                                                                  |                                                         ![histogram]                                                         |
 

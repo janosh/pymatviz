@@ -15,6 +15,7 @@ import numpy as np
 import pymatgen
 
 import pymatviz as pmv
+from pymatviz.treemap import py_pkg
 
 
 # %% Single packages with default settings
@@ -76,7 +77,7 @@ def coverage_percentages(url: str, package: str) -> dict[str, float]:
     """Map each reported file to its installed path for this gallery example."""
     with urlopen(url, timeout=30) as response:  # noqa: S310
         files = json.load(response)["files"]
-    pkg_dir = pmv.treemap.py_pkg.find_package_path(package)
+    pkg_dir = py_pkg.find_package_path(package)
     prefix = f"{package}/"
     return {
         # normpath matches the collector's file_path (e.g. backslashes on Windows)
@@ -112,7 +113,7 @@ coverage_url = "https://github.com/user-attachments/files/21545087/2025-07-31-py
 NAMESPACE_PKGS = {"analysis.defects", "analysis.diffusion"}
 
 
-def _pmg_cell_size(cell: pmv.treemap.py_pkg.ModuleStats) -> int:
+def _pmg_cell_size(cell: py_pkg.ModuleStats) -> int:
     """Filter out namespace packages and tiny files."""
     dotted = f".{cell.full_module}."
     if any(f".{ns_pkg}." in dotted for ns_pkg in NAMESPACE_PKGS):

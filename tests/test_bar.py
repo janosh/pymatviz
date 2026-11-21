@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 import pandas as pd
 import pytest
 
-from pymatviz.bar import spacegroup_bar
+from pymatviz.bar import spacegroup_bar_plot
 from pymatviz.widgets.spacegroup_bar import SpacegroupBarPlotWidget
 
 
@@ -35,7 +35,7 @@ def test_spacegroup_bar(
     show_counts: bool,
 ) -> None:
     """Inputs sync as per-space-group counts keyed by ascending number strings."""
-    widget = spacegroup_bar(data, show_counts=show_counts)
+    widget = spacegroup_bar_plot(data, show_counts=show_counts)
     assert isinstance(widget, SpacegroupBarPlotWidget)
     assert widget.data == {str(spg): count for spg, count in sorted(counts.items())}
     assert all(type(count) is int for count in widget.data.values())
@@ -55,7 +55,7 @@ def test_spacegroup_bar_log_y(
     kwargs: dict[str, Any], log_axis: str, cat_axis: str, log_y: bool
 ) -> None:
     """log_y=True log-scales only the count axis, keeping user axis options."""
-    widget = spacegroup_bar([1, 225, 225], log_y=log_y, **kwargs)
+    widget = spacegroup_bar_plot([1, 225, 225], log_y=log_y, **kwargs)
     expected = ({"scale_type": "log"} if log_y else {}) | kwargs.get(log_axis, {})
     assert getattr(widget, log_axis) == expected
     assert getattr(widget, cat_axis) == {}
@@ -63,7 +63,7 @@ def test_spacegroup_bar_log_y(
 
 def test_spacegroup_bar_structures(structures: Sequence[Any]) -> None:
     """Structures are converted to space group numbers in Python."""
-    widget = spacegroup_bar(structures)
+    widget = spacegroup_bar_plot(structures)
     assert sum(widget.data.values()) == len(structures)
     assert all(1 <= int(spg) <= 230 for spg in widget.data)
 
@@ -75,4 +75,4 @@ def test_spacegroup_bar_structures(structures: Sequence[Any]) -> None:
 def test_spacegroup_bar_invalid(data: list[Any], match: str) -> None:
     """Empty and invalid inputs raise instead of being dropped by the frontend."""
     with pytest.raises(ValueError, match=match):
-        spacegroup_bar(data)
+        spacegroup_bar_plot(data)

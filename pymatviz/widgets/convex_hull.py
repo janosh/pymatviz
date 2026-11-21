@@ -19,10 +19,10 @@ class ConvexHullWidget(MatterVizWidget):
 
     Examples:
         From a pymatgen PhaseDiagram:
-        >>> from pymatviz import ConvexHullWidget
+        >>> import pymatviz as pmv
         >>> from pymatgen.analysis.phase_diagram import PhaseDiagram
         >>> pd = PhaseDiagram(entries)
-        >>> widget = ConvexHullWidget(entries=pd)
+        >>> widget = pmv.convex_hull(entries=pd)
         >>> widget
 
         From a list of entry dicts:
@@ -30,10 +30,10 @@ class ConvexHullWidget(MatterVizWidget):
         ...     {"composition": {"Li": 1}, "energy_per_atom": -1.5},
         ...     {"composition": {"Li": 1, "O": 2}, "energy_per_atom": -3.2},
         ... ]
-        >>> widget = ConvexHullWidget(entries=entries)
+        >>> widget = pmv.convex_hull(entries=entries)
 
         With custom visualization options:
-        >>> widget = ConvexHullWidget(
+        >>> widget = pmv.convex_hull(
         ...     entries=pd,
         ...     show_unstable_labels=True,
         ...     temperature=300,

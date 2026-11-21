@@ -50,9 +50,9 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
 
     Examples:
         Basic usage with list of structures:
-        >>> from pymatviz import TrajectoryWidget
+        >>> import pymatviz as pmv
         >>> trajectory_data = [...]  # List of structures
-        >>> widget = TrajectoryWidget(trajectory=trajectory_data)
+        >>> widget = pmv.trajectory(trajectory=trajectory_data)
         >>> widget
 
         With per-frame properties (scalars are plotted; per-atom ``forces`` of shape
@@ -61,13 +61,13 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
         ...     {"structure": struct1, "energy": -1.23, "forces": forces1},
         ...     {"structure": struct2, "energy": -1.25, "forces": forces2},
         ... ]
-        >>> widget = TrajectoryWidget(trajectory=trajectory_with_props)
+        >>> widget = pmv.trajectory(trajectory=trajectory_with_props)
 
         A pymatgen ``Trajectory`` syncs as binary arrays (its ``as_dict()`` as JSON):
-        >>> widget = TrajectoryWidget(trajectory=Trajectory.from_file("XDATCAR"))
+        >>> widget = pmv.trajectory(trajectory=Trajectory.from_file("XDATCAR"))
 
         With custom visualization options:
-        >>> widget = TrajectoryWidget(
+        >>> widget = pmv.trajectory(
         ...     trajectory=trajectory_data,
         ...     display_mode="structure+plot",
         ...     plot_type="distribution",
@@ -78,11 +78,11 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
         ... )
 
         With local file path (automatically detected and loaded):
-        >>> widget = TrajectoryWidget(data_url="path/to/trajectory.xyz")
-        >>> widget = TrajectoryWidget(data_url="path/to/trajectory.h5")
+        >>> widget = pmv.trajectory(data_url="path/to/trajectory.xyz")
+        >>> widget = pmv.trajectory(data_url="path/to/trajectory.h5")
 
         LAMMPS dumps only carry integer atom types; name them with atom_type_mapping:
-        >>> widget = TrajectoryWidget(
+        >>> widget = pmv.trajectory(
         ...     data_url="path/to/dump.lammpstrj", atom_type_mapping={1: "Si", 2: "O"}
         ... )
     """

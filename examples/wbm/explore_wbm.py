@@ -62,7 +62,7 @@ for cry_sys, df_group in sorted(
     label = f"{cry_sys} {len(df_group):,} = {frac:.0%}"
     series += [{"y": df_group["e_form_per_atom_wbm"], "label": label}]
 
-widget = pmv.BoxPlotWidget(
+widget = pmv.box_plot(
     series,
     kind="violin",
     title="Energy distribution by crystal system",
@@ -81,7 +81,7 @@ widget.to_img("wbm-spacegroup-sunburst.pdf")
 
 # %% WBM volume and energy by spacegroup number
 for y_key in (Key.volume, Key.energy):
-    widget = pmv.ScatterPlotWidget(
+    widget = pmv.scatter_plot(
         series=[
             {
                 "x": df_group[Key.spg_num],

@@ -24,12 +24,12 @@ class DosWidget(PlotControlsTraits, MatterVizWidget):
 
     Examples:
         From a pymatgen CompleteDos:
-        >>> from pymatviz import DosWidget
-        >>> widget = DosWidget(doses=complete_dos)
+        >>> import pymatviz as pmv
+        >>> widget = pmv.dos(doses=complete_dos)
         >>> widget
 
         With custom options:
-        >>> widget = DosWidget(
+        >>> widget = pmv.dos(
         ...     doses={"PBE": dos_pbe, "HSE": dos_hse},
         ...     sigma=0.05,
         ...     spin_mode="overlay",

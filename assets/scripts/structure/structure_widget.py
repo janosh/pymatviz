@@ -14,7 +14,7 @@ from pymatviz.utils.testing import disordered_demo_structures
 df_phonons = load_dataset("matbench_phonons")
 
 
-def show_and_save(widget: pmv.StructureWidget, name: str) -> None:
+def show_and_save(widget: pmv.widgets.StructureWidget, name: str) -> None:
     """Display a widget and export it as a transparent readme PNG."""
     display(widget)
     widget.to_img(
@@ -32,7 +32,7 @@ supercells = {
 display(
     pmv.widget_grid(
         {
-            key: pmv.StructureWidget(
+            key: pmv.structure(
                 structure=struct, show_bonds="always", color_scheme="Jmol"
             )
             for key, struct in supercells.items()
@@ -48,14 +48,14 @@ batio3 = Structure(
     coords=[(0, 0, 0), (0.5, 0.5, 0.5), (0.5, 0.5, 0), (0.5, 0, 0.5), (0, 0.5, 0.5)],
 )
 batio3.add_oxidation_state_by_element({"Ba": 2, "Ti": 4, "O": -2})
-show_and_save(pmv.StructureWidget(structure=batio3, show_bonds="always"), "batio3")
+show_and_save(pmv.structure(structure=batio3, show_bonds="always"), "batio3")
 
 
 # %% Disordered sites are drawn as spheres split by species occupancy
 display(
     pmv.widget_grid(
         {
-            name: pmv.StructureWidget(structure=struct, show_site_labels=True)
+            name: pmv.structure(structure=struct, show_site_labels=True)
             for name, struct in disordered_demo_structures.items()
         },
         n_cols=2,
@@ -70,9 +70,7 @@ hea_structure = Structure(
     coords=[(0, 0, 0), (0.5, 0.5, 0), (0.5, 0, 0.5), (0, 0.5, 0.5), (0.5, 0.5, 0.5)],
 )
 show_and_save(
-    pmv.StructureWidget(
-        structure=hea_structure.make_supercell([2, 3, 2], in_place=False)
-    ),
+    pmv.structure(structure=hea_structure.make_supercell([2, 3, 2], in_place=False)),
     "hea",
 )
 
@@ -85,7 +83,7 @@ lco_supercell = Structure(
 ).make_supercell([3, 3, 1])
 # the wide, flat slab leaves the viewer's default 500px height half empty
 show_and_save(
-    pmv.StructureWidget(
+    pmv.structure(
         structure=lco_supercell, color_scheme="Jmol", style="--struct-height: 380px"
     ),
     "lco",
@@ -99,13 +97,11 @@ mos2 = Structure(
     coords=[(1 / 3, 2 / 3, z) for z in (0.25, 0.621, 0.879)]
     + [(2 / 3, 1 / 3, z) for z in (0.75, 0.121, 0.379)],
 ).make_supercell([3, 3, 1])
-show_and_save(pmv.StructureWidget(structure=mos2, show_bonds="always"), "mos2")
+show_and_save(pmv.structure(structure=mos2, show_bonds="always"), "mos2")
 
 
 # %% Conventional standard cell of a structure with negative fractional coordinates
 shifted = Structure(Lattice.cubic(4), ["Fe", "O"], [[-0.1, 0, 0], [0.5, 0.5, 0.5]])
 display(
-    pmv.StructureWidget(
-        structure=shifted, cell_type="conventional", show_image_atoms=False
-    )
+    pmv.structure(structure=shifted, cell_type="conventional", show_image_atoms=False)
 )

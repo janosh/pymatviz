@@ -16,8 +16,8 @@ class BinnedScatterPlotWidget(MatterVizWidget):
     and switches to individual points when zoomed in far enough.
 
     Examples:
-        >>> from pymatviz.widgets import BinnedScatterPlotWidget
-        >>> widget = BinnedScatterPlotWidget(
+        >>> import pymatviz as pmv
+        >>> widget = pmv.binned_scatter_plot(
         ...     series=[{"x": [1, 2, 3], "y": [1, 2, 4]}],
         ...     marginals={"top": "histogram", "right": "histogram"},
         ... )

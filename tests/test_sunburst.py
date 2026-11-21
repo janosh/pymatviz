@@ -11,6 +11,7 @@ import pytest
 from pymatgen.core import Lattice, Structure
 
 import pymatviz as pmv
+from pymatviz.sunburst import spacegroup as spacegroup_mod
 from pymatviz.sunburst import spacegroup_sunburst
 
 
@@ -22,7 +23,7 @@ def rock_salt() -> Structure:
     )
 
 
-def spg_leaves(widget: pmv.SunburstWidget) -> dict[str, tuple[str, int]]:
+def spg_leaves(widget: pmv.widgets.SunburstWidget) -> dict[str, tuple[str, int]]:
     """Map leaf IDs to (label, value) of a crystal system/space group sunburst."""
     return {
         leaf["id"]: (leaf["label"], leaf["value"])
@@ -34,7 +35,7 @@ def spg_leaves(widget: pmv.SunburstWidget) -> dict[str, tuple[str, int]]:
 def test_spacegroup_sunburst_all_groups() -> None:
     """All 230 space groups nest under the 7 crystal systems with label+value text."""
     widget = spacegroup_sunburst(range(1, 231))
-    assert isinstance(widget, pmv.SunburstWidget)
+    assert isinstance(widget, pmv.widgets.SunburstWidget)
     assert widget.label_text == "label+value"
     assert {root["id"] for root in widget.data} == set(
         get_args(pmv.typing.CrystalSystem)
@@ -114,9 +115,7 @@ def test_spacegroup_sunburst_reports_moyopy_conversion_failure(
         """Simulate unsupported structure input."""
         raise TypeError("unsupported structure")
 
-    monkeypatch.setattr(
-        "pymatviz.sunburst.spacegroup.get_spacegroup_number", reject_structure
-    )
+    monkeypatch.setattr(spacegroup_mod, "get_spacegroup_number", reject_structure)
 
     with pytest.raises(TypeError, match="structure at index 0 \\(Structure\\)"):
         spacegroup_sunburst(structures)

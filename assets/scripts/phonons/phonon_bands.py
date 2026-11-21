@@ -33,7 +33,7 @@ for mp_id, formula in (("mp-2758", "Sr4Se4"), ("mp-23907", "H2")):
     ph_bands: dict[str, PhononBands] = {
         key: doc.phonon_bandstructure for key, doc in docs.items()
     }
-    widget = pmv.BandStructureWidget(band_structs=ph_bands, style="height: 450px")
+    widget = pmv.band_structure(band_structs=ph_bands, style="height: 450px")
     widget.show()
     if mp_id == "mp-2758":  # in readme
         widget.to_img(
@@ -65,6 +65,4 @@ phonopy_nacl.run_band_structure(paths=list(q_paths.values()))
 if phonopy_nacl.band_structure is None:
     raise RuntimeError("phonopy band structure not computed")
 
-pmv.BandStructureWidget(
-    band_structs={"NaCl (phonopy)": phonopy_nacl.band_structure}
-).show()
+pmv.band_structure(band_structs={"NaCl (phonopy)": phonopy_nacl.band_structure}).show()

@@ -31,12 +31,12 @@ class BandsAndDosWidget(PlotControlsTraits, MatterVizWidget):
 
     Examples:
         From pymatgen objects:
-        >>> from pymatviz import BandsAndDosWidget
-        >>> widget = BandsAndDosWidget(band_structs=bs, doses=dos)
+        >>> import pymatviz as pmv
+        >>> widget = pmv.bands_and_dos(band_structs=bs, doses=dos)
         >>> widget
 
         With custom options:
-        >>> widget = BandsAndDosWidget(
+        >>> widget = pmv.bands_and_dos(
         ...     band_structs=bs,
         ...     doses=dos,
         ...     style="height: 600px;",

@@ -63,7 +63,7 @@ pmv.ptable_heatmap(elem_counts, log=True, color_bar={"title": title}).show()
 
 # %% marker size = mean atomic mass, color = number of elements
 df_plot = df_gap.dropna(subset="mean_mass")  # mean_atomic_prop returns None on error
-widget = pmv.ScatterPlotWidget(
+widget = pmv.scatter_plot(
     series=[
         {
             "x": df_plot[Key.n_atoms],

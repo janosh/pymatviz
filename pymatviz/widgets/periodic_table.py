@@ -237,21 +237,21 @@ class PeriodicTableWidget(MatterVizWidget):
 
     Examples:
         Heatmap by element counts:
-        >>> from pymatviz import PeriodicTableWidget
-        >>> widget = PeriodicTableWidget(
+        >>> import pymatviz as pmv
+        >>> widget = pmv.periodic_table(
         ...     heatmap_values={"Fe": 42, "O": 100, "Li": 15},
         ...     color_scale="interpolateViridis",
         ... )
 
         Log-spaced colors clamped to a fixed lower bound, color bar hidden:
-        >>> widget = PeriodicTableWidget(
+        >>> widget = pmv.periodic_table(
         ...     heatmap_values={"Fe": 42, "O": 100, "Li": 15},
         ...     color_scale={"type": "log", "value_range": [10, None]},
         ...     color_bar=None,
         ... )
 
         Histogram per element on shared bins, bars colored by bin position:
-        >>> widget = PeriodicTableWidget(
+        >>> widget = pmv.periodic_table(
         ...     tile_plots={"Fe": {"values": [1, 2, 2, 3]}, "O": {"values": [2, 4]}},
         ...     tile_plot_config={"bins": 10, "color_scale": "interpolateRdBu"},
         ... )

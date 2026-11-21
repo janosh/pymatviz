@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 import traitlets as tl
 
-from pymatviz import StructureWidget
+from pymatviz.widgets import StructureWidget
 from tests.widgets.conftest import assert_widget_property_sync, decode_envelope
 
 

@@ -84,7 +84,7 @@ for li_count, fe_count, o_count in itertools.product(range(7), range(7), range(1
     )
 phase_diag = PhaseDiagram(entries)
 
-convex_hull_widget = pmv.ConvexHullWidget(
+convex_hull_widget = pmv.convex_hull(
     entries=phase_diag,
     style="height: 500px;",
 )
@@ -111,7 +111,7 @@ struct = Structure(
     ],
 )
 
-structure_widget = pmv.StructureWidget(
+structure_widget = pmv.structure(
     structure=struct, show_bonds="always", style="height: 400px;"
 )
 structure_widget.show()
@@ -140,7 +140,7 @@ struct_multi_vec = struct.copy(
     site_properties={"force_DFT": dft_forces, "force_MLFF": mlff_forces}
 )
 
-multi_vec_widget = pmv.StructureWidget(
+multi_vec_widget = pmv.structure(
     structure=struct_multi_vec,
     show_bonds="always",
     vector_configs={
@@ -158,7 +158,7 @@ multi_vec_widget.show()
 
 
 # %% Brillouin Zone — hexagonal BZ from GaN
-bz_widget = pmv.BrillouinZoneWidget(
+bz_widget = pmv.brillouin_zone(
     structure=struct, show_vectors=True, style="height: 400px;"
 )
 bz_widget.show()
@@ -173,9 +173,6 @@ bz_widget.show()
 
 
 # %% XRD Pattern — rutile TiO2 (tetragonal, richer peak pattern than cubic Si)
-from pymatgen.analysis.diffraction.xrd import XRDCalculator  # noqa: E402
-
-
 tio2_struct = Structure(
     Lattice.tetragonal(4.594, 2.959),
     ["Ti", "Ti", "O", "O", "O", "O"],
@@ -188,9 +185,7 @@ tio2_struct = Structure(
         [0.805, 0.195, 0.5],
     ],
 )
-xrd_pattern = XRDCalculator().get_pattern(tio2_struct)
-
-xrd_widget = pmv.XrdWidget(patterns=xrd_pattern, style="height: 350px;")
+xrd_widget = pmv.xrd_plot(tio2_struct, style="height: 350px;")
 xrd_widget.show()
 
 
@@ -219,7 +214,7 @@ for idx in range(n_steps := 20):
     step_data = {"structure": struct_frame, "energy": energy, "force_max": f_max}
     trajectory.append(step_data)
 
-trajectory_widget = pmv.TrajectoryWidget(
+trajectory_widget = pmv.trajectory(
     trajectory=trajectory,
     display_mode="structure+plot",
     style="height: 600px;",
@@ -240,7 +235,7 @@ trajectory_widget.show()
 linked_frames = [step["structure"] for step in trajectory]
 linked_energies = [step["energy"] for step in trajectory]
 
-linked_scatter = pmv.ScatterPlotWidget(
+linked_scatter = pmv.scatter_plot(
     series=[
         {"x": list(range(len(linked_frames))), "y": linked_energies, "label": "energy"}
     ],
@@ -248,7 +243,7 @@ linked_scatter = pmv.ScatterPlotWidget(
     y_axis={"label": "energy (eV)"},
     style="height: 400px; width: 100%;",
 )
-linked_structure = pmv.StructureWidget(
+linked_structure = pmv.structure(
     structure=linked_frames[0], show_bonds="always", style="height: 400px; width: 100%;"
 )
 # clicking a scatter point now updates linked_structure
@@ -276,7 +271,7 @@ scatter_series = [
         y_axis="y2",
     ),
 ]
-scatter_plot_widget = pmv.ScatterPlotWidget(
+scatter_plot_widget = pmv.scatter_plot(
     series=scatter_series,
     x_axis={"label": "x"},
     y_axis={"label": "sin(x)"},
@@ -298,7 +293,7 @@ bar_series = [
     {"label": "Model A", "x": [0, 1, 2], "y": [4.2, 5.1, 4.8]},
     {"label": "Model B", "x": [0, 1, 2], "y": [3.9, 4.6, 5.2]},
 ]
-bar_plot_widget = pmv.BarPlotWidget(
+bar_plot_widget = pmv.bar_plot(
     series=bar_series,
     mode="grouped",
     x_axis={"label": "Sample index"},
@@ -318,7 +313,7 @@ bar_plot_widget.show()
 histogram_series = [
     {"label": series["label"], "values": series["y"]} for series in scatter_series
 ]
-histogram_widget = pmv.HistogramWidget(
+histogram_widget = pmv.histogram(
     series=histogram_series,
     bins=20,
     mode="overlay",
@@ -344,7 +339,7 @@ with zopen(phonon_fixture_path, mode="rt") as file:
 
 band_data = phonon_doc.phonon_bandstructure
 
-bands_widget = pmv.BandStructureWidget(band_structs=band_data, style="height: 400px;")
+bands_widget = pmv.band_structure(band_structs=band_data, style="height: 400px;")
 bands_widget.show()
 
 
@@ -356,7 +351,7 @@ bands_widget.show()
 # %% DOS Widget — dict-based demo
 dos_data = phonon_doc.phonon_dos
 
-dos_widget = pmv.DosWidget(doses=dos_data, style="height: 400px;")
+dos_widget = pmv.dos(doses=dos_data, style="height: 400px;")
 dos_widget.show()
 
 
@@ -366,7 +361,7 @@ dos_widget.show()
 
 
 # %% Combined Bands + DOS
-bands_dos_widget = pmv.BandsAndDosWidget(
+bands_dos_widget = pmv.bands_and_dos(
     band_structs=band_data, doses=dos_data, style="height: 500px;"
 )
 bands_dos_widget.show()
@@ -389,13 +384,13 @@ comps = (
 )
 modes = ("pie", "bar", "bubble")
 size = 100
-composition_pie_widget = pmv.CompositionWidget(
+composition_pie_widget = pmv.composition(
     composition=comps[0],
     mode="pie",
     style=f"width: {size}px; height: {size}px;",
 )
 children = [
-    pmv.CompositionWidget(
+    pmv.composition(
         composition=comp,
         mode=mode,
         style=f"width: {(1 + (mode == 'bar')) * size}px; height: {size}px;",
@@ -424,7 +419,7 @@ matterviz_traj_dir_url: Final = (
 )
 
 file_name = "Cr0.25Fe0.25Co0.25Ni0.25-mace-omat-qha.xyz.gz"
-ase_traj_widget = pmv.TrajectoryWidget(
+ase_traj_widget = pmv.trajectory(
     data_url=f"{matterviz_traj_dir_url}/{file_name}",
     display_mode="structure+plot",
     vector_scale=0.5,
@@ -453,7 +448,7 @@ if not os.path.isfile(local_path):
         f"{matterviz_traj_dir_url}/{file_name}", local_path
     )
 
-traj_widget = pmv.TrajectoryWidget(
+traj_widget = pmv.trajectory(
     data_url=local_path,
     display_mode="structure+plot",
 )
@@ -486,7 +481,7 @@ def iso_settings(
 
 
 # %% Isosurface — Si charge density from CHGCAR
-iso_widget = pmv.StructureWidget(
+iso_widget = pmv.structure(
     data_url=f"{matterviz_iso_dir_url}/Si-CHGCAR.gz",
     isosurface_settings=iso_settings("charge density", 0.05, 0.6, show_negative=False),
     style="height: 500px;",
@@ -500,7 +495,7 @@ iso_widget.show()
 
 
 # %% Isosurface — caffeine HOMO
-orbital_widget = pmv.StructureWidget(
+orbital_widget = pmv.structure(
     data_url=f"{matterviz_iso_dir_url}/caffeine-HOMO.cube.gz",
     isosurface_settings=iso_settings("scalar", 0.02, 0.7, show_negative=True),
     show_bonds="always",
@@ -542,7 +537,7 @@ mass_data = {
     "Cu": 63.55,
     "Zn": 65.38,
 }
-ptable_widget = pmv.PeriodicTableWidget(
+ptable_widget = pmv.periodic_table(
     heatmap_values=mass_data,
     color_scale="interpolateViridis",
     style="height: 400px;",
@@ -556,7 +551,7 @@ ptable_widget.show()
 
 
 # %% ScatterPlot3D — random 3D data
-scatter_3d_widget = pmv.ScatterPlot3DWidget(
+scatter_3d_widget = pmv.scatter_plot_3d(
     series=[
         {
             "x": np_rng.normal(0, 1, 50),
@@ -580,7 +575,7 @@ scatter_3d_widget.show()
 
 # %% HeatmapMatrix — element pair interactions
 elements = ["Fe", "O", "Li", "Mn"]
-heatmap_widget = pmv.HeatmapMatrixWidget(
+heatmap_widget = pmv.heatmap_matrix(
     x_items=elements,
     y_items=elements,
     values=[
@@ -603,7 +598,7 @@ heatmap_widget.show()
 
 # %% SpacegroupBarPlot — space group frequencies
 spacegroup_counts = {1: 2, 2: 3, 12: 2, 14: 4, 15: 2, 62: 5, 63: 2, 139: 3, 141: 2, 148: 2, 166: 4, 167: 2, 194: 4, 216: 2, 221: 3, 225: 5, 227: 3, 229: 2}  # fmt: skip  # noqa: E501
-spacegroup_widget = pmv.SpacegroupBarPlotWidget(
+spacegroup_widget = pmv.spacegroup_bar_plot(
     data=spacegroup_counts, style="height: 350px;"
 )
 spacegroup_widget.show()
@@ -615,7 +610,7 @@ spacegroup_widget.show()
 
 
 # %% ChemPotDiagram — Li-Fe-O system
-chem_pot_widget = pmv.ChemPotDiagramWidget(
+chem_pot_widget = pmv.chem_pot_diagram(
     entries=[
         {"name": "Li", "energy": -1.9, "composition": {"Li": 1}},
         {"name": "Fe", "energy": -8.3, "composition": {"Fe": 1}},
@@ -636,7 +631,7 @@ chem_pot_widget.show()
 
 
 # %% RdfPlot — GaN pair distribution
-rdf_widget = pmv.RdfPlotWidget(
+rdf_widget = pmv.rdf_plot(
     structures=struct.as_dict(),
     cutoff=10,
     n_bins=80,

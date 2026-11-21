@@ -64,7 +64,7 @@ class SpacegroupBarPlotWidget(MatterVizWidget):
     mappings and syncs them as per-space-group counts.
 
     Examples:
-        >>> from pymatviz import SpacegroupBarPlotWidget
+        >>> from pymatviz.widgets import SpacegroupBarPlotWidget
         >>> widget = SpacegroupBarPlotWidget(data=[225, 225, 166, 62, 62, 62])
         >>> widget.data
         {'62': 3, '166': 1, '225': 2}

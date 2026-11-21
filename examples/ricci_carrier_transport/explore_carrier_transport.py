@@ -84,4 +84,4 @@ ax.figure.suptitle(f"{data_name} dependent variables", y=1.05)
 
 
 # %%
-pmv.spacegroup_bar(df_carrier[Key.spg_num]).show()
+pmv.spacegroup_bar_plot(df_carrier[Key.spg_num]).show()
