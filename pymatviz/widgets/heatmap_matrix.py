@@ -98,7 +98,8 @@ class HeatmapMatrixWidget(HeatmapMatrixTraits, MatterVizWidget):
                 list(map(str, df_matrix)),
                 list(map(str, df_matrix.index)),
             )
-            values = df_matrix.to_numpy().tolist()
+            # missing cells as None (NaN is rejected as a non-finite value)
+            values = df_matrix.to_numpy(dtype=object, na_value=None).tolist()
         x_axis_items = [x_items] if isinstance(x_items, str) else x_items or []
         y_axis_items = [y_items] if isinstance(y_items, str) else y_items or []
         normalize_json_kwargs(kwargs, ("color_scale", "color_bar"), "HeatmapMatrix")

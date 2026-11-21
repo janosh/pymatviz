@@ -673,3 +673,75 @@ def test_png_blank_fraction_uniform_image() -> None:
     buf = io.BytesIO()
     Image.new("RGB", (8, 8), (255, 255, 255)).save(buf, format="PNG")
     assert png_blank_fraction(buf.getvalue()) == 1.0
+
+
+def test_overlapping_exports_trim_idle_pages_on_release() -> None:
+    """Exports that overlap beyond _MAX_WARM_PAGES each open a page; once they
+    finish, idle pages are trimmed back to the limit.
+    """
+    n_exports = headless_mod._MAX_WARM_PAGES + 2
+    barrier = threading.Barrier(n_exports)
+
+    async def on_mount() -> None:
+        """Hold each mount until every export has checked out its own page."""
+        await asyncio.to_thread(barrier.wait, 5)
+
+    pages = [_mock_page(on_mount=on_mount) for _ in range(n_exports)]
+    browser = _mock_browser(*pages)
+
+    def export() -> None:
+        """Export from a worker thread."""
+        render_widget_headless(DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS)
+
+    with patch(f"{HEADLESS_PATH}._get_browser", AsyncMock(return_value=browser)):
+        threads = [threading.Thread(target=export) for _ in range(n_exports)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+    assert browser.new_page.await_count == n_exports
+    assert len(headless_mod._warm_pages) == headless_mod._MAX_WARM_PAGES
+    assert sum(page.close.await_count for page in pages) == 2
+
+
+def test_batch_failure_cancels_sibling_renders() -> None:
+    """A failing job cancels the batch's other renders before the error surfaces."""
+    cancelled: list[bool] = []
+
+    async def slow_mount() -> None:
+        """Mount that only ends by cancellation."""
+        try:
+            await asyncio.sleep(3600)
+        except asyncio.CancelledError:
+            cancelled.append(True)
+            raise
+
+    n_slow = headless_mod._MAX_WARM_PAGES - 1
+    pages = [_mock_page(render_error="boom")]
+    pages += [_mock_page(on_mount=slow_mount) for _ in range(n_slow)]
+    job = dict(
+        widget_data=DUMMY_WIDGET_DATA, esm_content=DUMMY_ESM, css_content=DUMMY_CSS
+    )
+    with (
+        patch(
+            f"{HEADLESS_PATH}._get_browser",
+            AsyncMock(return_value=_mock_browser(*pages)),
+        ),
+        pytest.raises(RuntimeError, match="Widget render failed: boom"),
+    ):
+        headless_mod.render_widgets_headless([job] * (n_slow + 1))
+    assert cancelled == [True] * n_slow
+
+
+def test_batch_budget_covers_full_waves() -> None:
+    """A batch may take one full single-export budget per wave of renders."""
+    job = dict(
+        widget_data=DUMMY_WIDGET_DATA, esm_content=DUMMY_ESM, css_content=DUMMY_CSS,
+        timeout=1,
+    )  # fmt: skip
+    n_jobs = 5 * headless_mod._MAX_WARM_PAGES
+    with patch(f"{HEADLESS_PATH}._run_in_browser_thread") as run:
+        headless_mod.render_widgets_headless([job] * n_jobs)
+    (coro, _), kwargs = run.call_args
+    coro.close()
+    assert kwargs["budget"] == 5 * headless_mod._call_budget(1)

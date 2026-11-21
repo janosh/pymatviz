@@ -1664,3 +1664,18 @@ def test_from_json_rejects_unknown_widget_type() -> None:
     """JSON without a known widget_type raises instead of guessing a class."""
     with pytest.raises(ValueError, match="Unknown widget_type='nope'"):
         from_json('{"widget_type": "nope"}')
+
+
+def test_bar_plot_dataframe_column_roles_and_orientation() -> None:
+    """One column may be x and color; horizontal bars label y with the x column."""
+    df_bars = pd.DataFrame({"c": ["a", "b"], "v": [1, 2]})
+    widget = BarPlotWidget(df_bars, x="c", y="v", color="c")
+    assert [series_dict["label"] for series_dict in widget.series] == ["a", "b"]
+    flipped = BarPlotWidget(df_bars, x="c", y="v", orientation="horizontal")
+    assert (flipped.y_axis, flipped.x_axis) == ({"label": "c"}, {"label": "v"})
+
+
+def test_heatmap_matrix_dataframe_missing_cells() -> None:
+    """NaN cells become None (empty cells) instead of failing as non-finite."""
+    widget = HeatmapMatrixWidget(pd.DataFrame({"a": [1.0, float("nan")]}))
+    assert widget.values == [[1.0], [None]]  # noqa: PD011

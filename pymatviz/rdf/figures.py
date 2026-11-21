@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
 from pymatviz.rdf.helpers import calculate_rdf, partial_rdfs
-from pymatviz.structures import normalize_periodic_structures
+from pymatviz.structures import normalize_periodic_structures, str_labels
 from pymatviz.widgets.rdf_plot import RdfPlotWidget
 
 
@@ -134,10 +134,7 @@ def rdf_plot(
         return RdfPlotWidget(patterns=patterns, mode=mode, **kwargs)
     if structures is None:
         raise ValueError("pass structures or patterns")
-    struct_dict = {
-        str(key): struct
-        for key, struct in normalize_periodic_structures(structures).items()
-    }
+    struct_dict = str_labels(normalize_periodic_structures(structures))
     if empty := [key for key, struct in struct_dict.items() if len(struct) == 0]:
         raise ValueError(f"structures {empty} contain no sites")
     if cutoff is None:

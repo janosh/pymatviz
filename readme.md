@@ -166,7 +166,7 @@ widget.render_report()  # headless render health check: blank fraction, warnings
 widget.to_json("structure.json")  # save the widget; pmv.from_json("structure.json") restores it
 ```
 
-`pmv.export_widgets({name: widget, ...}, "figures/", fmt="svg")` exports many widgets at once, rendering up to 4 concurrently in one headless browser (about 2.4x faster than calling `to_img` on each).
+`pmv.export_widgets({name: widget, ...}, "figures/", fmt="png")` exports many widgets at once (SVG only works for 2D plots, not 3D viewers like `structure`), rendering up to 4 concurrently in one headless browser (about 2.4x faster than calling `to_img` on each).
 
 Lay out several widgets with `widget_grid({title: widget, ...}, n_cols=3)`, e.g. one `structure` widget per structure. It returns an `ipywidgets.GridBox` of titled cells: export each widget from its `.children`.
 
@@ -354,7 +354,7 @@ See [`pymatviz/classify/confusion_matrix.py`](pymatviz/classify/confusion_matrix
 
 See [`pymatviz/classify/curves.py`](pymatviz/classify/curves.py).
 
-| [`roc_curve(targets, probs_positive)`](pymatviz/classify/curves.py#L144) [![fig-icon]](assets/scripts/classify/roc_curve.py) | [`precision_recall_curve(targets, probs_positive)`](pymatviz/classify/curves.py#L234) [![fig-icon]](assets/scripts/classify/precision_recall_curve.py) |
+| [`roc_curve(targets, probs_positive)`](pymatviz/classify/curves.py#L150) [![fig-icon]](assets/scripts/classify/roc_curve.py) | [`precision_recall_curve(targets, probs_positive)`](pymatviz/classify/curves.py#L240) [![fig-icon]](assets/scripts/classify/precision_recall_curve.py) |
 | :-------------------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                                ![roc-curve-multiple]                                                 |                                                       ![precision-recall-curve-multiple]                                                        |
 

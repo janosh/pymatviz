@@ -134,6 +134,18 @@ def normalize_structures(
     )
 
 
+def str_labels[T](labeled: Mapping[Any, T]) -> dict[str, T]:
+    """Mapping with its keys as strings.
+
+    Raises:
+        ValueError: If distinct keys share a string form (e.g. 1 and "1").
+    """
+    as_str = {str(key): val for key, val in labeled.items()}
+    if len(as_str) < len(labeled):
+        raise ValueError(f"labels must be unique as strings, got {list(labeled)}")
+    return as_str
+
+
 def normalize_periodic_structures(
     systems: _StructureInputs,
 ) -> dict[Hashable, IStructure]:

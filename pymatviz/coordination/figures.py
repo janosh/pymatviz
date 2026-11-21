@@ -15,7 +15,7 @@ from pymatviz.coordination.helpers import (
     normalize_get_neighbors,
 )
 from pymatviz.enums import ElemColorScheme
-from pymatviz.structures import get_site_elements, normalize_structures
+from pymatviz.structures import get_site_elements, normalize_structures, str_labels
 from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.bar_plot import BarPlotWidget, bar_axis_defaults
 from pymatviz.widgets.coordination_bar_plot import CoordinationBarPlotWidget
@@ -126,7 +126,7 @@ def coordination_bar_plot(
                 "element_color_scheme and annotate_bars need a Python strategy (cutoff "
                 f"radius or NearNeighbors), got {strategy=}"
             )
-        labeled = {str(key): struct for key, struct in struct_dict.items()}
+        labeled = str_labels(struct_dict)
         return CoordinationBarPlotWidget(
             labeled, strategy=strategy, split_mode=split_mode.value, **kwargs
         )

@@ -151,9 +151,14 @@ def histogram(
     if isinstance(values, pd.DataFrame):
         if x is None:
             raise ValueError("name the DataFrame column to bin with x=")
-        df_used = values[[x, *([color] if color else [])]].dropna()
-        groups = df_used.groupby(color, sort=False) if color else [(x, df_used)]
-        x_axis_title, data = x, {str(key): grp[x] for key, grp in groups}
+        df_used = values[list(dict.fromkeys([x, color] if color else [x]))].dropna()
+        groups = (
+            df_used.groupby(color, sort=False, observed=True)
+            if color
+            else [(x, df_used)]
+        )
+        # keys stay as grouped (1 and "1" are two groups), labels become str later
+        x_axis_title, data = x, {key: grp[x] for key, grp in groups}
     elif x is not None or color is not None:
         raise TypeError(f"x={x!r} and color={color!r} need a DataFrame")
     else:

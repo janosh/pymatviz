@@ -217,3 +217,13 @@ def test_count_formulas_grouping_modes(
     if as_comps and group_by == "formula":  # str(Composition) spells out amounts
         expected = {"Fe2 O3": 1, "Fe4 O6": 1, "Fe1 O1": 1}
     assert dict(zip(df_out[label_col], df_out["count"], strict=True)) == expected
+
+
+@pytest.mark.parametrize("count_mode", list(ElemCountMode))
+def test_count_elements_charged_species(count_mode: ElemCountMode) -> None:
+    """Charged species (Fe3+, O2-) count as their elements in every count mode."""
+    charged = count_elements(
+        [Composition({"Fe3+": 2, "O2-": 3})], count_mode=count_mode
+    )
+    neutral = count_elements(["Fe2O3"], count_mode=count_mode)
+    pd.testing.assert_series_equal(charged, neutral)

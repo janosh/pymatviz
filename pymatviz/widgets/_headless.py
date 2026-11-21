@@ -125,7 +125,9 @@ def _call_budget(timeout: float) -> float:
     return 3 * timeout + 2 * _PLAYWRIGHT_DEFAULT_TIMEOUT + 2 * _STEP_GRACE
 
 
-def _run_in_browser_thread[T](coro: Coroutine[Any, Any, T], timeout: float = 30.0) -> T:
+def _run_in_browser_thread[T](
+    coro: Coroutine[Any, Any, T], timeout: float = 30.0, *, budget: float | None = None
+) -> T:
     """Run ``coro`` on the browser thread and block until it finishes.
 
     Safe from any thread but the browser thread, including one whose event loop is
@@ -141,7 +143,7 @@ def _run_in_browser_thread[T](coro: Coroutine[Any, Any, T], timeout: float = 30.
             "await the coroutine instead"
         )
     future = asyncio.run_coroutine_threadsafe(coro, state.loop)
-    budget = _call_budget(timeout)
+    budget = budget or _call_budget(timeout)
     try:
         return future.result(timeout=budget)
     except TimeoutError as exc:
@@ -334,9 +336,7 @@ async def _mounted_widget(
             _warm_pages.remove(warm)  # re-appended as most recently used
         _warm_pages.append(warm)
         warm.users += 1
-        idle = [old for old in _warm_pages if old.users == 0]
-        for old in idle[: max(0, len(_warm_pages) - _MAX_WARM_PAGES)]:
-            await _retire(old)
+        await _evict_idle()
     healthy = False
     try:
         mount_args = [_widget_data_json(inputs.widget_data), _mount_options(inputs)]
@@ -352,8 +352,20 @@ async def _mounted_widget(
             healthy = render_error is None
     finally:
         warm.users -= 1
-        if not healthy:
-            await _retire(warm)
+        async with _get_browser_thread().pages_lock:
+            if not healthy:
+                await _retire(warm)
+            # overlapping exports may each have opened a page: trim them once idle
+            await _evict_idle()
+
+
+async def _evict_idle() -> None:
+    """Close the least recently used idle pages beyond _MAX_WARM_PAGES (call with
+    pages_lock held).
+    """
+    idle = [old for old in _warm_pages if old.users == 0]
+    for old in idle[: max(0, len(_warm_pages) - _MAX_WARM_PAGES)]:
+        await _retire(old)
 
 
 async def _render_widget(inputs: _RenderInputs) -> bytes:
@@ -870,10 +882,19 @@ def render_widgets_headless(jobs: Sequence[Mapping[str, Any]]) -> list[bytes]:
             async with limit:
                 return await _render_widget(one)
 
-        return await asyncio.gather(*map(render, inputs))
+        tasks = [asyncio.ensure_future(render(one)) for one in inputs]
+        try:
+            return await asyncio.gather(*tasks)
+        except BaseException:  # stop sibling renders before reporting the failure
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            raise
 
-    budget = max((one.timeout for one in inputs), default=0) * slots
-    return _run_in_browser_thread(render_all(), budget)
+    # each wave of up to _MAX_WARM_PAGES renders gets a full single-export budget
+    timeout = max((one.timeout for one in inputs), default=30.0)
+    budget = _call_budget(timeout) * max(slots, 1)
+    return _run_in_browser_thread(render_all(), timeout, budget=budget)
 
 
 # === Render diagnostics (render_report) ===

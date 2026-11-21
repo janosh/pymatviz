@@ -294,6 +294,8 @@ def schema_traits_source(schema: dict[str, dict[str, dict[str, list[str]]]]) -> 
 
 if __name__ == "__main__":
     out_path = f"{os.path.dirname(pymatviz.widgets.__file__)}/_schema_traits.py"
+    # build first: a failed fetch must not leave an empty, unimportable module
+    source = schema_traits_source(_load_bundle_json(SCHEMA_FILE))
     with open(out_path, "w", encoding="utf-8") as file:
-        file.write(schema_traits_source(_load_bundle_json(SCHEMA_FILE)))
+        file.write(source)
     print(f"wrote {out_path}")  # noqa: T201

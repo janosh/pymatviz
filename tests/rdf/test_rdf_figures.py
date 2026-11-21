@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Literal
 
 import numpy as np
+import pandas as pd
 import pytest
 from pymatgen.core import Lattice, Structure
 
@@ -195,3 +196,9 @@ def test_rdf_plot_skips_absent_pairs() -> None:
 
     with pytest.raises(ValueError, match="No structure contains any of the element"):
         rdf_plot({"NaCl": NACL, "KBr": kbr}, element_pairs=[("Na", "K")])
+
+
+def test_rdf_plot_rejects_colliding_labels() -> None:
+    """Labels equal as strings (1 and "1") raise instead of dropping a structure."""
+    with pytest.raises(ValueError, match="labels must be unique as strings"):
+        rdf_plot(pd.Series([NACL, NACL], index=[1, "1"]))

@@ -259,3 +259,39 @@ def test_elements_hist_large_counts() -> None:
     """Integer counts keep all digits; fractional counts use 3 significant digits."""
     widget = elements_hist(pd.Series({"O": 1_234_567, "Fe": 2.5}), show_values="count")
     assert widget.series[0]["labels"] == ["1,234,567", "2.5"]
+
+
+@pytest.mark.parametrize(
+    ("df_vals", "color", "expected"),
+    [
+        # one column as values and groups
+        (pd.DataFrame({"v": [1.0, 2.0]}), "v", {"1.0": [1.0], "2.0": [2.0]}),
+        # unused categories make no empty distribution
+        (
+            pd.DataFrame(
+                {"v": [1.0], "g": pd.Categorical(["a"], categories=["a", "b"])}
+            ),
+            "g",
+            {"a": [1.0]},
+        ),
+    ],
+)
+def test_histogram_dataframe_groups(
+    df_vals: pd.DataFrame, color: str, expected: dict[str, list[float]]
+) -> None:
+    """A column may both supply values and groups; only observed groups plot."""
+    widget = histogram(df_vals, x="v", color=color)
+    assert {
+        series_dict["label"]: list(series_dict["values"])
+        for series_dict in widget.series
+    } == expected
+
+
+def test_histogram_keeps_groups_equal_as_strings() -> None:
+    """Groups 1 and "1" stay two distributions instead of one overwriting the other."""
+    df_vals = pd.DataFrame({"v": [0.0, 10.0], "g": pd.Series([1, "1"], dtype=object)})
+    widget = histogram(df_vals, x="v", color="g")
+    assert sorted(list(series_dict["values"]) for series_dict in widget.series) == [
+        [0.0],
+        [10.0],
+    ]

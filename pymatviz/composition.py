@@ -72,16 +72,19 @@ def count_elements(
         if count_mode == "occurrence":
             srs = pd.Series(
                 itertools.chain.from_iterable(
-                    map(str, Composition(comp, allow_negative=True)) for comp in srs
+                    map(str, Composition(comp, allow_negative=True).element_composition)
+                    for comp in srs
                 )
             ).value_counts()
         else:
-            attr = "element_composition" if count_mode == "composition" else count_mode
+            # charged species (Fe3+) count as their elements in every mode
+            attr = None if count_mode == "composition" else count_mode
             # collect each element's amounts and sum them with exactly rounded fsum
             # (faster than summing a wide DataFrame of mostly-NaN dict rows)
             elem_amounts: defaultdict[str, list[float]] = defaultdict(list)
             for formula in srs:
-                comp = getattr(Composition(formula, allow_negative=True), attr)
+                comp = Composition(formula, allow_negative=True).element_composition
+                comp = getattr(comp, attr) if attr else comp
                 for elem, amount in comp.as_dict().items():
                     elem_amounts[elem].append(amount)
             srs = pd.Series(

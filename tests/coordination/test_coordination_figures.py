@@ -4,6 +4,7 @@ from collections import Counter
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
+import pandas as pd
 import pytest
 import traitlets as tl
 from pymatgen.analysis.local_env import (
@@ -371,3 +372,9 @@ def test_coordination_vs_cutoff_line_invalid_inputs(
     """coordination_vs_cutoff_line rejects invalid structures and strategies."""
     with pytest.raises(err_cls, match=match):
         coordination_vs_cutoff_line(structs, **kwargs)
+
+
+def test_coordination_bar_plot_rejects_colliding_labels(nacl: Structure) -> None:
+    """Labels equal as strings (1 and "1") raise instead of dropping a structure."""
+    with pytest.raises(ValueError, match="labels must be unique as strings"):
+        coordination_bar_plot(pd.Series([nacl, nacl], index=[1, "1"]))
