@@ -5,12 +5,13 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Literal
 
-from pymatviz.widgets._normalize import _from_phonopy
+from pymatviz.structures import is_instance_of
+from pymatviz.widgets._normalize import phonon_dos_dict
 from pymatviz.widgets.dos import DosWidget
 
 
 if TYPE_CHECKING:
-    from pymatgen.phonon.dos import CompletePhononDos, PhononDos
+    from pymatgen.phonon.dos import CompletePhononDos
 
     from pymatviz.typing import AnyDos
 
@@ -22,19 +23,17 @@ def _unwrap_single[T](labeled: dict[str, T]) -> T | dict[str, T]:
     return labeled[""] if list(labeled) == [""] else labeled
 
 
-def _to_phonon_dos(label: str, dos: Any) -> PhononDos:
-    """Convert a phonopy TotalDos or CompletePhononDos to a total PhononDos."""
-    from pymatgen.phonon.dos import CompletePhononDos, PhononDos
-
-    dos = _from_phonopy(dos)
-    if isinstance(dos, CompletePhononDos):
-        return PhononDos(dos.frequencies, dos.densities)
-    if isinstance(dos, PhononDos):
-        return dos
-    raise TypeError(
-        f"Only {PhononDos.__name__}, {CompletePhononDos.__name__}, phonopy TotalDos, "
-        f"or dict of these supported, got {type(dos).__name__} for key {label!r}"
-    )
+def _to_phonon_dos(label: str, dos: Any) -> dict[str, Any]:
+    """Total phonon DOS dict of a matscikit PhononDos, phonopy TotalDos or pymatgen
+    (Complete)PhononDos.
+    """
+    if (dos_dict := phonon_dos_dict(dos)) is None:
+        raise TypeError(
+            "Only matscikit PhononDos, phonopy TotalDos, pymatgen PhononDos or "
+            "CompletePhononDos, or a dict of these supported, got "
+            f"{type(dos).__name__} for key {label!r}"
+        )
+    return dos_dict
 
 
 def _dos_dict(
@@ -42,36 +41,37 @@ def _dos_dict(
     project: Literal["element", "site"] | None,
     *,
     show_total: bool,
-) -> dict[str, PhononDos]:
+) -> dict[str, dict[str, Any]]:
     """Map labels to total or (with project) element/site-projected phonon DOS."""
-    from pymatgen.phonon.dos import CompletePhononDos
-
     if project not in (None, "element", "site"):
         raise ValueError(f"Invalid {project=}, must be 'element' or 'site'")
     raw_doses = dict(doses) if isinstance(doses, Mapping) else {"": doses}
     if not raw_doses:
         raise ValueError("Empty DOS dict")
 
-    dos_dict: dict[str, PhononDos] = {}
+    dos_dict: dict[str, dict[str, Any]] = {}
     for label, raw_dos in raw_doses.items():
         if project is None:
             dos_dict[label] = _to_phonon_dos(label, raw_dos)
             continue
-        if not isinstance(raw_dos, CompletePhononDos):
+        if not is_instance_of(raw_dos, "pymatgen.phonon.dos.CompletePhononDos"):
             raise TypeError(
                 f"project={project!r} requires CompletePhononDos, "
                 f"got {type(raw_dos).__name__} for key {label!r}"
             )
+        complete_dos: Any = raw_dos  # a pymatgen CompletePhononDos
         projected = (
-            {str(elem): dos for elem, dos in raw_dos.get_element_dos().items()}
+            {str(elem): dos for elem, dos in complete_dos.get_element_dos().items()}
             if project == "element"
             else {
-                f"{site.specie}{site_idx}": raw_dos.get_site_dos(site)
-                for site_idx, site in enumerate(raw_dos.structure)
+                f"{site.specie}{site_idx}": complete_dos.get_site_dos(site)
+                for site_idx, site in enumerate(complete_dos.structure)
             }
         )
         prefix = f"{label} - " if label else ""
-        dos_dict |= {f"{prefix}{key}": dos for key, dos in projected.items()}
+        dos_dict |= {
+            f"{prefix}{key}": _to_phonon_dos(key, dos) for key, dos in projected.items()
+        }
         if show_total:
             dos_dict[f"{prefix}Total"] = _to_phonon_dos(label, raw_dos)
     return dos_dict
@@ -90,8 +90,8 @@ def phonon_dos(
     """Plot one or several (overlaid) phonon densities of states.
 
     Args:
-        doses (DosInput): pymatgen PhononDos, CompletePhononDos, phonopy TotalDos, or
-            a dict mapping legend labels to them.
+        doses (DosInput): matscikit PhononDos, phonopy TotalDos, pymatgen PhononDos
+            or CompletePhononDos, or a dict mapping legend labels to them.
         stack (bool): Whether to plot the DOS as a stacked area graph. Defaults to
             False.
         sigma (float): Standard deviation in THz of the Gaussian smearing MatterViz

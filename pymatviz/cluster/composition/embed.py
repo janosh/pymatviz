@@ -6,15 +6,18 @@ into numerical vectors, which can then be used for clustering and visualization.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 import pandas as pd
-from pymatgen.core import Composition, Element
+
+from pymatviz.composition import to_composition
 
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+    import matscikit as mk
 
 
 MatminerElementPropertyPreset = Literal[
@@ -22,16 +25,16 @@ MatminerElementPropertyPreset = Literal[
 ]
 
 
-def try_composition(composition: str | Composition) -> Composition:
-    """Try to convert a string or Composition to a Composition."""
+def try_composition(composition: Any) -> mk.Composition:
+    """Composition (matscikit) of a formula or Composition, ValueError if invalid."""
     try:
-        return Composition(composition)
-    except Exception:  # noqa: BLE001
+        return to_composition(composition)
+    except (TypeError, ValueError):
         raise ValueError(f"Invalid {composition=}") from None
 
 
 def matminer_featurize(
-    compositions: Sequence[str | Composition] | pd.Series,
+    compositions: Sequence[Any] | pd.Series,
     preset: MatminerElementPropertyPreset = "magpie",
     *,
     normalize: bool = False,
@@ -45,7 +48,7 @@ def matminer_featurize(
 
     Args:
         compositions (Sequence[str] | Sequence[Composition] | pd.Series): chemical
-            formulas as strings or pymatgen Composition objects.
+            formulas as strings or matscikit/pymatgen Composition objects.
         preset (str): Matminer preset to use. Options: "magpie", "deml", "matminer",
             "matscholar_el", "megnet_el" (default: "magpie").
         normalize (bool): If True, L2-normalize each feature vector (default: False).
@@ -69,7 +72,9 @@ def matminer_featurize(
             f"{preset} featurization requires pip install matminer"
         ) from None
 
-    comp_objs = [try_composition(comp) for comp in compositions]
+    from pymatgen.core import Composition  # matminer featurizes pymatgen objects
+
+    comp_objs = [Composition(try_composition(comp).as_dict()) for comp in compositions]
 
     featurizer = ElementProperty.from_preset(preset)
     featurizer.set_n_jobs(n_jobs)
@@ -100,16 +105,16 @@ def matminer_featurize(
 
 
 def one_hot_encode(
-    compositions: Sequence[str | Composition] | pd.Series,
+    compositions: Sequence[Any] | pd.Series,
     *,
     normalize: bool = True,
-    elements: Sequence[str | Element] | None = None,
+    elements: Sequence[Any] | None = None,
 ) -> np.ndarray:
     """One-hot encode chemical formulas or compositions.
 
     Args:
         compositions (Sequence[str] | Sequence[Composition] | pd.Series): chemical
-            formulas as strings or pymatgen Composition objects.
+            formulas as strings or matscikit/pymatgen Composition objects.
         normalize (bool): Whether to normalize the feature vectors to unit norm
             (default: True)
         elements (Sequence[str | Element] | None): Elements to include in the one-hot
@@ -121,7 +126,11 @@ def one_hot_encode(
             compositions where each row corresponds to a composition and each column
             to an element's fraction in that composition.
     """
-    elements = list(map(str, Element if elements is None else elements))
+    if elements is None:
+        from pymatviz.utils import df_ptable
+
+        elements = list(df_ptable.index)
+    elements = list(map(str, elements))  # also pymatgen Element objects
     column_of = {element: idx for idx, element in enumerate(elements)}
     if len(column_of) != len(elements):
         raise ValueError(f"duplicate entries in {elements=}")
@@ -130,7 +139,7 @@ def one_hot_encode(
     features = np.zeros((len(comp_objs), len(elements)))
 
     for idx, comp in enumerate(comp_objs):
-        comp_dict = comp.element_composition.fractional_composition.as_dict()
+        comp_dict = comp.fractional_composition.as_dict()
         if missing := sorted(set(comp_dict) - set(column_of)):
             raise ValueError(
                 f"{comp.formula} contains {missing}, which are not in {elements=}"

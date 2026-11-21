@@ -2,18 +2,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import traitlets as tl
-from pymatgen.core import Composition
 
 from pymatviz.widgets._schema_traits import CompositionTraits
 from pymatviz.widgets._traits import ELEMENT_COLOR_SCHEMES
 from pymatviz.widgets.matterviz import MatterVizWidget
-
-
-if TYPE_CHECKING:
-    from pymatgen.util.typing import CompositionLike
 
 
 class CompositionWidget(CompositionTraits, MatterVizWidget):
@@ -22,8 +17,8 @@ class CompositionWidget(CompositionTraits, MatterVizWidget):
     Examples:
         Basic usage:
         >>> import pymatviz as pmv
-        >>> from pymatgen.core import Composition
-        >>> comp = Composition("Fe2O3")
+        >>> import matscikit as mk
+        >>> comp = mk.Composition("Fe2O3")
         >>> widget = pmv.composition(composition=comp)
         >>> widget
 
@@ -46,24 +41,19 @@ class CompositionWidget(CompositionTraits, MatterVizWidget):
         sync=True
     )
 
-    # kwargs for the pymatgen Composition constructor. Python-side only (not
-    # synced): the frontend has no such prop, it only affects parsing here.
-    pymatgen_kwargs = tl.Dict(allow_none=True)
-
-    def __init__(
-        self, composition: CompositionLike | None = None, **kwargs: Any
-    ) -> None:
+    def __init__(self, composition: Any = None, **kwargs: Any) -> None:
         """Initialize the CompositionWidget.
 
         Args:
-            composition: Composition data (pymatgen Composition object or dict)
+            composition: A formula string, {element: amount} dict, matscikit or
+                pymatgen Composition, or structure (negative amounts allowed).
             **kwargs: Additional widget properties
         """
-        if composition is None:
-            comp_dict = None
-        else:
-            comp_kwargs = dict(strict=True, allow_negative=True)
-            # use get (not pop) so pymatgen_kwargs still reaches the traitlet
-            comp_kwargs |= kwargs.get("pymatgen_kwargs") or {}
-            comp_dict = Composition(composition, **comp_kwargs).as_dict()
+        from pymatviz.composition import to_composition
+
+        comp_dict = (
+            None
+            if composition is None
+            else to_composition(composition, allow_negative=True).as_dict()
+        )
         super().__init__(composition=comp_dict, **kwargs)

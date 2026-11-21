@@ -2,76 +2,86 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Any, Final
 
-from pymatgen.core import IStructure, Lattice
-from pymatgen.core.periodic_table import DummySpecies
+import matscikit as mk
+import numpy as np
 
 from pymatviz.utils import ROOT
 
 
 if TYPE_CHECKING:
     from phonopy import Phonopy
-    from pymatgen.core import Structure
 
 
 TEST_FILES: str = f"{ROOT}/tests/files"
 
 # === Disordered structures for tests and examples ===
 
-fe3co4_disordered = IStructure(
-    lattice=Lattice.cubic(5),
-    species=[{"Fe": 0.75, "C": 0.25}, "O"],
-    coords=[[0, 0, 0], [0.5, 0.5, 0.5]],
+
+def _hexagonal(a: float, c: float) -> np.ndarray:
+    """Row-vector lattice of a hexagonal cell (pymatgen's Lattice.hexagonal)."""
+    return np.array([[a, 0, 0], [-a / 2, a * 3**0.5 / 2, 0], [0, 0, c]])
+
+
+fe3co4_disordered = mk.Structure(
+    np.eye(3) * 5,
+    [{"Fe": 0.75, "C": 0.25}, "O"],
+    [[0, 0, 0], [0.5, 0.5, 0.5]],
+    fractional=True,
 )
-batio3_disordered = IStructure(
-    lattice=Lattice.cubic(4.0),
-    species=[
+batio3_disordered = mk.Structure(
+    np.eye(3) * 4.0,
+    [
         "Ba",  # Pure Ba site
         {"Ti": 0.6, "Zr": 0.4},  # Disordered Ti/Zr site
         "O",
         "O",
         "O",  # Pure O sites
     ],
-    coords=[(0, 0, 0), (0.5, 0.5, 0.5), (0.5, 0.5, 0), (0.5, 0, 0.5), (0, 0.5, 0.5)],
+    [(0, 0, 0), (0.5, 0.5, 0.5), (0.5, 0.5, 0), (0.5, 0, 0.5), (0, 0.5, 0.5)],
+    fractional=True,
 )
 
 # Li-ion cathode with vacancy disorder
-lico2_disordered = IStructure(
-    lattice=Lattice.hexagonal(2.82, 14.05),
-    species=[
-        {"Li": 0.75, DummySpecies("X"): 0.25},  # Li site with vacancies (X = vacancy)
+lico2_disordered = mk.Structure(
+    _hexagonal(2.82, 14.05),
+    [
+        {"Li": 0.75},  # Li site with 25% vacancies
         "Co",
         "O",
         "O",
     ],
-    coords=[(0, 0, 0), (0, 0, 0.5), (0, 0, 0.25), (0, 0, 0.75)],
+    [(0, 0, 0), (0, 0, 0.5), (0, 0, 0.25), (0, 0, 0.75)],
+    fractional=True,
 )
 
 # High-entropy alloy with ternary disorder (3 species on one site)
-hea_disordered = IStructure(
-    lattice=Lattice.cubic(3.6),
-    species=[
+hea_disordered = mk.Structure(
+    np.eye(3) * 3.6,
+    [
         {"Fe": 0.5, "Ni": 0.3, "Cr": 0.2},  # Ternary disordered site
         "Al",  # Pure Al site
     ],
-    coords=[(0, 0, 0), (0.5, 0.5, 0.5)],
+    [(0, 0, 0), (0.5, 0.5, 0.5)],
+    fractional=True,
 )
 
 # Complex multisite disorder - solid solution with multiple disordered sites
-solid_solution = IStructure(
-    lattice=Lattice.cubic(5.0),
-    species=[
+solid_solution = mk.Structure(
+    np.eye(3) * 5.0,
+    [
         {"Ca": 0.6, "Sr": 0.4},  # Disordered A-site
         {"Ti": 0.8, "Zr": 0.15, "Hf": 0.05},  # Ternary disordered B-site
         "O",  # Pure O sites
         "O",
         "O",
     ],
-    coords=[(0, 0, 0), (0.5, 0.5, 0.5), (0.5, 0.5, 0), (0.5, 0, 0.5), (0, 0.5, 0.5)],
+    [(0, 0, 0), (0.5, 0.5, 0.5), (0.5, 0.5, 0), (0.5, 0, 0.5), (0, 0.5, 0.5)],
+    fractional=True,
 )
 
-disordered_demo_structures: Final[dict[str, IStructure]] = {
+disordered_demo_structures: Final[dict[str, mk.Structure]] = {
     "BaTi₀.₆Zr₀.₄O₃": batio3_disordered,
     "Li₀.₇₅CoO₂ (with vacancies)": lico2_disordered,
     "Fe₀.₅Ni₀.₃Cr₀.₂Al": hea_disordered,
@@ -79,16 +89,19 @@ disordered_demo_structures: Final[dict[str, IStructure]] = {
 }
 
 
-def formula_spg_str(struct: Structure) -> str:
+def formula_spg_str(struct: Any) -> str:
     """Get a string with formula and space group number for a structure.
 
     Args:
-        struct: A pymatgen Structure object.
+        struct: An ordered structure (matscikit, pymatgen, ASE, phonopy).
 
     Returns:
-        String in format "Formula (spg_number)", e.g. "NaCl (225)".
+        String in format "Formula (spg_number)", e.g. "Na4 Cl4 (225)".
     """
-    return f"{struct.formula} ({struct.get_space_group_info()[1]})"
+    from pymatviz.structures import to_structure
+
+    struct = to_structure(struct)
+    return f"{struct.composition.formula} ({mk.symmetry_dataset(struct).number})"
 
 
 def load_phonopy_nacl() -> Phonopy:

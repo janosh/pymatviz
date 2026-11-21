@@ -231,14 +231,26 @@ def frame_input(item: Any) -> tuple[Any, Mapping[str, Any]]:
 
 def _frame(item: Any) -> _Frame | None:
     """Extract geometry, or select JSON for richer structures."""
-    from pymatgen.core import IStructure, SiteCollection
+    import matscikit as mk
 
-    from pymatviz.structures import MIN_ASE_CELL_VOLUME, is_ase_atoms
+    from pymatviz.structures import MIN_ASE_CELL_VOLUME, is_ase_atoms, is_instance_of
 
     structure, props = frame_input(item)
     if isinstance(item, Mapping) and len(item) > 1 and object_metadata(structure):
         return None  # JSON keeps frame metadata separate from structure properties.
-    if isinstance(structure, SiteCollection):
+    if isinstance(structure, mk.Structure):
+        if not structure.is_ordered:
+            return None
+        periodic = any(structure.pbc)
+        return _Frame(
+            structure.numbers.astype(int),
+            structure.positions,
+            structure.lattice if periodic else None,
+            structure.pbc if periodic else None,
+            {},
+            props,
+        )
+    if is_instance_of(structure, "pymatgen.core.structure.SiteCollection"):
         if not structure.is_ordered or any(
             site.label != site.species_string for site in structure
         ):
@@ -250,7 +262,7 @@ def _frame(item: Any) -> _Frame | None:
         )
         if numbers is None:
             return None
-        lattice = structure.lattice if isinstance(structure, IStructure) else None
+        lattice = getattr(structure, "lattice", None)
         return _Frame(
             numbers,
             structure.cart_coords,
@@ -371,14 +383,15 @@ def trajectory_to_envelope(
     metadata: Mapping[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Encode supported trajectories, or return None for JSON-only data."""
-    from pymatgen.core.periodic_table import get_el_sp
-    from pymatgen.core.trajectory import Trajectory
+    from pymatviz.structures import is_instance_of
 
     fields: dict[str, Any] = {}
     if metadata:
         fields["metadata"] = normalize_plot_json(dict(metadata), "trajectory metadata")
 
-    if isinstance(trajectory, Trajectory):
+    if is_instance_of(trajectory, "pymatgen.core.trajectory.Trajectory"):
+        from pymatgen.core.periodic_table import get_el_sp
+
         if (step := trajectory.time_step) is not None:
             fields["time_step"] = {"value": float(step), "unit": "fs"}
         site_props = trajectory.site_properties

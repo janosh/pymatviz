@@ -94,19 +94,41 @@ def _as_dict(obj: Any) -> dict[str, Any]:
 
 
 def _from_phonopy(obj: Any) -> Any:
-    """Phonopy BandStructure and TotalDos as their pymatgen counterparts, other
-    objects unchanged.
+    """Phonopy BandStructure as pymatgen PhononBandStructureSymmLine (needs the
+    optional pymatgen dependency), other objects unchanged.
     """
     cls_name = f"{type(obj).__module__}.{type(obj).__qualname__}"
     if cls_name == "phonopy.phonon.band_structure.BandStructure":
         from pymatviz.phonons.helpers import phonopy_to_pymatgen_bands
 
         return phonopy_to_pymatgen_bands(obj)
-    if cls_name == "phonopy.phonon.dos.TotalDos":
-        from pymatgen.phonon.dos import PhononDos
-
-        return PhononDos(frequencies=obj.frequency_points, densities=obj.dos)
     return obj
+
+
+def phonon_dos_dict(obj: Any) -> dict[str, Any] | None:
+    """Total phonon DOS as a pymatgen PhononDos dict (MatterViz's format) from a
+    matscikit PhononDos, phonopy TotalDos or pymatgen (Complete)PhononDos, None for
+    other objects.
+    """
+    import matscikit as mk
+    import numpy as np
+
+    from pymatviz.structures import is_instance_of
+
+    if isinstance(obj, mk.PhononDos):
+        freqs, densities = obj.frequency_points, obj.total_dos
+    elif is_instance_of(obj, "phonopy.phonon.dos.TotalDos"):
+        freqs, densities = obj.frequency_points, obj.dos
+    elif is_instance_of(obj, "pymatgen.phonon.dos.PhononDos"):
+        freqs, densities = obj.frequencies, obj.densities
+    else:
+        return None
+    return {
+        "@module": "pymatgen.phonon.dos",
+        "@class": "PhononDos",
+        "frequencies": np.asarray(freqs, dtype=float).tolist(),
+        "densities": np.asarray(densities, dtype=float).tolist(),
+    }
 
 
 def labeled_keys(data: dict[str, Any] | None) -> set[str]:
@@ -141,13 +163,31 @@ def check_stack_grids(doses: dict[str, Any] | None) -> None:
         )
 
 
+def _object_dict(obj: Any) -> dict[str, Any] | None:
+    """Dict of a structure-like, phonon DOS or MSONable object, None for others."""
+    import matscikit as mk
+
+    from pymatviz.structures import is_instance_of, is_structure_like, structure_dict
+
+    if is_structure_like(obj):
+        return structure_dict(obj)
+    if is_instance_of(obj, "phonopy.phonon.dos.TotalDos") or isinstance(
+        obj, mk.PhononDos
+    ):
+        return phonon_dos_dict(obj)
+    obj = _from_phonopy(obj)
+    return _as_dict(obj) if callable(getattr(obj, "as_dict", None)) else None
+
+
 def _to_dict(obj: Any, label: str) -> dict[str, Any] | None:
     """Convert None/dict/MSONable object to a JSON-serializable dict.
 
     Args:
         obj: None, a dict (MSONable values converted via ``as_dict``), or any
-            object with .as_dict(). phonopy BandStructure and TotalDos are converted
-            to pymatgen first. Converted dicts drop ``_UNREAD_KEYS``.
+            object with .as_dict(). Structure-like objects (matscikit, pymatgen, ASE,
+            phonopy) become structure dicts, phonopy TotalDos a PhononDos dict and
+            phonopy BandStructure goes through pymatgen. Converted dicts drop
+            ``_UNREAD_KEYS``.
         label: Human-readable name for error messages (e.g. "band structure").
 
     Returns:
@@ -160,15 +200,13 @@ def _to_dict(obj: Any, label: str) -> dict[str, Any] | None:
         return None
     if isinstance(obj, dict):
         converted = {
-            key: _as_dict(value)
-            for key, raw in obj.items()
-            if callable(getattr(value := _from_phonopy(raw), "as_dict", None))
-            and not isinstance(value, dict)
+            key: dct
+            for key, val in obj.items()
+            if not isinstance(val, dict) and (dct := _object_dict(val)) is not None
         }
         return {**obj, **converted} if converted else obj
-    obj = _from_phonopy(obj)
-    if hasattr(obj, "as_dict"):
-        return _as_dict(obj)
+    if (dct := _object_dict(obj)) is not None:
+        return dct
     raise TypeError(
         f"Unsupported type for {label}: {type(obj)}. "
         "Expected dict or object with .as_dict()."
@@ -407,7 +445,7 @@ def structure_to_dict(
         structure: ``None`` (passed through), a structure dict with a ``sites`` list
             (passed through unchanged, schema errors are reported by the renderer),
             or a single pymatgen ``Structure``/``Molecule``, ASE ``Atoms`` or
-            ``PhonopyAtoms`` (converted via ``normalize_structures(...).as_dict()``).
+            ``PhonopyAtoms`` (converted via ``structure_dict``).
         periodic: Require a lattice, for widgets drawing the Brillouin zone.
 
     Returns:
@@ -427,14 +465,14 @@ def structure_to_dict(
             )
         struct = structure
     else:
-        from pymatviz.structures import is_structure_like, normalize_structures
+        from pymatviz.structures import is_structure_like, structure_dict
 
         if not is_structure_like(structure):
             raise TypeError(
-                "structure must be a dict, pymatgen Structure/Molecule, ASE Atoms or "
-                f"PhonopyAtoms, got {type(structure).__name__}"
+                "structure must be a dict, matscikit or pymatgen Structure/Molecule, "
+                f"ASE Atoms or PhonopyAtoms, got {type(structure).__name__}"
             )
-        struct = next(iter(normalize_structures(structure).values())).as_dict()
+        struct = structure_dict(structure)
     if periodic and "lattice" not in struct:
         raise TypeError(
             f"a periodic structure (with a lattice) is needed, got {sorted(struct)=}"
@@ -502,9 +540,9 @@ def normalize_convex_hull_entries(obj: Any) -> list[dict[str, Any]] | None:
     if isinstance(obj, (list, tuple)):
         return _normalize_entry_compositions(obj)
 
-    from pymatgen.analysis.phase_diagram import PhaseDiagram
+    from pymatviz.structures import is_instance_of
 
-    if isinstance(obj, PhaseDiagram):
+    if is_instance_of(obj, "pymatgen.analysis.phase_diagram.PhaseDiagram"):
         entries = []
         for entry in obj.all_entries:
             entry_dict: dict[str, Any] = {
@@ -566,10 +604,11 @@ def normalize_xrd_pattern(obj: Any) -> dict[str, Any] | None:
 
 
 def _xrd_pattern_to_dict(obj: Any) -> dict[str, Any]:
-    """Convert a canonical/Ferrox dict or pymatgen DiffractionPattern to a dict.
+    """Convert a canonical/Ferrox dict, matscikit XrdPattern or pymatgen
+    DiffractionPattern to a dict.
 
     Args:
-        obj: A pymatgen DiffractionPattern or a dict.
+        obj: A matscikit XrdPattern, pymatgen DiffractionPattern or a dict.
 
     Returns:
         XRD pattern dict with x, y, and optional hkls, d_hkls keys.
@@ -623,9 +662,21 @@ def _xrd_pattern_to_dict(obj: Any) -> dict[str, Any]:
             f"keys: {available_keys}."
         )
 
-    from pymatgen.analysis.diffraction.xrd import DiffractionPattern
+    import matscikit as mk
 
-    if isinstance(obj, DiffractionPattern):
+    from pymatviz.structures import is_instance_of
+
+    if isinstance(obj, mk.XrdPattern):
+        return {
+            "x": obj.two_theta.tolist(),
+            "y": obj.intensities.tolist(),
+            "hkls": [
+                [{"hkl": list(hkl), "multiplicity": mult} for hkl, mult in family]
+                for family in obj.hkls
+            ],
+            "d_hkls": obj.d_spacings.tolist(),
+        }
+    if is_instance_of(obj, "pymatgen.analysis.diffraction.core.DiffractionPattern"):
         result: dict[str, Any] = {"x": obj.x.tolist(), "y": obj.y.tolist()}
         if obj.hkls is not None:
             result["hkls"] = [
@@ -648,5 +699,5 @@ def _xrd_pattern_to_dict(obj: Any) -> dict[str, Any]:
 
     raise TypeError(
         f"Unsupported type for XRD pattern: {type(obj)}. "
-        "Expected dict or pymatgen DiffractionPattern."
+        "Expected dict, matscikit XrdPattern or pymatgen DiffractionPattern."
     )

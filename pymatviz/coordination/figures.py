@@ -10,12 +10,14 @@ import numpy as np
 
 from pymatviz.colors import ELEM_COLORS_JMOL
 from pymatviz.coordination.helpers import (
+    NEIGHBOR_TOL,
     CnSplitMode,
     coordination_nums_in_structure,
-    normalize_get_neighbors,
+    is_near_neighbors,
+    site_neighbor_distances,
 )
 from pymatviz.enums import ElemColorScheme
-from pymatviz.structures import get_site_elements, normalize_structures, str_labels
+from pymatviz.structures import normalize_structures, site_elements, str_labels
 from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.bar_plot import BarPlotWidget, bar_axis_defaults
 from pymatviz.widgets.coordination_bar_plot import CoordinationBarPlotWidget
@@ -33,8 +35,6 @@ if TYPE_CHECKING:
 
 # Line dash per structure in coordination_vs_cutoff_line (colors encode elements)
 _STRUCT_DASHES = ("none", "6 3", "2 3", "8 3 2 3", "12 4")
-# pymatgen's get_neighbor_list numerical_tol: neighbors up to r + tol count as within r
-_NEIGHBOR_TOL = 1e-8
 
 
 def _element_colors(
@@ -221,8 +221,6 @@ def coordination_vs_cutoff_line(
     Returns:
         ScatterPlotWidget: one line per structure and element.
     """
-    from pymatgen.analysis.local_env import NearNeighbors
-
     struct_dict = normalize_structures(structures)
 
     if isinstance(strategy, tuple):
@@ -232,12 +230,10 @@ def coordination_vs_cutoff_line(
         ):
             raise TypeError(f"Invalid {strategy=}, expected (min_cutoff, max_cutoff)")
         cutoff_range = (float(strategy[0]), float(strategy[1]))
-    elif isinstance(strategy, NearNeighbors) or (
-        isclass(strategy) and issubclass(strategy, NearNeighbors)
-    ):
+    elif is_near_neighbors(strategy):
         # The strategy only sets the max cutoff (e.g. VoronoiNN.cutoff or the upper
         # CrystalNN.distance_cutoffs), CNs are counted within each radial cutoff.
-        nn_instance = strategy if isinstance(strategy, NearNeighbors) else strategy()
+        nn_instance = strategy() if isclass(strategy) else strategy
         max_cutoff = getattr(nn_instance, "cutoff", None)
         if max_cutoff is None:
             max_cutoff = (getattr(nn_instance, "distance_cutoffs", None) or [None])[-1]
@@ -260,16 +256,16 @@ def coordination_vs_cutoff_line(
         # site and cutoff. A site's CN at a cutoff counts neighbors within it, up to
         # pymatgen's get_neighbors tolerance, so boundary neighbors (e.g. periodic
         # images at exactly the cutoff) count as they would for get_neighbors(r=...).
-        max_cutoff = cutoffs.max() + _NEIGHBOR_TOL  # cutoffs may descend
-        cn_rows = []
-        for nns in normalize_get_neighbors(max_cutoff)(structure):
-            dists = np.sort([nn.nn_distance for nn in nns])
-            cn_rows += [np.searchsorted(dists, cutoffs + _NEIGHBOR_TOL, side="right")]
-        site_cns = np.array(cn_rows)
-        site_elements = [get_site_elements(site) for site in structure]
+        site_cns = np.array(
+            [
+                np.searchsorted(dists, cutoffs + NEIGHBOR_TOL, side="right")
+                for dists in site_neighbor_distances(structure, cutoffs.max())
+            ]
+        )
+        elements_per_site = site_elements(structure)
         dash = _STRUCT_DASHES[struct_idx % len(_STRUCT_DASHES)]
-        for element in sorted(set().union(*site_elements)):
-            has_elem = [element in elems for elems in site_elements]
+        for element in sorted(set().union(*elements_per_site)):
+            has_elem = [element in elems for elems in elements_per_site]
             entry: dict[str, Any] = {
                 "x": cutoffs,
                 "y": site_cns[has_elem].mean(axis=0),

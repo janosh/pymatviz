@@ -1,79 +1,161 @@
-"""Structure input types: detection, conversion to pymatgen, site helpers and space
-group numbers for pymatgen, ASE and phonopy structures.
+"""Structure inputs: detection, conversion to matscikit Structures, per-site elements
+and space group numbers for matscikit, pymatgen, ASE and phonopy structures.
 """
 
 from __future__ import annotations
 
+import functools
 from collections.abc import Hashable, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
+import matscikit as mk
+import numpy as np
 import pandas as pd
-from pymatgen.core import IStructure, Structure
 
 
 if TYPE_CHECKING:
     from ase.atoms import Atoms
     from phonopy.structure.atoms import PhonopyAtoms
-    from pymatgen.core import Composition, IMolecule, Molecule, Site, Species
-    from pymatgen.core.periodic_table import DummySpecies, Element
+    from pymatgen.core import IMolecule, IStructure
     from typing_extensions import TypeIs
 
     from pymatviz.typing import AnyStructure
 
 
-def is_structure_like(obj: Any) -> bool:
-    """Whether obj is a pymatgen Structure/Molecule, ASE Atoms or PhonopyAtoms."""
-    from pymatgen.core import IMolecule
-
-    return (
-        isinstance(obj, (IStructure, IMolecule))
-        or is_ase_atoms(obj)
-        or is_phonopy_atoms(obj)
-    )
-
-
-def _subclasses(obj: Any, *qualnames: str) -> bool:
-    """Whether obj's class or a base has one of these dotted names, without imports."""
+def is_instance_of(obj: Any, *qualnames: str) -> bool:
+    """Whether obj's class or a base has one of these dotted names, so optional
+    packages (pymatgen, ASE, phonopy) need not be importable to check.
+    """
     return any(
         f"{cls.__module__}.{cls.__qualname__}" in qualnames for cls in type(obj).__mro__
     )
 
 
+MIN_ASE_CELL_VOLUME = 1e-6  # Å³, smaller ASE cells get 10 Å of vacuum
+
+
 def is_ase_atoms(struct: Any) -> TypeIs[Atoms]:
     """Check if the input is an ASE Atoms object without importing ase."""
-    return _subclasses(struct, "ase.atoms.Atoms", "pymatgen.io.ase.MSONAtoms")
-
-
-MIN_ASE_CELL_VOLUME = 1e-6  # Å³
-
-
-def get_site_species(site: Site) -> Composition | Species | Element | DummySpecies:
-    """Species of an ordered site, composition of a disordered one."""
-    return site.specie if site.is_ordered else site.species
-
-
-def get_site_elements(site: Site) -> set[str]:
-    """Element symbols on a site (several for disordered sites)."""
-    return {species.symbol for species in site.species}
-
-
-def get_site_symbol(site: Site) -> str:
-    """Element symbol of a site, the highest-occupancy one for disordered sites."""
-    el_amt_dict = site.species.get_el_amt_dict()
-    return max(el_amt_dict, key=el_amt_dict.__getitem__)
-
-
-def add_vacuum_if_needed(struct: Any) -> Any:
-    """Center ASE Atoms without a proper cell (e.g. molecules) in 10 Å of vacuum."""
-    if is_ase_atoms(struct) and struct.cell.volume < MIN_ASE_CELL_VOLUME:
-        struct = struct.copy()
-        struct.center(vacuum=10.0)
-    return struct
+    return is_instance_of(struct, "ase.atoms.Atoms", "pymatgen.io.ase.MSONAtoms")
 
 
 def is_phonopy_atoms(obj: Any) -> TypeIs[PhonopyAtoms]:
     """Check if object is PhonopyAtoms or a subclass (Supercell, Primitive)."""
-    return _subclasses(obj, "phonopy.structure.atoms.PhonopyAtoms")
+    return is_instance_of(obj, "phonopy.structure.atoms.PhonopyAtoms")
+
+
+def is_pymatgen_structure(obj: Any) -> TypeIs[IStructure | IMolecule]:
+    """Whether obj is a pymatgen Structure/Molecule (mutable or not), without
+    importing pymatgen.
+    """
+    return is_instance_of(
+        obj, "pymatgen.core.structure.IStructure", "pymatgen.core.structure.IMolecule"
+    )
+
+
+def is_structure_like(obj: Any) -> bool:
+    """Whether obj is a matscikit or pymatgen structure, ASE Atoms or PhonopyAtoms."""
+    return (
+        isinstance(obj, mk.Structure)
+        or is_pymatgen_structure(obj)
+        or is_ase_atoms(obj)
+        or is_phonopy_atoms(obj)
+    )
+
+
+def _pymatgen_occupancies(species: Mapping[Any, float]) -> dict[str, float]:
+    """{element: occupancy} of a pymatgen site's species, summing an element's
+    oxidation states and dropping dummy species (vacancies, X).
+    """
+    occupancies: dict[str, float] = {}
+    for specie, occu in species.items():
+        if not is_instance_of(specie, "pymatgen.core.periodic_table.DummySpecies"):
+            occupancies[specie.symbol] = occupancies.get(specie.symbol, 0) + occu
+    return occupancies
+
+
+def to_structure(obj: Any) -> mk.Structure:
+    """Convert a matscikit/pymatgen structure or molecule, ASE Atoms or PhonopyAtoms
+    to a matscikit Structure. Disordered pymatgen sites become {element: occupancy}
+    sites; pymatgen oxidation states are dropped. Molecules (cell-less inputs) get
+    a 1 Å placeholder cell with periodic boundaries off, partially periodic ASE
+    Atoms with a singular cell (2D slabs) are centered in 10 Å of vacuum.
+
+    Raises:
+        TypeError: For any other type.
+    """
+    if isinstance(obj, mk.Structure):
+        return obj
+    if is_pymatgen_structure(obj):
+        pmg: Any = obj  # IStructure or IMolecule
+        species = [_pymatgen_occupancies(site.species) for site in pmg]
+        if is_instance_of(pmg, "pymatgen.core.structure.IStructure"):
+            return mk.Structure(
+                pmg.lattice.matrix,
+                species,
+                pmg.frac_coords,
+                fractional=True,
+                pbc=pmg.lattice.pbc,
+            )
+        return mk.Structure(np.eye(3), species, pmg.cart_coords, pbc=(False,) * 3)
+    if is_ase_atoms(obj):
+        from matscikit.interop import structure_from_ase
+
+        if any(obj.pbc) and obj.cell.volume < MIN_ASE_CELL_VOLUME:
+            obj = obj.copy()  # e.g. a 2D slab without c vector
+            obj.center(vacuum=10.0)
+        return structure_from_ase(obj)
+    if is_phonopy_atoms(obj):
+        return mk.Structure(
+            obj.cell, obj.symbols, obj.scaled_positions, fractional=True
+        )
+    raise TypeError(
+        "Expected a matscikit or pymatgen Structure/Molecule, ASE Atoms or "
+        f"PhonopyAtoms, got {type(obj).__name__}"
+    )
+
+
+def to_pymatgen(struct: mk.Structure) -> Any:
+    """Pymatgen Structure of a matscikit one, for pymatgen-only analyses (ChemEnv,
+    NearNeighbors, XRDCalculator). Needs the optional pymatgen dependency.
+    """
+    from matscikit.interop import structure_to_pymatgen_dict
+    from pymatgen.core import Structure
+
+    return Structure.from_dict(structure_to_pymatgen_dict(struct))
+
+
+def structure_dict(obj: Any) -> dict[str, Any]:
+    """Dict in pymatgen's format (MatterViz's JSON structure format) of a structure-like
+    object. pymatgen objects keep their own ``as_dict()`` (oxidation states, labels,
+    site properties), non-periodic structures become molecule dicts without lattice.
+    """
+    if is_pymatgen_structure(obj):
+        return obj.as_dict()
+    from matscikit.interop import structure_to_pymatgen_dict
+
+    struct = to_structure(obj)
+    dct = structure_to_pymatgen_dict(struct)
+    if not any(struct.pbc):
+        dct = {key: val for key, val in dct.items() if key != "lattice"}
+        dct |= {
+            "@class": "Molecule",
+            "sites": [
+                {key: val for key, val in site.items() if key != "abc"}
+                for site in dct["sites"]
+            ],
+        }
+    return dct
+
+
+def site_elements(struct: mk.Structure) -> list[set[str]]:
+    """Element symbols on each site (several for disordered sites)."""
+    return [set(occupancies) for occupancies in struct.site_occupancies]
+
+
+def site_symbols(struct: mk.Structure) -> list[str]:
+    """Element symbol of each site, the highest-occupancy one for disordered sites."""
+    return [max(occu, key=occu.__getitem__) for occu in struct.site_occupancies]
 
 
 type _StructureInput = AnyStructure | PhonopyAtoms
@@ -85,52 +167,35 @@ type _StructureInputs = (
 )
 
 
-def normalize_structures(
-    systems: _StructureInputs,
-) -> dict[Hashable, Structure | IStructure | Molecule | IMolecule]:
-    """Map pymatgen structures/molecules, ASE Atoms or PhonopyAtoms (single, sequence
-    or mapping) to pymatgen objects, keyed by formula for a single input, by
-    "{index} {formula}" for sequences, and by the given keys for mappings/Series.
+def normalize_structures(systems: _StructureInputs) -> dict[Hashable, mk.Structure]:
+    """Map structure-like inputs (single, sequence or mapping) to matscikit
+    Structures, keyed by formula for a single input, by "{index} {formula}" for
+    sequences, and by the given keys for mappings/Series.
+
+    Raises:
+        ValueError: If systems is empty.
+        TypeError: For unsupported input or item types.
     """
-    from pymatgen.core import IMolecule
-    from pymatgen.io.ase import AseAtomsAdaptor
-
-    def to_pmg_struct(item: Any) -> Structure | IStructure | Molecule | IMolecule:
-        if is_ase_atoms(item):
-            return AseAtomsAdaptor().get_structure(item)
-        if isinstance(item, (IStructure, IMolecule)):
-            return item
-        if is_phonopy_atoms(item):
-            from pymatgen.io.phonopy import get_pmg_structure
-
-            return get_pmg_structure(item)
-        raise TypeError(
-            "Item must be a pymatgen Structure, IStructure, Molecule, IMolecule, "
-            f"ASE Atoms, or PhonopyAtoms object, got {type(item)}"
-        )
-
-    if is_ase_atoms(systems) or is_phonopy_atoms(systems):
-        systems = to_pmg_struct(systems)
-    # structures are sequences of sites, so check them before Sequence
-    if isinstance(systems, (IStructure, IMolecule)):
-        return {systems.formula: systems}
+    if is_structure_like(systems):
+        struct = to_structure(systems)
+        return {struct.composition.formula: struct}
 
     if hasattr(systems, "__len__") and len(systems) == 0:
         raise ValueError("Cannot plot empty set of structures")
 
     if isinstance(systems, (pd.Series, Mapping)):  # keep original keys/index
-        return {key: to_pmg_struct(val) for key, val in systems.items()}
+        return {key: to_structure(val) for key, val in systems.items()}
 
     if isinstance(systems, Sequence) and not isinstance(systems, str):
         return {
-            f"{idx} {(struct := to_pmg_struct(item)).formula}": struct
+            f"{idx} {(struct := to_structure(item)).composition.formula}": struct
             for idx, item in enumerate(systems, start=1)
         }
 
     raise TypeError(
-        "Input must be a pymatgen Structure, IStructure, Molecule, IMolecule, "
-        "ASE Atoms, or PhonopyAtoms object, a sequence (list, tuple, pd.Series), "
-        f"or a mapping. Got {type(systems)=}"
+        "Input must be a matscikit or pymatgen Structure/Molecule, ASE Atoms or "
+        "PhonopyAtoms, a sequence (list, tuple, pd.Series) or a mapping of them. "
+        f"Got {type(systems)=}"
     )
 
 
@@ -148,51 +213,51 @@ def str_labels[T](labeled: Mapping[Any, T]) -> dict[str, T]:
 
 def normalize_periodic_structures(
     systems: _StructureInputs,
-) -> dict[Hashable, IStructure]:
-    """normalize_structures, raising TypeError for (non-periodic) molecules."""
+) -> dict[Hashable, mk.Structure]:
+    """normalize_structures, raising TypeError for non-periodic ones (molecules)."""
     struct_dict = normalize_structures(systems)
-    periodic = {
-        key: val for key, val in struct_dict.items() if isinstance(val, IStructure)
+    if molecules := [key for key, val in struct_dict.items() if not any(val.pbc)]:
+        raise TypeError(f"Expected periodic structures, got molecules {molecules}")
+    return struct_dict
+
+
+def get_spacegroup_number(structure: Any) -> int:
+    """Space group number of an ordered periodic structure-like object.
+
+    Raises:
+        ValueError: For disordered structures.
+        TypeError: For unsupported or non-periodic inputs.
+    """
+    struct = next(iter(normalize_periodic_structures(structure).values()))
+    return mk.symmetry_dataset(struct).number
+
+
+@functools.cache
+def _loose_hm_symbols() -> dict[str, int]:
+    """Space group numbers keyed by Hermann-Mauguin symbols without spaces and
+    screw-axis underscores (P2_1/c and P 21/c both become P21/c).
+    """
+    from pymatviz.utils.data import hm_symbol_to_spg_num_map
+
+    return {
+        symbol.replace(" ", "").replace("_", ""): number
+        for symbol, number in hm_symbol_to_spg_num_map.items()
     }
-    if molecules := {
-        key: type(val).__name__
-        for key, val in struct_dict.items()
-        if key not in periodic
-    }:
-        raise TypeError(f"Expected periodic structures, got {molecules}")
-    return periodic
 
 
-def get_spacegroup_number(structure: AnyStructure) -> int:
-    """Determine an ordered periodic structure's space group without adapter extras."""
-    from moyopy import Cell, MoyoDataset
-
-    if isinstance(structure, IStructure):
-        if not structure.is_ordered:
-            raise ValueError("Structure must be ordered")
-        cell = Cell(
-            basis=structure.lattice.matrix.tolist(),
-            positions=structure.frac_coords.tolist(),
-            numbers=list(structure.atomic_numbers),
-        )
-    elif is_ase_atoms(structure):
-        cell = Cell(
-            basis=structure.cell.tolist(),
-            positions=structure.get_scaled_positions().tolist(),
-            numbers=structure.get_atomic_numbers().tolist(),
-        )
-    else:
-        raise TypeError(
-            f"Expected periodic Structure or ASE Atoms, got {type(structure)}"
-        )
-    return MoyoDataset(cell).number
+def _hm_symbol_to_number(symbol: str) -> int | None:
+    """Space group number of a loosely spelled Hermann-Mauguin symbol, ignoring
+    setting suffixes (R-3m:H), None if unknown.
+    """
+    loose = symbol.split(":", 1)[0].replace(" ", "").replace("_", "")
+    return _loose_hm_symbols().get(loose)
 
 
 def normalize_spacegroups(
     data: Sequence[int | str | Any] | pd.Series,
 ) -> pd.Series:
-    """Space group numbers (1-230) from structures (pymatgen or ASE), numbers or
-    Hermann-Mauguin symbols, keeping a Series' index and name.
+    """Space group numbers (1-230) from structures, numbers or Hermann-Mauguin
+    symbols, keeping a Series' index and name.
 
     Raises:
         ValueError: If data is empty, contains missing values, invalid symbols,
@@ -221,20 +286,11 @@ def normalize_spacegroups(
         return result.astype(int)
 
     if isinstance(first_item, str):
-        from pymatviz.utils.data import hm_symbol_to_spg_num_map
-
-        numbers = result.map(hm_symbol_to_spg_num_map)
+        numbers = result.map(_hm_symbol_to_number)
         if (missing := numbers.isna()).any():
-            # slow pymatgen parses looser spellings ("P2_1/c", "R-3m:H"), once each
-            from pymatgen.symmetry.groups import SpaceGroup
-
-            parsed: dict[str, int] = {}
-            for symbol in result[missing].unique():
-                try:
-                    parsed[symbol] = SpaceGroup(symbol).int_number
-                except ValueError as exc:
-                    raise ValueError(f"Invalid Hermann-Mauguin symbol: {exc}") from exc
-            numbers = numbers.fillna(result.map(parsed))
+            raise ValueError(
+                f"Invalid Hermann-Mauguin symbols: {result[missing].unique().tolist()}"
+            )
         return numbers.astype(int)
 
     return result

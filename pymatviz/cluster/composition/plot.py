@@ -9,10 +9,10 @@ from typing import TYPE_CHECKING, Any, Literal, Protocol, cast
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_bool_dtype, is_numeric_dtype
-from pymatgen.core import Composition
 
 from pymatviz.cluster.composition.embed import matminer_featurize, one_hot_encode
 from pymatviz.cluster.composition.project import project_vectors
+from pymatviz.composition import is_composition_like, to_composition
 from pymatviz.enums import LabelEnum
 from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
@@ -110,8 +110,8 @@ def _composition_strings(
     for comp in compositions:
         if isinstance(comp, str):
             comp_strs.append(comp)
-        elif isinstance(comp, Composition):
-            comp_strs.append(comp.formula)
+        elif is_composition_like(comp):
+            comp_strs.append(to_composition(comp).formula)
         elif strict:
             raise TypeError(f"Expected str or Composition, got {comp=}")
         else:
@@ -152,7 +152,7 @@ def cluster_compositions(
             properties and/or pre-computed embeddings.
         composition_col (str): Name of the column containing one of:
             - Chemical formulas (as strings)
-            - pymatgen Composition objects
+            - matscikit or pymatgen Composition objects
             - Pre-computed embeddings (as numpy arrays or lists)
             Default is "composition".
         prop_name (str | None): Name of the column to use for coloring points.
@@ -419,7 +419,7 @@ def cluster_compositions(
             if not isinstance(comp_str, str):
                 raise TypeError(f"Expected str, got {type(comp_str)} for {comp_str}")
         # chemical_system is already alphabetically sorted
-        chem_systems = [Composition(comp).chemical_system for comp in comp_strs]
+        chem_systems = [to_composition(comp).chemical_system for comp in comp_strs]
         n_systems = len(set(chem_systems))
         if "shape" in show_chem_sys and n_systems > len(CHEM_SYS_SYMBOLS):
             warnings.warn(

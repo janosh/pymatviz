@@ -6,15 +6,21 @@ from collections import defaultdict
 from inspect import isclass
 from typing import TYPE_CHECKING, Any, Literal
 
+import numpy as np
+
 from pymatviz.enums import LabelEnum
-from pymatviz.structures import get_site_species, get_site_symbol
+from pymatviz.structures import is_instance_of, site_symbols, to_pymatgen, to_structure
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
+    import matscikit as mk
     from pymatgen.analysis.local_env import NearNeighbors
-    from pymatgen.core import IMolecule, IStructure
+
+    from pymatviz.typing import AnyStructure
+
+# pymatgen's get_neighbor_list numerical_tol: neighbors up to r + tol count as within
+# r, and pairs closer than tol (coincident atoms) are not neighbors
+NEIGHBOR_TOL = 1e-8
 
 
 class CnSplitMode(LabelEnum):
@@ -27,38 +33,56 @@ class CnSplitMode(LabelEnum):
     by_structure = "by_structure", "By structure"
 
 
-def normalize_get_neighbors(
-    strategy: float | NearNeighbors | type[NearNeighbors],
-) -> Callable[[IStructure | IMolecule], list[list[Any]]]:
-    """Normalize a neighbor-finding strategy to a function returning the neighbor
-    list of every site in a structure or molecule (in site order).
-
-    A float cutoff runs a single neighbor search for all sites of a periodic
-    structure (molecules lack get_all_neighbors, so get per-site neighbors).
+def is_near_neighbors(strategy: Any) -> bool:
+    """Whether strategy is a pymatgen NearNeighbors instance or subclass, without
+    importing pymatgen.
     """
-    if isinstance(strategy, int | float):
-        from pymatgen.core import IMolecule
+    # pymatgen moved local_env from pymatgen.analysis to pymatgen.core
+    nn_classes = (
+        "pymatgen.core.local_env.NearNeighbors",
+        "pymatgen.analysis.local_env.NearNeighbors",
+    )
+    if isclass(strategy):
+        return any(
+            f"{cls.__module__}.{cls.__qualname__}" in nn_classes
+            for cls in strategy.__mro__
+        )
+    return is_instance_of(strategy, *nn_classes)
 
-        cutoff = float(strategy)
 
-        def get_all_neighbors(structure: IStructure | IMolecule) -> list[list[Any]]:
-            """Neighbors of each site within the cutoff."""
-            if isinstance(structure, IMolecule):
-                return [structure.get_neighbors(site, r=cutoff) for site in structure]
-            return structure.get_all_neighbors(r=cutoff)
+def site_neighbor_distances(struct: mk.Structure, cutoff: float) -> list[np.ndarray]:
+    """Sorted distances from each site to its neighbors within cutoff (Å), with
+    pymatgen's tolerance: up to cutoff + NEIGHBOR_TOL, coincident atoms excluded.
+    """
+    centers, _, _, distances = struct.neighbor_list(cutoff + 2 * NEIGHBOR_TOL)
+    keep = (distances > NEIGHBOR_TOL) & (distances <= cutoff + NEIGHBOR_TOL)
+    centers, distances = centers[keep], distances[keep]
+    order = np.lexsort((distances, centers))
+    splits = np.cumsum(np.bincount(centers, minlength=len(struct)))[:-1]
+    return np.split(distances[order], splits)
 
-        return get_all_neighbors
-    from pymatgen.analysis.local_env import NearNeighbors
 
-    is_nn_class = isclass(strategy) and issubclass(strategy, NearNeighbors)
-    nn_instance = strategy() if is_nn_class else strategy
-    if isinstance(nn_instance, NearNeighbors):
-        # index sites by position: structure.index(site) is O(N) per site and
-        # returns the first of duplicate sites
-        # NearNeighbors annotates Structure but also handles IStructure/molecules
-        return lambda structure: [
-            nn_instance.get_nn_info(structure, idx)  # ty: ignore[invalid-argument-type]
-            for idx in range(len(structure))
+def site_coordination_numbers(
+    struct: mk.Structure, strategy: float | NearNeighbors | type[NearNeighbors]
+) -> list[int]:
+    """Coordination number of each site in a structure.
+
+    Args:
+        struct (mk.Structure): Structure or molecule (periodic boundaries off).
+        strategy (float | NearNeighbors | type[NearNeighbors]): A cutoff radius in Å,
+            or a pymatgen NearNeighbors instance or subclass (instantiated), which
+            needs the optional pymatgen dependency.
+
+    Raises:
+        TypeError: For any other strategy.
+    """
+    if isinstance(strategy, int | float) and not isinstance(strategy, bool):
+        return [len(dists) for dists in site_neighbor_distances(struct, strategy)]
+    if is_near_neighbors(strategy):
+        nn_instance: Any = strategy() if isclass(strategy) else strategy
+        pmg_struct = to_pymatgen(struct)
+        return [
+            len(nn_instance.get_nn_info(pmg_struct, idx)) for idx in range(len(struct))
         ]
     raise TypeError(
         f"Invalid {strategy=}. Expected float, NearNeighbors instance, or "
@@ -67,52 +91,35 @@ def normalize_get_neighbors(
 
 
 def coordination_nums_in_structure(
-    structure: IStructure | IMolecule,
+    structure: AnyStructure,
     strategy: float | NearNeighbors | type[NearNeighbors] = 3.0,
-    group_by: Literal["element", "specie", "site"] = "element",
+    group_by: Literal["element", "site"] = "element",
 ) -> dict[str, list[int]]:
     """Get coordination numbers (CN) for each element in a structure.
 
     Args:
-        structure (IStructure | IMolecule): A pymatgen structure or molecule
-        strategy (float | NearNeighbors | type[NearNeighbors]): Neighbor-finding
-            strategy. Can be one of:
-            - float: Cutoff distance for neighbor search in Angstroms
-            - NearNeighbors: An instance of a NearNeighbors subclass
-            - Type[NearNeighbors]: A NearNeighbors subclass (will be instantiated)
-            Defaults to 3.0 (Angstroms cutoff)
-        group_by ("element" | "specie" | "site"): How to group the coordination numbers.
-            Can be one of:
-            - "element": Group by element symbol
-            - "site": Group by site
-            - "specie": Group by specie
+        structure (AnyStructure): A structure or molecule (matscikit, pymatgen, ASE,
+            phonopy).
+        strategy (float | NearNeighbors | type[NearNeighbors]): A cutoff radius in Å,
+            or a pymatgen NearNeighbors instance or subclass. Defaults to 3.0 Å.
+        group_by ("element" | "site"): Group CNs by element symbol (the
+            highest-occupancy one for disordered sites) or by 1-based site index.
 
     Returns:
-        dict[str, list[int]]: Map of element symbols to lists of coordination numbers.
-            E.g. {"Si": [4, 4, 4], "O": [2, 2, 2, 2, 2, 2]} for SiO2. Each number
-            represents the CN of one atom of that element.
-
-    Example:
-        >>> from pymatgen.core import Structure
-        >>> structure = Structure.from_file("SiO2.cif")
-        >>> cns = coordination_nums_in_structure(structure)
-        >>> print(cns)
-        {"Si": [4, 4, 4], "O": [2, 2, 2, 2, 2, 2]}
+        dict[str, list[int]]: Map of group keys to lists of coordination numbers.
+            E.g. {"Si": [4, 4, 4], "O": [2, 2, 2, 2, 2, 2]} for SiO2.
     """
-    site_neighbors = normalize_get_neighbors(strategy=strategy)(structure)
-
+    if group_by not in ("element", "site"):
+        raise ValueError(f"Invalid {group_by=}, must be 'element' or 'site'")
+    structure = to_structure(structure)
+    keys = (
+        site_symbols(structure)
+        if group_by == "element"
+        else [str(idx) for idx in range(1, len(structure) + 1)]
+    )
     cns: dict[str, list[int]] = defaultdict(list)
-
-    # Calculate CNs for all sites in the structure
-    for idx, (site, neighbors) in enumerate(
-        zip(structure, site_neighbors, strict=True), start=1
+    for key, cn in zip(
+        keys, site_coordination_numbers(structure, strategy), strict=True
     ):
-        site_species = get_site_species(site)
-        key = {
-            "element": get_site_symbol(site),
-            "site": str(idx),
-            "specie": str(site_species),  # Preserve oxidation state for specie mode
-        }[group_by]
-        cns[key] += [len(neighbors)]
-
+        cns[key] += [cn]
     return cns

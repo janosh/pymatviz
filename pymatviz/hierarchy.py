@@ -15,8 +15,6 @@ from pymatviz.widgets.treemap import TreemapWidget
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from pymatgen.core import Composition, Structure
-
     from pymatviz.typing import FormulaGroupBy
 
 
@@ -58,7 +56,7 @@ def _limit_nodes(
 
 
 def _chem_sys_nodes(
-    data: Sequence[str | Composition | Structure],
+    data: Sequence[Any],
     group_by: FormulaGroupBy,
     max_systems: int | None,
     overflow: Literal["other", "drop"],
@@ -112,7 +110,7 @@ def hierarchy_widget(
 
 
 def chem_sys_hierarchy(
-    data: Sequence[str | Composition | Structure],
+    data: Sequence[Any],
     *,
     kind: Literal["sunburst", "treemap"] = "sunburst",
     group_by: FormulaGroupBy = "chem_sys",

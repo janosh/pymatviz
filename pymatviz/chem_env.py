@@ -1,7 +1,8 @@
 """Chemical environment analysis utilities.
 
 Functions for analyzing coordination numbers and chemical environments
-using pymatgen's ChemEnv and local environment modules.
+using pymatgen's ChemEnv and local environment modules (optional pymatgen
+dependency: pip install 'pymatviz[pymatgen]').
 """
 
 from __future__ import annotations
@@ -12,7 +13,7 @@ from math import fsum
 from typing import TYPE_CHECKING, Any, Literal
 
 from pymatviz.hierarchy import _limit_nodes, _validate_overflow, hierarchy_widget
-from pymatviz.structures import normalize_periodic_structures
+from pymatviz.structures import normalize_periodic_structures, to_pymatgen
 
 
 if TYPE_CHECKING:
@@ -244,8 +245,6 @@ def chem_env_nodes(
     Rank coordination numbers by their full counts before limiting environments
     per branch. Ties use coordination number and environment symbol respectively.
     """
-    from pymatgen.core import Structure
-
     _validate_overflow(overflow)
 
     if not isinstance(chem_env_settings, dict) and chem_env_settings not in (
@@ -256,9 +255,9 @@ def chem_env_nodes(
             f"Invalid {chem_env_settings=}, expected 'chemenv', 'crystal_nn' or a dict"
         )
     structs = (
-        struct if isinstance(struct, Structure) else Structure.from_sites(struct)
+        to_pymatgen(struct)
         for struct in normalize_periodic_structures(structures).values()
-        if struct
+        if len(struct)
     )
     if chem_env_settings == "crystal_nn":
         rows = collect_coord_envs_crystal_nn(structs, normalize=normalize)

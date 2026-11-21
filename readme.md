@@ -31,7 +31,7 @@ A toolkit for visualizations in materials informatics.
 pip install pymatviz
 ```
 
-See `pyproject.toml` for available extras like `pip install 'pymatviz[export]'` for static image export.
+See `pyproject.toml` for available extras like `pip install 'pymatviz[export]'` for static image export. Structures, compositions, symmetry, RDFs, coordination numbers and XRD patterns are computed with [matscikit](https://github.com/janosh/matscikit). pymatgen, ASE and phonopy objects are accepted as inputs and converted on the way in. `pip install 'pymatviz[pymatgen]'` adds the pymatgen-only analyses: ChemEnv/CrystalNN environments (`chem_env_hierarchy`), `NearNeighbors` coordination strategies, pymatgen `Trajectory` JSON and phonopy band structures.
 
 ## API Docs
 
@@ -139,17 +139,17 @@ See [`pymatviz/widgets/structure.py`](pymatviz/widgets/structure.py).
 
 ## Interactive Widgets
 
-See [`pymatviz/widgets`](pymatviz/widgets). Interactive 3D structure, molecular dynamics trajectory and composition visualization widgets for [Jupyter](https://jupyter.org), [Marimo](https://marimo.io), and VSCode notebooks, powered by [anywidget](https://anywidget.dev) and [MatterViz](https://matterviz.janosh.dev) (<https://github.com/janosh/matterviz>). Supports pymatgen `Structure`, ASE `Atoms`, and `PhonopyAtoms`, as well as ASE, `pymatgen` and plain Python trajectory formats.
+See [`pymatviz/widgets`](pymatviz/widgets). Interactive 3D structure, molecular dynamics trajectory and composition visualization widgets for [Jupyter](https://jupyter.org), [Marimo](https://marimo.io), and VSCode notebooks, powered by [anywidget](https://anywidget.dev) and [MatterViz](https://matterviz.janosh.dev) (<https://github.com/janosh/matterviz>). Supports matscikit and pymatgen `Structure`, ASE `Atoms`, and `PhonopyAtoms`, as well as ASE, `pymatgen` and plain Python trajectory formats.
 
 ```py
 import pymatviz as pmv
-from pymatgen.core import Structure, Composition
+from matscikit.io import read_structure
 
 # Interactive 3D structure visualization
-struct_widget = pmv.structure(Structure.from_file("structure.cif"))
+struct_widget = pmv.structure(read_structure("structure.cif"))
 
-# Interactive composition visualization
-comp_widget = pmv.composition(Composition("Fe2O3"))
+# Interactive composition visualization (formula strings, dicts, matscikit or pymatgen Composition)
+comp_widget = pmv.composition("Fe2O3")
 
 # Interactive trajectory visualization from structures or dicts of structure and properties
 traj_widget1 = pmv.trajectory([struct1, struct2, struct3])
@@ -183,7 +183,7 @@ Each MatterViz component has a pymatviz function of the same name in snake_case 
 > [!TIP]
 > Checkout the **✅ MatterViz VSCode extension** for using the same viewers directly in VSCode/Cursor editor tabs for rendering local and remote files: [marketplace.visualstudio.com/items?itemName=janosh.matterviz](https://marketplace.visualstudio.com/items?itemName=janosh.matterviz)
 
-In Jupyter, VS Code and marimo, importing `pymatviz` renders pymatgen, ASE and phonopy objects (structures, band structures, DOS, XRD patterns, phase diagrams, compositions) as their widgets. Toggle it with [`notebook_mode(on=False)`](pymatviz/notebook.py).
+In Jupyter, VS Code and marimo, importing `pymatviz` renders matscikit, pymatgen, ASE and phonopy objects (structures, band structures, DOS, XRD patterns, phase diagrams, compositions) as their widgets. Toggle it with [`notebook_mode(on=False)`](pymatviz/notebook.py).
 
 ## Brillouin Zone
 
@@ -204,7 +204,7 @@ See [`pymatviz/widgets/brillouin_zone.py`](pymatviz/widgets/brillouin_zone.py). 
 
 See [`pymatviz/xrd.py`](pymatviz/xrd.py).
 
-|             [`xrd_plot(pattern)`](pymatviz/xrd.py#L53) [![fig-icon]](assets/scripts/xrd/xrd_plot.py)             |  [`xrd_plot({key1: patt1, key2: patt2})`](pymatviz/xrd.py#L53)   |
+|             [`xrd_plot(pattern)`](pymatviz/xrd.py#L52) [![fig-icon]](assets/scripts/xrd/xrd_plot.py)             |  [`xrd_plot({key1: patt1, key2: patt2})`](pymatviz/xrd.py#L52)   |
 | :--------------------------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------: |
 |                                                     ![xrd-pattern]                                                     |                       ![xrd-pattern-multiple]                       |
 

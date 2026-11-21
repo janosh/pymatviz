@@ -28,7 +28,7 @@ def python_rdfs(monkeypatch: pytest.MonkeyPatch) -> None:
     [
         (EMPTY_STRUCT, {}, ValueError, r"structures \['.*'\] contain no sites"),
         ({"blank": EMPTY_STRUCT}, {}, ValueError, r"\['blank'\] contain no sites"),
-        ("not a structure", {}, TypeError, "Input must be a pymatgen Structure"),
+        ("not a structure", {}, TypeError, "Input must be a matscikit or pymatgen"),
         (None, {}, ValueError, "pass structures or patterns"),
         (NACL, {"patterns": []}, ValueError, "pass structures or patterns"),
         (NACL, {"element_pairs": [("Zn", "Zn")]}, ValueError, "not in any structure"),
@@ -101,15 +101,28 @@ def test_rdf_plot_one_search_matches_calculate_rdf(
     species: list[Any] = ["Si", "O", "Fe", "Li"] * 6 + [{"Fe": 0.5, "Co": 0.5}]
     struct = Structure(Lattice.cubic(6.0), species, rng.uniform(size=(25, 3)))
     n_searches = 0
-    find_points = rdf_helpers.find_points_in_spheres
+    to_structure = rdf_helpers.to_structure
 
-    def counting_find_points(*args: Any, **kwargs: Any) -> Any:
-        """Count neighbor searches."""
-        nonlocal n_searches
-        n_searches += 1
-        return find_points(*args, **kwargs)
+    class CountingStructure:
+        """matscikit Structure proxy counting neighbor searches."""
 
-    monkeypatch.setattr(rdf_helpers, "find_points_in_spheres", counting_find_points)
+        def __init__(self, struct: Any) -> None:
+            self._struct = struct
+
+        def __len__(self) -> int:
+            return len(self._struct)
+
+        def __getattr__(self, name: str) -> Any:
+            return getattr(self._struct, name)
+
+        def neighbor_list(self, cutoff: float) -> Any:
+            nonlocal n_searches
+            n_searches += 1
+            return self._struct.neighbor_list(cutoff)
+
+    monkeypatch.setattr(
+        rdf_helpers, "to_structure", lambda obj: CountingStructure(to_structure(obj))
+    )
     widget = rdf_plot(struct, cutoff=cutoff, bins=40)
     assert n_searches == 1
     assert len(widget.patterns) == 15  # 5 elements -> 15 pairs

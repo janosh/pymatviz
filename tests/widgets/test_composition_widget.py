@@ -44,7 +44,7 @@ def test_widget_composition_inputs(
 
 @pytest.mark.parametrize(
     ("invalid_composition", "expected_error"),
-    [("InvalidComposition123", ValueError), ({"invalid": "composition"}, TypeError)],
+    [("InvalidComposition123", ValueError), ({"invalid": "composition"}, ValueError)],
 )
 def test_widget_invalid_composition_handling(
     invalid_composition: Any, expected_error: type[Exception]
@@ -71,14 +71,3 @@ def test_widget_property_sync_composition(
 
     for test_value in test_values:
         assert_widget_property_sync(widget, property_name, test_value)
-
-
-def test_composition_widget_pymatgen_kwargs() -> None:
-    """pymatgen_kwargs reaches the traitlet (regression: pop() consumed it before
-    super().__init__, leaving the trait at its default) but is Python-side only,
-    so it never leaks into the synced frontend payload.
-    """
-    widget = CompositionWidget("Fe2O3", pymatgen_kwargs={"allow_negative": True})
-    assert widget.pymatgen_kwargs == {"allow_negative": True}
-    assert widget.composition is not None
-    assert "pymatgen_kwargs" not in widget.to_dict()

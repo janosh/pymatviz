@@ -151,7 +151,7 @@ def test_coordination_bar_plot_style_options(nacl: Structure) -> None:
     ("structs", "kwargs", "err_cls", "match"),
     [
         ([], {}, ValueError, "Cannot plot empty set of structures"),
-        ("invalid input", {}, TypeError, "Input must be a pymatgen Structure"),
+        ("invalid input", {}, TypeError, "Input must be a matscikit or pymatgen"),
         (None, {"strategy": "nope"}, tl.TraitError, "strategy"),
         (None, {"annotate_bars": True}, ValueError, "need a Python strategy"),
         (None, {"split_mode": "by_structure_and_element"}, ValueError, "not a valid"),
@@ -309,15 +309,17 @@ def test_coordination_vs_cutoff_line_one_neighbor_search(
         for elem in sorted({site.specie.symbol for site in structure})
     }
     n_calls = 0
-    get_all_neighbors = Structure.get_all_neighbors
+    from pymatviz.coordination import figures
 
-    def counting_get_all_neighbors(self: Structure, *args: Any, **kwargs: Any) -> Any:
-        """Count calls to Structure.get_all_neighbors (get_neighbors calls it too)."""
+    site_neighbor_distances = figures.site_neighbor_distances
+
+    def counting_search(*args: Any, **kwargs: Any) -> Any:
+        """Count neighbor searches."""
         nonlocal n_calls
         n_calls += 1
-        return get_all_neighbors(self, *args, **kwargs)
+        return site_neighbor_distances(*args, **kwargs)
 
-    monkeypatch.setattr(Structure, "get_all_neighbors", counting_get_all_neighbors)
+    monkeypatch.setattr(figures, "site_neighbor_distances", counting_search)
     widget = coordination_vs_cutoff_line(
         structure, strategy=strategy, num_points=num_points
     )
@@ -338,7 +340,7 @@ def test_coordination_vs_cutoff_line_disordered_structure() -> None:
     ("structs", "kwargs", "err_cls", "match"),
     [
         ([], {}, ValueError, "Cannot plot empty set of structures"),
-        ("invalid input", {}, TypeError, "Input must be a pymatgen Structure"),
+        ("invalid input", {}, TypeError, "Input must be a matscikit or pymatgen"),
         (
             Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]]),
             {"strategy": "invalid"},

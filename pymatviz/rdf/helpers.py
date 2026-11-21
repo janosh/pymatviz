@@ -1,28 +1,28 @@
-"""Helper functions for radial distribution functions (RDFs) of pymatgen structures."""
+"""Helper functions for radial distribution functions (RDFs) of structures."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import matscikit as mk
 import numpy as np
 
-# compiled cython module, has no type stubs
-from pymatgen.optimization.neighbors import find_points_in_spheres  # ty: ignore[import-not-found]
-
-from pymatviz.structures import get_site_elements, normalize_periodic_structures
+from pymatviz.structures import (
+    normalize_periodic_structures,
+    site_elements,
+    to_structure,
+)
 
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from typing import Literal
 
-    from pymatgen.core import IStructure
-
     from pymatviz.typing import AnyStructure
 
 
 def partial_rdfs(
-    struct: IStructure,
+    struct: AnyStructure,
     pairs: Sequence[tuple[str | None, str | None]],
     cutoff: float = 15,
     n_bins: int = 75,
@@ -32,7 +32,8 @@ def partial_rdfs(
     pairs from one neighbor search.
 
     Args:
-        struct (IStructure): Periodic pymatgen structure.
+        struct (AnyStructure): Periodic structure-like object (matscikit, pymatgen,
+            ASE, phonopy; disordered sites allowed).
         pairs (Sequence[tuple[str | None, str | None]]): (center, neighbor) element
             symbols, None meaning all sites. (None, None) gives the full RDF.
         cutoff (float, optional): Maximum distance for RDF calculation. Default is 15 Å.
@@ -56,14 +57,17 @@ def partial_rdfs(
     if pbc_array.shape != (3,) or not np.isin(pbc_array, [0, 1]).all():
         raise ValueError(f"{pbc=} must contain three 0/1 flags")
 
+    struct = to_structure(struct)
     bin_size = cutoff / n_bins
     radii = np.linspace(0, cutoff, n_bins + 1)[1:]
 
     # site_has[species][idx]: whether site idx contains species (all sites for None,
     # disordered sites contain several elements)
-    site_elements = [get_site_elements(site) for site in struct]
+    elements_per_site = site_elements(struct)
     site_has = {
-        species: np.array([not species or species in elems for elems in site_elements])
+        species: np.array(
+            [not species or species in elems for elems in elements_per_site]
+        )
         for species in {species for pair in pairs for species in pair}
     }
     # pairs with a species no site contains have all-zero g(r)
@@ -75,21 +79,20 @@ def partial_rdfs(
     if not live_pairs:
         return [(radii, np.zeros_like(radii)) for _ in pairs]
 
-    # search neighbors only around sites that center some pair
-    center_sites = np.flatnonzero(
-        np.logical_or.reduce([site_has[center] for center, _ in live_pairs])
-    )
-    center_ids, neighbor_ids, _, distances = find_points_in_spheres(
-        all_coords=struct.cart_coords,
-        center_coords=struct.cart_coords[center_sites],
-        r=cutoff,
-        pbc=pbc_array.astype(int),
-        lattice=struct.lattice.matrix,
-    )
-    # Exclude the zero-distance self-pair, but count its periodic images.
-    in_range = (distances > 1e-10) & (distances < cutoff)
+    if tuple(pbc_array.astype(bool)) != struct.pbc:
+        struct = mk.Structure(
+            struct.lattice,
+            struct.site_occupancies,
+            struct.frac_coords,
+            fractional=True,
+            pbc=pbc_array.astype(bool).tolist(),
+        )
+    center_ids, neighbor_ids, _, distances = struct.neighbor_list(cutoff)
+    # Exclude coincident atoms (the self pair is never listed), count periodic
+    # images of a site itself.
+    in_range = distances > 1e-10
     bin_indices = np.minimum((distances[in_range] / bin_size).astype(int), n_bins - 1)
-    center_ids = center_sites[center_ids[in_range]]
+    center_ids = center_ids[in_range]
     # flat (neighbor site, bin) index of each neighbor
     site_bin_ids = neighbor_ids[in_range] * n_bins + bin_indices
     shell_volumes = 4 * np.pi * radii**2 * bin_size

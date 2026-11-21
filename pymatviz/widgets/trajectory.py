@@ -35,6 +35,31 @@ def _unwrap_monty_arrays(value: Any, *, nested: bool = False) -> Any:
     return value
 
 
+def _lattice_from_parameters(
+    a: float, b: float, c: float, alpha: float, beta: float, gamma: float
+) -> np.ndarray:
+    """Row-vector lattice matrix from cell lengths (Å) and angles (degrees) in
+    pymatgen's Lattice.from_parameters orientation (c along z).
+    """
+    cos_alpha, cos_beta, cos_gamma = np.cos(np.radians([alpha, beta, gamma]))
+    sin_alpha, sin_beta = np.sin(np.radians([alpha, beta]))
+    cos_gamma_star = np.clip(
+        (cos_alpha * cos_beta - cos_gamma) / (sin_alpha * sin_beta), -1, 1
+    )
+    gamma_star = np.arccos(cos_gamma_star)
+    return np.array(
+        [
+            [a * sin_beta, 0.0, a * cos_beta],
+            [
+                -b * sin_alpha * np.cos(gamma_star),
+                b * sin_alpha * np.sin(gamma_star),
+                b * cos_alpha,
+            ],
+            [0.0, 0.0, c],
+        ]
+    )
+
+
 class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
     """MatterViz widget for visualizing molecular dynamics and geometry optimization
     trajectories in Python notebooks.
@@ -143,23 +168,9 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
 
     def _to_structure_dict(self, structure_input: Any) -> dict[str, Any]:
         """Convert a structure-like frame to its JSON representation."""
-        from pymatgen.core import SiteCollection
+        from pymatviz.structures import structure_dict
 
-        from pymatviz.structures import add_vacuum_if_needed, normalize_structures
-
-        # only pymatgen structures: MSONAtoms.as_dict() is an ASE (not site) dict
-        if isinstance(structure_input, SiteCollection):
-            return structure_input.as_dict()
-
-        # Handle ASE Atoms-like objects that may not define a full cell.
-        structure_obj = add_vacuum_if_needed(structure_input)
-        normalized_structures = normalize_structures(structure_obj)
-        if len(normalized_structures) != 1:
-            raise ValueError(
-                f"Expected exactly one structure per frame, got "
-                f"{len(normalized_structures)}"
-            )
-        return next(iter(normalized_structures.values())).as_dict()
+        return structure_dict(structure_input)
 
     @staticmethod
     def _attach_forces(frame: dict[str, Any], frame_idx: int) -> dict[str, Any]:
@@ -226,12 +237,10 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
             and "matrix" not in lattice
             and set(cell_params) <= lattice.keys()
         ):
-            from pymatgen.core.lattice import Lattice
-
-            matrix = Lattice.from_parameters(
+            matrix = _lattice_from_parameters(
                 *(float(lattice[key]) for key in cell_params)
             )
-            completed["lattice"] = {**lattice, "matrix": matrix.matrix.tolist()}
+            completed["lattice"] = {**lattice, "matrix": matrix.tolist()}
         sites = []
         for site_idx, site in enumerate(structure.get("sites", [])):
             species = [
@@ -287,7 +296,9 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
         return {"frames": frames, "metadata": metadata}
 
     def _pymatgen_json(self, data: dict[str, Any]) -> dict[str, Any]:
-        """Expand occupancy mappings into the renderer's per-site species lists."""
+        """Expand occupancy mappings into the renderer's per-site species lists.
+        Needs the optional pymatgen dependency.
+        """
         from pymatgen.core import DummySpecies, Molecule, Species, Structure
         from pymatgen.core.periodic_table import get_el_sp
 
@@ -375,11 +386,9 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
         if trajectory is None or is_binary_envelope(trajectory, "trajectory"):
             return trajectory
 
-        from pymatgen.core.trajectory import Trajectory
+        from pymatviz.structures import is_instance_of, is_structure_like
 
-        from pymatviz.structures import is_structure_like
-
-        is_pymatgen = isinstance(trajectory, Trajectory)
+        is_pymatgen = is_instance_of(trajectory, "pymatgen.core.trajectory.Trajectory")
         if is_pymatgen or (
             isinstance(trajectory, dict) and trajectory.get("@class") == "Trajectory"
         ):

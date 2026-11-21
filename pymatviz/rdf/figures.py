@@ -5,7 +5,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
 from pymatviz.rdf.helpers import calculate_rdf, partial_rdfs
-from pymatviz.structures import normalize_periodic_structures, str_labels
+from pymatviz.structures import (
+    normalize_periodic_structures,
+    str_labels,
+    structure_dict,
+)
 from pymatviz.widgets.rdf_plot import RdfPlotWidget
 
 
@@ -13,9 +17,9 @@ if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
     from typing import Any
 
+    import matscikit as mk
     import numpy as np
     import pandas as pd
-    from pymatgen.core import IStructure
 
     from pymatviz.typing import AnyStructure
 
@@ -44,16 +48,17 @@ def _rdf_entry(
 
 
 def _pair_entries(
-    struct_dict: Mapping[str, IStructure],
+    struct_dict: Mapping[str, mk.Structure],
     element_pairs: Sequence[tuple[str, str]] | None,
     cutoff: float,
     n_bins: int,
     colors: Sequence[str] | None,
 ) -> list[dict[str, Any]]:
     """One curve per element pair of each structure, grouped by structure."""
-    all_elems = set.union(
-        *(struct.chemical_system_set for struct in struct_dict.values())
-    )
+    struct_elems = {
+        label: set(struct.composition.elements) for label, struct in struct_dict.items()
+    }
+    all_elems = set.union(*struct_elems.values())
     if element_pairs is None:
         element_pairs = [(el1, el2) for el1 in all_elems for el2 in all_elems]
     elif extra := {elem for pair in element_pairs for elem in pair} - all_elems:
@@ -62,9 +67,7 @@ def _pair_entries(
     entries: list[dict[str, Any]] = []
     for label, struct in struct_dict.items():
         # skip pairs with elements this structure lacks (all-zero curves)
-        struct_pairs = [
-            pair for pair in pairs if set(pair) <= struct.chemical_system_set
-        ]
+        struct_pairs = [pair for pair in pairs if set(pair) <= struct_elems[label]]
         rdfs = partial_rdfs(struct, struct_pairs, cutoff=cutoff, n_bins=n_bins)
         for pair, rdf in zip(struct_pairs, rdfs, strict=True):
             entries.append(
@@ -106,8 +109,9 @@ def rdf_plot(
     ``MAX_BROWSER_RDF_SITES`` sites computes them in Python instead.
 
     Args:
-        structures: A pymatgen Structure or ASE Atoms, or a sequence, dict or
-            pd.Series of them (dict/Series keys label the structures).
+        structures: A matscikit or pymatgen Structure, ASE Atoms or PhonopyAtoms,
+            or a sequence, dict or pd.Series of them (dict/Series keys label the
+            structures).
         patterns: Precomputed MatterViz RDF entries (``{label, pattern: {r, g_r}}``)
             to plot instead of structures.
         mode: "element_pairs" (in the browser, only the first 3 curves start visible)
@@ -138,11 +142,13 @@ def rdf_plot(
     if empty := [key for key, struct in struct_dict.items() if len(struct) == 0]:
         raise ValueError(f"structures {empty} contain no sites")
     if cutoff is None:
-        longest = max(max(struct.lattice.abc) for struct in struct_dict.values())
+        longest = max(
+            max(struct.lattice_parameters[0]) for struct in struct_dict.values()
+        )
         cutoff = min(15, 2 * longest)
     n_sites = sum(map(len, struct_dict.values()))
     if element_pairs is None and colors is None and n_sites <= MAX_BROWSER_RDF_SITES:
-        as_dicts = {key: struct.as_dict() for key, struct in struct_dict.items()}
+        as_dicts = {key: structure_dict(struct) for key, struct in struct_dict.items()}
         # a lone structure goes unlabeled: no legend group heading for one structure
         lone = next(iter(as_dicts.values())) if len(as_dicts) == 1 else as_dicts
         return RdfPlotWidget(

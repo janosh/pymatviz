@@ -6,14 +6,16 @@ import functools
 import itertools
 import math
 from collections import defaultdict
+from collections.abc import Mapping
 from numbers import Number
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
+import matscikit as mk
 import pandas as pd
 from pandas.api.types import is_numeric_dtype, is_string_dtype
-from pymatgen.core import Composition, Structure
 
 from pymatviz.enums import ElemCountMode
+from pymatviz.structures import is_instance_of, is_structure_like, to_structure
 from pymatviz.utils import df_ptable
 
 
@@ -21,6 +23,35 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from pymatviz.typing import ElemCountModeLike, ElemValues, FormulaGroupBy
+
+
+def is_composition_like(obj: Any) -> bool:
+    """Whether obj is a formula string, a matscikit or pymatgen Composition."""
+    return isinstance(obj, str | mk.Composition) or is_instance_of(
+        obj, "pymatgen.core.composition.Composition"
+    )
+
+
+def to_composition(obj: Any, *, allow_negative: bool = False) -> mk.Composition:
+    """Composition (matscikit) of a formula string, {element: amount} mapping,
+    matscikit or pymatgen Composition (oxidation states summed per element) or
+    structure-like object.
+
+    Raises:
+        TypeError: For any other type.
+    """
+    if isinstance(obj, mk.Composition):
+        return obj
+    if is_instance_of(obj, "pymatgen.core.composition.Composition"):
+        obj = obj.get_el_amt_dict()
+    elif is_structure_like(obj):
+        return to_structure(obj).composition
+    if not isinstance(obj, str | Mapping):
+        raise TypeError(
+            "Expected a formula string, mapping, Composition or structure, got "
+            f"{type(obj).__name__}"
+        )
+    return mk.Composition(obj, allow_negative=allow_negative)
 
 
 def count_elements(
@@ -68,13 +99,11 @@ def count_elements(
 
     if is_numeric_dtype(srs):
         pass  # already a map from element to value
-    elif is_string_dtype(srs) or {*map(type, srs)} <= {str, Composition}:
+    elif is_string_dtype(srs) or all(map(is_composition_like, srs)):
+        comps = [to_composition(comp, allow_negative=True) for comp in srs]
         if count_mode == "occurrence":
             srs = pd.Series(
-                itertools.chain.from_iterable(
-                    map(str, Composition(comp, allow_negative=True).element_composition)
-                    for comp in srs
-                )
+                itertools.chain.from_iterable(comp.elements for comp in comps)
             ).value_counts()
         else:
             # charged species (Fe3+) count as their elements in every mode
@@ -82,9 +111,8 @@ def count_elements(
             # collect each element's amounts and sum them with exactly rounded fsum
             # (faster than summing a wide DataFrame of mostly-NaN dict rows)
             elem_amounts: defaultdict[str, list[float]] = defaultdict(list)
-            for formula in srs:
-                comp = Composition(formula, allow_negative=True).element_composition
-                comp = getattr(comp, attr) if attr else comp
+            for comp in comps:
+                comp = getattr(comp, attr) if attr else comp  # noqa: PLW2901
                 for elem, amount in comp.as_dict().items():
                     elem_amounts[elem].append(amount)
             srs = pd.Series(
@@ -94,7 +122,7 @@ def count_elements(
     else:
         raise ValueError(
             "Expected values to be map from element symbols to heatmap values or "
-            f"list of compositions (strings or Pymatgen objects), got {values}"
+            f"list of compositions (strings or Composition objects), got {values}"
         )
 
     try:  # integer keys (or their strings) are atomic numbers
@@ -137,7 +165,7 @@ def count_elements(
 
 
 def _system_and_formula(
-    item: str | Composition | Structure, group_by: FormulaGroupBy
+    item: Any, group_by: FormulaGroupBy
 ) -> tuple[tuple[str, ...], str]:
     """Sorted element tuple and formula label of one count_formulas input item."""
     if isinstance(item, str) and "-" in item:  # already a chemical system string
@@ -145,11 +173,11 @@ def _system_and_formula(
     else:
         if isinstance(item, str):  # assume it's a formula string
             try:
-                comp = Composition(item)
-            except (ValueError, KeyError) as exc:
+                comp = mk.Composition(item)
+            except ValueError as exc:
                 raise ValueError(f"Invalid formula: {item}") from exc
-        elif isinstance(item, Structure | Composition):
-            comp = item.composition if isinstance(item, Structure) else item
+        elif is_composition_like(item) or is_structure_like(item):
+            comp = to_composition(item)
         else:
             raise TypeError(
                 f"Expected str, Composition or Structure, got {type(item)} instead"
@@ -167,7 +195,7 @@ def _system_and_formula(
 
 
 def count_formulas(
-    data: Sequence[str | Composition | Structure],
+    data: Sequence[Any],
     *,
     group_by: FormulaGroupBy = "chem_sys",
 ) -> pd.DataFrame:
@@ -179,8 +207,8 @@ def count_formulas(
         data (Sequence[str | Composition | Structure]): Chemical systems. Can be:
             - Chemical system strings like ["Fe-O", "Li-P-O"]
             - Formula strings like ["Fe2O3", "LiPO4"]
-            - Pymatgen Compositions
-            - Pymatgen Structures
+            - matscikit or pymatgen Compositions
+            - structure-like objects (matscikit, pymatgen, ASE, phonopy)
         group_by ("formula" | "reduced_formula" | "chem_sys"): How to group formulas:
             - "formula": Each unique formula is counted separately.
             - "reduced_formula": Formulas are reduced to simplest ratios.

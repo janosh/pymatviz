@@ -10,20 +10,21 @@ import pandas as pd
 
 if TYPE_CHECKING:
     from ase.atoms import Atoms as AseAtoms
+    from matscikit import Composition, Structure
+    from matscikit import PhononDos as MskPhononDos
     from phonopy.phonon.dos import TotalDos
     from phonopy.structure.atoms import PhonopyAtoms
-    from pymatgen.core import Composition, IMolecule, IStructure, Molecule, Structure
-    from pymatgen.io.ase import MSONAtoms
+    from pymatgen.core import Composition as PmgComposition
+    from pymatgen.core import IMolecule, IStructure
     from pymatgen.phonon.dos import PhononDos
 
     from pymatviz.enums import ElemCountMode
 
 # Quoted unions: PEP 695 treats a bare `"Name"` as Literal, not a forward ref
-type AnyStructure = (
-    "Structure | IStructure | Molecule | IMolecule | MSONAtoms | AseAtoms"
-)
-type PeriodicStructure = "IStructure | AseAtoms | PhonopyAtoms"
-type AnyDos = "PhononDos | TotalDos"
+# structure-like inputs, converted to matscikit Structures by normalize_structures
+type AnyStructure = "Structure | IStructure | IMolecule | AseAtoms | PhonopyAtoms"
+type PeriodicStructure = "Structure | IStructure | AseAtoms | PhonopyAtoms"
+type AnyDos = "MskPhononDos | PhononDos | TotalDos"
 
 # ElemCountMode values, so callers can pass plain strings (count_mode="occurrence")
 ElemCountModeName = Literal[
@@ -46,7 +47,7 @@ type ElemValues = (
     Mapping[str, int | float]
     | Mapping[int, int | float]
     | pd.Series
-    | Sequence["str | Composition"]
+    | Sequence["str | Composition | PmgComposition"]
 )
 
 type Rgb256ColorType = tuple[int, int, int]  # 8-bit RGB

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from typing import Any, Literal, get_args
 
 import numpy as np
@@ -97,19 +96,10 @@ def test_spacegroup_sunburst_structure_counts(
     }
 
 
-def test_spacegroup_sunburst_requires_moyopy(
+def test_spacegroup_sunburst_reports_conversion_failure(
     structures: list[Structure], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Report the missing required backend for Structure input."""
-    monkeypatch.setitem(sys.modules, "moyopy", None)
-    with pytest.raises(ModuleNotFoundError):
-        spacegroup_sunburst(structures)
-
-
-def test_spacegroup_sunburst_reports_moyopy_conversion_failure(
-    structures: list[Structure], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Report index and type when moyopy cannot convert a structure."""
+    """Report index and type when a structure's space group fails."""
 
     def reject_structure(_struct: Any) -> int:
         """Simulate unsupported structure input."""

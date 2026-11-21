@@ -114,12 +114,13 @@ def phonopy_nacl() -> Phonopy:
 
 @pytest.fixture
 def fe3co4_disordered() -> IStructure:
-    """Disordered Fe3C-O2 structure without site properties. This structure has
-    disordered sites with Fe:C ratio of 3:1.
+    """Disordered Fe3C-O2 pymatgen structure without site properties (Fe:C 3:1 on
+    the first site), as a user would pass one.
     """
+    from pymatviz.structures import to_pymatgen
     from pymatviz.utils.testing import fe3co4_disordered
 
-    return copy.deepcopy(fe3co4_disordered)
+    return IStructure.from_sites(to_pymatgen(fe3co4_disordered))
 
 
 @pytest.fixture

@@ -1,4 +1,6 @@
-"""Display pymatgen, ASE and phonopy objects as MatterViz widgets in notebooks."""
+"""Display matscikit, pymatgen, ASE and phonopy objects as MatterViz widgets in
+notebooks.
+"""
 
 from __future__ import annotations
 
@@ -23,6 +25,8 @@ if TYPE_CHECKING:
 # by dotted class name so nothing is imported until such an object is displayed.
 # pymatgen's PhaseDiagram is an energy convex hull, so it maps to ConvexHullWidget.
 _DISPLAY_SPECS: tuple[tuple[str, tuple[str, ...], type[MatterVizWidget], str], ...] = (
+    ("matscikit", ("Structure",), StructureWidget, "structure"),
+    ("matscikit", ("Composition",), CompositionWidget, "composition"),
     (
         "pymatgen.core.structure",
         ("Structure", "IStructure", "Molecule", "IMolecule"),
@@ -112,13 +116,16 @@ def _set_marimo_display(
         return
     for cls in filter(None, (getattr(module, name, None) for name in class_names)):
         if on and not hasattr(cls, "_display_"):
-            cls._display_ = create_widget  # ty: ignore[invalid-assignment]
+            try:
+                cls._display_ = create_widget  # ty: ignore[invalid-assignment]
+            except TypeError:  # immutable extension types (matscikit)
+                continue
         elif not on and vars(cls).get("_display_") is create_widget:
             del cls._display_
 
 
 def notebook_mode(*, on: bool) -> None:
-    """Enable or disable rendering pymatgen/ASE/phonopy objects as MatterViz widgets.
+    """Enable or disable rendering matscikit/pymatgen/ASE/phonopy objects as widgets.
 
     In IPython (Jupyter, JupyterLab, VS Code interactive windows), the types are
     registered by name with the MIME-bundle formatter, so nothing is imported until

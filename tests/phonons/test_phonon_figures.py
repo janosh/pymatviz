@@ -79,7 +79,11 @@ def test_phonon_dos(
     ("kwargs", "err_type", "match"),
     [
         (dict(doses={}), ValueError, "Empty DOS dict"),
-        (dict(doses="invalid"), TypeError, "Only PhononDos, CompletePhononDos"),
+        (
+            dict(doses="invalid"),
+            TypeError,
+            "Only matscikit PhononDos, phonopy TotalDos",
+        ),
         (dict(normalize="invalid"), ValueError, "Invalid normalize='invalid'"),
         (dict(project="invalid"), ValueError, "Invalid project='invalid'"),
         (dict(project="element"), TypeError, "project='element' requires Complete"),

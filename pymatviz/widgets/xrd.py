@@ -13,7 +13,7 @@ from pymatviz.widgets.matterviz import MatterVizWidget
 class XrdWidget(PlotControlsTraits, XrdTraits, MatterVizWidget):
     """MatterViz widget for visualizing X-ray diffraction patterns.
 
-    Accepts a pymatgen DiffractionPattern or a dict with either:
+    Accepts a matscikit XrdPattern, pymatgen DiffractionPattern or a dict with either:
     - canonical keys: x (2-theta), y (intensity), optional hkls/d_hkls/kind
     - Ferrox keys: two_theta, intensities, optional hkls/d_spacings/kind
 
@@ -45,20 +45,26 @@ class XrdWidget(PlotControlsTraits, XrdTraits, MatterVizWidget):
         """Initialize the XrdWidget.
 
         Args:
-            patterns: XRD pattern data -- a pymatgen DiffractionPattern, a dict with
+            patterns: XRD pattern data -- a matscikit XrdPattern, pymatgen
+                DiffractionPattern, a dict with
                 x (2-theta angles) and y (intensities) keys, or a ``{label: pattern}``
                 mapping of those.
             **kwargs: Additional widget properties (e.g. ``controls_open`` to
                 start with the control pane expanded).
         """
-        from pymatgen.analysis.diffraction.xrd import DiffractionPattern
+        import matscikit as mk
 
+        from pymatviz.structures import is_instance_of
         from pymatviz.widgets._normalize import normalize_xrd_pattern
 
-        # a mapping of patterns (DiffractionPatterns or dicts) is labeled, a dict of
+        # a mapping of patterns (pattern objects or dicts) is labeled, a dict of
         # arrays is one pattern
         is_labeled = isinstance(patterns, Mapping) and all(
-            isinstance(val, DiffractionPattern | Mapping) for val in patterns.values()
+            isinstance(val, mk.XrdPattern | Mapping)
+            or is_instance_of(
+                val, "pymatgen.analysis.diffraction.core.DiffractionPattern"
+            )
+            for val in patterns.values()
         )
         if is_labeled and not patterns:
             raise ValueError("XrdWidget patterns mapping must not be empty")

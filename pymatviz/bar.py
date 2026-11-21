@@ -14,11 +14,10 @@ if TYPE_CHECKING:
     from typing import Any
 
     import pandas as pd
-    from pymatgen.core import Structure
 
 
 def spacegroup_bar_plot(
-    data: Sequence[int | float | str | Structure] | pd.Series,
+    data: Sequence[Any] | pd.Series,
     *,
     show_counts: bool = True,
     log_y: bool = False,
@@ -33,7 +32,8 @@ def spacegroup_bar_plot(
 
     Args:
         data (Sequence[int | float | str | Structure] | pd.Series | Mapping): Space
-            group symbols, integral numbers (1-230), pymatgen structures/ASE Atoms,
+            group symbols, integral numbers (1-230), structures (matscikit, pymatgen,
+            ASE, phonopy),
             or a ``{spacegroup: count}`` mapping.
         show_counts (bool, optional): Whether to annotate each crystal system region
             with its total count. Defaults to True.

@@ -6,7 +6,6 @@ from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
-from pymatgen.core import Structure
 
 from pymatviz.hierarchy import _limit_nodes, _validate_overflow
 from pymatviz.structures import get_spacegroup_number, is_structure_like
@@ -15,7 +14,7 @@ from pymatviz.widgets.sunburst import SunburstWidget
 
 
 def spacegroup_sunburst(
-    data: Sequence[int | str | Structure] | pd.Series,
+    data: Sequence[Any] | pd.Series,
     *,
     max_spacegroups: int | None = None,
     overflow: Literal["other", "drop"] = "other",
@@ -25,7 +24,8 @@ def spacegroup_sunburst(
 
     Args:
         data (Sequence[int | str | Structure] | pd.Series): Space group numbers (1 -
-            230), international symbols or pymatgen structures.
+            230), international symbols or structures (matscikit, pymatgen, ASE,
+            phonopy).
         max_spacegroups (int | None): Maximum number of space groups to show for each
             crystal system. If None (default), all space groups are shown. If a
             positive integer, only the top N space groups by count are shown (ties
@@ -59,8 +59,8 @@ def spacegroup_sunburst(
             except (TypeError, ValueError, RuntimeError) as exc:
                 raise TypeError(
                     "Could not determine space group for structure at index "
-                    f"{idx} ({type(struct).__name__}). Pass periodic pymatgen "
-                    "Structure objects or ASE Atoms supported by moyopy."
+                    f"{idx} ({type(struct).__name__}). Pass ordered periodic "
+                    "structures."
                 ) from exc
         values = spg_nums
     if pd.isna(pd.Series(values, dtype=object)).any():

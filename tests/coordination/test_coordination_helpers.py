@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 import numpy as np
 import pytest
@@ -9,38 +9,44 @@ from pymatgen.core import Lattice, Molecule, Structure
 
 from pymatviz.coordination.helpers import (
     coordination_nums_in_structure,
-    normalize_get_neighbors,
+    site_coordination_numbers,
+    site_neighbor_distances,
 )
+from pymatviz.structures import to_structure
 
 
 @pytest.mark.parametrize("cutoff", [2.5, 3.5, 6.0])
 @pytest.mark.parametrize("as_molecule", [False, True])
-def test_normalize_get_neighbors_with_float(cutoff: float, as_molecule: bool) -> None:
-    """A float cutoff gives each site's get_neighbors list in one search."""
+def test_site_neighbor_distances_match_pymatgen(
+    cutoff: float, as_molecule: bool
+) -> None:
+    """Per-site neighbor distances equal pymatgen's get_neighbors, incl. molecules."""
     rng = np.random.default_rng(seed=0)
     struct = Structure(Lattice.cubic(6.0), ["Na", "Cl"] * 10, rng.uniform(size=(20, 3)))
     if as_molecule:
         struct = Molecule.from_sites(struct)  # ty: ignore[invalid-assignment]
-    neighbors = normalize_get_neighbors(strategy=cutoff)(struct)
+    distances = site_neighbor_distances(to_structure(struct), cutoff)
     expected = [struct.get_neighbors(site, r=cutoff) for site in struct]  # ty: ignore[invalid-argument-type]
-    assert [sorted(nn.nn_distance for nn in nns) for nns in neighbors] == [
-        sorted(nn.nn_distance for nn in nns) for nns in expected
-    ]
-    assert sum(map(len, neighbors)) > 0
+    assert len(distances) == len(expected)
+    for dists, nns in zip(distances, expected, strict=True):
+        np.testing.assert_allclose(
+            dists, sorted(nn.nn_distance for nn in nns), rtol=0, atol=1e-12
+        )
+    assert sum(map(len, distances)) > 0
 
 
 @pytest.mark.parametrize(
     "strategy",
     [pytest.param(VoronoiNN(), id="instance"), pytest.param(CrystalNN, id="class")],
 )
-def test_normalize_get_neighbors_with_nn(
+def test_site_coordination_numbers_with_nn(
     strategy: NearNeighbors | type[NearNeighbors],
 ) -> None:
-    """Normalize neighbor-finder instances and classes to neighbor dictionaries."""
+    """NearNeighbors instances and classes give one CN per site."""
     struct = Structure(Lattice.cubic(4.0), ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]])
-    neighbors = normalize_get_neighbors(strategy)(struct)
-    assert len(neighbors) == len(struct)
-    assert all(isinstance(neighbor, dict) for nns in neighbors for neighbor in nns)
+    cns = site_coordination_numbers(to_structure(struct), strategy)
+    assert len(cns) == len(struct)
+    assert all(isinstance(cn, int) for cn in cns)
 
 
 def test_coordination_nums_duplicate_sites() -> None:
@@ -60,10 +66,17 @@ def test_coordination_nums_duplicate_sites() -> None:
     assert cns == {"1": [0], "2": [1], "3": [2]}
 
 
-def test_normalize_get_neighbors_invalid_input() -> None:
-    """Test normalize_get_neighbors with invalid input."""
-    with pytest.raises(TypeError, match="Invalid strategy="):
-        normalize_get_neighbors(strategy="invalid")  # ty: ignore[invalid-argument-type]
+@pytest.mark.parametrize(
+    ("strategy", "group_by", "match"),
+    [("invalid", "element", "Invalid strategy="), (3.0, "specie", "Invalid group_by=")],
+)
+def test_coordination_nums_invalid_input(
+    strategy: Any, group_by: Any, match: str
+) -> None:
+    """Reject unknown strategies and group_by modes."""
+    struct = Structure(Lattice.cubic(4.0), ["Na"], [[0, 0, 0]])
+    with pytest.raises((TypeError, ValueError), match=match):
+        coordination_nums_in_structure(struct, strategy=strategy, group_by=group_by)
 
 
 @pytest.mark.parametrize(
@@ -71,11 +84,10 @@ def test_normalize_get_neighbors_invalid_input() -> None:
     [
         ("element", {"Na": [6, 6], "Cl": [6, 6]}),
         ("site", {"1": [6], "2": [6], "3": [6], "4": [6]}),
-        ("specie", {"Na+": [6, 6], "Cl-": [6, 6]}),
     ],
 )
 def test_coordination_nums_in_structure_group_by(
-    group_by: Literal["element", "site", "specie"], expected: dict[str, list[int]]
+    group_by: Literal["element", "site"], expected: dict[str, list[int]]
 ) -> None:
     """Test different group_by options."""
     lattice = Lattice.cubic(4.0)
