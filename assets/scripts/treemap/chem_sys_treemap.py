@@ -8,8 +8,12 @@ from pymatviz.enums import Key
 
 
 formulas = ["Fe2O3", "Fe4O6", "FeO", "Li2O", "LiFeO2"]
-widget = pmv.chem_sys_treemap(
-    formulas, group_by="formula", label_text="label+value", style="height: 480px"
+widget = pmv.chem_sys_hierarchy(
+    formulas,
+    group_by="formula",
+    label_text="label+value",
+    style="height: 480px",
+    kind="treemap",
 )
 widget.show()
 widget.to_img(
@@ -25,8 +29,11 @@ ward = pd.read_csv(
     na_values=(),
 ).query("comment.isna()")
 for max_systems, name in ((None, "ward-bmg"), (5, "top-5")):
-    widget = pmv.chem_sys_treemap(
-        ward[Key.composition], max_systems=max_systems, style="height: 480px"
+    widget = pmv.chem_sys_hierarchy(
+        ward[Key.composition],
+        max_systems=max_systems,
+        style="height: 480px",
+        kind="treemap",
     )
     widget.show()
     if max_systems is None:  # in readme

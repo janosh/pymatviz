@@ -393,7 +393,7 @@ def test_default_assets_sync_as_urls() -> None:
 
     offline = FileNotFoundError("offline")
     with patch(f"{DOTTED_PATH}.fetch_widget_asset", side_effect=offline) as fetch:
-        widgets = [pmv.chem_sys_treemap(["Fe-O"]) for _ in range(3)]
+        widgets = [pmv.chem_sys_hierarchy(["Fe-O"], kind="treemap") for _ in range(3)]
         state = ipywidgets.Widget.get_manager_state(widgets=widgets)["state"]
     fetch.assert_not_called()
     assert widgets[0].data[0]["children"][0]["label"] == "Fe-O"

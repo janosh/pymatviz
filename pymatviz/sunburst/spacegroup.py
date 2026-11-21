@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 from pymatgen.core import Structure
 
-from pymatviz._hierarchy import _limit_nodes, _validate_overflow
+from pymatviz.hierarchy import _limit_nodes, _validate_overflow
 from pymatviz.structures import get_spacegroup_number, is_structure_like
 from pymatviz.utils import spg_to_crystal_sys
 from pymatviz.widgets.sunburst import SunburstWidget

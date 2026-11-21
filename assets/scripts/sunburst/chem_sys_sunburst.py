@@ -10,7 +10,7 @@ from pymatviz.enums import Key
 # Fe2O3 and Fe4O6 share a reduced formula; FeO belongs to the same chemical system.
 formulas = ["Fe2O3", "Fe4O6", "FeO", "Li2O", "LiFeO2"]
 for group_by in ("formula", "reduced_formula", "chem_sys"):
-    pmv.chem_sys_sunburst(formulas, group_by=group_by).show()
+    pmv.chem_sys_hierarchy(formulas, group_by=group_by).show()
 
 
 # %% Group rare systems into an Other sector within each arity.
@@ -18,7 +18,7 @@ ward = pd.read_csv(
     f"{pmv.utils.ROOT}/examples/ward_metallic_glasses/ward-metallic-glasses.csv.xz",
     na_values=(),
 ).query("comment.isna()")
-widget = pmv.chem_sys_sunburst(
+widget = pmv.chem_sys_hierarchy(
     ward[Key.composition],
     max_systems=5,
     inner_radius=0.18,

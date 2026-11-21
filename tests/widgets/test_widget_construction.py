@@ -5,7 +5,7 @@ from __future__ import annotations
 import importlib.util
 import json
 from contextlib import nullcontext
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 from unittest.mock import Mock, patch
 
 import numpy as np
@@ -1154,15 +1154,17 @@ def test_headless_bar_plot_png(bar_plot_widget: BarPlotWidget) -> None:
 
 @_skip_no_playwright
 @pytest.mark.parametrize("chart", ["treemap", "sunburst"])
-def test_hierarchy_vector_and_html_exports(chart: str, tmp_path: Any) -> None:
+def test_hierarchy_vector_and_html_exports(
+    chart: Literal["treemap", "sunburst"], tmp_path: Any
+) -> None:
     """Chemical-system charts export vector SVG/PDF and interactive standalone HTML."""
     from playwright.sync_api import expect, sync_playwright
 
     import pymatviz as pmv
 
-    plot = pmv.chem_sys_treemap if chart == "treemap" else pmv.chem_sys_sunburst
-    widget = plot(
+    widget = pmv.chem_sys_hierarchy(
         ["Fe2O3", "Li2O", "Si"],
+        kind=chart,
         label_text="label+value",
         show_controls=False,
         style="width: 700px; height: 480px;",

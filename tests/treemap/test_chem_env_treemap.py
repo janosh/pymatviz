@@ -22,7 +22,7 @@ CHEMENV_MODULE = "pymatgen.analysis.chemenv.coordination_environments"
 @pytest.mark.parametrize("chart", ["treemap", "sunburst"])
 @pytest.mark.parametrize("overflow", ["other", "drop"])
 def test_chem_env_hierarchy(
-    chart: str,
+    chart: Literal["treemap", "sunburst"],
     overflow: Literal["other", "drop"],
     structures: tuple[Structure, Structure],
     monkeypatch: pytest.MonkeyPatch,
@@ -42,9 +42,9 @@ def test_chem_env_hierarchy(
     ]
     collect = MagicMock(return_value=rows)
     monkeypatch.setattr(chem_env, "collect_coord_envs_crystal_nn", collect)
-    plot = pmv.chem_env_treemap if chart == "treemap" else pmv.chem_env_sunburst
-    widget = plot(
+    widget = pmv.chem_env_hierarchy(
         structures,
+        kind=chart,
         normalize=True,
         max_coordination_numbers=1,
         max_environments=1,
@@ -104,8 +104,8 @@ def test_chem_env_treemap_chemenv(
             "T:4": 4,
             "O:6": 6,
         }
-        widget = pmv.chem_env_treemap(
-            structures[0], chem_env_settings=settings, normalize=True
+        widget = pmv.chem_env_hierarchy(
+            structures[0], chem_env_settings=settings, normalize=True, kind="treemap"
         )
     finder.return_value.setup_parameters.assert_called_once_with(
         **({} if settings == "chemenv" else settings)
@@ -126,14 +126,18 @@ def test_chem_env_treemap_analysis_errors(
     ) as finder:
         finder.side_effect = ImportError("ChemEnv unavailable")
         with pytest.raises(ImportError, match="ChemEnv unavailable"):
-            pmv.chem_env_treemap(structures, chem_env_settings="chemenv")
+            pmv.chem_env_hierarchy(
+                structures, chem_env_settings="chemenv", kind="treemap"
+            )
         finder.side_effect = None
         finder.return_value.setup_structure.side_effect = RuntimeError("setup failed")
         with pytest.warns(
             UserWarning, match="ChemEnv analysis failed for structure 0.*setup failed"
         ):
             assert (
-                pmv.chem_env_treemap(structures[0], chem_env_settings="chemenv").data
+                pmv.chem_env_hierarchy(
+                    structures[0], chem_env_settings="chemenv", kind="treemap"
+                ).data
                 == []
             )
 
@@ -155,7 +159,7 @@ def test_chem_env_treemap_invalid_options(
     collect = MagicMock()
     monkeypatch.setattr(chem_env, "collect_coord_envs_crystal_nn", collect)
     with pytest.raises(ValueError, match=message):
-        pmv.chem_env_treemap(structures, **options)
+        pmv.chem_env_hierarchy(structures, **options, kind="treemap")
     collect.assert_not_called()
 
 
@@ -166,4 +170,4 @@ def test_chem_env_requires_periodic_structure(
     """Both strategies reject nonperiodic inputs before neighbor analysis."""
     molecule = Molecule(["H", "H"], [[0, 0, 0], [0.7, 0, 0]])
     with pytest.raises(TypeError, match=r"Expected periodic structure.*Molecule"):
-        pmv.chem_env_treemap(molecule, chem_env_settings=method)  # ty: ignore[invalid-argument-type]
+        pmv.chem_env_hierarchy(molecule, chem_env_settings=method, kind="treemap")  # ty: ignore[invalid-argument-type]

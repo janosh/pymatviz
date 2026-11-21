@@ -1,4 +1,6 @@
-"""Hierarchy preparation for sunburst and treemap plots."""
+"""Chemical systems as sunburst or treemap hierarchies, and the node pruning they share
+with chemical environment hierarchies.
+"""
 
 from __future__ import annotations
 
@@ -7,6 +9,8 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from pymatviz.composition import count_formulas
 from pymatviz.enums import Key
+from pymatviz.widgets.sunburst import SunburstWidget
+from pymatviz.widgets.treemap import TreemapWidget
 
 
 if TYPE_CHECKING:
@@ -54,7 +58,7 @@ def _limit_nodes(
     return kept
 
 
-def _chem_sys_hierarchy(
+def _chem_sys_nodes(
     data: Sequence[str | Composition | Structure],
     group_by: FormulaGroupBy,
     max_systems: int | None,
@@ -92,3 +96,39 @@ def _chem_sys_hierarchy(
                     del node["value"]
         roots.append({"id": arity, "label": arity, "children": children})
     return roots
+
+
+def hierarchy_widget(
+    kind: Literal["sunburst", "treemap"], nodes: list[dict[str, Any]], **kwargs: Any
+) -> SunburstWidget | TreemapWidget:
+    """Sunburst or treemap of hierarchy nodes.
+
+    Raises:
+        ValueError: For any other kind.
+    """
+    if kind not in ("sunburst", "treemap"):
+        raise ValueError(f"Invalid {kind=}, must be 'sunburst' or 'treemap'")
+    widget_cls = SunburstWidget if kind == "sunburst" else TreemapWidget
+    return widget_cls(nodes, **kwargs)
+
+
+def chem_sys_hierarchy(
+    data: Sequence[str | Composition | Structure],
+    *,
+    kind: Literal["sunburst", "treemap"] = "sunburst",
+    group_by: FormulaGroupBy = "chem_sys",
+    max_systems: int | None = None,
+    overflow: Literal["other", "drop"] = "other",
+    **kwargs: Any,
+) -> SunburstWidget | TreemapWidget:
+    """Show chemical systems within each arity as an interactive sunburst or treemap.
+
+    Input can contain formulas, chemical systems such as ``"Fe-O"``, compositions,
+    and structures. Set ``group_by="formula"`` or ``"reduced_formula"`` to add formula
+    leaves. A positive ``max_systems`` keeps the most frequent systems per arity
+    (alphabetical ties) and all their formulas. ``overflow="other"`` combines the rest
+    in one leaf per arity; ``"drop"`` excludes their counts. Additional options,
+    such as ``label_text`` and ``max_depth``, go to the widget.
+    """
+    nodes = _chem_sys_nodes(data, group_by, max_systems, overflow)
+    return hierarchy_widget(kind, nodes, **kwargs)

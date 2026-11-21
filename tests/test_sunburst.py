@@ -187,7 +187,7 @@ def test_spacegroup_sunburst_invalid_limit_mode() -> None:
 def test_chem_env_sunburst_rock_salt(rock_salt: Structure, normalize: bool) -> None:
     """CrystalNN classifies all eight rocksalt sites as CN 6 octahedra."""
     empty = Structure(rock_salt.lattice, [], [])
-    widget = pmv.chem_env_sunburst([empty, rock_salt], normalize=normalize)
+    widget = pmv.chem_env_hierarchy([empty, rock_salt], normalize=normalize)
     expected = 1 if normalize else len(rock_salt)
     assert widget.data == [
         dict(

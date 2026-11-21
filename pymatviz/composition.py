@@ -172,7 +172,7 @@ def count_formulas(
 ) -> pd.DataFrame:
     """Process chemical system data into a standardized DataFrame format.
 
-    Used e.g. by chem_sys_sunburst and chem_sys_treemap to preprocess input data.
+    Used e.g. by chem_sys_hierarchy to preprocess input data.
 
     Args:
         data (Sequence[str | Composition | Structure]): Chemical systems. Can be:

@@ -226,7 +226,10 @@ WIDGET_CASES: dict[
     StructureWidget: (lambda _: StructureWidget(structure=NACL), False),
     SunburstWidget: (lambda _: pmv.spacegroup_sunburst([225, 225, 194, 62]), True),
     TrajectoryWidget: (lambda _: TrajectoryWidget(trajectory=[NACL, FE_O]), False),
-    TreemapWidget: (lambda _: pmv.chem_sys_treemap(["Fe2O3", "NaCl", "Fe"]), True),
+    TreemapWidget: (
+        lambda _: pmv.chem_sys_hierarchy(["Fe2O3", "NaCl", "Fe"], kind="treemap"),
+        True,
+    ),
     XrdWidget: (
         lambda _: XrdWidget(patterns=XRDCalculator().get_pattern(NACL)),
         True,

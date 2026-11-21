@@ -236,12 +236,12 @@ See [`pymatviz/coordination/figures.py`](pymatviz/coordination/figures.py).
 
 ## Sunburst
 
-`chem_sys_sunburst` and `chem_env_sunburst` return interactive MatterViz sunburst widgets. Pass the same nested `data` to `pmv.sunburst` or `pmv.treemap` to switch views. Use `widget.to_html("hierarchy.html", inline=True)` for a self-contained interactive file (the default `to_html` loads the MatterViz bundle from the network) or `widget.to_img("hierarchy.svg")` for a vector figure.
+`chem_sys_hierarchy` and `chem_env_hierarchy` draw interactive MatterViz sunbursts by default, or treemaps with `kind="treemap"`. Pass your own nested `data` to `pmv.sunburst` or `pmv.treemap`. Use `widget.to_html("hierarchy.html", inline=True)` for a self-contained interactive file (the default `to_html` loads the MatterViz bundle from the network) or `widget.to_img("hierarchy.svg")` for a vector figure.
 
-| [`spacegroup_sunburst([65, 134, 225, ...])`](pymatviz/sunburst/spacegroup.py) [![fig-icon]](assets/scripts/sunburst/spacegroup_sunburst.py) | [`chem_sys_sunburst(["FeO", "Fe2O3", "LiPO4", ...])`](pymatviz/sunburst/chem_sys.py) [![fig-icon]](assets/scripts/sunburst/chem_sys_sunburst.py) |
+| [`spacegroup_sunburst([65, 134, 225, ...])`](pymatviz/sunburst/spacegroup.py) [![fig-icon]](assets/scripts/sunburst/spacegroup_sunburst.py) | [`chem_sys_hierarchy(["FeO", "Fe2O3", "LiPO4", ...])`](pymatviz/hierarchy.py) [![fig-icon]](assets/scripts/sunburst/chem_sys_sunburst.py) |
 | :-----------------------------------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                                             ![spg-num-sunburst]                                                             |                                                          ![chem-sys-sunburst-ward-bmg]                                                           |
-|                                     [`chem_env_sunburst(single_struct)`](pymatviz/sunburst/chem_env.py)                                     |                                      [`chem_env_sunburst(structures, normalize=True)`](pymatviz/sunburst/chem_env.py)                                      |
+|                                     [`chem_env_hierarchy(single_struct)`](pymatviz/chem_env.py)                                     |                                      [`chem_env_hierarchy(structures, normalize=True)`](pymatviz/chem_env.py)                                      |
 |                                                         ![chem-env-sunburst-basic]                                                          |                                                          ![chem-env-sunburst-normalized]                                                          |
 
 [spg-num-sunburst]: assets/svg/spg-num-sunburst.svg
@@ -253,10 +253,10 @@ See [`pymatviz/coordination/figures.py`](pymatviz/coordination/figures.py).
 
 Chemical-system and coordination-environment treemaps return MatterViz treemap widgets. `max_systems` limits systems per arity. Set `overflow="drop"` to omit the remaining systems or use the default `"other"` to retain their combined count.
 
-| [`chem_sys_treemap(formulas, group_by="formula")`](pymatviz/treemap/chem_sys.py#L19) [![fig-icon]](assets/scripts/treemap/chem_sys_treemap.py) | [`chem_sys_treemap(ward_compositions)`](pymatviz/treemap/chem_sys.py#L19) |
+| [`chem_sys_hierarchy(formulas, group_by="formula", kind="treemap")`](pymatviz/hierarchy.py) [![fig-icon]](assets/scripts/treemap/chem_sys_treemap.py) | [`chem_sys_hierarchy(ward_compositions, kind="treemap")`](pymatviz/hierarchy.py) |
 | :----------------------------------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------: |
 |                                                           ![chem-sys-treemap-formula]                                                            |                                        ![chem-sys-treemap-ward-bmg]                                        |
-|           [`chem_env_treemap(structure, chem_env_settings="chemenv")`](pymatviz/treemap/chem_env.py#L18) [![fig-icon]](assets/scripts/treemap/chem_env_treemap.py)           |     [`chem_env_treemap(structures, max_coordination_numbers=3, max_environments=4)`](pymatviz/treemap/chem_env.py#L18)     |
+|           [`chem_env_hierarchy(structure, chem_env_settings="chemenv", kind="treemap")`](pymatviz/chem_env.py) [![fig-icon]](assets/scripts/treemap/chem_env_treemap.py)           |     [`chem_env_hierarchy(structures, max_coordination_numbers=3, max_environments=4, kind="treemap")`](pymatviz/chem_env.py)     |
 |                                                            ![chem-env-treemap-basic]                                                             |                                     ![chem-env-treemap-large-dataset]                                      |
 |             [`py_pkg_treemap("pymatviz")`](pymatviz/treemap/py_pkg.py#L392) [![fig-icon]](assets/scripts/treemap/py_pkg_treemap.py)              |           [`py_pkg_treemap(["pymatviz", "flame", "pymatgen"])`](pymatviz/treemap/py_pkg.py#L392)           |
 |                                                            ![py-pkg-treemap-pymatviz]                                                            |                                         ![py-pkg-treemap-multiple]                                         |

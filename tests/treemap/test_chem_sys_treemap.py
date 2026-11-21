@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+import functools
 from typing import TYPE_CHECKING, Any, Literal
 
 import pytest
@@ -15,15 +15,15 @@ if TYPE_CHECKING:
     from pymatviz.typing import FormulaGroupBy
 
 
-type ChemicalChart = Callable[
-    ..., pmv.widgets.TreemapWidget | pmv.widgets.SunburstWidget
+type ChemicalChart = functools.partial[
+    pmv.widgets.TreemapWidget | pmv.widgets.SunburstWidget
 ]
 
 
-@pytest.fixture(params=[pmv.chem_sys_treemap, pmv.chem_sys_sunburst])
+@pytest.fixture(params=["treemap", "sunburst"])
 def chart(request: pytest.FixtureRequest) -> ChemicalChart:
-    """Run the same hierarchy contract through both public chart constructors."""
-    return request.param
+    """Run the same hierarchy contract through both chart kinds."""
+    return functools.partial(pmv.chem_sys_hierarchy, kind=request.param)
 
 
 @pytest.mark.parametrize("group_by", ["chem_sys", "formula", "reduced_formula"])
@@ -38,9 +38,7 @@ def test_system_limit(
     widget = chart(
         samples, group_by=group_by, max_systems=1, overflow=overflow, label_text="value"
     )
-    assert widget.widget_type == (
-        "treemap" if chart is pmv.chem_sys_treemap else "sunburst"
-    )
+    assert widget.widget_type == chart.keywords["kind"]
     assert widget.label_text == "value"
     unary, binary = widget.data
     assert [unary["id"], binary["id"]] == ["unary", "binary"]
