@@ -20,12 +20,12 @@ from pymatviz.utils import df_ptable
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from pymatviz.typing import ElemValues, FormulaGroupBy
+    from pymatviz.typing import ElemCountModeLike, ElemValues, FormulaGroupBy
 
 
 def count_elements(
     values: ElemValues,
-    count_mode: ElemCountMode = ElemCountMode.composition,
+    count_mode: ElemCountModeLike = ElemCountMode.composition,
     exclude_elements: str | Sequence[str] = (),
     fill_value: float | None = None,
 ) -> pd.Series:

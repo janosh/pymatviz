@@ -21,13 +21,13 @@ if TYPE_CHECKING:
     import pandas as pd
     from numpy.typing import ArrayLike
 
-    from pymatviz.typing import ElemValues
+    from pymatviz.typing import ElemCountModeLike, ElemValues
 
 
 def elements_hist(
     values: ElemValues,
     *,
-    count_mode: ElemCountMode = ElemCountMode.composition,
+    count_mode: ElemCountModeLike = ElemCountMode.composition,
     log_y: bool = False,
     max_elements: int | None = None,
     show_values: Literal["percent", "count"] | None = "percent",

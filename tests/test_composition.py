@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, get_args
 
 import pandas as pd
 import pytest
@@ -13,6 +13,7 @@ from pymatgen.core import Composition
 import pymatviz as pmv
 from pymatviz.composition import count_elements, count_formulas
 from pymatviz.enums import ElemCountMode
+from pymatviz.typing import ElemCountModeName
 
 
 if TYPE_CHECKING:
@@ -46,6 +47,16 @@ def test_count_elements(
     series = count_elements(inputs, count_mode=count_mode)
     expected = pd.Series(counts, index=pmv.utils.df_ptable.index, name="count")
     pd.testing.assert_series_equal(series, expected, check_dtype=False)
+
+
+def test_count_elements_accepts_count_mode_names() -> None:
+    """Every ElemCountMode value is an ElemCountModeName and counts like its member."""
+    assert set(get_args(ElemCountModeName)) == {str(mode) for mode in ElemCountMode}
+    for name in get_args(ElemCountModeName):
+        pd.testing.assert_series_equal(
+            count_elements(FE_P_O_COMPS, count_mode=name),
+            count_elements(FE_P_O_COMPS, count_mode=ElemCountMode(name)),
+        )
 
 
 @pytest.mark.parametrize(
