@@ -16,7 +16,8 @@ from pymatgen.core import Lattice, Molecule, Structure
 
 import pymatviz as pmv
 from pymatviz.widgets import matterviz
-from pymatviz.widgets._traits import BONDING_STRATEGIES, ELEMENT_COLOR_SCHEMES
+from pymatviz.widgets._schema_traits import StructureTraits
+from pymatviz.widgets._traits import ELEMENT_COLOR_SCHEMES
 from pymatviz.widgets.band_structure import BandStructureWidget
 from pymatviz.widgets.bands_and_dos import BandsAndDosWidget
 from pymatviz.widgets.bar_plot import BarPlotWidget
@@ -661,7 +662,7 @@ _COLOR_SCHEME_CASES = [
     ("", tl.TraitError),
 ]
 _BONDING_STRATEGY_CASES = [
-    *[(name, name) for name in BONDING_STRATEGIES],
+    *[(name, name) for name in StructureTraits.bonding_strategy.values],  # noqa: PD011
     (None, None),
     ("solid_angle", tl.TraitError),  # removed from matterviz
 ]

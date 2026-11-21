@@ -10,6 +10,7 @@ import traitlets as tl
 
 from pymatviz.utils import df_ptable
 from pymatviz.widgets._normalize import normalize_json_kwargs, normalize_plot_json
+from pymatviz.widgets._schema_traits import PeriodicTableTraits
 from pymatviz.widgets._traits import color_bar_trait, color_scale_trait, optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
@@ -229,7 +230,7 @@ def _has_heat_numbers(heatmap_values: Any) -> bool:
     return False
 
 
-class PeriodicTableWidget(MatterVizWidget):
+class PeriodicTableWidget(PeriodicTableTraits, MatterVizWidget):
     """MatterViz widget for interactive periodic table visualizations.
 
     Supports element heatmaps (scalar or 2-4 split values per tile), custom color
@@ -259,22 +260,8 @@ class PeriodicTableWidget(MatterVizWidget):
 
     heatmap_values = tl.Any(allow_none=True).tag(sync=True)
     color_scale = color_scale_trait()
-    color_overrides = optional_trait(tl.Dict)
-    labels = optional_trait(tl.Dict)
     color_bar = color_bar_trait()
     gap = tl.Unicode(default_value="0.3cqw").tag(sync=True)
-    # styling for tiles with no heatmap value, e.g. {"color": "gray", "label": "N/A"}.
-    # color "element-category" uses the element's category color.
-    missing = optional_trait(tl.Dict)
-    # Per-element mini plots, see normalize_tile_plots. Sent as plain JSON lists:
-    # matterviz has no binary envelope decoder for this prop.
-    tile_plots = optional_trait(tl.Dict)
-    # Options shared by all tile plots: bins (histogram bin count, 1-1000), mode
-    # (markers | line | line+markers), color (default series color), color_scale
-    # (colors bars by bin center or markers/lines by color_values, feeds the auto
-    # color bar, exclusive with heatmap_values), log_y (log(1 + count) bar heights),
-    # x_range/y_range ([min, max] shared by all tiles, a None end fits the data).
-    tile_plot_config = optional_trait(tl.Dict)
     # how tiles with 2-4 heat values are split (None: matterviz default per count, see
     # SPLIT_LAYOUTS); a layout not valid for a tile's count falls back to the default
     split_layout = tl.Enum(
@@ -282,9 +269,6 @@ class PeriodicTableWidget(MatterVizWidget):
         default_value=None,
         allow_none=True,
     ).tag(sync=True)
-    # ElementTile props for every tile, e.g. {"float_fmt": ".1%"} (d3-format spec of
-    # value labels), show_symbol, show_number, show_name, symbol_style, text_color
-    tile_props = optional_trait(tl.Dict)
     # Highlighted element symbols. None (default): tile clicks pin their tooltip and
     # inset plot. A list (link_selection sets one): clicks toggle elements in it
     active_elements = optional_trait(tl.List, trait=tl.Unicode())
@@ -358,7 +342,6 @@ class PeriodicTableWidget(MatterVizWidget):
         )
         normalize_json_kwargs(kwargs, ("color_scale", "color_bar"), "PeriodicTable")
         super().__init__(
-            widget_type="periodic_table",
             heatmap_values=heatmap_values,
             **kwargs,
         )

@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING, Any
 import traitlets as tl
 from pymatgen.core import Composition
 
-from pymatviz.widgets._traits import ELEMENT_COLOR_SCHEMES, optional_trait
+from pymatviz.widgets._schema_traits import CompositionTraits
+from pymatviz.widgets._traits import ELEMENT_COLOR_SCHEMES
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
     from pymatgen.util.typing import CompositionLike
 
 
-class CompositionWidget(MatterVizWidget):
+class CompositionWidget(CompositionTraits, MatterVizWidget):
     """MatterViz widget for visualizing compositions in Python notebooks.
 
     Examples:
@@ -36,8 +37,6 @@ class CompositionWidget(MatterVizWidget):
         ... )
     """
 
-    composition = optional_trait(tl.Dict)
-
     # Visualization options
     mode = tl.CaselessStrEnum(["pie", "bar", "bubble"], default_value="pie").tag(
         sync=True
@@ -46,9 +45,6 @@ class CompositionWidget(MatterVizWidget):
     color_scheme = tl.CaselessStrEnum(ELEMENT_COLOR_SCHEMES, default_value="Jmol").tag(
         sync=True
     )
-    # Hatch/texture fill per element, {symbol: FillPattern}: a matterviz pattern
-    # shape name (e.g. "diagonal") or an options dict
-    patterns = optional_trait(tl.Dict)
 
     # kwargs for the pymatgen Composition constructor. Python-side only (not
     # synced): the frontend has no such prop, it only affects parsing here.
@@ -70,4 +66,4 @@ class CompositionWidget(MatterVizWidget):
             # use get (not pop) so pymatgen_kwargs still reaches the traitlet
             comp_kwargs |= kwargs.get("pymatgen_kwargs") or {}
             comp_dict = Composition(composition, **comp_kwargs).as_dict()
-        super().__init__(widget_type="composition", composition=comp_dict, **kwargs)
+        super().__init__(composition=comp_dict, **kwargs)

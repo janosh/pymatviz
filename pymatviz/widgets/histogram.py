@@ -7,11 +7,12 @@ from typing import Any
 import traitlets as tl
 
 from pymatviz.widgets._normalize import normalize_json_kwargs, normalize_plot_series
-from pymatviz.widgets._traits import CartesianPlotTraits, optional_trait
+from pymatviz.widgets._schema_traits import HistogramTraits
+from pymatviz.widgets._traits import CartesianPlotTraits
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
-class HistogramWidget(CartesianPlotTraits, MatterVizWidget):
+class HistogramWidget(CartesianPlotTraits, HistogramTraits, MatterVizWidget):
     """MatterViz widget wrapper for histogram visualizations. Each series holds the
     raw samples to bin in ``values``; binning happens in the frontend.
 
@@ -26,7 +27,6 @@ class HistogramWidget(CartesianPlotTraits, MatterVizWidget):
     # Two-way synced index of the active series in single-mode controls
     selected_series_idx = tl.Int(default_value=0).tag(sync=True)
     show_legend = tl.Bool(default_value=True).tag(sync=True)
-    bar = optional_trait(tl.Dict)  # bar-style config
 
     @tl.validate("series")
     def _validate_series(self, proposal: dict[str, Any]) -> list[dict[str, Any]] | None:
@@ -54,4 +54,4 @@ class HistogramWidget(CartesianPlotTraits, MatterVizWidget):
                 ``CartesianPlotTraits``), ``bar``.
         """
         normalize_json_kwargs(kwargs, (*self._JSON_KWARGS, "bar"), "Histogram")
-        super().__init__(widget_type="histogram", series=series, **kwargs)
+        super().__init__(series=series, **kwargs)

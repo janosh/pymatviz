@@ -7,11 +7,8 @@ from typing import TYPE_CHECKING, Any
 import traitlets as tl
 
 from pymatviz.widgets._normalize import normalize_json_kwargs, structure_to_dict
-from pymatviz.widgets._traits import (
-    BONDING_STRATEGIES,
-    PlotControlsTraits,
-    optional_trait,
-)
+from pymatviz.widgets._schema_traits import CoordinationBarPlotTraits
+from pymatviz.widgets._traits import PlotControlsTraits
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -19,7 +16,9 @@ if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
 
-class CoordinationBarPlotWidget(PlotControlsTraits, MatterVizWidget):
+class CoordinationBarPlotWidget(
+    PlotControlsTraits, CoordinationBarPlotTraits, MatterVizWidget
+):
     """Histogram of site coordination numbers, bonded in the frontend.
 
     MatterViz bonds each structure across its periodic boundaries with a bonding
@@ -36,21 +35,10 @@ class CoordinationBarPlotWidget(PlotControlsTraits, MatterVizWidget):
 
     # a structure dict or {label: structure dict}
     structures = tl.Any(allow_none=True).tag(sync=True)
-    strategy = optional_trait(tl.CaselessStrEnum, values=BONDING_STRATEGIES)
-    split_mode = optional_trait(
-        tl.CaselessStrEnum, values=["by_element", "by_structure", "none"]
-    )
     # two-way: bar arrangement, also switchable from the controls pane
     mode = tl.CaselessStrEnum(
         values=["overlay", "stacked", "grouped"], default_value="grouped"
     ).tag(sync=True)
-    orientation = optional_trait(tl.CaselessStrEnum, values=["vertical", "horizontal"])
-    show_legend = optional_trait(tl.Bool)
-    display = optional_trait(tl.Dict)
-    legend = optional_trait(tl.Dict)
-    padding = optional_trait(tl.Dict)
-    x_axis = optional_trait(tl.Dict)
-    y_axis = optional_trait(tl.Dict)
 
     @tl.validate("structures")
     def _validate_structures(self, proposal: dict[str, Any]) -> dict[str, Any] | None:
@@ -93,7 +81,6 @@ class CoordinationBarPlotWidget(PlotControlsTraits, MatterVizWidget):
         json_keys = ("display", "legend", "padding", "x_axis", "y_axis")
         normalize_json_kwargs(kwargs, json_keys, "CoordinationBarPlot")
         super().__init__(
-            widget_type="coordination_bar_plot",
             structures=structures,
             **kwargs,
         )

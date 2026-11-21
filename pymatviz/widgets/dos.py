@@ -7,16 +7,12 @@ from typing import Any
 import traitlets as tl
 
 from pymatviz.widgets._normalize import _to_dict, check_stack_grids
-from pymatviz.widgets._traits import (
-    DOS_NORMALIZATIONS,
-    DOS_SPIN_MODES,
-    PlotControlsTraits,
-    optional_trait,
-)
+from pymatviz.widgets._schema_traits import DosTraits
+from pymatviz.widgets._traits import PlotControlsTraits, optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
-class DosWidget(PlotControlsTraits, MatterVizWidget):
+class DosWidget(PlotControlsTraits, DosTraits, MatterVizWidget):
     """MatterViz widget for visualizing electronic and phonon density of states.
 
     Accepts pymatgen Dos, CompleteDos, or PhononDos objects, or a pre-computed dict.
@@ -37,19 +33,10 @@ class DosWidget(PlotControlsTraits, MatterVizWidget):
         ... )
     """
 
-    # one DOS, or {label: dos} to overlay several
-    doses = optional_trait(tl.Dict)
-
-    # Display options
-    stack = optional_trait(tl.Bool)
     # Gaussian smearing width in the data unit: THz for phonon DOS (pymatgen PhononDos
     # frequencies), eV for electronic DOS. matterviz reads sigma in the data unit
     # whatever frequency unit the plot displays.
     sigma = optional_trait(tl.Float, min=0.0)
-    normalize = optional_trait(tl.CaselessStrEnum, values=DOS_NORMALIZATIONS)
-    orientation = optional_trait(tl.CaselessStrEnum, values=["vertical", "horizontal"])
-    show_legend = optional_trait(tl.Bool)
-    spin_mode = optional_trait(tl.CaselessStrEnum, values=DOS_SPIN_MODES)
 
     def __init__(self, doses: Any | None = None, **kwargs: Any) -> None:
         """Initialize the DosWidget.
@@ -65,4 +52,4 @@ class DosWidget(PlotControlsTraits, MatterVizWidget):
         doses = _to_dict(doses, "DOS")
         if kwargs.get("stack"):
             check_stack_grids(doses)
-        super().__init__(widget_type="dos", doses=doses, **kwargs)
+        super().__init__(doses=doses, **kwargs)

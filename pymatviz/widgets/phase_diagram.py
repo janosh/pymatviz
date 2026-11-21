@@ -4,13 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
-import traitlets as tl
-
-from pymatviz.widgets._traits import optional_trait
+from pymatviz.widgets._schema_traits import PhaseDiagramTraits
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
-class PhaseDiagramWidget(MatterVizWidget):
+class PhaseDiagramWidget(PhaseDiagramTraits, MatterVizWidget):
     """MatterViz widget for visualizing isobaric binary phase diagrams.
 
     Renders temperature-composition phase diagrams with regions, boundaries,
@@ -33,8 +31,6 @@ class PhaseDiagramWidget(MatterVizWidget):
         >>> widget
     """
 
-    data = optional_trait(tl.Dict)
-
     def __init__(self, data: dict[str, Any] | None = None, **kwargs: Any) -> None:
         """Initialize the PhaseDiagramWidget.
 
@@ -43,4 +39,4 @@ class PhaseDiagramWidget(MatterVizWidget):
                 regions, and boundaries.
             **kwargs: Additional widget properties.
         """
-        super().__init__(widget_type="phase_diagram", data=data, **kwargs)
+        super().__init__(data=data, **kwargs)

@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING, Any
 import traitlets as tl
 
 from pymatviz.widgets._normalize import normalize_json_kwargs, normalize_plot_json
-from pymatviz.widgets._traits import color_bar_trait, color_scale_trait, optional_trait
+from pymatviz.widgets._schema_traits import HeatmapMatrixTraits
+from pymatviz.widgets._traits import color_bar_trait, color_scale_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -45,7 +46,7 @@ def _normalize_axis_items(
     return result
 
 
-class HeatmapMatrixWidget(MatterVizWidget):
+class HeatmapMatrixWidget(HeatmapMatrixTraits, MatterVizWidget):
     """MatterViz widget for 2D heatmap/matrix visualizations.
 
     Supports element-vs-element matrices, confusion matrices, and general
@@ -65,10 +66,6 @@ class HeatmapMatrixWidget(MatterVizWidget):
     values = tl.Any(allow_none=True).tag(sync=True)
     color_scale = color_scale_trait()
     color_bar = color_bar_trait()
-    # styling for cells with no value, e.g. {"color": "gray", "label": "N/A"}
-    missing = optional_trait(tl.Dict)
-    x_axis = optional_trait(tl.Dict)
-    y_axis = optional_trait(tl.Dict)
     tile_size = tl.Unicode(default_value="50px").tag(sync=True)
     gap = tl.Unicode(default_value="0px").tag(sync=True)
     show_values = tl.Any(default_value=True).tag(sync=True)
@@ -96,7 +93,6 @@ class HeatmapMatrixWidget(MatterVizWidget):
         normalize_json_kwargs(kwargs, ("color_scale", "color_bar"), "HeatmapMatrix")
 
         super().__init__(
-            widget_type="heatmap_matrix",
             x_items=_normalize_axis_items(x_axis_items),
             y_items=_normalize_axis_items(y_axis_items),
             values=normalize_plot_json(values, "HeatmapMatrix.values"),

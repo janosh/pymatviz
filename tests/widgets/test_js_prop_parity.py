@@ -191,8 +191,10 @@ def test_python_traits_match_js_contract(js_contract: dict[str, list[str]]) -> N
                 f"{cls.__name__}: JS reads keys Python can't set: {sorted(missing)}"
             )
     assert not drift, (
-        "Python<->JS widget trait contract drift (fix in matterviz/extensions/"
-        "anywidget/anywidget.ts or the pymatviz widget class):\n" + "\n".join(drift)
+        "Python<->JS widget trait contract drift (regenerate pymatviz/widgets/"
+        "_schema_traits.py with `uv run tests/widgets/test_js_prop_parity.py`, or fix "
+        "matterviz/extensions/anywidget/anywidget.ts or the widget class):\n"
+        + "\n".join(drift)
     )
 
 
@@ -239,3 +241,59 @@ def test_schema_mismatches(
     tl.Any and string enums that differ from (or are looser than) the JS union.
     """
     assert len(_schema_mismatches("key", trait, schema)) == n_problems
+
+
+_KIND_TRAITS = {"boolean": "tl.Bool", "number": "tl.Float", "string": "tl.Unicode"}
+_KIND_TRAITS |= {"object": "tl.Dict", "array": "tl.List"}
+
+
+def _trait_source(spec: dict[str, list[str]]) -> str:
+    """Source of a None-default synced trait taking a model key's JSON kinds."""
+    members = [
+        f"tl.CaselessStrEnum({spec['enum']})"
+        if kind == "string" and "enum" in spec
+        else f"{trait}()"
+        for kind, trait in _KIND_TRAITS.items()
+        if kind in spec["type"]
+    ]
+    if len(members) > 1:
+        return f"optional_trait(tl.Union, trait_types=[{', '.join(members)}])"
+    if members[0].startswith("tl.CaselessStrEnum"):
+        return f"optional_trait(tl.CaselessStrEnum, values={spec['enum']})"
+    return f"optional_trait({members[0].removesuffix('()')})"
+
+
+def schema_traits_source(schema: dict[str, dict[str, dict[str, list[str]]]]) -> str:
+    """Source of pymatviz/widgets/_schema_traits.py: a traits mixin per widget type
+    with a trait per model key, except MatterVizWidget's own (style, show_controls).
+    """
+    base_keys = set(MatterVizWidget.public_trait_names())
+    lines = [
+        '"""Synced traits of each MatterViz widget\'s model keys, generated from the',
+        "bundle's widget-model-schema.json by",
+        "`uv run tests/widgets/test_js_prop_parity.py`. Don't edit (excluded from",
+        "ruff): widget classes override traits that need defaults or validation.",
+        '"""',
+        "",
+        "import traitlets as tl",
+        "",
+        "from pymatviz.widgets._traits import optional_trait",
+    ]
+    for widget_type, keys in schema.items():
+        cls_name = "".join(map(str.capitalize, widget_type.split("_"))) + "Traits"
+        lines += ["", "", f"class {cls_name}(tl.HasTraits):"]
+        lines += [f'    """{widget_type} widget model keys."""', ""]
+        lines += [f'    widget_type = tl.Unicode("{widget_type}").tag(sync=True)']
+        lines += [
+            f"    {key} = {_trait_source(spec)}"
+            for key, spec in keys.items()
+            if key not in base_keys
+        ]
+    return "\n".join(lines) + "\n"
+
+
+if __name__ == "__main__":
+    out_path = f"{os.path.dirname(pymatviz.widgets.__file__)}/_schema_traits.py"
+    with open(out_path, "w", encoding="utf-8") as file:
+        file.write(schema_traits_source(_load_bundle_json(SCHEMA_FILE)))
+    print(f"wrote {out_path}")  # noqa: T201

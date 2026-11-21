@@ -15,11 +15,8 @@ from pymatviz.widgets._binary import (
     is_binary_envelope,
     trajectory_to_envelope,
 )
-from pymatviz.widgets._traits import (
-    TRAJECTORY_PANES,
-    StructureVizTraits,
-    optional_trait,
-)
+from pymatviz.widgets._schema_traits import TrajectoryTraits
+from pymatviz.widgets._traits import StructureVizTraits
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -38,7 +35,7 @@ def _unwrap_monty_arrays(value: Any, *, nested: bool = False) -> Any:
     return value
 
 
-class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
+class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
     """MatterViz widget for visualizing molecular dynamics and geometry optimization
     trajectories in Python notebooks.
 
@@ -102,23 +99,13 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
     plot_type = tl.CaselessStrEnum(
         ["time-series", "distribution"], default_value="time-series"
     ).tag(sync=True)
-    # Property shown in the distribution plot (None = highest-priority property)
-    distribution_property = optional_trait(tl.Unicode)
-    # Open floating pane (e.g. "hotspots", "flight"), None = closed. Two-way synced.
-    active_pane = optional_trait(tl.CaselessStrEnum, values=TRAJECTORY_PANES)
     # Data inspector sidebar (frame attributes, per-frame and per-atom tables). Two-way
     # synced, so closing it in the viewer reads back as False.
     data_inspector_open = tl.Bool(default_value=True).tag(sync=True)
-    auto_play = optional_trait(tl.Bool)
-    # {atom type: element} for LAMMPS dumps loaded from data_url, e.g. {1: "Si", 2: "O"}
-    atom_type_mapping = optional_trait(tl.Dict)
-
-    show_image_atoms = optional_trait(tl.Bool)
 
     step_labels = tl.Union(
         [tl.Int(), tl.List()], allow_none=True, default_value=None
     ).tag(sync=True)
-    property_labels = optional_trait(tl.Dict)
 
     def __init__(self, trajectory: Any = None, **kwargs: Any) -> None:
         """Initialize the TrajectoryWidget.
@@ -142,7 +129,7 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
                 Serialized trajectory dicts stay JSON.
             **kwargs: Additional widget properties
         """
-        super().__init__(widget_type="trajectory", trajectory=trajectory, **kwargs)
+        super().__init__(trajectory=trajectory, **kwargs)
 
     @tl.validate("trajectory")
     def _validate_trajectory(self, proposal: dict[str, Any]) -> dict[str, Any] | None:

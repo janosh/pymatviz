@@ -10,11 +10,12 @@ from pymatviz.widgets._normalize import (
     _normalize_entry_compositions,
     normalize_plot_json,
 )
+from pymatviz.widgets._schema_traits import ChemPotDiagramTraits
 from pymatviz.widgets._traits import optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
-class ChemPotDiagramWidget(MatterVizWidget):
+class ChemPotDiagramWidget(ChemPotDiagramTraits, MatterVizWidget):
     """MatterViz widget for chemical potential diagrams.
 
     Visualizes thermodynamic stability regions in chemical potential space
@@ -29,9 +30,6 @@ class ChemPotDiagramWidget(MatterVizWidget):
         ... )
     """
 
-    entries = optional_trait(tl.List)
-    config = optional_trait(tl.Dict)
-    temperature = optional_trait(tl.Float)
     width = optional_trait(tl.Int, min=1)
     height = optional_trait(tl.Int, min=1)
 
@@ -52,7 +50,6 @@ class ChemPotDiagramWidget(MatterVizWidget):
         """
         normalized = _normalize_entry_compositions(entries or [])
         super().__init__(
-            widget_type="chem_pot_diagram",
             entries=normalize_plot_json(normalized, "ChemPotDiagram.entries"),
             **kwargs,
         )

@@ -9,17 +9,11 @@ import traitlets as tl
 from pymatviz.widgets._normalize import normalize_plot_json
 
 
-# Mirror matterviz's ELEMENT_COLOR_SCHEME_NAMES (src/lib/constants.ts) and
-# BONDING_STRATEGIES (src/lib/structure/bonding.ts). The renderer throws on any other
-# name, so traits validate against these (case-insensitively, stored canonical).
+# Enums of traits with non-None defaults (schema-generated traits read theirs from
+# widget-model-schema.json): matterviz's ELEMENT_COLOR_SCHEME_NAMES
+# (src/lib/constants.ts) and CameraProjection (src/lib/settings.ts)
 ELEMENT_COLOR_SCHEMES = ("Vesta", "Jmol", "Alloy", "Pastel", "Muted", "Dark Mode")
-BONDING_STRATEGIES = ("electroneg_ratio", "explicit_only", "pair_cutoffs")
-# Mirror matterviz's SHOW_BONDS_OPTIONS and CameraProjection (src/lib/settings.ts),
-# the Dos NormalizationMode and SpinMode (src/lib/spectral/types.ts)
-SHOW_BONDS_MODES = ("always", "crystals", "molecules", "never")
 CAMERA_PROJECTIONS = ("perspective", "orthographic")
-DOS_NORMALIZATIONS = ("max", "sum", "integral")
-DOS_SPIN_MODES = ("mirror", "overlay", "up_only", "down_only")
 # Mirror matterviz's D3InterpolateName (src/lib/colors/scale-names.ts): the
 # d3-scale-chromatic interpolators, e.g. "interpolateViridis" (not plain "viridis")
 _D3_NAMES = (
@@ -33,13 +27,6 @@ D3_INTERPOLATORS = tuple(f"interpolate{name}" for name in _D3_NAMES)
 # Mirror matterviz's ExportFormat (src/lib/io/export.ts)
 EXPORT_FORMATS = ("png", "svg", "csv", "json", "md", "tex")
 CONTROLS_MODES = ("always", "hover", "never")  # svelte-widgets ControlsConfig.mode
-# Mirror matterviz's StructurePane (src/lib/structure/index.ts) and TrajectoryPane
-# (src/lib/trajectory/Trajectory.svelte): the floating panes active_pane can open
-STRUCTURE_PANES = ("controls", "info", "export", "flight")
-TRAJECTORY_PANES = (
-    "controls", "info", "msd", "vacf", "rdf", "spectroscopy", "hotspots",
-    "structure-id", "export", "flight",
-)  # fmt: skip
 
 
 def optional_trait(trait_cls: Any, **kwargs: Any) -> Any:
@@ -76,57 +63,22 @@ def color_bar_trait() -> Any:
 class StructureVizTraits(tl.HasTraits):
     """Display options shared by structure-rendering widgets (synced to JS)."""
 
-    # None (not "") so the frontend does not try to fetch an empty URL
-    data_url = optional_trait(tl.Unicode)
-
-    # Atom visualization
-    atom_radius = optional_trait(tl.Float)
     show_atoms = tl.Bool(default_value=True).tag(sync=True)
-    # None defers to the frontend default ("always")
-    show_bonds = optional_trait(tl.CaselessStrEnum, values=SHOW_BONDS_MODES)
-    show_site_labels = optional_trait(tl.Bool)
-    show_site_indices = optional_trait(tl.Bool)
-    same_size_atoms = optional_trait(tl.Bool)
-
-    # Per-property vectors: {property_name: {visible?, color?, scale?}}.
-    # The frontend populates omitted configs from site properties.
-    vector_configs = optional_trait(tl.Dict)
-    vector_scale = optional_trait(tl.Float)
-    vector_color = optional_trait(tl.Unicode)
-    vector_normalize = optional_trait(tl.Bool)
-    vector_uniform_thickness = optional_trait(tl.Bool)
-    vector_origin_gap = optional_trait(tl.Float)
-
-    # Bonds
-    bond_thickness = optional_trait(tl.Float)
-    bond_color = optional_trait(tl.Unicode)
-    # None defers to the frontend default (electroneg_ratio)
-    bonding_strategy = optional_trait(tl.CaselessStrEnum, values=BONDING_STRATEGIES)
 
     # Cell
     cell_edge_opacity = tl.Float(0.1).tag(sync=True)
     cell_surface_opacity = tl.Float(0.05).tag(sync=True)
-    cell_edge_color = optional_trait(tl.Unicode)
-    cell_surface_color = optional_trait(tl.Unicode)
     cell_edge_width = tl.Float(1.5).tag(sync=True)
-    show_cell_vectors = optional_trait(tl.Bool)
 
     # Appearance
     color_scheme = tl.CaselessStrEnum(
         values=ELEMENT_COLOR_SCHEMES, default_value="Vesta"
     ).tag(sync=True)
-    background_color = optional_trait(tl.Unicode)
-    background_opacity = optional_trait(tl.Float)
-    # matterviz CutawaySettings {mode: "off" | "plane" | "slab", axis: 0 | 1 | 2,
-    # position, thickness, whole_atoms?} slicing the structure in fractional coords
-    cutaway = optional_trait(tl.Dict)
 
     # UI controls. gizmo: bool or a matterviz GizmoOptions dict
     gizmo = tl.Union([tl.Bool(), tl.Dict()], allow_none=True, default_value=None).tag(
         sync=True
     )
-    auto_rotate = optional_trait(tl.Float)
-    fullscreen_toggle = optional_trait(tl.Bool)
 
 
 class PlotControlsTraits(tl.HasTraits):
@@ -135,53 +87,16 @@ class PlotControlsTraits(tl.HasTraits):
     """
 
     controls_open = tl.Bool(default_value=False).tag(sync=True)
-    controls_toggle_props = optional_trait(tl.Dict)
-    controls_pane_props = optional_trait(tl.Dict)
 
 
 class HierarchyPlotTraits(PlotControlsTraits):
     """Native data, coloring, label and zoom traits for hierarchy charts."""
 
-    _chart_type: str
     data = tl.Any(allow_none=True).tag(sync=True)
-    value_mode = optional_trait(
-        tl.CaselessStrEnum, values=["leaf-sum", "total", "remainder"]
-    )
-    sort = optional_trait(
-        tl.CaselessStrEnum, values=["descending", "ascending", "none"]
-    )
-    # fraction by which each depth level lightens its inherited color
-    level_lighten = optional_trait(tl.Float)
-    # group siblings below this fraction of the total into one "Other" cell (0 = off)
-    min_fraction = optional_trait(tl.Float)
     # keep the N largest children per parent, bucketing the rest into "Other" (0 = all)
     max_children = optional_trait(tl.Int, min=0)
-    other_label = optional_trait(tl.Unicode)  # label for the aggregated "Other" cell
-    max_depth = optional_trait(tl.Int)  # levels shown below the zoom root (0 = all)
-    show_labels = optional_trait(tl.Bool)
-    # what each segment's label shows
-    label_text = optional_trait(
-        tl.CaselessStrEnum,
-        values=[
-            "label",
-            "value",
-            "percent",
-            "label+value",
-            "label+percent",
-            "label+parent-percent",
-        ],
-    )
-    zoom_on_click = optional_trait(tl.Bool)
-    show_breadcrumbs = optional_trait(tl.Bool)  # clickable ancestor pathbar when zoomed
-    legend = optional_trait(tl.Dict)
-    show_legend = optional_trait(tl.Bool)  # depth-1 category legend
-    value_format = optional_trait(tl.Unicode)  # d3-format string for labels/tooltips
-    # chart-edge padding {"t": N, "b": N, "l": N, "r": N} in pixels
-    padding = optional_trait(tl.Dict)
     # formats offered in the export pane ([] hides it; None = all) + their base filename
     export_formats = optional_trait(tl.List, trait=tl.Enum(EXPORT_FORMATS))
-    export_filename = optional_trait(tl.Unicode)
-    fullscreen_toggle = optional_trait(tl.Bool)
     # two-way synced zoom state: id of the cell the view is rooted on
     zoom_root_id = optional_trait(tl.Any)
 
@@ -189,7 +104,7 @@ class HierarchyPlotTraits(PlotControlsTraits):
         self, data: dict[str, Any] | list[dict[str, Any]] | None = None, **kwargs: Any
     ) -> None:
         """Display labeled nodes with leaf values and optional children."""
-        super().__init__(widget_type=self._chart_type, data=data, **kwargs)
+        super().__init__(data=data, **kwargs)
 
     @tl.validate("data", "legend", "padding")
     def _normalize_hierarchy_json(self, proposal: dict[str, Any]) -> Any:
@@ -205,7 +120,7 @@ class HierarchyPlotTraits(PlotControlsTraits):
         ):
             value = [value]
         return normalize_plot_json(
-            value, f"{self._chart_type}.{proposal['trait'].name}"
+            value, f"{type(self).__name__}.{proposal['trait'].name}"
         )
 
 
@@ -220,21 +135,3 @@ class CartesianPlotTraits(PlotControlsTraits):
         "x_axis", "x2_axis", "y_axis", "y2_axis", "display", "legend", "ref_lines",
         "padding", "x_range", "x2_range", "y_range", "y2_range",
     )  # fmt: skip
-
-    series = optional_trait(tl.List)
-    x_axis = optional_trait(tl.Dict)
-    x2_axis = optional_trait(tl.Dict)
-    y_axis = optional_trait(tl.Dict)
-    y2_axis = optional_trait(tl.Dict)
-    display = optional_trait(tl.Dict)  # grid/zero-line options
-    legend = optional_trait(tl.Dict)
-    ref_lines = optional_trait(tl.List)
-    # plot-area padding {"t": N, "b": N, "l": N, "r": N} in pixels
-    padding = optional_trait(tl.Dict)
-    # fraction of the data range added as padding (frontend default 0.05)
-    range_padding = optional_trait(tl.Float)
-    show_legend = optional_trait(tl.Bool)
-    x_range = optional_trait(tl.List)
-    x2_range = optional_trait(tl.List)
-    y_range = optional_trait(tl.List)
-    y2_range = optional_trait(tl.List)

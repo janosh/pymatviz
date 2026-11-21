@@ -68,6 +68,7 @@ addopts = "-p no:warnings"
 
 [tool.ruff]
 output-format = "concise"
+extend-exclude = ["pymatviz/widgets/_schema_traits.py"]  # generated
 
 [tool.ruff.lint]
 select = ["ALL"]

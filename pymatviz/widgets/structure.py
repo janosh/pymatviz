@@ -11,7 +11,8 @@ import traitlets as tl
 
 from pymatviz.widgets._binary import is_binary_envelope, volume_envelope
 from pymatviz.widgets._normalize import normalize_plot_json, structure_to_dict
-from pymatviz.widgets._traits import STRUCTURE_PANES, StructureVizTraits, optional_trait
+from pymatviz.widgets._schema_traits import StructureTraits
+from pymatviz.widgets._traits import StructureVizTraits
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -122,7 +123,7 @@ def check_layer_volume_ids(
                 )
 
 
-class StructureWidget(StructureVizTraits, MatterVizWidget):
+class StructureWidget(StructureVizTraits, StructureTraits, MatterVizWidget):
     """MatterViz widget for visualizing structures in Python notebooks.
 
     Structure data can be provided as:
@@ -181,9 +182,6 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
 
     # display options shared with TrajectoryWidget live in StructureVizTraits
 
-    structure = optional_trait(tl.Dict)
-    structure_string = optional_trait(tl.Unicode)
-
     show_image_atoms = tl.Bool(default_value=True).tag(sync=True)
     # Cell shown: the input cell or MatterViz's (moyo) conventional/primitive standard
     # cell, which carries site properties over with vectors rotated into its frame
@@ -199,10 +197,6 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
     # isovalue, color, opacity, visible, show_negative, negative_color}], wireframe,
     # halo, display_range?}
     volumetric_data = tl.Any().tag(sync=True)
-    isosurface_settings = optional_trait(tl.Dict)
-    # Two-way synced isosurface view state (active volume id, structure/slice view,
-    # plane). None selects the first volume.
-    active_volume_id = optional_trait(tl.Unicode)
     # "structure", "slice" (2D volume slice) or "split" (both side by side)
     display_mode = tl.CaselessStrEnum(
         ["structure", "slice", "split"], default_value="structure"
@@ -211,10 +205,6 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
 
     # UI controls
     enable_info_pane = tl.Bool(default_value=True).tag(sync=True)
-    # Open floating pane (e.g. "flight" for the camera-flight planner), None = closed.
-    # Two-way synced.
-    active_pane = optional_trait(tl.CaselessStrEnum, values=STRUCTURE_PANES)
-    png_dpi = optional_trait(tl.Int)
 
     # Interaction state (two-way synced with the frontend for ipywidgets linking).
     # selected_sites (clicked atoms) and hovered_site_idx (hovered atom) are
@@ -223,7 +213,6 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
     # input (e.g. from a linked plot).
     selected_sites = tl.List(tl.Int(), default_value=[]).tag(sync=True)
     highlighted_sites = tl.List(tl.Int(), default_value=[]).tag(sync=True)
-    hovered_site_idx = optional_trait(tl.Int)
 
     @tl.default("volumetric_data")
     def _default_volumetric_data(self) -> list[dict[str, Any]]:
@@ -297,6 +286,4 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
             **kwargs: Additional widget properties (e.g.
                 ``structure_string``, ``atom_radius``, ``show_bonds``).
         """
-        super().__init__(
-            widget_type="structure", structure=structure_to_dict(structure), **kwargs
-        )
+        super().__init__(structure=structure_to_dict(structure), **kwargs)
