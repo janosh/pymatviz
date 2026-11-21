@@ -13,8 +13,6 @@ from pymatviz.utils import ROOT
 
 
 if TYPE_CHECKING:
-    from numpy.typing import ArrayLike
-
     from pymatviz.typing import CrystalSystem
 
 _elements_csv = f"{ROOT}/pymatviz/elements.csv"
@@ -168,61 +166,33 @@ def si_fmt(
 si_fmt_int = partial(si_fmt, fmt=".0f")
 
 
-def df_to_arrays(
-    df: pd.DataFrame | None,
-    *args: str | ArrayLike,
-    strict: bool = True,
-) -> list[Any]:
-    """If df is None, this is a no-op: args are returned as-is. If df is a
-    dataframe, all following args are used as column names and the column data
-    returned as arrays (after dropping rows with NaNs in any column).
-
-    Args:
-        df (pd.DataFrame | None): Optional pandas DataFrame.
-        *args (list[ArrayLike | str]): Arbitrary number of arrays or column names in df.
-        strict (bool, optional): If True, raise TypeError if df is not pd.DataFrame
-            or None. If False, return args as-is. Defaults to True.
+def df_to_arrays(df: pd.DataFrame | None, *args: Any) -> list[Any]:
+    """Columns of df (rows with NaN in any of them dropped) if df is given, else args
+    as arrays. A list of column names becomes a ``{col: array}`` dict.
 
     Raises:
-        ValueError: If df is not None and any of the args is not a df column name.
-        TypeError: If df is not pd.DataFrame and not None.
-
-    Returns:
-        list[Any]: Array data for each column name, dictionary of column names and
-            array data, or original string args when strict=False and df is not a
-            DataFrame.
+        TypeError: If df is neither a DataFrame nor None.
+        ValueError: If df is None but args holds column names, or df is given and args
+            holds arrays.
     """
     if df is None:
         if cols := [arg for arg in args if isinstance(arg, str)]:
             raise ValueError(f"got column names but no df to get data from: {cols}")
-        # Convert args to numpy arrays if they are not already
         return list(map(np.asarray, args))
-
     if not isinstance(df, pd.DataFrame):
-        if not strict:
-            return list(args)
         raise TypeError(f"df should be pandas DataFrame or None, got {type(df)}")
-
     if arrays := [arg for arg in args if isinstance(arg, np.ndarray)]:
-        raise ValueError(
-            "don't pass dataframe and arrays to df_to_arrays(), should be either or, "
-            f"got {arrays}"
-        )
-
-    flat_args = []
-    for col_name in args:
-        if isinstance(col_name, str | int):
-            flat_args.append(col_name)
-        else:
-            flat_args.extend(col_name)  # ty: ignore[invalid-argument-type]
-
-    df_no_nan = df.dropna(subset=flat_args)
-    out_args: list[Any] = []
-    for col_name in args:
-        if isinstance(col_name, str | int):
-            out_args.append(df_no_nan[col_name].to_numpy())
-        else:
-            col_data = df_no_nan[[*col_name]].to_numpy().T  # ty: ignore[not-iterable]
-            out_args.append(dict(zip(col_name, col_data, strict=True)))  # ty: ignore[invalid-argument-type,no-matching-overload]
-
-    return out_args
+        raise ValueError(f"pass column names or arrays, not both, got {arrays}")
+    is_col = [isinstance(arg, str | int) for arg in args]
+    flat_cols = [
+        col
+        for arg, single in zip(args, is_col, strict=True)
+        for col in ([arg] if single else arg)
+    ]
+    df_no_nan = df.dropna(subset=flat_cols)
+    return [
+        df_no_nan[arg].to_numpy()
+        if single
+        else {col: df_no_nan[col].to_numpy() for col in arg}
+        for arg, single in zip(args, is_col, strict=True)
+    ]

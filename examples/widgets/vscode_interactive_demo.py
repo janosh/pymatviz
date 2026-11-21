@@ -639,7 +639,7 @@ chem_pot_widget.show()
 rdf_widget = pmv.RdfPlotWidget(
     structures=struct.as_dict(),
     cutoff=10,
-    bins=80,
+    n_bins=80,
     style="height: 400px;",
 )
 rdf_widget.show()

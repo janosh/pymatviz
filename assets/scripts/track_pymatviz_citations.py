@@ -28,7 +28,7 @@ from datetime import UTC, datetime, timedelta
 import yaml
 from dotenv import load_dotenv
 
-from pymatviz import ROOT
+from pymatviz.utils import ROOT
 
 
 if os.getenv("CI"):

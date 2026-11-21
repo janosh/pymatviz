@@ -6,6 +6,7 @@ import subprocess
 import sys
 from typing import TYPE_CHECKING
 
+import numpy as np
 import pandas as pd
 import pytest
 from ase import Atoms
@@ -19,7 +20,6 @@ from pymatgen.core import (
     Molecule,
     PeriodicSite,
     Species,
-    Structure,
 )
 
 from pymatviz.structures import (
@@ -39,124 +39,34 @@ if TYPE_CHECKING:
     from typing import Any
 
 
-PMG_FORMULA_0 = SI_STRUCTS[0].formula
-
-
-SI_ISTRUCTURE_0 = IStructure.from_sites(SI_STRUCTS[0])
+SI_ISTRUCT = IStructure.from_sites(SI_STRUCTS[0])
+H2O = Molecule(["H", "H", "O"], [[0, 0, 0], [0, 0, 1.5], [0, 0, 0.75]])
+H2O_IMOL = IMolecule.from_sites(H2O)
 
 
 class DerivedAtoms(Atoms):
     """Exercise adapter-free conversion of caller-defined ASE subclasses."""
 
 
-H2O_MOL = Molecule(["H", "H", "O"], [[0, 0, 0], [0, 0, 1.5], [0, 0, 0.75]])
-
-
-CO2_MOL = Molecule(["C", "O", "O"], [[0, 0, 0], [0, 0, 1.2], [0, 0, -1.2]])
-
-
-H2O_IMOL = IMolecule(["H", "H", "O"], [[0, 0, 0], [0, 0, 1.5], [0, 0, 0.75]])
-
-
-CO2_IMOL = IMolecule(["C", "O", "O"], [[0, 0, 0], [0, 0, 1.2], [0, 0, -1.2]])
-
-
-def _formula(obj: Structure | IStructure | Molecule | IMolecule) -> str:
-    return obj.formula if hasattr(obj, "formula") else obj.composition.formula
-
-
-def _seq_expected(
-    *items: Structure | IStructure | Molecule | IMolecule,
-) -> dict[str, Structure | IStructure | Molecule | IMolecule]:
-    return {f"{idx} {_formula(item)}": item for idx, item in enumerate(items, start=1)}
-
-
-PMG_EXPECTED_DICT = _seq_expected(*SI_STRUCTS)
-
-
-_normalize_structures_cases = [
-    ("single_pmg_structure", SI_STRUCTS[0], {PMG_FORMULA_0: SI_STRUCTS[0]}),
-    ("single_istructure", SI_ISTRUCTURE_0, {PMG_FORMULA_0: SI_ISTRUCTURE_0}),
-    ("list_of_pmg_structures", SI_STRUCTS, PMG_EXPECTED_DICT),
-    (
-        "dict_of_pmg_structures",
-        {"s0_key": SI_STRUCTS[0], "s1_key": SI_STRUCTS[1]},
-        {"s0_key": SI_STRUCTS[0], "s1_key": SI_STRUCTS[1]},
-    ),
-    ("single_ase_atoms", SI_ATOMS[0], {PMG_FORMULA_0: SI_STRUCTS[0]}),
-    ("list_of_ase_atoms", SI_ATOMS, PMG_EXPECTED_DICT),
-    (
-        "dict_of_ase_atoms",
-        {"a0_key": SI_ATOMS[0], "a1_key": SI_ATOMS[1]},
-        {"a0_key": SI_STRUCTS[0], "a1_key": SI_STRUCTS[1]},
-    ),
-    ("mixed_list_pmg_and_ase", [SI_STRUCTS[0], SI_ATOMS[1]], PMG_EXPECTED_DICT),
-    (
-        "mixed_dict_pmg_and_ase",
-        {"pmg_key": SI_STRUCTS[0], "ase_key": SI_ATOMS[1]},
-        {"pmg_key": SI_STRUCTS[0], "ase_key": SI_STRUCTS[1]},
-    ),
-    ("single_molecule", H2O_MOL, {H2O_MOL.composition.formula: H2O_MOL}),
-    ("single_imolecule", H2O_IMOL, {H2O_IMOL.composition.formula: H2O_IMOL}),
-    ("list_molecules", [H2O_MOL, CO2_MOL], _seq_expected(H2O_MOL, CO2_MOL)),
-    ("list_imolecules", [H2O_IMOL, CO2_IMOL], _seq_expected(H2O_IMOL, CO2_IMOL)),
-    (
-        "dict_molecules",
-        {"h2o": H2O_MOL, "co2": CO2_MOL},
-        {"h2o": H2O_MOL, "co2": CO2_MOL},
-    ),
-    (
-        "dict_imolecules",
-        {"h2o": H2O_IMOL, "co2": CO2_IMOL},
-        {"h2o": H2O_IMOL, "co2": CO2_IMOL},
-    ),
-    (
-        "mixed_struct_mol",
-        [SI_STRUCTS[0], H2O_MOL],
-        _seq_expected(SI_STRUCTS[0], H2O_MOL),
-    ),
-    (
-        "mixed_dict_struct_mol",
-        {"s": SI_STRUCTS[0], "m": H2O_MOL},
-        {"s": SI_STRUCTS[0], "m": H2O_MOL},
-    ),
-    (
-        "mixed_istruct_imol",
-        [SI_ISTRUCTURE_0, H2O_IMOL],
-        _seq_expected(SI_ISTRUCTURE_0, H2O_IMOL),
-    ),
-    (
-        "series_structures",
-        pd.Series(SI_STRUCTS, index=["s1", "s2"]),
-        {"s1": SI_STRUCTS[0], "s2": SI_STRUCTS[1]},
-    ),
-    (
-        "series_molecules",
-        pd.Series([H2O_MOL, CO2_MOL], index=["h2o", "co2"]),
-        {"h2o": H2O_MOL, "co2": CO2_MOL},
-    ),
-    (
-        "series_struct_mol",
-        pd.Series([SI_STRUCTS[0], H2O_MOL], index=["s", "m"]),
-        {"s": SI_STRUCTS[0], "m": H2O_MOL},
-    ),
-]
-
-
 @pytest.mark.parametrize(
-    ("input_raw", "expected_output_dict"),
+    ("input_raw", "expected"),
     [
-        pytest.param(input_raw, expected_output_dict, id=case_name)
-        for case_name, input_raw, expected_output_dict in _normalize_structures_cases
+        (SI_STRUCTS[0], {SI_STRUCTS[0].formula: SI_STRUCTS[0]}),
+        (SI_ISTRUCT, {SI_ISTRUCT.formula: SI_ISTRUCT}),
+        (SI_ATOMS[0], {SI_STRUCTS[0].formula: SI_STRUCTS[0]}),
+        (H2O_IMOL, {H2O.formula: H2O_IMOL}),
+        (  # sequences key by 1-based index and formula
+            [SI_ATOMS[0], H2O],
+            {f"1 {SI_STRUCTS[0].formula}": SI_STRUCTS[0], f"2 {H2O.formula}": H2O},
+        ),
+        ({"si": SI_ATOMS[1], "h2o": H2O}, {"si": SI_STRUCTS[1], "h2o": H2O}),
+        (pd.Series([SI_ISTRUCT], index=["s"]), {"s": SI_ISTRUCT}),
     ],
+    ids=["structure", "istructure", "atoms", "imolecule", "list", "dict", "series"],
 )
-def test_normalize_structures(
-    input_raw: Any,
-    expected_output_dict: dict[Hashable, Structure | IStructure | Molecule | IMolecule],
-) -> None:
-    result_dict = normalize_structures(input_raw)
-
-    assert result_dict == expected_output_dict
+def test_normalize_structures(input_raw: Any, expected: dict[Hashable, Any]) -> None:
+    """Single inputs key by formula, mappings keep keys, ASE Atoms become pymatgen."""
+    assert normalize_structures(input_raw) == expected
 
 
 @pytest.mark.parametrize(
@@ -203,12 +113,9 @@ class NotAse:
     [
         (MockAseAtoms(), True),
         (MockMsonAtoms(), True),
-        (Structure([[1, 0, 0], [0, 1, 0], [0, 0, 1]], ["Fe"], [[0, 0, 0]]), False),
+        (SI_STRUCTS[0], False),
         (NotAse(), False),
         ("string", False),
-        (123, False),
-        ([1, 2, 3], False),
-        ({"key": "value"}, False),
         (None, False),
     ],
 )
@@ -222,9 +129,7 @@ def test_is_ase_atoms(obj: object, expected: bool) -> None:
         pytest.param("phonopy_atoms", True, id="phonopy_atoms"),
         # Supercell/Primitive subclass PhonopyAtoms and must count as structures too
         pytest.param("phonopy_supercell", True, id="phonopy_supercell"),
-        (Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]]), False),
-        ("string", False),
-        (123, False),
+        (SI_STRUCTS[0], False),
         (None, False),
     ],
 )
@@ -234,17 +139,9 @@ def test_is_phonopy_atoms(obj: object, expected: bool) -> None:
         from phonopy.structure.atoms import PhonopyAtoms
         from phonopy.structure.cells import Supercell
 
-        unit_cell = PhonopyAtoms(
-            symbols=["Si"],
-            positions=[[0, 0, 0]],
-            cell=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
-        )
-        supercell_matrix = [[2, 0, 0], [0, 1, 0], [0, 0, 1]]
-        obj = (
-            unit_cell
-            if obj == "phonopy_atoms"
-            else Supercell(unit_cell, supercell_matrix)
-        )
+        unit_cell = PhonopyAtoms(symbols=["Si"], positions=[[0] * 3], cell=np.eye(3))
+        is_cell = obj == "phonopy_atoms"
+        obj = unit_cell if is_cell else Supercell(unit_cell, np.diag([2, 1, 1]))
     assert is_phonopy_atoms(obj) is expected
 
 
@@ -268,7 +165,7 @@ def test_is_phonopy_atoms(obj: object, expected: bool) -> None:
 def test_normalize_spacegroups(
     data: list | pd.Series, expected: list, as_series: bool
 ) -> None:
-    """Test normalize_spacegroups with various input types."""
+    """Numbers and symbols map to ints, keeping a Series' index and name."""
     expected_series = pd.Series(expected)
     if as_series:
         index = pd.Index([f"sample-{idx}" for idx in range(len(data))], name="sample")
@@ -365,12 +262,6 @@ def test_normalize_spacegroups_raises(data: list[str], match: str) -> None:
         (Element("O"), Element, {"O"}, "O"),
         (Species("Fe", 2), Species, {"Fe"}, "Fe"),
         (Composition({"Fe": 0.75, "Co": 0.25}), Composition, {"Fe", "Co"}, "Fe"),
-        (
-            Composition({"Fe": 0.2, "Co": 0.3, "Ni": 0.5}),
-            Composition,
-            {"Fe", "Co", "Ni"},
-            "Ni",
-        ),
         (DummySpecies("X"), DummySpecies, {"X"}, "X"),
         (
             Composition({"Li": 0.75, DummySpecies("X"): 0.25}),

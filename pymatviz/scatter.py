@@ -16,7 +16,6 @@ from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
     from typing import Any, Literal
 
     from numpy.typing import ArrayLike
@@ -68,14 +67,7 @@ def _point_density(
     if density not in ("kde", "empirical"):
         raise ValueError(f"Unknown {density=}, must be 'kde' or 'empirical'")
     if n_bins:
-        df_bins = bin_df_cols(
-            pd.DataFrame({"x": xs, "y": ys}),
-            bin_by_cols=["x", "y"],
-            n_bins=n_bins,
-            bin_counts_col=DENSITY_COL,
-        )
-        plot_x, plot_y = df_bins["x"].to_numpy(), df_bins["y"].to_numpy()
-        point_density = df_bins[DENSITY_COL].to_numpy(dtype=float)
+        plot_x, plot_y, point_density = _bin_points(xs, ys, n_bins)
     else:
         plot_x, plot_y, point_density = xs, ys, np.ones(len(xs))
     if density == "kde":
@@ -263,76 +255,12 @@ def density_hexbin(
     )
 
 
-def bin_df_cols(
-    df_in: pd.DataFrame,
-    bin_by_cols: Sequence[str],
-    *,
-    group_by_cols: Sequence[str] = (),
-    n_bins: int | Sequence[int] = 100,
-    bin_counts_col: str = "bin_counts",
-    density_col: str = "",
-    verbose: bool = False,
-) -> pd.DataFrame:
-    """Bin columns of a DataFrame.
-
-    Args:
-        df_in (pd.DataFrame): Input dataframe to bin.
-        bin_by_cols (Sequence[str]): Columns to bin.
-        group_by_cols (Sequence[str]): Additional columns to group by. Defaults to ().
-        n_bins (int): Number of bins to use. Defaults to 100.
-        bin_counts_col (str): Column name for bin counts. Defaults to "bin_counts".
-        density_col (str): Column name for density values. Defaults to "".
-        verbose (bool): If True, print df length reduction. Defaults to False.
-
-    Returns:
-        pd.DataFrame: Binned DataFrame with original index name and values.
-    """
-    if isinstance(n_bins, int):
-        # broadcast integer n_bins to all bin_by_cols
-        n_bins = [n_bins] * len(bin_by_cols)
-
-    if len(bin_by_cols) != len(n_bins):
-        raise ValueError(f"{len(bin_by_cols)=} != {len(n_bins)=}")
-
-    # Preserve the original index
-    orig_index_name = df_in.index.name or "index"
-    # Reset index so it participates in groupby. If the index name is already in the
-    # columns, we it'll participate already and be set back to the index at the end.
-    if orig_index_name not in df_in:
-        df_in = df_in.reset_index()
-
-    # Bins are separate group keys rather than added columns, so df_in needn't be
-    # copied to stay unmodified
-    bin_keys = [
-        pd.Series(pd.cut(df_in[col].values, bins=bins), index=df_in.index).rename(
-            f"{col}_bins"
-        )
-        for col, bins in zip(bin_by_cols, n_bins, strict=True)
-    ]
-    group = df_in.groupby(by=[*bin_keys, *group_by_cols], observed=True)
-
-    df_bin = group.first().dropna()
-    df_bin[bin_counts_col] = group.size()
-    df_bin = df_bin.reset_index()
-
-    if verbose:
-        print(  # noqa: T201
-            f"{1 - len(df_bin) / len(df_in):.1%} sample reduction from binning: from "
-            f"{len(df_in):,} to {len(df_bin):,}"
-        )
-
-    if density_col:
-        # compute kernel density estimate for each bin
-        values = df_in[bin_by_cols].dropna().T
-        import scipy.stats
-
-        kde = scipy.stats.gaussian_kde(values.astype(float))
-
-        xy_binned = df_bin[bin_by_cols].T
-        density = kde(xy_binned.astype(float))
-        # scale density to sum to the number of data points (values is transposed,
-        # so its columns are the data points)
-        df_bin[density_col] = density / density.sum() * values.shape[1]
-
-    # Set the index back to the original index name
-    return df_bin.set_index(orig_index_name)
+def _bin_points(
+    xs: np.ndarray, ys: np.ndarray, n_bins: int
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """First point and point count of each occupied cell in an n_bins^2 grid."""
+    group = pd.DataFrame({"x": xs, "y": ys}).groupby(
+        [pd.cut(xs, n_bins), pd.cut(ys, n_bins)], observed=True
+    )
+    first = group.first()
+    return first["x"].to_numpy(), first["y"].to_numpy(), group.size().to_numpy(float)

@@ -7,7 +7,7 @@ import itertools
 import math
 from collections import defaultdict
 from numbers import Number
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING
 
 import pandas as pd
 from pandas.api.types import is_numeric_dtype, is_string_dtype
@@ -34,12 +34,7 @@ def count_elements(
     If passed values are already a map from element symbol to counts, ensure the
     data is a pd.Series filled with "fill_value" for missing element.
 
-    Provided as standalone function for external use or to cache long computations.
-    Caching long element counts is done by refactoring:
-        ptable_heatmap(long_list_of_formulas) # slow
-    to:
-        elem_counts = count_elements(long_list_of_formulas) # slow
-        ptable_heatmap(elem_counts) # fast, only rerun this line to update plot
+    Precompute counts once to replot long formula lists quickly.
 
     Args:
         values (dict[str, int | float] | pd.Series | list[str]): Iterable of
@@ -101,7 +96,7 @@ def count_elements(
             f"list of compositions (strings or Pymatgen objects), got {values}"
         )
 
-    try:
+    try:  # integer keys (or their strings) are atomic numbers
         atomic_numbers = srs.index.astype(int)
     except (ValueError, TypeError):
         pass
@@ -113,22 +108,15 @@ def count_elements(
             raise ValueError(
                 f"Atomic numbers must be integers, got: {srs.index.tolist()}"
             )
-        srs.index = atomic_numbers
-
-    if pd.api.types.is_integer_dtype(srs.index):
-        # If index is all integers, assume they represent atomic
-        # numbers and map them to element symbols (H: 1, He: 2, ...)
-        idx_min, idx_max = srs.index.min(), srs.index.max()
-        if idx_max > 118 or idx_min < 1:
+        if len(srs) and (atomic_numbers.min() < 1 or atomic_numbers.max() > 118):
             raise ValueError(
                 "element value keys were found to be integers and assumed to represent "
-                f"atomic numbers, but values range from {idx_min} to {idx_max}, "
-                "expected range [1, 118]."
+                f"atomic numbers, but values range from {atomic_numbers.min()} to "
+                f"{atomic_numbers.max()}, expected range [1, 118]."
             )
-        map_atomic_num_to_elem_symbol = (
+        srs.index = atomic_numbers.map(
             df_ptable.reset_index().set_index(Key.atomic_number).symbol
         )
-        srs.index = srs.index.map(map_atomic_num_to_elem_symbol)
 
     bad_symbols = srs.index.difference(df_ptable.index)
     if len(bad_symbols) > 0:
@@ -136,24 +124,15 @@ def count_elements(
             f"Unexpected element symbol(s): {', '.join(map(str, bad_symbols))}"
         )
 
-    # Fill elements absent from the input with fill_value.
     srs = srs.reindex(df_ptable.index, fill_value=fill_value).rename("count")
-
-    if len(exclude_elements) > 0:
-        excluded_elements = (
-            [exclude_elements]
-            if isinstance(exclude_elements, str)
-            else list(exclude_elements)
+    excluded_elements = (
+        [exclude_elements] if isinstance(exclude_elements, str) else [*exclude_elements]
+    )
+    if bad := [elem for elem in excluded_elements if elem not in srs]:
+        raise ValueError(
+            f"Unexpected symbol(s) {', '.join(bad)} in {excluded_elements=}"
         )
-        try:
-            srs = srs.drop(excluded_elements)
-        except KeyError as exc:
-            bad_symbols = ", ".join(x for x in excluded_elements if x not in srs)
-            raise ValueError(
-                f"Unexpected symbol(s) {bad_symbols} in {excluded_elements=}"
-            ) from exc
-
-    return srs
+    return srs.drop(excluded_elements)
 
 
 def _system_and_formula(
@@ -221,19 +200,8 @@ def count_formulas(
     if len(data) == 0:
         raise ValueError("Empty input: data sequence is empty")
 
-    # Map from number of elements to arity name
-    arity_names: Final[dict[int, str]] = {
-        1: "unary",
-        2: "binary",
-        3: "ternary",
-        4: "quaternary",
-        5: "quinary",
-        6: "senary",
-        7: "septenary",
-        8: "octonary",
-        9: "nonary",
-        10: "denary",
-    }
+    arity_names = ("unary", "binary", "ternary", "quaternary", "quinary", "senary")
+    arity_names += ("septenary", "octonary", "nonary", "denary")
 
     # repeated strings, the common case for large datasets, are parsed once
     parse_str = functools.cache(lambda item: _system_and_formula(item, group_by))
@@ -248,24 +216,20 @@ def count_formulas(
     )
     df_systems[Key.arity] = df_systems["system"].map(len)
     df_systems["arity_name"] = df_systems[Key.arity].map(
-        lambda n_elems: arity_names.get(n_elems, f"{n_elems}-component")
+        lambda n_elems: (
+            arity_names[n_elems - 1]
+            if n_elems <= len(arity_names)
+            else f"{n_elems}-component"
+        )
     )
     df_systems[Key.chem_sys] = df_systems["system"].str.join("-")
 
-    # Count occurrences of each system
-    group_cols = [Key.arity, "arity_name", Key.chem_sys]
-    if group_by != Key.chem_sys:
-        group_cols += [Key.formula]
-
+    formula_cols = [Key.formula] if group_by != Key.chem_sys else []
+    group_cols = [Key.arity, "arity_name", Key.chem_sys, *formula_cols]
     df_counts = df_systems.value_counts(group_cols).reset_index()
-    df_counts.columns = [*group_cols, Key.count]  # preserve original column names
-
-    # Sort by arity and chemical system for consistent ordering
-    sort_cols = [
-        Key.arity,
-        Key.chem_sys,
-        *([Key.formula] if group_by != Key.chem_sys else []),
-    ]
+    df_counts.columns = [*group_cols, Key.count]
     return (
-        df_counts.sort_values(sort_cols).drop(columns=Key.arity).reset_index(drop=True)
+        df_counts.sort_values([Key.arity, Key.chem_sys, *formula_cols])
+        .drop(columns=Key.arity)
+        .reset_index(drop=True)
     )

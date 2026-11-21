@@ -184,51 +184,25 @@ def test_count_formulas_raises(data: list, group_by: str, error_match: str) -> N
         count_formulas(data, group_by=group_by)  # ty: ignore[invalid-argument-type]
 
 
-def test_count_formulas_composition_objects() -> None:
-    data = [
-        Composition("Fe2O3"),
-        Composition("Fe4O6"),
-        Composition("FeO"),
-        Composition("Li2O"),
-    ]
-    df_out = count_formulas(data, group_by="reduced_formula")
-
-    assert len(df_out) == 3
-    assert df_out["count"].sum() == 4
-
-    fe_o_counts = df_out[df_out["formula"].str.contains("Fe")]
-    assert len(fe_o_counts) == 2
-    assert fe_o_counts[fe_o_counts["formula"] == "Fe2O3"]["count"].iloc[0] == 2
-
-
 @pytest.mark.parametrize(
-    ("group_by", "expected_formulas", "expected_counts"),
+    ("group_by", "expected"),
     [
-        (
-            "formula",
-            ["Fe2O3", "Fe4O6", "FeO"],
-            [1, 1, 1],
-        ),
-        (
-            "reduced_formula",
-            ["Fe2O3", "FeO"],
-            [2, 1],
-        ),
-        (
-            "chem_sys",
-            ["Fe-O"],
-            [3],
-        ),
+        ("formula", {"Fe2O3": 1, "Fe4O6": 1, "FeO": 1}),
+        ("reduced_formula", {"Fe2O3": 2, "FeO": 1}),
+        ("chem_sys", {"Fe-O": 3}),
     ],
 )
+@pytest.mark.parametrize("as_comps", [False, True])
 def test_count_formulas_grouping_modes(
-    group_by: FormulaGroupBy, expected_formulas: list[str], expected_counts: list[int]
+    group_by: FormulaGroupBy, expected: dict[str, int], as_comps: bool
 ) -> None:
+    """Formulas count separately, by reduced formula or by chemical system."""
     data = ["Fe2O3", "Fe4O6", "FeO"]
-    df_out = count_formulas(data, group_by=group_by)
-
-    if group_by == "chem_sys":
-        assert list(df_out["chem_sys"]) == expected_formulas
-    else:
-        assert list(df_out["formula"]) == expected_formulas
-    assert list(df_out["count"]) == expected_counts
+    df_out = count_formulas(
+        [Composition(formula) for formula in data] if as_comps else data,
+        group_by=group_by,
+    )
+    label_col = "chem_sys" if group_by == "chem_sys" else "formula"
+    if as_comps and group_by == "formula":  # str(Composition) spells out amounts
+        expected = {"Fe2 O3": 1, "Fe4 O6": 1, "Fe1 O1": 1}
+    assert dict(zip(df_out[label_col], df_out["count"], strict=True)) == expected

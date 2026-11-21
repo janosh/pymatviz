@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -146,23 +147,18 @@ def test_spg_num_to_from_symbol_roundtrip() -> None:
 
 
 def test_df_to_arrays() -> None:
-    df_regr = pd.DataFrame([y_true, y_pred]).T
-    x1, y1 = df_to_arrays(None, y_true, y_pred)
-    x_col, y_col = df_regr.columns[:2]
-    x2, y2 = df_to_arrays(df_regr, x_col, y_col)
-    assert x1 == pytest.approx(x2)
-    assert y1 == pytest.approx(y2)
-    assert x1 == pytest.approx(y_true)
-    assert y1 == pytest.approx(y_pred)
-
+    """Columns or arrays give the same data, and bad df or column names raise."""
+    df_regr = pd.DataFrame({"x": y_true, "y": y_pred})
+    for arrays in (df_to_arrays(None, y_true, y_pred), df_to_arrays(df_regr, "x", "y")):
+        np.testing.assert_allclose(arrays, [y_true, y_pred], rtol=0, atol=0)
     with pytest.raises(TypeError, match="df should be pandas DataFrame or None"):
         df_to_arrays("foo", y_true, y_pred)  # ty: ignore[invalid-argument-type]
-
-    bad_col_name = "not-real-col-name"
-    with pytest.raises(KeyError) as exc:
-        df_to_arrays(df_regr, bad_col_name, df_regr.columns[0])
-
-    assert "not-real-col-name" in str(exc.value)
-
-    args = df_to_arrays(42, "foo", "bar", strict=False)  # ty: ignore[invalid-argument-type]
-    assert args == ["foo", "bar"]
+    with pytest.raises(KeyError, match="not-a-col"):
+        df_to_arrays(df_regr, "not-a-col", "x")
+    with pytest.raises(ValueError, match="got column names but no df"):
+        df_to_arrays(None, "x", y_pred)
+    with pytest.raises(ValueError, match="pass column names or arrays, not both"):
+        df_to_arrays(df_regr, "x", y_pred)
+    _, y_cols = df_to_arrays(df_regr, "x", ["y", "x"])
+    assert list(y_cols) == ["y", "x"]
+    np.testing.assert_array_equal(y_cols["y"], y_pred)

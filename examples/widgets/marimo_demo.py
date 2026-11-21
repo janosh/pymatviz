@@ -663,7 +663,7 @@ def _(_struct, pmv):
     pmv.RdfPlotWidget(
         structures=_struct.as_dict(),
         cutoff=10,
-        bins=80,
+        n_bins=80,
         style="height: 400px;",
     )
 

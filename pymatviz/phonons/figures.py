@@ -1,10 +1,11 @@
-"""Plot phonon band structures and densities of states with MatterViz widgets."""
+"""Plot element- or site-projected phonon densities of states."""
 
 from __future__ import annotations
 
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Literal
 
+from pymatviz.widgets._normalize import _from_phonopy
 from pymatviz.widgets.dos import DosWidget
 
 
@@ -25,9 +26,7 @@ def _to_phonon_dos(label: str, dos: Any) -> PhononDos:
     """Convert a phonopy TotalDos or CompletePhononDos to a total PhononDos."""
     from pymatgen.phonon.dos import CompletePhononDos, PhononDos
 
-    cls_name = f"{type(dos).__module__}.{type(dos).__qualname__}"
-    if cls_name == "phonopy.phonon.dos.TotalDos":
-        return PhononDos(frequencies=dos.frequency_points, densities=dos.dos)
+    dos = _from_phonopy(dos)
     if isinstance(dos, CompletePhononDos):
         return PhononDos(dos.frequencies, dos.densities)
     if isinstance(dos, PhononDos):

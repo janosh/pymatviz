@@ -14,6 +14,16 @@ from pymatviz.utils.testing import disordered_demo_structures
 df_phonons = load_dataset("matbench_phonons")
 
 
+def show_and_save(widget: pmv.StructureWidget, name: str) -> None:
+    """Display a widget and export it as a transparent readme PNG."""
+    display(widget)
+    widget.to_img(
+        f"{pmv.utils.ROOT}/assets/png/{name}-structure-3d.png",
+        width=500,
+        transparent=True,
+    )
+
+
 # %% Grid of 2x2x2 supercells of the first 6 Matbench phonon structures
 supercells = {
     key: struct.make_supercell(2, in_place=False)
@@ -38,11 +48,7 @@ batio3 = Structure(
     coords=[(0, 0, 0), (0.5, 0.5, 0.5), (0.5, 0.5, 0), (0.5, 0, 0.5), (0, 0.5, 0.5)],
 )
 batio3.add_oxidation_state_by_element({"Ba": 2, "Ti": 4, "O": -2})
-widget = pmv.StructureWidget(structure=batio3, show_bonds="always")
-display(widget)
-widget.to_img(
-    f"{pmv.utils.ROOT}/assets/png/batio3-structure-3d.png", width=500, transparent=True
-)
+show_and_save(pmv.StructureWidget(structure=batio3, show_bonds="always"), "batio3")
 
 
 # %% Disordered sites are drawn as spheres split by species occupancy
@@ -63,12 +69,11 @@ hea_structure = Structure(
     species=["Co", "Cr", "Fe", "Ni", "Mn"],
     coords=[(0, 0, 0), (0.5, 0.5, 0), (0.5, 0, 0.5), (0, 0.5, 0.5), (0.5, 0.5, 0.5)],
 )
-widget = pmv.StructureWidget(
-    structure=hea_structure.make_supercell([2, 3, 2], in_place=False)
-)
-display(widget)
-widget.to_img(
-    f"{pmv.utils.ROOT}/assets/png/hea-structure-3d.png", width=500, transparent=True
+show_and_save(
+    pmv.StructureWidget(
+        structure=hea_structure.make_supercell([2, 3, 2], in_place=False)
+    ),
+    "hea",
 )
 
 
@@ -79,33 +84,22 @@ lco_supercell = Structure(
     coords=[(0, 0, 0), (0, 0, 0.5), (0, 0, 0.25), (0, 0, 0.75)],
 ).make_supercell([3, 3, 1])
 # the wide, flat slab leaves the viewer's default 500px height half empty
-widget = pmv.StructureWidget(
-    structure=lco_supercell, color_scheme="Jmol", style="--struct-height: 380px"
-)
-display(widget)
-widget.to_img(
-    f"{pmv.utils.ROOT}/assets/png/lco-structure-3d.png", width=500, transparent=True
+show_and_save(
+    pmv.StructureWidget(
+        structure=lco_supercell, color_scheme="Jmol", style="--struct-height: 380px"
+    ),
+    "lco",
 )
 
 
 # %% 2H-MoS2 = https://materialsproject.org/materials/mp-2815, layers stacked along c
 mos2 = Structure(
     lattice=Lattice.hexagonal(3.16, 12.29),
-    species=["Mo", "Mo", "S", "S", "S", "S"],
-    coords=[
-        (1 / 3, 2 / 3, 1 / 4),
-        (2 / 3, 1 / 3, 3 / 4),
-        (1 / 3, 2 / 3, 0.621),
-        (1 / 3, 2 / 3, 0.879),
-        (2 / 3, 1 / 3, 0.121),
-        (2 / 3, 1 / 3, 0.379),
-    ],
+    species=["Mo", "S", "S", "Mo", "S", "S"],
+    coords=[(1 / 3, 2 / 3, z) for z in (0.25, 0.621, 0.879)]
+    + [(2 / 3, 1 / 3, z) for z in (0.75, 0.121, 0.379)],
 ).make_supercell([3, 3, 1])
-widget = pmv.StructureWidget(structure=mos2, show_bonds="always")
-display(widget)
-widget.to_img(
-    f"{pmv.utils.ROOT}/assets/png/mos2-structure-3d.png", width=500, transparent=True
-)
+show_and_save(pmv.StructureWidget(structure=mos2, show_bonds="always"), "mos2")
 
 
 # %% Conventional standard cell of a structure with negative fractional coordinates

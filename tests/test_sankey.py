@@ -29,20 +29,6 @@ def test_sankey(
     assert sum(lnk["value"] for lnk in widget.data["links"]) == len(df_float)
 
 
-def test_sankey_shared_values_get_two_nodes() -> None:
-    """A value in both columns becomes one node per side."""
-    df_in = pd.DataFrame({"a": ["x", "x", "y"], "b": ["x", "y", "y"]})
-    widget = pmv.sankey(df_in, "a", "b", labels_with_counts=False)
-    nodes, links = widget.data["nodes"], widget.data["links"]
-    assert [node["label"] for node in nodes] == ["x", "y", "x", "y"]
-    assert [node["metadata"]["column"] for node in nodes] == ["a", "a", "b", "b"]
-    assert sorted((lnk["source"], lnk["target"], lnk["value"]) for lnk in links) == [
-        (0, 2, 1),
-        (0, 3, 1),
-        (1, 3, 1),
-    ]
-
-
 @pytest.mark.parametrize(
     ("source", "target", "err"),
     [("nonexistent", "b", KeyError), ("a", "c", ValueError)],
@@ -56,60 +42,43 @@ def test_sankey_with_invalid_columns(
         pmv.sankey(df_in, source, target)
 
 
+SHARED = {"src": ["A", "A", "A", "B"], "tgt": ["C", "C", "A", "C"]}
+WITH_NAN = {"src": ["a", "a", "a", "b", None], "tgt": ["x", "x", None, "y", "y"]}
+
+
 @pytest.mark.parametrize(
-    ("labels_with_counts", "expected_labels"),
+    ("data", "labels_with_counts", "expected_labels", "expected_links"),
     [
-        (True, ["A: 3", "B: 1", "C: 3", "A: 1"]),
-        ("percent", ["A: 75.0%", "B: 25.0%", "C: 75.0%", "A: 25.0%"]),
-        (False, ["A", "B", "C", "A"]),
+        (
+            SHARED,
+            True,
+            ["A: 3", "B: 1", "C: 3", "A: 1"],
+            [(0, 2, 2), (0, 3, 1), (1, 2, 1)],
+        ),
+        (SHARED, "percent", ["A: 75.0%", "B: 25.0%", "C: 75.0%", "A: 25.0%"], None),
+        (SHARED, False, ["A", "B", "C", "A"], None),
+        # rows missing either value count toward neither labels nor links
+        (WITH_NAN, True, ["a: 2", "b: 1", "x: 2", "y: 1"], [(0, 2, 2), (1, 3, 1)]),
+        (WITH_NAN, "percent", ["a: 66.7%", "b: 33.3%", "x: 66.7%", "y: 33.3%"], None),
     ],
 )
 def test_sankey_flow_data(
-    labels_with_counts: bool | Literal["percent"], expected_labels: list[str]
+    data: dict[str, list[Any]],
+    labels_with_counts: bool | Literal["percent"],
+    expected_labels: list[str],
+    expected_links: list[tuple[int, int, int]] | None,
 ) -> None:
-    """Values in both columns get a node per side, so no link is a self-loop."""
-    df_flows = pd.DataFrame({"src": ["A", "A", "A", "B"], "tgt": ["C", "C", "A", "C"]})
-    flow_data = sankey_flow_data(
-        df_flows, "src", "tgt", labels_with_counts=labels_with_counts
+    """A value in both columns gets one node per side, so no link is a self-loop."""
+    flow = sankey_flow_data(
+        pd.DataFrame(data), "src", "tgt", labels_with_counts=labels_with_counts
     )
-    columns = ["src", "src", "tgt", "tgt"]
-    assert flow_data == {
-        "nodes": [
-            {"id": idx, "label": label, "metadata": {"column": col}}
-            for idx, (label, col) in enumerate(
-                zip(expected_labels, columns, strict=True)
-            )
-        ],
-        "links": [
-            {"source": 0, "target": 2, "value": 2},
-            {"source": 0, "target": 3, "value": 1},
-            {"source": 1, "target": 2, "value": 1},
-        ],
-    }
-
-
-@pytest.mark.parametrize(
-    ("labels_with_counts", "expected_labels"),
-    [
-        (True, ["a: 2", "b: 1", "x: 2", "y: 1"]),
-        ("percent", ["a: 66.7%", "b: 33.3%", "x: 66.7%", "y: 33.3%"]),
-    ],
-)
-def test_sankey_flow_data_labels_match_flows_with_nan(
-    labels_with_counts: bool | Literal["percent"], expected_labels: list[str]
-) -> None:
-    """Rows missing either value count toward neither node labels nor links."""
-    df_flows = pd.DataFrame(
-        {"src": ["a", "a", "a", "b", None], "tgt": ["x", "x", None, "y", "y"]}
-    )
-    flow_data = sankey_flow_data(
-        df_flows, "src", "tgt", labels_with_counts=labels_with_counts
-    )
-    assert [node["label"] for node in flow_data["nodes"]] == expected_labels
-    assert flow_data["links"] == [
-        {"source": 0, "target": 2, "value": 2},
-        {"source": 1, "target": 3, "value": 1},
-    ]
+    assert [node["label"] for node in flow["nodes"]] == expected_labels
+    assert [node["metadata"]["column"] for node in flow["nodes"]] == ["src"] * 2 + [
+        "tgt"
+    ] * 2
+    if expected_links:
+        links = [(lnk["source"], lnk["target"], lnk["value"]) for lnk in flow["links"]]
+        assert links == expected_links
 
 
 @pytest.mark.parametrize(

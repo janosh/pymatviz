@@ -81,40 +81,35 @@ def sankey_flow_data(
               side, so no link is a self-loop.
             - "links": ``{"source", "target", "value"}`` with node ids and row counts.
     """
-    cols = [source, target]
+    # value_counts drops rows with NaN and, unlike to_numpy, keeps each column's dtype
+    flows = df[[source, target]].value_counts()
+    pairs = [(*key, count) for key, count in flows.items()]
 
-    # value_counts drops rows with NaN in either column. Its index levels keep each
-    # column's dtype (to_numpy would coerce mixed int/float columns to one), and
-    # unlike reset_index, they can't clash with a column named "count".
-    flows = df[cols].value_counts()
-    source, target = (flows.index.get_level_values(lvl).tolist() for lvl in (0, 1))
-    value = flows.tolist()
-
-    # Each column is one side of the diagram, so a value in both gets two nodes.
-    # Dicts keep first-seen order and each column's own value types.
-    side_counts: list[dict[Any, int]] = [{}, {}]
-    for src_val, tgt_val, count in zip(source, target, value, strict=True):
-        for counts, val in zip(side_counts, (src_val, tgt_val), strict=True):
-            counts[val] = counts.get(val, 0) + count
-
-    as_percent = labels_with_counts == "percent"
-    n_linked = sum(value)
-    nodes: list[dict[str, Any]] = []
+    # one node per value per side (a value in both columns gets two)
     node_ids: list[dict[Any, int]] = [{}, {}]
-    for col, counts, ids in zip(cols, side_counts, node_ids, strict=True):
+    side_counts: list[dict[Any, int]] = [{}, {}]
+    for *vals, count in pairs:
+        for counts, val in zip(side_counts, vals, strict=True):
+            counts[val] = counts.get(val, 0) + count
+    nodes: list[dict[str, Any]] = []
+    for col, counts, ids in zip((source, target), side_counts, node_ids, strict=True):
         for val, count in counts.items():
-            label = str(val)
-            if as_percent:
-                label += f": {count / n_linked:.1%}"
+            suffix = ""
+            if labels_with_counts == "percent":
+                suffix = f": {count / flows.sum():.1%}"
             elif labels_with_counts:
-                label += f": {count:d}"
+                suffix = f": {count:d}"
             ids[val] = len(nodes)
             nodes.append(
-                {"id": len(nodes), "label": label, "metadata": {"column": col}}
+                {
+                    "id": len(nodes),
+                    "label": f"{val}{suffix}",
+                    "metadata": {"column": col},
+                }
             )
 
     links = [
         {"source": node_ids[0][src_val], "target": node_ids[1][tgt_val], "value": count}
-        for src_val, tgt_val, count in zip(source, target, value, strict=True)
+        for src_val, tgt_val, count in pairs
     ]
     return {"nodes": nodes, "links": links}

@@ -32,13 +32,16 @@ def is_structure_like(obj: Any) -> bool:
     )
 
 
+def _subclasses(obj: Any, *qualnames: str) -> bool:
+    """Whether obj's class or a base has one of these dotted names, without imports."""
+    return any(
+        f"{cls.__module__}.{cls.__qualname__}" in qualnames for cls in type(obj).__mro__
+    )
+
+
 def is_ase_atoms(struct: Any) -> TypeIs[Atoms]:
     """Check if the input is an ASE Atoms object without importing ase."""
-    return any(
-        f"{cls.__module__}.{cls.__qualname__}"
-        in ("ase.atoms.Atoms", "pymatgen.io.ase.MSONAtoms")
-        for cls in type(struct).__mro__
-    )
+    return _subclasses(struct, "ase.atoms.Atoms", "pymatgen.io.ase.MSONAtoms")
 
 
 MIN_ASE_CELL_VOLUME = 1e-6  # Å³
@@ -70,10 +73,7 @@ def add_vacuum_if_needed(struct: Any) -> Any:
 
 def is_phonopy_atoms(obj: Any) -> TypeIs[PhonopyAtoms]:
     """Check if object is PhonopyAtoms or a subclass (Supercell, Primitive)."""
-    return any(
-        f"{cls.__module__}.{cls.__qualname__}" == "phonopy.structure.atoms.PhonopyAtoms"
-        for cls in type(obj).__mro__
-    )
+    return _subclasses(obj, "phonopy.structure.atoms.PhonopyAtoms")
 
 
 type _StructureInput = AnyStructure | PhonopyAtoms
@@ -88,12 +88,9 @@ type _StructureInputs = (
 def normalize_structures(
     systems: _StructureInputs,
 ) -> dict[Hashable, Structure | IStructure | Molecule | IMolecule]:
-    """Convert pymatgen Structures/IStructures, ASE Atoms, or PhonopyAtoms or
-    sequences/dicts of them to a dictionary mapping hashable keys to pymatgen
-    Structure-likes (Structure, IStructure, Molecule, and IMolecule).
-
-    Keys are derived from formulas for single structures, indices for sequences,
-    or preserved from input dicts/Series.
+    """Map pymatgen structures/molecules, ASE Atoms or PhonopyAtoms (single, sequence
+    or mapping) to pymatgen objects, keyed by formula for a single input, by
+    "{index} {formula}" for sequences, and by the given keys for mappings/Series.
     """
     from pymatgen.core import IMolecule
     from pymatgen.io.ase import AseAtomsAdaptor
@@ -103,7 +100,7 @@ def normalize_structures(
             return AseAtomsAdaptor().get_structure(item)
         if isinstance(item, (IStructure, IMolecule)):
             return item
-        if is_phonopy_atoms(item):  # convert PhonopyAtoms to pymatgen Structure
+        if is_phonopy_atoms(item):
             from pymatgen.io.phonopy import get_pmg_structure
 
             return get_pmg_structure(item)
@@ -113,13 +110,9 @@ def normalize_structures(
         )
 
     if is_ase_atoms(systems) or is_phonopy_atoms(systems):
-        # Handles single ASE Atoms or PhonopyAtoms object
         systems = to_pmg_struct(systems)
-
-    # Check for single Structure/IStructure first, before checking for Sequence
-    # since they are Sequences but we don't want to iterate over sites
+    # structures are sequences of sites, so check them before Sequence
     if isinstance(systems, (IStructure, IMolecule)):
-        # Use formula as key for single structure input
         return {systems.formula: systems}
 
     if hasattr(systems, "__len__") and len(systems) == 0:
@@ -144,20 +137,18 @@ def normalize_structures(
 def normalize_periodic_structures(
     systems: _StructureInputs,
 ) -> dict[Hashable, IStructure]:
-    """Like normalize_structures but requires all inputs to be periodic.
-
-    Raises:
-        TypeError: If any of the normalized structures is a (non-periodic) molecule.
-    """
-    struct_dict: dict[Hashable, IStructure] = {}
-    for key, struct in normalize_structures(systems).items():
-        if not isinstance(struct, IStructure):
-            raise TypeError(
-                f"Expected periodic structure for key={key!r}, got "
-                f"{type(struct).__name__}"
-            )
-        struct_dict[key] = struct
-    return struct_dict
+    """normalize_structures, raising TypeError for (non-periodic) molecules."""
+    struct_dict = normalize_structures(systems)
+    periodic = {
+        key: val for key, val in struct_dict.items() if isinstance(val, IStructure)
+    }
+    if molecules := {
+        key: type(val).__name__
+        for key, val in struct_dict.items()
+        if key not in periodic
+    }:
+        raise TypeError(f"Expected periodic structures, got {molecules}")
+    return periodic
 
 
 def get_spacegroup_number(structure: AnyStructure) -> int:
@@ -188,20 +179,8 @@ def get_spacegroup_number(structure: AnyStructure) -> int:
 def normalize_spacegroups(
     data: Sequence[int | str | Any] | pd.Series,
 ) -> pd.Series:
-    """Normalize spacegroup data from structures, numbers, or symbols to a Series.
-
-    Handles pymatgen Structure, ASE Atoms, space group numbers (1-230), or
-    Hermann-Mauguin symbols.
-
-    Args:
-        data (Sequence[int | str | Structure] | pd.Series): Space group data. Can be:
-            - Sequence of pymatgen Structures or ASE Atoms
-            - Sequence of space group numbers (1-230)
-            - Sequence of Hermann-Mauguin symbols
-            - pandas Series of any of the above
-
-    Returns:
-        pd.Series: Integer space group numbers (1-230), preserving index and name.
+    """Space group numbers (1-230) from structures (pymatgen or ASE), numbers or
+    Hermann-Mauguin symbols, keeping a Series' index and name.
 
     Raises:
         ValueError: If data is empty, contains missing values, invalid symbols,
@@ -229,15 +208,12 @@ def normalize_spacegroups(
             )
         return result.astype(int)
 
-    # Convert Hermann-Mauguin symbols to space group numbers
     if isinstance(first_item, str):
         from pymatviz.utils.data import hm_symbol_to_spg_num_map
 
         numbers = result.map(hm_symbol_to_spg_num_map)
         if (missing := numbers.isna()).any():
-            # pymatgen parses looser spellings (e.g. "P2_1/c", "R-3m:H") the
-            # moyopy-derived lookup table lacks, but is slow, so only parse unique
-            # misses
+            # slow pymatgen parses looser spellings ("P2_1/c", "R-3m:H"), once each
             from pymatgen.symmetry.groups import SpaceGroup
 
             parsed: dict[str, int] = {}
