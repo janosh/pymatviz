@@ -19,6 +19,7 @@ from pymatviz.widgets._traits import CONTROLS_MODES, optional_trait
 
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from typing import Literal
 
     from pymatviz.widgets._headless import RenderReport
@@ -430,6 +431,32 @@ class MatterVizWidget(AnyWidget):
         """Return all public synced traitlet values as a plain dict."""
         return {name: getattr(self, name) for name in self.public_trait_names()}
 
+    def to_json(self, filename: str | None = None) -> str:
+        """This widget's public synced traits as JSON (binary array buffers
+        base64-encoded), which ``from_json`` turns back into an equal widget.
+
+        Args:
+            filename: Optional path to also write the JSON to.
+
+        Returns:
+            The JSON text.
+        """
+        import numpy as np
+
+        def default(obj: Any) -> Any:
+            """Encode binary buffers and numpy values, reject anything else."""
+            if isinstance(obj, (bytes, bytearray, memoryview)):
+                return base64.b64encode(obj).decode("ascii")
+            if isinstance(obj, np.generic | np.ndarray):
+                return obj.tolist()
+            raise TypeError(f"{type(obj).__name__} is not JSON serializable: {obj!r}")
+
+        text = json.dumps(self.to_dict(), default=default)
+        if filename:
+            with open(filename, mode="w", encoding="utf-8") as file:
+                file.write(text)
+        return text
+
     def _frontend_state(self) -> dict[str, Any]:
         """``to_dict()`` plus ``_synced_keys``: the model a headless or exported
         render hands the bundle, which checks the keys like a live one.
@@ -445,6 +472,8 @@ class MatterVizWidget(AnyWidget):
         width: int | None = None,
         height: int | None = None,
         quality: int = 90,
+        *,
+        transparent: bool = False,
     ) -> bytes:
         """Capture the widget as an image via headless Chromium rendering.
 
@@ -487,6 +516,9 @@ class MatterVizWidget(AnyWidget):
                 uses the widget's style or defaults to 600px.
             quality: JPEG compression quality (1-100). Defaults to 90.
                 Ignored for PNG, SVG, and PDF.
+            transparent: Export PNG or SVG without backgrounds, with theme text in a
+                mid gray and trimmed to the painted content, so the image reads on
+                light and dark pages alike (e.g. READMEs). Defaults to False.
 
         Returns:
             Raw image/document bytes (PNG, JPEG, SVG, or PDF).
@@ -498,14 +530,7 @@ class MatterVizWidget(AnyWidget):
                 requested for a canvas-based widget.
             ImportError: If ``playwright`` is not installed.
         """
-        from pymatviz.widgets._headless import _CAPTURE_FORMATS, render_widget_headless
-
-        dims = dict(dpi=dpi, timeout=timeout, width=width, height=height)
-        for name, val in dims.items():
-            if val is not None and val <= 0:
-                raise ValueError(f"{name} must be positive, got {val}")
-        if not 1 <= quality <= 100:
-            raise ValueError(f"quality must be between 1 and 100, got {quality}")
+        from pymatviz.widgets._headless import render_widget_headless
 
         if fmt is None and filename:
             ext = os.path.splitext(filename)[1].lower().lstrip(".")
@@ -515,25 +540,10 @@ class MatterVizWidget(AnyWidget):
                     "(no extension). Pass fmt= explicitly."
                 )
             fmt = {"jpg": "jpeg"}.get(ext, ext)  # ty: ignore[invalid-assignment]
-        fmt = fmt or "png"
-        if fmt not in _CAPTURE_FORMATS:
-            raise ValueError(
-                f"Unsupported format {fmt!r} ({filename=}), expected one of "
-                f"{_CAPTURE_FORMATS}"
-            )
-
-        esm_content, css_content = self._resolve_assets()
-
         img_bytes = render_widget_headless(
-            widget_data=self._frontend_state(),
-            esm_content=esm_content,
-            css_content=css_content,
-            fmt=fmt,
-            dpi=dpi,
-            timeout=timeout,
-            quality=quality,
-            width=width,
-            height=height,
+            **self._render_job(
+                fmt or "png", dpi, timeout, quality, width, height, transparent
+            )
         )
 
         if filename:
@@ -542,6 +552,39 @@ class MatterVizWidget(AnyWidget):
                 fh.write(img_bytes)
 
         return img_bytes
+
+    def _render_job(
+        self,
+        fmt: str,
+        dpi: int,
+        timeout: float,
+        quality: int,
+        width: int | None,
+        height: int | None,
+        transparent: bool,  # noqa: FBT001
+    ) -> dict[str, Any]:
+        """Checked render_widget_headless arguments for exporting this widget.
+
+        Raises:
+            ValueError: For a non-positive size, dpi or timeout, quality outside
+                [1, 100] or an unsupported format.
+        """
+        from pymatviz.widgets._headless import _CAPTURE_FORMATS
+
+        dims = dict(dpi=dpi, timeout=timeout, width=width, height=height)
+        for name, val in dims.items():
+            if val is not None and val <= 0:
+                raise ValueError(f"{name} must be positive, got {val}")
+        if not 1 <= quality <= 100:
+            raise ValueError(f"quality must be between 1 and 100, got {quality}")
+        if fmt not in _CAPTURE_FORMATS:
+            raise ValueError(f"Unsupported {fmt=}, expected one of {_CAPTURE_FORMATS}")
+        esm_content, css_content = self._resolve_assets()
+        return dict(
+            widget_data=self._frontend_state(), esm_content=esm_content,
+            css_content=css_content, fmt=fmt, transparent=transparent, **dims,
+            quality=quality,
+        )  # fmt: skip
 
     def _resolve_assets(self) -> tuple[str, str]:
         """Return ``(esm_content, css_content)`` of the bundle selected at
@@ -581,7 +624,7 @@ class MatterVizWidget(AnyWidget):
         Useful for agents to reason about output and as image alt-text.
 
         Examples:
-            >>> PeriodicTableWidget(heatmap_values={"Fe": 42}).describe()["n_elements"]
+            >>> pmv.periodic_table(heatmap_values={"Fe": 42}).describe()["n_elements"]
             1
         """
         from pymatviz.widgets._describe import describe_widget
@@ -699,3 +742,95 @@ class MatterVizWidget(AnyWidget):
         return dataclasses.replace(
             diag, summary=describe_widget(data), warnings=tuple(check_inputs(data))
         )
+
+
+def _revive_buffers(value: Any) -> Any:
+    """Decode the base64 array buffers of binary envelopes anywhere in value."""
+    from pymatviz.widgets._binary import BINARY_FORMAT
+
+    if isinstance(value, list):
+        return [_revive_buffers(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+    if value.get("format") == BINARY_FORMAT:
+        arrays = {
+            name: spec | {"data": memoryview(base64.b64decode(spec["data"]))}
+            for name, spec in value["arrays"].items()
+        }
+        return value | {"arrays": arrays}
+    return {key: _revive_buffers(val) for key, val in value.items()}
+
+
+def from_json(source: str) -> MatterVizWidget:
+    """Widget saved with ``MatterVizWidget.to_json``.
+
+    Args:
+        source: A path to a JSON file, or the JSON text itself.
+
+    Returns:
+        A widget of the saved type with the saved traits.
+
+    Raises:
+        ValueError: If the JSON names no known widget_type.
+    """
+    import pymatviz.widgets
+
+    if os.path.isfile(source):
+        with open(source, encoding="utf-8") as file:
+            source = file.read()
+    traits = _revive_buffers(json.loads(source))
+    widget_type = traits.pop("widget_type", None)
+    classes = {
+        cls.class_traits()["widget_type"].default_value: cls
+        for cls in vars(pymatviz.widgets).values()
+        if isinstance(cls, type) and issubclass(cls, MatterVizWidget)
+    }
+    classes.pop(None, None)  # MatterVizWidget itself
+    if (widget_cls := classes.get(widget_type)) is None:
+        raise ValueError(f"Unknown {widget_type=}, expected one of {sorted(classes)}")
+    return widget_cls(**traits)
+
+
+def export_widgets(
+    widgets: Mapping[str, MatterVizWidget],
+    out_dir: str,
+    *,
+    fmt: Literal["png", "jpeg", "svg", "pdf"] = "png",
+    dpi: int = 150,
+    timeout: float = 30.0,
+    width: int | None = None,
+    height: int | None = None,
+    quality: int = 90,
+    transparent: bool = False,
+) -> dict[str, str]:
+    """Export widgets as ``{out_dir}/{name}.{fmt}`` images in headless Chromium,
+    rendering up to 4 at once (``to_img`` renders one at a time). Options are those
+    of ``MatterVizWidget.to_img``.
+
+    Args:
+        widgets: Map of file names (without extension) to widgets.
+        out_dir: Directory to write the images to (created if missing).
+        fmt: Image format of all files.
+        dpi: Resolution (PNG/JPEG scale, SVG canvas layers).
+        timeout: Seconds each widget may take to render.
+        width: Container width in px for every widget.
+        height: Container height in px for every widget.
+        quality: JPEG quality (1-100).
+        transparent: Transparent, trimmed PNG/SVG exports.
+
+    Returns:
+        Map of the widget names to the written file paths.
+    """
+    from pymatviz.widgets._headless import render_widgets_headless
+
+    jobs = [
+        widget._render_job(fmt, dpi, timeout, quality, width, height, transparent)
+        for widget in widgets.values()
+    ]
+    os.makedirs(out_dir, exist_ok=True)
+    paths = {}
+    for name, img_bytes in zip(widgets, render_widgets_headless(jobs), strict=True):
+        paths[name] = f"{out_dir}/{name}.{'jpg' if fmt == 'jpeg' else fmt}"
+        with open(paths[name], "wb") as file:
+            file.write(img_bytes)
+    return paths

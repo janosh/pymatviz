@@ -7,11 +7,12 @@ from typing import Any
 import traitlets as tl
 
 from pymatviz.widgets._normalize import normalize_json_kwargs, normalize_plot_json
+from pymatviz.widgets._schema_traits import SankeyTraits
 from pymatviz.widgets._traits import PlotControlsTraits, optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
-class SankeyWidget(PlotControlsTraits, MatterVizWidget):
+class SankeyWidget(PlotControlsTraits, SankeyTraits, MatterVizWidget):
     """MatterViz widget for Sankey flow diagrams.
 
     ``data`` is ``{"nodes": [{"id", "label", "color"}, ...], "links": [{"source",
@@ -27,27 +28,8 @@ class SankeyWidget(PlotControlsTraits, MatterVizWidget):
         ... )
     """
 
-    data = optional_trait(tl.Dict)
-    orientation = optional_trait(tl.CaselessStrEnum, values=["horizontal", "vertical"])
-    node_width = optional_trait(tl.Float)  # px thickness of node rectangles
-    node_padding = optional_trait(tl.Float)  # px gap between nodes in a column
-    node_align = optional_trait(
-        tl.CaselessStrEnum, values=["left", "right", "center", "justify"]
-    )
-    # fold a node's outgoing links below this outflow fraction into "Other" (0 = off)
-    min_fraction = optional_trait(tl.Float)
     max_links = optional_trait(tl.Int, min=0)  # outgoing links per node (0 = all)
     iterations = optional_trait(tl.Int, min=0)  # d3-sankey relaxation passes
-    link_opacity = optional_trait(tl.Float)
-    link_color_mode = optional_trait(
-        tl.CaselessStrEnum, values=["source", "target", "gradient", "static"]
-    )
-    show_node_labels = optional_trait(tl.Bool)
-    value_format = optional_trait(tl.Unicode)  # d3-format string for values
-    padding = optional_trait(tl.Dict)  # {"t", "b", "l", "r"} in pixels
-    legend = optional_trait(tl.Dict)
-    show_legend = optional_trait(tl.Bool)
-    fullscreen_toggle = optional_trait(tl.Bool)
 
     @tl.validate("data")
     def _validate_data(self, proposal: dict[str, Any]) -> dict[str, Any] | None:
@@ -73,4 +55,4 @@ class SankeyWidget(PlotControlsTraits, MatterVizWidget):
                 ``link_color_mode``, ``value_format``.
         """
         normalize_json_kwargs(kwargs, ("padding", "legend"), "Sankey")
-        super().__init__(widget_type="sankey", data=data, **kwargs)
+        super().__init__(data=data, **kwargs)

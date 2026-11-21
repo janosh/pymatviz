@@ -15,7 +15,6 @@ https://ml.materialsproject.org/projects/matbench_mp_e_form
 from matminer.datasets import load_dataset
 
 import pymatviz as pmv
-from pymatviz.enums import Key
 
 
 # %%
@@ -30,7 +29,7 @@ widget.show()
 
 
 # %%
-df_e_form[Key.formula] = df_e_form[Key.structure].map(lambda struct: struct.formula)
+df_e_form["formula"] = df_e_form["structure"].map(lambda struct: struct.formula)
 
 title = "Elemental prevalence in the Matbench formation energy dataset"
-pmv.ptable_heatmap(df_e_form[Key.formula], log=True, color_bar={"title": title}).show()
+pmv.ptable_heatmap(df_e_form["formula"], log=True, color_bar={"title": title}).show()

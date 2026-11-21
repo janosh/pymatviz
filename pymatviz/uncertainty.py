@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from pymatviz.powerups import add_identity_line
-from pymatviz.process_data import df_to_arrays
+from pymatviz.utils.data import df_to_arrays
 from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 

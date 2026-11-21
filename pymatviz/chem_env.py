@@ -11,8 +11,8 @@ from collections import defaultdict
 from math import fsum
 from typing import TYPE_CHECKING, Any, Literal
 
-from pymatviz._hierarchy import _limit_nodes, _validate_limit_mode
-from pymatviz.process_data import normalize_periodic_structures
+from pymatviz.hierarchy import _limit_nodes, _validate_overflow, hierarchy_widget
+from pymatviz.structures import normalize_periodic_structures
 
 
 if TYPE_CHECKING:
@@ -21,6 +21,8 @@ if TYPE_CHECKING:
     from pymatgen.core import PeriodicSite, Structure
 
     from pymatviz.typing import PeriodicStructure
+    from pymatviz.widgets.sunburst import SunburstWidget
+    from pymatviz.widgets.treemap import TreemapWidget
 
 ChemEnvSettings = dict[str, Any] | Literal["chemenv", "crystal_nn"]
 
@@ -235,7 +237,7 @@ def chem_env_nodes(
     normalize: bool,
     max_coordination_numbers: int | None,
     max_environments: int | None,
-    mode: Literal["other", "drop"],
+    overflow: Literal["other", "drop"],
 ) -> list[dict[str, Any]]:
     """Build coordination-number branches with environment counts as leaves.
 
@@ -244,7 +246,7 @@ def chem_env_nodes(
     """
     from pymatgen.core import Structure
 
-    _validate_limit_mode(mode)
+    _validate_overflow(overflow)
 
     if not isinstance(chem_env_settings, dict) and chem_env_settings not in (
         "chemenv",
@@ -284,11 +286,44 @@ def chem_env_nodes(
         )
         for coord_num, children in by_cn.items()
     ]
-    roots = _limit_nodes(nodes, max_coordination_numbers, mode)
+    roots = _limit_nodes(nodes, max_coordination_numbers, overflow)
     for root in roots:
         if children := root.get("children"):
             root["children"] = _limit_nodes(
-                children, max_environments, mode, parent_id=root["id"]
+                children, max_environments, overflow, parent_id=root["id"]
             )
             del root["value"]  # The renderer derives branch totals from visible leaves.
     return roots
+
+
+def chem_env_hierarchy(
+    structures: PeriodicStructure | Sequence[PeriodicStructure],
+    *,
+    kind: Literal["sunburst", "treemap"] = "sunburst",
+    chem_env_settings: ChemEnvSettings = "crystal_nn",
+    normalize: bool = False,
+    max_coordination_numbers: int | None = None,
+    max_environments: int | None = None,
+    overflow: Literal["other", "drop"] = "other",
+    **kwargs: Any,
+) -> SunburstWidget | TreemapWidget:
+    """Show coordination numbers and their chemical environments as a sunburst or
+    treemap.
+
+    Use CrystalNN (default), "chemenv", or a dict of ChemEnv settings.
+    With normalize=True, each structure with at least one classified environment
+    contributes one total count before pruning (structures without environments
+    contribute zero). Limit the most frequent coordination numbers and
+    environments per coordination number with max_coordination_numbers and
+    max_environments. Mode "other" combines omitted counts into one leaf per
+    group; "drop" omits them. Additional options go to the widget.
+    """
+    nodes = chem_env_nodes(
+        structures,
+        chem_env_settings=chem_env_settings,
+        normalize=normalize,
+        max_coordination_numbers=max_coordination_numbers,
+        max_environments=max_environments,
+        overflow=overflow,
+    )
+    return hierarchy_widget(kind, nodes, **kwargs)

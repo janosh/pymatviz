@@ -46,7 +46,6 @@ test = [
   "pytest>=9.1",
 ]
 export = ["playwright>=1.63"]
-brillouin = ["seekpath>=2.2.2"]
 clustering = [
   "matminer>=0.10.1",
   "umap-learn>=0.5.12",
@@ -69,6 +68,7 @@ addopts = "-p no:warnings"
 
 [tool.ruff]
 output-format = "concise"
+extend-exclude = ["pymatviz/widgets/_schema_traits.py"]  # generated
 
 [tool.ruff.lint]
 select = ["ALL"]

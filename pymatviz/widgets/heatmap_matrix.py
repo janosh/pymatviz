@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+import pandas as pd
 import traitlets as tl
 
 from pymatviz.widgets._normalize import normalize_json_kwargs, normalize_plot_json
-from pymatviz.widgets._traits import color_bar_trait, color_scale_trait, optional_trait
+from pymatviz.widgets._schema_traits import HeatmapMatrixTraits
+from pymatviz.widgets._traits import color_bar_trait, color_scale_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -45,15 +47,15 @@ def _normalize_axis_items(
     return result
 
 
-class HeatmapMatrixWidget(MatterVizWidget):
+class HeatmapMatrixWidget(HeatmapMatrixTraits, MatterVizWidget):
     """MatterViz widget for 2D heatmap/matrix visualizations.
 
     Supports element-vs-element matrices, confusion matrices, and general
     labeled grids with color scaling.
 
     Examples:
-        >>> from pymatviz import HeatmapMatrixWidget
-        >>> widget = HeatmapMatrixWidget(
+        >>> import pymatviz as pmv
+        >>> widget = pmv.heatmap_matrix(
         ...     x_items=["Fe", "O", "Li"],
         ...     y_items=["Fe", "O", "Li"],
         ...     values=[[1, 0.5, 0.2], [0.5, 1, 0.3], [0.2, 0.3, 1]],
@@ -65,10 +67,6 @@ class HeatmapMatrixWidget(MatterVizWidget):
     values = tl.Any(allow_none=True).tag(sync=True)
     color_scale = color_scale_trait()
     color_bar = color_bar_trait()
-    # styling for cells with no value, e.g. {"color": "gray", "label": "N/A"}
-    missing = optional_trait(tl.Dict)
-    x_axis = optional_trait(tl.Dict)
-    y_axis = optional_trait(tl.Dict)
     tile_size = tl.Unicode(default_value="50px").tag(sync=True)
     gap = tl.Unicode(default_value="0px").tag(sync=True)
     show_values = tl.Any(default_value=True).tag(sync=True)
@@ -76,7 +74,7 @@ class HeatmapMatrixWidget(MatterVizWidget):
 
     def __init__(
         self,
-        x_items: str | Sequence[str | dict[str, Any]] | None = None,
+        x_items: str | Sequence[str | dict[str, Any]] | pd.DataFrame | None = None,
         y_items: str | Sequence[str | dict[str, Any]] | None = None,
         values: list[list[float]] | dict[str, dict[str, float]] | None = None,
         **kwargs: Any,
@@ -84,19 +82,29 @@ class HeatmapMatrixWidget(MatterVizWidget):
         """Initialize a heatmap matrix widget.
 
         Args:
-            x_items: Column labels (strings or ``{key, label}`` dicts).
-                Plain strings are auto-converted to ``{"key": s, "label": s}``.
+            x_items: Column labels (strings or ``{key, label}`` dicts), or a
+                DataFrame whose columns, index and cells become x_items, y_items and
+                values. Plain strings are auto-converted to ``{"key": s, "label": s}``.
             y_items: Row labels (strings or ``{key, label}`` dicts).
                 Plain strings are auto-converted to ``{"key": s, "label": s}``.
             values: 2D list of values or nested dict keyed by item keys.
             **kwargs: Additional widget properties.
         """
+        if isinstance(x_items, pd.DataFrame):
+            if y_items is not None or values is not None:
+                raise ValueError("pass y_items and values in the DataFrame, not both")
+            df_matrix = x_items
+            x_items, y_items = (
+                list(map(str, df_matrix)),
+                list(map(str, df_matrix.index)),
+            )
+            # missing cells as None (NaN is rejected as a non-finite value)
+            values = df_matrix.to_numpy(dtype=object, na_value=None).tolist()
         x_axis_items = [x_items] if isinstance(x_items, str) else x_items or []
         y_axis_items = [y_items] if isinstance(y_items, str) else y_items or []
         normalize_json_kwargs(kwargs, ("color_scale", "color_bar"), "HeatmapMatrix")
 
         super().__init__(
-            widget_type="heatmap_matrix",
             x_items=_normalize_axis_items(x_axis_items),
             y_items=_normalize_axis_items(y_axis_items),
             values=normalize_plot_json(values, "HeatmapMatrix.values"),

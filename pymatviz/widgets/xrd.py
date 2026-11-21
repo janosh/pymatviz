@@ -5,13 +5,12 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-import traitlets as tl
-
-from pymatviz.widgets._traits import PlotControlsTraits, optional_trait
+from pymatviz.widgets._schema_traits import XrdTraits
+from pymatviz.widgets._traits import PlotControlsTraits
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
-class XrdWidget(PlotControlsTraits, MatterVizWidget):
+class XrdWidget(PlotControlsTraits, XrdTraits, MatterVizWidget):
     """MatterViz widget for visualizing X-ray diffraction patterns.
 
     Accepts a pymatgen DiffractionPattern or a dict with either:
@@ -24,7 +23,7 @@ class XrdWidget(PlotControlsTraits, MatterVizWidget):
 
     Examples:
         From a pymatgen DiffractionPattern:
-        >>> from pymatviz import XrdWidget
+        >>> from pymatviz.widgets import XrdWidget
         >>> widget = XrdWidget(patterns=diffraction_pattern)
         >>> widget
 
@@ -41,8 +40,6 @@ class XrdWidget(PlotControlsTraits, MatterVizWidget):
         ...     style="height: 400px;",
         ... )
     """
-
-    patterns = optional_trait(tl.Dict)
 
     def __init__(self, patterns: Any | None = None, **kwargs: Any) -> None:
         """Initialize the XrdWidget.
@@ -73,4 +70,4 @@ class XrdWidget(PlotControlsTraits, MatterVizWidget):
             if is_labeled
             else normalize_xrd_pattern(patterns)
         )
-        super().__init__(widget_type="xrd", patterns=normalized, **kwargs)
+        super().__init__(patterns=normalized, **kwargs)

@@ -100,7 +100,7 @@ def _(Composition, itertools, np_rng, pmv):
         )
     _phase_diag = PhaseDiagram(_entries)
 
-    pmv.ConvexHullWidget(entries=_phase_diag, style="height: 500px;")
+    pmv.convex_hull(entries=_phase_diag, style="height: 500px;")
 
 
 @app.cell
@@ -123,7 +123,7 @@ def _(Lattice, Structure, pmv):
             [2 / 3, 1 / 3, 0.875],
         ],
     )
-    pmv.StructureWidget(structure=_struct, show_bonds="always", style="height: 400px;")
+    pmv.structure(structure=_struct, show_bonds="always", style="height: 400px;")
     return (_struct,)
 
 
@@ -154,7 +154,7 @@ def _(_struct, pmv):
             ],
         }
     )
-    pmv.StructureWidget(
+    pmv.structure(
         structure=_struct_multi_vec,
         show_bonds="always",
         vector_configs={
@@ -176,9 +176,7 @@ def _(mo):
 
 @app.cell
 def _(_struct, pmv):
-    pmv.BrillouinZoneWidget(
-        structure=_struct, show_vectors=True, style="height: 400px;"
-    )
+    pmv.brillouin_zone(structure=_struct, show_vectors=True, style="height: 400px;")
 
 
 @app.cell
@@ -191,8 +189,6 @@ def _(mo):
 
 @app.cell
 def _(Lattice, Structure, pmv):
-    from pymatgen.analysis.diffraction.xrd import XRDCalculator
-
     _tio2_struct = Structure(
         Lattice.tetragonal(4.594, 2.959),
         ["Ti", "Ti", "O", "O", "O", "O"],
@@ -205,9 +201,7 @@ def _(Lattice, Structure, pmv):
             [0.805, 0.195, 0.5],
         ],
     )
-    pmv.XrdWidget(
-        patterns=XRDCalculator().get_pattern(_tio2_struct), style="height: 350px;"
-    )
+    pmv.xrd_plot(_tio2_struct, style="height: 350px;")
 
 
 @app.cell
@@ -235,7 +229,7 @@ def _(Lattice, Structure, np, np_rng, pmv):
             {"structure": _frame, "energy": _energy, "force_max": 1 / _dist.min()}
         )
 
-    pmv.TrajectoryWidget(
+    pmv.trajectory(
         trajectory=_trajectory,
         display_mode="structure+plot",
         style="height: 600px;",
@@ -257,7 +251,7 @@ def _(np, pmv):
         dict(label="sin(x)", x=x_vals, y=np.sin(x_vals)),
         dict(label="cos(x)", x=x_vals, y=np.cos(x_vals), y_axis="y2"),
     ]
-    pmv.ScatterPlotWidget(
+    pmv.scatter_plot(
         series=scatter_series,
         x_axis={"label": "x"},
         y_axis={"label": "sin(x)"},
@@ -283,7 +277,7 @@ def _(pmv):
         {"label": "Model A", "x": [0, 1, 2], "y": [4.2, 5.1, 4.8]},
         {"label": "Model B", "x": [0, 1, 2], "y": [3.9, 4.6, 5.2]},
     ]
-    pmv.BarPlotWidget(
+    pmv.bar_plot(
         series=bar_series,
         mode="grouped",
         x_axis={"label": "Sample index"},
@@ -303,13 +297,10 @@ def _(mo):
 
 @app.cell
 def _(pmv, scatter_series):
-    histogram_series = [
-        {"label": series["label"], "values": series["y"]} for series in scatter_series
-    ]
-    pmv.HistogramWidget(
-        series=histogram_series,
+    histogram_values = {series["label"]: series["y"] for series in scatter_series}
+    pmv.histogram(
+        histogram_values,
         bins=20,
-        mode="overlay",
         x_axis={"label": "Value"},
         y_axis={"label": "Count"},
         style="height: 360px;",
@@ -338,7 +329,7 @@ def _(pmv):
         _phonon_doc = json.loads(file.read(), cls=MontyDecoder)
 
     _band_data = _phonon_doc.phonon_bandstructure
-    pmv.BandStructureWidget(band_structs=_band_data, style="height: 400px;")
+    pmv.band_structure(band_structs=_band_data, style="height: 400px;")
     return (_band_data, _phonon_doc)
 
 
@@ -353,7 +344,7 @@ def _(mo):
 @app.cell
 def _(_phonon_doc, pmv):
     _dos_data = _phonon_doc.phonon_dos
-    pmv.DosWidget(doses=_dos_data, style="height: 400px;")
+    pmv.dos(doses=_dos_data, style="height: 400px;")
     return (_dos_data,)
 
 
@@ -367,9 +358,7 @@ def _(mo):
 
 @app.cell
 def _(_band_data, _dos_data, pmv):
-    pmv.BandsAndDosWidget(
-        band_structs=_band_data, doses=_dos_data, style="height: 500px;"
-    )
+    pmv.bands_and_dos(band_structs=_band_data, doses=_dos_data, style="height: 500px;")
 
 
 @app.cell
@@ -393,7 +382,7 @@ def _(Composition, mo, pmv):
     _h_stacks = [
         mo.hstack(
             [
-                pmv.CompositionWidget(
+                pmv.composition(
                     composition=comp,
                     mode=mode,
                     style=f"width: {(1 + (mode == 'bar')) * _size}px;"
@@ -431,7 +420,7 @@ def _(Final, os, pmv):
             f"{matterviz_traj_dir_url}/{_file_name}", f"tmp/{_file_name}"
         )
 
-    pmv.TrajectoryWidget(
+    pmv.trajectory(
         data_url=f"tmp/{_file_name}",
         display_mode="structure+plot",
     )
@@ -449,7 +438,7 @@ def _(mo):
 @app.cell
 def _(matterviz_traj_dir_url, pmv):
     _file_name = "Cr0.25Fe0.25Co0.25Ni0.25-mace-omat-qha.xyz.gz"
-    pmv.TrajectoryWidget(
+    pmv.trajectory(
         data_url=f"{matterviz_traj_dir_url}/{_file_name}",
         display_mode="structure+plot",
         vector_scale=0.5,
@@ -495,7 +484,7 @@ def _(mo):
 
 @app.cell
 def _(iso_settings, matterviz_iso_dir_url, pmv):
-    pmv.StructureWidget(
+    pmv.structure(
         data_url=f"{matterviz_iso_dir_url}/Si-CHGCAR.gz",
         isosurface_settings=iso_settings(
             "charge density", 0.05, 0.6, show_negative=False
@@ -514,7 +503,7 @@ def _(mo):
 
 @app.cell
 def _(iso_settings, matterviz_iso_dir_url, pmv):
-    pmv.StructureWidget(
+    pmv.structure(
         data_url=f"{matterviz_iso_dir_url}/caffeine-HOMO.cube.gz",
         isosurface_settings=iso_settings("scalar", 0.02, 0.7, show_negative=True),
         show_bonds="always",
@@ -532,7 +521,7 @@ def _(mo):
 
 @app.cell
 def _(pmv):
-    pmv.PeriodicTableWidget(
+    pmv.periodic_table(
         heatmap_values={
             "H": 1.008,
             "He": 4.003,
@@ -565,7 +554,7 @@ def _(mo):
 
 @app.cell
 def _(np_rng, pmv):
-    pmv.ScatterPlot3DWidget(
+    pmv.scatter_plot_3d(
         series=[
             {
                 "x": np_rng.normal(0, 1, 50),
@@ -592,7 +581,7 @@ def _(mo):
 @app.cell
 def _(pmv):
     _elems = ["Fe", "O", "Li", "Mn"]
-    pmv.HeatmapMatrixWidget(
+    pmv.heatmap_matrix(
         x_items=_elems,
         y_items=_elems,
         values=[
@@ -616,7 +605,7 @@ def _(mo):
 
 @app.cell
 def _(pmv):
-    pmv.SpacegroupBarPlotWidget(
+    pmv.spacegroup_bar_plot(
         data=[225, 225, 225, 166, 166, 62, 62, 62, 62, 139, 139, 12, 14, 14, 14, 14],
         style="height: 350px;",
     )
@@ -632,7 +621,7 @@ def _(mo):
 
 @app.cell
 def _(pmv):
-    pmv.ChemPotDiagramWidget(
+    pmv.chem_pot_diagram(
         entries=[
             {"name": "Li", "energy": -1.9, "composition": {"Li": 1}},
             {"name": "Fe", "energy": -8.3, "composition": {"Fe": 1}},
@@ -660,10 +649,10 @@ def _(mo):
 
 @app.cell
 def _(_struct, pmv):
-    pmv.RdfPlotWidget(
-        structures=_struct.as_dict(),
+    pmv.rdf_plot(
+        _struct,
         cutoff=10,
-        n_bins=80,
+        bins=80,
         style="height: 400px;",
     )
 

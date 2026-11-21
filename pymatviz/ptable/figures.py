@@ -9,8 +9,8 @@ import numpy as np
 import pandas as pd
 from pandas.api.types import is_numeric_dtype
 
+from pymatviz.composition import count_elements
 from pymatviz.enums import ElemCountMode
-from pymatviz.process_data import count_elements
 from pymatviz.utils import df_ptable
 from pymatviz.widgets.periodic_table import (
     SPLIT_LAYOUTS,
@@ -22,7 +22,7 @@ from pymatviz.widgets.periodic_table import (
 
 
 if TYPE_CHECKING:
-    from pymatviz.typing import ElemValues
+    from pymatviz.typing import ElemCountModeLike, ElemValues
 
 
 type ColorScale = str | dict[str, Any]
@@ -104,7 +104,7 @@ def _resolve_range(
 def ptable_heatmap(
     values: ElemValues,
     *,
-    count_mode: ElemCountMode = ElemCountMode.composition,
+    count_mode: ElemCountModeLike = ElemCountMode.composition,
     exclude_elements: Sequence[str] = (),
     fill_value: float | None = None,
     heat_mode: Literal["value", "fraction", "percent"] = "value",

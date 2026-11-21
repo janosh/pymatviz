@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
+import functools
 import importlib.util
+import io
 import json
 import os
 import threading
@@ -12,13 +15,16 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import numpy as np
 import pytest
+from PIL import Image
 
 import pymatviz.widgets._headless as headless_mod
 from pymatviz.widgets._headless import (
     _MOUNT_JS,
     _PROBE_JS,
     _SVG_EXPORT_JS,
+    _TRANSPARENT_STYLE,
     _build_html,
+    _trim_png,
     build_interactive_html,
     png_blank_fraction,
     render_diagnostics,
@@ -42,7 +48,7 @@ DUMMY_CSS = ".widget {}"
 @pytest.fixture(autouse=True)
 def _isolated_warm_pages() -> Iterator[None]:
     """Hide warm pages of real renders from mocked ones (and vice versa)."""
-    with patch.dict(headless_mod._warm_pages, clear=True):
+    with patch.object(headless_mod, "_warm_pages", []):
         yield
 
 
@@ -137,22 +143,30 @@ def test_sync_export_inside_running_loop() -> None:
 
 
 @pytest.mark.parametrize(
-    ("fmt", "dpi", "webgl", "expected_scale", "expected_bytes"),
+    ("fmt", "dpi", "webgl", "expected_scale", "expected_bytes", "transparent"),
     [
-        ("png", 72, False, 1.0, b"\x89PNG dpi"),
-        ("png", 144, False, 2.0, b"\x89PNG dpi"),
-        ("png", 36, False, 1.0, b"\x89PNG dpi"),  # sub-72 DPI clamps to 1x
-        ("jpeg", 216, False, 3.0, b"\xff\xd8 dpi"),
-        ("svg", 144, False, 2.0, b"<svg>dpi</svg>"),  # scales canvas layers in SVG
-        ("pdf", 72, False, 1.0, b"%PDF-vector"),  # SVG/HTML/2D canvas: native vector
-        ("pdf", 216, True, 3.0, b"%PDF-raster"),  # print pipeline can't see WebGL
+        ("png", 72, False, 1.0, b"\x89PNG dpi", False),
+        ("png", 144, False, 2.0, b"\x89PNG dpi", False),
+        ("png", 36, False, 1.0, b"\x89PNG dpi", False),  # sub-72 DPI clamps to 1x
+        ("jpeg", 216, False, 3.0, b"\xff\xd8 dpi", False),
+        ("svg", 144, False, 2.0, b"<svg>dpi</svg>", False),  # canvas layers at DPI
+        ("pdf", 72, False, 1.0, b"%PDF-vector", False),  # SVG/HTML/2D canvas: vector
+        ("pdf", 216, True, 3.0, b"%PDF-raster", False),  # print can't see WebGL
+        ("png", 144, False, 2.0, b"trimmed", True),
+        ("svg", 72, False, 1.0, b"<svg>trimmed</svg>", True),
     ],
 )
 def test_render_widget_headless_formats_and_dpi(
-    fmt: str, dpi: int, webgl: bool, expected_scale: float, expected_bytes: bytes
+    fmt: str,
+    dpi: int,
+    webgl: bool,
+    expected_scale: float,
+    expected_bytes: bytes,
+    transparent: bool,
 ) -> None:
-    """DPI maps to the browser scale for every format, and PDFs rasterize iff the
-    widget shows WebGL.
+    """DPI maps to the browser scale for every format, PDFs rasterize iff the widget
+    shows WebGL, and transparent exports drop backgrounds and trim (PNG by pixels at
+    the export scale, SVG by viewBox).
     """
     svg_result = {"svg": expected_bytes.decode()} if fmt == "svg" else None
     page = _mock_page(svg_result=svg_result, webgl=webgl)
@@ -162,17 +176,37 @@ def test_render_widget_headless_formats_and_dpi(
     with (
         patch(f"{HEADLESS_PATH}._get_browser", AsyncMock(return_value=browser)),
         patch(f"{HEADLESS_PATH}._png_to_pdf", return_value=b"%PDF-raster") as to_pdf,
+        patch(f"{HEADLESS_PATH}._trim_png", return_value=b"trimmed") as trim_png,
     ):
         result = render_widget_headless(
-            DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS, fmt=fmt, dpi=dpi
+            DUMMY_WIDGET_DATA,
+            DUMMY_ESM,
+            DUMMY_CSS,
+            fmt=fmt,
+            dpi=dpi,
+            transparent=transparent,
         )
 
     assert result == expected_bytes
+    mount_style = next(
+        call.args[1][1]["style"]
+        for call in page.evaluate.await_args_list
+        if call.args[0] == _MOUNT_JS
+    )
+    # the transparent theme goes before the widget's own style, which may override it
+    theme = f"{_TRANSPARENT_STYLE}; " if transparent else ""
+    assert mount_style.startswith(f"{theme}width: 800px")
+    if fmt == "png":
+        page.locator.return_value.screenshot.assert_awaited_once_with(
+            type="png", omit_background=transparent
+        )
+        if transparent:  # 4 CSS px of margin at the 2x export scale
+            trim_png.assert_called_once_with(b"trimmed", 8)
     browser.new_page.assert_awaited_once_with(
         viewport={"width": 1024, "height": 768}, device_scale_factor=expected_scale
     )
     if fmt == "svg":  # MatterViz embeds canvas layers at the export DPI
-        page.evaluate.assert_any_await(_SVG_EXPORT_JS, dpi)
+        page.evaluate.assert_any_await(_SVG_EXPORT_JS, [dpi, 4 if transparent else 0])
     if webgl:
         to_pdf.assert_called_once_with(expected_bytes, scale=expected_scale)
     assert page.pdf.await_count == (fmt == "pdf" and not webgl)
@@ -224,9 +258,9 @@ def test_failed_render_replaces_page() -> None:
     fresh.close.assert_not_awaited()
 
 
-def test_failed_render_moves_queued_export_to_fresh_page() -> None:
-    """An export queued behind a failing one on the same warm page transparently
-    mounts into a fresh page instead of hitting the closed one.
+def test_failed_render_retires_its_page() -> None:
+    """A failing export retires its page while a concurrent export renders on its
+    own fresh page, which stays warm.
     """
     mounting = threading.Event()
 
@@ -259,7 +293,7 @@ def test_failed_render_moves_queued_export_to_fresh_page() -> None:
         queued.join()
     assert results == {"failing": "Widget render failed: boom", "queued": b"PNGDATA"}
     assert (_mount_count(broken), _mount_count(fresh)) == (1, 1)
-    (warm,) = headless_mod._warm_pages.values()
+    (warm,) = headless_mod._warm_pages
     assert warm.page is fresh
 
 
@@ -298,13 +332,13 @@ def test_forked_child_starts_own_browser_thread() -> None:
     (the parent's didn't survive the fork) instead of blocking on a dead loop.
     """
     parent_thread = headless_mod._get_browser_thread().thread
-    headless_mod._warm_pages[("esm", "css", 1.0)] = MagicMock()
+    headless_mod._warm_pages.append(MagicMock())
     pid = os.fork()
     if pid == 0:  # child: exit code reports the outcome, never return into pytest
         patch(f"{HEADLESS_PATH}._call_budget", return_value=5.0).start()  # fail fast
         try:
             ok = (
-                headless_mod._warm_pages == {}
+                headless_mod._warm_pages == []
                 and headless_mod._get_browser_thread().thread is not parent_thread
                 and headless_mod._run_in_browser_thread(
                     asyncio.sleep(0, result=42), timeout=1
@@ -333,34 +367,33 @@ def test_idle_warm_pages_evicted_lru() -> None:
         page.close.assert_not_awaited()
 
 
-def test_concurrent_exports_serialize_on_warm_page() -> None:
-    """Exports from many threads share one page without overlapping mounts."""
+def test_batch_exports_render_concurrently_on_capped_pages() -> None:
+    """render_widgets_headless renders jobs on separate pages, at most
+    _MAX_WARM_PAGES at once, reusing freed pages for the rest, in job order.
+    """
     active, peak = 0, 0
 
     async def on_mount() -> None:
-        """Record how many mounts overlap on the page."""
+        """Record how many mounts overlap."""
         nonlocal active, peak
         active += 1
         peak = max(peak, active)
-        await asyncio.sleep(0.01)
+        await asyncio.sleep(0.05)
         active -= 1
 
-    page = _mock_page(on_mount=on_mount)
-    browser = _mock_browser(page)
-    results: list[bytes] = []
-
-    def export() -> None:
-        """Export from a worker thread."""
-        results.append(render_widget_headless(DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS))
-
+    n_slots = headless_mod._MAX_WARM_PAGES
+    pages = [_mock_page(on_mount=on_mount) for _ in range(n_slots)]
+    browser = _mock_browser(*pages)
+    jobs = [
+        dict(
+            widget_data=DUMMY_WIDGET_DATA, esm_content=DUMMY_ESM, css_content=DUMMY_CSS
+        )
+    ] * (n_slots + 2)
     with patch(f"{HEADLESS_PATH}._get_browser", AsyncMock(return_value=browser)):
-        threads = [threading.Thread(target=export) for _ in range(6)]
-        for thread in threads:
-            thread.start()
-        for thread in threads:
-            thread.join()
-    assert results == [b"PNGDATA"] * 6
-    assert (peak, _mount_count(page), browser.new_page.await_count) == (1, 6, 1)
+        results = headless_mod.render_widgets_headless(jobs)
+    assert results == [b"PNGDATA"] * len(jobs)
+    assert (peak, browser.new_page.await_count) == (n_slots, n_slots)
+    assert sum(map(_mount_count, pages)) == len(jobs)
 
 
 def test_bundle_load_error_surfaces() -> None:
@@ -374,7 +407,7 @@ def test_bundle_load_error_surfaces() -> None:
     ):
         render_widget_headless(DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS)
     page.close.assert_awaited_once()
-    assert headless_mod._warm_pages == {}
+    assert headless_mod._warm_pages == []
 
 
 # === Real Chromium with a synthetic bundle ===
@@ -382,8 +415,11 @@ def test_bundle_load_error_surfaces() -> None:
 # Renders an <svg>, then (per ``kind``) throws asynchronously, rejects a promise, or
 # creates a WebGL canvas plus one without any context, kept on window for probing
 SYNTHETIC_ESM = """\
+export const export_svg = (el) => el.dataset.svg;
 export default { render({ model, el }) {
   el.innerHTML = '<svg width="100" height="100"><rect width="50" height="50"/></svg>';
+  el.dataset.svg = model.get("svg") ?? "";
+  el.style.maxWidth = "100%";  // as the bundle caps widgets at their parent's width
   const kind = model.get("kind");
   if (kind === "throw") setTimeout(() => { throw new Error("async boom"); }, 0);
   if (kind === "reject") Promise.reject(new Error("rejected boom"));
@@ -415,7 +451,7 @@ def test_uncaught_widget_error_fails_render(kind: str, error: str) -> None:
         render_widget_headless(data, SYNTHETIC_ESM, DUMMY_CSS, timeout=10)
     report = render_diagnostics(data, SYNTHETIC_ESM, DUMMY_CSS, timeout=10)
     assert (report.ok, report.error) == (False, expected)
-    assert headless_mod._warm_pages == {}  # failed pages are retired
+    assert headless_mod._warm_pages == []  # failed pages are retired
 
 
 @needs_playwright
@@ -429,7 +465,7 @@ def test_webgl_pdf_rasterized_and_contexts_freed() -> None:
             data, SYNTHETIC_ESM, DUMMY_CSS, fmt="pdf", dpi=72, timeout=10
         )
     assert pdf == b"%PDF-raster"
-    (warm,) = headless_mod._warm_pages.values()
+    (warm,) = headless_mod._warm_pages
     probe = "() => [window.__gl?.isContextLost(), !!window.__bare.getContext('2d')]"
     try:
         assert headless_mod._run_in_browser_thread(warm.page.evaluate(probe)) == [
@@ -438,6 +474,58 @@ def test_webgl_pdf_rasterized_and_contexts_freed() -> None:
         ]
     finally:
         headless_mod._run_in_browser_thread(headless_mod._retire(warm))
+
+
+@needs_playwright
+@pytest.mark.parametrize(
+    ("svg", "expected"),
+    [
+        # 10x5 rect at (20, 30) plus the 4px pad
+        (
+            '<rect x="20" y="30" width="10" height="5"/>',
+            'viewBox="16 26 18 13" width="18" height="13"',
+        ),
+        ("", "trim failed: transparent export painted no pixels"),
+        (None, "trim failed: exported SVG has no viewBox"),
+    ],
+)
+def test_transparent_svg_trims_to_painted_pixels(
+    svg: str | None, expected: str
+) -> None:
+    """Transparent SVG exports shrink the viewBox to the painted pixels plus a pad,
+    and report unpaintable or unmeasurable SVGs as export errors.
+    """
+    view_box = "" if svg is None else ' viewBox="0 0 100 100"'
+    data = {
+        **DUMMY_WIDGET_DATA,
+        "svg": f'<svg xmlns="http://www.w3.org/2000/svg"{view_box}>{svg or ""}</svg>',
+    }
+    export = functools.partial(
+        render_widget_headless,
+        data,
+        SYNTHETIC_ESM,
+        DUMMY_CSS,
+        fmt="svg",
+        dpi=72,
+        timeout=10,
+        transparent=True,
+    )
+    if expected.startswith("trim failed"):
+        with pytest.raises(RuntimeError, match=f"SVG export failed: {expected}"):
+            export()
+    else:
+        assert expected in export().decode()
+
+
+@needs_playwright
+def test_export_wider_than_page() -> None:
+    """Widgets keep their export width past the 1024px page, though the bundle caps
+    widgets at their parent's width.
+    """
+    png = render_widget_headless(
+        DUMMY_WIDGET_DATA, SYNTHETIC_ESM, DUMMY_CSS, dpi=72, width=1300, timeout=10
+    )
+    assert Image.open(io.BytesIO(png)).size == (1300, 600)
 
 
 # === _build_html ===
@@ -536,6 +624,46 @@ def test_to_html_writes_file(tmp_path: Any) -> None:
         assert file.read() == html
 
 
+@pytest.mark.parametrize("fmt", ["jpeg", "pdf"])
+def test_transparent_rejects_opaque_formats(fmt: str) -> None:
+    """Transparent export raises for formats without alpha (JPEG) or trimming (PDF)."""
+    with pytest.raises(ValueError, match=f"supports png and svg, got fmt='{fmt}'"):
+        render_widget_headless(
+            DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS, fmt=fmt, transparent=True
+        )
+
+
+@pytest.mark.parametrize(
+    ("mode", "painted_box", "pad", "expected_size"),
+    [
+        ("RGBA", (10, 20, 30, 25), 0, (20, 5)),
+        ("RGBA", (10, 20, 30, 25), 4, (28, 13)),
+        ("RGBA", (0, 0, 40, 40), 4, (40, 40)),  # pad clamps to the image edges
+        ("RGB", (0, 0, 40, 40), 4, (40, 40)),  # Chromium drops alpha when opaque
+        ("RGBA", None, 4, None),  # nothing painted
+    ],
+)
+def test_trim_png(
+    mode: str,
+    painted_box: tuple[int, int, int, int] | None,
+    pad: int,
+    expected_size: tuple[int, int] | None,
+) -> None:
+    """_trim_png crops to opaque pixels plus a pad, and raises on blank captures."""
+    img = Image.new(mode, (40, 40))
+    if painted_box:
+        img.paste((200, 0, 0, 255)[: len(mode)], painted_box)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    if expected_size is None:
+        with pytest.raises(RuntimeError, match="no painted pixels"):
+            _trim_png(buf.getvalue(), pad)
+        return
+    trimmed = Image.open(io.BytesIO(_trim_png(buf.getvalue(), pad)))
+    assert trimmed.size == expected_size
+    assert trimmed.getpixel((pad, pad)) == (200, 0, 0, 255)
+
+
 def test_png_blank_fraction_uniform_image() -> None:
     """png_blank_fraction returns 1.0 for a single-color image."""
     pytest.importorskip("PIL")
@@ -546,3 +674,93 @@ def test_png_blank_fraction_uniform_image() -> None:
     buf = io.BytesIO()
     Image.new("RGB", (8, 8), (255, 255, 255)).save(buf, format="PNG")
     assert png_blank_fraction(buf.getvalue()) == 1.0
+
+
+def test_overlapping_exports_trim_idle_pages_on_release() -> None:
+    """Exports that overlap beyond _MAX_WARM_PAGES each open a page; once they
+    finish, idle pages are trimmed back to the limit.
+    """
+    n_exports = headless_mod._MAX_WARM_PAGES + 2
+    barrier = threading.Barrier(n_exports)
+
+    async def on_mount() -> None:
+        """Hold each mount until every export has checked out its own page."""
+        await asyncio.to_thread(barrier.wait, 5)
+
+    pages = [_mock_page(on_mount=on_mount) for _ in range(n_exports)]
+    browser = _mock_browser(*pages)
+
+    def export() -> None:
+        """Export from a worker thread."""
+        render_widget_headless(DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS)
+
+    with patch(f"{HEADLESS_PATH}._get_browser", AsyncMock(return_value=browser)):
+        threads = [threading.Thread(target=export) for _ in range(n_exports)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+    assert browser.new_page.await_count == n_exports
+    assert len(headless_mod._warm_pages) == headless_mod._MAX_WARM_PAGES
+    assert sum(page.close.await_count for page in pages) == 2
+
+
+def test_batch_failure_cancels_sibling_renders() -> None:
+    """A failing job cancels the batch's other renders before the error surfaces."""
+    cancelled: list[bool] = []
+
+    async def slow_mount() -> None:
+        """Mount that only ends by cancellation."""
+        try:
+            await asyncio.sleep(3600)
+        except asyncio.CancelledError:
+            cancelled.append(True)
+            raise
+
+    n_slow = headless_mod._MAX_WARM_PAGES - 1
+    pages = [_mock_page(render_error="boom")]
+    pages += [_mock_page(on_mount=slow_mount) for _ in range(n_slow)]
+    job = dict(
+        widget_data=DUMMY_WIDGET_DATA, esm_content=DUMMY_ESM, css_content=DUMMY_CSS
+    )
+    with (
+        patch(
+            f"{HEADLESS_PATH}._get_browser",
+            AsyncMock(return_value=_mock_browser(*pages)),
+        ),
+        pytest.raises(RuntimeError, match="Widget render failed: boom"),
+    ):
+        headless_mod.render_widgets_headless([job] * (n_slow + 1))
+    assert cancelled == [True] * n_slow
+
+
+def test_batch_budget_covers_full_waves() -> None:
+    """A batch may take one full single-export budget per wave of renders."""
+    job = dict(
+        widget_data=DUMMY_WIDGET_DATA, esm_content=DUMMY_ESM, css_content=DUMMY_CSS,
+        timeout=1,
+    )  # fmt: skip
+    n_jobs = 5 * headless_mod._MAX_WARM_PAGES
+    with patch(f"{HEADLESS_PATH}._run_in_browser_thread") as run:
+        headless_mod.render_widgets_headless([job] * n_jobs)
+    (coro, _), kwargs = run.call_args
+    coro.close()
+    assert kwargs["budget"] == 5 * headless_mod._call_budget(1)
+
+
+def test_cancel_during_eviction_releases_page() -> None:
+    """A render cancelled while evicting idle pages still releases and retires its
+    checked-out page, instead of leaving it marked in use forever.
+    """
+    page = _mock_page()
+    evict = AsyncMock(side_effect=[asyncio.CancelledError(), None])
+    with (
+        patch(
+            f"{HEADLESS_PATH}._get_browser", AsyncMock(return_value=_mock_browser(page))
+        ),
+        patch(f"{HEADLESS_PATH}._evict_idle", evict),
+        pytest.raises((asyncio.CancelledError, concurrent.futures.CancelledError)),
+    ):
+        render_widget_headless(DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS)
+    assert headless_mod._warm_pages == []
+    page.close.assert_awaited_once()

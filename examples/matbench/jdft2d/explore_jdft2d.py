@@ -16,14 +16,13 @@ from matminer.datasets import load_dataset
 from tqdm import tqdm
 
 import pymatviz as pmv
-from pymatviz.enums import Key
 
 
 # %%
 df_2d = load_dataset("matbench_jdft2d")
 
-df_2d[[Key.spg_symbol, Key.spg_num]] = [
-    struct.get_space_group_info() for struct in tqdm(df_2d[Key.structure])
+df_2d[["spg_symbol", "spg_num"]] = [
+    struct.get_space_group_info() for struct in tqdm(df_2d["structure"])
 ]
 
 df_2d.describe()
@@ -37,19 +36,19 @@ widget.show()
 
 
 # %%
-df_2d[Key.volume] = [x.volume for x in df_2d[Key.structure]]
-df_2d[Key.formula] = [x.formula for x in df_2d[Key.structure]]
+df_2d["volume"] = [x.volume for x in df_2d["structure"]]
+df_2d["formula"] = [x.formula for x in df_2d["structure"]]
 
 title = "Elemental prevalence in the Matbench Jarvis DFT 2D dataset"
-pmv.ptable_heatmap(df_2d[Key.formula], log=True, color_bar={"title": title}).show()
+pmv.ptable_heatmap(df_2d["formula"], log=True, color_bar={"title": title}).show()
 
 
 # %%
-pmv.spacegroup_bar(df_2d[Key.spg_num], log_y=True).show()
+pmv.spacegroup_bar_plot(df_2d["spg_num"], log_y=True).show()
 
 
 # %%
 # Spacegroup sunburst of the JARVIS DFT 2D dataset
-widget = pmv.spacegroup_sunburst(df_2d[Key.spg_num], label_text="label+percent")
+widget = pmv.spacegroup_sunburst(df_2d["spg_num"], label_text="label+percent")
 widget.show()
 # widget.to_img("jdft2d-spacegroup-sunburst.pdf")

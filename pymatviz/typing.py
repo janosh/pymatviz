@@ -16,12 +16,20 @@ if TYPE_CHECKING:
     from pymatgen.io.ase import MSONAtoms
     from pymatgen.phonon.dos import PhononDos
 
+    from pymatviz.enums import ElemCountMode
+
 # Quoted unions: PEP 695 treats a bare `"Name"` as Literal, not a forward ref
 type AnyStructure = (
     "Structure | IStructure | Molecule | IMolecule | MSONAtoms | AseAtoms"
 )
 type PeriodicStructure = "IStructure | AseAtoms | PhonopyAtoms"
 type AnyDos = "PhononDos | TotalDos"
+
+# ElemCountMode values, so callers can pass plain strings (count_mode="occurrence")
+ElemCountModeName = Literal[
+    "composition", "fractional_composition", "reduced_composition", "occurrence"
+]
+type ElemCountModeLike = "ElemCountMode | ElemCountModeName"
 
 # Bare Literal assignments (not `type`): get_args() is empty on PEP 695 type aliases
 CrystalSystem = Literal[

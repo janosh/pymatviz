@@ -5,7 +5,7 @@ from __future__ import annotations
 import importlib.util
 import json
 from contextlib import nullcontext
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 from unittest.mock import Mock, patch
 
 import numpy as np
@@ -16,10 +16,12 @@ from pymatgen.core import Lattice, Molecule, Structure
 
 import pymatviz as pmv
 from pymatviz.widgets import matterviz
-from pymatviz.widgets._traits import BONDING_STRATEGIES, ELEMENT_COLOR_SCHEMES
+from pymatviz.widgets._schema_traits import StructureTraits
+from pymatviz.widgets._traits import ELEMENT_COLOR_SCHEMES
 from pymatviz.widgets.band_structure import BandStructureWidget
 from pymatviz.widgets.bands_and_dos import BandsAndDosWidget
 from pymatviz.widgets.bar_plot import BarPlotWidget
+from pymatviz.widgets.box_plot import BoxPlotWidget
 from pymatviz.widgets.brillouin_zone import BrillouinZoneWidget
 from pymatviz.widgets.chem_pot_diagram import ChemPotDiagramWidget
 from pymatviz.widgets.composition import CompositionWidget
@@ -28,7 +30,11 @@ from pymatviz.widgets.dos import DosWidget
 from pymatviz.widgets.fermi_surface import FermiSurfaceWidget
 from pymatviz.widgets.heatmap_matrix import HeatmapMatrixWidget
 from pymatviz.widgets.histogram import HistogramWidget
-from pymatviz.widgets.matterviz import MATTERVIZ_ANYWIDGET_VERSION, MatterVizWidget
+from pymatviz.widgets.matterviz import (
+    MATTERVIZ_ANYWIDGET_VERSION,
+    MatterVizWidget,
+    from_json,
+)
 from pymatviz.widgets.periodic_table import PeriodicTableWidget
 from pymatviz.widgets.phase_diagram import PhaseDiagramWidget
 from pymatviz.widgets.rdf_plot import RdfPlotWidget
@@ -40,6 +46,7 @@ from pymatviz.widgets.sunburst import SunburstWidget
 from pymatviz.widgets.trajectory import TrajectoryWidget
 from pymatviz.widgets.treemap import TreemapWidget
 from pymatviz.widgets.xrd import XrdWidget
+from tests.widgets.test_browser_render import WIDGET_CASES
 
 
 if TYPE_CHECKING:
@@ -553,7 +560,7 @@ def test_widget_normalizes_numpy_values(
 
 def test_spacegroup_bar_data_inputs(monkeypatch: pytest.MonkeyPatch) -> None:
     """SpacegroupBarPlotWidget counts every input form per space group number."""
-    import pymatviz.process_data as pmv_pd
+    import pymatviz.structures as pmv_structures
 
     widget = SpacegroupBarPlotWidget(data=pd.Series([225, 166, 62, 225]))
     assert widget.data == {"62": 1, "166": 1, "225": 2}
@@ -565,7 +572,7 @@ def test_spacegroup_bar_data_inputs(monkeypatch: pytest.MonkeyPatch) -> None:
     # mapping keys normalize in one batch per key type (numbers, symbols), not one
     # call per key
     n_calls = 0
-    normalize = pmv_pd.normalize_spacegroups
+    normalize = pmv_structures.normalize_spacegroups
 
     def counting_normalize(*args: Any) -> Any:
         """Count normalize_spacegroups calls."""
@@ -573,7 +580,7 @@ def test_spacegroup_bar_data_inputs(monkeypatch: pytest.MonkeyPatch) -> None:
         n_calls += 1
         return normalize(*args)
 
-    monkeypatch.setattr(pmv_pd, "normalize_spacegroups", counting_normalize)
+    monkeypatch.setattr(pmv_structures, "normalize_spacegroups", counting_normalize)
     widget.data = {"Fm-3m": 1, "P2_1/c": 2, "Pnma": 3}
     assert (widget.data, n_calls) == ({"14": 2, "62": 3, "225": 1}, 1)
     widget.data = {225: 1, np.int64(62): 2, "225": 3, "Fm-3m": 4, "P 1 21/c 1": 5}
@@ -661,7 +668,7 @@ _COLOR_SCHEME_CASES = [
     ("", tl.TraitError),
 ]
 _BONDING_STRATEGY_CASES = [
-    *[(name, name) for name in BONDING_STRATEGIES],
+    *[(name, name) for name in StructureTraits.bonding_strategy.values],  # noqa: PD011
     (None, None),
     ("solid_angle", tl.TraitError),  # removed from matterviz
 ]
@@ -937,8 +944,8 @@ def test_to_img_format_inference(
 @pytest.mark.parametrize(
     ("img_kwargs", "match"),
     [
-        ({"filename": "plot.tiff"}, "Unsupported format 'tiff'"),
-        ({"fmt": "tiff"}, "Unsupported format 'tiff'"),
+        ({"filename": "plot.tiff"}, "Unsupported fmt='tiff'"),
+        ({"fmt": "tiff"}, "Unsupported fmt='tiff'"),
         ({"filename": "plot"}, "Cannot infer format"),
         ({"dpi": 0}, "dpi must be positive"),
         ({"width": -1}, "width must be positive"),
@@ -1152,15 +1159,17 @@ def test_headless_bar_plot_png(bar_plot_widget: BarPlotWidget) -> None:
 
 @_skip_no_playwright
 @pytest.mark.parametrize("chart", ["treemap", "sunburst"])
-def test_hierarchy_vector_and_html_exports(chart: str, tmp_path: Any) -> None:
+def test_hierarchy_vector_and_html_exports(
+    chart: Literal["treemap", "sunburst"], tmp_path: Any
+) -> None:
     """Chemical-system charts export vector SVG/PDF and interactive standalone HTML."""
     from playwright.sync_api import expect, sync_playwright
 
     import pymatviz as pmv
 
-    plot = pmv.chem_sys_treemap if chart == "treemap" else pmv.chem_sys_sunburst
-    widget = plot(
+    widget = pmv.chem_sys_hierarchy(
         ["Fe2O3", "Li2O", "Si"],
+        kind=chart,
         label_text="label+value",
         show_controls=False,
         style="width: 700px; height: 480px;",
@@ -1574,3 +1583,103 @@ def test_unknown_kwargs_raise(make_widget: Any) -> None:
     """Typos and unsupported options raise instead of being dropped."""
     with pytest.raises(TypeError, match=r"Unknown \w+ options: \['bogus'\]"):
         make_widget(bogus=1)
+
+
+DF_XY = pd.DataFrame(
+    {"a": [1.0, 2.0, 3.0, np.nan], "b": [4.0, 5.0, 6.0, 7.0], "g": list("ppqq")}
+)
+
+
+@pytest.mark.parametrize(
+    ("widget_cls", "columns", "series_key", "x_label"),
+    [
+        (ScatterPlotWidget, {"x": "a", "y": "b"}, "x", "a"),
+        (BarPlotWidget, {"x": "a", "y": "b"}, "x", "a"),
+        (BoxPlotWidget, {"y": "a"}, "y", None),
+        (HistogramWidget, {"x": "a"}, "values", "a"),
+    ],
+)
+def test_cartesian_widgets_take_dataframe_columns(
+    widget_cls: type, columns: dict[str, str], series_key: str, x_label: str | None
+) -> None:
+    """DataFrame columns become series (one per color group, NaN rows dropped) and
+    default axis labels that user axis options extend.
+    """
+    widget = widget_cls(DF_XY, color="g", y_axis={"scale_type": "log"}, **columns)
+    assert [series_dict["label"] for series_dict in widget.series] == ["p", "q"]
+    assert [list(series_dict[series_key]) for series_dict in widget.series] == [
+        [1.0, 2.0],
+        [3.0],
+    ]
+    y_label = {"label": columns["y"]} if "y" in columns else {}
+    assert widget.y_axis == {"scale_type": "log"} | y_label
+    assert (widget.x_axis or {}).get("label") == x_label
+    assert len(widget_cls(DF_XY, **columns).series) == 1  # no color: one series
+
+
+@pytest.mark.parametrize(
+    ("data", "kwargs", "err", "match"),
+    [
+        ([{"x": [1], "y": [2]}], {"x": "a"}, TypeError, r"columns \['a', None\] need"),
+        (DF_XY, {"x": "a"}, ValueError, r"column\(s\) for \['y'\]"),
+        (DF_XY, {"x": "a", "y": "nope"}, KeyError, "nope"),
+    ],
+)
+def test_cartesian_dataframe_errors(
+    data: Any, kwargs: dict[str, str], err: type[Exception], match: str
+) -> None:
+    """Column names need a DataFrame that has them all."""
+    with pytest.raises(err, match=match):
+        ScatterPlotWidget(data, **kwargs)
+
+
+def test_heatmap_matrix_takes_dataframe() -> None:
+    """A DataFrame's columns, index and cells become x_items, y_items and values."""
+    df_matrix = pd.DataFrame({"c1": [1, 3], "c2": [2, 4]}, index=pd.Index(["r1", "r2"]))
+    widget = HeatmapMatrixWidget(df_matrix)
+    assert [item["key"] for item in widget.x_items] == ["c1", "c2"]
+    assert [item["key"] for item in widget.y_items] == ["r1", "r2"]
+    assert widget.values == [[1, 2], [3, 4]]  # noqa: PD011
+    with pytest.raises(ValueError, match="in the DataFrame, not both"):
+        HeatmapMatrixWidget(df_matrix, values=[[0]])
+
+
+@pytest.mark.parametrize("widget_cls", WIDGET_CASES, ids=lambda cls: cls.__name__)
+def test_widget_json_round_trip(
+    widget_cls: type[MatterVizWidget], request: pytest.FixtureRequest, tmp_path: Any
+) -> None:
+    """to_json/from_json restore every widget type with identical traits, binary
+    array buffers included, from JSON text or a file.
+    """
+    widget = WIDGET_CASES[widget_cls][0](request)
+    text = widget.to_json(f"{tmp_path}/widget.json")
+    for source in (text, f"{tmp_path}/widget.json"):
+        restored = from_json(source)
+        # by name: other tests reload widget modules, which swaps the class objects
+        assert type(restored).__name__ == widget_cls.__name__
+        assert json.loads(restored.to_json()) == json.loads(text)  # key order may vary
+
+
+def test_from_json_rejects_unknown_widget_type() -> None:
+    """JSON without a known widget_type raises instead of guessing a class."""
+    with pytest.raises(ValueError, match="Unknown widget_type='nope'"):
+        from_json('{"widget_type": "nope"}')
+
+
+@pytest.mark.parametrize("orientation", ["horizontal", "HORIZONTAL"])
+def test_bar_plot_dataframe_column_roles_and_orientation(orientation: str) -> None:
+    """One column may be x and color, "" is a column name too, and horizontal bars
+    (in any case) label y with the x column.
+    """
+    df_bars = pd.DataFrame({"c": ["a", "b"], "v": [1, 2], "": ["p", "q"]})
+    for color, labels in (("c", ["a", "b"]), ("", ["p", "q"])):
+        widget = BarPlotWidget(df_bars, x="c", y="v", color=color)
+        assert [series_dict["label"] for series_dict in widget.series] == labels
+    flipped = BarPlotWidget(df_bars, x="c", y="v", orientation=orientation)
+    assert (flipped.y_axis, flipped.x_axis) == ({"label": "c"}, {"label": "v"})
+
+
+def test_heatmap_matrix_dataframe_missing_cells() -> None:
+    """NaN cells become None (empty cells) instead of failing as non-finite."""
+    widget = HeatmapMatrixWidget(pd.DataFrame({"a": [1.0, float("nan")]}))
+    assert widget.values == [[1.0], [None]]  # noqa: PD011

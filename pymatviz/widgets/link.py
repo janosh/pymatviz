@@ -6,8 +6,8 @@ the selected structure's elements and, when clicked, dim scatter points lacking 
 
 Example:
     >>> import pymatviz as pmv
-    >>> scatter = pmv.ScatterPlotWidget(series=[{"x": steps, "y": energies}])
-    >>> structure = pmv.StructureWidget(structure=frames[0])
+    >>> scatter = pmv.scatter_plot(series=[{"x": steps, "y": energies}])
+    >>> structure = pmv.structure(structure=frames[0])
     >>> link = pmv.widgets.link_selection(scatter, structure, structures=frames)
     >>> # clicking a scatter point now shows the matching frame in `structure`
     >>> link.unlink()  # stop syncing

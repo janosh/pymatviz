@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 from typing import Any
 
 import numpy as np
@@ -8,7 +9,58 @@ import pytest
 
 from pymatviz.histogram import elements_hist, histogram
 from pymatviz.widgets.bar_plot import BarPlotWidget
+from pymatviz.widgets.histogram import HistogramWidget
 from tests.conftest import df_regr, y_true
+
+
+@pytest.fixture
+def python_bins(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Bin every histogram in Python, as for data too large for the browser."""
+    # the pymatviz.histogram attribute is the histogram function, not its module
+    histogram_mod = importlib.import_module("pymatviz.histogram")
+    monkeypatch.setattr(histogram_mod, "MAX_BROWSER_HISTOGRAM_VALUES", 0)
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "browser"),
+    [
+        ({}, True),
+        ({"density": True}, False),
+        ({"bins": "auto"}, False),
+        ({"bin_width": 0.5}, False),
+        ({"orientation": "horizontal"}, False),
+    ],
+)
+def test_histogram_bins_in_browser_unless_python_needed(
+    kwargs: dict[str, Any], browser: bool
+) -> None:
+    """Raw values go to the browser unless an option needs NumPy binning."""
+    opts: dict[str, Any] = {"bins": 4} | kwargs
+    widget = histogram({"a": [0.0, 1.0, 2.0], "b": [5.0, 6.0]}, **opts)
+    assert isinstance(widget, HistogramWidget if browser else BarPlotWidget)
+    if isinstance(widget, HistogramWidget):
+        assert (widget.bins, widget.mode, widget.show_legend) == (4, "overlay", True)
+        assert [list(series_dict["values"]) for series_dict in widget.series] == [
+            [0, 1, 2],
+            [5, 6],
+        ]
+        assert widget.y_axis == {"label": "Count", "scale_type": "linear"}
+
+
+def test_histogram_browser_x_range_and_dataframe() -> None:
+    """A DataFrame column splits by color; values outside x_range are dropped."""
+    df_vals = pd.DataFrame({"v": [-1.0, 0.5, 2.0, 3.0], "g": list("ppqq")})
+    widget = histogram(df_vals, x="v", color="g", x_range=(0, 2.5))
+    assert [series_dict["label"] for series_dict in widget.series] == ["p", "q"]
+    assert [list(series_dict["values"]) for series_dict in widget.series] == [
+        [0.5],
+        [2.0],
+    ]
+    assert (widget.x_range, widget.x_axis) == ([0, 2.5], {"label": "v"})
+    with pytest.raises(ValueError, match="name the DataFrame column"):
+        histogram(df_vals)
+    with pytest.raises(TypeError, match="need a DataFrame"):
+        histogram([1.0], x="v")
 
 
 @pytest.mark.parametrize(
@@ -29,7 +81,7 @@ from tests.conftest import df_regr, y_true
             "log",
         ),
         # percent labels stay shares of all elements, not just the kept ones
-        ({"keep_top": 2}, ["O", "Fe"], [7, 3], ["58%", "25%"], "linear"),
+        ({"max_elements": 2}, ["O", "Fe"], [7, 3], ["58%", "25%"], "linear"),
         (
             {"show_values": "count"},
             ["O", "Fe", "Li", "P"],
@@ -74,10 +126,11 @@ def test_elements_hist_invalid_show_values() -> None:
         elements_hist(["Fe2O3"], show_values="fraction")  # ty: ignore[invalid-argument-type]
 
 
+@pytest.mark.usefixtures("python_bins")
 @pytest.mark.parametrize("log_y", [True, False])
 @pytest.mark.parametrize("bins", [20, 100])
 @pytest.mark.parametrize("values", [y_true, df_regr.y_true])
-def test_histogram(values: Any, log_y: bool, bins: int) -> None:
+def test_python_histogram(values: Any, log_y: bool, bins: int) -> None:
     """Counts match np.histogram over the data range and axes are configured."""
     widget = histogram(values, log_y=log_y, bins=bins)
     (series,) = widget.series
@@ -93,7 +146,8 @@ def test_histogram(values: Any, log_y: bool, bins: int) -> None:
     assert widget.show_legend is False
 
 
-def test_histogram_dict_shares_bin_edges() -> None:
+@pytest.mark.usefixtures("python_bins")
+def test_python_histogram_dict_shares_bin_edges() -> None:
     """Dict input bins every series on edges spanning all values, with a legend."""
     widget = histogram(
         {"a": [0, 1], "b": [9, 10]}, bins=5, mode="grouped", bar={"opacity": 0.3}
@@ -119,6 +173,7 @@ def test_histogram_dict_shares_bin_edges() -> None:
         histogram(in_out, bins=2, x_range=(0, 1), density=True)
 
 
+@pytest.mark.usefixtures("python_bins")
 @pytest.mark.parametrize(
     ("values", "match"),
     [
@@ -129,18 +184,20 @@ def test_histogram_dict_shares_bin_edges() -> None:
         ({"ok": [1, 2], "bad": [np.inf, -np.inf]}, r"'bad' contain 2 non-finite"),
     ],
 )
-def test_histogram_rejects_invalid_values(values: Any, match: str) -> None:
+def test_python_histogram_rejects_invalid_values(values: Any, match: str) -> None:
     """Histogram rejects empty, non-1D and non-finite inputs, naming the series."""
     with pytest.raises(ValueError, match=match):
         histogram(values)
 
 
-def test_histogram_preserves_zero_x_range_boundary() -> None:
+@pytest.mark.usefixtures("python_bins")
+def test_python_histogram_preserves_zero_x_range_boundary() -> None:
     """Histogram treats zero x_range bounds as explicit values."""
     (series,) = histogram([1, 2, 3], x_range=(0, None), bins=3).series
     assert series["x"][0] - series["bar_width"][0] / 2 == 0
 
 
+@pytest.mark.usefixtures("python_bins")
 @pytest.mark.parametrize(
     ("values", "bins", "centers", "widths", "counts"),
     [
@@ -149,7 +206,7 @@ def test_histogram_preserves_zero_x_range_boundary() -> None:
     ],
 )
 @pytest.mark.parametrize("density", [False, True])
-def test_histogram_bin_geometry(
+def test_python_histogram_bin_geometry(
     values: list[float],
     bins: int | list[float],
     centers: list[float],
@@ -167,11 +224,12 @@ def test_histogram_bin_geometry(
     np.testing.assert_allclose(series["y"], expected, rtol=1e-14, atol=0)
 
 
+@pytest.mark.usefixtures("python_bins")
 @pytest.mark.parametrize(
     ("series_name", "expected_title"),
     [(None, "Value"), ("my_col", "my_col"), (0, "0"), ("", "")],
 )
-def test_histogram_series_x_axis_label(
+def test_python_histogram_series_x_axis_label(
     series_name: str | int | None, expected_title: str
 ) -> None:
     """Histogram uses series name as x-axis title; only None falls back to 'Value'."""
@@ -201,3 +259,39 @@ def test_elements_hist_large_counts() -> None:
     """Integer counts keep all digits; fractional counts use 3 significant digits."""
     widget = elements_hist(pd.Series({"O": 1_234_567, "Fe": 2.5}), show_values="count")
     assert widget.series[0]["labels"] == ["1,234,567", "2.5"]
+
+
+@pytest.mark.parametrize(
+    ("df_vals", "color", "expected"),
+    [
+        # one column as values and groups
+        (pd.DataFrame({"v": [1.0, 2.0]}), "v", {"1.0": [1.0], "2.0": [2.0]}),
+        # unused categories make no empty distribution
+        (
+            pd.DataFrame(
+                {"v": [1.0], "g": pd.Categorical(["a"], categories=["a", "b"])}
+            ),
+            "g",
+            {"a": [1.0]},
+        ),
+    ],
+)
+def test_histogram_dataframe_groups(
+    df_vals: pd.DataFrame, color: str, expected: dict[str, list[float]]
+) -> None:
+    """A column may both supply values and groups; only observed groups plot."""
+    widget = histogram(df_vals, x="v", color=color)
+    assert {
+        series_dict["label"]: list(series_dict["values"])
+        for series_dict in widget.series
+    } == expected
+
+
+def test_histogram_keeps_groups_equal_as_strings() -> None:
+    """Groups 1 and "1" stay two distributions instead of one overwriting the other."""
+    df_vals = pd.DataFrame({"v": [0.0, 10.0], "g": pd.Series([1, "1"], dtype=object)})
+    widget = histogram(df_vals, x="v", color="g")
+    assert sorted(list(series_dict["values"]) for series_dict in widget.series) == [
+        [0.0],
+        [10.0],
+    ]

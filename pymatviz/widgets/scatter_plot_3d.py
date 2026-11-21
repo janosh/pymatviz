@@ -8,43 +8,29 @@ import traitlets as tl
 
 from pymatviz.widgets._binary import is_binary_envelope, plot_series_envelope
 from pymatviz.widgets._normalize import normalize_json_kwargs, normalize_plot_json
+from pymatviz.widgets._schema_traits import ScatterPlot3dTraits
 from pymatviz.widgets._traits import (
     CAMERA_PROJECTIONS,
     PlotControlsTraits,
     color_scale_trait,
-    optional_trait,
 )
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
-class ScatterPlot3DWidget(PlotControlsTraits, MatterVizWidget):
+class ScatterPlot3DWidget(PlotControlsTraits, ScatterPlot3dTraits, MatterVizWidget):
     """MatterViz widget for 3D scatter/surface plots with camera controls.
 
     Examples:
-        >>> from pymatviz import ScatterPlot3DWidget
-        >>> widget = ScatterPlot3DWidget(
+        >>> import pymatviz as pmv
+        >>> widget = pmv.scatter_plot_3d(
         ...     series=[{"x": [1, 2], "y": [3, 4], "z": [5, 6], "label": "pts"}],
         ... )
     """
 
-    series = optional_trait(tl.List)
-    surfaces = optional_trait(tl.List)
-    ref_lines = optional_trait(tl.List)
-    ref_planes = optional_trait(tl.List)
-    x_axis = optional_trait(tl.Dict)
-    y_axis = optional_trait(tl.Dict)
-    z_axis = optional_trait(tl.Dict)
-    display = optional_trait(tl.Dict)
-    styles = optional_trait(tl.Dict)
     color_scale = color_scale_trait()
-    size_scale = optional_trait(tl.Dict)
-    legend = optional_trait(tl.Dict)
-    show_legend = optional_trait(tl.Bool)
     camera_projection = tl.CaselessStrEnum(
         CAMERA_PROJECTIONS, default_value="perspective"
     ).tag(sync=True)
-    # matterviz InstanceTween {duration, easing, ...} animating point changes
-    point_tween = optional_trait(tl.Dict)
 
     _JSON_KWARGS = (
         "surfaces", "ref_lines", "ref_planes", "x_axis", "y_axis", "z_axis", "display",
@@ -109,4 +95,4 @@ class ScatterPlot3DWidget(PlotControlsTraits, MatterVizWidget):
             **kwargs: Additional widget properties.
         """
         normalize_json_kwargs(kwargs, self._JSON_KWARGS, "ScatterPlot3D")
-        super().__init__(widget_type="scatter_plot_3d", series=series, **kwargs)
+        super().__init__(series=series, **kwargs)

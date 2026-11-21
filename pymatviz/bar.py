@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from pymatgen.core import Structure
 
 
-def spacegroup_bar(
+def spacegroup_bar_plot(
     data: Sequence[int | float | str | Structure] | pd.Series,
     *,
     show_counts: bool = True,

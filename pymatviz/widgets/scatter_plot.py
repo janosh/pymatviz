@@ -7,56 +7,30 @@ from typing import Any
 import traitlets as tl
 
 from pymatviz.widgets._normalize import normalize_json_kwargs
+from pymatviz.widgets._schema_traits import ScatterPlotTraits
 from pymatviz.widgets._traits import (
     CartesianPlotTraits,
     color_bar_trait,
     color_scale_trait,
+    df_series,
     optional_trait,
 )
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
-class ScatterPlotWidget(CartesianPlotTraits, MatterVizWidget):
+class ScatterPlotWidget(CartesianPlotTraits, ScatterPlotTraits, MatterVizWidget):
     """MatterViz widget wrapper for 2D scatter/line plots.
 
     The payload follows matterviz `ScatterPlot` props with a Python-friendly API.
     """
 
-    styles = optional_trait(tl.Dict)  # point/line style overrides
     color_scale = color_scale_trait()
-    size_scale = optional_trait(tl.Dict)
-    fill_regions = optional_trait(tl.List)
-    error_bands = optional_trait(tl.List)
-    # auto picks canvas above the dense-point threshold, svg below
-    marker_renderer = optional_trait(
-        tl.CaselessStrEnum, values=["auto", "svg", "canvas"]
-    )
     color_bar = color_bar_trait()
     # Size legend props; {} shows it when markers vary in size, None hides it
     size_legend = tl.Dict(default_value={}, allow_none=True).tag(sync=True)
     # Density contours per series: True for defaults or a dict of levels, bandwidth,
     # filled, fill_opacity, stroke_width
     density_contours = optional_trait(tl.Union, trait_types=[tl.Bool(), tl.Dict()])
-    hover_config = optional_trait(tl.Dict)
-    label_placement_config = optional_trait(tl.Dict)
-    point_tween = optional_trait(tl.Dict)
-    annotation = optional_trait(tl.Unicode)  # text badge auto-placed in free space
-    line_tween = optional_trait(tl.Dict)
-
-    # Interaction state (two-way synced with the frontend for ipywidgets linking).
-    # selected_point drives a highlight from Python and takes
-    # {"series_idx", "point_idx"}. active_point/hovered_point are
-    # populated on user click/hover (observe them to drive other widgets).
-    # hovered_point is {"series_idx", "point_idx", "x", "y"} or None.
-    # active_point is the last clicked point or None; it adds an
-    # event_id (monotonically increasing per widget instance) so re-clicking
-    # the same point is still observed as a distinct event:
-    # {"series_idx", "point_idx", "x", "y", "event_id"}.
-    selected_point = optional_trait(tl.Dict)
-    active_point = optional_trait(tl.Dict)
-    hovered_point = optional_trait(tl.Dict)
-    # Dims points whose series `point_ids` entry is not listed (None: no dimming)
-    highlighted_ids = optional_trait(tl.List)
 
     _SCATTER_JSON_KWARGS = (
         "styles", "color_scale", "size_scale", "fill_regions", "error_bands",
@@ -66,13 +40,21 @@ class ScatterPlotWidget(CartesianPlotTraits, MatterVizWidget):
 
     def __init__(
         self,
-        series: list[dict[str, Any]] | tuple[dict[str, Any], ...] | None = None,
+        series: list[dict[str, Any]] | tuple[dict[str, Any], ...] | Any = None,
+        *,
+        x: str | None = None,
+        y: str | None = None,
+        color: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize a scatter plot widget.
 
         Args:
-            series: Plot series with required ``x`` and ``y`` arrays.
+            series: Plot series dicts with ``x`` and ``y`` arrays, or a DataFrame whose
+                columns ``x``, ``y`` and ``color`` name.
+            x: DataFrame column of the x values.
+            y: DataFrame column of the y values.
+            color: DataFrame column to split into one series per value.
             **kwargs: Widget traits, e.g. axis/range configs (see
                 ``CartesianPlotTraits``), ``styles``, ``color_scale``,
                 ``fill_regions``, ``error_bands``, ``marker_renderer`` (``"auto"``,
@@ -80,10 +62,10 @@ class ScatterPlotWidget(CartesianPlotTraits, MatterVizWidget):
                 (``{"series_idx", "point_idx"}`` to highlight; observe
                 ``active_point`` to react to clicks).
         """
+        series = df_series(series, color, kwargs, x=x, y=y)
         json_keys = (*self._JSON_KWARGS, *self._SCATTER_JSON_KWARGS)
         normalize_json_kwargs(kwargs, json_keys, "ScatterPlot")
         super().__init__(
-            widget_type="scatter_plot",
             series=series,
             **kwargs,
         )

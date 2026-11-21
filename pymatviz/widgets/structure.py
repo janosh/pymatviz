@@ -11,7 +11,8 @@ import traitlets as tl
 
 from pymatviz.widgets._binary import is_binary_envelope, volume_envelope
 from pymatviz.widgets._normalize import normalize_plot_json, structure_to_dict
-from pymatviz.widgets._traits import STRUCTURE_PANES, StructureVizTraits, optional_trait
+from pymatviz.widgets._schema_traits import StructureTraits
+from pymatviz.widgets._traits import StructureVizTraits
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -122,7 +123,7 @@ def check_layer_volume_ids(
                 )
 
 
-class StructureWidget(StructureVizTraits, MatterVizWidget):
+class StructureWidget(StructureVizTraits, StructureTraits, MatterVizWidget):
     """MatterViz widget for visualizing structures in Python notebooks.
 
     Structure data can be provided as:
@@ -139,12 +140,12 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
 
     Examples:
         Basic usage:
-        >>> from pymatviz import StructureWidget
+        >>> import pymatviz as pmv
         >>> structure_data = {...}  # Structure dictionary from pymatgen/ASE
-        >>> widget = StructureWidget(structure=structure_data)
+        >>> widget = pmv.structure(structure=structure_data)
 
         With custom visualization options:
-        >>> widget = StructureWidget(
+        >>> widget = pmv.structure(
         ...     structure=structure_data,
         ...     atom_radius=0.8,
         ...     show_bonds="always",
@@ -155,16 +156,16 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
         Site vectors (force/magmom/spin) are auto-detected from site properties.
         Single vector keys use element-colored arrows; multiple keys get palette
         colors with per-key toggles, scale sliders, and origin gap control:
-        >>> StructureWidget(structure=struct_with_forces)  # auto-detected
-        >>> StructureWidget(structure=struct, vector_origin_gap=0.3)  # multi-method
-        >>> StructureWidget(structure=struct, vector_normalize=True)  # direction only
+        >>> pmv.structure(structure=struct_with_forces)  # auto-detected
+        >>> pmv.structure(structure=struct, vector_origin_gap=0.3)  # multi-method
+        >>> pmv.structure(structure=struct, vector_normalize=True)  # direction only
 
         Isosurfaces: pymatgen ``VolumetricData`` objects or dicts plus explicit layers
         (``isovalue`` in the volume's units, e/Å³ for CHGCAR) that pick their volume by
         ``volume_id`` (a pymatgen ``data`` key, or a dict's ``id``/``label``):
         >>> layer = dict(isovalue=0.05, color="#3b82f6", opacity=0.6, visible=True)
         >>> layer |= dict(volume_id="total")
-        >>> StructureWidget(
+        >>> pmv.structure(
         ...     volumetric_data=[Chgcar.from_file("CHGCAR")],
         ...     isosurface_settings={"layers": [layer], "wireframe": False, "halo": 0},
         ... )
@@ -174,15 +175,12 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
         ``"prefix/key"``:
         >>> volumes = {"relaxed": chgcar_relaxed, "initial": chgcar_initial}
         >>> layer |= dict(volume_id="relaxed/total")
-        >>> StructureWidget(
+        >>> pmv.structure(
         ...     volumetric_data=volumes, isosurface_settings={"layers": [layer]}
         ... )
     """
 
     # display options shared with TrajectoryWidget live in StructureVizTraits
-
-    structure = optional_trait(tl.Dict)
-    structure_string = optional_trait(tl.Unicode)
 
     show_image_atoms = tl.Bool(default_value=True).tag(sync=True)
     # Cell shown: the input cell or MatterViz's (moyo) conventional/primitive standard
@@ -199,10 +197,6 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
     # isovalue, color, opacity, visible, show_negative, negative_color}], wireframe,
     # halo, display_range?}
     volumetric_data = tl.Any().tag(sync=True)
-    isosurface_settings = optional_trait(tl.Dict)
-    # Two-way synced isosurface view state (active volume id, structure/slice view,
-    # plane). None selects the first volume.
-    active_volume_id = optional_trait(tl.Unicode)
     # "structure", "slice" (2D volume slice) or "split" (both side by side)
     display_mode = tl.CaselessStrEnum(
         ["structure", "slice", "split"], default_value="structure"
@@ -211,10 +205,6 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
 
     # UI controls
     enable_info_pane = tl.Bool(default_value=True).tag(sync=True)
-    # Open floating pane (e.g. "flight" for the camera-flight planner), None = closed.
-    # Two-way synced.
-    active_pane = optional_trait(tl.CaselessStrEnum, values=STRUCTURE_PANES)
-    png_dpi = optional_trait(tl.Int)
 
     # Interaction state (two-way synced with the frontend for ipywidgets linking).
     # selected_sites (clicked atoms) and hovered_site_idx (hovered atom) are
@@ -223,7 +213,6 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
     # input (e.g. from a linked plot).
     selected_sites = tl.List(tl.Int(), default_value=[]).tag(sync=True)
     highlighted_sites = tl.List(tl.Int(), default_value=[]).tag(sync=True)
-    hovered_site_idx = optional_trait(tl.Int)
 
     @tl.default("volumetric_data")
     def _default_volumetric_data(self) -> list[dict[str, Any]]:
@@ -297,6 +286,4 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
             **kwargs: Additional widget properties (e.g.
                 ``structure_string``, ``atom_radius``, ``show_bonds``).
         """
-        super().__init__(
-            widget_type="structure", structure=structure_to_dict(structure), **kwargs
-        )
+        super().__init__(structure=structure_to_dict(structure), **kwargs)

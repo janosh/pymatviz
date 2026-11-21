@@ -25,33 +25,26 @@ needs_phonopy = pytest.mark.skipif(
 
 
 @pytest.mark.parametrize("labeled", [False, True])
-def test_phonon_bands(phonon_bands_doses_mp_2758: BandsDoses, labeled: bool) -> None:
+def test_band_structure_widget_phonons(
+    phonon_bands_doses_mp_2758: BandsDoses, labeled: bool
+) -> None:
     """Single band structures pass unlabeled, dicts keep their labels and bands."""
     bands = phonon_bands_doses_mp_2758["bands"]
-    widget = pmv.phonon_bands(bands if labeled else bands["DFT"], fermi_level=None)
-    assert isinstance(widget, pmv.BandStructureWidget)
+    widget = pmv.band_structure(
+        band_structs=bands if labeled else bands["DFT"], fermi_level=None
+    )
     docs = widget.band_structs if labeled else {"DFT": widget.band_structs}
     assert set(docs) == ({"DFT", "MACE"} if labeled else {"DFT"})
     for label, doc in docs.items():
         np.testing.assert_array_equal(doc["bands"], bands[label].bands)
 
-    widget = pmv.phonon_bands(bands["DFT"], reference_frequency=1.5, style="height:9em")
+    widget = pmv.band_structure(
+        band_structs=bands["DFT"], reference_frequency=1.5, style="height:9em"
+    )
     assert (widget.reference_frequency, widget.style) == (1.5, "height:9em")
 
-
-@pytest.mark.parametrize(
-    ("band_structs", "err_type", "match"),
-    [
-        ("invalid", TypeError, "Only PhononBandStructureSymmLine, phonopy"),
-        ({}, ValueError, "Empty band structure mapping"),
-    ],
-)
-def test_phonon_bands_raises(
-    band_structs: Any, err_type: type[Exception], match: str
-) -> None:
-    """Reject unsupported and empty band structure inputs."""
-    with pytest.raises(err_type, match=match):
-        pmv.phonon_bands(band_structs)
+    with pytest.raises(TypeError, match="Unsupported type for band structure"):
+        pmv.band_structure(band_structs="invalid")
 
 
 @pytest.mark.parametrize(
@@ -72,7 +65,7 @@ def test_phonon_dos(
             for label, dos in phonon_doses.items()
         }
     widget = pmv.phonon_dos(phonon_doses, stack=stack, sigma=sigma, normalize=normalize)
-    assert isinstance(widget, pmv.DosWidget)
+    assert isinstance(widget, pmv.widgets.DosWidget)
     assert (widget.stack, widget.sigma, widget.normalize) == (stack, sigma, normalize)
     assert list(widget.doses) == list(phonon_doses)
     for label, dos in phonon_doses.items():
@@ -95,7 +88,7 @@ def test_phonon_dos(
                 doses={"a": GRID_012, "b": PhononDos([0, 2, 4], [1, 2, 1])}, stack=True
             ),
             ValueError,
-            r"one frequency grid, but \['b'\] differ from 'a'",
+            r"one grid, but \['b'\] differ from 'a'",
         ),
     ],
 )
@@ -162,26 +155,36 @@ def test_phonon_dos_projection(
         )
 
 
-def test_phonon_bands_and_dos(phonon_bands_doses_mp_2758: BandsDoses) -> None:
-    """Bands and DOS share labels, single inputs pass unlabeled."""
+def test_bands_and_dos_widget_phonons(phonon_bands_doses_mp_2758: BandsDoses) -> None:
+    """Bands and DOS share labels, single inputs pass unlabeled, stacked DOS need
+    one grid.
+    """
     bands = phonon_bands_doses_mp_2758["bands"]
     doses = phonon_bands_doses_mp_2758["doses"]
-    widget = pmv.phonon_bands_and_dos(bands, doses, sigma=0.1, stack=False)
-    assert isinstance(widget, pmv.BandsAndDosWidget)
+    widget = pmv.bands_and_dos(band_structs=bands, doses=doses, sigma=0.1, stack=False)
     assert set(widget.band_structs) == set(widget.doses) == {"DFT", "MACE"}
     assert (widget.sigma, widget.stack) == (0.1, False)
     # DFT and MACE DOS use different frequency grids, which MatterViz can't stack
-    with pytest.raises(ValueError, match=r"one frequency grid, but \['MACE'\]"):
-        pmv.phonon_bands_and_dos(bands, doses, stack=True)
+    with pytest.raises(ValueError, match=r"one grid, but \['MACE'\]"):
+        pmv.bands_and_dos(band_structs=bands, doses=doses, stack=True)
+    with pytest.raises(ValueError, match=r"one grid, but \['MACE'\]"):
+        pmv.dos(doses=doses, stack=True)
+    list_and_tuple = {  # equal grids in different containers stack
+        label: {"frequencies": grid, "densities": [1, 2]}
+        for label, grid in (("list", [0, 1]), ("tuple", (0, 1)))
+    }
+    assert pmv.dos(doses=list_and_tuple, stack=True).stack is True
     shared_grid = dict.fromkeys(doses, doses["DFT"])
-    assert pmv.phonon_bands_and_dos(bands, shared_grid, stack=True).stack is True
+    widget = pmv.bands_and_dos(band_structs=bands, doses=shared_grid, stack=True)
+    assert widget.stack is True
 
-    widget = pmv.phonon_bands_and_dos(bands["DFT"], doses["DFT"])
+    widget = pmv.bands_and_dos(band_structs=bands["DFT"], doses=doses["DFT"])
     assert "bands" in widget.band_structs
     assert "densities" in widget.doses
 
-    with pytest.raises(ValueError, match="must be identical"):
-        pmv.phonon_bands_and_dos(bands, {"DFT": doses["DFT"]})
+    for mismatched in ({"DFT": doses["DFT"]}, doses["DFT"]):
+        with pytest.raises(ValueError, match="must be identical"):
+            pmv.bands_and_dos(band_structs=bands, doses=mismatched)
 
 
 @needs_phonopy
@@ -203,9 +206,10 @@ def test_phonopy_inputs(phonopy_nacl: Phonopy) -> None:
     )
     np.testing.assert_array_equal(widget.doses["ML"]["densities"], total_dos.dos)
 
-    widget = pmv.phonon_bands({"NaCl": band_structure})
+    widget = pmv.band_structure(band_structs={"NaCl": band_structure})
     assert np.array(widget.band_structs["NaCl"]["bands"]).shape == (6, 11)
-    pmv.phonon_bands_and_dos(band_structure, total_dos)
+    widget = pmv.bands_and_dos(band_structs=band_structure, doses=total_dos)
+    np.testing.assert_array_equal(widget.doses["densities"], total_dos.dos)
 
 
 @pytest.mark.parametrize(
@@ -231,7 +235,7 @@ def test_phonon_dos_stack_projection_raises(
     assert set(widget.doses) == {"Na", "Cl"}
 
 
-def test_phonon_bands_drop_eigendisplacements(
+def test_band_widgets_drop_eigendisplacements(
     phonon_bands_doses_mp_2758: BandsDoses,
 ) -> None:
     """Eigendisplacements, unused by the band plot, are not sent to the widget."""
@@ -248,10 +252,10 @@ def test_phonon_bands_drop_eigendisplacements(
             raise AssertionError("eigendisplacements were serialized")
 
     bands.eigendisplacements = sentinel = Unserializable()  # ty: ignore[invalid-assignment]
-    widget = pmv.phonon_bands(bands)
+    widget = pmv.band_structure(band_structs=bands)
     assert "eigendisplacements" not in widget.band_structs
     assert bands.eigendisplacements is sentinel  # input not mutated
-    combined = pmv.phonon_bands_and_dos(
-        bands, phonon_bands_doses_mp_2758["doses"]["DFT"]
+    combined = pmv.bands_and_dos(
+        band_structs=bands, doses=phonon_bands_doses_mp_2758["doses"]["DFT"]
     )
     assert "eigendisplacements" not in combined.band_structs

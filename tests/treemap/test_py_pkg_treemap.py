@@ -11,6 +11,7 @@ import pandas as pd
 import pytest
 
 import pymatviz as pmv
+from pymatviz.treemap import py_pkg
 from pymatviz.treemap.py_pkg import _viridis_hex
 
 
@@ -142,25 +143,25 @@ def test_count_lines(
     test_file.write_bytes(
         file_content.encode() if isinstance(file_content, str) else file_content
     )
-    assert pmv.treemap.py_pkg.count_lines(str(test_file), prefixes) == expected_lines
+    assert py_pkg.count_lines(str(test_file), prefixes) == expected_lines
 
 
 def test_count_lines_non_existent(tmp_path: Path) -> None:
     """Test count_lines with a non-existent file."""
-    assert pmv.treemap.py_pkg.count_lines(str(tmp_path / "non_existent.py")) == 0
+    assert py_pkg.count_lines(str(tmp_path / "non_existent.py")) == 0
 
 
 def test_default_module_formatter() -> None:
     """Test the default module formatter."""
     assert (
-        pmv.treemap.py_pkg.default_module_formatter("my_module", 1234, 5000)
+        py_pkg.default_module_formatter("my_module", 1234, 5000)
         == "my_module (1,234 lines, 24.7%)"
     )
     assert (
-        pmv.treemap.py_pkg.default_module_formatter("another.mod", 50, 100)
+        py_pkg.default_module_formatter("another.mod", 50, 100)
         == "another.mod (50 lines, 50.0%)"
     )
-    assert pmv.treemap.py_pkg.default_module_formatter("zero", 0, 0) == "zero (0 lines)"
+    assert py_pkg.default_module_formatter("zero", 0, 0) == "zero (0 lines)"
 
 
 @pytest.mark.parametrize(
@@ -176,7 +177,7 @@ def test_find_package_path(
     dummy_pkg_path: Path, package_name: str, expected_end: str
 ) -> None:
     """Test find_package_path for local dummy and non-existent packages."""
-    found_path = pmv.treemap.py_pkg.find_package_path(package_name).replace("\\", "/")
+    found_path = py_pkg.find_package_path(package_name).replace("\\", "/")
     if "site-packages" in expected_end:
         assert expected_end in found_path
     elif expected_end:
@@ -194,7 +195,7 @@ def test_find_package_path_sys_path_fallback(
     also for a package whose __init__ raises ImportError.
     """
     with patch("importlib.resources.files", side_effect=import_error):
-        found_path = pmv.treemap.py_pkg.find_package_path("my_pkg")
+        found_path = py_pkg.find_package_path("my_pkg")
     assert found_path.replace("\\", "/") == str(dummy_pkg_path / "my_pkg").replace(
         "\\", "/"
     )
@@ -259,9 +260,7 @@ def test_collect_package_modules_not_found() -> None:
     with pytest.raises(
         ValueError, match="Could not find package path for 'non_existent_package_12345'"
     ):
-        pmv.treemap.py_pkg.collect_package_modules(
-            ["my_pkg", "non_existent_package_12345"]
-        )
+        py_pkg.collect_package_modules(["my_pkg", "non_existent_package_12345"])
 
 
 def test_internal_imports(dummy_pkg_path: Path) -> None:
@@ -276,7 +275,7 @@ def test_internal_imports(dummy_pkg_path: Path) -> None:
         "class InternalUser:\n    pass\n"
     )
 
-    df_modules = pmv.treemap.py_pkg.collect_package_modules([pkg_name])
+    df_modules = py_pkg.collect_package_modules([pkg_name])
     row = df_modules.set_index("filename").loc["internal_user"]
     stats = ("n_internal_imports", "n_external_imports", "n_classes")
     assert [int(row[stat]) for stat in stats] == [4, 1, 1]
@@ -374,19 +373,19 @@ def test_module_tree_rejects_leaf_and_branch() -> None:
     """A path ending at a node that other paths extend is reported, not dropped."""
     paths = np.array([["pkg", "mod", None], ["pkg", "mod", "sub"]], dtype=object)
     with pytest.raises(ValueError, match="'pkg/mod' is a leaf and a branch"):
-        pmv.treemap.py_pkg._module_tree(paths, np.ones(2), None, {"pkg": "pkg"})
+        py_pkg._module_tree(paths, np.ones(2), None, {"pkg": "pkg"})
 
 
 # Calculator functions for testing
-def _calc_sum_functions_classes(metrics: pmv.treemap.py_pkg.ModuleStats) -> int:
+def _calc_sum_functions_classes(metrics: py_pkg.ModuleStats) -> int:
     return metrics.n_functions + metrics.n_classes
 
 
-def _calc_methods_x_10_plus_lines(metrics: pmv.treemap.py_pkg.ModuleStats) -> int:
+def _calc_methods_x_10_plus_lines(metrics: py_pkg.ModuleStats) -> int:
     return metrics.n_methods * 10 + metrics.line_count
 
 
-def _sizer_omit_specific(metrics: pmv.treemap.py_pkg.ModuleStats) -> int:
+def _sizer_omit_specific(metrics: py_pkg.ModuleStats) -> int:
     if metrics.filename in {"module1", "main"}:
         return 0
     return metrics.line_count
@@ -407,7 +406,7 @@ def _sizer_omit_specific(metrics: pmv.treemap.py_pkg.ModuleStats) -> int:
     ids=["default", "func+class", "methods*10+lines", "imports", "omit_specific"],
 )
 def test_py_pkg_treemap_cell_size_fn(
-    calculator: pmv.treemap.py_pkg.CellSizeFn | None,
+    calculator: py_pkg.CellSizeFn | None,
     expected_filenames: set[str],
 ) -> None:
     """Test the cell_size_fn argument in py_pkg_treemap."""
@@ -423,11 +422,9 @@ def test_py_pkg_treemap_cell_size_fn(
     assert {node_id.split("/")[-1] for node_id in leaves} >= expected_filenames
 
     expected: dict[str, float] = {}
-    stats_fields = pmv.treemap.py_pkg.ModuleStats._fields
-    for _, row in pmv.treemap.py_pkg.collect_package_modules(packages).iterrows():
-        metrics = pmv.treemap.py_pkg.ModuleStats(
-            **{key: row[key] for key in stats_fields}
-        )
+    stats_fields = py_pkg.ModuleStats._fields
+    for _, row in py_pkg.collect_package_modules(packages).iterrows():
+        metrics = py_pkg.ModuleStats(**{key: row[key] for key in stats_fields})
         cell_value = metrics.line_count if calculator is None else calculator(metrics)
         if cell_value > 0:
             leaf_id = f"{metrics.package}/{metrics.filename}"
@@ -437,13 +434,13 @@ def test_py_pkg_treemap_cell_size_fn(
 
 def test_normalize_package_input() -> None:
     """Test _normalize_package_input function with various inputs."""
-    assert pmv.treemap.py_pkg._normalize_package_input("numpy") == "numpy"
+    assert py_pkg._normalize_package_input("numpy") == "numpy"
 
-    assert pmv.treemap.py_pkg._normalize_package_input(np) == "numpy"
+    assert py_pkg._normalize_package_input(np) == "numpy"
 
     import numpy.random
 
-    assert pmv.treemap.py_pkg._normalize_package_input(numpy.random) == "numpy"
+    assert py_pkg._normalize_package_input(numpy.random) == "numpy"
 
 
 def _write_package_files(pkg_dir: Path, files: dict[str, int]) -> None:
@@ -468,9 +465,7 @@ def test_mapped_colors(
     _write_package_files(
         pkg_dir, {"longer/mod.py": 4, "longer/other.py": 16, "shorter/mod.py": 3}
     )
-    monkeypatch.setattr(
-        pmv.treemap.py_pkg, "find_package_path", lambda _name: str(pkg_dir)
-    )
+    monkeypatch.setattr(py_pkg, "find_package_path", lambda _name: str(pkg_dir))
     widget = pmv.py_pkg_treemap(
         "color_pkg",
         color_by={
@@ -547,7 +542,7 @@ def rust_like_source_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 def test_collect_source_modules_basic(rust_like_source_dir: Path) -> None:
     """collect_source_modules_from_dir finds all .rs files and builds hierarchy."""
-    df_result = pmv.treemap.py_pkg.collect_source_modules_from_dir(
+    df_result = py_pkg.collect_source_modules_from_dir(
         str(rust_like_source_dir), ["my_crate"], file_extensions=(".rs",)
     )
     assert set(df_result.columns) >= {
@@ -587,7 +582,7 @@ def test_collect_source_modules_filters(
         (tmp_path / rel_path).parent.mkdir(parents=True, exist_ok=True)
         (tmp_path / rel_path).write_text(content)
 
-    df_result = pmv.treemap.py_pkg.collect_source_modules_from_dir(
+    df_result = py_pkg.collect_source_modules_from_dir(
         str(tmp_path), ["proj"], file_extensions=(".rs",)
     )
     matches = df_result[df_result["filename"] == filename]
@@ -600,16 +595,14 @@ def test_collect_source_modules_filters(
 def test_collect_source_modules_nonexistent_dir() -> None:
     """FileNotFoundError raised for non-existent source_dir."""
     with pytest.raises(FileNotFoundError, match="Source directory not found"):
-        pmv.treemap.py_pkg.collect_source_modules_from_dir(
-            "/nonexistent/path", ["proj"]
-        )
+        py_pkg.collect_source_modules_from_dir("/nonexistent/path", ["proj"])
 
 
 def test_collect_source_modules_empty_dir(tmp_path: Path) -> None:
     """Empty directory returns empty DataFrame."""
     empty = tmp_path / "empty_src"
     empty.mkdir()
-    df_result = pmv.treemap.py_pkg.collect_source_modules_from_dir(
+    df_result = py_pkg.collect_source_modules_from_dir(
         str(empty), ["proj"], file_extensions=(".rs",)
     )
     assert df_result.empty
@@ -639,9 +632,7 @@ def test_collect_source_modules_py_imports(
         scan_dir.mkdir()
         (scan_dir / "__init__.py").touch()
     (scan_dir / "mod.py").write_text(code)
-    df_result = pmv.treemap.py_pkg.collect_source_modules_from_dir(
-        str(scan_dir), ["Demo project"]
-    )
+    df_result = py_pkg.collect_source_modules_from_dir(str(scan_dir), ["Demo project"])
     cols = ["line_count", "n_internal_imports", "n_external_imports"]
     assert tuple(df_result.set_index("filename").loc["mod", cols]) == expected
 
@@ -652,7 +643,7 @@ def test_collect_source_modules_mixed_extensions_comment_prefix(tmp_path: Path) 
     src.mkdir()
     (src / "helper.py").write_text("# py comment\n// code in python\nx = 1\n")
     (src / "lib.rs").write_text("// rs comment\n# code in rust\nlet x = 1;\n")
-    df_result = pmv.treemap.py_pkg.collect_source_modules_from_dir(
+    df_result = py_pkg.collect_source_modules_from_dir(
         str(src), ["proj"], file_extensions=(".py", ".rs")
     )
     assert df_result.set_index("filename")["line_count"].to_dict() == {
@@ -858,11 +849,9 @@ def test_python_file_metrics(
     monkeypatch.syspath_prepend(str(tmp_path))
     with patch("builtins.open", wraps=open) as file_open:
         if scan_dir:
-            modules = pmv.treemap.py_pkg.collect_source_modules_from_dir(
-                str(pkg), [pkg.name]
-            )
+            modules = py_pkg.collect_source_modules_from_dir(str(pkg), [pkg.name])
         else:
-            modules = pmv.treemap.py_pkg.collect_package_modules([pkg.name])
+            modules = py_pkg.collect_package_modules([pkg.name])
     assert sum(call.args[0] == str(py_file) for call in file_open.call_args_list) == 1
     expected = {
         "line_count": 9,

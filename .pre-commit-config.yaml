@@ -79,9 +79,13 @@ repos:
         pass_filenames: false
         stages: [pre-commit]
 
-  - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.39.0
+  - repo: local
     hooks:
-      - id: check-jsonschema
-        files: ^pymatviz/keys\.yml$
-        args: [--schemafile, tests/keys-schema.yml]
+      - id: svgo
+        name: Compress SVG assets (svgo)
+        # rewrites the staged SVGs in place; deterministic ids keep regenerated but
+        # unchanged figures diff-free
+        entry: svgo --multipass --final-newline --quiet
+        language: node
+        additional_dependencies: [svgo@4.1.0]
+        files: ^assets/.+\.svg$

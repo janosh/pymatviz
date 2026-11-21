@@ -4,14 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
-import traitlets as tl
-
 from pymatviz.widgets._normalize import _to_dict
-from pymatviz.widgets._traits import PlotControlsTraits, optional_trait
+from pymatviz.widgets._schema_traits import BandStructureTraits
+from pymatviz.widgets._traits import PlotControlsTraits
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
-class BandStructureWidget(PlotControlsTraits, MatterVizWidget):
+class BandStructureWidget(PlotControlsTraits, BandStructureTraits, MatterVizWidget):
     """MatterViz widget for visualizing electronic and phonon band structures.
 
     Accepts pymatgen BandStructure, BandStructureSymmLine, or
@@ -20,12 +19,12 @@ class BandStructureWidget(PlotControlsTraits, MatterVizWidget):
 
     Examples:
         From a pymatgen BandStructureSymmLine:
-        >>> from pymatviz import BandStructureWidget
-        >>> widget = BandStructureWidget(band_structs=bs)
+        >>> import pymatviz as pmv
+        >>> widget = pmv.band_structure(band_structs=bs)
         >>> widget
 
         With custom options:
-        >>> widget = BandStructureWidget(
+        >>> widget = pmv.band_structure(
         ...     band_structs={"PBE": bs_pbe, "HSE": bs_hse},
         ...     show_legend=True,
         ...     fermi_level=0.0,
@@ -33,26 +32,17 @@ class BandStructureWidget(PlotControlsTraits, MatterVizWidget):
         ... )
     """
 
-    # one band structure, or {label: band structure} to overlay several
-    band_structs = optional_trait(tl.Dict)
-
-    # Display options
-    show_legend = optional_trait(tl.Bool)
-    fermi_level = optional_trait(tl.Float)
-    # Horizontal reference line in the data unit (THz for phonons, eV for electrons)
-    reference_frequency = optional_trait(tl.Float)
-
     def __init__(self, band_structs: Any | None = None, **kwargs: Any) -> None:
         """Initialize the BandStructureWidget.
 
         Args:
             band_structs: Band structure data -- a pymatgen BandStructure,
-                BandStructureSymmLine, PhononBandStructureSymmLine, a dict, or a
-                ``{label: band_structure}`` dict of those to overlay.
+                BandStructureSymmLine, PhononBandStructureSymmLine, phonopy
+                BandStructure, a dict, or a ``{label: band_structure}`` dict of those
+                to overlay.
             **kwargs: Additional widget properties.
         """
         super().__init__(
-            widget_type="band_structure",
             band_structs=_to_dict(band_structs, "band structure"),
             **kwargs,
         )

@@ -21,6 +21,7 @@ import functools
 import html as html_mod
 import io
 import json
+import math
 import os
 import re
 import tempfile
@@ -31,7 +32,7 @@ from typing import TYPE_CHECKING, Any
 
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Coroutine, Mapping
+    from collections.abc import AsyncGenerator, Coroutine, Mapping, Sequence
 
     from playwright.async_api import Browser, Page, Playwright
 
@@ -43,6 +44,18 @@ except ImportError:  # optional: without playwright, _get_browser raises first
     _TIMEOUT_ERRORS = (TimeoutError,)
 
 _CAPTURE_FORMATS = ("png", "jpeg", "svg", "pdf")
+# Transparent exports read on any background: no backdrops, and a mid gray for the
+# theme's text (3.9:1 contrast on white, 4.8:1 on GitHub's dark #0d1117)
+_TRANSPARENT_GRAY = "#808080"
+_TRANSPARENT_STYLE = (
+    f"background: transparent; color: {_TRANSPARENT_GRAY}; "
+    f"--text-color: {_TRANSPARENT_GRAY}; --text-color-muted: {_TRANSPARENT_GRAY}; "
+    f"--plot-legend-item-color: {_TRANSPARENT_GRAY}; "
+    f"--text-muted: {_TRANSPARENT_GRAY}; "
+    "--page-bg: transparent; --surface-bg: transparent; --struct-bg: transparent; "
+    "--plot-legend-bg-color: transparent"
+)
+_TRIM_PAD_PX = 4  # CSS px of margin kept around trimmed content
 _MAX_WARM_PAGES = 4  # idle warm pages kept open at once
 # Seconds a mount may run past the render timeout (resize nudge, settle delays), and
 # an unmount or shutdown step may take before the page or browser counts as stuck
@@ -64,19 +77,18 @@ class _BrowserThread:
 
 @dataclasses.dataclass
 class _WarmPage:
-    """A page with the bundle loaded, reused by every export with the same key."""
+    """A page with the bundle loaded, reused by later exports with the same key."""
 
     key: tuple[str, str, float]
     page: Page
-    lock: asyncio.Lock = dataclasses.field(default_factory=asyncio.Lock)
-    users: int = 0  # checked-out exports (holding or awaiting the lock): never evicted
-    retired: bool = False  # closed (or closing): lock waiters must check out anew
+    users: int = 0  # the export using it (0 or 1): never evicted while in use
 
 
 _browser_thread: _BrowserThread | None = None
 _browser_thread_lock = threading.Lock()
-# Most recently used last. Only touched from the browser thread.
-_warm_pages: dict[tuple[str, str, float], _WarmPage] = {}
+# Most recently used last, several per key for concurrent exports. Only touched from
+# the browser thread.
+_warm_pages: list[_WarmPage] = []
 
 
 def _get_browser_thread() -> _BrowserThread:
@@ -113,7 +125,9 @@ def _call_budget(timeout: float) -> float:
     return 3 * timeout + 2 * _PLAYWRIGHT_DEFAULT_TIMEOUT + 2 * _STEP_GRACE
 
 
-def _run_in_browser_thread[T](coro: Coroutine[Any, Any, T], timeout: float = 30.0) -> T:
+def _run_in_browser_thread[T](
+    coro: Coroutine[Any, Any, T], timeout: float = 30.0, *, budget: float | None = None
+) -> T:
     """Run ``coro`` on the browser thread and block until it finishes.
 
     Safe from any thread but the browser thread, including one whose event loop is
@@ -129,7 +143,7 @@ def _run_in_browser_thread[T](coro: Coroutine[Any, Any, T], timeout: float = 30.
             "await the coroutine instead"
         )
     future = asyncio.run_coroutine_threadsafe(coro, state.loop)
-    budget = _call_budget(timeout)
+    budget = budget or _call_budget(timeout)
     try:
         return future.result(timeout=budget)
     except TimeoutError as exc:
@@ -208,6 +222,7 @@ class _RenderInputs:
     width: int | None = None
     height: int | None = None
     quality: int = 90
+    transparent: bool = False
 
     @property
     def scale_factor(self) -> float:
@@ -217,25 +232,31 @@ class _RenderInputs:
         return max(1, self.dpi / 72)
 
 
-async def _capture_page(
-    page: Page, fmt: str, quality: int = 90, scale_factor: float = 1.0
-) -> bytes:
-    """Capture the mounted widget as ``fmt`` (png, jpeg, svg or pdf) bytes.
+async def _capture_page(page: Page, inputs: _RenderInputs) -> bytes:
+    """Capture the mounted widget as ``inputs.fmt`` (png, jpeg, svg or pdf) bytes.
 
     PDFs of widgets showing WebGL are rasterized (Chromium's print pipeline can't
     see WebGL), others are vector with selectable text. That is decided from the
     rendered DOM since some widgets render SVG or canvas depending on their data.
+    Transparent PNGs and SVGs are trimmed to their painted content.
     """
+    fmt, scale_factor = inputs.fmt, inputs.scale_factor
     if fmt == "svg":
-        result = await page.evaluate(_SVG_EXPORT_JS, scale_factor * 72)
+        result = await page.evaluate(
+            _SVG_EXPORT_JS,
+            [scale_factor * 72, _TRIM_PAD_PX if inputs.transparent else 0],
+        )
         if "error" in result:
             raise RuntimeError(f"SVG export failed: {result['error']}")
         return result["svg"].encode("utf-8")
     root = page.locator("#widget-root")
     if fmt == "jpeg":
-        return await root.screenshot(type="jpeg", quality=quality)
+        return await root.screenshot(type="jpeg", quality=inputs.quality)
     if fmt != "pdf":
-        return await root.screenshot(type="png")
+        png = await root.screenshot(type="png", omit_background=inputs.transparent)
+        if inputs.transparent:
+            return _trim_png(png, round(_TRIM_PAD_PX * scale_factor))
+        return png
     if (await page.evaluate(_PROBE_JS))["webgl"]:
         return _png_to_pdf(await root.screenshot(type="png"), scale=scale_factor)
     if (bbox := await root.bounding_box()) is None:
@@ -280,12 +301,9 @@ async def _open_warm_page(
 
 
 async def _retire(warm: _WarmPage) -> None:
-    """Drop a warm page from the cache and close it. Marked retired first, so exports
-    queued on its lock check out a fresh page instead of using the closed one.
-    """
-    warm.retired = True
-    if _warm_pages.get(warm.key) is warm:
-        del _warm_pages[warm.key]
+    """Drop a warm page from the cache and close it."""
+    if warm in _warm_pages:
+        _warm_pages.remove(warm)
     with contextlib.suppress(Exception):
         await warm.page.close()
 
@@ -294,53 +312,62 @@ async def _retire(warm: _WarmPage) -> None:
 async def _mounted_widget(
     inputs: _RenderInputs,
 ) -> AsyncGenerator[tuple[Page, str | None]]:
-    """Yield ``(page, render_error)`` with the widget mounted on its warm page.
+    """Yield ``(page, render_error)`` with the widget mounted on a warm page.
 
-    Idle pages beyond ``_MAX_WARM_PAGES`` close, least recently used first. Exports
-    on one page serialize on its lock. A page whose mount errored, timed out or
-    failed to unmount is retired while still locked, so queued exports retry on a
-    fresh page; errors raised by the caller's capture leave it in service.
+    Each export checks out an idle page with its key or opens one, so concurrent
+    exports render side by side. Idle pages beyond ``_MAX_WARM_PAGES`` close, least
+    recently used first. A page whose mount errored, timed out or failed to unmount
+    is retired; errors raised by the caller's capture leave it in service.
     """
     key = (inputs.esm_content, inputs.css_content, inputs.scale_factor)
-    while True:
+    async with _get_browser_thread().pages_lock:
+        warm = next(
+            (
+                old
+                for old in reversed(_warm_pages)
+                if old.key == key and not old.users and not old.page.is_closed()
+            ),
+            None,
+        )
+        if warm is None:
+            page = await _open_warm_page(*key, int(inputs.timeout * 1000))
+            warm = _WarmPage(key, page)
+        else:
+            _warm_pages.remove(warm)  # re-appended as most recently used
+        _warm_pages.append(warm)
+        warm.users += 1  # no await until the try below releases it in any case
+    healthy = False
+    try:
         async with _get_browser_thread().pages_lock:
-            warm = _warm_pages.pop(key, None)  # re-inserted as most recently used
-            if warm is None or warm.retired or warm.page.is_closed():
-                page = await _open_warm_page(*key, int(inputs.timeout * 1000))
-                warm = _WarmPage(key, page)
-            _warm_pages[key] = warm
-            warm.users += 1
-            idle = [old for old in _warm_pages.values() if old.users == 0]
-            for old in idle[: max(0, len(_warm_pages) - _MAX_WARM_PAGES)]:
-                await _retire(old)
+            await _evict_idle()
+        mount_args = [_widget_data_json(inputs.widget_data), _mount_options(inputs)]
+        render_error = await asyncio.wait_for(
+            warm.page.evaluate(_MOUNT_JS, mount_args), inputs.timeout + _STEP_GRACE
+        )
         try:
-            async with warm.lock:
-                if warm.retired:  # by an export ahead in the queue
-                    continue
-                healthy = False
-                try:
-                    mount_args = [
-                        _widget_data_json(inputs.widget_data),
-                        _mount_options(inputs),
-                    ]
-                    render_error = await asyncio.wait_for(
-                        warm.page.evaluate(_MOUNT_JS, mount_args),
-                        inputs.timeout + _STEP_GRACE,
-                    )
-                    try:
-                        yield warm.page, render_error
-                    finally:
-                        await asyncio.wait_for(
-                            warm.page.evaluate("() => window.__matterviz_unmount()"),
-                            _STEP_GRACE,
-                        )
-                        healthy = render_error is None
-                finally:
-                    if not healthy:
-                        await _retire(warm)
-                return
+            yield warm.page, render_error
         finally:
+            await asyncio.wait_for(
+                warm.page.evaluate("() => window.__matterviz_unmount()"), _STEP_GRACE
+            )
+            healthy = render_error is None
+    finally:
+        # release and retire together, so no checkout picks up a page being retired
+        async with _get_browser_thread().pages_lock:
             warm.users -= 1
+            if not healthy:
+                await _retire(warm)
+            # overlapping exports may each have opened a page: trim them once idle
+            await _evict_idle()
+
+
+async def _evict_idle() -> None:
+    """Close the least recently used idle pages beyond _MAX_WARM_PAGES (call with
+    pages_lock held).
+    """
+    idle = [old for old in _warm_pages if old.users == 0]
+    for old in idle[: max(0, len(_warm_pages) - _MAX_WARM_PAGES)]:
+        await _retire(old)
 
 
 async def _render_widget(inputs: _RenderInputs) -> bytes:
@@ -349,9 +376,7 @@ async def _render_widget(inputs: _RenderInputs) -> bytes:
         async with _mounted_widget(inputs) as (page, render_error):
             if render_error:
                 raise RuntimeError(f"Widget render failed: {render_error}")
-            return await _capture_page(
-                page, inputs.fmt, inputs.quality, inputs.scale_factor
-            )
+            return await _capture_page(page, inputs)
     except _TIMEOUT_ERRORS as exc:
         raise TimeoutError(
             f"Widget did not finish rendering within {inputs.timeout}s"
@@ -540,22 +565,71 @@ _PROBE_JS = "() => window.__matterviz_probe()"
 # MatterViz's own vector export (the bundle's export_svg, behind the widget's Export
 # pane), embedding canvas layers at the export DPI. It throws for figures without a
 # vector form; its reason comes back as data so Playwright needn't translate it.
+# With a trim pad, the viewBox shrinks to the painted pixels (the SVG drawn on a canvas
+# at 1 px per unit; getBBox() would count clipped-away geometry) plus that pad.
 _SVG_EXPORT_JS = """\
-async (dpi) => {
-    try { return { svg: await window.__matterviz_export_svg(dpi) }; }
+async ([dpi, pad]) => {
+    let svg;
+    try { svg = await window.__matterviz_export_svg(dpi); }
     catch (error) { return { error: String(error?.message ?? error) }; }
+    if (!pad) return { svg };
+    try { return { svg: await trim_svg() }; }
+    catch (error) { return { error: `trim failed: ${error?.message ?? error}` }; }
+
+    async function trim_svg() {  // the svg and pad above
+        const doc = new DOMParser().parseFromString(svg, "image/svg+xml");
+        const node = doc.documentElement;
+        const view_box = node.getAttribute("viewBox");
+        if (!view_box) throw new Error("exported SVG has no viewBox");
+        const [vb_x, vb_y, vb_w, vb_h] = view_box.split(/[\\s,]+/).map(Number);
+        const [width, height] = [Math.ceil(vb_w), Math.ceil(vb_h)];
+        node.setAttribute("width", width);
+        node.setAttribute("height", height);
+        const source = new XMLSerializer().serializeToString(node);
+        const url = URL.createObjectURL(new Blob([source], { type: "image/svg+xml" }));
+        const img = new Image();
+        img.src = url;
+        try { await img.decode(); } finally { URL.revokeObjectURL(url); }
+        const ctx = Object.assign(document.createElement("canvas"), { width, height })
+            .getContext("2d", { willReadFrequently: true });
+        ctx.drawImage(img, 0, 0, width, height);
+        const alpha = ctx.getImageData(0, 0, width, height).data;
+        let [x0, y0, x1, y1] = [width, height, -1, -1];
+        for (let idx = 3; idx < alpha.length; idx += 4) {
+            if (!alpha[idx]) continue;
+            const px = ((idx - 3) / 4) % width, py = Math.floor((idx - 3) / 4 / width);
+            x0 = Math.min(x0, px); x1 = Math.max(x1, px);
+            y0 = Math.min(y0, py); y1 = Math.max(y1, py);
+        }
+        if (x1 < 0) throw new Error("transparent export painted no pixels");
+        const [sx, sy] = [vb_w / width, vb_h / height];
+        const box = [
+            vb_x + x0 * sx - pad, vb_y + y0 * sy - pad,
+            (x1 + 1 - x0) * sx + 2 * pad, (y1 + 1 - y0) * sy + 2 * pad,
+        ].map((num) => +num.toFixed(2));
+        node.setAttribute("viewBox", box.join(" "));
+        node.setAttribute("width", box[2]);
+        node.setAttribute("height", box[3]);
+        return new XMLSerializer().serializeToString(node);
+    }
 }
 """
 
 
 def _container_style(
-    widget_data: Mapping[str, Any], width: int | None, height: int | None
+    widget_data: Mapping[str, Any],
+    width: int | None,
+    height: int | None,
+    *,
+    transparent: bool = False,
 ) -> str:
-    """Inline style of the widget root: the widget's style, then explicit overrides
-    (later declarations win), then 800x600 defaults for any missing dimension.
+    """Inline style of the widget root (later declarations win): the transparent
+    theme if requested, the widget's style, explicit overrides, then 800x600 defaults
+    for any missing dimension.
     """
     user_style = widget_data.get("style") or ""
-    parts = [user_style] if user_style else []
+    parts = [_TRANSPARENT_STYLE] if transparent else []
+    parts += [user_style] if user_style else []
     for name, value, default in (("width", width, 800), ("height", height, 600)):
         if value is not None:
             parts.append(f"{name}: {value}px")
@@ -571,7 +645,12 @@ def _mount_options(inputs: _RenderInputs) -> dict[str, Any]:
     """
     widget_type = inputs.widget_data.get("widget_type")
     return {
-        "style": _container_style(inputs.widget_data, inputs.width, inputs.height),
+        "style": _container_style(
+            inputs.widget_data,
+            inputs.width,
+            inputs.height,
+            transparent=inputs.transparent,
+        ),
         "allow_html": widget_type in ("periodic_table", "heatmap_matrix"),
         "no_worker": widget_type == "chem_pot_diagram",
         "max_wait": int(inputs.timeout * 1000),
@@ -601,7 +680,10 @@ def _build_html(esm_content: str, css_content: str) -> str:
         f"{_CAPTURE_HOOKS_JS}window.__matterviz_ready = true;\n"
         "} catch (err) {\n  window.__matterviz_ready = String(err);\n}"
     )
-    return _html_page(css_content, script)
+    # the bundle caps a mounted widget at its parent's width (inline max-width: 100%),
+    # here the 1024px page: exports keep their requested width
+    head = "<style>#widget-root { max-width: none !important }</style>"
+    return _html_page(css_content, script, head)
 
 
 def build_interactive_html(
@@ -646,6 +728,22 @@ def build_interactive_html(
     )
     style = html_mod.escape(widget_data.get("style") or "width: 100%; height: 600px;")
     return _html_page(css_content or "", script, head, style)
+
+
+def _trim_png(png_bytes: bytes, pad: int) -> bytes:
+    """Crop a transparent PNG to its non-transparent pixels plus ``pad`` pixels."""
+    from PIL import Image
+
+    # Chromium drops the alpha channel of fully painted screenshots
+    img = Image.open(io.BytesIO(png_bytes)).convert("RGBA")
+    if (bbox := img.getchannel("A").getbbox()) is None:
+        raise RuntimeError("Transparent export captured no painted pixels")
+    left, top, right, bottom = bbox
+    box = (max(0, left - pad), max(0, top - pad))
+    box += (min(img.width, right + pad), min(img.height, bottom + pad))
+    out = io.BytesIO()
+    img.crop(box).save(out, format="PNG", optimize=True)
+    return out.getvalue()
 
 
 def _png_to_pdf(png_bytes: bytes, scale: float = 1.0) -> bytes:
@@ -703,6 +801,8 @@ def render_widget_headless(
     quality: int = 90,
     width: int | None = None,
     height: int | None = None,
+    *,
+    transparent: bool = False,
 ) -> bytes:
     """Render a widget in headless Chromium and capture it.
 
@@ -721,6 +821,8 @@ def render_widget_headless(
         quality: JPEG quality (1-100), ignored for other formats.
         width: Override container width in pixels.
         height: Override container height in pixels.
+        transparent: Transparent background, gray theme text, trimmed to the
+            painted content (PNG and SVG only).
 
     Returns:
         PNG, JPEG, SVG or PDF bytes.
@@ -729,11 +831,72 @@ def render_widget_headless(
         RuntimeError: If the widget fails to render or has no vector form for SVG.
         TimeoutError: If the widget does not finish rendering in time.
     """
-    widget_data = {**widget_data, "show_controls": False}
-    inputs = _RenderInputs(
-        widget_data, esm_content, css_content, fmt, dpi, timeout, width, height, quality
-    )
+    inputs = _render_inputs(
+        widget_data, esm_content, css_content, fmt, dpi, timeout, quality, width,
+        height, transparent=transparent,
+    )  # fmt: skip
     return _run_in_browser_thread(_render_widget(inputs), timeout)
+
+
+def _render_inputs(
+    widget_data: dict[str, Any],
+    esm_content: str,
+    css_content: str,
+    fmt: str = "png",
+    dpi: int = 150,
+    timeout: float = 30.0,
+    quality: int = 90,
+    width: int | None = None,
+    height: int | None = None,
+    *,
+    transparent: bool = False,
+) -> _RenderInputs:
+    """Validated render inputs (see render_widget_headless), controls hidden.
+
+    Raises:
+        ValueError: For transparent formats other than PNG and SVG.
+    """
+    if transparent and fmt not in ("png", "svg"):
+        raise ValueError(f"transparent export supports png and svg, got {fmt=}")
+    widget_data = {**widget_data, "show_controls": False}
+    return _RenderInputs(
+        widget_data, esm_content, css_content, fmt, dpi, timeout, width, height,
+        quality, transparent,
+    )  # fmt: skip
+
+
+def render_widgets_headless(jobs: Sequence[Mapping[str, Any]]) -> list[bytes]:
+    """render_widget_headless for several widgets at once, each job a dict of its
+    arguments. Up to ``_MAX_WARM_PAGES`` render concurrently on separate pages.
+
+    Returns:
+        The image bytes in job order.
+    """
+    inputs = [_render_inputs(**job) for job in jobs]
+    slots = math.ceil(len(inputs) / _MAX_WARM_PAGES)
+
+    async def render_all() -> list[bytes]:
+        """Render every job, at most _MAX_WARM_PAGES at a time."""
+        limit = asyncio.Semaphore(_MAX_WARM_PAGES)
+
+        async def render(one: _RenderInputs) -> bytes:
+            """Render one job once a slot frees up."""
+            async with limit:
+                return await _render_widget(one)
+
+        tasks = [asyncio.ensure_future(render(one)) for one in inputs]
+        try:
+            return await asyncio.gather(*tasks)
+        except BaseException:  # stop sibling renders before reporting the failure
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            raise
+
+    # each wave of up to _MAX_WARM_PAGES renders gets a full single-export budget
+    timeout = max((one.timeout for one in inputs), default=30.0)
+    budget = _call_budget(timeout) * max(slots, 1)
+    return _run_in_browser_thread(render_all(), timeout, budget=budget)
 
 
 # === Render diagnostics (render_report) ===

@@ -85,7 +85,7 @@ for ref_col, pred_col, title in (
     (k_vrh_ref_col, k_vrh_pred_col, "MACE vs MP Bulk Modulus VRH"),
     (g_vrh_ref_col, g_vrh_pred_col, "MACE vs MP Shear Modulus VRH"),
 ):
-    widget = pmv.ScatterPlotWidget(
+    widget = pmv.scatter_plot(
         series=[{"x": df_ml[ref_col], "y": df_ml[pred_col], "markers": "points"}],
         x_axis={"label": ref_col},
         y_axis={"label": pred_col},
@@ -113,7 +113,7 @@ for tensor, title in (
     (ml_results["elastic_tensor"].voigt / GPa, "ML Elastic Tensor [GPa]"),
     (np.asarray(elastic_doc.elastic_tensor.raw), "PBE Elastic Tensor [GPa]"),
 ):
-    widget = pmv.HeatmapMatrixWidget(
+    widget = pmv.heatmap_matrix(
         x_items=voigt_labels,
         y_items=voigt_labels,
         values=np.asarray(tensor).tolist(),

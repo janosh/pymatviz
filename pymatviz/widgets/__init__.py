@@ -6,8 +6,6 @@ and more.
 
 from __future__ import annotations
 
-import sys
-
 from pymatviz.widgets.band_structure import BandStructureWidget
 from pymatviz.widgets.bands_and_dos import BandsAndDosWidget
 from pymatviz.widgets.bar_plot import BarPlotWidget
@@ -20,11 +18,11 @@ from pymatviz.widgets.convex_hull import ConvexHullWidget
 from pymatviz.widgets.coordination_bar_plot import CoordinationBarPlotWidget
 from pymatviz.widgets.dos import DosWidget
 from pymatviz.widgets.fermi_surface import FermiSurfaceWidget
+from pymatviz.widgets.grid import WidgetGrid, widget_grid
 from pymatviz.widgets.heatmap_matrix import HeatmapMatrixWidget
 from pymatviz.widgets.histogram import HistogramWidget
 from pymatviz.widgets.link import WidgetLink, link_selection
-from pymatviz.widgets.matterviz import configure_assets
-from pymatviz.widgets.mime import register_matterviz_widgets
+from pymatviz.widgets.matterviz import configure_assets, export_widgets, from_json
 from pymatviz.widgets.periodic_table import PeriodicTableWidget
 from pymatviz.widgets.phase_diagram import PhaseDiagramWidget
 from pymatviz.widgets.rdf_plot import RdfPlotWidget
@@ -37,8 +35,3 @@ from pymatviz.widgets.sunburst import SunburstWidget
 from pymatviz.widgets.trajectory import TrajectoryWidget
 from pymatviz.widgets.treemap import TreemapWidget
 from pymatviz.widgets.xrd import XrdWidget
-
-
-# only marimo reads _display_ hooks; elsewhere create_widget() registers on first use
-if "marimo" in sys.modules:
-    register_matterviz_widgets()

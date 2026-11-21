@@ -10,7 +10,7 @@ from typing import Any
 import numpy as np
 import traitlets as tl
 
-from pymatviz.widgets._traits import optional_trait
+from pymatviz.widgets._schema_traits import SpacegroupBarTraits
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -26,7 +26,7 @@ def spacegroup_counts(data: Any) -> dict[str, int]:
         TypeError: If mapping counts aren't integers.
         ValueError: For negative counts or invalid space groups.
     """
-    from pymatviz.process_data import normalize_spacegroups
+    from pymatviz.structures import normalize_spacegroups
 
     if data is None or len(data) == 0:
         return {}
@@ -57,14 +57,14 @@ def spacegroup_counts(data: Any) -> dict[str, int]:
     return {str(num): int(totals[num]) for num in np.flatnonzero(totals)}
 
 
-class SpacegroupBarPlotWidget(MatterVizWidget):
+class SpacegroupBarPlotWidget(SpacegroupBarTraits, MatterVizWidget):
     """MatterViz widget for space group frequency bar plots.
 
     Accepts space group numbers/symbols/structures or ``{spacegroup: count}``
     mappings and syncs them as per-space-group counts.
 
     Examples:
-        >>> from pymatviz import SpacegroupBarPlotWidget
+        >>> from pymatviz.widgets import SpacegroupBarPlotWidget
         >>> widget = SpacegroupBarPlotWidget(data=[225, 225, 166, 62, 62, 62])
         >>> widget.data
         {'62': 3, '166': 1, '225': 2}
@@ -76,8 +76,6 @@ class SpacegroupBarPlotWidget(MatterVizWidget):
     orientation = tl.CaselessStrEnum(
         values=["vertical", "horizontal"], default_value="vertical"
     ).tag(sync=True)
-    x_axis = optional_trait(tl.Dict)
-    y_axis = optional_trait(tl.Dict)
 
     def __init__(self, data: Any = None, **kwargs: Any) -> None:
         """Initialize a space group bar plot widget.
@@ -86,7 +84,7 @@ class SpacegroupBarPlotWidget(MatterVizWidget):
             data: Space group numbers/symbols/structures or a count mapping.
             **kwargs: Additional widget properties.
         """
-        super().__init__(widget_type="spacegroup_bar", data=data, **kwargs)
+        super().__init__(data=data, **kwargs)
 
     @tl.validate("data")
     def _validate_data(self, proposal: dict[str, Any]) -> dict[str, int]:

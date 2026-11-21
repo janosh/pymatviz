@@ -28,16 +28,15 @@ from matminer.datasets import load_dataset
 from pymatgen.core import Composition
 
 import pymatviz as pmv
-from pymatviz.enums import Key
 
 
 # %%
 df_gap = load_dataset("matbench_expt_gap")
 gap_expt_key = "gap expt"
 
-df_gap["pmg_comp"] = df_gap[Key.composition].map(Composition)
-df_gap[Key.n_atoms] = [x.num_atoms for x in df_gap.pmg_comp]
-df_gap[Key.n_elements] = df_gap.pmg_comp.map(len)
+df_gap["pmg_comp"] = df_gap["composition"].map(Composition)
+df_gap["n_atoms"] = [x.num_atoms for x in df_gap.pmg_comp]
+df_gap["n_elements"] = df_gap.pmg_comp.map(len)
 
 
 def mean_atomic_prop(comp: Composition, prop: str) -> float | None:
@@ -55,7 +54,7 @@ df_gap["mean_radius"] = [mean_atomic_prop(x, "atomic_radius") for x in df_gap.pm
 
 # %%
 elem_counts = pmv.count_elements(
-    df_gap.query("~composition.str.contains('Xe')")[Key.composition]
+    df_gap.query("~composition.str.contains('Xe')")["composition"]
 )
 title = "Elements in Matbench experimental band gap dataset"
 pmv.ptable_heatmap(elem_counts, log=True, color_bar={"title": title}).show()
@@ -63,18 +62,18 @@ pmv.ptable_heatmap(elem_counts, log=True, color_bar={"title": title}).show()
 
 # %% marker size = mean atomic mass, color = number of elements
 df_plot = df_gap.dropna(subset="mean_mass")  # mean_atomic_prop returns None on error
-widget = pmv.ScatterPlotWidget(
+widget = pmv.scatter_plot(
     series=[
         {
-            "x": df_plot[Key.n_atoms],
+            "x": df_plot["n_atoms"],
             "y": df_plot[gap_expt_key],
-            "color_values": df_plot[Key.n_elements],
+            "color_values": df_plot["n_elements"],
             "size_values": df_plot["mean_mass"],
             "markers": "points",
         }
     ],
-    x_axis={"label": Key.n_atoms.label, "scale_type": "log"},
+    x_axis={"label": "Number of Atoms", "scale_type": "log"},
     y_axis={"label": "Experimental band gap (eV)"},
-    color_bar={"title": Key.n_elements.label},
+    color_bar={"title": "Number of Elements"},
 )
 widget.show()

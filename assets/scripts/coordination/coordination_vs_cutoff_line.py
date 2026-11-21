@@ -7,7 +7,6 @@ from matminer.datasets import load_dataset
 from pymatgen.core import Structure
 
 import pymatviz as pmv
-from pymatviz.enums import Key
 from pymatviz.utils.testing import TEST_FILES, formula_spg_str
 
 
@@ -27,7 +26,11 @@ key1, key2, key3, *_ = structures
 # %% Coordination vs Cutoff example for a single structure
 widget = pmv.coordination_vs_cutoff_line(structures[key1])
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/svg/coordination-vs-cutoff-single.svg", width=700)
+widget.to_img(
+    f"{pmv.utils.ROOT}/assets/svg/coordination-vs-cutoff-single.svg",
+    width=700,
+    transparent=True,
+)
 
 
 # %% Multiple structures: legend group and line dash per structure
@@ -37,7 +40,11 @@ widget = pmv.coordination_vs_cutoff_line(
     num_points=100,
 )
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/svg/coordination-vs-cutoff-multiple.svg", width=700)
+widget.to_img(
+    f"{pmv.utils.ROOT}/assets/svg/coordination-vs-cutoff-multiple.svg",
+    width=700,
+    transparent=True,
+)
 
 
 # %% Custom element colors
@@ -47,4 +54,4 @@ pmv.coordination_vs_cutoff_line(
 
 
 # %% First 4 matbench_phonons structures
-pmv.coordination_vs_cutoff_line(df_phonon[Key.structure][:4].tolist()).show()
+pmv.coordination_vs_cutoff_line(df_phonon["structure"][:4].tolist()).show()

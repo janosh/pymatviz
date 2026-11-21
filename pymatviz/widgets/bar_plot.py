@@ -7,11 +7,8 @@ from typing import Any
 import traitlets as tl
 
 from pymatviz.widgets._normalize import normalize_json_kwargs, normalize_plot_series
-from pymatviz.widgets._traits import (
-    CartesianPlotTraits,
-    color_scale_trait,
-    optional_trait,
-)
+from pymatviz.widgets._schema_traits import BarPlotTraits
+from pymatviz.widgets._traits import CartesianPlotTraits, color_scale_trait, df_series
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -27,7 +24,7 @@ def bar_axis_defaults(
     return {cat_key: category, val_key: value}
 
 
-class BarPlotWidget(CartesianPlotTraits, MatterVizWidget):
+class BarPlotWidget(CartesianPlotTraits, BarPlotTraits, MatterVizWidget):
     """MatterViz widget wrapper for grouped/stacked/overlay bar plots."""
 
     orientation = tl.CaselessStrEnum(
@@ -36,10 +33,7 @@ class BarPlotWidget(CartesianPlotTraits, MatterVizWidget):
     mode = tl.CaselessStrEnum(
         values=["overlay", "stacked", "grouped"], default_value="overlay"
     ).tag(sync=True)
-    bar = optional_trait(tl.Dict)  # bar-style config
-    line = optional_trait(tl.Dict)  # style of line-rendered series
     color_scale = color_scale_trait()
-    size_scale = optional_trait(tl.Dict)  # line-marker size scaling
 
     @tl.validate("series")
     def _validate_series(self, proposal: dict[str, Any]) -> list[dict[str, Any]] | None:
@@ -53,17 +47,26 @@ class BarPlotWidget(CartesianPlotTraits, MatterVizWidget):
 
     def __init__(
         self,
-        series: list[dict[str, Any]] | tuple[dict[str, Any], ...] | None = None,
+        series: list[dict[str, Any]] | tuple[dict[str, Any], ...] | Any = None,
+        *,
+        x: str | None = None,
+        y: str | None = None,
+        color: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize a bar plot widget.
 
         Args:
-            series: Plot series with required ``x`` and ``y`` arrays.
+            series: Plot series dicts with ``x`` and ``y`` arrays, or a DataFrame whose
+                columns ``x``, ``y`` and ``color`` name.
+            x: DataFrame column of the bar positions.
+            y: DataFrame column of the bar heights.
+            color: DataFrame column to split into one series per value.
             **kwargs: Widget traits, e.g. ``orientation``, ``mode`` (``overlay``,
                 ``stacked`` or ``grouped``), axis/range configs (see
                 ``CartesianPlotTraits``), ``bar``, ``line``, ``color_scale``.
         """
+        series = df_series(series, color, kwargs, x=x, y=y)
         json_keys = (*self._JSON_KWARGS, "bar", "line", "color_scale", "size_scale")
         normalize_json_kwargs(kwargs, json_keys, "BarPlot")
-        super().__init__(widget_type="bar_plot", series=series, **kwargs)
+        super().__init__(series=series, **kwargs)

@@ -263,18 +263,24 @@ def test_curve_threshold_metadata() -> None:
 
 
 @pytest.mark.parametrize("curve_func", [precision_recall_curve, roc_curve])
-def test_dict_with_dataframe_raises_error(
-    curve_func: Callable[..., ScatterPlotWidget],
+@pytest.mark.parametrize(
+    "probs",
+    [{"Model A": np.array([0.1, 0.9, 0.2, 0.8])}, np.array([0.1, 0.9, 0.2, 0.8])],
+    ids=["dict", "array"],
+)
+def test_non_column_probs_with_dataframe_raise(
+    curve_func: Callable[..., ScatterPlotWidget], probs: Any
 ) -> None:
-    """Test that passing a dict with a DataFrame raises a clear TypeError."""
+    """With a DataFrame, probs_positive must name a column (arrays could misalign
+    with the rows dropped for NaN).
+    """
     df_clf = pd.DataFrame({"target": [0, 1, 0, 1], "probs": [0.1, 0.9, 0.2, 0.8]})
-    probs_dict = {"Model A": np.array([0.1, 0.9, 0.2, 0.8])}
 
     with pytest.raises(
         TypeError,
         match="when passing a DataFrame, probs_positive must be a column name",
     ):
-        curve_func("target", probs_dict, df=df_clf)
+        curve_func("target", probs, df=df_clf)
 
 
 @pytest.mark.parametrize("curve_func", [precision_recall_curve, roc_curve])
@@ -312,3 +318,19 @@ def test_curve_labels_match_sklearn() -> None:
     # with np.round, 0.5 -> 0 would predict all negative: F1=0.00 instead of 0.80
     half_label = precision_recall_curve([0, 1, 1], np.full(3, 0.5)).series[0]["label"]
     assert half_label == f"F1={skm.f1_score([0, 1, 1], [1, 1, 1]):.2f}" == "F1=0.80"
+
+
+@pytest.mark.parametrize("curve_func", [precision_recall_curve, roc_curve])
+@pytest.mark.parametrize(
+    "probs", ["probs", 0, ["probs", 0]], ids=["str", "int", "list"]
+)
+def test_dataframe_column_labels(
+    curve_func: Callable[..., ScatterPlotWidget], probs: Any
+) -> None:
+    """With a DataFrame, probs_positive names one column (str or int label) or a list
+    of them, one curve each.
+    """
+    df_clf = pd.DataFrame({"target": [0, 1, 0, 1], "probs": [0.1, 0.9, 0.2, 0.8]})
+    df_clf[0] = [0.3, 0.7, 0.4, 0.6]
+    widget = curve_func("target", probs, df=df_clf, no_skill=False)
+    assert len(widget.series) == (2 if isinstance(probs, list) else 1)

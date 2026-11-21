@@ -7,11 +7,12 @@ from typing import Any
 import traitlets as tl
 
 from pymatviz.widgets._normalize import _to_dict, normalize_plot_json
-from pymatviz.widgets._traits import PlotControlsTraits, optional_trait
+from pymatviz.widgets._schema_traits import RdfPlotTraits
+from pymatviz.widgets._traits import PlotControlsTraits
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
-class RdfPlotWidget(PlotControlsTraits, MatterVizWidget):
+class RdfPlotWidget(PlotControlsTraits, RdfPlotTraits, MatterVizWidget):
     """MatterViz widget for radial distribution function (RDF) plots.
 
     Accepts pre-computed RDF patterns or structure data for on-the-fly computation.
@@ -19,8 +20,8 @@ class RdfPlotWidget(PlotControlsTraits, MatterVizWidget):
 
     Examples:
         From a pymatgen Structure dict:
-        >>> from pymatviz import RdfPlotWidget
-        >>> widget = RdfPlotWidget(
+        >>> import pymatviz as pmv
+        >>> widget = pmv.rdf_plot(
         ...     structures={"lattice": {...}, "sites": [...]}, cutoff=10
         ... )
     """
@@ -33,8 +34,6 @@ class RdfPlotWidget(PlotControlsTraits, MatterVizWidget):
     show_reference_line = tl.Bool(default_value=True).tag(sync=True)
     cutoff = tl.Float(default_value=15).tag(sync=True)
     n_bins = tl.Int(default_value=75).tag(sync=True)
-    x_axis = optional_trait(tl.Dict)
-    y_axis = optional_trait(tl.Dict)
 
     def __init__(
         self,
@@ -61,7 +60,6 @@ class RdfPlotWidget(PlotControlsTraits, MatterVizWidget):
             )
 
         super().__init__(
-            widget_type="rdf_plot",
             structures=normalize_plot_json(structures, "RdfPlot.structures"),
             patterns=normalize_plot_json(patterns, "RdfPlot.patterns"),
             **kwargs,

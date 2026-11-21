@@ -12,7 +12,7 @@ import numpy as np
 import pytest
 import traitlets as tl
 
-from pymatviz import (
+from pymatviz.widgets import (
     BinnedScatterPlotWidget,
     BoxPlotWidget,
     ScatterPlot3DWidget,

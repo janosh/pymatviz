@@ -8,8 +8,8 @@ import numpy as np
 import pandas as pd
 from pymatgen.core import Structure
 
-from pymatviz._hierarchy import _limit_nodes
-from pymatviz.process_data import get_spacegroup_number, is_structure_like
+from pymatviz.hierarchy import _limit_nodes, _validate_overflow
+from pymatviz.structures import get_spacegroup_number, is_structure_like
 from pymatviz.utils import spg_to_crystal_sys
 from pymatviz.widgets.sunburst import SunburstWidget
 
@@ -17,8 +17,8 @@ from pymatviz.widgets.sunburst import SunburstWidget
 def spacegroup_sunburst(
     data: Sequence[int | str | Structure] | pd.Series,
     *,
-    max_slices: int | None = None,
-    max_slices_mode: Literal["other", "drop"] = "other",
+    max_spacegroups: int | None = None,
+    overflow: Literal["other", "drop"] = "other",
     **kwargs: Any,
 ) -> SunburstWidget:
     """Show space group counts with crystal systems as the inner ring.
@@ -26,12 +26,12 @@ def spacegroup_sunburst(
     Args:
         data (Sequence[int | str | Structure] | pd.Series): Space group numbers (1 -
             230), international symbols or pymatgen structures.
-        max_slices (int | None): Maximum number of space groups to show for each
+        max_spacegroups (int | None): Maximum number of space groups to show for each
             crystal system. If None (default), all space groups are shown. If a
             positive integer, only the top N space groups by count are shown (ties
             keep the first seen).
-        max_slices_mode ("other" | "drop"): How to handle space groups beyond
-            max_slices:
+        overflow ("other" | "drop"): How to handle space groups beyond
+            max_spacegroups:
             - "other": Combine remaining space groups into an "Other" slice (default)
             - "drop": Discard remaining space groups entirely
         **kwargs: Passed to SunburstWidget, e.g. ``label_text`` (default
@@ -42,11 +42,10 @@ def spacegroup_sunburst(
 
     Raises:
         ValueError: If data is empty, has missing values or invalid space groups, or
-            max_slices_mode is invalid.
+            overflow is invalid.
         TypeError: If the space group of a structure can't be determined.
     """
-    if max_slices_mode not in ("other", "drop"):
-        raise ValueError(f"Invalid {max_slices_mode=}, must be 'other' or 'drop'")
+    _validate_overflow(overflow)
     if len(data) == 0:
         raise ValueError("spacegroup_sunburst requires non-empty data")
 
@@ -80,7 +79,7 @@ def spacegroup_sunburst(
             "id": crystal_sys,
             "label": crystal_sys,
             "children": _limit_nodes(
-                children, max_slices, max_slices_mode, parent_id=crystal_sys
+                children, max_spacegroups, overflow, parent_id=crystal_sys
             ),
         }
         for crystal_sys, children in by_system.items()

@@ -4,19 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
-import traitlets as tl
-
 from pymatviz.widgets._normalize import normalize_json_kwargs, normalize_plot_json
-from pymatviz.widgets._traits import (
-    CAMERA_PROJECTIONS,
-    color_bar_trait,
-    color_scale_trait,
-    optional_trait,
-)
+from pymatviz.widgets._schema_traits import FermiSurfaceTraits
+from pymatviz.widgets._traits import color_bar_trait, color_scale_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
-class FermiSurfaceWidget(MatterVizWidget):
+class FermiSurfaceWidget(FermiSurfaceTraits, MatterVizWidget):
     """MatterViz widget for visualizing Fermi surfaces.
 
     Accepts pre-computed Fermi surface data (isosurfaces + reciprocal lattice) or
@@ -27,15 +21,15 @@ class FermiSurfaceWidget(MatterVizWidget):
 
     Examples:
         From pre-computed Fermi surface data:
-        >>> from pymatviz import FermiSurfaceWidget
-        >>> widget = FermiSurfaceWidget(fermi_data=fermi_dict)
+        >>> import pymatviz as pmv
+        >>> widget = pmv.fermi_surface(fermi_data=fermi_dict)
         >>> widget
 
         From raw band grid data:
-        >>> widget = FermiSurfaceWidget(band_data=band_grid_dict)
+        >>> widget = pmv.fermi_surface(band_data=band_grid_dict)
 
         With custom options:
-        >>> widget = FermiSurfaceWidget(
+        >>> widget = pmv.fermi_surface(
         ...     fermi_data=fermi_dict,
         ...     surface_opacity=0.8,
         ...     show_bz=True,
@@ -45,30 +39,9 @@ class FermiSurfaceWidget(MatterVizWidget):
         ... )
     """
 
-    fermi_data = optional_trait(tl.Dict)
-    band_data = optional_trait(tl.Dict)
-
-    # Display options
-    mu = optional_trait(tl.Float)
-    # Surface coloring: by band index, spin channel, or a per-vertex property
-    color_property = optional_trait(
-        tl.CaselessStrEnum, values=("band", "spin", "property")
-    )
     color_scale = color_scale_trait()
     # Shown only when color_property is "property"
     color_bar = color_bar_trait()
-    # Property colored by in "property" mode (None = the first present)
-    property_name = optional_trait(tl.Unicode)
-    # Label of the unnamed per-vertex property, e.g. "Fermi velocity"
-    custom_property_label = optional_trait(tl.Unicode)
-    representation = optional_trait(
-        tl.CaselessStrEnum, values=("solid", "wireframe", "transparent")
-    )
-    surface_opacity = optional_trait(tl.Float)
-    show_bz = optional_trait(tl.Bool)
-    bz_opacity = optional_trait(tl.Float)
-    show_vectors = optional_trait(tl.Bool)
-    camera_projection = optional_trait(tl.CaselessStrEnum, values=CAMERA_PROJECTIONS)
 
     def __init__(
         self,
@@ -89,7 +62,6 @@ class FermiSurfaceWidget(MatterVizWidget):
         normalize_json_kwargs(kwargs, ("color_scale", "color_bar"), "FermiSurface")
 
         super().__init__(
-            widget_type="fermi_surface",
             fermi_data=normalize_plot_json(fermi_data, "fermi_data"),
             band_data=normalize_plot_json(band_data, "band_data"),
             **kwargs,

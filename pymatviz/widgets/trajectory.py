@@ -8,7 +8,6 @@ from typing import Any
 import numpy as np
 import traitlets as tl
 
-from pymatviz.structure.helpers import add_vacuum_if_needed
 from pymatviz.widgets._binary import (
     _is_number,
     force_stats,
@@ -16,11 +15,8 @@ from pymatviz.widgets._binary import (
     is_binary_envelope,
     trajectory_to_envelope,
 )
-from pymatviz.widgets._traits import (
-    TRAJECTORY_PANES,
-    StructureVizTraits,
-    optional_trait,
-)
+from pymatviz.widgets._schema_traits import TrajectoryTraits
+from pymatviz.widgets._traits import StructureVizTraits
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -39,7 +35,7 @@ def _unwrap_monty_arrays(value: Any, *, nested: bool = False) -> Any:
     return value
 
 
-class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
+class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
     """MatterViz widget for visualizing molecular dynamics and geometry optimization
     trajectories in Python notebooks.
 
@@ -51,9 +47,9 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
 
     Examples:
         Basic usage with list of structures:
-        >>> from pymatviz import TrajectoryWidget
+        >>> import pymatviz as pmv
         >>> trajectory_data = [...]  # List of structures
-        >>> widget = TrajectoryWidget(trajectory=trajectory_data)
+        >>> widget = pmv.trajectory(trajectory=trajectory_data)
         >>> widget
 
         With per-frame properties (scalars are plotted; per-atom ``forces`` of shape
@@ -62,13 +58,13 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
         ...     {"structure": struct1, "energy": -1.23, "forces": forces1},
         ...     {"structure": struct2, "energy": -1.25, "forces": forces2},
         ... ]
-        >>> widget = TrajectoryWidget(trajectory=trajectory_with_props)
+        >>> widget = pmv.trajectory(trajectory=trajectory_with_props)
 
         A pymatgen ``Trajectory`` syncs as binary arrays (its ``as_dict()`` as JSON):
-        >>> widget = TrajectoryWidget(trajectory=Trajectory.from_file("XDATCAR"))
+        >>> widget = pmv.trajectory(trajectory=Trajectory.from_file("XDATCAR"))
 
         With custom visualization options:
-        >>> widget = TrajectoryWidget(
+        >>> widget = pmv.trajectory(
         ...     trajectory=trajectory_data,
         ...     display_mode="structure+plot",
         ...     plot_type="distribution",
@@ -79,11 +75,11 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
         ... )
 
         With local file path (automatically detected and loaded):
-        >>> widget = TrajectoryWidget(data_url="path/to/trajectory.xyz")
-        >>> widget = TrajectoryWidget(data_url="path/to/trajectory.h5")
+        >>> widget = pmv.trajectory(data_url="path/to/trajectory.xyz")
+        >>> widget = pmv.trajectory(data_url="path/to/trajectory.h5")
 
         LAMMPS dumps only carry integer atom types; name them with atom_type_mapping:
-        >>> widget = TrajectoryWidget(
+        >>> widget = pmv.trajectory(
         ...     data_url="path/to/dump.lammpstrj", atom_type_mapping={1: "Si", 2: "O"}
         ... )
     """
@@ -103,23 +99,13 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
     plot_type = tl.CaselessStrEnum(
         ["time-series", "distribution"], default_value="time-series"
     ).tag(sync=True)
-    # Property shown in the distribution plot (None = highest-priority property)
-    distribution_property = optional_trait(tl.Unicode)
-    # Open floating pane (e.g. "hotspots", "flight"), None = closed. Two-way synced.
-    active_pane = optional_trait(tl.CaselessStrEnum, values=TRAJECTORY_PANES)
     # Data inspector sidebar (frame attributes, per-frame and per-atom tables). Two-way
     # synced, so closing it in the viewer reads back as False.
     data_inspector_open = tl.Bool(default_value=True).tag(sync=True)
-    auto_play = optional_trait(tl.Bool)
-    # {atom type: element} for LAMMPS dumps loaded from data_url, e.g. {1: "Si", 2: "O"}
-    atom_type_mapping = optional_trait(tl.Dict)
-
-    show_image_atoms = optional_trait(tl.Bool)
 
     step_labels = tl.Union(
         [tl.Int(), tl.List()], allow_none=True, default_value=None
     ).tag(sync=True)
-    property_labels = optional_trait(tl.Dict)
 
     def __init__(self, trajectory: Any = None, **kwargs: Any) -> None:
         """Initialize the TrajectoryWidget.
@@ -143,7 +129,7 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
                 Serialized trajectory dicts stay JSON.
             **kwargs: Additional widget properties
         """
-        super().__init__(widget_type="trajectory", trajectory=trajectory, **kwargs)
+        super().__init__(trajectory=trajectory, **kwargs)
 
     @tl.validate("trajectory")
     def _validate_trajectory(self, proposal: dict[str, Any]) -> dict[str, Any] | None:
@@ -159,7 +145,7 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
         """Convert a structure-like frame to its JSON representation."""
         from pymatgen.core import SiteCollection
 
-        from pymatviz.process_data import normalize_structures
+        from pymatviz.structures import add_vacuum_if_needed, normalize_structures
 
         # only pymatgen structures: MSONAtoms.as_dict() is an ASE (not site) dict
         if isinstance(structure_input, SiteCollection):
@@ -391,7 +377,7 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
 
         from pymatgen.core.trajectory import Trajectory
 
-        from pymatviz.process_data import is_structure_like
+        from pymatviz.structures import is_structure_like
 
         is_pymatgen = isinstance(trajectory, Trajectory)
         if is_pymatgen or (

@@ -15,6 +15,7 @@ import numpy as np
 import pymatgen
 
 import pymatviz as pmv
+from pymatviz.treemap import py_pkg
 
 
 # %% Single packages with default settings
@@ -22,7 +23,12 @@ for pkg in ("pymatviz", np):  # Mix strings and module objects
     widget = pmv.py_pkg_treemap(pkg, style="height: 500px")
     widget.show()
     pkg_name = str(getattr(pkg, "__name__", pkg)).replace("_", "-")
-    widget.to_img(f"{pmv.ROOT}/assets/svg/py-pkg-treemap-{pkg_name}.svg", width=800)
+    if pkg_name == "pymatviz":  # in readme
+        widget.to_img(
+            f"{pmv.utils.ROOT}/assets/svg/py-pkg-treemap-{pkg_name}.svg",
+            width=800,
+            transparent=True,
+        )
 
 
 # %% Compare multiple packages, only including files with at least 50 lines
@@ -33,7 +39,11 @@ widget = pmv.py_pkg_treemap(
     padding_inner=2,
 )
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/svg/py-pkg-treemap-multiple.svg", width=800)
+widget.to_img(
+    f"{pmv.utils.ROOT}/assets/svg/py-pkg-treemap-multiple.svg",
+    width=800,
+    transparent=True,
+)
 
 
 # %% Different ways to group packages
@@ -67,7 +77,7 @@ def coverage_percentages(url: str, package: str) -> dict[str, float]:
     """Map each reported file to its installed path for this gallery example."""
     with urlopen(url, timeout=30) as response:  # noqa: S310
         files = json.load(response)["files"]
-    pkg_dir = pmv.treemap.py_pkg.find_package_path(package)
+    pkg_dir = py_pkg.find_package_path(package)
     prefix = f"{package}/"
     return {
         # normpath matches the collector's file_path (e.g. backslashes on Windows)
@@ -88,7 +98,11 @@ widget = pmv.py_pkg_treemap(
     cell_size_fn=lambda cell: cell.line_count if cell.line_count >= 20 else 0,
 )
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/svg/py-pkg-treemap-pymatviz-coverage.svg", width=800)
+widget.to_img(
+    f"{pmv.utils.ROOT}/assets/svg/py-pkg-treemap-pymatviz-coverage.svg",
+    width=800,
+    transparent=True,
+)
 
 
 # %% pymatgen treemap with coverage heatmap and manual color range (0-100%)
@@ -99,7 +113,7 @@ coverage_url = "https://github.com/user-attachments/files/21545087/2025-07-31-py
 NAMESPACE_PKGS = {"analysis.defects", "analysis.diffusion"}
 
 
-def _pmg_cell_size(cell: pmv.treemap.py_pkg.ModuleStats) -> int:
+def _pmg_cell_size(cell: py_pkg.ModuleStats) -> int:
     """Filter out namespace packages and tiny files."""
     dotted = f".{cell.full_module}."
     if any(f".{ns_pkg}." in dotted for ns_pkg in NAMESPACE_PKGS):
@@ -117,4 +131,8 @@ widget = pmv.py_pkg_treemap(
     max_children_for_split=5,  # only expand if parent has <=5 children
 )
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/svg/py-pkg-treemap-pymatgen-coverage.svg", width=800)
+widget.to_img(
+    f"{pmv.utils.ROOT}/assets/svg/py-pkg-treemap-pymatgen-coverage.svg",
+    width=800,
+    transparent=True,
+)

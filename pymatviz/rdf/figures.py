@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
-from pymatviz.process_data import normalize_periodic_structures
 from pymatviz.rdf.helpers import calculate_rdf, partial_rdfs
+from pymatviz.structures import normalize_periodic_structures, str_labels
 from pymatviz.widgets.rdf_plot import RdfPlotWidget
 
 
 if TYPE_CHECKING:
-    from collections.abc import Hashable, Mapping, Sequence
+    from collections.abc import Mapping, Sequence
     from typing import Any
 
     import numpy as np
@@ -19,28 +19,9 @@ if TYPE_CHECKING:
 
     from pymatviz.typing import AnyStructure
 
-
-def _resolve_n_bins(
-    struct_dict: Mapping[Hashable, IStructure],
-    cutoff: float,
-    n_bins: int,
-    bin_size: float | None,
-) -> int:
-    """Check structures have sites and that n_bins and bin_size aren't both set.
-    Returns n_bins, derived from bin_size if given.
-    """
-    for key, struct in struct_dict.items():
-        if len(struct) == 0:
-            raise ValueError(
-                f"input structure{f' {key}' if key else ''} contains no sites"
-            )
-    if bin_size is None:
-        return n_bins
-    if n_bins != 75:
-        raise ValueError(
-            f"Cannot specify both {n_bins=} and {bin_size=}. Pick one or the other."
-        )
-    return int(cutoff / bin_size)
+# Above this many sites in all structures, RDFs are computed in Python: the browser
+# recomputes them (O(n_sites^2) pairs) whenever cutoff or bins change
+MAX_BROWSER_RDF_SITES = 2_000
 
 
 def _rdf_entry(
@@ -56,165 +37,127 @@ def _rdf_entry(
     pattern: dict[str, Any] = {"r": radii.tolist(), "g_r": g_r.tolist()}
     if element_pair:
         pattern["element_pair"] = list(element_pair)
-    entry: dict[str, Any] = {"label": label, "pattern": pattern}
-    if color:
-        entry["color"] = color
-    if legend_group:
-        entry["legend_group"] = legend_group
-    return entry
+    optional = {"color": color, "legend_group": legend_group}
+    return {"label": label, "pattern": pattern} | {
+        key: val for key, val in optional.items() if val
+    }
 
 
-def _rdf_widget(entries: list[dict[str, Any]], **kwargs: Any) -> RdfPlotWidget:
-    """Plot precomputed RDF entries. mode="full" keeps every curve visible: in its
-    default "element_pairs" mode, MatterViz hides all but the first 3 curves.
-    """
-    return RdfPlotWidget(patterns=entries, **{"mode": "full"} | kwargs)
-
-
-def element_pair_rdfs(
-    structures: AnyStructure
-    | Sequence[AnyStructure]
-    | Mapping[str, AnyStructure]
-    | pd.Series,
-    cutoff: float | None = None,
-    n_bins: int = 75,
-    bin_size: float | None = None,
-    element_pairs: list[tuple[str, str]] | None = None,
-    colors: Sequence[str] | None = None,
-    **kwargs: Any,
-) -> RdfPlotWidget:
-    """Plot pairwise radial distribution functions (RDFs) for all (or a subset of)
-    element pairs in one or multiple structures.
-
-    Every element pair of every structure is one curve labeled by the pair. With
-    multiple structures, each structure's curves share a legend group.
-
-    Args:
-        structures (AnyStructure | Sequence[AnyStructure] | dict[str, AnyStructure]):
-            Can be one of the following:
-            - single pymatgen Structure or ASE Atoms object
-            - sequence (list, tuple) of pymatgen Structures or ASE Atoms objects
-            - dictionary mapping labels to pymatgen Structures or ASE Atoms objects
-            - pandas Series of pymatgen Structures or ASE Atoms objects
-        cutoff (float | None, optional): Maximum distance for RDF calculation.
-            If None, defaults to twice the longest lattice vector length across all
-            structures (up to 15A). If negative, its absolute value is used as a scaling
-            factor for the longest lattice vector length (e.g. -1.5 means 1.5x the
-            longest lattice vector). Default is None.
-        n_bins (int, optional): Number of bins for RDF calculation. Default is 75.
-        bin_size (float, optional): Size of bins for RDF calculation. If specified, it
-            overrides n_bins. Default is None.
-        element_pairs (list[tuple[str, str]], optional): Element pairs to plot.
-            If None, all pairs present in any structure are plotted.
-        colors (Sequence[str], optional): CSS colors cycled over the curves. Defaults
-            to the MatterViz palette.
-        **kwargs: Passed to RdfPlotWidget, e.g. ``show_reference_line=False`` to hide
-            the g(r)=1 line, ``x_axis``, ``y_axis`` or ``style``.
-
-    Returns:
-        RdfPlotWidget: MatterViz RDF plot with one curve per structure and element
-            pair.
-
-    Raises:
-        ValueError: If no structures are provided, if structures have no sites,
-            if invalid element pairs are provided, or if both n_bins and bin_size are
-            specified.
-        TypeError: If input structures are not pymatgen Structures or ASE Atoms.
-    """
-    struct_dict = normalize_periodic_structures(structures)
-
-    # Calculate dynamic cutoff if not specified or negative
-    max_cell_len = max(max(struct.lattice.abc) for struct in struct_dict.values())
-    if cutoff is None:
-        cutoff = min(15, 2 * max_cell_len)
-    elif cutoff < 0:
-        cutoff = abs(cutoff) * max_cell_len
-
-    n_bins = _resolve_n_bins(struct_dict, cutoff, n_bins, bin_size)
-
-    all_elements = set.union(
+def _pair_entries(
+    struct_dict: Mapping[str, IStructure],
+    element_pairs: Sequence[tuple[str, str]] | None,
+    cutoff: float,
+    n_bins: int,
+    colors: Sequence[str] | None,
+) -> list[dict[str, Any]]:
+    """One curve per element pair of each structure, grouped by structure."""
+    all_elems = set.union(
         *(struct.chemical_system_set for struct in struct_dict.values())
     )
     if element_pairs is None:
-        element_pairs = [
-            (el1, el2) for el1 in all_elements for el2 in all_elements if el1 <= el2
-        ]
-    else:
-        # Check if all elements in element_pairs are present in at least one structure
-        pair_elements = {elem for pair in element_pairs for elem in pair}
-        if extra_elems := pair_elements - set(all_elements):
-            raise ValueError(
-                f"Elements {extra_elems} in element_pairs not present in any structure"
-            )
-
-    multiple = len(struct_dict) > 1
+        element_pairs = [(el1, el2) for el1 in all_elems for el2 in all_elems]
+    elif extra := {elem for pair in element_pairs for elem in pair} - all_elems:
+        raise ValueError(f"Elements {extra} in element_pairs not in any structure")
     pairs = sorted({(min(el1, el2), max(el1, el2)) for el1, el2 in element_pairs})
-    entries = []
+    entries: list[dict[str, Any]] = []
     for label, struct in struct_dict.items():
         # skip pairs with elements this structure lacks (all-zero curves)
-        struct_elems = struct.chemical_system_set
-        struct_pairs = [pair for pair in pairs if set(pair) <= struct_elems]
-        pair_rdfs = partial_rdfs(struct, struct_pairs, cutoff=cutoff, n_bins=n_bins)
-        for (el1, el2), rdf in zip(struct_pairs, pair_rdfs, strict=True):
-            color = colors[len(entries) % len(colors)] if colors else None
+        struct_pairs = [
+            pair for pair in pairs if set(pair) <= struct.chemical_system_set
+        ]
+        rdfs = partial_rdfs(struct, struct_pairs, cutoff=cutoff, n_bins=n_bins)
+        for pair, rdf in zip(struct_pairs, rdfs, strict=True):
             entries.append(
                 _rdf_entry(
-                    f"{el1}-{el2}",
+                    "-".join(pair),
                     rdf,
-                    color=color,
-                    element_pair=(el1, el2),
-                    legend_group=str(label) if multiple else None,
+                    color=colors[len(entries) % len(colors)] if colors else None,
+                    element_pair=pair,
+                    legend_group=label if len(struct_dict) > 1 else None,
                 )
             )
     if not entries:
         raise ValueError(f"No structure contains any of the element pairs {pairs}")
-    return _rdf_widget(entries, **kwargs)
+    return entries
 
 
-def full_rdf(
+def rdf_plot(
     structures: AnyStructure
     | Sequence[AnyStructure]
     | Mapping[str, AnyStructure]
-    | pd.Series,
-    cutoff: float = 15,
-    n_bins: int = 75,
-    bin_size: float | None = None,
+    | pd.Series
+    | None = None,
+    *,
+    patterns: Sequence[dict[str, Any]] | None = None,
+    mode: Literal["element_pairs", "full"] = "element_pairs",
+    cutoff: float | None = None,
+    bins: int = 75,
+    element_pairs: Sequence[tuple[str, str]] | None = None,
     colors: Sequence[str] | None = None,
     **kwargs: Any,
 ) -> RdfPlotWidget:
-    """Plot the full radial distribution functions (RDFs) of one or multiple
-    structures.
+    """Radial distribution functions (RDFs) of structures: one curve per element pair
+    of each structure (``mode="element_pairs"``) or one all-atom curve per structure
+    (``mode="full"``).
+
+    MatterViz computes the RDFs in the browser, where the controls pane changes cutoff
+    and bins live and hovering a curve highlights its sites. Selecting
+    ``element_pairs``, setting ``colors`` or passing more than
+    ``MAX_BROWSER_RDF_SITES`` sites computes them in Python instead.
 
     Args:
-        structures (AnyStructure | Sequence[AnyStructure] | dict[str, AnyStructure]):
-            Can be one of the following:
-            - single pymatgen Structure or ASE Atoms object
-            - list of pymatgen Structures or ASE Atoms objects
-            - dictionary mapping labels to pymatgen Structures or ASE Atoms objects.
-        cutoff (float, optional): Maximum distance for RDF calculation. Default is 15 Å.
-        n_bins (int, optional): Number of bins for RDF calculation. Default is 75.
-        bin_size (float, optional): Size of bins for RDF calculation. If specified, it
-            overrides n_bins. Default is None.
-        colors (Sequence[str], optional): CSS colors cycled over the structures'
-            curves. Defaults to the MatterViz palette.
-        **kwargs: Passed to RdfPlotWidget, e.g. ``show_reference_line=False`` to hide
+        structures: A pymatgen Structure or ASE Atoms, or a sequence, dict or
+            pd.Series of them (dict/Series keys label the structures).
+        patterns: Precomputed MatterViz RDF entries (``{label, pattern: {r, g_r}}``)
+            to plot instead of structures.
+        mode: "element_pairs" (in the browser, only the first 3 curves start visible)
+            or "full".
+        cutoff: Maximum distance in Å. Defaults to twice the longest lattice vector
+            of all structures, capped at 15 Å.
+        bins: Number of distance bins. Defaults to 75.
+        element_pairs: Element pairs to plot in "element_pairs" mode, e.g.
+            ``[("Si", "O")]``. Defaults to all pairs.
+        colors: CSS colors cycled over the curves. Defaults to MatterViz's palette.
+        **kwargs: RdfPlotWidget traits, e.g. ``show_reference_line=False`` to hide
             the g(r)=1 line, ``x_axis``, ``y_axis`` or ``style``.
 
     Returns:
-        RdfPlotWidget: MatterViz RDF plot with one curve per structure.
+        RdfPlotWidget: The RDF plot.
 
     Raises:
-        ValueError: If no structures are provided, if structures have no sites,
-            or if both n_bins and bin_size are specified.
+        ValueError: If neither or both of structures and patterns are given, a
+            structure has no sites, or no structure has any of element_pairs.
     """
-    struct_dict = normalize_periodic_structures(structures)
-    n_bins = _resolve_n_bins(struct_dict, cutoff, n_bins, bin_size)
-    entries = [
-        _rdf_entry(
-            str(label),
-            calculate_rdf(struct, cutoff=cutoff, n_bins=n_bins),
-            color=colors[idx % len(colors)] if colors else None,
+    if patterns is not None:
+        if structures is not None:
+            raise ValueError("pass structures or patterns, not both")
+        return RdfPlotWidget(patterns=patterns, mode=mode, **kwargs)
+    if structures is None:
+        raise ValueError("pass structures or patterns")
+    struct_dict = str_labels(normalize_periodic_structures(structures))
+    if empty := [key for key, struct in struct_dict.items() if len(struct) == 0]:
+        raise ValueError(f"structures {empty} contain no sites")
+    if cutoff is None:
+        longest = max(max(struct.lattice.abc) for struct in struct_dict.values())
+        cutoff = min(15, 2 * longest)
+    n_sites = sum(map(len, struct_dict.values()))
+    if element_pairs is None and colors is None and n_sites <= MAX_BROWSER_RDF_SITES:
+        as_dicts = {key: struct.as_dict() for key, struct in struct_dict.items()}
+        # a lone structure goes unlabeled: no legend group heading for one structure
+        lone = next(iter(as_dicts.values())) if len(as_dicts) == 1 else as_dicts
+        return RdfPlotWidget(
+            structures=lone, mode=mode, cutoff=cutoff, n_bins=bins, **kwargs
         )
-        for idx, (label, struct) in enumerate(struct_dict.items())
-    ]
-    return _rdf_widget(entries, **kwargs)
+    if mode == "full":
+        entries = [
+            _rdf_entry(
+                key,
+                calculate_rdf(struct, cutoff=cutoff, n_bins=bins),
+                color=colors[idx % len(colors)] if colors else None,
+            )
+            for idx, (key, struct) in enumerate(struct_dict.items())
+        ]
+    else:
+        entries = _pair_entries(struct_dict, element_pairs, cutoff, bins, colors)
+    # mode="full" keeps every precomputed curve visible (element_pairs shows 3)
+    return RdfPlotWidget(patterns=entries, **{"mode": "full"} | kwargs)

@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import ArrayLike
 
-from pymatviz.process_data import df_to_arrays
+from pymatviz.utils.data import df_to_arrays
 from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 
@@ -41,11 +41,17 @@ def _standardize_input(
                 f"when passing a DataFrame, targets must be a column name, got "
                 f"{type(targets).__name__}"
             )
-        if isinstance(probs_positive, Mapping):
+        # column labels (str or int), or a list of them for several models; arrays
+        # could misalign with the rows dropped for NaN
+        is_label = lambda val: isinstance(val, str | int) and not isinstance(val, bool)
+        if not (
+            is_label(probs_positive)
+            or (isinstance(probs_positive, list) and all(map(is_label, probs_positive)))
+        ):
             raise TypeError(
-                f"when passing a DataFrame, probs_positive must be a column name "
-                f"(str) or array, not dict. Got {type(probs_positive).__name__}. "
-                f"Pass df=None to use dict of predictions."
+                "when passing a DataFrame, probs_positive must be a column name or "
+                f"list of them, got {type(probs_positive).__name__}. Pass df=None to "
+                "use arrays or a dict of predictions."
             )
         targets, probs_positive = df_to_arrays(df, targets, probs_positive)
 
@@ -144,8 +150,8 @@ def _point_metadata(**columns: ArrayLike) -> pd.DataFrame:
 def roc_curve(
     targets: ArrayLike | str,
     probs_positive: Predictions,
-    df: pd.DataFrame | None = None,
     *,
+    df: pd.DataFrame | None = None,
     no_skill: dict[str, Any] | Literal[False] | None = None,
     **kwargs: Any,
 ) -> ScatterPlotWidget:
@@ -234,8 +240,8 @@ def roc_curve(
 def precision_recall_curve(
     targets: ArrayLike | str,
     probs_positive: Predictions,
-    df: pd.DataFrame | None = None,
     *,
+    df: pd.DataFrame | None = None,
     no_skill: dict[str, Any] | Literal[False] | None = None,
     **kwargs: Any,
 ) -> ScatterPlotWidget:

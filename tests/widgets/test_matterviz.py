@@ -12,9 +12,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from pymatviz import PKG_NAME
+import pymatviz as pmv
 from pymatviz.widgets import matterviz
 from pymatviz.widgets.matterviz import (
+    MatterVizWidget,
     _in_marimo_runtime,
     _marimo_esm_url,
     _read_asset_source,
@@ -27,7 +28,7 @@ if TYPE_CHECKING:
     from collections.abc import Generator
     from pathlib import Path
 
-DOTTED_PATH = f"{PKG_NAME}.widgets.matterviz"
+DOTTED_PATH = "pymatviz.widgets.matterviz"
 
 _real_import = builtins.__import__
 
@@ -80,7 +81,7 @@ def _clean_asset_cache(monkeypatch: pytest.MonkeyPatch) -> Generator[None]:
 @pytest.mark.parametrize("cache_exists", [True, False])
 def test_clear_widget_cache(cache_exists: bool, tmp_path: Path) -> None:
     """Clearing cache removes the directory whether or not it exists."""
-    cache_dir = tmp_path / ".cache" / PKG_NAME
+    cache_dir = tmp_path / ".cache" / "pymatviz"
     if cache_exists:
         cache_dir.mkdir(parents=True)
         (cache_dir / "test.txt").write_text("test")
@@ -367,7 +368,7 @@ def test_local_bundle_survives_reconfiguration(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Existing widgets export and sync with the local bundle they loaded."""
-    from pymatviz import TrajectoryWidget
+    from pymatviz.widgets import TrajectoryWidget
 
     for ext in ("js", "css"):
         (tmp_path / f"matterviz.{ext}").write_text(f"/* local {ext} */")
@@ -394,7 +395,7 @@ def test_default_assets_sync_as_urls() -> None:
 
     offline = FileNotFoundError("offline")
     with patch(f"{DOTTED_PATH}.fetch_widget_asset", side_effect=offline) as fetch:
-        widgets = [pmv.chem_sys_treemap(["Fe-O"]) for _ in range(3)]
+        widgets = [pmv.chem_sys_hierarchy(["Fe-O"], kind="treemap") for _ in range(3)]
         state = ipywidgets.Widget.get_manager_state(widgets=widgets)["state"]
     fetch.assert_not_called()
     assert widgets[0].data[0]["children"][0]["label"] == "Fe-O"
@@ -667,3 +668,38 @@ def test_init_marimo_assets(
     assert widget._esm == expected[expected_esm]
     assert widget._css == ("/* css */" if local else remote_css)
     assert to_url.call_count == local
+
+
+def _widget_type_bytes(jobs: list[dict[str, Any]]) -> list[bytes]:
+    """Fake render_widgets_headless: each job's widget type as its image bytes."""
+    return [job["widget_data"]["widget_type"].encode() for job in jobs]
+
+
+@pytest.mark.parametrize(
+    ("fmt", "ext"), [("png", "png"), ("jpeg", "jpg"), ("svg", "svg")]
+)
+def test_export_widgets(fmt: str, ext: str, tmp_path: Any) -> None:
+    """export_widgets renders all widgets in one batch and writes {name}.{ext} files,
+    passing each widget's state and the shared options.
+    """
+    widgets = {"a": pmv.bar_plot([{"x": [1], "y": [2]}]), "b": pmv.structure()}
+    out_dir = f"{tmp_path}/out"
+    with (
+        patch.object(MatterVizWidget, "_resolve_assets", return_value=("esm", "css")),
+        patch(
+            "pymatviz.widgets._headless.render_widgets_headless",
+            side_effect=_widget_type_bytes,
+        ) as render,
+    ):
+        paths = pmv.export_widgets(widgets, out_dir, fmt=fmt, dpi=300)  # ty: ignore[invalid-argument-type]
+    assert paths == {name: f"{out_dir}/{name}.{ext}" for name in widgets}
+    for path, widget_type in zip(
+        paths.values(), ("bar_plot", "structure"), strict=True
+    ):
+        with open(path, "rb") as file:
+            assert file.read() == widget_type.encode()
+    ((jobs,), _) = render.call_args
+    options = {(job["fmt"], job["dpi"], job["esm_content"]) for job in jobs}
+    assert options == {(fmt, 300, "esm")}
+    with pytest.raises(ValueError, match="dpi must be positive"):
+        pmv.export_widgets(widgets, out_dir, dpi=0)

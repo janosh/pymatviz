@@ -7,10 +7,13 @@ import sys
 from typing import Any
 
 import pytest
-from pymatgen.core import Structure
+from pymatgen.analysis.diffraction.xrd import DiffractionPattern
+from pymatgen.analysis.phase_diagram import PDEntry, PhaseDiagram
+from pymatgen.core import Composition, Lattice, Structure
 
 import pymatviz as pmv
 from pymatviz import notebook
+from pymatviz.notebook import create_widget
 
 
 @pytest.fixture
@@ -18,8 +21,6 @@ def test_objects(
     structures: tuple[Structure, Structure], ase_atoms: tuple[Any, Any]
 ) -> dict[str, Any]:
     """Create test objects for all supported types using existing fixtures."""
-    from pymatgen.analysis.diffraction.xrd import DiffractionPattern
-
     diffraction_pattern = DiffractionPattern(
         x=[10, 20, 30],
         y=[100, 50, 75],
@@ -101,9 +102,10 @@ def test_notebook_mode_imports_nothing() -> None:
 
 
 def test_notebook_mode_needs_ipython(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Outside IPython, notebook_mode raises instead of silently doing nothing."""
+    """Outside IPython and marimo, notebook_mode raises instead of doing nothing."""
     monkeypatch.setattr("IPython.get_ipython", lambda: None)
-    with pytest.raises(RuntimeError, match="needs a running IPython session"):
+    monkeypatch.delitem(sys.modules, "marimo", raising=False)
+    with pytest.raises(RuntimeError, match="needs a running IPython session or marimo"):
         pmv.notebook_mode(on=True)
 
 
@@ -133,3 +135,84 @@ def test_phonopy_dos_integration(shell: Any) -> None:
     pmv.notebook_mode(on=True)
     data, _metadata = shell.display_formatter.format(phonopy_nacl.total_dos)
     assert WIDGET_MIME in data
+
+
+@pytest.mark.parametrize(
+    ("obj_factory", "expected_widget", "expected_type"),
+    [
+        (lambda: Composition("Fe2O3"), "CompositionWidget", "composition"),
+        (
+            lambda: DiffractionPattern(x=[10], y=[100], hkls=[], d_hkls=[]),
+            "XrdWidget",
+            "xrd",
+        ),
+        (
+            lambda: PhaseDiagram(
+                [
+                    PDEntry(Composition("Li"), -1.9),
+                    PDEntry(Composition("O"), -4.2),
+                    PDEntry(Composition("Li2O"), -14.3),
+                ]
+            ),
+            "ConvexHullWidget",
+            "convex_hull",
+        ),
+        # trajectory fallback for a list of frame dicts
+        (
+            lambda: (
+                [
+                    {
+                        "structure": Structure(Lattice.cubic(3), ["Fe"], [[0, 0, 0]]),
+                        "energy": -1.0,
+                    }
+                ]
+                * 2
+            ),
+            "TrajectoryWidget",
+            "trajectory",
+        ),
+    ],
+    ids=["composition", "xrd", "phase_diagram", "trajectory_dicts"],
+)
+def test_create_widget(
+    obj_factory: Any, expected_widget: str, expected_type: str
+) -> None:
+    """create_widget produces correct widget for registered types."""
+    widget = create_widget(obj_factory())
+    assert type(widget).__name__ == expected_widget
+    assert widget.widget_type == expected_type
+
+
+@pytest.mark.parametrize(
+    ("bad_input", "match"),
+    [(42, "No widget registered"), ([], "empty sequence"), ("string", "No widget")],
+)
+def test_create_widget_unknown_type_raises(bad_input: Any, match: str) -> None:
+    """create_widget raises ValueError for unregistered/empty types."""
+    with pytest.raises(ValueError, match=match):
+        create_widget(bad_input)
+
+
+def test_create_widget_matches_subclasses() -> None:
+    """Subclasses of registered types display like their base class."""
+
+    class MyStructure(Structure):
+        """A pymatgen Structure subclass."""
+
+    widget = create_widget(MyStructure(Lattice.cubic(3), ["Fe"], [[0, 0, 0]]))
+    assert widget.widget_type == "structure"
+
+
+def test_notebook_mode_in_marimo(monkeypatch: pytest.MonkeyPatch) -> None:
+    """In marimo, supported classes get a _display_ creating their widget, which
+    turning notebook_mode off removes again.
+    """
+    monkeypatch.setattr("IPython.get_ipython", lambda: None)
+    monkeypatch.setitem(sys.modules, "marimo", type(sys)("marimo"))
+    pmv.notebook_mode(on=True)
+    try:
+        widget = Composition("Fe2O3")._display_()  # ty: ignore[missing-attribute]
+        assert widget.widget_type == "composition"
+    finally:
+        pmv.notebook_mode(on=False)
+    assert not hasattr(Composition, "_display_")
