@@ -19,6 +19,7 @@ from pymatviz.widgets._traits import CONTROLS_MODES, optional_trait
 
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from typing import Literal
 
     from pymatviz.widgets._headless import RenderReport
@@ -529,14 +530,7 @@ class MatterVizWidget(AnyWidget):
                 requested for a canvas-based widget.
             ImportError: If ``playwright`` is not installed.
         """
-        from pymatviz.widgets._headless import _CAPTURE_FORMATS, render_widget_headless
-
-        dims = dict(dpi=dpi, timeout=timeout, width=width, height=height)
-        for name, val in dims.items():
-            if val is not None and val <= 0:
-                raise ValueError(f"{name} must be positive, got {val}")
-        if not 1 <= quality <= 100:
-            raise ValueError(f"quality must be between 1 and 100, got {quality}")
+        from pymatviz.widgets._headless import render_widget_headless
 
         if fmt is None and filename:
             ext = os.path.splitext(filename)[1].lower().lstrip(".")
@@ -546,26 +540,10 @@ class MatterVizWidget(AnyWidget):
                     "(no extension). Pass fmt= explicitly."
                 )
             fmt = {"jpg": "jpeg"}.get(ext, ext)  # ty: ignore[invalid-assignment]
-        fmt = fmt or "png"
-        if fmt not in _CAPTURE_FORMATS:
-            raise ValueError(
-                f"Unsupported format {fmt!r} ({filename=}), expected one of "
-                f"{_CAPTURE_FORMATS}"
-            )
-
-        esm_content, css_content = self._resolve_assets()
-
         img_bytes = render_widget_headless(
-            widget_data=self._frontend_state(),
-            esm_content=esm_content,
-            css_content=css_content,
-            fmt=fmt,
-            dpi=dpi,
-            timeout=timeout,
-            quality=quality,
-            width=width,
-            height=height,
-            transparent=transparent,
+            **self._render_job(
+                fmt or "png", dpi, timeout, quality, width, height, transparent
+            )
         )
 
         if filename:
@@ -574,6 +552,39 @@ class MatterVizWidget(AnyWidget):
                 fh.write(img_bytes)
 
         return img_bytes
+
+    def _render_job(
+        self,
+        fmt: str,
+        dpi: int,
+        timeout: float,
+        quality: int,
+        width: int | None,
+        height: int | None,
+        transparent: bool,  # noqa: FBT001
+    ) -> dict[str, Any]:
+        """Checked render_widget_headless arguments for exporting this widget.
+
+        Raises:
+            ValueError: For a non-positive size, dpi or timeout, quality outside
+                [1, 100] or an unsupported format.
+        """
+        from pymatviz.widgets._headless import _CAPTURE_FORMATS
+
+        dims = dict(dpi=dpi, timeout=timeout, width=width, height=height)
+        for name, val in dims.items():
+            if val is not None and val <= 0:
+                raise ValueError(f"{name} must be positive, got {val}")
+        if not 1 <= quality <= 100:
+            raise ValueError(f"quality must be between 1 and 100, got {quality}")
+        if fmt not in _CAPTURE_FORMATS:
+            raise ValueError(f"Unsupported {fmt=}, expected one of {_CAPTURE_FORMATS}")
+        esm_content, css_content = self._resolve_assets()
+        return dict(
+            widget_data=self._frontend_state(), esm_content=esm_content,
+            css_content=css_content, fmt=fmt, transparent=transparent, **dims,
+            quality=quality,
+        )  # fmt: skip
 
     def _resolve_assets(self) -> tuple[str, str]:
         """Return ``(esm_content, css_content)`` of the bundle selected at
@@ -778,3 +789,48 @@ def from_json(source: str) -> MatterVizWidget:
     if (widget_cls := classes.get(widget_type)) is None:
         raise ValueError(f"Unknown {widget_type=}, expected one of {sorted(classes)}")
     return widget_cls(**traits)
+
+
+def export_widgets(
+    widgets: Mapping[str, MatterVizWidget],
+    out_dir: str,
+    *,
+    fmt: Literal["png", "jpeg", "svg", "pdf"] = "png",
+    dpi: int = 150,
+    timeout: float = 30.0,
+    width: int | None = None,
+    height: int | None = None,
+    quality: int = 90,
+    transparent: bool = False,
+) -> dict[str, str]:
+    """Export widgets as ``{out_dir}/{name}.{fmt}`` images in headless Chromium,
+    rendering up to 4 at once (``to_img`` renders one at a time). Options are those
+    of ``MatterVizWidget.to_img``.
+
+    Args:
+        widgets: Map of file names (without extension) to widgets.
+        out_dir: Directory to write the images to (created if missing).
+        fmt: Image format of all files.
+        dpi: Resolution (PNG/JPEG scale, SVG canvas layers).
+        timeout: Seconds each widget may take to render.
+        width: Container width in px for every widget.
+        height: Container height in px for every widget.
+        quality: JPEG quality (1-100).
+        transparent: Transparent, trimmed PNG/SVG exports.
+
+    Returns:
+        Map of the widget names to the written file paths.
+    """
+    from pymatviz.widgets._headless import render_widgets_headless
+
+    jobs = [
+        widget._render_job(fmt, dpi, timeout, quality, width, height, transparent)
+        for widget in widgets.values()
+    ]
+    os.makedirs(out_dir, exist_ok=True)
+    paths = {}
+    for name, img_bytes in zip(widgets, render_widgets_headless(jobs), strict=True):
+        paths[name] = f"{out_dir}/{name}.{'jpg' if fmt == 'jpeg' else fmt}"
+        with open(paths[name], "wb") as file:
+            file.write(img_bytes)
+    return paths

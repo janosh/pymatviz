@@ -12,8 +12,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+import pymatviz as pmv
 from pymatviz.widgets import matterviz
 from pymatviz.widgets.matterviz import (
+    MatterVizWidget,
     _in_marimo_runtime,
     _marimo_esm_url,
     _read_asset_source,
@@ -666,3 +668,38 @@ def test_init_marimo_assets(
     assert widget._esm == expected[expected_esm]
     assert widget._css == ("/* css */" if local else remote_css)
     assert to_url.call_count == local
+
+
+def _widget_type_bytes(jobs: list[dict[str, Any]]) -> list[bytes]:
+    """Fake render_widgets_headless: each job's widget type as its image bytes."""
+    return [job["widget_data"]["widget_type"].encode() for job in jobs]
+
+
+@pytest.mark.parametrize(
+    ("fmt", "ext"), [("png", "png"), ("jpeg", "jpg"), ("svg", "svg")]
+)
+def test_export_widgets(fmt: str, ext: str, tmp_path: Any) -> None:
+    """export_widgets renders all widgets in one batch and writes {name}.{ext} files,
+    passing each widget's state and the shared options.
+    """
+    widgets = {"a": pmv.bar_plot([{"x": [1], "y": [2]}]), "b": pmv.structure()}
+    out_dir = f"{tmp_path}/out"
+    with (
+        patch.object(MatterVizWidget, "_resolve_assets", return_value=("esm", "css")),
+        patch(
+            "pymatviz.widgets._headless.render_widgets_headless",
+            side_effect=_widget_type_bytes,
+        ) as render,
+    ):
+        paths = pmv.export_widgets(widgets, out_dir, fmt=fmt, dpi=300)  # ty: ignore[invalid-argument-type]
+    assert paths == {name: f"{out_dir}/{name}.{ext}" for name in widgets}
+    for path, widget_type in zip(
+        paths.values(), ("bar_plot", "structure"), strict=True
+    ):
+        with open(path, "rb") as file:
+            assert file.read() == widget_type.encode()
+    ((jobs,), _) = render.call_args
+    options = {(job["fmt"], job["dpi"], job["esm_content"]) for job in jobs}
+    assert options == {(fmt, 300, "esm")}
+    with pytest.raises(ValueError, match="dpi must be positive"):
+        pmv.export_widgets(widgets, out_dir, dpi=0)

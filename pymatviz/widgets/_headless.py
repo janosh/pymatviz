@@ -21,6 +21,7 @@ import functools
 import html as html_mod
 import io
 import json
+import math
 import os
 import re
 import tempfile
@@ -31,7 +32,7 @@ from typing import TYPE_CHECKING, Any
 
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Coroutine, Mapping
+    from collections.abc import AsyncGenerator, Coroutine, Mapping, Sequence
 
     from playwright.async_api import Browser, Page, Playwright
 
@@ -76,19 +77,18 @@ class _BrowserThread:
 
 @dataclasses.dataclass
 class _WarmPage:
-    """A page with the bundle loaded, reused by every export with the same key."""
+    """A page with the bundle loaded, reused by later exports with the same key."""
 
     key: tuple[str, str, float]
     page: Page
-    lock: asyncio.Lock = dataclasses.field(default_factory=asyncio.Lock)
-    users: int = 0  # checked-out exports (holding or awaiting the lock): never evicted
-    retired: bool = False  # closed (or closing): lock waiters must check out anew
+    users: int = 0  # the export using it (0 or 1): never evicted while in use
 
 
 _browser_thread: _BrowserThread | None = None
 _browser_thread_lock = threading.Lock()
-# Most recently used last. Only touched from the browser thread.
-_warm_pages: dict[tuple[str, str, float], _WarmPage] = {}
+# Most recently used last, several per key for concurrent exports. Only touched from
+# the browser thread.
+_warm_pages: list[_WarmPage] = []
 
 
 def _get_browser_thread() -> _BrowserThread:
@@ -299,12 +299,9 @@ async def _open_warm_page(
 
 
 async def _retire(warm: _WarmPage) -> None:
-    """Drop a warm page from the cache and close it. Marked retired first, so exports
-    queued on its lock check out a fresh page instead of using the closed one.
-    """
-    warm.retired = True
-    if _warm_pages.get(warm.key) is warm:
-        del _warm_pages[warm.key]
+    """Drop a warm page from the cache and close it."""
+    if warm in _warm_pages:
+        _warm_pages.remove(warm)
     with contextlib.suppress(Exception):
         await warm.page.close()
 
@@ -313,53 +310,50 @@ async def _retire(warm: _WarmPage) -> None:
 async def _mounted_widget(
     inputs: _RenderInputs,
 ) -> AsyncGenerator[tuple[Page, str | None]]:
-    """Yield ``(page, render_error)`` with the widget mounted on its warm page.
+    """Yield ``(page, render_error)`` with the widget mounted on a warm page.
 
-    Idle pages beyond ``_MAX_WARM_PAGES`` close, least recently used first. Exports
-    on one page serialize on its lock. A page whose mount errored, timed out or
-    failed to unmount is retired while still locked, so queued exports retry on a
-    fresh page; errors raised by the caller's capture leave it in service.
+    Each export checks out an idle page with its key or opens one, so concurrent
+    exports render side by side. Idle pages beyond ``_MAX_WARM_PAGES`` close, least
+    recently used first. A page whose mount errored, timed out or failed to unmount
+    is retired; errors raised by the caller's capture leave it in service.
     """
     key = (inputs.esm_content, inputs.css_content, inputs.scale_factor)
-    while True:
-        async with _get_browser_thread().pages_lock:
-            warm = _warm_pages.pop(key, None)  # re-inserted as most recently used
-            if warm is None or warm.retired or warm.page.is_closed():
-                page = await _open_warm_page(*key, int(inputs.timeout * 1000))
-                warm = _WarmPage(key, page)
-            _warm_pages[key] = warm
-            warm.users += 1
-            idle = [old for old in _warm_pages.values() if old.users == 0]
-            for old in idle[: max(0, len(_warm_pages) - _MAX_WARM_PAGES)]:
-                await _retire(old)
+    async with _get_browser_thread().pages_lock:
+        warm = next(
+            (
+                old
+                for old in reversed(_warm_pages)
+                if old.key == key and not old.users and not old.page.is_closed()
+            ),
+            None,
+        )
+        if warm is None:
+            page = await _open_warm_page(*key, int(inputs.timeout * 1000))
+            warm = _WarmPage(key, page)
+        else:
+            _warm_pages.remove(warm)  # re-appended as most recently used
+        _warm_pages.append(warm)
+        warm.users += 1
+        idle = [old for old in _warm_pages if old.users == 0]
+        for old in idle[: max(0, len(_warm_pages) - _MAX_WARM_PAGES)]:
+            await _retire(old)
+    healthy = False
+    try:
+        mount_args = [_widget_data_json(inputs.widget_data), _mount_options(inputs)]
+        render_error = await asyncio.wait_for(
+            warm.page.evaluate(_MOUNT_JS, mount_args), inputs.timeout + _STEP_GRACE
+        )
         try:
-            async with warm.lock:
-                if warm.retired:  # by an export ahead in the queue
-                    continue
-                healthy = False
-                try:
-                    mount_args = [
-                        _widget_data_json(inputs.widget_data),
-                        _mount_options(inputs),
-                    ]
-                    render_error = await asyncio.wait_for(
-                        warm.page.evaluate(_MOUNT_JS, mount_args),
-                        inputs.timeout + _STEP_GRACE,
-                    )
-                    try:
-                        yield warm.page, render_error
-                    finally:
-                        await asyncio.wait_for(
-                            warm.page.evaluate("() => window.__matterviz_unmount()"),
-                            _STEP_GRACE,
-                        )
-                        healthy = render_error is None
-                finally:
-                    if not healthy:
-                        await _retire(warm)
-                return
+            yield warm.page, render_error
         finally:
-            warm.users -= 1
+            await asyncio.wait_for(
+                warm.page.evaluate("() => window.__matterviz_unmount()"), _STEP_GRACE
+            )
+            healthy = render_error is None
+    finally:
+        warm.users -= 1
+        if not healthy:
+            await _retire(warm)
 
 
 async def _render_widget(inputs: _RenderInputs) -> bytes:
@@ -823,22 +817,63 @@ def render_widget_headless(
         RuntimeError: If the widget fails to render or has no vector form for SVG.
         TimeoutError: If the widget does not finish rendering in time.
     """
+    inputs = _render_inputs(
+        widget_data, esm_content, css_content, fmt, dpi, timeout, quality, width,
+        height, transparent=transparent,
+    )  # fmt: skip
+    return _run_in_browser_thread(_render_widget(inputs), timeout)
+
+
+def _render_inputs(
+    widget_data: dict[str, Any],
+    esm_content: str,
+    css_content: str,
+    fmt: str = "png",
+    dpi: int = 150,
+    timeout: float = 30.0,
+    quality: int = 90,
+    width: int | None = None,
+    height: int | None = None,
+    *,
+    transparent: bool = False,
+) -> _RenderInputs:
+    """Validated render inputs (see render_widget_headless), controls hidden.
+
+    Raises:
+        ValueError: For transparent formats other than PNG and SVG.
+    """
     if transparent and fmt not in ("png", "svg"):
         raise ValueError(f"transparent export supports png and svg, got {fmt=}")
     widget_data = {**widget_data, "show_controls": False}
-    inputs = _RenderInputs(
-        widget_data,
-        esm_content,
-        css_content,
-        fmt,
-        dpi,
-        timeout,
-        width,
-        height,
-        quality,
-        transparent,
-    )
-    return _run_in_browser_thread(_render_widget(inputs), timeout)
+    return _RenderInputs(
+        widget_data, esm_content, css_content, fmt, dpi, timeout, width, height,
+        quality, transparent,
+    )  # fmt: skip
+
+
+def render_widgets_headless(jobs: Sequence[Mapping[str, Any]]) -> list[bytes]:
+    """render_widget_headless for several widgets at once, each job a dict of its
+    arguments. Up to ``_MAX_WARM_PAGES`` render concurrently on separate pages.
+
+    Returns:
+        The image bytes in job order.
+    """
+    inputs = [_render_inputs(**job) for job in jobs]
+    slots = math.ceil(len(inputs) / _MAX_WARM_PAGES)
+
+    async def render_all() -> list[bytes]:
+        """Render every job, at most _MAX_WARM_PAGES at a time."""
+        limit = asyncio.Semaphore(_MAX_WARM_PAGES)
+
+        async def render(one: _RenderInputs) -> bytes:
+            """Render one job once a slot frees up."""
+            async with limit:
+                return await _render_widget(one)
+
+        return await asyncio.gather(*map(render, inputs))
+
+    budget = max((one.timeout for one in inputs), default=0) * slots
+    return _run_in_browser_thread(render_all(), budget)
 
 
 # === Render diagnostics (render_report) ===

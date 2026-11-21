@@ -944,8 +944,8 @@ def test_to_img_format_inference(
 @pytest.mark.parametrize(
     ("img_kwargs", "match"),
     [
-        ({"filename": "plot.tiff"}, "Unsupported format 'tiff'"),
-        ({"fmt": "tiff"}, "Unsupported format 'tiff'"),
+        ({"filename": "plot.tiff"}, "Unsupported fmt='tiff'"),
+        ({"fmt": "tiff"}, "Unsupported fmt='tiff'"),
         ({"filename": "plot"}, "Cannot infer format"),
         ({"dpi": 0}, "dpi must be positive"),
         ({"width": -1}, "width must be positive"),

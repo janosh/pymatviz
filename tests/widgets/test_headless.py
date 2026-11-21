@@ -47,7 +47,7 @@ DUMMY_CSS = ".widget {}"
 @pytest.fixture(autouse=True)
 def _isolated_warm_pages() -> Iterator[None]:
     """Hide warm pages of real renders from mocked ones (and vice versa)."""
-    with patch.dict(headless_mod._warm_pages, clear=True):
+    with patch.object(headless_mod, "_warm_pages", []):
         yield
 
 
@@ -257,9 +257,9 @@ def test_failed_render_replaces_page() -> None:
     fresh.close.assert_not_awaited()
 
 
-def test_failed_render_moves_queued_export_to_fresh_page() -> None:
-    """An export queued behind a failing one on the same warm page transparently
-    mounts into a fresh page instead of hitting the closed one.
+def test_failed_render_retires_its_page() -> None:
+    """A failing export retires its page while a concurrent export renders on its
+    own fresh page, which stays warm.
     """
     mounting = threading.Event()
 
@@ -292,7 +292,7 @@ def test_failed_render_moves_queued_export_to_fresh_page() -> None:
         queued.join()
     assert results == {"failing": "Widget render failed: boom", "queued": b"PNGDATA"}
     assert (_mount_count(broken), _mount_count(fresh)) == (1, 1)
-    (warm,) = headless_mod._warm_pages.values()
+    (warm,) = headless_mod._warm_pages
     assert warm.page is fresh
 
 
@@ -331,13 +331,13 @@ def test_forked_child_starts_own_browser_thread() -> None:
     (the parent's didn't survive the fork) instead of blocking on a dead loop.
     """
     parent_thread = headless_mod._get_browser_thread().thread
-    headless_mod._warm_pages[("esm", "css", 1.0)] = MagicMock()
+    headless_mod._warm_pages.append(MagicMock())
     pid = os.fork()
     if pid == 0:  # child: exit code reports the outcome, never return into pytest
         patch(f"{HEADLESS_PATH}._call_budget", return_value=5.0).start()  # fail fast
         try:
             ok = (
-                headless_mod._warm_pages == {}
+                headless_mod._warm_pages == []
                 and headless_mod._get_browser_thread().thread is not parent_thread
                 and headless_mod._run_in_browser_thread(
                     asyncio.sleep(0, result=42), timeout=1
@@ -366,34 +366,33 @@ def test_idle_warm_pages_evicted_lru() -> None:
         page.close.assert_not_awaited()
 
 
-def test_concurrent_exports_serialize_on_warm_page() -> None:
-    """Exports from many threads share one page without overlapping mounts."""
+def test_batch_exports_render_concurrently_on_capped_pages() -> None:
+    """render_widgets_headless renders jobs on separate pages, at most
+    _MAX_WARM_PAGES at once, reusing freed pages for the rest, in job order.
+    """
     active, peak = 0, 0
 
     async def on_mount() -> None:
-        """Record how many mounts overlap on the page."""
+        """Record how many mounts overlap."""
         nonlocal active, peak
         active += 1
         peak = max(peak, active)
-        await asyncio.sleep(0.01)
+        await asyncio.sleep(0.05)
         active -= 1
 
-    page = _mock_page(on_mount=on_mount)
-    browser = _mock_browser(page)
-    results: list[bytes] = []
-
-    def export() -> None:
-        """Export from a worker thread."""
-        results.append(render_widget_headless(DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS))
-
+    n_slots = headless_mod._MAX_WARM_PAGES
+    pages = [_mock_page(on_mount=on_mount) for _ in range(n_slots)]
+    browser = _mock_browser(*pages)
+    jobs = [
+        dict(
+            widget_data=DUMMY_WIDGET_DATA, esm_content=DUMMY_ESM, css_content=DUMMY_CSS
+        )
+    ] * (n_slots + 2)
     with patch(f"{HEADLESS_PATH}._get_browser", AsyncMock(return_value=browser)):
-        threads = [threading.Thread(target=export) for _ in range(6)]
-        for thread in threads:
-            thread.start()
-        for thread in threads:
-            thread.join()
-    assert results == [b"PNGDATA"] * 6
-    assert (peak, _mount_count(page), browser.new_page.await_count) == (1, 6, 1)
+        results = headless_mod.render_widgets_headless(jobs)
+    assert results == [b"PNGDATA"] * len(jobs)
+    assert (peak, browser.new_page.await_count) == (n_slots, n_slots)
+    assert sum(map(_mount_count, pages)) == len(jobs)
 
 
 def test_bundle_load_error_surfaces() -> None:
@@ -407,7 +406,7 @@ def test_bundle_load_error_surfaces() -> None:
     ):
         render_widget_headless(DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS)
     page.close.assert_awaited_once()
-    assert headless_mod._warm_pages == {}
+    assert headless_mod._warm_pages == []
 
 
 # === Real Chromium with a synthetic bundle ===
@@ -451,7 +450,7 @@ def test_uncaught_widget_error_fails_render(kind: str, error: str) -> None:
         render_widget_headless(data, SYNTHETIC_ESM, DUMMY_CSS, timeout=10)
     report = render_diagnostics(data, SYNTHETIC_ESM, DUMMY_CSS, timeout=10)
     assert (report.ok, report.error) == (False, expected)
-    assert headless_mod._warm_pages == {}  # failed pages are retired
+    assert headless_mod._warm_pages == []  # failed pages are retired
 
 
 @needs_playwright
@@ -465,7 +464,7 @@ def test_webgl_pdf_rasterized_and_contexts_freed() -> None:
             data, SYNTHETIC_ESM, DUMMY_CSS, fmt="pdf", dpi=72, timeout=10
         )
     assert pdf == b"%PDF-raster"
-    (warm,) = headless_mod._warm_pages.values()
+    (warm,) = headless_mod._warm_pages
     probe = "() => [window.__gl?.isContextLost(), !!window.__bare.getContext('2d')]"
     try:
         assert headless_mod._run_in_browser_thread(warm.page.evaluate(probe)) == [

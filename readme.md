@@ -166,6 +166,8 @@ widget.render_report()  # headless render health check: blank fraction, warnings
 widget.to_json("structure.json")  # save the widget; pmv.from_json("structure.json") restores it
 ```
 
+`pmv.export_widgets({name: widget, ...}, "figures/", fmt="svg")` exports many widgets at once, rendering up to 4 concurrently in one headless browser (about 2.4x faster than calling `to_img` on each).
+
 Lay out several widgets with `widget_grid({title: widget, ...}, n_cols=3)`, e.g. one `structure` widget per structure. It returns an `ipywidgets.GridBox` of titled cells: export each widget from its `.children`.
 
 `to_img` and `render_report` require [Playwright](https://playwright.dev/python): `pip install pymatviz[export] && playwright install chromium` (on Linux CI runners without Chromium system libraries, use `playwright install --with-deps chromium`). Exports render in headless Chromium. Set the `PYMATVIZ_STATIC` env var to make `widget.show()` render static PNGs instead of live widgets (useful for CI notebook execution).

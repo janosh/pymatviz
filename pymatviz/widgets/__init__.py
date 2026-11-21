@@ -22,7 +22,7 @@ from pymatviz.widgets.grid import WidgetGrid, widget_grid
 from pymatviz.widgets.heatmap_matrix import HeatmapMatrixWidget
 from pymatviz.widgets.histogram import HistogramWidget
 from pymatviz.widgets.link import WidgetLink, link_selection
-from pymatviz.widgets.matterviz import configure_assets, from_json
+from pymatviz.widgets.matterviz import configure_assets, export_widgets, from_json
 from pymatviz.widgets.periodic_table import PeriodicTableWidget
 from pymatviz.widgets.phase_diagram import PhaseDiagramWidget
 from pymatviz.widgets.rdf_plot import RdfPlotWidget
