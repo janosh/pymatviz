@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import dataclasses
 import json
 import os
@@ -14,7 +15,7 @@ from urllib.parse import urljoin
 import traitlets as tl
 from anywidget import AnyWidget
 
-from pymatviz.widgets._traits import CONTROLS_MODES
+from pymatviz.widgets._traits import CONTROLS_MODES, optional_trait
 
 
 if TYPE_CHECKING:
@@ -26,12 +27,33 @@ if TYPE_CHECKING:
 # Bundle matching the Python traits (test_js_prop_parity.py). "main" tracks
 # matterviz main's bundle on its docs site; releases must pin a published npm
 # version (fetched from jsDelivr) so installed wheels keep a fixed frontend.
-MATTERVIZ_ANYWIDGET_VERSION = "main"
+MATTERVIZ_ANYWIDGET_VERSION = "0.10.0"
 _ANYWIDGET_CDN = "https://cdn.jsdelivr.net/npm/matterviz-anywidget"
 # matterviz's gh-pages workflow deploys main's bundle here on every push to main
 _ANYWIDGET_MAIN_URL = "https://matterviz.janosh.dev/anywidget"
 # expanded at call time (not import time) so tests can patch os.path.expanduser
 _CACHE_ROOT = "~/.cache/pymatviz"
+# first release with the split/ build, widget-model-keys.json, export_svg and the
+# _synced_keys check, so older pins can't serve this package's widgets
+_MIN_ANYWIDGET_VERSION = (0, 10, 0)
+# a matterviz-anywidget version, or a custom (esm_src, css_src) from configure_assets
+type _Bundle = str | tuple[str, str]
+
+
+def _check_version(version: str) -> None:
+    """Raise ValueError for a malformed or unsupported ``matterviz-anywidget`` version
+    (``"main"`` or semver >= ``_MIN_ANYWIDGET_VERSION``, optional pre/build suffix).
+    """
+    if version == "main":
+        return
+    if not (match := re.match(r"^(\d+)\.(\d+)\.(\d+)([-+].+)?$", version)):
+        raise ValueError(f"Invalid matterviz-anywidget version: {version=}")
+    if tuple(map(int, match.groups()[:3])) < _MIN_ANYWIDGET_VERSION:
+        min_version = ".".join(map(str, _MIN_ANYWIDGET_VERSION))
+        raise ValueError(
+            f"matterviz-anywidget@{version} is too old for this pymatviz, which "
+            f"needs >= {min_version} or 'main'"
+        )
 
 
 def _cdn_url(version: str, filename: str = "matterviz.js") -> str:
@@ -48,11 +70,52 @@ def _cdn_url(version: str, filename: str = "matterviz.js") -> str:
 
 
 def _bundle_source(version: str, filename: str = "matterviz.js") -> str:
-    """Select the actual bundle source for both loading and standalone export."""
-    dev_dir = os.environ.get("MATTERVIZ_ANYWIDGET_DIR")
-    if dev_dir and os.path.isfile(path := f"{dev_dir}/{filename}"):
-        return path
-    return _cdn_url(version, filename)
+    """Select the actual bundle source for both loading and standalone export.
+
+    Raises:
+        FileNotFoundError: If ``MATTERVIZ_ANYWIDGET_DIR`` is set but lacks the file
+            (a typo would otherwise silently test the remote bundle).
+    """
+    if not (dev_dir := os.environ.get("MATTERVIZ_ANYWIDGET_DIR")):
+        return _cdn_url(version, filename)
+    if not os.path.isfile(path := f"{dev_dir}/{filename}"):
+        raise FileNotFoundError(f"MATTERVIZ_ANYWIDGET_DIR has no {filename}: {path}")
+    return path
+
+
+def _bundle_sources(bundle: _Bundle) -> tuple[str, str]:
+    """``(esm_src, css_src)`` the frontend loads: a custom pair as is, else a
+    version's ``_bundle_source`` files, with remote JS swapped for the code-split
+    entry (``build/split/``), whose chunks load per component (~1.2 MB for a 2D plot
+    vs ~5.8 MB). Text reads (``_load_bundle``) use the single self-contained file.
+
+    Raises:
+        ValueError: For a version ``_check_version`` rejects.
+    """
+    if isinstance(bundle, tuple):
+        return bundle
+    _check_version(bundle)
+    esm_src = _bundle_source(bundle)
+    if _is_url(esm_src):
+        esm_src = _cdn_url(bundle, "split/matterviz.js")
+    return esm_src, _bundle_source(bundle, "matterviz.css")
+
+
+def _load_bundle(bundle: _Bundle, ext: Literal["js", "css"]) -> str:
+    """Text of a bundle's single-file JS or CSS, cached until configure_assets."""
+    cache = MatterVizWidget._asset_cache
+    if (bundle, ext) not in cache:
+        cache[bundle, ext] = (
+            _read_asset_source(bundle[ext == "css"])
+            if isinstance(bundle, tuple)
+            else fetch_widget_asset(f"matterviz.{ext}", bundle)
+        )
+    return cache[bundle, ext]
+
+
+def _is_url(src: str) -> bool:
+    """Whether an asset source is an HTTP(S) URL rather than a local path."""
+    return src.startswith(("http://", "https://"))
 
 
 def _cache_dir(version: str) -> str:
@@ -74,61 +137,30 @@ def _in_marimo_runtime() -> bool:
         return True
 
 
-def _in_widget_frontend() -> bool:
-    """Return whether a live frontend (Jupyter kernel or marimo) receives widget
-    state at construction, so assets must be loaded before the comm opens.
-    """
-    if _in_marimo_runtime():
-        return True
-    try:
-        from IPython import get_ipython
-    except ImportError:
-        return False
-    return getattr(get_ipython(), "kernel", None) is not None
-
-
 def _marimo_esm_url(esm_text: str) -> str | None:
-    """Resolve ESM text to a marimo virtual-file URL, or None if unsupported."""
+    """Serve ESM text as a marimo virtual file and return its absolute URL, or None
+    if marimo is absent or lacks virtual files (``js()`` would then inline the
+    ~6 MB bundle as a data URL).
+    """
     try:
         from marimo._output.data.data import js  # ty: ignore[import-not-found]
         from marimo._runtime.context import get_context  # ty: ignore[import-not-found]
     except ImportError:
         return None
-
-    # Virtual files required — without them js() creates ~4.5 MB data URLs
-    try:
-        if not get_context().virtual_files_supported:
-            return None
-    except (RuntimeError, AttributeError):
+    context = get_context()
+    if not context.virtual_files_supported:
         return None
-
-    try:
-        relative_url = js(esm_text).url
-    except (AttributeError, RuntimeError, TypeError, ValueError):
-        return None
-
-    if not relative_url or not relative_url.startswith("./@file/"):
-        return None
-
-    # Resolve ./@file/ to absolute URL via request context, fall back to relative
-    try:
-        request = get_context().request
-    except (RuntimeError, AttributeError, TypeError):
+    relative_url = js(esm_text).url
+    if context.request is None:
         return relative_url
-    if request is None:
-        return relative_url
-    base = request.base_url
-    if not isinstance(base, dict):
-        return relative_url
-    scheme, netloc = base.get("scheme"), base.get("netloc")
-    if not isinstance(scheme, str) or not isinstance(netloc, str):
-        return relative_url
-    return urljoin(f"{scheme}://{netloc}{base.get('path', '/')}", relative_url)
+    base = context.request.base_url
+    path = base.get("path", "/")
+    return urljoin(f"{base['scheme']}://{base['netloc']}{path}", relative_url)
 
 
 def _read_asset_source(src: str) -> str:
     """Read asset content from an HTTP(S) URL, ``file://`` URI, or local path."""
-    if src.startswith(("http://", "https://")):
+    if _is_url(src):
         # timeout so a stalled connection fails fast instead of hanging
         with urllib.request.urlopen(src, timeout=30) as response:  # noqa: S310
             return response.read().decode("utf-8")
@@ -174,34 +206,20 @@ def configure_assets(
             )
         css_src = re.sub(r"\.m?js$", ".css", esm_src)
 
+    if version:
+        _check_version(version)
+    # nothing is fetched here: widgets sync remote sources as URLs and load the
+    # bundle text on first use (headless render, inline export)
     cls = MatterVizWidget
     cls._asset_cache.clear()
-
-    if not version and not esm_src:
-        for attr in ("_esm", "_css"):
-            if attr in cls.__dict__:
-                delattr(cls, attr)
-        cls._export_esm_url = None
-        return
-
-    if version:
-        esm_content = fetch_widget_asset("matterviz.js", version)
-        css_content = fetch_widget_asset("matterviz.css", version)
-        cls._export_esm_url = _bundle_source(version)
-    else:
-        if esm_src is None or css_src is None:  # unreachable, narrows types for ty
-            raise ValueError(f"configure_assets() got {esm_src=}, {css_src=}")
-        esm_content = _read_asset_source(esm_src)
-        css_content = _read_asset_source(css_src)
-        cls._export_esm_url = esm_src
-
-    cls._asset_cache["default"] = (esm_content, css_content)
-    cls._esm = esm_content
-    cls._css = css_content
+    cls._marimo_urls.clear()
+    cls._configured = version or ((esm_src, css_src) if esm_src and css_src else None)
 
 
 def fetch_widget_asset(filename: str, version_override: str | None = None) -> str:
-    """Fetch a widget asset (``matterviz.js``/``matterviz.css``) as source text.
+    """Fetch a widget asset (``matterviz.js``/``matterviz.css``, or the bundle's
+    ``widget-model-keys.json``/``widget-model-schema.json`` trait contract) as
+    source text.
 
     The bundle lives in the ``matterviz-anywidget`` npm package (built from
     ``matterviz/extensions/anywidget``); this repo no longer builds it. Resolution
@@ -217,14 +235,14 @@ def fetch_widget_asset(filename: str, version_override: str | None = None) -> st
     (``MatterVizWidget`` caches assets in memory).
 
     Args:
-        filename: ``"matterviz.js"`` or ``"matterviz.css"``.
+        filename: A file of the bundle's ``build/`` dir, e.g. ``"matterviz.js"``.
         version_override: ``matterviz-anywidget`` npm version (or ``"main"``) to
             fetch instead of the default ``MATTERVIZ_ANYWIDGET_VERSION``.
     """
     version = version_override or MATTERVIZ_ANYWIDGET_VERSION
-
+    _check_version(version)
     source = _bundle_source(version, filename)
-    if not source.startswith(("http://", "https://")):
+    if not _is_url(source):
         return _read_asset_source(source)
 
     is_main = version == "main"
@@ -232,10 +250,6 @@ def fetch_widget_asset(filename: str, version_override: str | None = None) -> st
     cache_path = f"{cache_dir}/{filename}"
     if not is_main and os.path.isfile(cache_path):
         return _read_asset_source(cache_path)
-
-    # semver, optional pre/build
-    if not is_main and not re.match(r"^\d+\.\d+\.\d+([-+].+)?$", version):
-        raise ValueError(f"Invalid matterviz-anywidget version: {version=}")
 
     try:
         content = _read_asset_source(source)
@@ -278,6 +292,14 @@ def clear_widget_cache(version_override: str | None = None) -> None:
         shutil.rmtree(cache_root)
 
 
+def static_png_bundle(widget: MatterVizWidget, **img_kwargs: Any) -> dict[str, str]:
+    """MIME bundle of the widget as a base64 PNG (img_kwargs go to to_img, e.g.
+    width, dpi) plus a plain-text fallback.
+    """
+    png = base64.b64encode(widget.to_img(fmt="png", **img_kwargs)).decode("ascii")
+    return {"image/png": png, "text/plain": f"<{type(widget).__name__}>"}
+
+
 class MatterVizWidget(AnyWidget):
     """Base widget class that lazily loads and caches MatterViz widget assets.
 
@@ -287,25 +309,25 @@ class MatterVizWidget(AnyWidget):
         ``marimo edit`` in a browser instead.
     """
 
-    _EXCLUDED_TRAITS: ClassVar[frozenset[str]] = frozenset(
-        {"layout", "tabbable", "tooltip"}
-    )
-
     _esm: str
     _css: str
+    _bundle: _Bundle
+    # what the frontend loads, see _bundle_sources
+    _sources: tuple[str, str]
+    # bundle text for headless rendering and inline HTML export, loaded on first use
+    # and kept, so a widget outlives configure_assets() with the bundle it synced
     _asset_sources: tuple[str, str] | None
-    _asset_cache: ClassVar[dict[str, tuple[str, str] | str | None]] = {}
-    # ESM URL serving the configured bundle, for to_html(inline=False): None ->
-    # default version's URL; a local path -> to_html inlines so JS/CSS stay one build.
-    # Set on the class by configure_assets, on the instance by version_override.
-    _export_esm_url: str | None = None
-    widget_type = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
+    _asset_cache: ClassVar[dict[tuple[_Bundle, str], str]] = {}
+    _marimo_urls: ClassVar[dict[_Bundle, str | None]] = {}
+    _configured: ClassVar[_Bundle | None] = None  # set by configure_assets
+    widget_type = optional_trait(tl.Unicode)
     style = tl.Unicode(allow_none=True).tag(sync=True)
     # None keeps each component's default (hover-revealed, pinned for trajectories);
     # True/False pin controls on/off, a mode picks "always"/"hover"/"never", and a
     # {"mode", "hidden", "style"} dict also hides named controls
-    show_controls = tl.Union(
-        [
+    show_controls = optional_trait(
+        tl.Union,
+        trait_types=[
             tl.Bool(),
             tl.CaselessStrEnum(CONTROLS_MODES),
             tl.Dict(
@@ -316,26 +338,34 @@ class MatterVizWidget(AnyWidget):
                 }
             ),
         ],
-        allow_none=True,
-        default_value=None,
-    ).tag(sync=True)
+    )
+    # This widget's public synced traits, which the anywidget model can't enumerate.
+    # The bundle's render() checks them against what its widget spec reads, so a
+    # bundle older than this package names the traits it would silently drop.
+    _synced_keys = tl.List(tl.Unicode(), read_only=True).tag(sync=True)
+
+    @tl.default("_synced_keys")
+    def _default_synced_keys(self) -> list[str]:
+        """Public synced trait names of this widget class."""
+        return type(self).public_trait_names()
 
     @classmethod
-    def _set_class_assets(cls) -> tuple[str, str]:
-        """Load and cache default widget assets on the class (not instances) and
-        return them as ``(esm_content, css_content)``.
+    def public_trait_names(cls) -> list[str]:
+        """Sorted names of the synced traits MatterViz widget classes declare, i.e.
+        the props the frontend reads. Leaves out private traits and those inherited
+        from anywidget/ipywidgets (``layout``, ``_model_name``, ...) unless a
+        MatterViz class redeclares them (e.g. ``TrajectoryWidget.layout``).
         """
-        if "default" not in cls._asset_cache:
-            cls._export_esm_url = _bundle_source(MATTERVIZ_ANYWIDGET_VERSION)
-            cls._asset_cache["default"] = (
-                fetch_widget_asset("matterviz.js"),
-                fetch_widget_asset("matterviz.css"),
+        matterviz_classes = cls.__mro__[: cls.__mro__.index(MatterVizWidget) + 1]
+        return sorted(
+            name
+            for name in cls.class_traits(sync=True)
+            if not name.startswith("_")
+            and any(
+                isinstance(vars(klass).get(name), tl.TraitType)
+                for klass in matterviz_classes
             )
-        default_assets = cls._asset_cache["default"]
-        if not isinstance(default_assets, tuple):
-            raise TypeError("Default widget assets were not initialized correctly.")
-        cls._esm, cls._css = default_assets
-        return default_assets
+        )
 
     def __init__(self, version_override: str | None = None, **kwargs: Any) -> None:
         """Initialize with lazy-loaded widget assets.
@@ -344,95 +374,67 @@ class MatterVizWidget(AnyWidget):
             version_override: Fetch assets for this ``matterviz-anywidget``
                 version (or ``"main"``) instead of ``MATTERVIZ_ANYWIDGET_VERSION``.
                 Prefer ``configure_assets()`` for global overrides.
-            **kwargs: Passed through to AnyWidget.
+            **kwargs: Widget traits, passed through to AnyWidget.
+
+        Raises:
+            TypeError: For kwargs that aren't traits of this widget (typos or
+                unsupported options would otherwise be silently dropped).
         """
-        if version_override is not None:
-            self._esm = fetch_widget_asset("matterviz.js", version_override)
-            self._css = fetch_widget_asset("matterviz.css", version_override)
-            self._export_esm_url = _bundle_source(version_override)
-            self._asset_sources = self._esm, self._css
-        elif (
-            "default" not in MatterVizWidget._asset_cache
-            and _bundle_source(MATTERVIZ_ANYWIDGET_VERSION).startswith(
-                ("http://", "https://")
-            )
-            and not _in_widget_frontend()
-        ):
-            # no frontend to sync with: defer the network fetch to the first
-            # export so building a widget and reading its data works offline.
-            # Empty placeholders still register _esm/_css as synced traits, so a
-            # later display or state export carries the assets once loaded.
-            self._esm = self._css = ""
-            self._asset_sources = None
-        else:
-            # Set assets on the class so Jupyter/VS Code share them across
-            # instances via ipywidgets comms without per-widget serialization.
-            self._asset_sources = MatterVizWidget._set_class_assets()
-            self._export_esm_url = MatterVizWidget._export_esm_url
-            if _in_marimo_runtime():
-                self._init_marimo_assets()
+        if unknown := kwargs.keys() - self.trait_names() - {"model_id"}:
+            raise TypeError(f"Unknown {type(self).__name__} options: {sorted(unknown)}")
+        cls = MatterVizWidget
+        self._bundle = (
+            version_override or cls._configured or MATTERVIZ_ANYWIDGET_VERSION
+        )
+        self._sources = _bundle_sources(self._bundle)
+        self._asset_sources = None
+        # Remote sources sync as URLs, which anywidget imports (JS) or links (CSS):
+        # construction fetches nothing (works offline) and saved notebooks carry a
+        # short URL per widget, not a ~6 MB bundle copy. Local files (e.g. a
+        # MATTERVIZ_ANYWIDGET_DIR build) sync as text, the browser can't load a path.
+        self._esm, self._css = (
+            self._sources
+            if all(map(_is_url, self._sources))
+            else self._resolve_assets()
+        )
+        # marimo serves local ESM text as a virtual file (once per bundle) instead of
+        # embedding it per widget; its VS Code extension lacks virtual files
+        if not _is_url(self._esm) and _in_marimo_runtime():
+            if self._bundle not in cls._marimo_urls:
+                cls._marimo_urls[self._bundle] = _marimo_esm_url(self._esm)
+            self._esm = cls._marimo_urls[self._bundle] or self._esm
 
         super().__init__(**kwargs)
 
-    def _init_marimo_assets(self) -> None:
-        """Configure assets for marimo: ESM via virtual-file URL, CSS inline.
-
-        In browser mode, ESM is served via marimo's virtual-file system to
-        avoid embedding ~3.4 MB of JS per widget.  In VS Code extension mode,
-        virtual files are unavailable — use ``marimo edit`` in a browser.
+    def _repr_mimebundle_(
+        self, **kwargs: Any
+    ) -> tuple[dict[str, Any], dict[str, Any]] | None:
+        """Notebook display: the live widget, or with the ``PYMATVIZ_STATIC`` env var
+        set a PNG rendered in headless Chromium, for executed notebooks viewed
+        without a widget frontend (GitHub, nbconvert HTML on the docs site).
         """
-        cls = type(self)
-
-        # Cache the resolved URL so js() is only called once per session
-        if "marimo_esm" not in cls._asset_cache:
-            cls._asset_cache["marimo_esm"] = _marimo_esm_url(cls._esm)
-
-        esm_url = cls._asset_cache["marimo_esm"]
-        if isinstance(esm_url, str):
-            self._esm = esm_url
+        if os.environ.get("PYMATVIZ_STATIC"):
+            return static_png_bundle(self), {}
+        return super()._repr_mimebundle_(**kwargs)
 
     def show(self) -> None:
-        """Display this widget in notebook environments.
-
-        Safe to call as the last expression in a cell — returns None to
-        prevent Jupyter from auto-displaying a second copy.
-
-        When the ``PYMATVIZ_STATIC`` env var is set, renders a static PNG
-        via headless Chromium instead of the interactive widget protocol.
-        Useful for CI notebook execution where outputs must be viewable
-        without a live widget frontend (e.g. GitHub .ipynb rendering).
+        """Display this widget in notebook environments (a static PNG when
+        ``PYMATVIZ_STATIC`` is set). Returns None, so as a cell's last expression
+        Jupyter doesn't display a second copy.
         """
         from IPython.display import display as ipython_display
 
-        if os.environ.get("PYMATVIZ_STATIC"):
-            from IPython.display import Image
-
-            ipython_display(Image(data=self.to_img(fmt="png")))
-            return
-
         ipython_display(self)
-
-    @classmethod
-    def _is_own_trait(cls, name: str) -> bool:
-        """Whether a MatterViz widget (sub)class itself declares this trait. Keeps
-        subclass traits that shadow DOMWidget machinery (e.g. TrajectoryWidget
-        .layout) in to_dict() while still excluding inherited DOMWidget traits.
-        """
-        for klass in cls.__mro__:
-            if klass is MatterVizWidget:
-                return False
-            if isinstance(vars(klass).get(name), tl.TraitType):
-                return True
-        return False
 
     def to_dict(self) -> dict[str, Any]:
         """Return all public synced traitlet values as a plain dict."""
-        return {
-            name: getattr(self, name)
-            for name in self.traits(sync=True)
-            if not name.startswith("_")
-            and (name not in self._EXCLUDED_TRAITS or self._is_own_trait(name))
-        }
+        return {name: getattr(self, name) for name in self.public_trait_names()}
+
+    def _frontend_state(self) -> dict[str, Any]:
+        """``to_dict()`` plus ``_synced_keys``: the model a headless or exported
+        render hands the bundle, which checks the keys like a live one.
+        """
+        return {**self.to_dict(), "_synced_keys": self._synced_keys}
 
     def to_img(
         self,
@@ -474,8 +476,9 @@ class MatterVizWidget(AnyWidget):
                 device scale factor (72 = 1x, 144 = 2x, etc.). Defaults to 150
                 (~2x). Applies to PNG/JPEG and to canvas pixels in SVG/PDF
                 exports; pure-vector content is unaffected.
-            timeout: Seconds to wait for headless rendering before
-                raising ``TimeoutError``. Defaults to 30.
+            timeout: Seconds allowed per render step (mount, paint, capture).
+                The whole call raises ``TimeoutError`` after a budget of a few
+                times this (plus browser launch). Defaults to 30.
             width: Override container width in pixels for this export.
                 Takes precedence over the widget's ``style``. If omitted,
                 uses the widget's style or defaults to 800px.
@@ -522,7 +525,7 @@ class MatterVizWidget(AnyWidget):
         esm_content, css_content = self._resolve_assets()
 
         img_bytes = render_widget_headless(
-            widget_data=self.to_dict(),
+            widget_data=self._frontend_state(),
             esm_content=esm_content,
             css_content=css_content,
             fmt=fmt,
@@ -541,32 +544,34 @@ class MatterVizWidget(AnyWidget):
         return img_bytes
 
     def _resolve_assets(self) -> tuple[str, str]:
-        """Return the source selected at construction, including for marimo widgets.
-        Widgets built without a frontend load the default assets on first use.
+        """Return ``(esm_content, css_content)`` of the bundle selected at
+        construction, loading it on first use.
         """
-        if self._asset_sources is None:
-            self._asset_sources = MatterVizWidget._set_class_assets()
-            self._export_esm_url = MatterVizWidget._export_esm_url
-            self._esm, self._css = self._asset_sources
+        self._asset_sources = self._asset_sources or (
+            _load_bundle(self._bundle, "js"),
+            _load_bundle(self._bundle, "css"),
+        )
         return self._asset_sources
 
-    def _require_binary_bundle(self) -> None:
-        """Check explicitly pinned npm bundles before sending binary data.
+    def _binary_series(
+        self, value: Any, component_name: str, samples_key: str | None = None
+    ) -> list[dict[str, Any]] | None:
+        """Normalize plot series, sending large numeric ones as binary envelopes.
 
         Raises:
-            ValueError: If the selected bundle predates the binary protocol.
+            tl.TraitError: For invalid series.
         """
-        from pymatviz.widgets._binary import BINARY_FORMAT
+        from pymatviz.widgets._normalize import normalize_plot_series
 
-        url = self._export_esm_url or _cdn_url(MATTERVIZ_ANYWIDGET_VERSION)
-        if (
-            url.startswith(f"{_ANYWIDGET_CDN}@")
-            and BINARY_FORMAT not in self._resolve_assets()[0]
-        ):
-            raise ValueError(
-                f"Widget bundle {url} lacks {BINARY_FORMAT}. "
-                "Select version 'main' or a binary-capable release."
+        try:
+            return normalize_plot_series(
+                value,
+                component_name=component_name,
+                samples_key=samples_key,
+                binary=True,
             )
+        except (TypeError, ValueError) as exc:
+            raise tl.TraitError(str(exc)) from exc
 
     def describe(self) -> dict[str, Any]:
         """Return structured, machine-parseable facts about this widget's data.
@@ -599,7 +604,7 @@ class MatterVizWidget(AnyWidget):
 
         Args:
             filename: Optional path to write the HTML to (parent dirs created).
-            inline: If True, embed the ~4.5 MB ESM bundle in the file (opens via
+            inline: If True, embed the ~6 MB ESM bundle in the file (opens via
                 ``file://`` offline). If False (default), reference an external
                 URL (small file, requires internet + a CORS-enabled JS host;
                 will not load via ``file://``).
@@ -627,23 +632,25 @@ class MatterVizWidget(AnyWidget):
         if inline and esm_url is not None:
             raise ValueError("pass either inline=True or esm_url=..., not both")
 
-        esm_content, css_content = self._resolve_assets()
-        if not inline and esm_url is None:
-            # reference the bundle matching the active CSS (avoid a JS/CSS version
-            # mismatch); a local source has no public URL, so leave esm_url None
-            # to inline the resolved bundle instead.
-            src = self._export_esm_url
-            if src is None:
-                esm_url = _cdn_url(MATTERVIZ_ANYWIDGET_VERSION)
-            elif src.startswith(("http://", "https://")):
-                esm_url = src
-        # build_interactive_html takes exactly one of esm_url / esm_content
-        esm_content = None if esm_url is not None else esm_content
+        # reference the bundle matching the active CSS (avoid a JS/CSS version
+        # mismatch); a local source has no public URL, so it is inlined instead
+        if not inline and esm_url is None and _is_url(self._sources[0]):
+            esm_url = self._sources[0]
+        # a referenced bundle links its CSS too when that is remote; anything
+        # local is inlined. build_interactive_html takes one ESM and one CSS source
+        esm_content = css_content = css_url = None
+        if esm_url is None:
+            esm_content, css_content = self._resolve_assets()
+        elif _is_url(self._sources[1]):
+            css_url = self._sources[1]
+        else:
+            css_content = _load_bundle(self._bundle, "css")
 
         report = self.describe()
         html = build_interactive_html(
-            self.to_dict(),
-            css_content,
+            self._frontend_state(),
+            css_content=css_content,
+            css_url=css_url,
             esm_url=esm_url,
             esm_content=esm_content,
             title=short_summary(report),
@@ -681,7 +688,11 @@ class MatterVizWidget(AnyWidget):
         try:  # asset resolution (cache miss + offline fetch) can fail before the
             esm_content, css_content = self._resolve_assets()  # never-raising render
             diag = render_diagnostics(
-                data, esm_content, css_content, timeout=timeout, dpi=dpi
+                self._frontend_state(),
+                esm_content,
+                css_content,
+                timeout=timeout,
+                dpi=dpi,
             )
         except Exception as exc:  # noqa: BLE001 -- documented never-raises contract
             diag = RenderReport(ok=False, error=f"render_report failed: {exc}")

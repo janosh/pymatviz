@@ -1,54 +1,49 @@
-"""Sunburst plot of crystal systems."""
+"""Sunburst of space groups grouped by crystal system."""
 
+from collections import Counter
 from collections.abc import Sequence
 from typing import Any, Literal
 
+import numpy as np
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
 from pymatgen.core import Structure
 
-import pymatviz as pmv
-from pymatviz.enums import Key
+from pymatviz._hierarchy import _limit_nodes
 from pymatviz.process_data import get_spacegroup_number, is_structure_like
-from pymatviz.typing import ShowCounts
-from pymatviz.utils.plotting import apply_show_counts
+from pymatviz.utils import spg_to_crystal_sys
+from pymatviz.widgets.sunburst import SunburstWidget
 
 
 def spacegroup_sunburst(
     data: Sequence[int | str | Structure] | pd.Series,
     *,
-    show_counts: ShowCounts = "value",
     max_slices: int | None = None,
     max_slices_mode: Literal["other", "drop"] = "other",
     **kwargs: Any,
-) -> go.Figure:
-    """Generate a sunburst plot with crystal systems as the inner ring for a list of
-    international space group numbers.
-
-    Hint: To hide very small labels, set a uniformtext minsize and mode='hide'.
-    fig.update_layout(uniformtext=dict(minsize=9, mode="hide"))
+) -> SunburstWidget:
+    """Show space group counts with crystal systems as the inner ring.
 
     Args:
-        data (list[int] | pd.Series): A sequence (list, tuple, pd.Series) of
-            space group strings or numbers (from 1 - 230) or pymatgen structures.
-        show_counts ("value" | "percent" | "value+percent" | False): Whether to display
-            values below each labels on the sunburst.
-        max_slices (int | None): Maximum number of space groups to show
-            for each crystal system. If None (default), all space groups are shown. If
-            positive integer, only the top N space groups by count are shown.
-        max_slices_mode ("other" | "drop"): How to handle spacegroups beyond max_slices:
+        data (Sequence[int | str | Structure] | pd.Series): Space group numbers (1 -
+            230), international symbols or pymatgen structures.
+        max_slices (int | None): Maximum number of space groups to show for each
+            crystal system. If None (default), all space groups are shown. If a
+            positive integer, only the top N space groups by count are shown (ties
+            keep the first seen).
+        max_slices_mode ("other" | "drop"): How to handle space groups beyond
+            max_slices:
             - "other": Combine remaining space groups into an "Other" slice (default)
             - "drop": Discard remaining space groups entirely
-        color_discrete_sequence (list[str]): A list of 7 colors, one for each crystal
-            system. Defaults to plotly.express.colors.qualitative.G10.
-        **kwargs: Additional keyword arguments passed to plotly.express.sunburst.
+        **kwargs: Passed to SunburstWidget, e.g. ``label_text`` (default
+            ``"label+value"``), ``max_depth`` or ``style``.
 
     Returns:
-        Figure: The Plotly figure.
+        SunburstWidget: The MatterViz sunburst.
 
     Raises:
-        ValueError: If data is empty.
+        ValueError: If data is empty, has missing values or invalid space groups, or
+            max_slices_mode is invalid.
+        TypeError: If the space group of a structure can't be determined.
     """
     if max_slices_mode not in ("other", "drop"):
         raise ValueError(f"Invalid {max_slices_mode=}, must be 'other' or 'drop'")
@@ -58,7 +53,7 @@ def spacegroup_sunburst(
     # materialize as list[Any] for Series-safe positional access and untyped iteration
     values: list[Any] = data.tolist() if isinstance(data, pd.Series) else list(data)
     if is_structure_like(values[0]):  # if 1st item is structure-like, assume all are
-        spg_nums: list[int] = []
+        spg_nums: list[Any] = []
         for idx, struct in enumerate(values):
             try:
                 spg_nums.append(get_spacegroup_number(struct))
@@ -68,45 +63,26 @@ def spacegroup_sunburst(
                     f"{idx} ({type(struct).__name__}). Pass periodic pymatgen "
                     "Structure objects or ASE Atoms supported by moyopy."
                 ) from exc
-        series = pd.Series(spg_nums)
-    else:
-        series = pd.Series(values)
-    if series.isna().any():
+        values = spg_nums
+    if pd.isna(pd.Series(values, dtype=object)).any():
         raise ValueError("Space group data must not contain missing values")
+    # NumPy scalars to Python ints/floats/strings, which spg_to_crystal_sys accepts
+    values = [val.item() if isinstance(val, np.generic) else val for val in values]
 
-    df_spg_counts = pd.DataFrame(series.value_counts().reset_index())
-    df_spg_counts.columns = [Key.spg_num, "count"]
-
-    df_spg_counts[Key.crystal_system] = df_spg_counts[Key.spg_num].map(
-        pmv.utils.spg_to_crystal_sys
-    )
-
-    if max_slices and max_slices > 0:
-        ranks = df_spg_counts.groupby(Key.crystal_system)["count"].rank(
-            ascending=False, method="first"
+    by_system: dict[str, list[dict[str, Any]]] = {}
+    for spg, count in Counter(values).most_common():
+        crystal_sys = spg_to_crystal_sys(spg)
+        by_system.setdefault(crystal_sys, []).append(
+            {"id": f"{crystal_sys}/{spg}", "label": str(spg), "value": count}
         )
-        hidden = df_spg_counts[ranks > max_slices]
-        df_spg_counts = df_spg_counts[ranks <= max_slices]
-        if max_slices_mode == "other" and not hidden.empty:
-            groups = hidden.groupby(Key.crystal_system)["count"]
-            other = groups.sum().to_frame()
-            other[Key.spg_num] = groups.size().map(
-                lambda count: f"Other ({count} more not shown)"
-            )
-            df_spg_counts = pd.concat([df_spg_counts, other.reset_index()])
-
-    sunburst_defaults = dict(color_discrete_sequence=px.colors.qualitative.G10)
-
-    fig = px.sunburst(
-        df_spg_counts,
-        path=[Key.crystal_system, Key.spg_num],
-        values="count",
-        **sunburst_defaults | kwargs,
-    )
-
-    apply_show_counts(fig, show_counts, value_fmt=".2f")
-
-    fig.layout.margin = dict(l=10, r=10, b=10, pad=10)
-    fig.layout.paper_bgcolor = "rgba(0, 0, 0, 0)"
-
-    return fig
+    nodes = [
+        {
+            "id": crystal_sys,
+            "label": crystal_sys,
+            "children": _limit_nodes(
+                children, max_slices, max_slices_mode, parent_id=crystal_sys
+            ),
+        }
+        for crystal_sys, children in by_system.items()
+    ]
+    return SunburstWidget(nodes, **{"label_text": "label+value"} | kwargs)

@@ -11,7 +11,12 @@ from pymatviz.widgets._normalize import (
     normalize_json_kwargs,
     structure_to_dict,
 )
-from pymatviz.widgets._traits import PlotControlsTraits, optional_trait
+from pymatviz.widgets._traits import (
+    DOS_NORMALIZATIONS,
+    DOS_SPIN_MODES,
+    PlotControlsTraits,
+    optional_trait,
+)
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -36,8 +41,8 @@ class BandsAndDosWidget(PlotControlsTraits, MatterVizWidget):
         ... )
     """
 
-    band_structs = tl.Dict(allow_none=True).tag(sync=True)
-    doses = tl.Dict(allow_none=True).tag(sync=True)
+    band_structs = optional_trait(tl.Dict)
+    doses = optional_trait(tl.Dict)
     structure = optional_trait(tl.Dict)
     bz_props = optional_trait(tl.Dict)  # BrillouinZone props for the structure's panel
 
@@ -50,10 +55,8 @@ class BandsAndDosWidget(PlotControlsTraits, MatterVizWidget):
     stack = optional_trait(tl.Bool)
     # DOS smearing width in the data unit: THz for phonons, eV for electrons
     sigma = optional_trait(tl.Float, min=0.0)
-    normalize = optional_trait(tl.CaselessStrEnum, values=["max", "sum", "integral"])
-    spin_mode = optional_trait(
-        tl.CaselessStrEnum, values=["mirror", "overlay", "up_only", "down_only"]
-    )
+    normalize = optional_trait(tl.CaselessStrEnum, values=DOS_NORMALIZATIONS)
+    spin_mode = optional_trait(tl.CaselessStrEnum, values=DOS_SPIN_MODES)
 
     def __init__(
         self,

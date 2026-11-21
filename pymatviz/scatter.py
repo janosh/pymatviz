@@ -7,72 +7,92 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-import scipy.stats
-from plotly.subplots import make_subplots
 
-import pymatviz as pmv
+from pymatviz.powerups import enhance_parity_plot
 from pymatviz.process_data import bin_df_cols, df_to_arrays
+from pymatviz.widgets._normalize import with_defaults
+from pymatviz.widgets.binned_scatter_plot import BinnedScatterPlotWidget
+from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
     from typing import Any, Literal
 
     from numpy.typing import ArrayLike
+
+DENSITY_COL = "Point density"
 
 
 def _get_axis_labels(
     x: ArrayLike | str, y: ArrayLike | str, df: pd.DataFrame | None = None
 ) -> tuple[str, str]:
-    """Extract axis labels from data or column names."""
+    """Axis labels from column names, array names (e.g. pd.Series) or defaults."""
     if df is not None:
-        # x, y are column names (str) when df is provided
-        xlabel: str = str(getattr(df[x], "name", x))
-        ylabel: str = str(getattr(df[y], "name", y))
-    else:
-        xlabel = str(getattr(x, "name", x if isinstance(x, str) else "Actual"))
-        ylabel = str(getattr(y, "name", y if isinstance(y, str) else "Predicted"))
+        return str(x), str(y)
+    xlabel = str(getattr(x, "name", x if isinstance(x, str) else "Actual"))
+    ylabel = str(getattr(y, "name", y if isinstance(y, str) else "Predicted"))
     return xlabel, ylabel
 
 
-def _add_marginal_histograms(
-    subplot_fig: go.Figure,
+def _parity_data(
+    x: ArrayLike | str,
+    y: ArrayLike | str,
+    df: pd.DataFrame | None,
+    xlabel: str | None,
+    ylabel: str | None,
+) -> tuple[np.ndarray, np.ndarray, str, str]:
+    """Finite 1D x/y float arrays (NaN rows dropped) and axis labels."""
+    xs, ys = (np.asarray(arr, dtype=float) for arr in df_to_arrays(df, x, y))
+    if xs.ndim != 1 or ys.shape != xs.shape:
+        raise ValueError(
+            f"Expected 1D x and y of equal length, got {xs.shape=}, {ys.shape=}"
+        )
+    finite = np.isfinite(xs) & np.isfinite(ys)
+    if not finite.any():
+        raise ValueError("Parity plots need at least one finite (x, y) point")
+    auto_xlabel, auto_ylabel = _get_axis_labels(x, y, df)
+    return xs[finite], ys[finite], xlabel or auto_xlabel, ylabel or auto_ylabel
+
+
+def _point_density(
     xs: np.ndarray,
     ys: np.ndarray,
-    bins: int,
-    xlabel: str,
-    ylabel: str,
-) -> None:
-    """Add x (top) and y (right) marginal histograms to a 2x2 subplot figure."""
-    for values, row, col, orientation in ((xs, 1, 1, None), (ys, 2, 2, "h")):
-        counts, bin_edges = np.histogram(values, bins=bins)
-        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
-        bar_xy = (counts, bin_centers) if orientation else (bin_centers, counts)
-        subplot_fig.add_bar(
-            x=bar_xy[0],
-            y=bar_xy[1],
-            opacity=0.7,
-            marker_line_width=0,
-            orientation=orientation,
-            showlegend=False,
-            row=row,
-            col=col,
+    density: Literal["kde", "empirical"],
+    n_bins: int | Literal[False],
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Points to plot (the first sample in each bin when n_bins, else the inputs)
+    with their density, sorted by density so the densest points are drawn last.
+    Binned KDE densities are scaled to sum to the number of samples.
+    """
+    if density not in ("kde", "empirical"):
+        raise ValueError(f"Unknown {density=}, must be 'kde' or 'empirical'")
+    if n_bins:
+        df_bins = bin_df_cols(
+            pd.DataFrame({"x": xs, "y": ys}),
+            bin_by_cols=["x", "y"],
+            n_bins=n_bins,
+            bin_counts_col=DENSITY_COL,
         )
+        plot_x, plot_y = df_bins["x"].to_numpy(), df_bins["y"].to_numpy()
+        point_density = df_bins[DENSITY_COL].to_numpy(dtype=float)
+    else:
+        plot_x, plot_y, point_density = xs, ys, np.ones(len(xs))
+    if density == "kde":
+        import scipy.stats
 
-    # Remove lines from all axes
-    subplot_fig.update_layout(
-        showlegend=False,
-        xaxis=dict(showline=False, title=xlabel, showticklabels=False),
-        yaxis=dict(showline=False, showticklabels=True),
-        xaxis2=dict(showline=False, showticklabels=True),
-        yaxis2=dict(showline=False, title=ylabel, showticklabels=False),
-        xaxis3=dict(showline=False),
-        yaxis3=dict(showline=False),
-        xaxis4=dict(showline=False),
-        yaxis4=dict(showline=False, showticklabels=False),
-    )
+        try:  # needs >= 2 points not all on one line (non-singular covariance)
+            kde = scipy.stats.gaussian_kde(np.vstack([xs, ys]))
+            point_density = kde(np.vstack([plot_x, plot_y]))
+            if n_bins:
+                point_density = point_density / point_density.sum() * len(xs)
+        except (ValueError, np.linalg.LinAlgError) as exc:
+            warnings.warn(
+                f"KDE impossible for {len(xs)} point(s) ({exc}), using empirical "
+                "density",
+                stacklevel=3,
+            )
+    order = np.argsort(point_density, kind="stable")
+    return plot_x[order], plot_y[order], point_density[order]
 
 
 def density_scatter(
@@ -81,327 +101,89 @@ def density_scatter(
     *,
     df: pd.DataFrame | None = None,
     density: Literal["kde", "empirical"] | None = None,
-    log_density: bool | None = None,
+    log: bool | None = None,
     n_bins: int | Literal[False] | None = None,
-    bin_counts_col: str | None = None,
     xlabel: str | None = None,
     ylabel: str | None = None,
     identity_line: bool | dict[str, Any] = True,
-    best_fit_line: bool | dict[str, Any] = True,
+    best_fit_line: bool | dict[str, Any] | None = None,
     stats: bool | dict[str, Any] = True,
-    colorbar_kwargs: dict[str, Any] | None = None,
-    hover_format: str = ".3f",
-    facet_col: str | None = None,
     **kwargs: Any,
-) -> go.Figure:
-    """Scatter plot colored by density using Plotly.
+) -> ScatterPlotWidget:
+    """Parity scatter plot with points colored by density.
 
-    This function uses binning to reduce the number of points plotted which enables
-    plotting millions of data points and reduced file size for interactive plots.
+    Binning reduces the number of plotted points, enabling millions of data points
+    with small payloads.
 
     Args:
         x (array | str): x-values or dataframe column name.
         y (array | str): y-values or dataframe column name.
-        df (pd.DataFrame, optional): DataFrame with x and y columns. Defaults to None.
-        density ('kde' | 'empirical'): Determines the method for calculating and
-            displaying density. Default is 'empirical' when n_bins is provided,
-            else 'kde' for kernel density estimation.
-        log_density (bool | None): Whether to apply logarithmic scaling to density.
-            If None, automatically set based on density range.
-        n_bins (int | None | False, optional): Number of bins for histogram.
-            If None, automatically enables binning mode if the number of datapoints
-            exceeds 1000, else defaults to False (no binning).
-        bin_counts_col (str, optional): Column name for bin counts. Defaults to
-            "Point<br>Density". Will be used as color bar title.
+        df (pd.DataFrame, optional): DataFrame with x and y columns.
+        density ("kde" | "empirical" | None): Density estimate used for colors.
+            Defaults to "empirical" (bin counts) when binning, else "kde" (Gaussian
+            kernel density estimate).
+        log (bool | None): Log-scale the color mapping. None (default)
+            enables it when positive densities span more than 2 decades.
+        n_bins (int | False | None): Number of bins per axis. None (default) bins
+            into 200 bins only for more than 1000 points.
         xlabel (str, optional): x-axis label. Auto-detected from data if None.
         ylabel (str, optional): y-axis label. Auto-detected from data if None.
-        identity_line (bool | dict[str, Any], optional): Whether to add a parity line
-            (y = x). Defaults to True. Pass a dict to customize line properties.
-        best_fit_line (bool | dict[str, Any], optional): Whether to add a best-fit line.
-            Defaults to True. Pass a dict to customize line properties.
-        stats (bool | dict[str, Any], optional): Whether to display a text box with MAE
-            and R^2. Defaults to True. Can be dict to pass kwargs to annotate_metrics().
-        colorbar_kwargs (dict, optional): Passed to fig.layout.coloraxis.colorbar.
-        hover_format (str, optional): Format specifier for the point density values.
-        facet_col (str | None, optional): Column name to use for creating faceted
-            subplots. If provided, the plot will be split into multiple subplots based
-            on unique values in this column. Defaults to None.
-        **kwargs: Passed to px.scatter().
+        identity_line (bool | dict): Add a y = x line. A dict is passed to
+            add_identity_line(). Defaults to True.
+        best_fit_line (bool | dict | None): Add a least-squares fit line of the
+            unbinned data. A dict is passed to add_best_fit_line(). None (default)
+            adds it if R² > 0.3.
+        stats (bool | dict): Show MAE and R² of the unbinned data. A dict is passed
+            to annotate_metrics(). Defaults to True.
+        **kwargs: Passed to ScatterPlotWidget, e.g. color_scale (a scheme name or
+            dict merged over the default Viridis scale with the log/linear type),
+            color_bar (default title "Point density") or point styles via styles.
 
     Returns:
-        go.Figure: The plot object.
+        ScatterPlotWidget: The density scatter widget.
     """
-    if not isinstance(stats, bool | dict):
-        raise TypeError(f"stats must be bool or dict, got {type(stats)} instead.")
-
-    # Convert arrays to DataFrame if needed
-    if df is None:
-        xs, ys = df_to_arrays(df, x, y)
-        auto_xlabel, auto_ylabel = _get_axis_labels(x, y)
-        # axis labels double as DataFrame column names
-        x = xlabel = xlabel or auto_xlabel
-        y = ylabel = ylabel or auto_ylabel
-        df_data = pd.DataFrame({x: xs, y: ys})
-    else:
-        df_data = df
-        x, y = str(x), str(y)  # x and y are column names when df is provided
-
-    bin_counts_col = bin_counts_col or "Point<br>Density"
-
+    xs, ys, xlabel, ylabel = _parity_data(x, y, df, xlabel, ylabel)
     if n_bins is None:  # auto-enable binning depending on data size
-        n_bins = 200 if len(df_data) > 1000 else False
-
-    density = density or ("empirical" if n_bins else "kde")
-
-    if facet_col:  # Group the dataframe based on the facet column
-        grouped = df_data.groupby(facet_col)
-        binned_dfs = []
-
-        for group_name, group_df in grouped:
-            binned_df = _bin_and_calculate_density(
-                group_df, x, y, density, n_bins, bin_counts_col
-            )
-            binned_df[facet_col] = group_name  # Add the facet column back
-            binned_dfs += [binned_df]
-
-        # Merge all binned dataframes
-        df_plot = pd.concat(binned_dfs, ignore_index=True)
-    else:
-        df_plot = _bin_and_calculate_density(
-            df_data, x, y, density, n_bins, bin_counts_col
-        )
-
-    color_vals = df_plot[bin_counts_col]
-
-    if log_density is None:
-        positive = color_vals[color_vals > 0]
-        log_density = positive.size > 0 and (
-            np.log10(positive.max()) - np.log10(positive.min()) > 2
-        )
-
-    if log_density:
-        color_vals = np.log10(color_vals + 1)
-
-    # Check if a custom hovertemplate is provided in kwargs
-    custom_hovertemplate = kwargs.pop("hovertemplate", None)
-
-    kwargs = dict(color_continuous_scale="Viridis") | kwargs
-
-    fig = px.scatter(
-        df_plot,
-        x=x,
-        y=y,
-        color=color_vals,
-        facet_col=facet_col,
-        # facet value at customdata[1] maps traces to facets (see below)
-        custom_data=[bin_counts_col, *([facet_col] if facet_col else [])],
-        **kwargs,
+        n_bins = 200 if len(xs) > 1000 else False
+    plot_x, plot_y, point_density = _point_density(
+        xs, ys, density or ("empirical" if n_bins else "kde"), n_bins
     )
-
-    colorbar_defaults = dict(thickness=15)
-    fig.layout.coloraxis.colorbar.update(colorbar_defaults | (colorbar_kwargs or {}))
-
-    # Apply custom hover template if provided
-    if custom_hovertemplate:
-        for trace in fig.data:
-            trace.hovertemplate = custom_hovertemplate
-
-    # For non-log density case, apply hover formatting directly
-    elif not log_density:
-        for trace in fig.data:
-            # Create a custom hover template with formatted point density
-            trace.hovertemplate = (
-                f"{x}: %{{x}}<br>{y}: %{{y}}<br>{bin_counts_col}: "
-                f"%{{customdata[0]:{hover_format}}}<extra></extra>"
-            )
-
-    if log_density:
-        _update_colorbar_for_log_density(
-            fig,
-            color_vals,
-            bin_counts_col,
-            x,
-            y,
-            hover_format,
-            custom_hovertemplate,
-        )
-
-    if not facet_col:
-        pmv.powerups.enhance_parity_plot(
-            fig,
-            xs=df_data[x],
-            ys=df_data[y],
-            identity_line=identity_line,
-            best_fit_line=best_fit_line,
-            stats=stats,
-        )
-        return fig
-
-    # Fit and annotate each facet once on its raw (unbinned) points. Traces are
-    # matched to facets by value, not order (category_orders, facet_col_wrap and
-    # trace-splitting kwargs like symbol= reorder or multiply traces per facet).
-    pmv.powerups.enhance_parity_plot(
-        fig, identity_line=identity_line, best_fit_line=False, stats=False
+    if log is None:
+        positive = point_density[point_density > 0]
+        log = bool(positive.size and np.log10(positive.max() / positive.min()) > 2)
+    color_scale = {
+        "scheme": "interpolateViridis",
+        "type": "log" if log else "linear",
+    }
+    if isinstance(kwargs.get("color_scale"), str):  # bare scheme keeps the log type
+        kwargs["color_scale"] = {"scheme": kwargs["color_scale"]}
+    widget = ScatterPlotWidget(
+        series=[
+            {
+                "x": plot_x,
+                "y": plot_y,
+                "color_values": point_density,
+                "markers": "points",
+            }
+        ],
+        **with_defaults(
+            {
+                "x_axis": {"label": xlabel},
+                "y_axis": {"label": ylabel},
+                "color_scale": color_scale,
+                "color_bar": {"title": DENSITY_COL},
+            },
+            kwargs,
+        ),
     )
-    facet_dfs = dict(list(df_data.groupby(facet_col)))
-    facet_traces: dict[Any, Any] = {}  # facet value -> first trace in that facet
-    for trace in fig.data:
-        facet_traces.setdefault(trace.customdata[0][1], trace)
-    if best_fit_line:
-        fit_kwargs = best_fit_line if isinstance(best_fit_line, dict) else {}
-        for facet_val, facet_df in facet_dfs.items():
-            trace = facet_traces[facet_val]
-            pmv.powerups.add_best_fit_line(
-                fig,
-                xs=facet_df[x],
-                ys=facet_df[y],
-                xref=trace.xaxis,
-                yref=trace.yaxis,
-                **fit_kwargs,
-            )
-    if stats:
-        stats_kwargs = stats if isinstance(stats, dict) else {}
-        # one stats box per facet, on the facet's first trace (None skips the rest)
-        first_in_facet = {id(trace): val for val, trace in facet_traces.items()}
-        facet_of_trace = [first_in_facet.get(id(trace)) for trace in fig.data]
-        pmv.powerups.annotate_metrics(
-            [None if val is None else facet_dfs[val][x] for val in facet_of_trace],
-            [None if val is None else facet_dfs[val][y] for val in facet_of_trace],
-            fig=fig,
-            **stats_kwargs,
-        )
-    return fig
-
-
-def _bin_and_calculate_density(
-    df: pd.DataFrame,
-    x: str,
-    y: str,
-    density: str,
-    n_bins: int | Literal[False] | None,
-    bin_counts_col: str,
-) -> pd.DataFrame:
-    """Helper function to bin data and calculate density."""
-    if len(df) == 0:
-        df_empty = df.copy()
-        df_empty[bin_counts_col] = pd.Series(dtype=float, index=df_empty.index)
-        return df_empty
-
-    if n_bins:
-        density_col = "bin_counts_kde" if density == "kde" else ""
-        df_plot = bin_df_cols(
-            df,
-            bin_by_cols=[x, y],
-            n_bins=n_bins,
-            bin_counts_col=bin_counts_col,
-            density_col=density_col,
-        ).sort_values(bin_counts_col)
-        # sort by counts so densest points are plotted last
-
-        if density_col:
-            df_plot[bin_counts_col] = df_plot[density_col]
-        elif density != "empirical":
-            raise ValueError(f"Unknown {density=}")
-    else:
-        df_plot = df.copy()
-        values = df[[x, y]].dropna().T
-        if density == "kde" and len(values.columns) > 1:
-            model_kde = scipy.stats.gaussian_kde(values)
-            df_plot[bin_counts_col] = model_kde(df_plot[[x, y]].T)
-        else:
-            if density == "kde" and len(values.columns) <= 1:
-                warnings.warn(
-                    "Not enough data points for KDE, using empirical density",
-                    stacklevel=2,
-                )
-            df_plot[bin_counts_col] = np.ones(len(df_plot))
-
-    return df_plot
-
-
-def _update_colorbar_for_log_density(
-    fig: go.Figure,
-    color_vals: np.ndarray,
-    bin_counts_col: str,
-    x: str = "x",
-    y: str = "y",
-    hover_format: str = ".3f",
-    custom_hovertemplate: str | None = None,
-) -> None:
-    """Helper function to update colorbar for log density.
-
-    Creates evenly spaced tick labels on a logarithmic scale across the full data range.
-    Also updates hover tooltip to display point density in specified format.
-
-    Args:
-        fig (go.Figure): The plotly figure to update
-        color_vals (np.ndarray): The logged color values
-        bin_counts_col (str): The name of the column containing bin counts
-        x (str, optional): Name of the x-axis variable. Defaults to "x".
-        y (str, optional): Name of the y-axis variable. Defaults to "y".
-        hover_format (str, optional): Format specifier for the point density values in
-            the hover tooltip. Defaults to ".3f" (3 decimal places).
-        custom_hovertemplate (str | None, optional): Custom hover template provided by
-            the user. If provided, the hover template will be modified to include
-            point density information.
-    """
-    from pymatviz.utils.data import si_fmt
-
-    # Recover counts from log10(counts + 1).
-    logged_min = color_vals.min()
-    logged_max = color_vals.max()
-
-    actual_min = max(10 ** (logged_min) - 1, 1)  # Ensure min is at least 1
-    actual_max = 10 ** (logged_max) - 1
-
-    # Use decade ticks for wide ranges and finer spacing for narrow ranges.
-    if np.log10(actual_max) - np.log10(actual_min) > 2:
-        # Start with powers of 10
-        decades = range(
-            int(np.floor(np.log10(actual_min))), int(np.ceil(np.log10(actual_max))) + 1
-        )
-        # Powers of 10 plus intermediate 2x and 5x values, clipped to the data range
-        tick_values = [
-            tick
-            for power in decades
-            for tick in (10**power, 2 * 10**power, 5 * 10**power)
-            if actual_min <= tick <= actual_max
-        ]
-    else:
-        # For smaller ranges, use more points
-        num_ticks = min(
-            10, max(5, int(np.log10(actual_max) - np.log10(actual_min)) * 5)
-        )
-        tick_values = np.logspace(np.log10(actual_min), np.log10(actual_max), num_ticks)
-
-    # float precision based on magnitude: small (large) values use 1 (0) decimals,
-    # dropping any trailing .0
-    tick_labels = [
-        si_fmt(val, fmt=".1f" if val < 10 else ".0f").removesuffix(".0")
-        for val in tick_values
-    ]
-
-    tick_positions = np.log10(np.array(tick_values) + 1)
-
-    # Update the colorbar with the correct tick positions and labels
-    colorbar = fig.layout.coloraxis.colorbar
-    colorbar.update(tickvals=tick_positions, ticktext=tick_labels)
-
-    template = (
-        f"{x}: %{{x}}<br>{y}: %{{y}}"
-        if custom_hovertemplate is None
-        else custom_hovertemplate
+    return enhance_parity_plot(
+        widget,
+        xs,
+        ys,
+        identity_line=identity_line,
+        best_fit_line=best_fit_line,
+        stats=stats,
     )
-
-    base, sep, extra_rest = template.partition("<extra>")
-    extra = f"<extra>{extra_rest}" if sep else "<extra></extra>"
-
-    for trace in fig.data:
-        trace.hovertemplate = (
-            f"{base}<br>{bin_counts_col}: %{{customdata[0]:{hover_format}}}{extra}"
-        )
-
-    colorbar.title = bin_counts_col.replace(" ", "<br>")
 
 
 def density_hexbin(
@@ -409,191 +191,65 @@ def density_hexbin(
     y: ArrayLike | str,
     *,
     df: pd.DataFrame | None = None,
-    weights: ArrayLike | None = None,
-    gridsize: int = 75,
+    bin_px: float | None = None,
     identity_line: bool | dict[str, Any] = True,
-    best_fit_line: bool | dict[str, Any] = True,
+    best_fit_line: bool | dict[str, Any] | None = None,
     stats: bool | dict[str, Any] = True,
     xlabel: str | None = None,
     ylabel: str | None = None,
-    colorbar_kwargs: dict[str, Any] | None = None,
     **kwargs: Any,
-) -> go.Figure:
-    """Hexagonal-grid scatter plot colored by point density using Plotly.
+) -> BinnedScatterPlotWidget:
+    """Parity plot of points binned into a screen-space density map. Bins are
+    recomputed on zoom and switch to individual points when few remain in view.
 
     Args:
         x (array | str): x-values or dataframe column name.
         y (array | str): y-values or dataframe column name.
-        df (pd.DataFrame, optional): DataFrame with x and y columns. Defaults to None.
-        weights (array, optional): If given, these values are accumulated in the bins.
-            Otherwise, every point has value 1. Must be of the same length as x and y.
-        gridsize (int, optional): Grid intervals along each axis, with a second lattice
-            offset by half an interval. Defaults to 75.
-        identity_line (bool | dict[str, Any], optional): Whether to add a parity line
-            (y = x). Defaults to True. Pass a dict to customize line properties.
-        best_fit_line (bool | dict[str, Any], optional): Whether to add a best-fit line.
-            Defaults to True. Pass a dict to customize line properties.
-        stats (bool | dict[str, Any], optional): Whether to display a text box with MAE
-            and R^2. Defaults to True.
+        df (pd.DataFrame, optional): DataFrame with x and y columns.
+        bin_px (float, optional): Bin size in screen pixels. Defaults to
+            matterviz' default (2.8 px).
+        identity_line (bool | dict): Add a y = x line. A dict is passed to
+            add_identity_line(). Defaults to True.
+        best_fit_line (bool | dict | None): Add a least-squares fit line. A dict is
+            passed to add_best_fit_line(). None (default) adds it if R² > 0.3.
+        stats (bool | dict): Show MAE and R². A dict is passed to
+            annotate_metrics(). Defaults to True.
         xlabel (str, optional): x-axis label. Auto-detected if None.
         ylabel (str, optional): y-axis label. Auto-detected if None.
-        colorbar_kwargs (dict, optional): Passed to fig.layout.coloraxis.colorbar.
-        **kwargs: Additional keyword arguments passed to go.Scatter().
+        **kwargs: Passed to BinnedScatterPlotWidget, e.g. marginals,
+            color_bar or density (merged with bin_px).
 
     Returns:
-        go.Figure: Plotly Figure object
+        BinnedScatterPlotWidget: The binned density widget.
     """
-    if not isinstance(stats, bool | dict):
-        raise TypeError(f"stats must be bool or dict, got {type(stats)} instead.")
-
-    xs, ys = df_to_arrays(df, x, y)
-    auto_xlabel, auto_ylabel = _get_axis_labels(x, y, df)
-    xlabel = xlabel or auto_xlabel
-    ylabel = ylabel or auto_ylabel
-
-    weights_arr = None if weights is None else np.asarray(weights)
-    if weights_arr is not None and df is not None:
-        if weights_arr.shape != (len(df),):
-            raise ValueError(
-                f"Expected one weight per DataFrame row, got {weights_arr.shape=}"
-            )
-        weights_arr = weights_arr[df[[x, y]].notna().all(axis=1)]
-    if xs.ndim != 1 or ys.shape != xs.shape or not len(xs):
-        raise ValueError(
-            f"Expected non-empty 1D coordinates, got {xs.shape=}, {ys.shape=}"
-        )
-    if not np.isfinite(xs).all() or not np.isfinite(ys).all():
-        raise ValueError("Hexbin coordinates must be finite")
-    if weights_arr is not None and (
-        weights_arr.shape != xs.shape or not np.isfinite(weights_arr).all()
-    ):
-        raise ValueError(
-            f"Expected finite weights with shape {xs.shape}, got {weights_arr.shape=}"
-        )
-
-    # Nearest centers on two interleaved lattices form hexagonal Voronoi cells.
-    bounds = np.array(
-        [np.histogram_bin_edges(values, bins=gridsize)[[0, -1]] for values in (xs, ys)]
-    )
-    origin = bounds[:, 0]
-    spacing = (bounds[:, 1] - origin) / gridsize
-    points = (np.column_stack((xs, ys)) - origin) / spacing
-    centers = np.rint(points)
-    offset_centers = np.floor(points) + 0.5
-    distances = ((points - centers) ** 2 * [1, 3]).sum(axis=1)
-    offset_distances = ((points - offset_centers) ** 2 * [1, 3]).sum(axis=1)
-    centers = np.where(
-        (distances <= offset_distances)[:, None], centers, offset_centers
-    )
-    centers, bin_indices = np.unique(centers, axis=0, return_inverse=True)
-    x_plot, y_plot = (origin + centers * spacing).T
-    z_plot = np.bincount(bin_indices, weights=weights_arr)
-
-    fig = go.Figure()
-
-    # Shrink markers as the grid becomes denser.
-    base_size = 400 / gridsize
-    marker_size = min(12, max(4, base_size))
-
-    scatter_defaults = dict(
-        mode="markers",
-        marker=dict(
-            size=marker_size,
-            color=z_plot,
-            colorscale="Viridis",
-            colorbar=dict(title="Point<br>Density"),
-            symbol="hexagon",
-            line=dict(width=0),  # Remove marker borders to eliminate gaps
+    xs, ys, xlabel, ylabel = _parity_data(x, y, df, xlabel, ylabel)
+    widget = BinnedScatterPlotWidget(
+        series=[{"x": xs, "y": ys}],
+        **with_defaults(
+            {
+                "x_axis": {"label": xlabel},
+                "y_axis": {"label": ylabel},
+                "color_bar": {"title": "Count"},
+                "density": {"bin_px": bin_px} if bin_px is not None else {},
+            },
+            kwargs,
         ),
-        hovertemplate=f"{xlabel}: %{{x}}<br>{ylabel}: %{{y}}<br>Density: "
-        f"%{{marker.color}}<extra></extra>",
     )
-
-    fig.add_scatter(x=x_plot, y=y_plot, **scatter_defaults | kwargs)
-
-    # Update colorbar if custom kwargs provided
-    if colorbar_kwargs:
-        fig.update_traces(marker_colorbar=colorbar_kwargs)
-
-    fig.update_layout(xaxis_title=xlabel, yaxis_title=ylabel, showlegend=False)
-
-    pmv.powerups.enhance_parity_plot(
-        fig,
-        xs=xs,
-        ys=ys,
+    return enhance_parity_plot(
+        widget,
+        xs,
+        ys,
         identity_line=identity_line,
         best_fit_line=best_fit_line,
         stats=stats,
     )
 
-    return fig
 
-
-def _with_marginal_hist(
-    x: ArrayLike | str,
-    y: ArrayLike | str,
-    *,
-    df: pd.DataFrame | None,
-    bins: int,
-    main_fig_func: Callable[..., go.Figure],
-    **kwargs: Any,
-) -> go.Figure:
-    """Wrap a density plot function with marginal histograms along each dimension.
-
-    main_fig_func is called as main_fig_func(x, y, df=df, xlabel=..., ylabel=...,
-    **kwargs) and its traces are placed in a subplot grid with bins-binned
-    marginal x/y histograms.
-
-    Raises:
-        TypeError: If kwargs contain plotly express' marginal_x/marginal_y, since
-            the marginals are always histograms whose resolution is set by bins.
-    """
-    if unsupported := {"marginal_x", "marginal_y"} & set(kwargs):
-        raise TypeError(
-            f"{sorted(unsupported)} not supported: marginals are always histograms, "
-            f"use {bins=} to control their resolution"
-        )
-    xs, ys = map(np.asarray, df_to_arrays(df, x, y))
-    xlabel, ylabel = _get_axis_labels(x, y, df)
-
-    fig = main_fig_func(x, y, df=df, xlabel=xlabel, ylabel=ylabel, **kwargs)
-
-    subplot_fig = make_subplots(
-        rows=2,
-        cols=2,
-        column_widths=[0.85, 0.15],
-        row_heights=[0.15, 0.85],
-        shared_xaxes=True,
-        shared_yaxes=True,
-        horizontal_spacing=0.02,
-        vertical_spacing=0.02,
-    )
-
-    for trace in fig.data:
-        subplot_fig.add_trace(trace, row=2, col=1)
-    _add_marginal_histograms(subplot_fig, xs, ys, bins, xlabel, ylabel)
-
-    subplot_fig.layout.coloraxis = fig.layout.coloraxis  # copy colorbar settings
-
-    # Keep parity lines and statistics anchored to the main panel.
-    for items, add_item in (
-        (fig.layout.shapes, subplot_fig.add_shape),
-        (fig.layout.annotations, subplot_fig.add_annotation),
-    ):
-        for item in items:
-            spec = item.to_plotly_json()
-            for axis in ("x", "y"):
-                ref = spec.get(f"{axis}ref", axis)
-                spec[f"{axis}ref"] = {
-                    axis: f"{axis}2",
-                    f"{axis} domain": f"{axis}2 domain",
-                    "paper": f"{axis}2 domain",
-                }.get(ref, ref)
-                if spec.get(f"a{axis}ref") == axis:
-                    spec[f"a{axis}ref"] = f"{axis}2"
-            add_item(**spec)
-
-    return subplot_fig
+def _histogram_marginals(bins: int) -> dict[str, dict[str, Any]]:
+    """Top x and right y marginal histograms with the given bin count."""
+    if not isinstance(bins, int) or bins < 1:
+        raise ValueError(f"{bins=} must be a positive int")
+    return {side: {"type": "histogram", "bins": bins} for side in ("top", "right")}
 
 
 def density_scatter_with_hist(
@@ -602,36 +258,33 @@ def density_scatter_with_hist(
     *,
     df: pd.DataFrame | None = None,
     bins: int = 100,
-    density: Literal["kde", "empirical"] | None = None,
-    log_density: bool | None = None,
-    n_bins: int | Literal[False] | None = None,
+    bin_px: float = 1.5,
     **kwargs: Any,
-) -> go.Figure:
-    """Scatter plot colored by density with marginal histograms along each dimension.
+) -> BinnedScatterPlotWidget:
+    """Fine-grained density parity plot with marginal x/y histograms.
+
+    MatterViz' ScatterPlot widget doesn't expose marginals, so this renders a
+    BinnedScatterPlot with small (default 1.5 px) bins, which looks like a
+    density-colored scatter plot and stays fast for millions of points.
 
     Args:
         x (array | str): x-values or dataframe column name.
         y (array | str): y-values or dataframe column name.
-        df (pd.DataFrame, optional): DataFrame with x and y columns. Defaults to None.
-        bins (int, optional): Number of bins for marginal histograms. Defaults to 100.
-        density ("kde" | "empirical" | None): Method for density calculation.
-        log_density (bool | None): Whether to log-scale the density colors.
-        n_bins (int | None | False): Number of bins for empirical density calculation.
-        **kwargs: Additional arguments passed to the main density scatter plot.
+        df (pd.DataFrame, optional): DataFrame with x and y columns.
+        bins (int): Number of bins per marginal histogram. Defaults to 100.
+        bin_px (float): Density bin size in screen pixels. Defaults to 1.5.
+        **kwargs: Passed to density_hexbin(). A marginals dict is merged over the
+            default top/right histograms per side.
 
     Returns:
-        go.Figure: Plotly Figure with marginal histograms.
+        BinnedScatterPlotWidget: Density widget with marginal histograms.
     """
-    return _with_marginal_hist(
+    return density_hexbin(
         x,
         y,
         df=df,
-        bins=bins,
-        main_fig_func=density_scatter,
-        density=density,
-        log_density=log_density,
-        n_bins=n_bins,
-        **kwargs,
+        bin_px=bin_px,
+        **with_defaults({"marginals": _histogram_marginals(bins)}, kwargs),
     )
 
 
@@ -641,30 +294,21 @@ def density_hexbin_with_hist(
     *,
     df: pd.DataFrame | None = None,
     bins: int = 100,
-    gridsize: int = 75,
     **kwargs: Any,
-) -> go.Figure:
-    """Hexagonal-grid scatter plot colored by density with marginal histograms along
-    each dimension.
+) -> BinnedScatterPlotWidget:
+    """Binned density parity plot with marginal x/y histograms.
 
     Args:
         x (array | str): x-values or dataframe column name.
         y (array | str): y-values or dataframe column name.
-        df (pd.DataFrame, optional): DataFrame with x and y columns. Defaults to None.
-        bins (int, optional): Number of bins for marginal histograms. Defaults to 100.
-        gridsize (int, optional): Number of hexagons in the x and y directions.
-            Defaults to 75.
-        **kwargs: Passed to density_hexbin().
+        df (pd.DataFrame, optional): DataFrame with x and y columns.
+        bins (int): Number of bins per marginal histogram. Defaults to 100.
+        **kwargs: Passed to density_hexbin(), e.g. bin_px. A marginals dict is
+            merged over the default top/right histograms per side.
 
     Returns:
-        go.Figure: Plotly Figure with marginal histograms.
+        BinnedScatterPlotWidget: Density widget with marginal histograms.
     """
-    return _with_marginal_hist(
-        x,
-        y,
-        df=df,
-        bins=bins,
-        main_fig_func=density_hexbin,
-        gridsize=gridsize,
-        **kwargs,
+    return density_hexbin(
+        x, y, df=df, **with_defaults({"marginals": _histogram_marginals(bins)}, kwargs)
     )

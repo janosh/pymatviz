@@ -6,7 +6,7 @@ from typing import Any
 
 import traitlets as tl
 
-from pymatviz.widgets._normalize import normalize_json_kwargs, normalize_plot_series
+from pymatviz.widgets._normalize import normalize_json_kwargs
 from pymatviz.widgets._traits import (
     CartesianPlotTraits,
     color_bar_trait,
@@ -40,6 +40,7 @@ class ScatterPlotWidget(CartesianPlotTraits, MatterVizWidget):
     hover_config = optional_trait(tl.Dict)
     label_placement_config = optional_trait(tl.Dict)
     point_tween = optional_trait(tl.Dict)
+    annotation = optional_trait(tl.Unicode)  # text badge auto-placed in free space
     line_tween = optional_trait(tl.Dict)
 
     # Interaction state (two-way synced with the frontend for ipywidgets linking).
@@ -54,6 +55,8 @@ class ScatterPlotWidget(CartesianPlotTraits, MatterVizWidget):
     selected_point = optional_trait(tl.Dict)
     active_point = optional_trait(tl.Dict)
     hovered_point = optional_trait(tl.Dict)
+    # Dims points whose series `point_ids` entry is not listed (None: no dimming)
+    highlighted_ids = optional_trait(tl.List)
 
     _SCATTER_JSON_KWARGS = (
         "styles", "color_scale", "size_scale", "fill_regions", "error_bands",
@@ -81,6 +84,11 @@ class ScatterPlotWidget(CartesianPlotTraits, MatterVizWidget):
         normalize_json_kwargs(kwargs, json_keys, "ScatterPlot")
         super().__init__(
             widget_type="scatter_plot",
-            series=normalize_plot_series(series, component_name="ScatterPlot"),
+            series=series,
             **kwargs,
         )
+
+    @tl.validate("series")
+    def _validate_series(self, proposal: dict[str, Any]) -> list[dict[str, Any]] | None:
+        """Normalize series on init and reassignment, binary when large."""
+        return self._binary_series(proposal["value"], "ScatterPlot")

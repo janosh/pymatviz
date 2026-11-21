@@ -15,7 +15,6 @@ https://ml.materialsproject.org/projects/matbench_dielectric
 # %%
 from typing import get_args
 
-import plotly.express as px
 from matbench_discovery.structure import prototype
 from matminer.datasets import load_dataset
 from tqdm import tqdm
@@ -53,121 +52,78 @@ df_diel[Key.formula] = [x.formula for x in df_diel[Key.structure]]
 
 
 # %%
-fig = pmv.ptable_heatmap(df_diel[Key.formula], log=True, colorscale="viridis")
-title = "<b>Elements in Matbench Dielectric</b>"
-fig.layout.title = dict(text=title, x=0.4, y=0.94, font_size=20)
-fig.show()
-# pmv.save_fig(fig, "dielectric-ptable-heatmap-plotly.pdf")
+title = "Elements in Matbench Dielectric"
+pmv.ptable_heatmap(df_diel[Key.formula], log=True, color_bar={"title": title}).show()
 
 
 # %%
-fig = pmv.spacegroup_bar(df_diel[Key.spg_num])
-fig.layout.title.update(text="<b>Space group histogram</b>")
-fig.layout.margin.update(b=10, l=10, r=10, t=50)
-# pmv.save_fig(fig, "dielectric-spacegroup-hist.pdf")
-fig.show()
+pmv.spacegroup_bar(df_diel[Key.spg_num]).show()
 
 
 # %%
-fig = pmv.spacegroup_sunburst(df_diel[Key.spg_num], show_counts="percent")
-fig.layout.title.update(text="<b>Space group sunburst</b>", x=0.5)
-# pmv.save_fig(fig, "dielectric-spacegroup-sunburst.pdf")
-fig.show()
+widget = pmv.spacegroup_sunburst(df_diel[Key.spg_num], label_text="label+percent")
+# widget.to_img("dielectric-spacegroup-sunburst.pdf")
+widget.show()
 
 
-# %%
-fig = px.violin(
-    df_diel,
-    color=Key.crystal_system,
-    x=Key.crystal_system,
-    y="n",
-    points="all",
-    hover_data=[Key.spg_num],
-    hover_name=Key.formula,
-).update_traces(jitter=1)
-
-x_ticks = {}  # custom x axis tick labels
-for cry_sys, df_group in sorted(
-    df_diel.groupby(Key.crystal_system), key=lambda x: crystal_systems.index(x[0])
-):
-    x_ticks[cry_sys] = (
-        f"<b>{cry_sys}</b><br>"
-        f"{len(df_group):,} = {len(df_group) / len(df_diel):.0%}<br>"
+# %% MatterViz has no rich-text tick labels, so per-group stats go into series labels
+def violins_by_crystal_system(
+    y_col: str, title: str, *, log_y: bool = False, show_mean: bool = False
+) -> pmv.BoxPlotWidget:
+    """Violin plot (with all points) of y_col per crystal system, labeled with each
+    group's size (and optionally mean).
+    """
+    series = []
+    for cry_sys, df_group in sorted(
+        df_diel.groupby(Key.crystal_system), key=lambda x: crystal_systems.index(x[0])
+    ):
+        label = f"{cry_sys} {len(df_group):,} = {len(df_group) / len(df_diel):.0%}"
+        if show_mean:
+            label += f" mean={df_group[y_col].mean():.1f}"
+        series += [{"y": df_group[y_col], "label": label}]
+    return pmv.BoxPlotWidget(
+        series,
+        kind="violin",
+        points="strip",
+        title=title,
+        show_legend=False,
+        y_axis={"label": y_col, "scale_type": "log" if log_y else "linear"},
     )
 
 
-title = "<b>Refractive index distribution by crystal system</b>"
-fig.layout.title = dict(text=title, x=0.5)
-fig.layout.margin = dict(b=10, l=10, r=10, t=50)
-fig.layout.showlegend = False
-fig.layout.xaxis = reusable_x_axis = dict(
-    tickvals=list(range(len(crystal_systems))), ticktext=list(x_ticks.values())
+widget = violins_by_crystal_system(
+    "n", "Refractive index distribution by crystal system"
 )
-
-
-# pmv.save_fig(fig, "dielectric-violin.pdf")
-fig.show()
+# widget.to_img("dielectric-violin.pdf")
+widget.show()
 
 
 # %%
-fig = px.violin(
-    df_diel,
-    color=Key.crystal_system,
-    x=Key.crystal_system,
-    y=n_wyckoff_pos_key,
-    points="all",
-    hover_data=[Key.spg_num],
-    hover_name=Key.formula,
-    category_orders={Key.crystal_system: crystal_systems},
+widget = violins_by_crystal_system(
+    n_wyckoff_pos_key,
+    "Matbench dielectric: Number of Wyckoff positions by crystal system",
     log_y=True,
-).update_traces(jitter=1)
-
-
-def rgb_color(val: float, max_val: float) -> str:
-    """Convert a value between 0 and max to a color between red and blue."""
-    return f"rgb({255 * val / max_val:.1f}, 0, {255 * (max_val - val) / max_val:.1f})"
-
-
-x_ticks = {}
-for cry_sys, df_group in sorted(
-    df_diel.groupby(Key.crystal_system), key=lambda x: crystal_systems.index(x[0])
-):
-    avg_n_wyckoff = df_group[n_wyckoff_pos_key].mean()
-    clr = rgb_color(avg_n_wyckoff, 14)
-    x_ticks[cry_sys] = (
-        f"<b>{cry_sys}</b><br>"
-        f"{len(df_group):,} = {len(df_group) / len(df_diel):.0%}<br>"
-        f"mean = <span style='color:{clr}'><b>{avg_n_wyckoff:.1f}</b></span>"
-    )
-
-title = "<b>Matbench dielectric: Number of Wyckoff positions by crystal system</b>"
-fig.layout.title = dict(text=title, x=0.5)
-fig.layout.margin = dict(b=10, l=10, r=10, t=50)
-fig.layout.showlegend = False
-fig.layout.update(width=1000, height=400, xaxis=reusable_x_axis)
-
-# pmv.save_fig(fig, "dielectric-violin-num-wyckoffs.pdf")
-fig.show()
-
-
-# %%
-fig = px.scatter(
-    df_diel.round(2),
-    x=Key.volume,
-    y="n",
-    color=Key.crystal_system,
-    size="n",
-    hover_data=[Key.spg_num],
-    hover_name=Key.formula,
-    range_x=[0, 1500],
+    show_mean=True,
 )
-title = "<b>Matbench Dielectric: Refractive Index vs. Volume</b>"
-fig.layout.title = dict(text=title, x=0.5, font_size=20)
-fig.layout.legend = dict(x=1, y=1, xanchor="right")
+# widget.to_img("dielectric-violin-num-wyckoffs.pdf")
+widget.show()
 
-# slightly increase scatter point size (lower sizeref means larger)
-fig.update_traces(marker_sizeref=0.08, selector=dict(mode="markers"))
-fig.layout.margin.update(b=10, l=10, r=10, t=40)
 
-# pmv.save_fig(fig, "dielectric-scatter.pdf")
-fig.show()
+# %% Matbench Dielectric: Refractive Index vs. Volume (marker size = n)
+df_vol = df_diel.query(f"{Key.volume} < 1500")  # exclude few large-volume outliers
+widget = pmv.ScatterPlotWidget(
+    series=[
+        {
+            "x": df_group[Key.volume],
+            "y": df_group["n"],
+            "size_values": df_group["n"],
+            "label": cry_sys,
+            "markers": "points",
+        }
+        for cry_sys, df_group in df_vol.groupby(Key.crystal_system)
+    ],
+    x_axis={"label": Key.volume.label},
+    y_axis={"label": "Refractive index n"},
+)
+# widget.to_img("dielectric-scatter.pdf")
+widget.show()

@@ -6,17 +6,6 @@ from __future__ import annotations
 
 import os
 
-from pymatviz.utils.plotting import (
-    PLOTLY_LINE_STYLES,
-    PRETTY_LABELS,
-    annotate,
-    get_fig_xy_range,
-    get_font_color,
-    luminance,
-    pick_max_contrast_color,
-    rgb_components,
-)
-
 
 PKG_DIR: str = os.path.dirname(os.path.dirname(__file__))
 ROOT: str = os.path.dirname(PKG_DIR)

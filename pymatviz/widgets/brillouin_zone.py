@@ -6,7 +6,7 @@ from typing import Any
 
 import traitlets as tl
 
-from pymatviz.widgets._traits import optional_trait
+from pymatviz.widgets._traits import CAMERA_PROJECTIONS, optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -34,8 +34,12 @@ class BrillouinZoneWidget(MatterVizWidget):
         ... )
     """
 
-    structure = tl.Dict(allow_none=True).tag(sync=True)
-    bz_data = tl.Dict(allow_none=True).tag(sync=True)
+    structure = optional_trait(tl.Dict)
+    bz_data = optional_trait(tl.Dict)
+    # High-symmetry path: an explicit matterviz KPathData {points (Cartesian, 1/Å, incl.
+    # 2π), labels, branches}, else the structure's Setyawan-Curtarolo default path
+    k_path = optional_trait(tl.Dict)
+    default_k_path = tl.Bool(default_value=True).tag(sync=True)
 
     # Display options
     surface_color = optional_trait(tl.Unicode)
@@ -46,7 +50,7 @@ class BrillouinZoneWidget(MatterVizWidget):
     show_ibz = optional_trait(tl.Bool)
     ibz_color = optional_trait(tl.Unicode)
     ibz_opacity = optional_trait(tl.Float)
-    camera_projection = optional_trait(tl.Unicode)
+    camera_projection = optional_trait(tl.CaselessStrEnum, values=CAMERA_PROJECTIONS)
 
     def __init__(
         self,

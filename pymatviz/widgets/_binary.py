@@ -68,6 +68,82 @@ def binary_array(
     }
 
 
+# Series with at least this many points sync as binary plot-series envelopes: as JSON
+# a 1e6-point scatter is ~41 MB and ~0.3 s of Python-side list building; binary 16 MB
+BINARY_SERIES_MIN_POINTS = 10_000
+# numeric columns sent as arrays (x and y must be finite, color/size may hold NaN gaps)
+_SERIES_COLUMNS = {"x": True, "y": True, "color_values": False, "size_values": False}
+
+
+def plot_series_envelope(
+    entry: Mapping[str, Any], name: str, keys: tuple[str, ...] = ("x", "y")
+) -> dict[str, Any] | None:
+    """Binary plot-series envelope for a large numeric series, else None (stays JSON).
+
+    The required ``keys`` (``x``/``y``, ``x``/``y``/``z`` for 3D scatter, or the raw
+    ``y`` samples of box plots, all finite), numeric 1D columns in ``_SERIES_COLUMNS``
+    and the columns of a numeric per-point ``metadata`` DataFrame (as
+    ``metadata.<column>``) become float64 arrays, every other field stays JSON. A
+    series whose ``keys`` aren't all numeric, or with fewer than
+    ``BINARY_SERIES_MIN_POINTS`` points, returns None.
+
+    Raises:
+        ValueError: If column lengths differ or required columns hold non-finite
+            values.
+    """
+    import pandas as pd
+
+    from pymatviz.widgets._normalize import check_metadata_frame, metadata_records
+
+    finite = _SERIES_COLUMNS | dict.fromkeys(keys, True)
+    columns = {
+        key: arr
+        for key in finite
+        if key in entry
+        and (arr := np.asarray(entry[key])).dtype.kind in "iuf"
+        and arr.ndim == 1
+    }
+    if not set(keys) <= columns.keys():
+        return None
+    if (n_points := len(columns[keys[0]])) < BINARY_SERIES_MIN_POINTS:
+        return None
+    # a numeric per-point metadata DataFrame travels as metadata.<column> arrays
+    if isinstance(meta := entry.get("metadata"), pd.DataFrame):
+        check_metadata_frame(meta, n_points, name)
+        if all(dtype.kind in "iuf" for dtype in meta.dtypes):
+            columns |= {f"metadata.{col}": meta[col].to_numpy() for col in meta}
+            finite |= dict.fromkeys(columns.keys() - finite.keys(), False)
+            entry = {key: val for key, val in entry.items() if key != "metadata"}
+        else:
+            records = metadata_records(meta, n_points, name)
+            entry = {**entry, "metadata": records}
+    lengths = {key: len(arr) for key, arr in columns.items()}
+    if len(set(lengths.values())) > 1:
+        raise ValueError(f"{name} columns must share one length, got {lengths}")
+    arrays = {
+        key: binary_array(arr, "float64", name=f"{name}.{key}", finite=finite[key])
+        for key, arr in columns.items()
+    }
+    fields = normalize_plot_json(
+        {key: val for key, val in entry.items() if key not in arrays}, name
+    )
+    return {"format": BINARY_FORMAT, "kind": "plot-series", "arrays": arrays, **fields}
+
+
+def series_column(series_item: Mapping[str, Any], key: str) -> Any:
+    """A plot series' ``key`` column: a read-only float array decoded from a binary
+    plot-series envelope, else the JSON value (None if absent).
+    """
+    if is_binary_envelope(series_item, "plot-series") and key in (
+        arrays := series_item.get("arrays") or {}
+    ):
+        arr = arrays[key]
+        return np.frombuffer(
+            arr["data"], dtype=np.dtype(arr["dtype"]).newbyteorder("<")
+        )
+    return series_item.get(key)
+
+
 def _numbers_ok(numbers: np.ndarray) -> bool:
     """Whether atomic numbers are integers in 1..118, what matterviz can render (a
     DummySpecies' Z is a hash).
@@ -205,8 +281,6 @@ def _channels(
     frames: Iterable[tuple[Mapping[str, Any], Mapping[str, Any]]],
     n_frames: int,
     n_atoms: int,
-    *,
-    frame_stress: bool,
 ) -> dict[str, Any] | None:
     """Encode site vectors, frame scalars (NaN if missing), and optional stress."""
     vectors: dict[str, list[np.ndarray]] = {}
@@ -229,7 +303,7 @@ def _channels(
                     scalars[name] = np.full(n_frames, np.nan)
                 scalars[name][idx] = value
                 continue
-            if frame_property and not (name == "stress" and frame_stress):
+            if frame_property and name != "stress":
                 return None
             try:
                 array = np.asarray(value)
@@ -296,8 +370,6 @@ def force_stats(forces: np.ndarray) -> dict[str, Any]:
 def trajectory_to_envelope(
     trajectory: Any,
     metadata: Mapping[str, Any] | None = None,
-    *,
-    frame_stress: bool = False,
 ) -> dict[str, Any] | None:
     """Encode supported trajectories, or return None for JSON-only data."""
     from pymatgen.core.periodic_table import get_el_sp
@@ -337,7 +409,6 @@ def trajectory_to_envelope(
             (({}, frame or {}) for frame in props or []),
             len(positions),
             len(numbers),
-            frame_stress=frame_stress,
         )
     else:
         frames: list[_Frame] = []
@@ -365,7 +436,6 @@ def trajectory_to_envelope(
             ((frame.site_props, frame.props) for frame in frames),
             len(frames),
             len(numbers),
-            frame_stress=frame_stress,
         )
         if channels is None:
             return None

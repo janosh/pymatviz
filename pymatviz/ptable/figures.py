@@ -1,1838 +1,445 @@
-"""Periodic table plots powered by plotly."""
+"""Periodic table heatmaps and per-element mini plots as MatterViz widgets."""
 
 from __future__ import annotations
 
-import warnings
-from collections.abc import Callable, Collection, Mapping, Sequence
-from numbers import Real
-from typing import Any, Literal, cast
+from collections.abc import Callable, Mapping, Sequence
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 import pandas as pd
-import plotly.colors
-import plotly.express as px
-import plotly.graph_objects as go
-import plotly.io as pio
-from plotly.subplots import make_subplots
-from plotly.validator_cache import ValidatorCache
-from pymatgen.core import Element
+from pandas.api.types import is_numeric_dtype
 
-from pymatviz.colors import ELEM_TYPE_COLORS
 from pymatviz.enums import ElemCountMode
 from pymatviz.process_data import count_elements
-from pymatviz.typing import (
-    VALID_COLOR_ELEM_STRATEGIES,
-    ColorElemTypeStrategy,
-    ElemValues,
-    PTableSplitOrientation,
-)
 from pymatviz.utils import df_ptable
-from pymatviz.utils.data import si_fmt
-from pymatviz.utils.plotting import annotated_heatmap, luminance, rgb_components
-
-
-type ColorScale = (
-    str | Sequence[str] | Sequence[tuple[float, str]] | Callable[[str, float, int], str]
+from pymatviz.widgets.periodic_table import (
+    SPLIT_LAYOUTS,
+    PeriodicTableWidget,
+    float_array,
+    normalize_tile_plot_config,
+    nullable_floats,
 )
+
+
+if TYPE_CHECKING:
+    from pymatviz.typing import ElemValues
+
+
+type ColorScale = str | dict[str, Any]
+type XYArray = Sequence[float] | np.ndarray[Any, Any]
+# (x, y) or (x, y, color_values) of one series, or an array with those rows
+type LineData = (
+    tuple[XYArray, XYArray] | tuple[XYArray, XYArray, XYArray] | np.ndarray[Any, Any]
+)
+# one series, or several keyed by name (each name gets its own color)
+type ElemData = LineData | Mapping[str, LineData]
+type TileLabels = Mapping[str, str] | Callable[[Any], str | None]
+
+# qualitative palette (d3 schemeSet2) for named series of ptable_scatter
+_SERIES_COLORS = (
+    "#66c2a5",
+    "#fc8d62",
+    "#8da0cb",
+    "#e78ac3",
+    "#a6d854",
+    "#ffd92f",
+    "#e5c494",
+    "#b3b3b3",
+)
+
+
+def _tile_labels(
+    labels: TileLabels | None, data: Mapping[str, Any]
+) -> dict[str, str] | None:
+    """Per-element labels shown under each plot tile's symbol.
+
+    A mapping is used as is, a callable is called with each element's data and
+    None or "" results are skipped.
+    """
+    if labels is None:
+        return None
+    if isinstance(labels, Mapping):
+        return {str(key): str(val) for key, val in labels.items()}
+    texts = {symbol: labels(elem_data) for symbol, elem_data in data.items()}
+    return {sym: str(text) for sym, text in texts.items() if text not in (None, "")}
+
+
+def _resolve_range(
+    name: str,
+    axis_range: tuple[float | None, float | None],
+    arrays: Sequence[np.ndarray[Any, Any]],
+) -> list[float]:
+    """Fill the None ends of a tile plot axis range from the finite data.
+
+    Mirrors matterviz resolve_range (src/lib/periodic-table/tile-plots.ts): the data
+    extent is padded by 0.5 when all values are equal and is [0, 1] without data.
+    Resolving here raises in Python instead of deferring a one-sided range that
+    ends up lo >= hi to a frontend error.
+
+    Raises:
+        ValueError: If the resolved range isn't finite with lo < hi.
+    """
+    if len(axis_range) != 2:
+        raise ValueError(f"{name} must be (lo, hi), got {axis_range!r}")
+    finite = [arr[np.isfinite(arr)] for arr in arrays]
+    finite = [arr for arr in finite if arr.size]
+    if finite:
+        data_lo = float(min(arr.min() for arr in finite))
+        data_hi = float(max(arr.max() for arr in finite))
+        if data_lo == data_hi:
+            data_lo, data_hi = data_lo - 0.5, data_hi + 0.5
+    else:
+        data_lo, data_hi = 0.0, 1.0
+    lo, hi = axis_range
+    lo = data_lo if lo is None else lo
+    hi = data_hi if hi is None else hi
+    if not (np.isfinite(lo) and np.isfinite(hi) and lo < hi):
+        raise ValueError(
+            f"{name}={axis_range} resolves to [{lo}, {hi}] with None ends taken from "
+            f"the data range [{data_lo}, {data_hi}], need finite lo < hi"
+        )
+    return [lo, hi]
 
 
 def ptable_heatmap(
     values: ElemValues,
     *,
     count_mode: ElemCountMode = ElemCountMode.composition,
-    colorscale: str | Sequence[str] | Sequence[tuple[float, str]] = "viridis",
-    show_scale: bool = True,
-    show_values: bool = True,
-    heat_mode: Literal["value", "fraction", "percent"] = "value",
-    fmt: str | Callable[[float], str] | None = None,
-    hover_props: Sequence[str] | dict[str, str] | None = None,
-    hover_data: Mapping[str, str | int | float] | pd.Series | None = None,
-    font_colors: Sequence[str] = (),
-    gap: float = 5,
-    font_size: int | None = None,
-    bg_color: str | None = None,
-    nan_color: str = "#eff",
-    colorbar: dict[str, Any] | None = None,
-    cscale_range: tuple[float | None, float | None] = (None, None),
     exclude_elements: Sequence[str] = (),
-    log: bool = False,
     fill_value: float | None = None,
-    element_symbol_map: dict[str, str] | None = None,
-    label_map: dict[str, str] | Callable[[str], str] | Literal[False] | None = None,
-    border: dict[str, Any] | Literal[False] | None = None,
-    scale: float = 1.0,
+    heat_mode: Literal["value", "fraction", "percent"] = "value",
+    log: bool = False,
+    color_scale: ColorScale = "interpolateViridis",
+    labels: Mapping[str, str] | None = None,
     **kwargs: Any,
-) -> go.Figure:
-    """Create a Plotly figure with an interactive heatmap of the periodic table.
-    Supports hover tooltips with custom data or atomic reference data like
-    electronegativity, atomic_radius, etc. See kwargs hover_data and hover_props, resp.
+) -> PeriodicTableWidget:
+    """Periodic table heatmap of element values or counts.
 
     Args:
-        values (dict[str, int | float] | pd.Series | list[str]): Map from element
-            symbols to heatmap values e.g. dict(Fe=2, O=3) or iterable of composition
-            strings or Pymatgen composition objects.
-        count_mode ("composition" | "fractional_composition" | "reduced_composition"):
-            Reduce or normalize compositions before counting. See `count_elements` for
-            details. Only used when values is list of composition strings/objects.
-        colorscale (str | list[str] | list[tuple[float, str]]): Color scale for heatmap.
-            Defaults to "viridis". See plotly.com/python/builtin-colorscales for names
-            of other builtin color scales. Note "YlGn" and px.colors.sequential.YlGn are
-            equivalent. Custom scales are specified as ["blue", "red"] or
-            [[0, "rgb(0,0,255)"], [0.5, "rgb(0,255,0)"], [1, "rgb(255,0,0)"]].
-        show_scale (bool): Whether to show a bar for the color scale. Defaults to True.
-        show_values (bool): Whether to show numbers on heatmap tiles. Defaults to True.
-        heat_mode ("value" | "fraction" | "percent" | None): Whether to display heat
-            values as is (value), normalized as a fraction of the total, as percentages
-            or not at all (None). Defaults to "value".
-            "fraction" and "percent" can be used to make the colors in different
-            periodic table heatmap plots comparable.
-        fmt (str | Callable[[float], str] | None): f-string format option for heat
-            labels. Defaults to ".1%" if heat_mode="percent" else ".1f".
-        hover_props (list[str] | dict[str, str]): Elemental properties to display in the
-            hover tooltip. Can be a list of property names to display only the values
-            themselves or a dict mapping names to what they should display as. E.g.
-            dict(atomic_mass="atomic weight") will display as `"atomic weight = {x}"`.
-            Defaults to None.
-            Available properties are: symbol, row, column, name,
-            atomic_number, atomic_mass, n_neutrons, n_protons, n_electrons, period,
-            group, phase, radioactive, natural, metal, nonmetal, metalloid, type,
-            atomic_radius, electronegativity, first_ionization, density, melting_point,
-            boiling_point, number_of_isotopes, discoverer, year, specific_heat,
-            n_shells, n_valence.
-        hover_data (dict[str, str | int | float] | pd.Series): Map from element symbols
-            to additional data to display in the hover tooltip. dict(Fe="this appears in
-            the hover tooltip on a new line below the element name"). Defaults to None.
-        font_colors (list[str]): One color name or two for [min_color, max_color].
-            min_color is applied to annotations with heatmap values less than
-            (max_val - min_val) / 2. Defaults to None, meaning auto-set to maximize
-            contrast with color scale: white text for dark background and vice versa.
-            swapped depending on the colorscale.
-        gap (float): Gap in pixels between tiles of the periodic table. Defaults to 5.
-        font_size (int): Element symbol and heat label text size. Any valid CSS size
-            allowed. Defaults to automatic font size based on plot size. Element symbols
-            will be bold and 1.5x this size.
-        bg_color (str): Plot background color. Defaults to "rgba(0, 0, 0, 0)".
-        colorbar (dict[str, Any]): Plotly colorbar properties
-            documented at https://plotly.com/python/reference#heatmap-colorbar.
-            Defaults to dict(orientation="h"). Commonly used keys are:
-            - title: colorbar title
-            - title_side: "top" | "bottom" | "right" | "left"
-            - len: fraction of plot height or width depending on orientation
-            When log=True, these keys have special handling:
-            - tickvals: tick positions in LINEAR scale (auto log-transformed internally)
-            - ticktext: custom tick labels (bypasses auto-generation if provided)
-            - tickformat: Python format string for si_fmt(), e.g. ".2f" or ".3g"
-              (NOTE: this is NOT Plotly's D3 tickformat syntax)
-        nan_color (str): Fill color for element tiles with NaN values. Defaults to
-            "#eff".
-        cscale_range (tuple[float | None, float | None]): Colorbar range. Defaults to
-            (None, None) meaning the range is automatically determined from the data.
-        exclude_elements (list[str]): Elements to exclude from the heatmap. E.g. if
-            oxygen overpowers everything, you can do exclude_elements=["O"].
-            Defaults to ().
-        log (bool): Whether to use a logarithmic color scale. Defaults to False.
-            Piece of advice: colorscale="viridis" and log=True go well together.
-            Tick labels are auto-deduplicated by increasing precision if needed.
-            Use colorbar={"tickformat": ".2f"} to control tick label precision.
-        fill_value (float | None): Value to fill in for missing elements. Defaults to 0.
-        element_symbol_map (dict[str, str] | None): A dictionary to map element symbols
-            to custom strings. If provided, these custom strings will be displayed
-            instead of the standard element symbols. Defaults to None.
-        label_map (dict[str, str] | Callable[[str], str] | None): Map heat values (after
-            string formatting) to target strings. Set to False to disable. Defaults to
-            dict.fromkeys((np.nan, None, "nan", "nan%"), "-") so as not to display "nan"
-            for missing values.
-        border (dict[str, Any]): Border properties for element tiles. Defaults to
-            dict(width=1, color="gray"). Other allowed keys are arguments of go.Heatmap
-            which is (mis-)used to draw the borders as a 2nd heatmap below the main one.
-            Pass False to disable borders.
-        scale (float): Scaling factor for whole figure layout. Defaults to 1.
-        **kwargs: Additional keyword arguments passed to
-            pymatviz.utils.plotting.annotated_heatmap().
+        values (dict[str, float] | pd.Series | list[str | Composition]): Map from
+            element symbols to heatmap values, e.g. dict(Fe=2, O=3), or a list of
+            compositions whose elements get counted (see ``count_elements``). A named
+            numeric pd.Series titles the color bar.
+        count_mode (ElemCountMode): How to count elements of compositions, see
+            ``count_elements``. Defaults to "composition".
+        exclude_elements (list[str]): Elements to leave uncolored and label "excl.",
+            e.g. ["O"] when oxygen dominates. Defaults to ().
+        fill_value (float | None): Value for elements missing from values. Defaults
+            to None, leaving them uncolored (styled by ``missing``).
+        heat_mode ("value" | "fraction" | "percent"): Show values as is, or normalized
+            to a fraction or percentage of their (finite) sum, making heatmaps of
+            different data comparable. Both default the color bar title to
+            "<Series name or Share> (%)" or "(fraction)". Defaults to "value".
+        log (bool): Log-spaced colors. Values <= 0 are left uncolored. Can't be
+            combined with heat_mode "fraction" or "percent". Defaults to False.
+        color_scale (str | dict): matterviz ColorScale: a d3 interpolator name like
+            "interpolateViridis" or a dict with keys scheme, type ("linear", "log",
+            "arcsinh"), value_range ([min, max] with None ends fitting the data) and
+            palette_range. Defaults to "interpolateViridis".
+        labels (dict[str, str]): Text by element symbol, shown only on tiles
+            without a heat value (matterviz shows the value instead), e.g. for
+            missing or excluded elements. Defaults to None ("excl." on excluded
+            tiles).
+        **kwargs: Passed to PeriodicTableWidget, e.g. color_bar=dict(title="count")
+            (None hides it), missing=dict(color="#eee"), style or tile_props, e.g.
+            tile_props=dict(float_fmt=".2f") for value labels (d3-format spec,
+            default: matterviz's auto format) or dict(show_number=False).
 
     Returns:
-        Figure: Plotly Figure object.
+        PeriodicTableWidget: Interactive periodic table heatmap.
+
+    Raises:
+        ValueError: For log with heat_mode "fraction"/"percent" or a non-log color
+            scale type, an unknown heat_mode, keys that aren't element symbols, no
+            finite values or a zero sum to normalize by.
     """
     if log and heat_mode in ("fraction", "percent"):
         raise ValueError(
             "Combining log color scale and heat_mode='fraction'/'percent' unsupported"
         )
-    if len(cscale_range) != 2:
-        raise ValueError(f"{cscale_range=} should have length 2")
+    if heat_mode not in ("value", "fraction", "percent"):
+        raise ValueError(f"{heat_mode=} must be 'value', 'fraction' or 'percent'")
+    is_numeric = isinstance(values, pd.Series) and is_numeric_dtype(values)
+    title = values.name if is_numeric else None
 
-    if isinstance(colorscale, str | type(None)):
-        colorscale = px.colors.get_colorscale(colorscale or "viridis")
-    elif not isinstance(colorscale, Sequence) or not isinstance(
-        colorscale[0], str | list | tuple
-    ):
-        raise TypeError(
-            f"{colorscale=} should be string, list of strings or list of "
-            "tuples(float, str)"
+    counts = count_elements(values, count_mode, exclude_elements, fill_value)
+    if heat_mode != "value":
+        total = counts[np.isfinite(counts)].sum()
+        if total == 0:
+            raise ValueError(f"{heat_mode=} needs values with a nonzero sum")
+        counts = counts / total
+        if heat_mode == "percent":
+            counts *= 100
+        # tiles show bare numbers, so the color bar title carries the unit
+        unit = "%" if heat_mode == "percent" else "fraction"
+        title = f"{'Share' if title is None else title} ({unit})"
+    heatmap_values = {
+        str(symbol): val
+        for symbol, val in zip(
+            counts.index, nullable_floats(counts, "values"), strict=True
         )
-
-    colorbar = dict(colorbar or {})  # copy to avoid mutating caller's dict
-    colorbar.setdefault("orientation", "h")
-    # if values is a series with a name, use it as the colorbar title
-    if isinstance(values, pd.Series) and values.name:
-        colorbar.setdefault("title", values.name)
-
-    values = count_elements(values, count_mode, exclude_elements, fill_value)
-
-    if heat_mode in ("fraction", "percent"):
-        # normalize heat values
-        clean_vals = values.replace([np.inf, -np.inf], np.nan).dropna()
-        # ignore inf values in sum() else all would be set to 0 by normalizing
-        heat_value_element_map = values / clean_vals.sum()
-    else:
-        heat_value_element_map = values
-
-    hover_prop_labels: dict[str, str] = {}
-    if hover_props is not None:
-        if unsupported_keys := set(hover_props) - set(df_ptable):
-            raise ValueError(
-                f"Unsupported hover_props: {', '.join(unsupported_keys)}. Available"
-                f" keys are: {', '.join(df_ptable)}.\nNote that some keys have "
-                "missing values."
-            )
-        if isinstance(hover_props, dict):
-            hover_prop_labels = hover_props
-        elif isinstance(hover_props, list | tuple):
-            hover_prop_labels = {col_name: col_name for col_name in hover_props}
-        else:
-            raise ValueError(
-                f"hover_props must be dict or sequence of str, got {hover_props}"
-            )
-
-    n_rows, n_columns = 10, 18
-    # initialize tile text and hover tooltips to empty strings
-    tile_texts, hover_texts = np.full([2, n_rows, n_columns], "", dtype=object)
-    heatmap_values = np.full([n_rows, n_columns], np.nan)
-
-    if label_map is None:
-        # default to space string for None, np.nan and "nan". space is needed
-        # for <br> in tile_text to work so all element symbols are vertically aligned
-        label_map = dict.fromkeys([np.nan, None, "nan", "nan%"], "-")  # ty: ignore[invalid-assignment]
-
-    # count_elements returns float64, so detect integer-valued data by remainder.
-    # inf % 1 is NaN, so inf values correctly fail this check.
-    all_ints = bool((values.dropna() % 1 == 0).all())
-    counts_total = values.sum()
-    for symbol, period, group, name, *_ in df_ptable.itertuples():
-        # build table from bottom up so that period 1 becomes top row
-        row = n_rows - period
-        col = group - 1
-
-        label = ""  # label (if not None) is placed below the element symbol
-        if show_values:
-            # NaN flows through to label_map below (default maps "nan" to "-") and
-            # zero must not be dropped, so only skip absent elements here
-            if symbol in exclude_elements:
-                label = "excl."
-            elif (heat_val := heat_value_element_map.get(symbol)) is not None:
-                if isinstance(fmt, Callable):
-                    format_func = cast("Callable[[float], str]", fmt)
-                    label = format_func(heat_val)
-                elif heat_mode == "percent":
-                    label = f"{heat_val:{fmt or '.1%'}}"
-                else:
-                    fmt_str = fmt if isinstance(fmt, str) else ".1f"
-                    label = f"{si_fmt(heat_val, fmt=fmt_str)}".replace("e+0", "e")
-
-            if isinstance(label_map, Callable):
-                label_mapper = cast("Callable[[str], str]", label_map)
-                label = label_mapper(label)
-            elif isinstance(label_map, dict) and label in label_map:
-                label = str(label_map[label])
-        # Apply custom element symbol if provided
-        display_symbol = (element_symbol_map or {}).get(symbol, symbol)
-
-        style = f"font-weight: bold; font-size: {1.5 * (font_size or 12) * scale};"
-        tile_text = f"<span {style=}>{display_symbol}</span>"
-        if show_values and label:
-            tile_text += f"<br>{label}"
-
-        tile_texts[row][col] = tile_text
-
-        hover_text = f"{name} ({symbol})"
-
-        heat_val = heat_value_element_map.get(symbol)
-        if heat_val is not None and not pd.isna(heat_val):  # hide absent/NaN elements
-            if heat_mode == "value" and all_ints:
-                # if all values are integers, values are likely element
-                # counts, so makes sense to show count and percentage
-                percentage = heat_val / counts_total
-                hover_text += f"<br>Value: {heat_val:.0f} ({percentage:.2%})"
-            elif heat_mode == "value":
-                hover_text += f"<br>Value: {heat_val:.3g}"
-            else:  # heat_mode in ("fraction", "percent")
-                hover_text += f"<br>Percentage: {heat_val:.2%} ({values[symbol]:.3g})"
-
-        if hover_data is not None and symbol in hover_data:
-            hover_text += f"<br>{hover_data[symbol]}"
-
-        df_row = df_ptable.loc[symbol]
-        for col_name, col_label in hover_prop_labels.items():
-            hover_text += f"<br>{col_label} = {df_row[col_name]}"
-
-        hover_texts[row][col] = hover_text
-
-        if symbol in exclude_elements:
-            continue
-
-        color_val = heat_value_element_map[symbol]
-        heatmap_values[row][col] = (
-            np.log10(color_val) if log and color_val > 0 else color_val
-        )
-
-    if isinstance(font_colors, str):
-        font_colors = [font_colors]
-
-    non_nan_values = [val for val in heatmap_values.flat if not np.isnan(val)]
-
-    cscale_min, cscale_max = cscale_range
-    if log:  # heatmap_values are log10-transformed, so cscale_range must be too
-        if any(bound is not None and bound <= 0 for bound in cscale_range):
-            raise ValueError(f"{cscale_range=} bounds must be positive when log=True")
-        cscale_min = None if cscale_min is None else np.log10(cscale_min)
-        cscale_max = None if cscale_max is None else np.log10(cscale_max)
-
-    zmin = min(non_nan_values) if cscale_min is None else cscale_min
-    zmax = max(non_nan_values) if cscale_max is None else cscale_max
-    car_multiplier = 100 if heat_mode == "percent" else 1
-
-    fig = annotated_heatmap(
-        car_multiplier * heatmap_values,
-        annotation_text=tile_texts,
-        text=hover_texts,
-        showscale=show_scale,
-        colorscale=colorscale,
-        font_colors=font_colors or None,
-        hoverinfo="text",
-        xgap=gap,
-        ygap=gap,
-        zauto=False,  # Disable auto-scaling
-        zmin=zmin * car_multiplier,
-        zmax=zmax * car_multiplier,
-        **kwargs,
-    )
-
-    # Add border heatmap
-    if border is not False:
-        border = dict(border or {})  # copy to avoid mutating caller's dict
-        border_color = border.pop("color", "darkgray")
-        border_width = border.pop("width", 0.5)
-
-        common_kwargs = dict(
-            z=np.where(tile_texts, 1, np.nan), showscale=False, hoverinfo="none"
-        )
-        # misuse heatmap to add borders around all element tiles
-        # 1st one adds the fill color for NaN element tiles, 2nd one adds the border
-        fig.add_heatmap(
-            **common_kwargs,
-            colorscale=[nan_color, nan_color],
-            xgap=gap,
-            ygap=gap,
-        )
-        fig.add_heatmap(
-            **common_kwargs,
-            colorscale=[border_color, border_color],
-            xgap=gap - border_width,
-            ygap=gap - border_width,
-            **border,
-        )
-
-        # reverse fig.data to place the border heatmap below the main heatmap
-        fig.data = fig.data[::-1]
-
-    fig.update_layout(
-        margin=dict(l=10, r=10, t=10, b=10, pad=10),
-        paper_bgcolor=bg_color,
-        plot_bgcolor="rgba(0, 0, 0, 0)",
-        xaxis=dict(zeroline=False, showgrid=False),
-        yaxis=dict(zeroline=False, showgrid=False, scaleanchor="x"),
-        font_size=(font_size or 12) * scale,
-        width=900 * scale,
-        height=500 * scale,
-        title=dict(x=0.4, y=0.95),
-    )
-
-    colorbar = _place_colorbar_title(colorbar, horizontal_y=0.72)
+        if val is not None
+    }
+    if not heatmap_values:
+        raise ValueError(f"ptable_heatmap: no finite values in {values=}")
 
     if log:
-        orig_min = np.floor(min(non_nan_values))
-        orig_max = np.ceil(max(non_nan_values))
-        tick_values = np.logspace(orig_min, orig_max, num=10, endpoint=True)
-        tick_values = [round(val, -int(np.floor(np.log10(val)))) for val in tick_values]
-        tick_values = [
-            float(val)
-            for val in cast("Sequence[Any]", colorbar.pop("tickvals", tick_values))
-        ]
-        if any(val <= 0 for val in tick_values):
+        scale = {"scheme": color_scale} if isinstance(color_scale, str) else color_scale
+        if scale.get("type", "log") != "log":
             raise ValueError(
-                f"tickvals must be positive for log scale, got {tick_values}"
+                f"log=True conflicts with color scale type {scale['type']}"
             )
-        tick_fmt = str(colorbar.pop("tickformat", ".0f"))
-        custom_ticktext = colorbar.pop("ticktext", None)
-
-        if custom_ticktext is not None:
-            if isinstance(custom_ticktext, str):
-                custom_ticktext = [custom_ticktext]
-            ticktext = [str(tick) for tick in custom_ticktext]  # ty: ignore[not-iterable]
-        else:
-            # Auto-increase precision to avoid duplicate labels
-            # Extract precision and format type from format like ".2f" or ".10g"
-            precision = 0
-            fmt_type = "f"  # default to fixed-point
-            for char in tick_fmt[1:]:
-                if char.isdigit():
-                    precision = precision * 10 + int(char)
-                elif char in "fegFEG":  # valid format types
-                    fmt_type = char
-                    break
-            for _ in range(7):  # max 6 decimal places
-                ticktext = [
-                    si_fmt(v * car_multiplier, fmt=tick_fmt) for v in tick_values
-                ]
-                if len(ticktext) == len(set(ticktext)):
-                    break
-                precision += 1
-                tick_fmt = f".{precision}{fmt_type}"
-
-        colorbar = dict(tickvals=np.log10(tick_values), ticktext=ticktext, **colorbar)
-
-    # suffix % to colorbar title if heat_mode is "percent"
-    if heat_mode == "percent" and (cbar_title := colorbar.get("title")):
-        colorbar["title"] = f"{cbar_title} (%)"
-
-    cbar_settings = _get_colorbar_settings(colorbar, font_size=font_size, scale=scale)
-
-    if show_scale:
-        fig.update_traces(colorbar=cbar_settings)
-
-    return fig
-
-
-def _row_7_is_empty(symbols: Collection[str]) -> bool:
-    """Whether period-7 elements (Fr, Ra, Z 104-118) are all absent from the data."""
-    period_7 = {el.symbol for el in Element if el.Z in (87, 88, *range(104, 119))}
-    return not (set(symbols) & period_7)
-
-
-def _subplot_xy_ref(row: int, col: int, n_cols: int, *, domain: bool) -> dict[str, str]:
-    """Plotly xref/yref for the 0-indexed subplot (row, col) of a ptable grid.
-
-    domain=True gives domain-relative refs (0-1 spans the whole tile).
-    """
-    subplot_idx = row * n_cols + col + 1
-    subplot_key = subplot_idx if subplot_idx != 1 else ""
-    suffix = " domain" if domain else ""
-    return dict(xref=f"x{subplot_key}{suffix}", yref=f"y{subplot_key}{suffix}")
-
-
-def _template_line_color() -> str:
-    """Axis line color of the current default plotly template."""
-    return pio.templates[pio.templates.default].layout.xaxis.linecolor
-
-
-def _resolve_elem_type_colors(
-    color_elem_strategy: ColorElemTypeStrategy,
-    elem_type_colors: dict[str, str] | None = None,
-) -> dict[str, str]:
-    """Resolve the element-type color map from a `color_elem_strategy` value.
-
-    A caller-provided ``elem_type_colors`` override takes precedence when given.
-    """
-    if elem_type_colors is not None:
-        return elem_type_colors
-    if isinstance(color_elem_strategy, dict):
-        return color_elem_strategy
-    if color_elem_strategy in VALID_COLOR_ELEM_STRATEGIES:
-        return ELEM_TYPE_COLORS
-    raise ValueError(
-        f"{color_elem_strategy=} must be one of {VALID_COLOR_ELEM_STRATEGIES}"
-    )
-
-
-def ptable_hists(
-    data: (
-        pd.DataFrame
-        | pd.Series
-        | Mapping[str, Sequence[int | float] | np.ndarray[Any, Any]]
-    ),
-    *,
-    # Histogram-specific
-    bins: int = 20,
-    x_range: tuple[float | None, float | None] | None = None,
-    log: bool = False,
-    colorscale: str = "RdBu",
-    colorbar: dict[str, Any] | Literal[False] | None = None,
-    hide_f_block: bool | Literal["auto"] = False,
-    # Layout
-    font_size: int | None = None,
-    scale: float = 1.0,
-    # Symbol
-    element_symbol_map: dict[str, str] | None = None,
-    symbol_kwargs: dict[str, Any] | None = None,
-    # Annotation
-    annotations: dict[str, str | dict[str, Any]]
-    | Callable[[Sequence[float]], str | dict[str, Any] | list[dict[str, Any]]]
-    | None = None,
-    # Element type colors
-    color_elem_strategy: ColorElemTypeStrategy = "background",
-    elem_type_colors: dict[str, str] | None = None,
-    subplot_kwargs: dict[str, Any] | None = None,
-    x_axis_kwargs: dict[str, Any] | None = None,
-    y_axis_kwargs: dict[str, Any] | None = None,
-) -> go.Figure:
-    """Plotly figure with histograms for each element laid out in a periodic table.
-
-    Args:
-        data (pd.DataFrame | pd.Series | dict[str, Sequence | ndarray]): Map from
-            element symbols to histogram values. E.g. {"Fe": [1, 2, 3], "O": [4, 5]}.
-            Values can be lists or numpy arrays. If pd.Series, index is element symbols
-            and values lists. If pd.DataFrame, column names are element symbols and
-            histograms are plotted from each column.
-
-        --- Histogram-specific ---
-        bins (int): Number of bins for the histograms. Defaults to 20.
-        x_range (tuple[float | None, float | None]): x-axis range for all histograms.
-            Defaults to None.
-        log (bool): Whether to log scale y-axis of each histogram. Defaults to False.
-        colorscale (str): Color scale for histogram bars. Defaults to "RdBu" (red to
-            blue). See plotly.com/python/builtin-colorscales for other options.
-        colorbar (dict[str, Any] | None): Plotly colorbar properties. Defaults to
-            dict(orientation="h"). See https://plotly.com/python/reference#heatmap-colorbar
-            for available options. Set to False to hide the colorbar.
-        hide_f_block (bool | "auto"): Whether to hide the F-block elements. If "auto",
-            hide F-block elements if row 7 is empty. Defaults to False.
-
-        --- Layout ---
-        font_size (int): Element symbol and annotation text size. Defaults to automatic
-            font size based on plot size.
-        scale (float): Scaling factor for whole figure layout. Defaults to 1.
-
-        --- Text ---
-        element_symbol_map (dict[str, str] | None): A dictionary to map element symbols
-            to custom strings. If provided, these custom strings will be displayed
-            instead of the standard element symbols. Defaults to None.
-        symbol_kwargs (dict): Additional keyword arguments for element symbol text.
-        annotations (dict[str, str] | Callable[[np.ndarray], str] | None): Annotation to
-            display for each element tile. Can be either:
-            - dict mapping element symbols to annotation strings
-            - callable that takes histogram values and returns annotation string
-            - None for not displaying annotations (default)
-
-        --- Element type colors ---
-        color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
-            color element symbols, tile backgrounds, or both based on element type.
-            Defaults to "background".
-        elem_type_colors (dict | None): dict to map element types to colors.
-            None to use the default = pymatviz.colors.ELEM_TYPE_COLORS.
-        subplot_kwargs (dict | None): Additional keywords passed to make_subplots(). Can
-            be used e.g. to toggle shared x/y-axes.
-        x_axis_kwargs (dict | None): Additional keywords for x-axis like tickfont,
-            showticklabels, nticks, tickformat, tickangle.
-        y_axis_kwargs (dict | None): Additional keywords for y-axis.
-
-    Returns:
-        go.Figure: Plotly Figure object with histograms in a periodic table layout.
-    """
-    if isinstance(data, pd.DataFrame):
-        data = data.to_dict("list")
-    elif isinstance(data, pd.Series):
-        data = data.to_dict()
-
-    elem_type_colors = _resolve_elem_type_colors(color_elem_strategy, elem_type_colors)
-
-    # Initialize figure with subplots in periodic table layout
-    n_rows, n_cols = 10, 18
-    subplot_defaults = dict(
-        vertical_spacing=0.25 / n_rows,
-        horizontal_spacing=0.25 / n_cols,
-        shared_xaxes=True,
-        shared_yaxes=True,
-    )
-    fig = make_subplots(
-        rows=n_rows, cols=n_cols, **subplot_defaults | (subplot_kwargs or {})
-    )
-
-    all_values = [val for vals in data.values() for val in vals if not pd.isna(val)]
-    data_min, data_max = (min(all_values), max(all_values)) if all_values else (0, 1)
-    lower, upper = x_range if x_range is not None else (None, None)
-    bin_edges = np.histogram_bin_edges(
-        all_values,
-        bins=bins,
-        range=(
-            data_min if lower is None else lower,
-            data_max if upper is None else upper,
-        ),
-    )
-    bin_start, bin_end = bin_edges[0], bin_edges[-1]
-
-    # If row 7 is empty, pull all rows below it up by one.
-    row_7_is_empty = _row_7_is_empty(data)
-
-    # collect annotations/shapes and batch-assign after the loop (_extend_layout_items)
-    tile_annotations: list[dict[str, Any]] = []
-    tile_shapes: list[dict[str, Any]] = []
-
-    bar_colors = px.colors.sample_colorscale(colorscale, bins)
-
-    for symbol, period, group, *_ in df_ptable.itertuples():
-        row, col = period - 1, group - 1  # row, col are 0-indexed
-
-        if hide_f_block in ("auto", True) and row in (6, 7) and 3 <= col <= 17:
-            continue
-
-        if row_7_is_empty and row >= 6:
-            row -= 1
-
-        xy_ref = _subplot_xy_ref(row, col, n_cols, domain=True)
-
-        elem_type = df_ptable.loc[symbol].get("type", None)
-        if bg_shape := _make_elem_type_background(
-            elem_type, elem_type_colors, color_elem_strategy, xy_ref=xy_ref
-        ):
-            tile_shapes.append(bg_shape)
-
-        # Skip if no data for this element
-        if data.get(symbol) is None:
-            continue
-
-        values = np.asarray(data[symbol])
-        values = values[~np.isnan(values)]
-
-        display_symbol = (element_symbol_map or {}).get(symbol, symbol)
-
-        hover_template = (
-            f"<b>{display_symbol}</b>"
-            if display_symbol == symbol
-            else f"<b>{display_symbol}</b> ({symbol})"
-        ) + "<br>Range: %{x}<br>Count: %{y}<extra></extra>"
-
-        fig.add_histogram(
-            x=values,
-            xbins=dict(start=bin_start, end=bin_end, size=(bin_end - bin_start) / bins),
-            marker_color=bar_colors,
-            showlegend=False,
-            hovertemplate=hover_template,
-            row=row + 1,
-            col=col + 1,
-        )
-
-        font_color = "lightgray"
-        symbol_style = {
-            "font_size": (font_size or 10) * scale,
-            "font_weight": "bold",
-            "xanchor": "left",
-            "yanchor": "top",
-            "font_color": elem_type_colors.get(elem_type, font_color)
-            if color_elem_strategy in {"symbol", "both"}
-            else font_color,
-            "x": 0,
-            "y": 1,
-        } | (symbol_kwargs or {})
-
-        tile_annotations.append(
-            dict(
-                text=display_symbol,
-                **xy_ref,
-                showarrow=False,
-                **symbol_style,
-            )
-        )
-
-        tile_annotations += _make_custom_annotations(
-            annotations,
-            symbol=symbol,
-            elem_values=values,
-            xy_ref=xy_ref,
-            font_size=font_size,
-            scale=scale,
-        )
-
-    _extend_layout_items(fig, annotations=tile_annotations, shapes=tile_shapes)
-
-    if colorbar is not False:
-        cbar_settings = _get_colorbar_settings(
-            colorbar, font_size=font_size, scale=scale
-        )
-        _add_colorbar_trace(
-            fig,
-            colorscale,
-            cmin=bin_start,
-            cmax=bin_end,
-            colorbar=cbar_settings,
-            row=n_rows,
-            col=n_cols,
-        )
-
-    fig.layout.margin = dict(l=10, r=10, t=10, b=10)
-    fig.layout.paper_bgcolor = fig.layout.plot_bgcolor = "rgba(0,0,0,0)"
-    fig.layout.width = 900 * scale
-    fig.layout.height = 500 * scale
-
-    template_line_color = _template_line_color()
-
-    y_axis_kwargs = dict(
-        showticklabels=False,
-        showgrid=False,
-        zeroline=False,
-        ticks="",
-        showline=False,  # remove axis lines
-        type="log" if log else "linear",
-        linecolor=template_line_color,
-    ) | (y_axis_kwargs or {})
-    fig.update_yaxes(**y_axis_kwargs)
-    x_axis_kwargs = dict(
-        showgrid=False,  # hide grid lines
-        showline=True,  # show axis line
-        linecolor=template_line_color,
-        zeroline=False,
-        ticklen=4,
-        ticks="inside",  # move ticks to inside
-        mirror=False,  # only show edge line
-        tickwidth=1,
-        tickcolor=template_line_color,
-        tickmode="auto",
-        showticklabels=True,  # show x tick labels on all subplots
-        nticks=3,
-        tickformat=".2g",
-        tickfont=dict(size=9 * scale),
-    ) | (x_axis_kwargs or {})
-    fig.update_xaxes(**x_axis_kwargs)
-
-    if colorbar is not False and log:
-        fig.update_xaxes(tickformat=".4s")
-
-    return fig
-
-
-def _make_elem_type_background(
-    elem_type: str | None,
-    elem_type_colors: dict[str, str],
-    color_elem_strategy: ColorElemTypeStrategy,
-    *,
-    xy_ref: dict[str, str],
-) -> dict[str, Any] | None:
-    """Build a translucent element-type background rect dict for a ptable subplot tile.
-
-    Returns a shape dict (or None) so callers can batch-assign via fig.layout.shapes
-    in one update (fig.add_shape() per tile is O(n^2) since plotly re-validates the
-    whole shapes array on each call). The xref/yref in xy_ref (domain refs) fully
-    determine placement, so no row/col is needed.
-    """
-    if elem_type in elem_type_colors and color_elem_strategy in {"background", "both"}:
-        return dict(
-            type="rect",
-            x0=0,
-            y0=0,
-            x1=1,
-            y1=1,
-            fillcolor=elem_type_colors[elem_type],
-            line_width=0,
-            layer="below",
-            **xy_ref,
-            opacity=0.05,
-        )
-    return None
-
-
-def _make_custom_annotations(
-    annotations: dict[str, Any] | Callable[[Any], Any] | None,
-    *,
-    symbol: str,
-    elem_values: Any,
-    xy_ref: dict[str, str],
-    font_size: int | None,
-    scale: float,
-    extra_defaults: dict[str, Any] | None = None,
-) -> list[dict[str, Any]]:
-    """Build user-provided per-element annotation dicts for a ptable subplot tile.
-
-    annotations can be a dict keyed by element symbol or a callable receiving
-    that element's values and returning str | dict | list thereof. Returns a list
-    of annotation dicts so callers can batch-assign them in a single
-    fig.layout.annotations update (adding one at a time via fig.add_annotation is
-    O(n^2) since plotly re-validates the whole array on each call).
-    """
-    if isinstance(annotations, dict):
-        annotation = cast("dict[str, Any]", annotations).get(symbol, "")
-    elif callable(annotations):
-        annotation = annotations(elem_values)
-    else:
-        return []
-
-    # annotation can be str | dict | list thereof, anything else is ignored
-    if not annotation:
-        return []
-    if isinstance(annotation, str | dict):
-        annotation = [annotation]
-    elif not isinstance(annotation, list) or not all(
-        isinstance(item, str | dict) for item in annotation
-    ):
-        return []
-
-    anno_defaults: dict[str, Any] = {
-        "font_size": (font_size or 8) * scale,
-        "x": 0.95,
-        "y": 0.95,
-        "showarrow": False,
-        "xanchor": "right",
-        "yanchor": "top",
-    } | (extra_defaults or {})
-    return [
-        anno_defaults | xy_ref | (anno if isinstance(anno, dict) else {"text": anno})
-        for anno in annotation
-    ]
-
-
-def _extend_layout_items(
-    fig: go.Figure,
-    *,
-    annotations: list[dict[str, Any]] | None = None,
-    shapes: list[dict[str, Any]] | None = None,
-) -> None:
-    """Append annotations/shapes in one assignment each, preserving existing items.
-
-    Avoids the O(n^2) cost of calling fig.add_annotation()/fig.add_shape() per tile.
-    """
-    if annotations:
-        fig.layout.annotations = list(fig.layout.annotations) + annotations
-    if shapes:
-        fig.layout.shapes = list(fig.layout.shapes) + shapes
-
-
-def _add_colorbar_trace(
-    fig: go.Figure,
-    colorscale: ColorScale,
-    cmin: float,
-    cmax: float,
-    colorbar: dict[str, Any],
-    row: int | None = None,
-    col: int | None = None,
-    split_idx: int = 0,
-) -> None:
-    """Add an invisible scatter trace with a colorbar to the figure."""
-    # For callable colorscales, sample at endpoints to create a 2-point colorscale
-    if callable(colorscale):
-        color_fn = cast("Callable[[str, float, int], str]", colorscale)
-        colorscale = [
-            (0, color_fn("", cmin, split_idx)),
-            (1, color_fn("", cmax, split_idx)),
-        ]
-
-    if row is not None and col is not None:
-        # Hide the axes for the invisible scatter trace
-        fig.update_xaxes(visible=False, row=row, col=col)
-        fig.update_yaxes(visible=False, row=row, col=col)
-    fig.add_scatter(
-        x=[None],
-        y=[None],
-        mode="markers",
-        marker=dict(
-            size=0,
-            color=[cmin, cmax],
-            colorscale=colorscale,
-            showscale=True,
-            cmin=cmin,
-            cmax=cmax,
-            colorbar=colorbar,
-        ),
-        showlegend=False,
-        hoverinfo="none",
-        row=row,
-        col=col,
-    )
-
-
-def _place_colorbar_title(
-    colorbar: dict[str, Any], *, horizontal_y: float
-) -> dict[str, Any]:
-    """Default a horizontal colorbar's y position (other orientation defaults come
-    from _get_colorbar_settings) and pad vertical colorbar titles with <br>s for
-    standoff.
-    """
-    horizontal = colorbar.get("orientation") == "h"
-    if horizontal:
-        colorbar = dict(y=horizontal_y) | colorbar
-    if title := colorbar.get("title"):
-        colorbar["title"] = f"{title}" if horizontal else f"<br><br>{title}"
-    return colorbar
-
-
-def _get_colorbar_settings(
-    colorbar: dict[str, Any] | None,
-    *,
-    split_idx: int = 0,
-    n_splits: int = 1,
-    split_name: str | None = None,
-    font_size: int | None = None,
-    scale: float = 1.0,
-) -> dict[str, Any]:
-    """Get colorbar settings with consistent positioning logic."""
-    cbar_settings = dict(
-        lenmode="fraction",
-        thickness=15,
-        title_font_size=scale * 1.2 * (font_size or 12),
-        tickformat="~s",  # SI suffix (k=1000, M=1e6, G=1e9, etc.)
-    ) | (colorbar or {})
-
-    # Only apply orientation-specific defaults for values not set by user
-    horizontal = cbar_settings.get("orientation") == "h"
-    if horizontal:
-        h_defaults = dict(len=0.4, x=0.4, y=0.76 - split_idx * 0.1, title_side="top")
-        cbar_settings = h_defaults | cbar_settings
-    else:
-        bar_len = 0.87 / max(1, n_splits)
-        v_defaults = dict(
-            len=bar_len, x=1.02 + split_idx * 0.15, y=0.5, title_side="right"
-        )
-        cbar_settings = v_defaults | cbar_settings
-
-    if title := cbar_settings.get("title"):
-        title_text = title.get("text", "") if isinstance(title, dict) else title
-        if split_name:
-            title_text = title_text or split_name
-        cbar_settings["title"] = dict(text=title_text)
-    elif split_name:
-        cbar_settings["title"] = dict(text=split_name)
-
-    return cbar_settings
-
-
-def _is_multi_colorscale(obj: object) -> bool:
-    """Distinguish per-split scales from color tokens and positioned stops."""
-    if not isinstance(obj, Sequence) or isinstance(obj, str):
-        return False
-    names = set(plotly.colors.named_colorscales())
-    return all(
-        callable(item)
-        or (isinstance(item, str) and item.lower().removesuffix("_r") in names)
-        or (
-            isinstance(item, Sequence)
-            and not isinstance(item, str)
-            and not (len(item) == 2 and isinstance(item[0], Real))
-        )
-        for item in obj
-    )
-
-
-def _split_section_coords(
-    n_splits: int,
-    orientation: PTableSplitOrientation,
-) -> list[tuple[list[float], list[float]]]:
-    """Generate x,y coordinates to split a unit square into n equal sections."""
-    if orientation == "grid":
-        if n_splits != 4:
-            raise ValueError(
-                f"{orientation=} is only supported for n_splits=4, got {n_splits=}"
-            )
-        return [  # Split into 2x2 grid of squares (y=1 is the tile top)
-            ([0, 0.5, 0.5, 0], [0.5, 0.5, 1, 1]),  # top-left
-            ([0.5, 1, 1, 0.5], [0.5, 0.5, 1, 1]),  # top-right
-            ([0, 0.5, 0.5, 0], [0, 0, 0.5, 0.5]),  # bottom-left
-            ([0.5, 1, 1, 0.5], [0, 0, 0.5, 0.5]),  # bottom-right
-        ]
-
-    if orientation == "horizontal":
-        # Split into equal horizontal strips
-        height = 1 / n_splits
-        return [
-            (
-                [0.0, 1.0, 1.0, 0.0],  # x-coordinates
-                [ii * height, ii * height, (ii + 1) * height, (ii + 1) * height],
-            )
-            for ii in range(n_splits)
-        ][::-1]  # reverse to maintain top-to-bottom order
-
-    if orientation == "vertical":
-        # Split into equal vertical strips
-        width = 1 / n_splits
-        return [
-            (
-                [ii * width, (ii + 1) * width, (ii + 1) * width, ii * width],
-                [0.0, 0.0, 1.0, 1.0],  # y-coordinates
-            )
-            for ii in range(n_splits)
-        ]
-
-    # orientation == "diagonal"
-    if n_splits == 2:
-        return [
-            ([0, 0, 1, 0], [0, 1, 1, 0]),  # top-left triangle
-            ([0, 1, 1, 0], [0, 0, 1, 0]),  # bottom-right triangle
-        ]
-    mid = 0.5
-    if n_splits == 3:
-        return [  # upside-down Y-shaped split
-            ([0, 1, 1, mid, 0, 0], [0, 0, 0.3, mid, 0.3, 0]),  # bottom
-            ([0, mid, mid, 0, 0, 0], [1, 1, mid, 0.3, 0, 1]),  # top-left
-            ([1, mid, mid, 1, 1, 1], [1, 1, mid, 0.3, 1, 1]),  # top-right
-        ]
-    # n_splits == 4, diagonal orientation
-    return [  # split square into 4 equal triangles whose tips meet at center
-        ([0, 1, mid, 0], [0, 0, mid, 0]),  # bottom
-        ([0, 0, mid, 0], [0, 1, mid, 0]),  # left
-        ([1, 1, mid, 1], [0, 1, mid, 0]),  # right
-        ([0, 1, mid, 0], [1, 1, mid, 1]),  # top
-    ]
-
-
-def _split_label_position(
-    orientation: PTableSplitOrientation, n_splits: int, idx: int
-) -> dict[str, Any]:
-    """Position and anchors of the value label for split idx inside a unit tile.
-
-    Matches the section order of _split_section_coords.
-    """
-    strip_size = 1 / n_splits
-    if orientation == "horizontal":  # top-left of each strip, strips top to bottom
-        y_pos = 1 - idx * strip_size - 0.05
-        return dict(x=0.05, y=y_pos, xanchor="left", yanchor="top")
-    if orientation == "vertical":  # top-left of each strip, strips left to right
-        x_pos = idx * strip_size + 0.05
-        return dict(x=x_pos, y=0.95, xanchor="left", yanchor="top")
-    if orientation == "grid":  # reading order, n_splits must be 4
-        return dict(
-            x=(0.05, 0.95)[idx % 2],
-            y=(0.95, 0.05)[idx // 2],
-            xanchor=("left", "right")[idx % 2],
-            yanchor=("top", "bottom")[idx // 2],
-        )
-    # diagonal
-    if n_splits == 2:  # top-left, bottom-right
-        return dict(
-            x=(0, 1)[idx],
-            y=(1, 0)[idx],
-            xanchor=("left", "right")[idx],
-            yanchor=("top", "bottom")[idx],
-        )
-    if n_splits == 3:  # bottom, top-left, top-right
-        return dict(
-            x=(0.5, 0.05, 0.95)[idx],
-            y=(0.05, 0.95, 0.95)[idx],
-            xanchor=("center", "left", "right")[idx],
-            yanchor=("bottom", "top", "top")[idx],
-        )
-    # n_splits == 4: bottom, left, right, top
-    return dict(
-        x=(0.5, 0.05, 0.95, 0.5)[idx],
-        y=(0.05, 0.5, 0.5, 0.95)[idx],
-        xanchor=("center", "left", "right", "center")[idx],
-        yanchor=("bottom", "middle", "middle", "top")[idx],
+        color_scale = {**scale, "type": "log"}
+    if title is not None and (color_bar := kwargs.get("color_bar", {})) is not None:
+        kwargs["color_bar"] = {"title": str(title)} | color_bar
+    tile_labels = dict.fromkeys(exclude_elements, "excl.") | dict(labels or {})
+    return PeriodicTableWidget(
+        heatmap_values=heatmap_values,
+        color_scale=color_scale,
+        labels=tile_labels,
+        **kwargs,
     )
 
 
 def ptable_heatmap_splits(
-    data: (
-        pd.DataFrame
-        | pd.Series
-        | Mapping[str, Sequence[int | float] | np.ndarray[Any, Any]]
-    ),
+    data: pd.DataFrame | pd.Series | Mapping[str, XYArray],
     *,
-    # Split
-    orientation: PTableSplitOrientation = "diagonal",
-    # Figure
-    colorscale: ColorScale | Sequence[ColorScale] = "Viridis",
-    colorbar: dict[str, Any] | Sequence[dict[str, Any]] | Literal[False] | None = None,
-    on_empty: Literal["hide", "show"] = "hide",
-    hide_f_block: bool | Literal["auto"] = "auto",
-    # Layout
-    font_size: int | None = None,
-    scale: float = 1.0,
-    # Symbol
-    element_symbol_map: dict[str, str] | None = None,
-    symbol_kwargs: dict[str, Any] | None = None,
-    # Annotation
-    annotations: dict[str, str | dict[str, Any]]
-    | Callable[[np.ndarray], str | dict[str, Any]]
-    | None = None,
-    # Hover tooltip
-    hover_template: str | None = None,
-    hover_fmt: str | Callable[[float], str] = ".3g",
-    split_value_fmt: str | Sequence[str] | None = ".3g",
-    # Additional options
-    nan_color: str = "#eff",
-    zero_color: str = "#aaa",
-    hover_data: Mapping[str, str | int | float] | pd.Series | None = None,
-    subplot_kwargs: dict[str, Any] | None = None,
-) -> go.Figure:
-    """Create a Plotly figure with an interactive heatmap of the periodic table,
-    where each element tile is split into sections representing different values.
+    split_layout: str | None = None,
+    color_scale: ColorScale = "interpolateViridis",
+    **kwargs: Any,
+) -> PeriodicTableWidget:
+    """Periodic table heatmap with each element tile split into 2-4 segments.
+
+    All segments share one color scale and color bar. Each segment shows its value.
 
     Args:
-        data (pd.DataFrame | pd.Series | dict[str, Sequence | ndarray]): Map from
-            element symbols to plot data. E.g. {"Fe": [1, 2], "Co": [3, 4]}, where the
-            1st value would be plotted in lower-left corner, 2nd in the upper-right.
-            Values can be lists, tuples, or numpy arrays of numeric values.
-
-        --- Figure ---
-        colorscale (ColorScale | Sequence[ColorScale]): Color scale(s) for heatmap.
-            A single scale and colorbar share one value range across all splits.
-            If a sequence is provided, each colorscale will be used for its
-            corresponding split with an independent range. Can be:
-            - str: Name of built-in colorscale ("turbo", "inferno", "plasma", ...)
-            - list[str]: List of colors to interpolate between
-            - list[tuple[float, str]]: List of (position, color) pairs
-            - Callable[[str, float, int], str]: Function mapping (element symbol, split
-              value, split index) to color string. Useful for custom color schemes.
-        colorbar (dict[str, Any] | Sequence[dict[str, Any]] | None): Plotly colorbar
-            properties. If a single dict is provided, it will be used as a template for
-            all colorbars. If a sequence is provided, each dict will be used for its
-            corresponding split. Set to False to hide all colorbars. Defaults to
-            dict(orientation="v"). Each colorbar dict can include any subset of plotly
-            colorbar properties, see https://plotly.com/python/reference#heatmap-colorbar.
-        on_empty ("hide" | "show"): Whether to show tiles for elements without data.
-            Defaults to "hide".
-        hide_f_block (bool | "auto"): Hide f-block (lanthanide and actinide series).
-            Defaults to "auto", meaning hide if no data present. This keyword is
-            slightly imprecisely named since it will hide the whole lanthanide and
-            actinide rows even though the last items Lu + Lr in those rows are d-block.
-        orientation (str): How to split each element tile. Defaults to "diagonal".
-            - "diagonal": Split at 45° angles
-            - "horizontal": Split into equal horizontal strips
-            - "vertical": Split into equal vertical strips
-            - "grid": Split into 2x2 grid (only valid for n_splits=4)
-
-        --- Layout ---
-        font_size (int): Element symbol and annotation text size. Defaults to automatic
-            font size based on plot size.
-        scale (float): Scaling factor for whole figure layout. Defaults to 1.
-
-        --- Symbol ---
-        element_symbol_map (dict[str, str] | None): A dictionary to map element symbols
-            to custom strings. If provided, these custom strings will be displayed
-            instead of the standard element symbols. Defaults to None.
-        symbol_kwargs (dict): Plotly annotation kwargs for the element symbol, centered
-            in the tile by default. A "font" dict is merged into the default font
-            (size font_size or 14, color contrasting with the tile).
-            E.g. dict(y=0.8, font=dict(color="red", weight="bold")).
-
-        --- Annotation ---
-        annotations (dict[str, str] | Callable[[np.ndarray], str] | None): Annotation to
-            display for each element tile. Can be either:
-            - dict mapping element symbols to annotation strings
-            - callable that takes values and returns annotation string
-            - None for not displaying annotations (default)
-
-        --- Hover tooltip ---
-        hover_template (str | None): Custom template for hover tooltip. Use {name} for
-            element name, {symbol} for element symbol, {split_name} for split name,
-            {value} for split value, and {hover_data} for custom hover data.
-            Defaults to None, which shows element name, symbol and all split values.
-        hover_fmt (str | Callable[[float], str]): Float format for values in hover
-            tooltip. Can be either a format string (e.g. ".3g", ".2f") or a callable
-            that takes a float value and returns a formatted string. Defaults to ".3g".
-        split_value_fmt (str | Sequence[str] | Literal[False] | None): Float format for
-            split values in the heatmap. Can be:
-            - str: Format string for all splits
-            - Sequence[str]: Format strings for each split
-            - None: Hide split values, i.e. no text labels on each tile split
-
-
-        --- Additional options ---
-        nan_color (str): Color for NaN values. Defaults to "#eff".
-        zero_color (str): Color for zero values. Defaults to "#aaa".
-        hover_data (dict[str, str] | pd.Series): Additional text to append to hover
-            tooltip for each element. Defaults to None.
-        subplot_kwargs (dict): Additional keyword arguments for subplots.
-            See https://plotly.com/python/subplots/ for more information.
-
-        For other args, see ptable_heatmap().
+        data (pd.DataFrame | pd.Series | dict[str, Sequence[float]]): Map from
+            element symbols to 2-4 values each, e.g. {"Fe": [1, 2], "Co": [3, 4]}.
+            For a DataFrame, the index holds element symbols and each column is a
+            segment. NaN/±inf segments are left uncolored.
+        split_layout (str | None): How tiles are split, by number of values:
+            2 "diagonal" (top-left, bottom-right), 3 "horizontal" (strips top to
+            bottom) or "vertical" (left to right), 4 "quadrant" (reading order) or
+            "triangular" (top, right, bottom, left). Defaults to None, the first
+            layout listed for the count.
+        color_scale (str | dict): matterviz ColorScale, see ``ptable_heatmap``.
+            Defaults to "interpolateViridis".
+        **kwargs: Passed to PeriodicTableWidget, e.g. color_bar=dict(title="..."),
+            missing=dict(color="#eee") or tile_props=dict(float_fmt=".2f") to
+            format value labels (d3-format spec).
 
     Returns:
-        go.Figure: Plotly Figure object with the periodic table heatmap splits.
+        PeriodicTableWidget: Interactive periodic table with split tiles.
 
     Raises:
-        ValueError: If n_splits not in {2, 3, 4} or orientation="grid" with n_splits!=4
+        ValueError: If data is empty, has keys that aren't element symbols, not
+            all elements have the same number (2, 3 or 4) of values, or
+            split_layout doesn't support that number.
     """
-    # Get split names if data is a DataFrame
-    split_labels: list[str] = []
-    if isinstance(data, pd.DataFrame):
-        split_labels = list(data.columns)
-        # Propagate column names to colorbar titles if not explicitly set
-        if isinstance(colorbar, dict):
-            # expand single colorbar config into one per split (DataFrame columns
-            # are independent data series, each warranting its own colorbar).
-            # A user-provided title overrides the column-label default.
-            colorbar = [dict(title=label) | colorbar for label in split_labels]
-        elif isinstance(colorbar, Sequence):
-            colorbar = list(colorbar)  # Convert to list to allow modification
-            for idx, (cbar, label) in enumerate(
-                zip(colorbar, split_labels, strict=False)
-            ):
-                if isinstance(cbar, dict) and "title" not in cbar:
-                    colorbar[idx] = cbar.copy()
-                    colorbar[idx]["title"] = label
-        elif colorbar is None:
-            # Create colorbar settings with column names as titles
-            colorbar = [dict(title=label) for label in split_labels]
-        data = {str(idx): row.tolist() for idx, row in data.iterrows()}
-    elif isinstance(data, pd.Series):
-        data = data.to_dict()
-
-    if not data:
+    rows = data.T.to_dict("list") if isinstance(data, pd.DataFrame) else dict(data)
+    if not rows:
         raise ValueError(f"ptable_heatmap_splits: {data=} must not be empty")
-    n_splits = len(next(iter(data.values())))
+    if unknown := sorted(map(str, set(rows) - set(df_ptable.index))):
+        raise ValueError(f"ptable_heatmap_splits: keys must be elements, got {unknown}")
+
+    heatmap_values = {
+        str(symbol): nullable_floats(values, f"ptable_heatmap_splits: {symbol}")
+        for symbol, values in rows.items()
+    }
+    n_splits = len(next(iter(heatmap_values.values())))
     if n_splits not in {2, 3, 4}:
         raise ValueError(f"Number of splits {n_splits} must be 2, 3, or 4")
-    if orientation not in ("diagonal", "horizontal", "vertical", "grid"):
-        raise ValueError(f"Invalid {orientation=}")
-    data = {symbol: np.asarray(values, dtype=float) for symbol, values in data.items()}
-    for symbol, values in data.items():
-        if values.shape != (n_splits,):
-            raise ValueError(
-                f"{symbol}: got split shape {values.shape}, expected {n_splits}"
-            )
-        if np.isinf(values).any():
-            raise ValueError(
-                f"{symbol}: split values must be finite or NaN, got {values}"
-            )
-
-    multiple_scales = _is_multi_colorscale(colorscale)
-    use_multiple_cbar = (
-        bool(split_labels) or multiple_scales or isinstance(colorbar, Sequence)
-    )
-    if not split_labels:
-        split_labels = [f"Split {idx + 1}" for idx in range(n_splits)]
-    colorscales = cast(
-        "list[ColorScale]",
-        list(colorscale)
-        if multiple_scales and isinstance(colorscale, Sequence)
-        else [colorscale] * n_splits,
-    )
-    colorbars = (
-        list(colorbar)
-        if isinstance(colorbar, Sequence)
-        else [colorbar or {}] * (n_splits if use_multiple_cbar else 1)
-    )
-    colorbars = cast("list[dict[str, Any]]", colorbars)
-    if len(colorscales) != n_splits:
+    for symbol, values in heatmap_values.items():
+        if len(values) != n_splits:
+            raise ValueError(f"{symbol}: got {len(values)} values, expected {n_splits}")
+    if split_layout not in (None, *SPLIT_LAYOUTS[n_splits]):
         raise ValueError(
-            f"Number of colorscales ({len(colorscales)}) must match {n_splits=}"
+            f"{split_layout=} invalid for {n_splits} values per element, use one of "
+            f"{SPLIT_LAYOUTS[n_splits]}"
         )
-    if len(colorbars) != (n_splits if use_multiple_cbar else 1):
-        raise ValueError(
-            f"Number of colorbars ({len(colorbars)}) must match {n_splits=}"
-        )
-
-    all_values = np.array(list(data.values()))
-    range_values = all_values.T if use_multiple_cbar else [all_values.ravel()]
-    split_ranges = []
-    for values in range_values:
-        valid = values[np.isfinite(values) & (values != 0)]
-        split_ranges.append(
-            (float(valid.min()), float(valid.max())) if valid.size else (0, 1)
-        )
-    if not use_multiple_cbar:
-        split_ranges *= n_splits
-
-    validator = ValidatorCache.get_validator("scatter.marker", "colorscale")
-    for idx, cscale in enumerate(colorscales):
-        if callable(cscale):
-            continue
-        # Plotly interpolation needs RGB channels, not CSS names or short hex.
-        normalized_scale = validator.validate_coerce(cscale)
-        for stop in normalized_scale:
-            color = stop[1]
-            if color.startswith(("rgb(", "rgba(")) or (
-                color.startswith("#") and len(color) == 7
-            ):
-                continue
-            stop[1] = plotly.colors.label_rgb(
-                tuple(channel * 255 for channel in rgb_components(stop[1]))
-            )
-        colorscales[idx] = normalized_scale
-
-    has_f_block_data = any(
-        Element(symbol).is_actinoid or Element(symbol).is_lanthanoid for symbol in data
+    return PeriodicTableWidget(
+        heatmap_values=heatmap_values,
+        split_layout=split_layout,
+        color_scale=color_scale,
+        **kwargs,
     )
-    should_hide_f_block = hide_f_block is True or (
-        not has_f_block_data and hide_f_block == "auto"
-    )
-    n_rows, n_cols = 7 if should_hide_f_block else 10, 18
-    subplot_kwargs = dict(
-        rows=n_rows,
-        cols=n_cols,
-        vertical_spacing=0.01,
-        horizontal_spacing=0.001,
-    ) | (subplot_kwargs or {})
-    fig = make_subplots(**subplot_kwargs)
 
-    # warn about unrecognized element symbols
-    unrecognized_element_symbols = set(data) - {*map(str, Element)}
-    if unrecognized_element_symbols:
-        warnings.warn(
-            f"{unrecognized_element_symbols=}\nShould be simple strings of element "
-            "symbols",
-            stacklevel=2,
-        )
 
-    # If row 7 is empty, pull all rows below it up by one.
-    row_7_is_empty = _row_7_is_empty(data)
+def ptable_hists(
+    data: pd.DataFrame | pd.Series | Mapping[str, XYArray],
+    *,
+    bins: int = 20,
+    x_range: tuple[float | None, float | None] | None = None,
+    log_y: bool = False,
+    color_scale: ColorScale | None = "interpolateRdBu",
+    labels: TileLabels | None = None,
+    **kwargs: Any,
+) -> PeriodicTableWidget:
+    """Histogram of each element's values, laid out as a periodic table.
 
-    tile_annotations: list[dict[str, Any]] = []
-    sections = _split_section_coords(n_splits, orientation)
+    All histograms share the same bins (numpy edge semantics: each bin includes its
+    left edge, the last one also its right edge), so tiles compare at a glance.
+    Binning runs here in NumPy, so only per-bin counts reach the browser however
+    many values each element has. Hover a tile to see its histogram enlarged with
+    axes.
 
-    def format_hover(val: float) -> str:
-        """Format a split value for the hover tooltip."""
-        if isinstance(hover_fmt, str):
-            return f"{val:{hover_fmt}}"
-        return hover_fmt(val)
+    Args:
+        data (pd.DataFrame | pd.Series | dict[str, Sequence[float]]): Map from
+            element symbols to values to histogram, e.g. {"Fe": [1, 2, 3], "O": [4]}.
+            A DataFrame histograms each column (named by element symbol). NaN/±inf
+            values are skipped.
+        bins (int): Number of bins (1-1000). Defaults to 20.
+        x_range (tuple[float | None, float | None]): Range binned for all tiles,
+            values outside it are dropped. A None end is filled from the finite data
+            (padded by 0.5 if all values are equal). Defaults to None (min to max
+            of all values).
+        log_y (bool): Bar heights on a log(1 + count) scale. Defaults to False.
+        color_scale (str | dict | None): matterviz ColorScale coloring bars by bin
+            position, shown in a color bar. None draws bars in the text color
+            without a color bar. Defaults to "interpolateRdBu" (red to blue).
+        labels (dict[str, str] | Callable[[np.ndarray], str | None]): Label
+            under each tile's symbol: a dict keyed by element symbol or a callable
+            taking an element's values (NaN removed). Defaults to None.
+        **kwargs: Passed to PeriodicTableWidget, e.g. color_bar=dict(title="...")
+            (None hides it) or style.
 
-    # Process data and create shapes for each element
-    for symbol, period, group, _name, *_ in df_ptable.itertuples():
-        row, col = period - 1, group - 1  # row, col are 0-indexed
-        if symbol not in data and on_empty == "hide":
-            continue
+    Returns:
+        PeriodicTableWidget: Interactive periodic table of histograms.
 
-        # Skip f-block elements if hide_f_block is True or if it's auto and there is no
-        # data to show for those elements
-        elem = Element(symbol)
-        if (elem.is_actinoid or elem.is_lanthanoid) and should_hide_f_block:
-            continue
-
-        if row_7_is_empty and row > 6:
-            row -= 1
-
-        xy_ref = _subplot_xy_ref(row, col, n_cols, domain=False)
-
-        values = np.asarray(data.get(symbol, np.full(n_splits, np.nan)), dtype=float)
-
-        split_colors: list[str] = []  # Store colors for each split
-        for idx, (xs, ys) in enumerate(sections):
-            cscale = colorscales[idx]
-            if values[idx] == 0:
-                color = zero_color
-            elif np.isnan(values[idx]):
-                color = nan_color
-            elif callable(cscale):
-                color_fn = cast("Callable[[str, float, int], str]", cscale)
-                color = color_fn(symbol, values[idx], idx)
-            else:
-                cmin, cmax = split_ranges[idx]
-                span = cmax - cmin
-                if span == 0:
-                    scale_pos = 0.5
-                elif np.isfinite(span):
-                    scale_pos = (values[idx] - cmin) / span
-                else:
-                    # Halving before subtraction keeps opposite finite extremes finite.
-                    scale_pos = (values[idx] / 2 - cmin / 2) / (cmax / 2 - cmin / 2)
-                color = plotly.colors.sample_colorscale(cscale, [scale_pos])[0]
-
-            split_colors.append(color)
-
-            fig.add_scatter(
-                x=xs,
-                y=ys,
-                mode="lines",
-                fill="toself",
-                fillcolor=color,
-                line=dict(color="white", width=0),
-                hoverinfo="skip",
-                showlegend=False,
-                row=row + 1,
-                col=col + 1,
-            )
-
-            if split_value_fmt is not None and not np.isnan(values[idx]):
-                current_fmt = (
-                    split_value_fmt[idx]
-                    if isinstance(split_value_fmt, Sequence)
-                    and not isinstance(split_value_fmt, str)
-                    else split_value_fmt
-                )
-                anno_text = f"{values[idx]:{current_fmt}}"
-
-                pos_config = _split_label_position(orientation, n_splits, idx)
-
-                section_luminance = luminance(color)
-                anno_font_color = "black" if section_luminance > 0.55 else "white"
-                anno_font_size = (font_size or 8) * scale
-
-                tile_annotations.append(
-                    dict(
-                        text=anno_text,
-                        font=dict(color=anno_font_color, size=anno_font_size),
-                        showarrow=False,
-                        **pos_config,  # Contains x, y, xanchor, yanchor
-                        **xy_ref,
-                    )
-                )
-
-        display_symbol = (element_symbol_map or {}).get(symbol, symbol)
-
-        # Calculate text color based on background color
-        mean_luminance = sum(luminance(color) for color in split_colors) / len(
-            split_colors
-        )
-        high_contrast_text_color = "black" if mean_luminance > 0.55 else "white"
-        symbol_defaults = dict(x=0.5, y=0.5, showarrow=False)
-        symbol_kwargs = symbol_kwargs or {}
-        font_defaults = dict(
-            size=(font_size or 14) * scale, color=high_contrast_text_color
-        )
-        tile_annotations.append(
-            dict(
-                text=display_symbol,
-                **symbol_defaults
-                | xy_ref
-                | symbol_kwargs
-                | dict(font=font_defaults | symbol_kwargs.get("font", {})),
-            )
-        )
-
-        elem_name = df_ptable.loc[symbol, "name"]
-        split_hovers = [
-            (split_labels[idx], format_hover(val))
-            for idx, val in enumerate(values)
-            if not np.isnan(val)
+    Raises:
+        ValueError: For keys that aren't element symbols, values that aren't 1D
+            numeric arrays or an x_range that resolves to lo >= hi.
+        TraitError: For bins outside [1, 1000], an invalid color_scale, or numeric
+            heatmap_values beside a color_scale.
+    """
+    columns = data.to_dict("list") if isinstance(data, pd.DataFrame) else dict(data)
+    elem_values = {  # finite values only, so labels callables get clean arrays
+        str(symbol): (arr := float_array(vals, f"ptable_hists: {symbol}"))[
+            np.isfinite(arr)
         ]
-        if hover_template is not None:
-            hover_text = "<br>".join(
-                hover_template.format(
-                    name=elem_name,
-                    symbol=symbol,
-                    split_name=split_name,
-                    value=formatted_val,
-                    hover_data=hover_data.get(symbol, "") if hover_data else "",
-                )
-                for split_name, formatted_val in split_hovers
-            )
-        else:
-            hover_text = f"<b>{elem_name}</b>" + "".join(
-                f"<br>{split_name}: {formatted_val}"
-                for split_name, formatted_val in split_hovers
-            )
-            if hover_data and symbol in hover_data:
-                hover_text += f"<br>{hover_data[symbol]}"
-
-        tile_annotations.append(
-            dict(
-                x=0.5,
-                y=0.5,
-                text=hover_text,
-                showarrow=False,
-                opacity=0,
-                hovertext=hover_text,
-                **xy_ref,
-            )
-        )
-        tile_annotations += _make_custom_annotations(
-            annotations,
-            symbol=symbol,
-            elem_values=values,
-            xy_ref=xy_ref,
-            font_size=font_size,
-            scale=scale,
-            extra_defaults=dict(
-                font=dict(color=high_contrast_text_color, size=(font_size or 8) * scale)
-            ),
-        )
-
-    _extend_layout_items(fig, annotations=tile_annotations)
-
-    fig.layout.showlegend = False
-    fig.layout.paper_bgcolor = fig.layout.plot_bgcolor = "rgba(0,0,0,0)"
-    fig.layout.width = 45 * n_cols * scale
-    fig.layout.height = 45 * n_rows * scale + 40
-    fig.layout.margin = dict(l=10, r=10, t=50, b=10)
-    fig.layout.xaxis.visible = False
-    fig.layout.yaxis.visible = False
-
-    # Update subplot x and y axes to be invisible and fixed range
-    fig.update_xaxes(
-        visible=False,
-        showgrid=False,
-        zeroline=False,
-        range=[0, 1],
-        scaleanchor="y",
+        for symbol, vals in columns.items()
+    }
+    lo, hi = _resolve_range("x_range", x_range or (None, None), [*elem_values.values()])
+    config: dict[str, Any] = {"bins": bins, "log_y": log_y, "x_range": [lo, hi]}
+    if color_scale is not None:
+        config["color_scale"] = color_scale
+    normalize_tile_plot_config(config)  # reject bad bins before np.histogram
+    return PeriodicTableWidget(
+        tile_plots={
+            symbol: {"counts": np.histogram(vals, bins=bins, range=(lo, hi))[0]}
+            for symbol, vals in elem_values.items()
+        },
+        tile_plot_config=config,
+        labels=_tile_labels(labels, elem_values),
+        **kwargs,
     )
-    fig.update_yaxes(
-        visible=False,
-        showgrid=False,
-        zeroline=False,
-        range=[0, 1],
-        scaleratio=1,  # ensure square tiles
-    )
-
-    if colorbar is not False:  # one colorbar per split or a single shared one
-        for split_idx, cbar in enumerate(colorbars):
-            cbar_settings = _get_colorbar_settings(
-                cbar,
-                split_idx=split_idx,
-                n_splits=len(colorbars),
-                split_name=split_labels[split_idx] if use_multiple_cbar else None,
-                font_size=font_size,
-                scale=scale,
-            )
-            _add_colorbar_trace(
-                fig,
-                colorscales[split_idx],
-                *split_ranges[split_idx],
-                cbar_settings,
-                split_idx=split_idx,
-            )
-
-    return fig
-
-
-type XYArray = Sequence[float] | np.ndarray[Any, Any]
-type ElemData = (
-    tuple[XYArray, XYArray]
-    | tuple[XYArray, XYArray, Sequence[float | str] | np.ndarray[Any, Any]]
-    | Mapping[str, tuple[XYArray, XYArray]]
-)
-type LineData = (
-    tuple[XYArray, XYArray]
-    | tuple[XYArray, XYArray, Sequence[float | str] | np.ndarray[Any, Any]]
-)
 
 
 def ptable_scatter(
     data: Mapping[str, ElemData],
     *,
-    mode: Literal["markers", "lines", "lines+markers"] = "markers",
-    # Color settings
-    colorscale: str = "viridis",
-    colorbar: dict[str, Any] | Literal[False] | None = None,
-    # Line-specific
+    mode: Literal["markers", "line", "line+markers"] = "markers",
     x_range: tuple[float | None, float | None] | None = None,
     y_range: tuple[float | None, float | None] | None = None,
-    # Layout
-    font_size: int | None = None,
-    scale: float = 1.0,
-    hide_f_block: bool | Literal["auto"] = False,
-    # Symbol
-    element_symbol_map: dict[str, str] | None = None,
-    symbol_kwargs: dict[str, Any] | None = None,
-    # Marker and line styling
-    marker_kwargs: dict[str, Any] | None = None,
-    line_kwargs: dict[str, Any] | None = None,
-    # Annotation
-    annotations: dict[str, str | dict[str, Any]]
-    | Callable[[ElemData], str | dict[str, Any] | list[dict[str, Any]]]
-    | None = None,
-    # Element type colors
-    color_elem_strategy: ColorElemTypeStrategy = "symbol",
-    elem_type_colors: dict[str, str] | None = None,
-    subplot_kwargs: dict[str, Any] | None = None,
-    # Axis styling
-    x_axis_kwargs: dict[str, Any] | None = None,
-    y_axis_kwargs: dict[str, Any] | None = None,
-) -> go.Figure:
-    """Create a Plotly figure with scatter/line plots for each element laid out in a
-    periodic table.
+    color_scale: ColorScale = "interpolateViridis",
+    color: str | None = None,
+    labels: TileLabels | None = None,
+    **kwargs: Any,
+) -> PeriodicTableWidget:
+    """Scatter or line plot per element, laid out as a periodic table.
+
+    All tiles share x and y axes. Hover a tile to see its plot enlarged with axes.
 
     Args:
-        data (dict[str, ElemData]): Map from element symbols to either:
-            1. (x, y) or (x, y, color) data points for a single line/scatter plot
-               E.g. {"Fe": ([1, 2, 3], [4, 5, 6])} plots points (1,4), (2,5), (3,6)
-            2. dict of (x, y) tuples for multiple lines per element
-               E.g. {"Fe": {"line1": ([1, 2], [3, 4]), "line2": ([2, 3], [4, 5])}}
-               In this case, a legend will be shown instead of a colorbar
-        mode ("markers" | "lines" | "lines+markers"): Plot mode. Defaults to "markers".
-
-        --- Color settings ---
-        colorscale (str): Colorscale to use for numeric color data. Defaults to
-            "viridis".
-        colorbar (dict | False | None): Colorbar settings. Defaults to None.
-
-        --- Line-specific ---
-        x_range (tuple[float | None, float | None]): x-axis range for all line plots.
-            Defaults to None, meaning auto-range.
-        y_range (tuple[float | None, float | None]): y-axis range for all line plots.
-            Defaults to None, meaning auto-range.
-
-        --- Layout ---
-        font_size (int): Element symbol and annotation text size. Defaults to automatic
-            font size based on plot size.
-        scale (float): Scaling factor for whole figure layout. Defaults to 1.
-        hide_f_block (bool | "auto"): Whether to hide the F-block elements. If "auto",
-            hide F-block elements if row 7 is empty. Defaults to False.
-
-        --- Symbol ---
-        element_symbol_map (dict[str, str] | None): A dictionary to map element symbols
-            to custom strings. If provided, these custom strings will be displayed
-            instead of the standard element symbols. Defaults to None.
-        symbol_kwargs (dict): Plotly annotation kwargs for the element symbol, placed
-            in the tile's top-right corner by default. E.g. dict(font=dict(size=16)).
-
-        --- Annotation ---
-        annotations (dict[str, str] | Callable[[ElemData], str] | None): Annotation
-            per element tile, see ptable_hists.
-
-        --- Element type colors ---
-        color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
-            color element symbols, tile backgrounds, or both based on element type.
-            Defaults to "symbol".
-        elem_type_colors (dict | None): dict to map element types to colors.
-            None to use the default = pymatviz.colors.ELEM_TYPE_COLORS.
-
-        --- Subplot ---
-        subplot_kwargs (dict | None): Additional keywords passed to make_subplots().
-
-        --- Axis styling ---
-        x_axis_kwargs (dict | None): Additional keywords for x-axis like tickfont,
-            showticklabels, nticks, tickformat, tickangle.
-        y_axis_kwargs (dict | None): Additional keywords for y-axis.
-
-        --- Line/marker styling ---
-        line_kwargs (dict | None): Additional keywords for line plots like color,
-            width, dash.
-        marker_kwargs (dict | None): Additional keywords for marker plots like color,
-            size, symbol.
+        data (dict[str, ElemData]): Map from element symbols to either
+            1. (x, y) or (x, y, color_values) for one series, e.g.
+               {"Fe": ([1, 2, 3], [4, 5, 6])}. Numeric color_values color markers
+               and line segments through color_scale and show a color bar.
+            2. dict of such tuples for several named series per element, e.g.
+               {"Fe": {"up": ([1, 2], [3, 4]), "down": ([1, 2], [2, 1])}}. Each
+               name gets its own color (unless it has color_values), shared
+               across elements. matterviz shows no legend for the names.
+            Points with NaN/±inf coordinates are dropped and break lines.
+        mode ("markers" | "line" | "line+markers"): Draw points as markers, lines
+            through them or both. Defaults to "markers".
+        x_range (tuple[float | None, float | None]): x range shared by all tiles,
+            a None end fits the data (as in ptable_hists). Points outside are
+            dropped. Defaults to None.
+        y_range (tuple[float | None, float | None]): Like x_range for y.
+        color_scale (str | dict): matterviz ColorScale for color_values. Defaults
+            to "interpolateViridis".
+        color (str | None): CSS color of series without color_values or a name
+            color. Defaults to None (the tile's text color).
+        labels (dict[str, str] | Callable[[ElemData], str | None]): Label under
+            each tile's symbol: a dict keyed by element symbol or a callable taking
+            an element's data. Defaults to None.
+        **kwargs: Passed to PeriodicTableWidget, e.g. color_bar=dict(title="T (K)").
 
     Returns:
-        go.Figure: Plotly Figure object with line plots in a periodic table layout.
+        PeriodicTableWidget: Interactive periodic table of scatter/line plots.
+
+    Raises:
+        ValueError: For keys that aren't element symbols, series that aren't 2- or
+            3-tuples of numeric 1D arrays, arrays of differing lengths or ranges
+            that resolve to lo >= hi.
+        TraitError: For an unknown mode, an invalid color_scale, or numeric
+            heatmap_values beside color_values.
     """
-    elem_type_colors = _resolve_elem_type_colors(color_elem_strategy, elem_type_colors)
-
-    n_rows, n_cols = 10, 18
-    subplot_kwargs = dict(
-        rows=n_rows,
-        cols=n_cols,
-        vertical_spacing=0.035,
-        horizontal_spacing=0.01,
-    ) | (subplot_kwargs or {})
-    fig = make_subplots(**subplot_kwargs)
-
-    template_line_color = _template_line_color()
-
-    # normalize single (x, y[, color]) tuples to {"": tuple} like multi-line data
-    elem_lines: dict[str, Mapping[str, LineData]] = {
-        symbol: cast(
-            "Mapping[str, LineData]",
-            elem_data if isinstance(elem_data, Mapping) else {"": elem_data},
-        )
-        for symbol, elem_data in data.items()
+    series_names = sorted(  # key=str: names may mix types, e.g. 1 and "a"
+        {name for elem in data.values() if isinstance(elem, Mapping) for name in elem},
+        key=str,
+    )
+    name_colors = {
+        name: _SERIES_COLORS[idx % len(_SERIES_COLORS)]
+        for idx, name in enumerate(series_names)
     }
-    all_lines = [line for lines in elem_lines.values() for line in lines.values()]
 
-    # Get global x and y ranges if not provided
-    if x_range is None:
-        all_x_vals = [x_val for line in all_lines for x_val in line[0]]
-        x_range = (min(all_x_vals), max(all_x_vals))
-    if y_range is None:
-        all_y_vals = [y_val for line in all_lines for y_val in line[1]]
-        y_range = (min(all_y_vals), max(all_y_vals))
-
-    marker_defaults: dict[str, Any] = dict(
-        size=6 * scale, color=template_line_color, line=dict(width=0)
-    )
-    line_defaults: dict[str, Any] = dict(width=1 * scale, color=template_line_color)
-
-    # Find global color range if any numeric color values exist
-    cbar_min, cbar_max = float("inf"), float("-inf")
-    for line in all_lines:
-        if len(line) > 2:  # Has color data
-            color_vals = line[2]  # ty: ignore[index-out-of-bounds]
-            if all(isinstance(val, int | float) for val in color_vals):
-                cbar_min = min(cbar_min, *color_vals)
-                cbar_max = max(cbar_max, *color_vals)
-
-    has_numeric_colors = cbar_min != float("inf")
-
-    # If row 7 is empty, pull all rows below it up by one.
-    row_7_is_empty = _row_7_is_empty(data)
-
-    # Track whether we're plotting multiple lines per element
-    line_colors: dict[str, str] | None = None
-    has_multiple_lines = any(isinstance(val, Mapping) for val in data.values())
-
-    if has_multiple_lines:
-        # Get all unique line names across elements for consistent colors
-        line_names = {
-            key
-            for elem_data in data.values()
-            if isinstance(elem_data, Mapping)
-            for key in elem_data
-            if isinstance(key, str)
-        }
-        color_sequence = px.colors.qualitative.Set2
-        line_colors = {
-            name: color_sequence[idx % len(color_sequence)]
-            for idx, name in enumerate(sorted(line_names))
-        }
-
-    # collect annotations/shapes and batch-assign after the loop (_extend_layout_items)
-    tile_annotations: list[dict[str, Any]] = []
-    tile_shapes: list[dict[str, Any]] = []
-
-    for symbol, period, group, elem_name, *_ in df_ptable.itertuples():
-        if symbol not in data:
-            continue
-
-        row, col = period - 1, group - 1  # row, col are 0-indexed
-
-        if hide_f_block in ("auto", True) and row_7_is_empty and row >= 6:
-            continue
-
-        xy_ref = _subplot_xy_ref(row, col, n_cols, domain=True)
-
-        elem_type = df_ptable.loc[symbol].get("type", None)
-        if bg_shape := _make_elem_type_background(
-            elem_type, elem_type_colors, color_elem_strategy, xy_ref=xy_ref
-        ):
-            tile_shapes.append(bg_shape)
-
-        for line_name, elem_vals in elem_lines[symbol].items():
-            x_vals, y_vals, *rest = elem_vals
-            color_vals = rest[0] if rest else None  # if 3-tuple, first entry is color
-
-            # 1. Start with default colors (template line color)
-            line_props = line_defaults.copy()
-            marker_props = marker_defaults.copy()
-
-            # 2. Apply element type colors if enabled
-            if color_elem_strategy in {"symbol", "both"}:
-                elem_color = elem_type_colors.get(elem_type, template_line_color)
-                if "markers" in mode:
-                    marker_props["color"] = elem_color
-                if "lines" in mode:
-                    line_props["color"] = elem_color
-
-            # 3. Apply user settings
-            if line_kwargs:
-                line_props.update(line_kwargs)
-            if marker_kwargs:
-                marker_props.update(marker_kwargs)
-
-            # 4. Override with line colors for multi-line plots
-            if has_multiple_lines and line_name and line_colors:
-                if line_name not in line_colors:
-                    raise ValueError(f"{line_name=} not found in {line_colors=}")
-                line_color = line_colors[line_name]
-                if "markers" in mode:
-                    marker_props["color"] = line_color
-                if "lines" in mode:
-                    line_props["color"] = line_color
-
-            # 5. Finally, override with color data if provided (highest precedence)
-            if color_vals is not None:
-                if all(isinstance(v, int | float) for v in color_vals):
-                    # For numeric colors, use the colorscale
-                    marker_props.update(
-                        color=color_vals,
-                        colorscale=colorscale,
-                        cmin=cbar_min,
-                        cmax=cbar_max,
-                        showscale=False,  # Don't show individual colorbars
-                    )
-                else:
-                    # For discrete colors (strings), use as-is
-                    marker_props["color"] = color_vals
-                line_props["color"] = None
-
-            scatter_kwargs = dict(
-                x=x_vals,
-                y=y_vals,
-                mode=mode,
-                name=line_name or None,  # None for empty string to avoid legend entry
-                showlegend=bool(line_name) and symbol == next(iter(data)),
-                legendgroup=line_name,
-                row=row + 1,
-                col=col + 1,
-                line=line_props,
-                marker=marker_props,
-                hovertemplate=(
-                    f"{elem_name}{f' - {line_name}' if line_name else ''}<br>"
-                    f"x: %{{x:.2f}}<br>y: %{{y:.2f}}<extra></extra>"
-                ),
+    def to_series(line: LineData, label: str, name: str | None) -> dict[str, Any]:
+        """One tile_plots x/y series from an (x, y[, color_values]) tuple."""
+        if isinstance(line, np.ndarray):  # rows x, y[, color_values]
+            line = tuple(line)
+        if not isinstance(line, Sequence) or len(line) not in (2, 3):
+            raise ValueError(
+                f"{label} must be an (x, y) or (x, y, color_values) tuple, got {line!r}"
             )
-            fig.add_scatter(**scatter_kwargs)
-
-        display_symbol = (element_symbol_map or {}).get(symbol, symbol)
-        font = dict(
-            color=elem_type_colors.get(elem_type, template_line_color)
-            if color_elem_strategy in {"symbol", "both"}
-            else template_line_color,
-            size=(font_size or 11) * scale,
+        series: dict[str, Any] = dict(
+            zip(("x", "y", "color_values"), line, strict=False)
         )
-        symbol_defaults = dict(
-            x=1, y=1, xanchor="right", yanchor="top", showarrow=False, font=font
-        )
-        tile_anno = dict(
-            text=display_symbol,
-            **symbol_defaults | xy_ref | (symbol_kwargs or {}),
-        )
-        tile_annotations.append(tile_anno)
+        if name is not None and "color_values" not in series:
+            series["color"] = name_colors[name]
+        return series
 
-        tile_annotations += _make_custom_annotations(
-            annotations,
-            symbol=symbol,
-            elem_values=data[symbol],
-            xy_ref=xy_ref,
-            font_size=font_size,
-            scale=scale,
-        )
-
-    _extend_layout_items(fig, annotations=tile_annotations, shapes=tile_shapes)
-
-    fig.layout.showlegend = False
-    fig.layout.paper_bgcolor = fig.layout.plot_bgcolor = "rgba(0,0,0,0)"
-    fig.layout.width = 850 * scale
-    fig.layout.height = 500 * scale
-    fig.layout.margin = dict(l=10, r=10, t=50, b=10)
-
-    axis_defaults = dict(
-        showgrid=False,  # hide grid lines
-        showline=True,  # show axis line
-        linecolor=template_line_color,
-        linewidth=1,
-        mirror=False,  # only show edge line
-        ticks="inside",  # move ticks to inside
-        tickwidth=1,
-        tickcolor=template_line_color,
-        nticks=2,  # show only 2 ticks by default
-        tickmode="auto",  # let plotly choose nice tick values
-        zeroline=False,  # remove x/y=0 line
-        tickfont=dict(size=9 * scale),
+    tile_plots = {
+        str(symbol): [
+            to_series(line, f"ptable_scatter: {symbol}[{name!r}]", name)
+            for name, line in elem.items()
+        ]
+        if isinstance(elem, Mapping)
+        else to_series(elem, f"ptable_scatter: {symbol}", None)
+        for symbol, elem in data.items()
+    }
+    all_series = [
+        series
+        for plot in tile_plots.values()
+        for series in (plot if isinstance(plot, list) else [plot])
+    ]
+    config: dict[str, Any] = {"mode": mode}
+    # matterviz rejects a tile color scale beside numeric heatmap_values, so only set
+    # it when some series has color_values to map
+    if any("color_values" in series for series in all_series):
+        config["color_scale"] = color_scale
+    for key, axis_range in (("x_range", x_range), ("y_range", y_range)):
+        if axis_range is None:
+            continue  # matterviz fits the data
+        coords = [  # non-numeric arrays raise, _resolve_range skips non-finite
+            float_array(srs[key[0]], f"ptable_scatter: {key}") for srs in all_series
+        ]
+        config[key] = _resolve_range(key, axis_range, coords)
+    if color is not None:
+        config["color"] = color
+    return PeriodicTableWidget(
+        tile_plots=tile_plots,
+        tile_plot_config=config,
+        labels=_tile_labels(labels, data),
+        **kwargs,
     )
-
-    x_axis_defaults = axis_defaults | dict(range=x_range)
-    y_axis_defaults = axis_defaults | dict(range=y_range)
-
-    fig.update_xaxes(**x_axis_defaults | (x_axis_kwargs or {}))
-    fig.update_yaxes(**y_axis_defaults | (y_axis_kwargs or {}))
-
-    # Add colorbar or legend based on plot type
-    if has_multiple_lines:
-        # Configure legend instead of colorbar
-        fig.update_layout(
-            showlegend=True,
-            legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=0.74,
-                xanchor="center",
-                x=0.4,
-                font=dict(size=(font_size or 10) * scale),
-            ),
-        )
-
-    if has_numeric_colors and colorbar is not False:
-        colorbar = _place_colorbar_title(
-            dict(orientation="h") | (colorbar or {}), horizontal_y=0.74
-        )
-
-        fig.add_scatter(
-            x=[None],
-            y=[None],
-            mode="markers",
-            marker=dict(
-                colorscale=colorscale,
-                showscale=True,
-                cmin=cbar_min,
-                cmax=cbar_max,
-                colorbar=_get_colorbar_settings(
-                    colorbar, font_size=font_size, scale=scale
-                ),
-            ),
-            hoverinfo="none",
-            showlegend=False,
-        )
-
-    return fig

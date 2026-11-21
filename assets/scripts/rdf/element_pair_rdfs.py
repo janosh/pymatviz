@@ -9,24 +9,16 @@ import pymatviz as pmv
 from pymatviz.enums import Key
 
 
-pmv.set_plotly_template("pymatviz_white")
-
-
 # %%
 df_phonons = load_dataset("matbench_phonons")
-
-# get the 2 largest structures
 df_phonons[Key.n_sites] = df_phonons[Key.structure].map(len)
 
-# plot element-pair RDFs for each structure
+# plot element-pair RDFs for the 2 largest structures
 for struct in df_phonons.nlargest(2, Key.n_sites)[Key.structure]:
-    fig = pmv.element_pair_rdfs(struct, n_bins=100, cutoff=10)
-    formula = struct.formula
-    fig.layout.title.update(text=f"Pairwise RDFs - {formula}", x=0.5, y=0.99)
-    fig.layout.margin.t = 55
-
-    fig.show()
-    pmv.io.save_and_compress_svg(fig, f"element-pair-rdfs-{formula.replace(' ', '')}")
+    widget = pmv.element_pair_rdfs(struct, n_bins=100, cutoff=10)
+    widget.show()
+    formula = struct.formula.replace(" ", "")
+    widget.to_img(f"{pmv.ROOT}/assets/svg/element-pair-rdfs-{formula}.svg", width=700)
 
 
 # %% compare RDFs for crystalline LiPO4 and randomly-placed "amorphous" LiPO4
@@ -43,22 +35,15 @@ coords = [
 crystal_lipo4 = Structure(lattice, species, coords)
 
 n_formula_units = 50
-lattice = Lattice.cubic(20)
 n_atoms = n_formula_units * 6
 coords = np.random.default_rng(seed=0).uniform(size=(n_atoms, 3))
-amorphous_lipo4 = Structure(lattice, species * n_formula_units, coords)
+amorphous_lipo4 = Structure(Lattice.cubic(20), species * n_formula_units, coords)
 
-# Generate RDF multi-structure-comparison plot
-fig_crys_vs_amorph = pmv.element_pair_rdfs(
-    structures={"Crystal": crystal_lipo4, "Amorphous": amorphous_lipo4}
+# Each structure's element-pair curves share a legend group
+widget = pmv.element_pair_rdfs(
+    {"Crystal": crystal_lipo4, "Amorphous": amorphous_lipo4},
+    element_pairs=[("Li", "O"), ("O", "P"), ("O", "O")],
 )
-
-# Update layout
-title = "Pairwise RDFs - LiPO4 Crystal vs Amorphous"
-fig_crys_vs_amorph.layout.title = dict(text=title, x=0.5, y=0.99)
-fig_crys_vs_amorph.layout.margin = dict(l=0, r=0, t=70, b=0)
-fig_crys_vs_amorph.show()
-
-# pmv.io.save_and_compress_svg(
-#     fig_crys_vs_amorph, "element-pair-rdfs-crystal-vs-amorphous"
-# )
+widget.show()
+svg_path = f"{pmv.ROOT}/assets/svg/element-pair-rdfs-crystal-vs-amorphous.svg"
+widget.to_img(svg_path, width=700)

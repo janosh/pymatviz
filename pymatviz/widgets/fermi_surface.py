@@ -7,7 +7,12 @@ from typing import Any
 import traitlets as tl
 
 from pymatviz.widgets._normalize import normalize_json_kwargs, normalize_plot_json
-from pymatviz.widgets._traits import color_bar_trait, color_scale_trait, optional_trait
+from pymatviz.widgets._traits import (
+    CAMERA_PROJECTIONS,
+    color_bar_trait,
+    color_scale_trait,
+    optional_trait,
+)
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -40,8 +45,8 @@ class FermiSurfaceWidget(MatterVizWidget):
         ... )
     """
 
-    fermi_data = tl.Dict(allow_none=True).tag(sync=True)
-    band_data = tl.Dict(allow_none=True).tag(sync=True)
+    fermi_data = optional_trait(tl.Dict)
+    band_data = optional_trait(tl.Dict)
 
     # Display options
     mu = optional_trait(tl.Float)
@@ -56,12 +61,14 @@ class FermiSurfaceWidget(MatterVizWidget):
     property_name = optional_trait(tl.Unicode)
     # Label of the unnamed per-vertex property, e.g. "Fermi velocity"
     custom_property_label = optional_trait(tl.Unicode)
-    representation = optional_trait(tl.Unicode)
+    representation = optional_trait(
+        tl.CaselessStrEnum, values=("solid", "wireframe", "transparent")
+    )
     surface_opacity = optional_trait(tl.Float)
     show_bz = optional_trait(tl.Bool)
     bz_opacity = optional_trait(tl.Float)
     show_vectors = optional_trait(tl.Bool)
-    camera_projection = optional_trait(tl.Unicode)
+    camera_projection = optional_trait(tl.CaselessStrEnum, values=CAMERA_PROJECTIONS)
 
     def __init__(
         self,

@@ -15,7 +15,6 @@ from typing import get_args
 
 import numpy as np
 import pandas as pd
-import plotly.express as px
 from matbench_discovery.structure import prototype
 from matminer.datasets import load_dataset
 from pymatgen.core import Structure
@@ -68,19 +67,19 @@ print(sum(df_kvrh["log10(K_VRH)"] == 0))  # expect 14
 ax = df_kvrh.hist(column="log10(K_VRH)", bins=50, alpha=0.8)
 
 df_grvh.hist(column="log10(G_VRH)", bins=50, ax=ax, alpha=0.8)
-# pmv.save_fig(ax, "log_g+kvrh-target-hist.pdf")
+# ax.flat[0].figure.savefig("log_g+kvrh-target-hist.pdf")
 
 
 # %%
 df_grvh[Key.volume] = [x.volume for x in df_grvh[Key.structure]]
 df_grvh[Key.formula] = [x.formula for x in df_grvh[Key.structure]]
 
-fig = df_grvh[Key.volume].hist(nbins=100, log_y=True, opacity=0.8, backend="plotly")
-title = "<b>Volume histogram of the Matbench bulk/shear modulus datasets</b>"
-fig.layout.title.update(text=title, x=0.5)
-fig.layout.showlegend = False
-fig.show()
-# pmv.save_fig(fig, "gvrh-volume-hist.pdf")
+# Volume histogram of the Matbench bulk/shear modulus datasets
+widget = pmv.histogram(
+    df_grvh[Key.volume], bins=100, log_y=True, x_axis={"label": Key.volume.label}
+)
+widget.show()
+# widget.to_img("gvrh-volume-hist.pdf")
 
 
 # %%
@@ -104,7 +103,7 @@ def has_isolated_atom(crystal: Structure, radius: float = 5) -> bool:
     """Check if crystal has isolated atoms within specified neighborhood radius."""
     dists = crystal.distance_matrix
     np.fill_diagonal(dists, np.inf)
-    return (dists.min(1) > radius).any()
+    return bool((dists.min(1) > radius).any())
 
 
 df_grvh["isolated_r5"] = df_grvh[Key.structure].map(has_isolated_atom)
@@ -125,80 +124,49 @@ for idx, structure, target, *_ in df_grvh.query("graph_size == 0").itertuples():
 # %%
 df_grvh[Key.volume] = df_grvh[Key.structure].map(lambda struct: struct.volume)
 
-fig = df_grvh[Key.volume].hist(nbins=100, backend="plotly", log_y=True)
-title = "<b>Volume histogram of the Matbench bulk/shear modulus datasets</b>"
-fig.layout.title.update(text=title, x=0.5)
-fig.layout.showlegend = False
-fig.show()
+pmv.histogram(
+    df_grvh[Key.volume], bins=100, log_y=True, x_axis={"label": Key.volume.label}
+).show()
 
 
 # %%
 df_grvh[Key.formula] = df_grvh[Key.structure].map(lambda struct: struct.formula)
 
-fig = pmv.ptable_heatmap(pmv.count_elements(df_grvh[Key.formula]), log=True)
-title = "<b>Element counts in the Matbench<br>bulk/shear modulus datasets</b>"
-fig.layout.title.update(text=title)
-fig.show()
-# pmv.save_fig(fig, "gvrh-ptable-heatmap.pdf")
+title = "Element counts in the Matbench bulk/shear modulus datasets"
+pmv.ptable_heatmap(df_grvh[Key.formula], log=True, color_bar={"title": title}).show()
 
 
 # %%
-fig = pmv.spacegroup_bar(df_grvh[Key.spg_num])
-fig.layout.margin.update(b=10, l=10, r=10, t=50)
-fig.layout.title.update(
-    text="Spacegroup histogram of the Matbench bulk/shear modulus datasets"
-)
-fig.show()
-# pmv.save_fig(fig, "gvrh-spacegroup-hist.pdf")
+pmv.spacegroup_bar(df_grvh[Key.spg_num]).show()
 
 
 # %%
-fig = pmv.spacegroup_sunburst(df_grvh[Key.spg_num], show_counts="percent")
-title = "Spacegroup sunburst of the Matbench bulk/shear modulus datasets"
-fig.layout.title.update(text=title, x=0.5)
-# pmv.save_fig(fig, "gvrh-spacegroup-sunburst.pdf")
-fig.show()
+# Spacegroup sunburst of the Matbench bulk/shear modulus datasets
+widget = pmv.spacegroup_sunburst(df_grvh[Key.spg_num], label_text="label+percent")
+# widget.to_img("gvrh-spacegroup-sunburst.pdf")
+widget.show()
 
 
-# %%
-fig = px.violin(
-    df_grvh,
-    color=Key.crystal_system,
-    x=Key.crystal_system,
-    y=Key.n_wyckoff_pos,
-    points="all",
-    hover_data=[Key.spg_num],
-    hover_name=Key.formula,
-    category_orders={Key.crystal_system: crystal_systems},
-    log_y=True,
-).update_traces(jitter=1)
-
-
-def rgb_color(val: float, max_val: float) -> str:
-    """Convert a value between 0 and max to a color between red and blue."""
-    return f"rgb({255 * val / max_val:.1f}, 0, {255 * (max_val - val) / max_val:.1f})"
-
-
-x_ticks = {}
+# %% Number of Wyckoff positions per structure by crystal system
+# MatterViz has no rich-text tick labels, so per-group stats go into series labels
+series = []
 for cry_sys, df_group in sorted(
     df_grvh.groupby(Key.crystal_system), key=lambda x: crystal_systems.index(x[0])
 ):
-    n_wyckoff_top = df_group[Key.n_wyckoff_pos].mean()
-    clr = rgb_color(n_wyckoff_top, 14)
-    x_ticks[cry_sys] = (
-        f"<b>{cry_sys}</b><br>"
-        f"{len(df_group):,} = {len(df_group) / len(df_grvh):.0%}<br>"
-        f"mean = <span style='color:{clr}'><b>{n_wyckoff_top:.1f}</b></span>"
+    n_wyckoff_mean = df_group[Key.n_wyckoff_pos].mean()
+    label = (
+        f"{cry_sys} {len(df_group):,} = {len(df_group) / len(df_grvh):.0%} "
+        f"mean={n_wyckoff_mean:.1f}"
     )
+    series += [{"y": df_group[Key.n_wyckoff_pos], "label": label}]
 
-title = (
-    "Matbench bulk/shear modulus datasets<br>Number of Wyckoff positions "
-    "per structure by crystal system"
+widget = pmv.BoxPlotWidget(
+    series,
+    kind="violin",
+    points="strip",
+    title="Matbench bulk/shear modulus datasets",
+    show_legend=False,
+    y_axis={"label": Key.n_wyckoff_pos.label, "scale_type": "log"},
 )
-fig.layout.title.update(text=title, x=0.5)
-fig.layout.margin.update(b=10, l=10, r=10, t=50)
-fig.layout.showlegend = False
-fig.layout.update(width=1000, height=400)
-fig.layout.xaxis = dict(tickvals=list(range(7)), ticktext=list(x_ticks.values()))
-fig.show()
-# pmv.save_fig(fig, "grvh-violin-num-wyckoffs.pdf")
+widget.show()
+# widget.to_img("grvh-violin-num-wyckoffs.pdf")

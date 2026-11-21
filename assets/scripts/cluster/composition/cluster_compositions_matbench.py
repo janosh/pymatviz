@@ -20,8 +20,6 @@ from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 from matminer.datasets import load_dataset
-from pymatgen.core import Composition
-from pymatgen.util.string import htmlify
 
 import pymatviz as pmv
 import pymatviz.cluster.composition as pcc
@@ -31,32 +29,21 @@ from pymatviz.enums import Key
 
 
 if TYPE_CHECKING:
-    import plotly.graph_objects as go
+    from pymatviz.cluster.composition.plot import (
+        ClusterScatterPlot,
+        ClusterScatterPlot3D,
+    )
 
     # (dataset_name, target_key, target_label, target_symbol, embed_method,
-    #  proj_method, n_components, colorbar_kwargs)
-    type PlotConfig = tuple[str, str, str, str, Embed, Project, int, dict[str, Any]]
+    #  proj_method, n_components)
+    type PlotConfig = tuple[str, str, str, str, Embed, Project, int]
 
 
-pmv.set_plotly_template("pymatviz_white")
 module_dir = os.path.dirname(__file__)
 plot_dir = f"{module_dir}/tmp/figs/composition_clustering"
 cache_dir = f"{module_dir}/tmp/embeddings"
 os.makedirs(plot_dir, exist_ok=True)
 os.makedirs(cache_dir, exist_ok=True)
-
-
-def format_composition(formula: str) -> str:
-    """Format long steel compositions into 2-column layout, sorted by amount."""
-    comp = Composition(formula)
-    # Sort elements by amount in descending order
-    element_pairs = []
-    for idx, (elem, amt) in enumerate(
-        sorted(comp.items(), key=lambda x: x[1], reverse=True)
-    ):
-        suffix = "<br>" if idx % 2 == 1 else ""
-        element_pairs.append(f"{elem}: {amt:.4}{suffix}")
-    return "\t\t".join(element_pairs).replace("<br>\t\t", "<br>")
 
 
 def process_dataset(
@@ -68,7 +55,7 @@ def process_dataset(
     projection: pcc.ProjectionMethod,
     n_components: int,
     **kwargs: Any,
-) -> go.Figure:
+) -> ClusterScatterPlot | ClusterScatterPlot3D:
     """Process a single dataset and create clustering visualizations.
 
     Args:
@@ -82,7 +69,7 @@ def process_dataset(
         kwargs: Passed to cluster_compositions()
 
     Returns:
-        fig: Plotly figure
+        ClusterScatterPlot | ClusterScatterPlot3D: 2D or 3D cluster widget
     """
     # Load dataset
     df_data = load_dataset(dataset_name)
@@ -110,7 +97,8 @@ def process_dataset(
         with gzip.open(cache_file, mode="rt") as file:
             embeddings_dict = json.load(file)
 
-    if embeddings_dict is None:
+    # recompute when the cache predates the dataset (e.g. new or reformatted entries)
+    if embeddings_dict is None or not set(compositions) <= embeddings_dict.keys():
         # Create embeddings
         if embed_method == "one-hot":
             embeddings = pcc.one_hot_encode(compositions)
@@ -134,61 +122,41 @@ def process_dataset(
     top_indices = df_plot.nlargest(5, target_label).index
 
     def annotate_top_points(row: pd.Series) -> dict[str, Any] | None:
-        """Annotate top 5 points concisely with composition and property value."""
+        """Label the top 5 points concisely with composition and property value."""
         # row.name is the original DataFrame index
         if row.name not in top_indices:
             return None
-        # Use raw composition string for brevity
         comp_str = row["composition"]
         if len(comp_str) > 20:  # if comp too long, use row ID/ material ID
             comp_str = f"ID: {row.name}"
-        else:
-            comp_str = htmlify(comp_str).replace(" ", "")
-        prop_val = f"{target_symbol}={row[target_label]:.2f}"
-        text = f"{comp_str}<br>{prop_val}"
-        return dict(text=text, font_size=11, bgcolor="rgba(240, 240, 240, 0.5)")
+        text = f"{comp_str.replace(' ', '')} {target_symbol}={row[target_label]:.2f}"
+        return dict(text=text, font_size="11px")
 
     embed_col = "embeddings"
     if embed_col not in df_plot:
-        df_plot[embed_col] = [embeddings_dict.get(comp) for comp in compositions]
+        df_plot[embed_col] = [embeddings_dict[comp] for comp in compositions]
 
-    fig = pmv.cluster_compositions(
+    return pmv.cluster_compositions(
         df_in=df_plot,
         composition_col="composition",
         prop_name=target_label,
         embedding_method=embed_col,
         projection=projection,
         n_components=n_components,
-        marker_size=8,
-        opacity=0.8,
-        width=1000,
-        height=600,
-        show_chem_sys="shape" if len(compositions) < 1000 else None,
-        annotate_points=annotate_top_points,
+        show_chem_sys="shape"
+        if len(compositions) < 1000 and n_components == 2
+        else None,
+        annotate_points=annotate_top_points if n_components == 2 else None,
+        style="height: 600px",
         **kwargs,
     )
-
-    # Update title and margins
-    title = f"{dataset_name} - {embed_method} + {projection} ({n_components}D)"
-    fig.layout.update(title=dict(text=title, x=0.5), margin_t=50)
-    # The library hover text already shows composition, coordinates and the raw
-    # property; only long steel compositions get a 2-column layout. Edit each trace's
-    # own customdata (composition, hover text): points are sorted by property.
-    if dataset_name == "matbench_steels":
-        for trace in fig.data:
-            trace.customdata = [
-                [comp, hover.replace(comp, format_composition(comp), 1)]
-                for comp, hover in trace.customdata
-            ]
-
-    return fig
 
 
 mb_jdft2d: tuple[str, str, str, str] = (
     "matbench_jdft2d",
     "exfoliation_en",
     "Exfoliation Energy (meV/atom)",
-    "E<sub>ex</sub>",
+    "E_ex",
 )
 mb_steels: tuple[str, str, str, str] = (
     "matbench_steels",
@@ -206,48 +174,42 @@ mb_perovskites: tuple[str, str, str, str] = (
     "matbench_perovskites",
     "e_form",
     "Formation energy (eV/atom)",
-    "E<sub>f</sub>",
+    "E_f",
 )
 mb_phonons: tuple[str, str, str, str] = (
     "matbench_phonons",
     "last phdos peak",
     "Max Phonon Peak (cm⁻¹)",
-    "ν<sub>max</sub>",
+    "ν_max",
 )
 mb_bulk_modulus: tuple[str, str, str, str] = (
     "matbench_log_kvrh",
     "log10(K_VRH)",
     "Bulk Modulus (GPa)",
-    "K<sub>VRH</sub>",
+    "K_VRH",
 )
 plot_combinations: list[PlotConfig] = [
     # 1. Steels with PCA (2D) - shows clear linear trends
-    (*mb_steels, Embed.magpie, Project.pca, 2, {"x": 0.01, "xanchor": "left"}),
+    (*mb_steels, Embed.magpie, Project.pca, 2),
     # 2. Steels with t-SNE (2D) - shows non-linear clustering
-    (*mb_steels, Embed.magpie, Project.tsne, 2, {"x": 0.01, "xanchor": "left"}),
+    (*mb_steels, Embed.magpie, Project.tsne, 2),
     # TODO umap-learn seemingly not installed by uv run in CI, fix later
     # 3. JDFT2D with UMAP (2D) - shows modern non-linear projection
-    # (*mb_jdft2d, Embed.magpie, Project.umap, 2, {"x": 0.01, "xanchor": "left"}),
+    # (*mb_jdft2d, Embed.magpie, Project.umap, 2),
     # 4. JDFT2D with one-hot encoding and PCA (3D) - shows raw element relationships
-    (*mb_jdft2d, Embed.one_hot, Project.pca, 3, {}),
+    (*mb_jdft2d, Embed.one_hot, Project.pca, 3),
     # 5. Steels with Matscholar embedding and t-SNE (3D) - shows advanced embedding
-    (*mb_steels, Embed.matscholar_el, Project.tsne, 3, {"x": 0.5, "y": 0.8}),
+    (*mb_steels, Embed.matscholar_el, Project.tsne, 3),
     # 6. Dielectric with PCA (2D) - shows clear linear trends
-    (*mb_dielectric, Embed.magpie, Project.pca, 2, {"x": 0.01, "xanchor": "left"}),
+    (*mb_dielectric, Embed.magpie, Project.pca, 2),
     # 7. Perovskites with PCA (2D) - shows clear linear trends
-    (*mb_perovskites, Embed.magpie, Project.pca, 2, {"x": 0.01, "xanchor": "left"}),
+    (*mb_perovskites, Embed.magpie, Project.pca, 2),
     # 8. Phonons with PCA (2D) - shows clear linear trends
-    (*mb_phonons, Embed.magpie, Project.pca, 2, {"x": 0.01, "xanchor": "left"}),
+    (*mb_phonons, Embed.magpie, Project.pca, 2),
     # 9. Bulk Modulus with PCA (2D) - shows clear linear trends
-    (
-        *mb_bulk_modulus,
-        Embed.magpie,
-        Project.pca,
-        2,
-        {"x": 0.99, "y": 0.96, "yanchor": "top"},
-    ),
+    (*mb_bulk_modulus, Embed.magpie, Project.pca, 2),
     # 10. Perovskites with t-SNE (3D) - shows raw element relationships
-    (*mb_perovskites, Embed.magpie, Project.tsne, 3, {}),
+    (*mb_perovskites, Embed.magpie, Project.tsne, 3),
 ]
 
 for (
@@ -258,9 +220,8 @@ for (
     embed_method,
     proj_method,
     n_components,
-    cbar_args,
 ) in plot_combinations:
-    fig = process_dataset(
+    widget = process_dataset(
         dataset_name=data_name,
         target_key=target_key,
         target_label=target_label,
@@ -268,15 +229,12 @@ for (
         embed_method=embed_method,
         projection=proj_method,
         n_components=n_components,
-        color_scale="log" if data_name == "matbench_dielectric" else "linear",
+        log=data_name == "matbench_dielectric",
     )
-    fig.layout.coloraxis.colorbar.update(**cbar_args)
-
-    # Save as HTML and SVG
     img_name = f"{data_name}-{embed_method}-{proj_method}-{n_components}d".replace(
         "_", "-"
     )
-    fig.write_html(f"{plot_dir}/{img_name}.html", include_plotlyjs="cdn")
-    pmv.io.save_and_compress_svg(fig, img_name)
-
-    fig.show()
+    widget.to_html(f"{plot_dir}/{img_name}.html")
+    widget.show()
+    if data_name == "matbench_perovskites":  # shown in the readme
+        widget.to_img(f"{pmv.ROOT}/assets/png/{img_name}.png", width=600)

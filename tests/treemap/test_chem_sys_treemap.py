@@ -81,7 +81,7 @@ def test_system_limit(
         assert not binary_other
 
 
-@pytest.mark.parametrize("limit", [None, 0, 99])
+@pytest.mark.parametrize("limit", [None, 99])
 def test_mixed_inputs(chart: ChemicalChart, limit: int | None) -> None:
     """Mixed inputs produce nodes only for arities present in the data."""
     structure = Structure(
@@ -106,9 +106,7 @@ def test_mixed_inputs(chart: ChemicalChart, limit: int | None) -> None:
         (["?"], {}, ValueError, "Invalid formula"),
         ([1], {}, TypeError, "Expected str, Composition or Structure"),
         (["Fe"], {"mode": "merge"}, ValueError, "Invalid mode="),
-        (["Fe"], {"show_counts": False}, TypeError, "show_counts"),
         (["Fe"], {"max_cells": 1}, TypeError, "max_cells"),
-        (["Fe"], {"max_slices": 1}, TypeError, "max_slices"),
     ],
 )
 def test_invalid_inputs(
@@ -118,6 +116,6 @@ def test_invalid_inputs(
     error: type[Exception],
     message: str,
 ) -> None:
-    """Reject invalid data, unknown modes and retired Plotly options."""
+    """Reject invalid data, unknown modes and unknown widget options."""
     with pytest.raises(error, match=message):
         chart(samples, **kwargs)

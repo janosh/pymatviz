@@ -112,7 +112,7 @@ struct = Structure(
 )
 
 structure_widget = pmv.StructureWidget(
-    structure=struct, show_bonds=True, style="height: 400px;"
+    structure=struct, show_bonds="always", style="height: 400px;"
 )
 structure_widget.show()
 
@@ -142,7 +142,7 @@ struct_multi_vec = struct.copy(
 
 multi_vec_widget = pmv.StructureWidget(
     structure=struct_multi_vec,
-    show_bonds=True,
+    show_bonds="always",
     vector_configs={
         "force_DFT": {"color": "#e74c3c"},
         "force_MLFF": {"color": "#3498db"},
@@ -249,7 +249,7 @@ linked_scatter = pmv.ScatterPlotWidget(
     style="height: 400px; width: 100%;",
 )
 linked_structure = pmv.StructureWidget(
-    structure=linked_frames[0], show_bonds=True, style="height: 400px; width: 100%;"
+    structure=linked_frames[0], show_bonds="always", style="height: 400px; width: 100%;"
 )
 # clicking a scatter point now updates linked_structure
 selection_link = pmv.link_selection(
@@ -429,7 +429,7 @@ ase_traj_widget = pmv.TrajectoryWidget(
     display_mode="structure+plot",
     vector_scale=0.5,
     vector_color="#ff4444",
-    show_bonds=True,
+    show_bonds="always",
     bonding_strategy="electroneg_ratio",
     style="height: 600px;",
 )
@@ -503,7 +503,7 @@ iso_widget.show()
 orbital_widget = pmv.StructureWidget(
     data_url=f"{matterviz_iso_dir_url}/caffeine-HOMO.cube.gz",
     isosurface_settings=iso_settings("scalar", 0.02, 0.7, show_negative=True),
-    show_bonds=True,
+    show_bonds="always",
     style="height: 500px;",
 )
 orbital_widget.show()

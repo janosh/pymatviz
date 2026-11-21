@@ -12,61 +12,37 @@ import os
 from urllib.request import urlopen
 
 import numpy as np
-import plotly.express as px
 import pymatgen
 
 import pymatviz as pmv
 
 
-pmv.set_plotly_template("plotly_white")
-
-
 # %% Single packages with default settings
 for pkg in ("pymatviz", np):  # Mix strings and module objects
-    fig = pmv.py_pkg_treemap(pkg)
-    pkg_name = str(getattr(pkg, "__name__", pkg))
-    fig.layout.title.update(text=f"{pkg_name} Package Structure", font_size=20, x=0.5)
-    fig.show()
-    pmv.io.save_and_compress_svg(fig, f"py-pkg-treemap-{pkg_name.replace('_', '-')}")
+    widget = pmv.py_pkg_treemap(pkg, style="height: 500px")
+    widget.show()
+    pkg_name = str(getattr(pkg, "__name__", pkg)).replace("_", "-")
+    widget.to_img(f"{pmv.ROOT}/assets/svg/py-pkg-treemap-{pkg_name}.svg", width=800)
 
 
-# %% Compare multiple packages (with file/module filtering via cell_size_fn)
-fig = pmv.py_pkg_treemap(
-    packages := ("pymatviz", np),
-    show_counts="value+percent",
-    # Only include files with at least 50 lines
+# %% Compare multiple packages, only including files with at least 50 lines
+widget = pmv.py_pkg_treemap(
+    ("pymatviz", np),
     cell_size_fn=lambda cell: cell.line_count if cell.line_count >= 50 else 0,
+    label_text="label+value",
+    padding_inner=2,
 )
-# Add customizations: rounded corners and custom hover
-fig.update_traces(
-    marker=dict(cornerradius=5),
-    hovertemplate="<b>%{label}</b><br>Lines: %{value}<br>Percentage: "
-    "%{percentRoot:.1%} of total<extra></extra>",
-)
-pkg_names = [getattr(pkg, "__name__", pkg) for pkg in packages]
-title = f"Comparing Package Structure: {', '.join(map(str, pkg_names))}"
-fig.layout.title.update(text=title, x=0.5, font_size=20)
-fig.show()
-pmv.io.save_and_compress_svg(fig, "py-pkg-treemap-multiple")
+widget.show()
+widget.to_img(f"{pmv.ROOT}/assets/svg/py-pkg-treemap-multiple.svg", width=800)
 
 
 # %% Different ways to group packages
-for group_by, clr_scheme in (
-    ("file", px.colors.qualitative.Set2),
-    ("directory", px.colors.qualitative.Pastel1),
-    ("module", px.colors.qualitative.Set3),
-):
-    fig = pmv.py_pkg_treemap(
+for group_by in ("file", "directory", "module"):
+    pmv.py_pkg_treemap(
         "pymatviz",
         group_by=group_by,
-        show_counts="value",
-        color_discrete_sequence=clr_scheme,
-        # Only include files with at least 20 lines
         cell_size_fn=lambda cell: cell.line_count if cell.line_count >= 20 else 0,
-    )
-    title = f"pymatviz Package Structure - Grouped by {group_by}"
-    fig.layout.title.update(text=title, x=0.5, y=0.97, font_size=18)
-    fig.show()
+    ).show()
 
 
 # %% Custom formatting of package names and line counts
@@ -75,26 +51,15 @@ def custom_module_formatter(module: str, count: int, _total: int) -> str:
     return f"{module.upper()} [{count:,} lines]"
 
 
-fig = pmv.py_pkg_treemap(
-    ("numpy", "pymatviz"),
-    cell_text_fn=custom_module_formatter,
-    color_discrete_sequence=px.colors.qualitative.Bold,
-)
-fig.update_layout(
-    title=dict(text="Custom Package Name Formatting", x=0.5, y=0.97, font_size=18),
-)
-fig.show()
+pmv.py_pkg_treemap(("numpy", "pymatviz"), cell_text_fn=custom_module_formatter).show()
 
 
 # %% Custom cell sizing by functions, classes, and methods
-fig_custom_size = pmv.py_pkg_treemap(
+pmv.py_pkg_treemap(
     "pymatviz",
     cell_size_fn=lambda cell: cell.n_functions + cell.n_classes + cell.n_methods,
-    show_counts="value",  # Show the custom calculated value
-)
-title = "pymatviz: Cell size by (functions + classes + methods)"
-fig_custom_size.layout.title.update(text=title, x=0.5, y=0.97, font_size=18)
-fig_custom_size.show()
+    label_text="label+value",
+).show()
 
 
 # %% Color files from published coverage.py JSON reports
@@ -116,18 +81,14 @@ def coverage_percentages(url: str, package: str) -> dict[str, float]:
 
 coverage_url = "https://github.com/janosh/pymatviz/releases/download/v0.17.5/2026-03-31-pymatviz-coverage.json"
 
-fig_cov = pmv.py_pkg_treemap(
+widget = pmv.py_pkg_treemap(
     "pymatviz",
     color_by=coverage_percentages(coverage_url, "pymatviz"),
-    labels={"color_value": "Coverage (%)"},
+    color_range=(0, 100),  # viridis from 0% (purple) to 100% (yellow) coverage
     cell_size_fn=lambda cell: cell.line_count if cell.line_count >= 20 else 0,
-    show_counts="value",
-    color_continuous_scale="RdYlGn",  # Red-Yellow-Green scale for coverage
 )
-title = "pymatviz: Coverage Heatmap (Cell size by lines, Color by test coverage)"
-fig_cov.layout.title.update(text=title, x=0.5, y=0.97, font_size=18)
-fig_cov.show()
-pmv.io.save_and_compress_svg(fig_cov, "py-pkg-treemap-pymatviz-coverage")
+widget.show()
+widget.to_img(f"{pmv.ROOT}/assets/svg/py-pkg-treemap-pymatviz-coverage.svg", width=800)
 
 
 # %% pymatgen treemap with coverage heatmap and manual color range (0-100%)
@@ -146,18 +107,14 @@ def _pmg_cell_size(cell: pmv.treemap.py_pkg.ModuleStats) -> int:
     return cell.line_count if cell.line_count >= 20 else 0
 
 
-fig_cov_range = pmv.py_pkg_treemap(
+widget = pmv.py_pkg_treemap(
     pymatgen,
     color_by=coverage_percentages(coverage_url, "pymatgen"),
-    labels={"color_value": "Coverage (%)"},
-    color_range=(0, 100),  # Manual range: 0% (red) to 100% (green)
+    color_range=(0, 100),
     cell_size_fn=_pmg_cell_size,
-    show_counts="value",
-    color_continuous_scale="RdYlGn",  # Red-Yellow-Green scale for coverage
     max_module_depth=3,
     min_lines_for_split=500,  # only expand if every child has >=500 lines
     max_children_for_split=5,  # only expand if parent has <=5 children
 )
-fig_cov_range.layout.margin = dict(l=0, r=0, b=0, t=0)
-fig_cov_range.show()
-pmv.io.save_and_compress_svg(fig_cov_range, "py-pkg-treemap-pymatgen-coverage")
+widget.show()
+widget.to_img(f"{pmv.ROOT}/assets/svg/py-pkg-treemap-pymatgen-coverage.svg", width=800)

@@ -30,8 +30,14 @@ def _limit_nodes(
     *,
     parent_id: str = "",
 ) -> list[dict[str, Any]]:
-    """Keep the largest siblings and optionally sum omitted values into Other."""
-    if not limit or limit < 0 or len(nodes) <= limit:
+    """Keep the largest siblings and optionally sum omitted values into Other.
+
+    Raises:
+        ValueError: If limit is below 1 (None means no limit).
+    """
+    if limit is not None and limit < 1:
+        raise ValueError(f"Slice limits must be at least 1 or None, got {limit=}")
+    if limit is None or len(nodes) <= limit:
         return nodes
     ranked = sorted(nodes, key=itemgetter("value"), reverse=True)
     kept = ranked[:limit]

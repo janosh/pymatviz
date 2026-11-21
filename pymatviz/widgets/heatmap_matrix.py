@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 import traitlets as tl
 
 from pymatviz.widgets._normalize import normalize_json_kwargs, normalize_plot_json
-from pymatviz.widgets._traits import color_bar_trait, color_scale_trait
+from pymatviz.widgets._traits import color_bar_trait, color_scale_trait, optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -66,9 +66,9 @@ class HeatmapMatrixWidget(MatterVizWidget):
     color_scale = color_scale_trait()
     color_bar = color_bar_trait()
     # styling for cells with no value, e.g. {"color": "gray", "label": "N/A"}
-    missing = tl.Dict(default_value=None, allow_none=True).tag(sync=True)
-    x_axis = tl.Dict(allow_none=True).tag(sync=True)
-    y_axis = tl.Dict(allow_none=True).tag(sync=True)
+    missing = optional_trait(tl.Dict)
+    x_axis = optional_trait(tl.Dict)
+    y_axis = optional_trait(tl.Dict)
     tile_size = tl.Unicode(default_value="50px").tag(sync=True)
     gap = tl.Unicode(default_value="0px").tag(sync=True)
     show_values = tl.Any(default_value=True).tag(sync=True)

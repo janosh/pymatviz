@@ -5,7 +5,7 @@ from __future__ import annotations
 import importlib.util
 import json
 from contextlib import nullcontext
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from unittest.mock import Mock, patch
 
 import numpy as np
@@ -14,6 +14,8 @@ import pytest
 import traitlets as tl
 from pymatgen.core import Lattice, Molecule, Structure
 
+import pymatviz as pmv
+from pymatviz.widgets import matterviz
 from pymatviz.widgets._traits import BONDING_STRATEGIES, ELEMENT_COLOR_SCHEMES
 from pymatviz.widgets.band_structure import BandStructureWidget
 from pymatviz.widgets.bands_and_dos import BandsAndDosWidget
@@ -26,7 +28,7 @@ from pymatviz.widgets.dos import DosWidget
 from pymatviz.widgets.fermi_surface import FermiSurfaceWidget
 from pymatviz.widgets.heatmap_matrix import HeatmapMatrixWidget
 from pymatviz.widgets.histogram import HistogramWidget
-from pymatviz.widgets.matterviz import MatterVizWidget
+from pymatviz.widgets.matterviz import MATTERVIZ_ANYWIDGET_VERSION, MatterVizWidget
 from pymatviz.widgets.periodic_table import PeriodicTableWidget
 from pymatviz.widgets.phase_diagram import PhaseDiagramWidget
 from pymatviz.widgets.rdf_plot import RdfPlotWidget
@@ -38,6 +40,12 @@ from pymatviz.widgets.sunburst import SunburstWidget
 from pymatviz.widgets.trajectory import TrajectoryWidget
 from pymatviz.widgets.treemap import TreemapWidget
 from pymatviz.widgets.xrd import XrdWidget
+
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+FE_STRUCT = Structure(Lattice.cubic(2.87), ["Fe", "Fe"], [[0, 0, 0], [0.5, 0.5, 0.5]])
 
 
 # === Construction and widget_type ===
@@ -180,7 +188,6 @@ from pymatviz.widgets.xrd import XrdWidget
             "fermi_surface",
             "color_bar",
         ),
-        (SpacegroupBarPlotWidget, {"data": [225, 166, 62]}, "spacegroup_bar", "data"),
         (
             ChemPotDiagramWidget,
             {"entries": [{"name": "Li2O", "energy": -14.3}]},
@@ -251,49 +258,19 @@ def test_widget_notebook_integration(widget_cls: type[MatterVizWidget]) -> None:
 
     for attr_name in ("_model_name", "_view_name", "_model_module", "_view_module"):
         assert hasattr(widget, attr_name)
-    assert len(widget._esm) > 1000
-    assert len(widget._css) > 100
-    assert "export default" in widget._esm or " as default" in widget._esm
-    assert "render" in widget._esm
+    # the frontend loads remote bundles by URL, local builds as text
+    esm, css = widget._resolve_assets()
+    assert widget._esm in (
+        esm,
+        matterviz._bundle_sources(MATTERVIZ_ANYWIDGET_VERSION)[0],
+    )
+    assert len(esm) > 1000
+    assert len(css) > 100
+    assert "export default" in esm or " as default" in esm
+    assert "render" in esm
 
 
-# === to_dict auto-discovery ===
-
-
-@pytest.mark.parametrize(
-    ("widget_cls", "kwargs"),
-    [
-        (ScatterPlotWidget, {"series": [{"x": [0, 1], "y": [1, 2], "label": "s"}]}),
-        (
-            HistogramWidget,
-            {"series": [{"values": [1, 2]}], "bins": 50, "mode": "overlay"},
-        ),
-        (BarPlotWidget, {"series": [{"x": [0], "y": [1]}], "mode": "grouped"}),
-        (DosWidget, {"doses": {"energies": [0, 1]}, "sigma": 0.05}),
-        (ConvexHullWidget, {"entries": [{"composition": {"Li": 1}, "energy": -1.5}]}),
-        (PeriodicTableWidget, {"heatmap_values": {"Fe": 42}}),
-        (ScatterPlot3DWidget, {"series": [{"x": [1], "y": [2], "z": [3]}]}),
-        (HeatmapMatrixWidget, {"x_items": ["A"], "y_items": ["B"]}),
-        (SpacegroupBarPlotWidget, {"data": [225]}),
-        (ChemPotDiagramWidget, {"entries": [{"name": "Li", "energy": -1.9}]}),
-        (TreemapWidget, {"data": {"label": "root", "value": 1}}),
-        (SunburstWidget, {"shape": "icicle"}),
-    ],
-)
-def test_to_dict_includes_subclass_fields(
-    widget_cls: type,
-    kwargs: dict[str, Any],
-) -> None:
-    """to_dict returns all public synced traitlets."""
-    widget = widget_cls(**kwargs)
-    state = widget.to_dict()
-    expected = {
-        name
-        for name in widget.traits(sync=True)
-        if not name.startswith("_") and name not in widget._EXCLUDED_TRAITS
-    }
-    assert {"widget_type", "style", "show_controls"} <= set(state)
-    assert set(state) == expected
+# === to_dict ===
 
 
 def test_to_dict_reflects_constructor_values() -> None:
@@ -349,7 +326,7 @@ def test_to_dict_reflects_runtime_mutations() -> None:
         (HeatmapMatrixWidget, "color_scale", None),
         (HeatmapMatrixWidget, "tile_size", "50px"),
         (HeatmapMatrixWidget, "gap", "0px"),
-        (SpacegroupBarPlotWidget, "data", []),
+        (SpacegroupBarPlotWidget, "data", {}),
         (SpacegroupBarPlotWidget, "show_counts", True),
         (SpacegroupBarPlotWidget, "show_legend", False),
         (SpacegroupBarPlotWidget, "orientation", "vertical"),
@@ -379,7 +356,7 @@ def test_histogram_widget_delegates_series_validation() -> None:
     """HistogramWidget requires sample arrays in `values`."""
     widget = HistogramWidget(series=[{"values": np.array([2, 1]), "label": "a"}])
     assert widget.to_dict()["series"] == [{"values": [2.0, 1.0], "label": "a"}]
-    with pytest.raises(ValueError, match="must include key 'values'"):
+    with pytest.raises(tl.TraitError, match="must include key 'values'"):
         HistogramWidget(series=[{"x": [0, 1], "y": [2, 3]}])
 
 
@@ -434,6 +411,33 @@ def test_histogram_series_updates_reject_invalid(
         widget.series = series
     assert widget.to_dict() == old_state
     observer.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("series", "expected"),
+    [
+        (
+            ({"x": np.array([1, 2]), "y": pd.Series([3.0, 4.0]), "label": "b"},),
+            [{"x": [1, 2], "y": [3.0, 4.0], "label": "b"}],
+        ),
+        ([{"x": [1, 2], "y": np.array([np.nan, 2.0])}], "non-finite"),
+        ([{"x": [1, 2]}], "must include keys 'x' and 'y'"),
+    ],
+)
+def test_bar_plot_series_updates_normalize(series: Any, expected: Any) -> None:
+    """Reassigned BarPlotWidget series normalize like the constructor or raise."""
+    widget = BarPlotWidget(series=[{"x": [0], "y": [1]}])
+    if isinstance(expected, str):
+        old_state = widget.to_dict()
+        with pytest.raises(tl.TraitError, match=expected):
+            widget.series = series
+        assert widget.to_dict() == old_state
+        return
+    widget.series = series
+    assert widget.series == BarPlotWidget(series=series).series == expected
+    assert json.loads(json.dumps(widget.get_state(), allow_nan=False))["series"] == (
+        expected
+    )
 
 
 @pytest.mark.parametrize("series", [None, [], [{"values": []}]])
@@ -512,7 +516,7 @@ def test_structure_viz_vector_props(
             SpacegroupBarPlotWidget,
             {"data": np.array([225, 166, 62])},
             "data",
-            [225, 166, 62],
+            {"62": 1, "166": 1, "225": 1},
         ),
         (
             BrillouinZoneWidget,
@@ -547,18 +551,40 @@ def test_widget_normalizes_numpy_values(
     assert type(result) is type(expected)
 
 
-def test_spacegroup_bar_data_inputs() -> None:
-    """SpacegroupBarPlotWidget normalizes supported data inputs."""
-    pd = pytest.importorskip("pandas")
-    widget = SpacegroupBarPlotWidget(data=pd.Series([225, 166, 62]))
-    assert widget.data == [225, 166, 62]
-    widget = SpacegroupBarPlotWidget(data={225: np.int64(2), 166: 0, "P2_1/c": 1})
-    assert widget.data == [225, 225, "P2_1/c"]
-    for bad_data, error_cls, match in [
-        ({225: -1}, ValueError, "non-negative"),
-        ({225: 1.5}, TypeError, "integer"),
+def test_spacegroup_bar_data_inputs(monkeypatch: pytest.MonkeyPatch) -> None:
+    """SpacegroupBarPlotWidget counts every input form per space group number."""
+    import pymatviz.process_data as pmv_pd
+
+    widget = SpacegroupBarPlotWidget(data=pd.Series([225, 166, 62, 225]))
+    assert widget.data == {"62": 1, "166": 1, "225": 2}
+    # number, symbol and synced digit-string keys of one group merge; zeros drop
+    widget.data = {225: np.int64(2), "Fm-3m": 1, "225": 1, 166: 0, "P2_1/c": 1}
+    assert widget.data == {"14": 1, "225": 4}
+    widget.data = widget.data  # re-validating the synced form is a no-op
+    assert widget.data == {"14": 1, "225": 4}
+    # mapping keys normalize in one batch per key type (numbers, symbols), not one
+    # call per key
+    n_calls = 0
+    normalize = pmv_pd.normalize_spacegroups
+
+    def counting_normalize(*args: Any) -> Any:
+        """Count normalize_spacegroups calls."""
+        nonlocal n_calls
+        n_calls += 1
+        return normalize(*args)
+
+    monkeypatch.setattr(pmv_pd, "normalize_spacegroups", counting_normalize)
+    widget.data = {"Fm-3m": 1, "P2_1/c": 2, "Pnma": 3}
+    assert (widget.data, n_calls) == ({"14": 2, "62": 3, "225": 1}, 1)
+    widget.data = {225: 1, np.int64(62): 2, "225": 3, "Fm-3m": 4, "P 1 21/c 1": 5}
+    assert (widget.data, n_calls) == ({"14": 5, "62": 2, "225": 8}, 3)
+    assert SpacegroupBarPlotWidget().data == {}
+    for bad_data, match in [
+        ({225: -1}, "non-negative"),
+        ({225: 1.5}, "integers"),
+        ({"not-a-spg": 1}, "Invalid"),
     ]:
-        with pytest.raises(error_cls, match=match):
+        with pytest.raises(tl.TraitError, match=match):
             SpacegroupBarPlotWidget(data=bad_data)
 
 
@@ -791,20 +817,47 @@ def test_rdf_plot_rejects_both_structures_and_patterns() -> None:
         )
 
 
+def test_xrd_widget_labeled_patterns() -> None:
+    """A {label: pattern} mapping normalizes each pattern, keeping label order."""
+    from pymatgen.analysis.diffraction.xrd import DiffractionPattern
+
+    computed = DiffractionPattern(
+        [10, 20], [100, 50], [[{"hkl": (1, 0, 0)}]] * 2, [2, 1]
+    )
+    widget = XrdWidget(
+        patterns={"computed": computed, "scan": {"two_theta": [5], "intensities": [1]}}
+    )
+    assert list(widget.patterns) == ["computed", "scan"]
+    assert widget.patterns["computed"]["hkls"][0] == [{"hkl": [1, 0, 0]}]
+    assert widget.patterns["scan"] == {"x": [5], "y": [1], "kind": "profile"}
+    with pytest.raises(ValueError, match="patterns mapping must not be empty"):
+        XrdWidget(patterns={})
+
+
 @pytest.mark.parametrize(
-    ("series", "exc_type", "match"),
+    ("series", "match"),
     [
-        ([{"x": [1], "y": [2], "label": "no-z"}], ValueError, "missing required key"),
-        (["not-a-dict"], TypeError, "must be a dict"),
-        ([{1: [0], "y": [1], "z": [2]}], TypeError, "non-string keys"),
+        ([{"x": [1], "y": [2], "label": "no-z"}], "missing required key"),
+        (["not-a-dict"], "must be a dict"),
+        ([{1: [0], "y": [1], "z": [2]}], "non-string keys"),
+        ([{"x": [1, 2], "y": [2], "z": [3]}], "mismatched x/y/z lengths"),
+        ([{"x": np.array([1, np.nan]), "y": [2, 3], "z": [3, 4]}], "non-finite"),
     ],
 )
-def test_scatter_plot_3d_rejects_invalid_series(
-    series: list[Any], exc_type: type[Exception], match: str
-) -> None:
-    """ScatterPlot3DWidget rejects malformed series entries."""
-    with pytest.raises(exc_type, match=match):
+def test_scatter_plot_3d_rejects_invalid_series(series: list[Any], match: str) -> None:
+    """ScatterPlot3DWidget rejects malformed series on init and reassignment, keeping
+    prior data, and normalizes valid reassignments to JSON.
+    """
+    with pytest.raises(tl.TraitError, match=match):
         ScatterPlot3DWidget(series=series)
+    widget = ScatterPlot3DWidget(series=[{"x": [1], "y": [2], "z": [3]}])
+    with pytest.raises(tl.TraitError, match=match):
+        widget.series = series
+    assert widget.series == [{"x": [1], "y": [2], "z": [3]}]
+    widget.series = [
+        {"x": np.array([1.5]), "y": (2,), "z": np.array([3], dtype=np.float32)}
+    ]
+    assert widget.series == [{"x": [1.5], "y": [2], "z": [3.0]}]
 
 
 # === FermiSurfaceWidget input validation ===
@@ -844,9 +897,8 @@ _FAKE_PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 50
 
 
 def _make_widget() -> MatterVizWidget:
-    """Create a MatterVizWidget with mocked assets for testing."""
-    with patch("pymatviz.widgets.matterviz.fetch_widget_asset", return_value="x"):
-        return MatterVizWidget(widget_type="scatter_plot")
+    """Create a bare scatter-plot MatterVizWidget for to_img tests."""
+    return MatterVizWidget(widget_type="scatter_plot")
 
 
 @pytest.mark.parametrize(
@@ -956,7 +1008,7 @@ def test_to_img_falls_back_from_marimo_url() -> None:
     assert isinstance(esm_passed, str)
 
 
-# === _build_html unit tests ===
+# === headless mount option unit tests ===
 
 
 _W8 = "width: 800px"
@@ -982,14 +1034,13 @@ def test_build_html_dimensions(
     expect_in: list[str],
     expect_not_in: list[str],
 ) -> None:
-    """_build_html applies dimension defaults only for missing width/height."""
-    from pymatviz.widgets._headless import _build_html
+    """_container_style applies dimension defaults only for missing width/height."""
+    from pymatviz.widgets._headless import _container_style
 
     data: dict[str, Any] = {"widget_type": "bar_plot"}
     if style is not None:
         data["style"] = style
-    html = _build_html(data, "// esm", "/* css */")
-    assert 'id="widget-root"' in html
+    html = _container_style(data, None, None)
     for substr in expect_in:
         assert substr in html, f"expected {substr!r} in HTML"
     for substr in expect_not_in:
@@ -1009,25 +1060,21 @@ def test_build_html_width_height_override(
     height: int | None,
     expect_in: list[str],
 ) -> None:
-    """_build_html explicit width/height override user style and defaults."""
-    from pymatviz.widgets._headless import _build_html
+    """_container_style explicit width/height override user style and defaults."""
+    from pymatviz.widgets._headless import _container_style
 
     data: dict[str, Any] = {"widget_type": "bar_plot", "style": "width: 500px;"}
-    html = _build_html(data, "// esm", "/* css */", width=width, height=height)
+    html = _container_style(data, width, height)
     for substr in expect_in:
         assert substr in html, f"expected {substr!r} in HTML"
 
 
 def test_shutdown_browser_tolerates_none() -> None:
-    """_shutdown_browser handles _browser/_pw/_pw_cm all None without error."""
+    """_shutdown_browser is a no-op when no browser thread was started."""
     import pymatviz.widgets._headless as headless_mod
     from pymatviz.widgets._headless import _shutdown_browser
 
-    with (
-        patch.object(headless_mod, "_browser", None),
-        patch.object(headless_mod, "_pw", None),
-        patch.object(headless_mod, "_pw_cm", None),
-    ):
+    with patch.object(headless_mod, "_browser_thread", None):
         _shutdown_browser()
 
 
@@ -1035,17 +1082,14 @@ def test_get_browser_import_error() -> None:
     """_get_browser raises ImportError with install instructions."""
     import pymatviz.widgets._headless as headless_mod
 
-    original = headless_mod._browser
-    headless_mod._browser = None
-    blocked = {"playwright": None, "playwright.sync_api": None}
-    try:
-        with (
-            patch.dict("sys.modules", blocked),
-            pytest.raises(ImportError, match="playwright is required"),
-        ):
-            headless_mod._get_browser()
-    finally:
-        headless_mod._browser = original
+    state = headless_mod._get_browser_thread()
+    blocked = {"playwright": None, "playwright.async_api": None}
+    with (
+        patch.object(state, "browser", None),
+        patch.dict("sys.modules", blocked),
+        pytest.raises(ImportError, match="playwright is required"),
+    ):
+        headless_mod._run_in_browser_thread(headless_mod._get_browser())
 
 
 @pytest.mark.parametrize(
@@ -1061,14 +1105,15 @@ def test_get_browser_import_error() -> None:
 def test_build_html_render_gates(
     widget_type: str, expect_html_fallback: bool, expect_worker_shim: bool
 ) -> None:
-    """_build_html toggles HTML fallback and Worker shim per widget type."""
-    from pymatviz.widgets._headless import _build_html
+    """_mount_options toggles HTML fallback and Worker shim per widget type."""
+    from pymatviz.widgets._headless import _build_html, _mount_options, _RenderInputs
 
-    html = _build_html({"widget_type": widget_type}, "// esm", "/* css */")
-    assert ("const allow_html_fallback = true" in html) is expect_html_fallback
-    assert ("globalThis.Worker = undefined" in html) is expect_worker_shim
+    inputs = _RenderInputs({"widget_type": widget_type}, "// esm", "/* css */")
+    options = _mount_options(inputs)
+    assert options["allow_html"] is expect_html_fallback
+    assert options["no_worker"] is expect_worker_shim
     # Spinner guard is always present so loading states are never captured
-    assert '.spinner[role="status"]' in html
+    assert '.spinner[role="status"]' in _build_html("// esm", "/* css */")
 
 
 # === Headless integration tests (require playwright + chromium) ===
@@ -1109,10 +1154,9 @@ def test_headless_bar_plot_png(bar_plot_widget: BarPlotWidget) -> None:
 @pytest.mark.parametrize("chart", ["treemap", "sunburst"])
 def test_hierarchy_vector_and_html_exports(chart: str, tmp_path: Any) -> None:
     """Chemical-system charts export vector SVG/PDF and interactive standalone HTML."""
-    from playwright.sync_api import expect
+    from playwright.sync_api import expect, sync_playwright
 
     import pymatviz as pmv
-    from pymatviz.widgets._headless import _get_browser
 
     plot = pmv.chem_sys_treemap if chart == "treemap" else pmv.chem_sys_sunburst
     widget = plot(
@@ -1122,15 +1166,14 @@ def test_hierarchy_vector_and_html_exports(chart: str, tmp_path: Any) -> None:
         style="width: 700px; height: 480px;",
     )
     svg = widget.to_img(fmt="svg").decode()
-    assert f"data-{chart}-node-idx=" in svg
-    assert "Fe-O" in svg
+    assert all(label in svg for label in ("Fe-O", "Li-O", "Si"))
     pdf = widget.to_img(fmt="pdf")
     assert pdf.startswith(b"%PDF-")
     assert b"/Font" in pdf
 
     html_path = tmp_path / f"{chart}.html"
     widget.to_html(str(html_path), inline=True)
-    with _get_browser().new_page() as page:
+    with sync_playwright() as pw, pw.chromium.launch().new_page() as page:
         page.goto(html_path.as_uri())
         chart_nodes = page.locator(f"[data-{chart}-node-idx][aria-label]")
         chart_nodes.first.wait_for()
@@ -1138,8 +1181,11 @@ def test_hierarchy_vector_and_html_exports(chart: str, tmp_path: Any) -> None:
         shapes = page.locator(
             'svg[role="application"] :is(path, rect, circle, text, tspan)'
         )
-        paint = """nodes => nodes.map(node => {
-            const style = getComputedStyle(node);
+        # invisible hit targets and measuring text don't reach the file
+        paint = """nodes => nodes.map(node => getComputedStyle(node))
+            .filter(style =>
+                style.fill !== 'rgba(0, 0, 0, 0)' || style.stroke !== 'none')
+            .map(style => {
             return [style.fill, style.stroke, style.strokeWidth, style.fontFamily,
                     style.fontSize, style.fontWeight, style.textAnchor,
                     style.dominantBaseline];
@@ -1151,45 +1197,28 @@ def test_hierarchy_vector_and_html_exports(chart: str, tmp_path: Any) -> None:
         svg_path = tmp_path / f"{chart}.svg"
         svg_path.write_text(svg)
         page.goto(svg_path.as_uri())
-        assert shapes.evaluate_all(paint) == live_styles
-
-
-@_skip_no_playwright
-@_skip_no_pillow
-def test_svg_export_keeps_use_instance_paint(tmp_path: Any) -> None:
-    """Referenced shapes keep explicit paint and inherit fill/color from each use."""
-    import io
-
-    from PIL import Image
-
-    from pymatviz.widgets._headless import _SVG_EXTRACT_JS, _get_browser
-
-    with _get_browser().new_page() as page:
-        page.set_content("""
-            <div id="widget-root"><svg width="192" height="64">
-            <defs><g id="swatches">
-                <rect width="64" height="64" fill="black"/>
-                <rect x="64" width="64" height="64" style="fill:currentColor"/>
-                <rect x="128" width="64" height="64" fill="inherit"/>
-            </g></defs><use href="#swatches" color="lime" fill="red"/></svg></div>""")
-        exported = tmp_path / "swatches.svg"
-        exported.write_text(page.evaluate(_SVG_EXTRACT_JS))
-        page.goto(exported.as_uri())
-        image = Image.open(io.BytesIO(page.locator("svg").screenshot())).convert("RGB")
-        assert [image.getpixel((pos, 32)) for pos in (32, 96, 160)] == [
-            (0, 0, 0),
-            (0, 255, 0),
-            (255, 0, 0),
-        ]
+        # the exported file drops the live chart's role, so match its shapes directly
+        file_shapes = page.locator("svg :is(path, rect, circle, text, tspan)")
+        assert file_shapes.evaluate_all(paint) == live_styles
 
 
 @_skip_no_playwright
 def test_headless_bar_plot_svg(bar_plot_widget: BarPlotWidget) -> None:
-    """BarPlotWidget.to_img(fmt='svg') returns chart SVG, not a toolbar icon."""
-    svg_text = bar_plot_widget.to_img(fmt="svg").decode("utf-8")
+    """BarPlotWidget.to_img(fmt='svg') returns a standalone-sized chart SVG."""
+    import re
+
+    svg_text = bar_plot_widget.to_img(fmt="svg", width=600).decode("utf-8")
     assert svg_text.startswith("<?xml")
     assert len(svg_text) > 2000, f"SVG too small ({len(svg_text)} chars)"
     assert "<g" in svg_text, "No <g> groups -- likely an icon"
+    # CSS-sized charts get their rendered px size, else <img> shows them at 300x150
+    root = re.search(r"<svg[^>]*>", svg_text)
+    assert root is not None
+    size = dict(re.findall(r' (width|height|viewBox)="([^"]+)"', root.group()))
+    # the viewBox is padded by half the widest stroke so edge strokes aren't clipped
+    assert 600 <= float(size["width"]) <= 602
+    assert size["viewBox"].split()[2:] == [size["width"], size["height"]]
+    assert "<title>" in svg_text  # the chart's aria-label as the file's name
 
 
 @_skip_no_playwright
@@ -1213,7 +1242,7 @@ def test_headless_scatter_vector_export(marker_renderer: str) -> None:
     svg_text = widget.to_img(fmt="svg", dpi=144).decode("utf-8")
     assert "<foreignObject" not in svg_text
     if marker_renderer == "svg":
-        assert svg_text.count('data-roving-key="') == 3
+        assert len(re.findall(r'<path [^>]*class="marker\b', svg_text)) == 3
         return
     data_uris = re.findall(
         r'<image [^>]*href="data:image/png;base64,([^"]+)"', svg_text
@@ -1294,7 +1323,7 @@ def test_headless_webgl_structure_exports(with_plot: bool) -> None:
         struct = Structure(Lattice.cubic(3.0), ["Si"], [[0, 0, 0]])
         widget = StructureWidget(structure=struct, style="height: 300px;")
     assert b"/Font" not in widget.to_img(fmt="pdf", dpi=72), "expected raster PDF"
-    with pytest.raises(RuntimeError, match="SVG export not supported"):
+    with pytest.raises(RuntimeError, match="no vector form"):
         widget.to_img(fmt="svg")
 
 
@@ -1377,7 +1406,7 @@ def test_headless_convex_hull_ternary_canvas_export() -> None:
     )
     assert widget.to_img(fmt="png", dpi=72)[:4] == b"\x89PNG"
     assert widget.to_img(fmt="pdf", dpi=72)[:5] == b"%PDF-"
-    with pytest.raises(RuntimeError, match="WebGL"):
+    with pytest.raises(RuntimeError, match="no vector form"):
         widget.to_img(fmt="svg")
 
 
@@ -1465,32 +1494,83 @@ def test_render_report_never_raises_on_asset_failure(
 
 @_skip_no_playwright
 @_skip_no_pillow
-def test_to_html_inline_renders_offline(tmp_path: Any) -> None:
+@pytest.mark.parametrize(
+    ("make_widget", "selector"),
+    [
+        (
+            lambda: ScatterPlotWidget(
+                series=[{"x": [0, 1, 2], "y": [0, 1, 4], "label": "s"}],
+                style="width: 500px; height: 350px;",
+            ),
+            "svg",
+        ),
+        # default traits (no volumes, no isosurface settings) must not crash the scene
+        (lambda: StructureWidget(structure=FE_STRUCT), "canvas"),
+    ],
+    ids=["scatter", "structure"],
+)
+def test_to_html_inline_renders_offline(
+    tmp_path: Any, make_widget: Callable[[], MatterVizWidget], selector: str
+) -> None:
     """to_html(inline=True) produces a self-contained page that actually renders.
 
     build_interactive_html has its own render path (controls on, no capture
     machinery) that to_img/render_report don't exercise, so load the file and
-    confirm it paints a non-blank chart.
+    confirm it paints without page errors.
     """
-    from pymatviz.widgets._headless import _get_browser, png_blank_fraction
+    from playwright.sync_api import sync_playwright
 
-    widget = ScatterPlotWidget(
-        series=[{"x": [0, 1, 2], "y": [0, 1, 4], "label": "s"}],
-        style="width: 500px; height: 350px;",
-    )
+    from pymatviz.widgets._headless import png_blank_fraction
+
     out_path = tmp_path / "widget.html"
-    widget.to_html(str(out_path), inline=True)
+    make_widget().to_html(str(out_path), inline=True)
 
-    page = _get_browser().new_page(viewport={"width": 600, "height": 420})
-    try:
+    with (
+        sync_playwright() as pw,
+        pw.chromium.launch().new_page(viewport={"width": 600, "height": 420}) as page,
+    ):
+        page_errors: list[str] = []
+        page.on("pageerror", lambda err: page_errors.append(str(err)))
         page.goto(out_path.as_uri(), wait_until="domcontentloaded")
-        page.wait_for_selector("#widget-root svg", timeout=20000)
-        page.wait_for_timeout(500)
+        page.wait_for_selector(f"#widget-root {selector}", timeout=20000)
+        page.wait_for_timeout(1000)
         png_bytes = page.locator("#widget-root").screenshot(type="png")
-    finally:
-        page.close()
 
+    assert page_errors == []
     assert png_bytes[:4] == b"\x89PNG"
     blank_frac = png_blank_fraction(png_bytes)
     assert blank_frac is not None
     assert blank_frac < 0.99  # real chart, not a blank frame
+
+
+def _widget_subclasses(cls: type = MatterVizWidget) -> list[type]:
+    """All MatterVizWidget subclasses, recursively."""
+    return [
+        sub
+        for child in cls.__subclasses__()
+        for sub in (child, *_widget_subclasses(child))
+    ]
+
+
+@pytest.mark.parametrize(
+    "make_widget",
+    [
+        *(
+            pytest.param(cls, id=cls.__name__)
+            for cls in sorted(set(_widget_subclasses()), key=lambda cls: cls.__name__)
+            # validates its exactly-one-of data args before reaching the base init
+            if cls.__name__ != "FermiSurfaceWidget"
+        ),
+        pytest.param(
+            lambda **kw: pmv.ptable_hists({"Fe": [1.0]}, **kw), id="ptable_hists"
+        ),
+        pytest.param(
+            lambda **kw: pmv.density_scatter([1.0, 2.0], [1.0, 2.0], **kw),
+            id="density_scatter",
+        ),
+    ],
+)
+def test_unknown_kwargs_raise(make_widget: Any) -> None:
+    """Typos and unsupported options raise instead of being dropped."""
+    with pytest.raises(TypeError, match=r"Unknown \w+ options: \['bogus'\]"):
+        make_widget(bogus=1)

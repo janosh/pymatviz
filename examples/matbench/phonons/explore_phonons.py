@@ -33,27 +33,19 @@ df_phonon[[Key.spg_symbol, Key.spg_num]] = [
 
 
 # %%
-fig = df_phonon[last_dos_peak].hist(bins=50, backend="plotly")
-fig.layout.title.update(
-    text="Last phonon DOS peak histogram of Matbench Phonons dataset"
-)
-fig.show()
-# pmv.save_fig(fig, "phonons-last-dos-peak-hist.pdf")
+# Last phonon DOS peak histogram of the Matbench Phonons dataset
+widget = pmv.histogram(df_phonon[last_dos_peak], bins=50)
+widget.show()
+# widget.to_img("phonons-last-dos-peak-hist.pdf")
 
 
 # %%
 df_phonon[Key.formula] = df_phonon[Key.structure].map(lambda cryst: cryst.formula)
 df_phonon[Key.volume] = df_phonon[Key.structure].map(lambda cryst: cryst.volume)
 
-fig = pmv.ptable_heatmap(df_phonon[Key.formula], log=True)
-fig.layout.title.update(text="Elemental prevalence in the Matbench phonons dataset")
-fig.show()
-# pmv.save_fig(fig, "phonons-ptable-heatmap.pdf")
+title = "Elemental prevalence in the Matbench phonons dataset"
+pmv.ptable_heatmap(df_phonon[Key.formula], log=True, color_bar={"title": title}).show()
 
 
 # %%
-fig = pmv.spacegroup_bar(df_phonon[Key.spg_num])
-fig.layout.title.update(text="Spacegroup histogram of Matbench Phonons dataset", y=0.98)
-fig.layout.margin.update(b=10, l=10, r=10, t=60)
-fig.show()
-# pmv.save_fig(fig, "phonons-spacegroup-hist.pdf")
+pmv.spacegroup_bar(df_phonon[Key.spg_num]).show()

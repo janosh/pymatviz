@@ -23,19 +23,14 @@ df_e_form = load_dataset("matbench_mp_e_form")
 
 
 # %%
-fig = df_e_form["e_form"].hist(log_y=True, backend="plotly")
-title = "<b>Formation energy histogram of the Matbench formation energy dataset</b>"
-fig.layout.title.update(text=title, x=0.5)
-fig.layout.showlegend = False
-fig.show()
-# pmv.save_fig(fig, "mp-e-form-hist.pdf")
+# Formation energy histogram of the Matbench formation energy dataset
+widget = pmv.histogram(df_e_form["e_form"], log_y=True)
+widget.show()
+# widget.to_img("mp-e-form-hist.pdf")
 
 
 # %%
 df_e_form[Key.formula] = df_e_form[Key.structure].map(lambda struct: struct.formula)
 
-fig = pmv.ptable_heatmap(df_e_form[Key.formula], log=True)
-title = "<b>Elemental prevalence in the Matbench formation energy dataset</b>"
-fig.layout.title.update(text=title, x=0.5)
-fig.show()
-# pmv.save_fig(fig, "mp_e_form-ptable-heatmap.pdf")
+title = "Elemental prevalence in the Matbench formation energy dataset"
+pmv.ptable_heatmap(df_e_form[Key.formula], log=True, color_bar={"title": title}).show()

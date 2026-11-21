@@ -38,23 +38,24 @@ df_carrier[[Key.spg_symbol, Key.spg_num]] = [
 
 
 # %%
-fig = pmv.ptable_heatmap(df_carrier.pretty_formula.dropna(), log=True)
-title = f"{data_name} elemental prevalence"
-fig.layout.title.update(text=title)
-fig.show()
-# pmv.save_fig(fig, "carrier-transport-ptable-heatmap.pdf")
+widget = pmv.ptable_heatmap(
+    df_carrier.pretty_formula.dropna(),
+    log=True,
+    color_bar={"title": f"{data_name} elemental prevalence"},
+)
+widget.show()
 
 
 # %%
 ax, *_ = df_carrier.hist(bins=50, log=True, figsize=[30, 16]).flat
 ax.figure.suptitle(data_name, y=1.05)
-# pmv.save_fig(ax, "carrier-transport-hists.pdf")
+# ax.figure.savefig("carrier-transport-hists.pdf")
 
 
 # %%
 ax, *_ = df_carrier.filter(like="S.").hist(bins=50, log=True, figsize=[18, 8]).flat
 ax.figure.suptitle(f"{data_name} histograms for n- and p-type Seebeck coefficients")
-pmv.save_fig(ax, "carrier-transport-seebeck-n+p.pdf")
+ax.figure.savefig("carrier-transport-seebeck-n+p.pdf")
 
 
 # %%
@@ -79,11 +80,8 @@ dependent_vars = [
 
 ax, *_ = df_carrier[dependent_vars].hist(bins=50, log=True, figsize=[30, 16]).flat
 ax.figure.suptitle(f"{data_name} dependent variables", y=1.05)
-# pmv.save_fig(ax.flat[0], "carrier-transport-hists-dependent-vars.pdf")
+# ax.figure.savefig("carrier-transport-hists-dependent-vars.pdf")
 
 
 # %%
-fig = pmv.spacegroup_bar(df_carrier[Key.spg_num])
-fig.layout.title.update(text="Spacegroup distribution in the {data_name}")
-fig.show()
-# pmv.save_fig(fig, "carrier-transport-spacegroup-hist.pdf")
+pmv.spacegroup_bar(df_carrier[Key.spg_num]).show()

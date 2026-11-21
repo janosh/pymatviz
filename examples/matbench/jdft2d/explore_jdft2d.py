@@ -30,38 +30,26 @@ df_2d.describe()
 
 
 # %%
-fig = df_2d["exfoliation_en"].hist(nbins=200, log_y=True, opacity=0.8, backend="plotly")
-title = "<b>Exfoliation energy histogram of the Matbench Jarvis DFT 2D dataset</b>"
-fig.layout.title.update(text=title, x=0.5)
-fig.layout.showlegend = False
-fig.show()
-# pmv.save_fig(fig, "jdft2d-exfoliation-energy-hist.pdf")
+# Exfoliation energy histogram of the Matbench Jarvis DFT 2D dataset
+widget = pmv.histogram(df_2d["exfoliation_en"], bins=200, log_y=True)
+widget.show()
+# widget.to_img("jdft2d-exfoliation-energy-hist.pdf")
 
 
 # %%
 df_2d[Key.volume] = [x.volume for x in df_2d[Key.structure]]
 df_2d[Key.formula] = [x.formula for x in df_2d[Key.structure]]
 
-fig = pmv.ptable_heatmap(df_2d[Key.formula], log=True)
-fig.layout.title.update(
-    text="Elemental prevalence in the Matbench Jarvis DFT 2D dataset"
-)
-fig.show()
-# pmv.save_fig(fig, "jdft2d-ptable-heatmap.pdf")
+title = "Elemental prevalence in the Matbench Jarvis DFT 2D dataset"
+pmv.ptable_heatmap(df_2d[Key.formula], log=True, color_bar={"title": title}).show()
 
 
 # %%
-fig = pmv.spacegroup_bar(df_2d[Key.spg_num], log=True)
-title = "Spacegroup histogram of the JARVIS DFT 2D dataset"
-fig.layout.title.update(text=title, y=0.98)
-fig.layout.margin.update(b=10, l=10, r=10, t=70)
-fig.show()
-# pmv.save_fig(fig, "jdft2d-spacegroup-hist.pdf")
+pmv.spacegroup_bar(df_2d[Key.spg_num], log_y=True).show()
 
 
 # %%
-fig = pmv.spacegroup_sunburst(df_2d[Key.spg_num], show_counts="percent")
-fig.layout.title.update(text="Spacegroup sunburst of the JARVIS DFT 2D dataset", x=0.5)
-fig.layout.margin.update(b=0, l=0, r=0, t=40)
-fig.show()
-# pmv.save_fig(fig, "jdft2d-spacegroup-sunburst.pdf")
+# Spacegroup sunburst of the JARVIS DFT 2D dataset
+widget = pmv.spacegroup_sunburst(df_2d[Key.spg_num], label_text="label+percent")
+widget.show()
+# widget.to_img("jdft2d-spacegroup-sunburst.pdf")

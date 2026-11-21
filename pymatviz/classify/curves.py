@@ -1,16 +1,15 @@
-"""Plotly-based classification metrics visualization."""
+"""ROC and precision-recall curves of binary classifiers."""
 
 from collections.abc import Callable, Mapping
 from typing import Any, Literal, cast
 
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
-import sklearn.metrics as skm
 from numpy.typing import ArrayLike
 
 from pymatviz.process_data import df_to_arrays
-from pymatviz.utils.plotting import PLOTLY_LINE_STYLES
+from pymatviz.widgets._normalize import with_defaults
+from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 
 
 type Predictions = ArrayLike | str | Mapping[str, ArrayLike | dict[str, Any]]
@@ -22,14 +21,14 @@ def _standardize_input(
     df: Any = None,
 ) -> tuple[ArrayLike, dict[str, dict[str, Any]]]:
     """Standardize input into tuple of (targets, {name: {probs_positive,
-    **trace_kwargs}}).
+    **series_kwargs}}).
 
     Args:
         targets (ArrayLike | str): Ground truth binary labels
         probs_positive (Predictions): Either:
             - Predicted probabilities for positive class, or
             - dict of form {"name": probabilities}, or
-            - dict of form {"name": {"probs_positive": np.array, **trace_kwargs}}
+            - dict of form {"name": {"probs_positive": np.array, **series_kwargs}}
         df (pd.DataFrame | None): Optional DataFrame containing targets and
             probs_positive columns
 
@@ -75,46 +74,71 @@ def _standardize_input(
     return targets, curves_dict
 
 
-def _classifier_curves_fig(
+# SVG stroke-dasharrays cycled over classifiers to tell overlapping curves apart
+LINE_DASHES = ("", "6 4", "2 3", "8 3 2 3", "12 4", "2 6")
+
+
+def _classifier_series(
     targets: ArrayLike | str,
     probs_positive: Predictions,
     df: pd.DataFrame | None,
     *,
-    build_trace: Callable[[str, np.ndarray, np.ndarray], dict[str, Any]],
-    meta_key: str,
-    kwargs: dict[str, Any],
-) -> go.Figure:
-    """Figure with one line per classifier, sorted by a meta metric (descending).
+    build_series: Callable[[str, np.ndarray, np.ndarray], tuple[dict[str, Any], float]],
+    required_classes: tuple[float, ...],
+) -> list[dict[str, Any]]:
+    """One line series per classifier, sorted by a score (descending).
 
     Args:
         targets (ArrayLike | str): Ground truth labels (see roc_curve).
         probs_positive (Predictions): Per-classifier probabilities (see roc_curve).
         df (pd.DataFrame | None): Optional DataFrame holding both columns.
-        build_trace (Callable): Given (name, targets_no_nan, probs_no_nan), returns
-            the trace kwargs dict (x, y, name, hovertemplate, customdata, meta).
-        meta_key (str): Key in each trace's meta dict to sort traces by.
-        kwargs (dict): Extra keywords merged into every trace's add_scatter call.
+        build_series (Callable): Given (name, targets_no_nan, probs_no_nan), returns
+            the series dict (x, y, label, metadata) and the score to sort by.
+        required_classes (tuple[float, ...]): Classes (0 negative, 1 positive) each
+            classifier's non-NaN rows must contain for its curve to be defined.
+
+    Raises:
+        ValueError: If targets hold more than 2 classes or a classifier's targets
+            lack any of required_classes.
     """
     targets, curves_dict = _standardize_input(targets, probs_positive, df)
-    targets = np.asarray(targets)
-    fig = go.Figure()
+    targets = np.asarray(targets, dtype=float)
+    if (n_classes := len(np.unique(targets[~np.isnan(targets)]))) > 2:
+        raise ValueError(f"targets must be binary, got {n_classes} classes")
+    # 1 is the positive class, the other (e.g. 0 or -1) negative, NaN stays NaN
+    targets = np.where(np.isnan(targets), np.nan, targets == 1)
+    scored_series = []
     for idx, (name, curve_cfg) in enumerate(curves_dict.items()):
-        trace_kwargs = dict(curve_cfg)  # don't mutate caller-supplied dicts
-        curve_probs = np.asarray(trace_kwargs.pop("probs_positive"))
+        series_kwargs = dict(curve_cfg)  # don't mutate caller-supplied dicts
+        curve_probs = np.asarray(series_kwargs.pop("probs_positive"), dtype=float)
         no_nan = ~np.isnan(targets) & ~np.isnan(curve_probs)
-        trace_defaults = build_trace(name, targets[no_nan], curve_probs[no_nan])
-        line_style = dict(
-            width=2, dash=PLOTLY_LINE_STYLES[idx % len(PLOTLY_LINE_STYLES)]
-        )
-        fig.add_scatter(
-            **trace_defaults | dict(line=line_style) | kwargs | trace_kwargs
-        )
+        present = set(np.unique(targets[no_nan]).tolist())
+        if missing := [f"{cls:g}" for cls in required_classes if cls not in present]:
+            raise ValueError(
+                f"Classifier {name or 'probs_positive'!r} has no targets of class "
+                f"{' and '.join(missing)} (after dropping NaN rows, got classes "
+                f"{sorted(present)}), so its curve is undefined"
+            )
+        series, score = build_series(name, targets[no_nan], curve_probs[no_nan])
+        # undefined rates (e.g. FPR without negative samples) are NaN: not plottable
+        finite = np.isfinite(series["x"]) & np.isfinite(series["y"])
+        series["x"], series["y"] = series["x"][finite], series["y"][finite]
+        series["metadata"] = series["metadata"][finite]
+        line_style = {"width": 2, "dash": LINE_DASHES[idx % len(LINE_DASHES)]}
+        series |= {"markers": "line", "line_style": line_style} | series_kwargs
+        scored_series.append((score, series))
+    scored_series.sort(key=lambda pair: pair[0], reverse=True)
+    return [series for _, series in scored_series]
 
-    # default to -inf so traces missing the metric sort last
-    fig.data = sorted(
-        fig.data, key=lambda tr: tr.meta.get(meta_key, float("-inf")), reverse=True
+
+def _point_metadata(**columns: ArrayLike) -> pd.DataFrame:
+    """Per-point metadata as columns (one row per curve point). Widgets turn
+    non-finite values (e.g. sklearn's inf first ROC threshold) into None, and send
+    large curves' columns as binary arrays instead of per-point JSON dicts.
+    """
+    return pd.DataFrame(
+        {key: np.asarray(vals, dtype=float) for key, vals in columns.items()}
     )
-    return fig
 
 
 def roc_curve(
@@ -124,80 +148,87 @@ def roc_curve(
     *,
     no_skill: dict[str, Any] | Literal[False] | None = None,
     **kwargs: Any,
-) -> go.Figure:
-    """Plot the receiver operating characteristic (ROC) curve using Plotly.
+) -> ScatterPlotWidget:
+    """Plot receiver operating characteristic (ROC) curves, one per classifier,
+    sorted by AUC (descending).
 
     Args:
         targets (ArrayLike | str): Ground truth binary labels
         probs_positive (Predictions): Either:
             - Predicted probabilities for positive class, or
             - dict of form {"name": probabilities}, or
-            - dict of form {"name": {"probs_positive": np.array, **trace_kwargs}}
+            - dict of form {"name": {"probs_positive": np.array, **series_kwargs}}
+              with matterviz series overrides like color or line_style
         df (pd.DataFrame | None): Optional DataFrame containing targets and
             probs_positive columns
-        no_skill (dict[str, Any] | False): Options for the no-skill diagonal or
-            False to hide it. Keys: "xs"/"ys" (line points), "line" (plotly line
-            style) and "annotation" (plotly annotation dict labeling the line).
-        **kwargs: Additional keywords passed to fig.add_scatter()
+        no_skill (dict[str, Any] | False): matterviz RefLine overrides (e.g. style,
+            annotation, merged one level deep into the defaults) for the no-skill
+            diagonal, or False to hide it.
+        **kwargs: Passed to ScatterPlotWidget, e.g. x_axis, y_axis, styles.
+
+    Raises:
+        ValueError: If a classifier's targets lack either class.
 
     Returns:
-        Figure: Plotly figure object
+        ScatterPlotWidget: ROC curves with point metadata holding the thresholds.
     """
 
-    def hover_template(trace_name: str) -> str:
-        return (
-            f"<b>{trace_name}</b><br>"
-            "FPR: %{x:.3f}<br>"
-            "TPR: %{y:.3f}<br>"
-            "Threshold: %{customdata.threshold:.3f}<br>"
-        )
+    def build_series(
+        name: str, tgt: np.ndarray, probs: np.ndarray
+    ) -> tuple[dict[str, Any], float]:
+        import sklearn.metrics as skm
 
-    def build_trace(name: str, tgt: np.ndarray, probs: np.ndarray) -> dict[str, Any]:
         fpr, tpr, thresholds = skm.roc_curve(tgt, probs)
-        roc_auc = skm.roc_auc_score(tgt, probs)
-        display_name = f"{name} · AUC={roc_auc:.2f}" if name else f"AUC={roc_auc:.2f}"
-        return {
+        roc_auc = float(skm.roc_auc_score(tgt, probs))
+        label = f"{name} · AUC={roc_auc:.2f}" if name else f"AUC={roc_auc:.2f}"
+        series = {
             "x": fpr,
             "y": tpr,
-            "name": display_name,
-            "hovertemplate": hover_template(display_name),
-            "customdata": [dict(threshold=thr) for thr in thresholds],
-            "meta": dict(roc_auc=roc_auc),
+            "label": label,
+            "metadata": _point_metadata(threshold=thresholds),
         }
+        return series, roc_auc
 
-    fig = _classifier_curves_fig(
+    # ROC rates need both classes (FPR is 0/0 without negatives, TPR without positives)
+    series = _classifier_series(
         targets,
         probs_positive,
         df,
-        build_trace=build_trace,
-        meta_key="roc_auc",
-        kwargs=kwargs,
+        build_series=build_series,
+        required_classes=(0, 1),
     )
-
+    ref_lines = []
     if no_skill is not False:
-        no_skill = dict(no_skill or {})
-        # default to 100 points so whole line is hoverable, not just end points
-        fig.add_scatter(
-            x=no_skill.pop("xs", np.linspace(0, 1, 100)),
-            y=no_skill.pop("ys", np.linspace(0, 1, 100)),
-            line=dict(dash="dash", color="gray") | no_skill.pop("line", {}),
-            showlegend=False,
-            hovertemplate=hover_template("No skill"),
+        ref_lines.append(
+            with_defaults(
+                {
+                    "type": "segment",
+                    "p1": [0, 0],
+                    "p2": [1, 1],
+                    "style": {"color": "gray", "dash": "6 4"},
+                    "label": "No skill",
+                    "annotation": {
+                        "text": "No skill",
+                        "position": "center",
+                        "color": "gray",
+                    },
+                },
+                no_skill or {},
+            )
         )
-        anno = dict(text="No skill", font=dict(color="gray")) | no_skill.pop(
-            "annotation", {}
-        )
-        fig.add_annotation(**anno, xref="x", yref="y")
-
-    fig.layout.legend.update(yanchor="bottom", y=0, xanchor="right", x=0.99)
-    fig.layout.update(
-        xaxis_range=[0, 1.05],
-        yaxis_range=[0, 1.05],
-        xaxis_title="False Positive Rate",
-        yaxis_title="True Positive Rate",
+    return ScatterPlotWidget(
+        series=series,
+        **with_defaults(
+            {
+                "ref_lines": ref_lines,
+                "x_axis": {"label": "False Positive Rate"},
+                "y_axis": {"label": "True Positive Rate"},
+                "x_range": [0, 1.05],
+                "y_range": [0, 1.05],
+            },
+            kwargs,
+        ),
     )
-
-    return fig
 
 
 def precision_recall_curve(
@@ -207,82 +238,93 @@ def precision_recall_curve(
     *,
     no_skill: dict[str, Any] | Literal[False] | None = None,
     **kwargs: Any,
-) -> go.Figure:
-    """Plot the precision-recall curve using Plotly.
+) -> ScatterPlotWidget:
+    """Plot precision-recall curves, one per classifier, sorted by F1 score
+    (descending, predicting positive for probabilities >= 0.5).
 
     Args:
         targets (ArrayLike | str): Ground truth binary labels
         probs_positive (Predictions): Either:
             - Predicted probabilities for positive class, or
             - dict of form {"name": probabilities}, or
-            - dict of form {"name": {"probs_positive": np.array, **trace_kwargs}}
+            - dict of form {"name": {"probs_positive": np.array, **series_kwargs}}
+              with matterviz series overrides like color or line_style
         df (pd.DataFrame | None): Optional DataFrame containing targets and
             probs_positive columns
-        no_skill (dict[str, Any] | False): Options for no-skill baselines computed
-            from each classifier's valid rows, or False to hide them. Identical
-            baselines share a line. Keys: "line" (plotly line style) and
-            "annotation" (plotly annotation dict labeling the line).
-        **kwargs: Additional keywords passed to fig.add_scatter()
+        no_skill (dict[str, Any] | False): matterviz RefLine overrides (e.g. style,
+            annotation, merged one level deep) for the no-skill baselines (one
+            horizontal line per distinct positive-class prevalence), or False to
+            hide them.
+        **kwargs: Passed to ScatterPlotWidget, e.g. x_axis, y_axis, styles.
+
+    Raises:
+        ValueError: If a classifier's targets have no positives.
 
     Returns:
-        Figure: Plotly figure object
+        ScatterPlotWidget: PR curves with point metadata holding thresholds and F1.
     """
     baselines: dict[float, list[str]] = {}
 
-    def build_trace(name: str, tgt: np.ndarray, probs: np.ndarray) -> dict[str, Any]:
-        prec_curve, recall_curve, thresholds = skm.precision_recall_curve(tgt, probs)
+    def build_series(
+        name: str, tgt: np.ndarray, probs: np.ndarray
+    ) -> tuple[dict[str, Any], float]:
+        import sklearn.metrics as skm
+
+        # drop thresholds that don't change the plotted step curve (like roc_curve
+        # does by default): 200k samples otherwise sync ~200k points of metadata
+        prec_curve, recall_curve, thresholds = skm.precision_recall_curve(
+            tgt, probs, drop_intermediate=True
+        )
         baselines.setdefault(float(np.mean(tgt == 1)), []).append(name)
-        # f1 scores for each threshold
-        f1_curve = 2 * (prec_curve * recall_curve) / (prec_curve + recall_curve)
-        f1_curve = np.nan_to_num(f1_curve)  # Handle division by zero
-        f1_score = skm.f1_score(tgt, np.round(probs))
-        # append final value since threshold has N-1 elements
-        thresholds = [*thresholds, 1.0]
-        display_name = f"{name} · F1={f1_score:.2f}" if name else f"F1={f1_score:.2f}"
-        return {
+        with np.errstate(divide="ignore", invalid="ignore"):
+            f1_curve = 2 * (prec_curve * recall_curve) / (prec_curve + recall_curve)
+        f1_curve = np.nan_to_num(f1_curve)  # 0/0 where precision = recall = 0
+        f1_score = float(skm.f1_score(tgt, (probs >= 0.5).astype(float)))
+        # the last PR point (recall 0, precision 1) has no threshold
+        thresholds = np.append(thresholds, np.nan)
+        label = f"{name} · F1={f1_score:.2f}" if name else f"F1={f1_score:.2f}"
+        series = {
             "x": recall_curve,
             "y": prec_curve,
-            "name": display_name,
-            "hovertemplate": (
-                f"<b>{display_name}</b><br>"
-                "Recall: %{x:.3f}<br>"
-                "Prec: %{y:.3f}<br>"
-                "F1: %{customdata.f1:.3f}<br>"
-                "Threshold: %{customdata.threshold:.3f}<br>"
-                "<extra></extra>"
-            ),
-            "customdata": [
-                dict(threshold=thr, f1=f1)
-                for thr, f1 in zip(thresholds, f1_curve, strict=True)
-            ],
-            "meta": dict(f1_score=f1_score),
+            "label": label,
+            "metadata": _point_metadata(threshold=thresholds, f1=f1_curve),
         }
+        return series, f1_score
 
-    fig = _classifier_curves_fig(
-        targets,
-        probs_positive,
-        df,
-        build_trace=build_trace,
-        meta_key="f1_score",
-        kwargs=kwargs,
+    # recall is 0/0 without positives, while all-positive targets give a valid curve
+    series = _classifier_series(
+        targets, probs_positive, df, build_series=build_series, required_classes=(1,)
     )
-
+    ref_lines = []
     if no_skill is not False:
-        no_skill = dict(no_skill or {})
-        no_skill_line = no_skill.pop("line", {})
-        no_skill_anno = no_skill.pop("annotation", {})
         for prevalence, names in baselines.items():
             label = (
                 f"No skill ({', '.join(names)})" if len(baselines) > 1 else "No skill"
             )
-            fig.add_hline(
-                y=prevalence,
-                line=dict(dash="dash", color="gray") | no_skill_line,
-                showlegend=False,
-                annotation=dict(text=label, font=dict(color="gray")) | no_skill_anno,
+            ref_lines.append(
+                with_defaults(
+                    {
+                        "type": "horizontal",
+                        "y": prevalence,
+                        "style": {"color": "gray", "dash": "6 4"},
+                        "label": label,
+                        "annotation": {
+                            "text": label,
+                            "position": "end",
+                            "color": "gray",
+                        },
+                    },
+                    no_skill or {},
+                )
             )
-
-    fig.layout.legend.update(yanchor="bottom", y=0, xanchor="left", x=0)
-    fig.layout.update(xaxis_title="Recall", yaxis_title="Precision")
-
-    return fig
+    return ScatterPlotWidget(
+        series=series,
+        **with_defaults(
+            {
+                "ref_lines": ref_lines,
+                "x_axis": {"label": "Recall"},
+                "y_axis": {"label": "Precision"},
+            },
+            kwargs,
+        ),
+    )

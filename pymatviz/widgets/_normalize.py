@@ -12,6 +12,25 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    import pandas as pd
+
+
+def with_defaults(defaults: dict[str, Any], kwargs: dict[str, Any]) -> dict[str, Any]:
+    """Return widget kwargs over a plot function's defaults, merging dict-valued
+    options one level deep, so ``x_axis={"scale_type": "log"}`` keeps the default
+    axis label instead of replacing the whole dict. Any other user value (including
+    None) replaces its default.
+    """
+    return (
+        defaults
+        | kwargs
+        | {
+            key: default | kwargs[key]
+            for key, default in defaults.items()
+            if isinstance(default, dict) and isinstance(kwargs.get(key), dict)
+        }
+    )
+
 
 def _normalize_ferrox_hkls(hkls_data: Any) -> Any:
     """Normalize Ferrox HKL payload into widget-compatible shape.
@@ -45,12 +64,41 @@ def _normalize_ferrox_hkls(hkls_data: Any) -> Any:
     return hkls_data
 
 
+# pymatgen as_dict() fields MatterViz never draws, up to ~100 MB on projected band
+# structures: band projections, CompleteDos.pdos, phonon eigendisplacements
+_UNREAD_KEYS = frozenset({"projections", "pdos", "eigendisplacements"})
+
+
+# Empty stand-ins set on a shallow copy so as_dict() never builds those lists
+_UNREAD_ATTRS = {
+    "projections": {},
+    "pdos": {},
+    "eigendisplacements": (),
+    "nac_eigendisplacements": [],
+}
+
+
+def _as_dict(obj: Any) -> dict[str, Any]:
+    """``obj.as_dict()`` without the fields MatterViz never reads, serialized from a
+    shallow copy with those fields emptied (the input is not mutated). Emptying them
+    also drops what pymatgen derives from them: ``atom_dos``/``spd_dos`` of a
+    CompleteDos and the ``structure`` of a projected band structure.
+    """
+    import copy
+
+    view = copy.copy(obj)
+    for attr, empty in _UNREAD_ATTRS.items():
+        if attr in vars(view):
+            setattr(view, attr, empty)
+    return {key: val for key, val in view.as_dict().items() if key not in _UNREAD_KEYS}
+
+
 def _to_dict(obj: Any, label: str) -> dict[str, Any] | None:
     """Convert None/dict/MSONable object to a JSON-serializable dict.
 
     Args:
         obj: None, a dict (MSONable values converted via ``as_dict``), or any
-            object with .as_dict().
+            object with .as_dict(). Converted dicts drop ``_UNREAD_KEYS``.
         label: Human-readable name for error messages (e.g. "band structure").
 
     Returns:
@@ -63,13 +111,13 @@ def _to_dict(obj: Any, label: str) -> dict[str, Any] | None:
         return None
     if isinstance(obj, dict):
         converted = {
-            key: value.as_dict()
+            key: _as_dict(value)
             for key, value in obj.items()
             if callable(getattr(value, "as_dict", None)) and not isinstance(value, dict)
         }
         return {**obj, **converted} if converted else obj
     if hasattr(obj, "as_dict"):
-        return obj.as_dict()
+        return _as_dict(obj)
     raise TypeError(
         f"Unsupported type for {label}: {type(obj)}. "
         "Expected dict or object with .as_dict()."
@@ -164,13 +212,62 @@ def normalize_json_kwargs(
             kwargs[key] = normalize_plot_json(kwargs[key], f"{component}.{key}")
 
 
+def check_metadata_frame(frame: pd.DataFrame, n_points: int, label: str) -> None:
+    """Validate a per-point metadata DataFrame: one row per point and at least one,
+    uniquely named column (a duplicate name would select a 2D block). Names must
+    stay unique as the strings they sync as (columns 1 and "1" would merge).
+
+    Raises:
+        ValueError: For a wrong row count, no columns or duplicate column names.
+    """
+    if len(frame) != n_points:
+        raise ValueError(
+            f"{label}.metadata DataFrame needs one row per point ({n_points}), got "
+            f"{len(frame)}"
+        )
+    if frame.columns.empty or frame.columns.map(str).has_duplicates:
+        raise ValueError(
+            f"{label}.metadata DataFrame needs uniquely named columns, got "
+            f"{frame.columns.tolist()}"
+        )
+
+
+def metadata_records(
+    frame: pd.DataFrame, n_points: int, label: str
+) -> list[dict[str, Any]]:
+    """Per-point metadata dicts from a DataFrame with one row per point. Missing and
+    non-finite numbers become None, as JSON metadata carries them. Values must be
+    JSON-serializable (e.g. no timestamps).
+
+    Raises:
+        ValueError: If check_metadata_frame rejects the frame.
+    """
+    import numpy as np
+
+    check_metadata_frame(frame, n_points, label)
+    missing = frame.isna()
+    numeric = frame.select_dtypes("number").columns
+    missing[numeric] |= ~np.isfinite(frame[numeric].to_numpy(dtype=float))
+    for col in frame.select_dtypes(object).columns:  # e.g. [inf, "unavailable"]
+        missing[col] |= frame[col].map(
+            lambda val: isinstance(val, float | np.floating) and not np.isfinite(val)
+        )
+    return frame.astype(object).mask(missing, None).to_dict("records")
+
+
 def normalize_plot_series(
-    series_data: Any, *, component_name: str, samples_key: str | None = None
+    series_data: Any,
+    *,
+    component_name: str,
+    samples_key: str | None = None,
+    binary: bool = False,
 ) -> list[dict[str, Any]] | None:
     """Normalize and validate plot series payloads (``None`` passes through).
 
     Entries are dicts with ``x`` and ``y`` lists of equal length (``x`` all strings
-    for categorical axes or all numeric, ``y`` numeric, both finite). With
+    for categorical axes or all numeric, ``y`` numeric, both finite). Per-point
+    ``metadata`` may be a pandas DataFrame with one row per point (columnar, so
+    binary series send numeric columns as arrays). With
     ``samples_key`` (histograms bin ``values``), entries must instead hold raw
     samples under that key. Raises TypeError for wrong container/entry/sample types and
     ValueError for missing keys, length mismatches and non-finite numbers.
@@ -182,15 +279,38 @@ def normalize_plot_series(
             f"{component_name} 'series' must be a list/tuple of dicts, got "
             f"{type(series_data)}."
         )
+    import pandas as pd
+
+    # lazy: _binary imports this module
+    from pymatviz.widgets._binary import is_binary_envelope, plot_series_envelope
+
     normalized_series: list[dict[str, Any]] = []
     keys = (samples_key,) if samples_key else ("x", "y")
     for series_index, series_entry in enumerate(series_data):
+        # with binary=True, large numeric series (and already encoded ones) skip the
+        # per-value JSON conversion
+        if binary and is_binary_envelope(series_entry, "plot-series"):
+            normalized_series.append(series_entry)
+            continue
+        name = f"{component_name}.series[{series_index}]"
+        if (
+            binary
+            and isinstance(series_entry, dict)
+            and (envelope := plot_series_envelope(series_entry, name, keys)) is not None
+        ):
+            normalized_series.append(envelope)
+            continue
         if not isinstance(series_entry, dict):
             raise TypeError(
                 f"{component_name} series entries must be dicts. "
                 f"Got type {type(series_entry)} at index {series_index}."
             )
-        entry = normalize_plot_json(series_entry, f"{component_name}.series")
+        raw_entry = series_entry
+        if isinstance(meta := series_entry.get("metadata"), pd.DataFrame):
+            n_points = len(series_entry.get(keys[0], ()))
+            records = metadata_records(meta, n_points, name)
+            raw_entry = {**series_entry, "metadata": records}
+        entry = normalize_plot_json(raw_entry, f"{component_name}.series")
         if not all(key in entry for key in keys):
             what = f"key '{samples_key}'" if samples_key else "keys 'x' and 'y'"
             raise ValueError(
@@ -341,11 +461,8 @@ def normalize_convex_hull_entries(obj: Any) -> list[dict[str, Any]] | None:
                 "energy": entry.energy,
                 "energy_per_atom": entry.energy_per_atom,
             }
-            try:
-                entry_dict["e_above_hull"] = obj.get_e_above_hull(entry)
-                entry_dict["is_stable"] = entry in obj.stable_entries
-            except (ValueError, KeyError):
-                pass
+            entry_dict["e_above_hull"] = obj.get_e_above_hull(entry)
+            entry_dict["is_stable"] = entry in obj.stable_entries
             entries.append(entry_dict)
         return entries
 

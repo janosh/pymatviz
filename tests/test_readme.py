@@ -7,14 +7,15 @@ import re
 
 
 def test_no_missing_images() -> None:
-    """Test that all images in the readme are present in repo."""
+    """Every image the readme references exists in the repo."""
     with open("readme.md") as file:
         readme = file.read()
-    base_url = "https://github.com/janosh/pymatviz/raw/main/assets/"
-    images = [text.split(".svg\n")[0] for text in readme.split(base_url)[1:]]
-
-    for idx, img in enumerate(images, start=1):
-        assert os.path.isfile(f"assets/{img}.svg"), f"Missing readme {img=} ({idx=})"
+    refs = re.findall(
+        r"^\[[^\]]+\]: (assets/(?:svg|png)/\S+)", readme, flags=re.MULTILINE
+    )
+    assert len(refs) > 50, f"too few readme image refs found: {refs}"
+    missing = [ref for ref in refs if not os.path.isfile(ref)]
+    assert not missing, f"{missing=}"
 
 
 def get_function_names_from_file(file_path: str) -> set[str]:

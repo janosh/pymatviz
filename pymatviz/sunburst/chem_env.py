@@ -23,7 +23,7 @@ def chem_env_sunburst(
     max_coordination_numbers: int | None = None,
     max_environments: int | None = None,
     mode: Literal["other", "drop"] = "other",
-    **widget_options: Any,
+    **kwargs: Any,
 ) -> SunburstWidget:
     """Show coordination numbers and their chemical environments as a sunburst.
 
@@ -43,4 +43,4 @@ def chem_env_sunburst(
         max_environments=max_environments,
         mode=mode,
     )
-    return SunburstWidget(data=nodes, **widget_options)
+    return SunburstWidget(data=nodes, **kwargs)

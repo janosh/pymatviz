@@ -19,15 +19,14 @@ df_steels = load_dataset("matbench_steels")
 
 
 # %%
-fig = df_steels["yield strength"].hist(nbins=100, backend="plotly")
-fig.layout.title.update(text="Yield strength histogram of Matbench Steels dataset")
-fig.layout.showlegend = False
-fig.show()
-# pmv.save_fig(fig, "steels-yield-strength-hist.pdf")
+# Yield strength histogram of the Matbench Steels dataset
+widget = pmv.histogram(df_steels["yield strength"], bins=100)
+widget.show()
+# widget.to_img("steels-yield-strength-hist.pdf")
 
 
 # %%
-fig = pmv.ptable_heatmap(df_steels[Key.composition], log=True)
-fig.layout.title.update(text="Elemental prevalence in the Matbench steels dataset")
-fig.show()
-# pmv.save_fig(fig, "steels-ptable-heatmap.pdf")
+title = "Elemental prevalence in the Matbench steels dataset"
+pmv.ptable_heatmap(
+    df_steels[Key.composition], log=True, color_bar={"title": title}
+).show()

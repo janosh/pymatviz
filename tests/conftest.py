@@ -7,11 +7,9 @@ from typing import TYPE_CHECKING, TypedDict, cast
 
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 import pytest
 from monty.io import zopen
 from monty.json import MontyDecoder
-from plotly.subplots import make_subplots
 from pymatgen.core import IStructure, Lattice, Structure
 from pymatgen.io.ase import AseAtomsAdaptor
 
@@ -82,21 +80,6 @@ def structures() -> tuple[Structure, Structure]:
 def ase_atoms() -> tuple[ase.Atoms, ase.Atoms]:
     atoms1, atoms2 = SI_ATOMS
     return copy.copy(atoms1), copy.copy(atoms2)
-
-
-@pytest.fixture
-def plotly_scatter() -> go.Figure:
-    fig = go.Figure(go.Scatter(x=[1, 10, 100], y=np.array([10, 100, 1000]) + 1))
-    fig.add_scatter(x=[1, 10, 100], y=[1, 10, 100])
-    return fig
-
-
-@pytest.fixture
-def plotly_faceted_scatter() -> go.Figure:
-    fig = make_subplots(rows=1, cols=2)
-    fig.add_scatter(x=[1, 2, 3], y=[4, 5, 6], row=1, col=1)
-    fig.add_scatter(x=[1, 2, 3], y=[4, 5, 6], row=1, col=2)
-    return fig
 
 
 @pytest.fixture

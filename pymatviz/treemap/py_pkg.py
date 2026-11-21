@@ -7,21 +7,17 @@ or any language project via directory scanning.
 from __future__ import annotations
 
 import ast
-import importlib.metadata
 import os
 import sys
 from collections.abc import Callable, Iterable, Sequence
-from typing import TYPE_CHECKING, Any, Literal, NamedTuple, get_args
+from types import ModuleType
+from typing import Any, Literal, NamedTuple, get_args
 
+import numpy as np
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
 
-from pymatviz.typing import ShowCounts
+from pymatviz.widgets.treemap import TreemapWidget
 
-
-if TYPE_CHECKING:
-    from types import ModuleType
 
 ModuleFormatter = Callable[[str, int, int], str]
 type GroupBy = Literal["file", "directory", "module"]
@@ -69,6 +65,8 @@ class ModuleStats(NamedTuple):
 
 
 type CellSizeFn = Callable[[ModuleStats], float | int]
+# ID segment of merged small modules (labeled "other"), distinct from real modules
+OTHER_BUCKET = "__other__"
 
 # Python AST counts per module (zero for non-Python sources)
 _ANALYSIS_COLS: tuple[str, ...] = (
@@ -93,13 +91,9 @@ def default_module_formatter(module: str, count: int, total: int) -> str:
     return f"{module} ({count:,} lines{percent_str})"
 
 
-def _normalize_package_input(package: str | Any) -> str:
-    """Convert package input (string name or module object) to package name string."""
-    if isinstance(package, str):
-        return package
-    if hasattr(package, "__name__"):
-        return package.__name__.split(".")[0]
-    return str(package)
+def _normalize_package_input(package: str | ModuleType) -> str:
+    """Top-level package name of a package name or module object."""
+    return package if isinstance(package, str) else package.__name__.split(".")[0]
 
 
 def _code_lines(lines: Iterable[str], comment_prefixes: tuple[str, ...]) -> int:
@@ -126,66 +120,22 @@ def count_lines(file_path: str, comment_prefixes: tuple[str, ...] = ("#",)) -> i
         return 0
 
 
-def _github_base_url(package: str) -> str | None:
-    """GitHub blob URL (assuming main branch) from installed package metadata.
-
-    Checks the Home-page field first, then Project-URL entries. Returns None if
-    the package isn't installed or lists no GitHub URL.
-    """
-    try:
-        metadata = importlib.metadata.metadata(package)
-    except importlib.metadata.PackageNotFoundError:
-        return None
-
-    github_url = None
-    homepage = metadata.get("Home-page")  # ty: ignore[missing-attribute] https://github.com/astral-sh/ty/issues/1134
-    if homepage and "github.com" in homepage:
-        github_url = homepage
-    else:
-        for url_entry in metadata.get_all("Project-URL") or []:
-            url_parts = url_entry.split(",", 1)
-            if len(url_parts) == 2 and "github.com" in (url := url_parts[1].strip()):
-                github_url = url
-                break
-    return f"{github_url.rstrip('/')}/blob/main" if github_url else None
-
-
 def find_package_path(package_name: str) -> str:
-    """Find the filesystem path for an installed Python package."""
+    """Directory of an installed or sys.path-importable Python package, or "" if
+    not found.
+    """
+    from importlib import resources
+
     try:
-        from importlib import resources
+        if os.path.isdir(package_root := str(resources.files(package_name))):
+            return package_root
+    except (ImportError, TypeError):
+        pass  # not importable (or broken): look for its directory on sys.path
 
-        package_root = resources.files(package_name)
-        if package_root and os.path.isdir(str(package_root)):
-            return str(package_root)
-    except (ImportError, ModuleNotFoundError, TypeError):
-        pass
-
-    # Try sys.path for packages added to path (e.g. in tests)
     for path_entry in sys.path:
-        if path_entry and os.path.isdir(package_path := f"{path_entry}/{package_name}"):
-            return package_path
-
-    # Try common locations if importlib approach fails
-    current_dir = os.path.abspath(os.getcwd())
-    possible_paths = [
-        f"{current_dir}/{package_name}",
-        f"{current_dir}/src/{package_name}",
-    ]
-
-    try:  # Also try site-packages
-        import site
-
-        site_packages = site.getsitepackages()[0]
-        possible_paths.append(f"{site_packages}/{package_name}")
-    except (ImportError, IndexError):
-        pass
-
-    for path in possible_paths:
-        if os.path.isdir(path):
-            return path
-
-    return ""  # If we can't find package, return empty string
+        if os.path.isdir(package_path := f"{path_entry or '.'}/{package_name}"):
+            return os.path.abspath(package_path)
+    return ""
 
 
 def _analyze_py_file(file_path: str, package_name: str) -> dict[str, int]:
@@ -319,7 +269,7 @@ def collect_package_modules(
                     "top_module": module_parts[0] if module_parts else "root",
                     "file_path": file_path,
                     "repo_path_segment": f"{repo_path_prefix}/{pkg_rel_path}",
-                    "leaf_label": module_parts[-1]  # link text
+                    "leaf_label": module_parts[-1]
                     if module_parts
                     else (filename or package_name),
                     "module_parts": module_parts,
@@ -444,8 +394,6 @@ def py_pkg_treemap(
     *,
     source_dir: str | None = None,
     file_extensions: tuple[str, ...] = (".py",),
-    base_url: str | None = "auto",
-    show_counts: ShowCounts = "value+percent",
     cell_text_fn: ModuleFormatter | bool = default_module_formatter,
     group_by: GroupBy = "module",
     max_module_depth: int | None = None,
@@ -454,9 +402,8 @@ def py_pkg_treemap(
     cell_size_fn: CellSizeFn | None = None,
     color_by: str | dict[str, float] | None = None,
     color_range: tuple[float, float] | None = None,
-    cell_border: dict[str, Any] | None = None,
     **kwargs: Any,
-) -> go.Figure:
+) -> TreemapWidget:
     """Generate a treemap plot showing module structure of source code packages.
 
     Works with any language when ``source_dir`` is provided. Without it,
@@ -479,19 +426,6 @@ def py_pkg_treemap(
             ``source_dir``. Defaults to ``(".py",)``. Use ``(".rs",)`` for Rust,
             ``(".ts", ".tsx")`` for TypeScript, etc. Ignored when ``source_dir``
             is None.
-        base_url (str | None): Base URL for the source code repository (e.g., GitHub).
-            If provided, the label of each module/file cell is turned into a
-            clickable link pointing to the corresponding source file. Example:
-            'https://github.com/user/repo/blob/main'
-            If set to "auto" (default), attempts to automatically find the GitHub URL
-            from package metadata (requires package to be installed). Assumes 'main'
-            branch. Only works reliably for single-package plots.
-            If set to None, no links will be generated.
-        show_counts (ShowCounts): How to display counts in treemap cells:
-            - "value": Show calculated cell size value
-            - "percent": Show percentage of parent
-            - "value+percent": Show both (default)
-            - False: Don't show counts
         cell_text_fn (ModuleFormatter | bool): How to display top-level names + counts:
             - Function that takes name, count, total count and returns string
             - True: Use default_module_formatter
@@ -523,34 +457,23 @@ def py_pkg_treemap(
             cell's size in the treemap. If this function returns 0, the
             corresponding module/file will be omitted from the treemap.
             If None (default), cell size is based on `line_count`.
-        color_by (str | dict[str, float] | None): Controls heatmap coloring mode:
+        color_by (str | dict[str, float] | None): Color cells by a value on the
+            viridis scale. Branch cells get the cell-size-weighted mean of their
+            leaves' values.
             - str: Name of a numeric column in the module data to use for coloring
                 (e.g. "line_count", "n_classes", "n_functions")
-            - dict: Numeric values keyed by absolute file path or repo_path_segment.
-                Absolute paths take precedence; missing files get zero. Pass
-                ``labels={"color_value": "Coverage (%)"}`` for coverage percentages.
-            - None: No heatmap coloring (default)
-        color_range (tuple[float, float] | None): Manual range for the color scale
-            (min, max). Useful for consistent color mapping across plots or to
-            ensure specific values (e.g., 0% coverage) map to specific colors.
-            If None, uses the actual min/max values from the data.
-        cell_border (dict[str, Any] | None): Cell border styling. If None, defaults to
-            white borders with width 0.5 for continuous coloring, no borders otherwise.
-            Example: dict(color="black", width=2) for thick black borders.
-        **kwargs (Any): Additional keyword arguments passed to plotly.express.treemap
+            - dict: Numeric values keyed by absolute file path or repo_path_segment
+                (e.g. test coverage). Absolute paths take precedence; missing files
+                get zero.
+            - None: Categorical MatterViz colors per package (default)
+        color_range (tuple[float, float] | None): Values mapped to the ends of the
+            color scale, e.g. (0, 100) for coverage percentages. Values outside are
+            clamped. If None, uses the data's min/max.
+        **kwargs (Any): Passed to TreemapWidget, e.g. ``label_text`` (default
+            ``"label+percent"``), ``max_depth`` or ``style``.
 
     Returns:
-        go.Figure: The Plotly figure.
-
-    Tips and Customization:
-    - rounded corners: fig.update_traces(marker=dict(cornerradius=5))
-    - colors:
-        - discrete: color_discrete_sequence=px.colors.qualitative.Set2
-        - custom: color_discrete_map={'A': 'red', 'B': 'blue'}
-    - max depth: fig.update_traces(maxdepth=2)
-    - patterns/textures: fig.update_traces(marker=dict(pattern=dict(shape=["|"])))
-    - hover info: fig.update_traces(hovertemplate='<b>%{label}</b><br>Lines: %{value}')
-    - custom text display: fig.update_traces(textinfo="label+value+percent")
+        TreemapWidget: The MatterViz treemap.
 
     Example:
         >>> import pymatviz as pmv
@@ -573,26 +496,11 @@ def py_pkg_treemap(
         raise ValueError(
             f"Invalid {group_by=}, must be one of {get_args(GroupBy.__value__)}"
         )
-    valid_show_counts = get_args(ShowCounts)
-    if show_counts not in valid_show_counts:
-        raise ValueError(f"Invalid {show_counts=}, must be one of {valid_show_counts}")
     if isinstance(color_by, dict) and not color_by:
         raise ValueError("color_by dict must map file paths to values, got empty dict")
 
-    # Normalize input to handle both single and multiple strings or ModuleType objects
-    pkg_list = packages if isinstance(packages, (list, tuple)) else [packages]
+    pkg_list = [packages] if isinstance(packages, str | ModuleType) else packages
     package_names = [_normalize_package_input(pkg) for pkg in pkg_list]
-
-    # importlib metadata is unavailable for non-Python projects
-    if source_dir and base_url == "auto":
-        base_url = None
-
-    # Per-package source URL base ('auto' looks up GitHub URLs in package metadata)
-    if base_url == "auto":
-        package_base_urls = {pkg: _github_base_url(pkg) for pkg in package_names}
-    else:  # None disables links
-        package_base_urls = dict.fromkeys(package_names, base_url)
-    has_links = any(package_base_urls.values())
 
     if source_dir:
         df_modules = collect_source_modules_from_dir(
@@ -611,7 +519,7 @@ def py_pkg_treemap(
         metrics_keys = ModuleStats._fields
         df_modules["cell_value"] = df_modules.apply(
             lambda row: cell_size_fn(
-                ModuleStats(**{key: row[key] for key in metrics_keys if key in row})
+                ModuleStats(**{key: row[key] for key in metrics_keys})
             ),
             axis=1,
         )
@@ -648,7 +556,6 @@ def py_pkg_treemap(
     data_max_depth = effective_depth = df_treemap["depth"].max()
     if max_module_depth is not None and group_by == "module":
         effective_depth = min(data_max_depth, max_module_depth)
-    depth_was_clamped = effective_depth < data_max_depth
     level_columns = [f"level_{idx}" for idx in range(effective_depth)]
 
     # Create columns for each level of the hierarchy from 'module_parts'
@@ -664,7 +571,6 @@ def py_pkg_treemap(
     # into "other"), with no significant children it collapses to one cell.
     # max_children_for_split and the full line threshold only apply at the deepest
     # level, so large modules like io/analysis always show their sub-packages.
-    rows_were_merged = False
     if group_by == "module" and (min_lines_for_split > 0 or max_children_for_split):
         for prune_depth in range(effective_depth - 1, 0, -1):
             is_deepest_level = prune_depth == effective_depth - 1
@@ -711,7 +617,7 @@ def py_pkg_treemap(
                         merge_rows["color_value"] * merge_rows["cell_value"]
                     ).sum() / rep["cell_value"]
                 if is_expand:
-                    rep[child_col] = "other"
+                    rep[child_col] = OTHER_BUCKET
                 else:
                     rep["depth"] = prune_depth
                 for deeper in range(clear_start, effective_depth):
@@ -720,7 +626,6 @@ def py_pkg_treemap(
                 rows_to_add.append(rep.to_dict())
 
             if rows_to_drop:
-                rows_were_merged = True
                 df_treemap = pd.concat(
                     [df_treemap.drop(index=rows_to_drop), pd.DataFrame(rows_to_add)],
                     ignore_index=True,
@@ -736,190 +641,141 @@ def py_pkg_treemap(
         "directory": ["package", "directory", "filename"],
     }.get(group_by, ["package", *level_columns])
 
-    # Keep track of raw package names for percentage calculation
-    df_treemap["package_name_raw"] = df_treemap["package"]
-    package_totals = df_treemap.groupby("package_name_raw")["cell_value"].sum()
-
-    # Calculate percentage of package total for hover text based on the 'cell_value'
-    df_treemap["package_total_cell_value"] = df_treemap["package_name_raw"].map(
-        package_totals
-    )
-    df_treemap["percent_of_package_cell_value"] = (
-        df_treemap["cell_value"] / df_treemap["package_total_cell_value"]
-    ).fillna(0)
-
-    # Format package labels after storing raw name and calculating totals
+    package_totals = df_treemap.groupby("package")["cell_value"].sum()
     if cell_text_fn is True:
         cell_text_fn = default_module_formatter
-    if callable(cell_text_fn):
-        total_lines = package_totals.sum()
-
-        df_treemap["package"] = df_treemap["package_name_raw"].map(
-            lambda pkg: cell_text_fn(pkg, package_totals.get(pkg, 0), total_lines)
-        )
-
-    # Full file URLs for linking ("" without a base URL: plotly>=7 casts customdata
-    # to str before aggregating parents, NaN then breaks max())
-    df_treemap["file_url"] = [
-        f"{base}/{segment}" if (base := package_base_urls.get(pkg)) else ""
-        for pkg, segment in zip(
-            df_treemap["package_name_raw"],
-            df_treemap["repo_path_segment"],
-            strict=True,
-        )
-    ]
-
-    # Define custom data columns for hovertemplate and linking
-    # Order matters for hovertemplate %{customdata[index]} references
-    analysis_cols = list(_ANALYSIS_COLS)
-    custom_data_cols: list[str] = [
-        "package_name_raw",  # 0
-        "repo_path_segment",  # 1
-        "leaf_label",  # 2
-        "file_url",  # 3
-        *analysis_cols,  # 4-9: analysis columns
-        "percent_of_package_cell_value",  # 10
-        "line_count",  # 11
-    ]
-
-    # Fill NaNs with 0 for customdata
-    fill_cols = analysis_cols + ["color_value"] * has_color_mode
-    df_treemap[fill_cols] = df_treemap[fill_cols].fillna(0).infer_objects(copy=False)
-
-    color_defaults: dict[str, Any] = (
-        dict(color="color_value", color_continuous_scale="Viridis")
-        if has_color_mode
-        else dict(color_discrete_sequence=px.colors.qualitative.Set3)
-    )
-    treemap_params = {
-        "data_frame": df_treemap,
-        "path": path_definition,
-        "values": "cell_value",
-        "custom_data": df_treemap[custom_data_cols],
-        "branchvalues": "total",  # proper aggregation for parent nodes
-        **color_defaults,
-        **kwargs,
+    total_value = package_totals.sum()
+    package_labels = {
+        pkg: cell_text_fn(pkg, pkg_total, total_value) if cell_text_fn else pkg
+        for pkg, pkg_total in package_totals.items()
     }
-    if has_color_mode:  # color_by decides the cell colors, whatever plotly kwargs say
-        treemap_params["color"] = "color_value"
 
-    # None marks rows that end above the deepest level. plotly>=7 casts path columns
-    # to str and max()es them, so object columns mixing str and None (-> NaN) raise;
-    # pandas' string dtype keeps the gaps as <NA>.
-    df_treemap[path_definition] = df_treemap[path_definition].astype("string")
-
-    fig = px.treemap(**treemap_params)
-
-    # Break long labels at underscores so plotly can wrap text instead of
-    # shrinking the font to fit names like "advanced_transformations" on one line.
-    trace = fig.data[0]
-    if trace.labels is not None:
-        wrapped = []
-        for label in map(str, trace.labels):
-            if len(label) > 18 and "_" in label and " " not in label:
-                mid = len(label) // 2
-                best_pos = min(
-                    (pos for pos, char in enumerate(label) if char == "_"),
-                    key=lambda pos: abs(pos - mid),
-                )
-                wrapped.append(f"{label[: best_pos + 1]}<br>{label[best_pos + 1 :]}")
-            else:
-                wrapped.append(label)
-        fig.data[0].labels = wrapped
-
-    color_hover = ""
+    roots = _module_tree(
+        df_treemap[path_definition].to_numpy(dtype=object),
+        df_treemap["cell_value"].to_numpy(dtype=float),
+        df_treemap["color_value"].fillna(0).to_numpy(dtype=float)
+        if has_color_mode
+        else None,
+        package_labels,
+    )
     if has_color_mode:
-        default_title = (
-            color_by.replace("_", " ").title()
-            if isinstance(color_by, str)
-            else "Color Value"
-        )
-        color_title = (kwargs.get("labels") or {}).get("color_value", default_title)
-        fig.update_coloraxes(
-            colorbar=dict(title=color_title, title_side="right", thickness=12)
-        )
-        color_hover = f"{color_title}: %{{color:,.2f}}<br>"
-        if color_range is not None:
-            min_val, max_val = color_range
-            fig.layout.coloraxis.update(
-                cmin=min_val, cmax=max_val, cmid=(min_val + max_val) / 2
+        _color_tree(roots, color_range)
+    return TreemapWidget(roots, **{"label_text": "label+percent"} | kwargs)
+
+
+# viridis at 9 evenly spaced stops (matplotlib's colormap)
+_VIRIDIS = np.array(
+    [
+        [68, 1, 84],
+        [71, 45, 123],
+        [59, 82, 139],
+        [44, 114, 142],
+        [33, 145, 140],
+        [40, 174, 128],
+        [94, 201, 98],
+        [173, 220, 48],
+        [253, 231, 37],
+    ],
+    dtype=float,
+)
+
+
+def _viridis_hex(fraction: float) -> str:
+    """Hex color at a fraction in [0, 1] (clamped) of the viridis scale."""
+    pos = min(max(fraction, 0.0), 1.0) * (len(_VIRIDIS) - 1)
+    lower = min(int(pos), len(_VIRIDIS) - 2)
+    red, green, blue = np.rint(
+        _VIRIDIS[lower] + (pos - lower) * (_VIRIDIS[lower + 1] - _VIRIDIS[lower])
+    ).astype(int)
+    return f"#{red:02x}{green:02x}{blue:02x}"
+
+
+def _module_tree(
+    paths: np.ndarray,
+    cell_values: np.ndarray,
+    color_values: np.ndarray | None,
+    package_labels: dict[str, str],
+) -> list[dict[str, Any]]:
+    """Nest rows of hierarchy levels (missing trailing levels are None or NA) into
+    treemap nodes keyed by slash-joined IDs. Rows with the same path are summed.
+    With color_values, ``_color`` holds each leaf's cell-value-weighted mean.
+
+    Raises:
+        ValueError: If a path is both a leaf and a branch.
+    """
+    roots: dict[str, dict[str, Any]] = {}
+    if color_values is None:
+        color_values = np.full(len(paths), np.nan)
+    for row, cell_value, color_value in zip(
+        paths, cell_values, color_values, strict=True
+    ):
+        parts = [str(part) for part in row if not pd.isna(part)]
+        siblings, parent_id = roots, ""
+        for depth, part in enumerate(parts):
+            node_id = f"{parent_id}/{part}" if parent_id else part
+            label = (
+                package_labels[part]
+                if depth == 0
+                else "other"
+                if part == OTHER_BUCKET
+                else part
             )
+            node = siblings.setdefault(node_id, {"id": node_id, "label": label})
+            if depth == len(parts) - 1:
+                if "_children" in node:
+                    raise ValueError(f"Treemap path {node_id!r} is a leaf and a branch")
+                weight = node.get("value", 0.0)
+                node["value"] = weight + cell_value
+                if not np.isnan(color_value):
+                    node["_color"] = (
+                        node.get("_color", 0.0) * weight + color_value * cell_value
+                    ) / node["value"]
+            else:
+                if "value" in node:
+                    raise ValueError(f"Treemap path {node_id!r} is a leaf and a branch")
+                siblings = node.setdefault("_children", {})
+            parent_id = node_id
 
-    has_depth_limit = depth_was_clamped or rows_were_merged
-    if has_depth_limit:
-        # Aggregated/collapsed nodes inherit per-file customdata from the first
-        # merged row, and Plotly synthetic parents get "(?) " placeholders.
-        # Use only Plotly built-in fields that are correct for all nodes.
-        hovertemplate = (
-            "<b>%{label}</b><br>Value: %{value:,}<br>%{percentEntry}<br>"
-            + color_hover
-            + "<extra></extra>"
-        )
-    else:
-        # Indices match the order in custom_data_cols
-        base_hovertemplate = (
-            "<b>%{customdata[2]}</b><br>"  # leaf_label
-            "Path: %{customdata[1]}<br>"  # repo_path_segment
-            "Cell Value: %{value:,}<br>"  # cell_value
-            "Lines: %{customdata[11]:,}<br>"  # line_count
-        )
+    def finalize(nodes: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+        """Turn child dicts into lists."""
+        for node in nodes.values():
+            if "_children" in node:
+                node["children"] = finalize(node.pop("_children"))
+        return list(nodes.values())
 
-        # Only show Python AST analysis fields when they have data
-        analysis_hover = ""
-        if df_treemap[analysis_cols].sum().sum() > 0:
-            analysis_hover = "".join(
-                f"{name}: %{{customdata[{idx}]:,}}<br>"
-                for idx, name in enumerate(
-                    (
-                        "Classes",
-                        "Functions",
-                        "Methods",
-                        "Internal Imports",
-                        "External Imports",
-                        "Type Imports",
-                    ),
-                    start=4,
-                )
-            )
-        hovertemplate = (
-            base_hovertemplate
-            + color_hover
-            + "%{customdata[10]:.1%} of %{customdata[0]} (by cell value)<br>"
-            + analysis_hover
-            + "<extra></extra>"
-        )
-    # Apply hovertemplate - applies to all traces, which is fine as we have one
-    fig.update_traces(hovertemplate=hovertemplate)
+    return finalize(roots)
 
-    count_part = {
-        "percent": "%{percentEntry}",
-        "value": "%{value:,}",
-        "value+percent": "%{value:,}<br>%{percentEntry}",
-        False: "",
-    }[show_counts]
-    use_links = has_links and not has_depth_limit
-    texttemplate = ""
-    if use_links or show_counts in ("value", "value+percent"):
-        label_part = (
-            "<a href='%{customdata[3]}' target='_blank'>%{customdata[2]}</a>"
-            if use_links
-            else "%{label}"
-        )
-        texttemplate = label_part + (f"<br>{count_part}" if count_part else "")
-        textinfo = "none"
-    else:
-        textinfo = "label+percent entry" if show_counts == "percent" else "label"
-    fig.data[0].textinfo = textinfo
-    if texttemplate:
-        fig.data[0].texttemplate = texttemplate
 
-    # Set cell borders
-    if has_color_mode and cell_border is None:
-        cell_border = dict(color="white", width=0.5)
-    if cell_border is not None:
-        fig.update_traces(marker=dict(line=cell_border))
+def _color_tree(
+    roots: list[dict[str, Any]], color_range: tuple[float, float] | None
+) -> None:
+    """Color nodes by viridis, branches by the value-weighted mean of their leaves,
+    and drop the temporary ``_color`` keys.
+    """
 
-    fig.layout.margin = dict(l=0, r=0, b=0, t=40, pad=0)
-    fig.layout.paper_bgcolor = "rgba(0, 0, 0, 0)"
+    def weighted(node: dict[str, Any]) -> tuple[float, float]:
+        """Store branch means and return (total value, weighted color sum)."""
+        if children := node.get("children"):
+            total, color_sum = map(sum, zip(*map(weighted, children), strict=True))
+            node["_color"] = color_sum / total
+            return total, color_sum
+        return node["value"], node["_color"] * node["value"]
 
-    return fig
+    def walk(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Flatten the tree."""
+        return [
+            desc for node in nodes for desc in (node, *walk(node.get("children", [])))
+        ]
+
+    for root in roots:
+        weighted(root)
+    all_nodes = walk(roots)
+    if color_range is None:
+        values = [node["_color"] for node in all_nodes]
+        color_range = (min(values), max(values))
+    min_val, max_val = color_range
+    span = max_val - min_val
+    for node in all_nodes:
+        value = node.pop("_color")
+        fraction = (value - min_val) / span if span else 0.5
+        node["color"] = _viridis_hex(fraction)

@@ -3,23 +3,44 @@
 from __future__ import annotations
 
 import sys
-from typing import TYPE_CHECKING, Any, Final
-from unittest.mock import MagicMock, patch
+from typing import TYPE_CHECKING, Any
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
 import pytest
 
 import pymatviz as pmv
+from pymatviz.treemap.py_pkg import _viridis_hex
 
 
 if TYPE_CHECKING:
     from collections.abc import Generator
     from pathlib import Path
 
-    from pymatviz.treemap.py_pkg import ModuleFormatter, ShowCounts
+    from pymatviz.treemap.py_pkg import ModuleFormatter
+    from pymatviz.widgets.treemap import TreemapWidget
+
+
+def tree(widget: TreemapWidget) -> dict[str, dict[str, Any]]:
+    """Map node IDs to nodes, adding each node's leaf sum as ``total``."""
+    nodes: dict[str, dict[str, Any]] = {}
+
+    def walk(node: dict[str, Any]) -> float:
+        """Record the node and return its leaf sum."""
+        children = node.get("children")
+        total = sum(map(walk, children)) if children else node["value"]
+        nodes[node["id"]] = node | {"total": total}
+        return total
+
+    for root in widget.data:
+        walk(root)
+    return nodes
+
+
+def labels(widget: TreemapWidget) -> set[str]:
+    """All node labels of a treemap."""
+    return {node["label"] for node in tree(widget).values()}
 
 
 @pytest.fixture(scope="module")
@@ -165,26 +186,18 @@ def test_find_package_path(
         assert found_path == ""
 
 
-def test_find_package_path_fallbacks(dummy_pkg_path: Path) -> None:
-    """Test fallback mechanisms in find_package_path using mocking."""
-    target_pkg = "my_pkg"
-    expected_abs_path = str(dummy_pkg_path / target_pkg).replace("\\", "/")
-
-    # When importlib.resources fails, fall back to scanning sys.path
-    # (dummy_pkg_path was prepended to sys.path by the fixture)
-    with patch("importlib.resources.files", side_effect=ImportError, create=True):
-        found_path = pmv.treemap.py_pkg.find_package_path(target_pkg)
-        assert found_path.replace("\\", "/") == expected_abs_path
-
-    with (
-        patch("importlib.resources.files", side_effect=ImportError, create=True),
-        patch("site.getsitepackages", return_value=[str(dummy_pkg_path.parent)]),
-        patch("os.path.isdir") as mock_isdir,
-    ):
-        expected_site_path = str(dummy_pkg_path.parent / target_pkg)
-        mock_isdir.side_effect = lambda p: p == expected_site_path
-        found_path = pmv.treemap.py_pkg.find_package_path(target_pkg)
-        assert found_path.replace("\\", "/") == expected_site_path.replace("\\", "/")
+@pytest.mark.parametrize("import_error", [ModuleNotFoundError, ImportError])
+def test_find_package_path_sys_path_fallback(
+    dummy_pkg_path: Path, import_error: type[ImportError]
+) -> None:
+    """Scan sys.path (prepended with dummy_pkg_path) when importlib can't import,
+    also for a package whose __init__ raises ImportError.
+    """
+    with patch("importlib.resources.files", side_effect=import_error):
+        found_path = pmv.treemap.py_pkg.find_package_path("my_pkg")
+    assert found_path.replace("\\", "/") == str(dummy_pkg_path / "my_pkg").replace(
+        "\\", "/"
+    )
 
 
 @pytest.mark.parametrize(
@@ -205,13 +218,13 @@ def test_py_pkg_treemap_cell_text_fn(
     expected_not_in_labels: list[str],
 ) -> None:
     """Test the cell_text_fn parameter with different options."""
-    fig = pmv.py_pkg_treemap(["my_pkg", "another_pkg"], cell_text_fn=cell_text_fn)
-    labels, parents = np.array(fig.data[0].labels), np.array(fig.data[0].parents)
+    widget = pmv.py_pkg_treemap(["my_pkg", "another_pkg"], cell_text_fn=cell_text_fn)
+    pkg_labels = [root["label"] for root in widget.data]
+    assert [root["id"] for root in widget.data] == ["my_pkg", "another_pkg"]
 
     for expected in expected_in_labels:
-        assert any(expected in str(lbl) for lbl in labels)
+        assert any(expected in lbl for lbl in pkg_labels)
 
-    pkg_labels = labels[parents == ""]
     assert len(pkg_labels) == 2
     for not_expected in expected_not_in_labels:
         assert not any(not_expected in str(lbl) for lbl in pkg_labels)
@@ -224,7 +237,6 @@ def test_py_pkg_treemap_cell_text_fn(
             dict(cell_size_fn=lambda _cell: 0),
             "No source files found .* after filtering by cell_size_fn",
         ),
-        (dict(show_counts="invalid_value"), "Invalid show_counts='invalid_value'"),
         (dict(group_by="package"), "Invalid group_by='package', must be one of"),
         (
             dict(color_by="bogus_col"),
@@ -237,56 +249,9 @@ def test_py_pkg_treemap_cell_text_fn(
     ],
 )
 def test_py_pkg_treemap_errors(kwargs: dict[str, Any], expected_error: str) -> None:
-    """Empty filtered data and invalid show_counts/group_by/color_by raise."""
+    """Empty filtered data and invalid group_by/color_by raise."""
     with pytest.raises(ValueError, match=expected_error):
         pmv.py_pkg_treemap("my_pkg", **kwargs)
-
-
-@pytest.mark.parametrize(
-    ("test_base_url", "expect_link"),
-    [
-        ("https://github.com/janosh/pymatviz/blob/main", True),
-        (None, False),
-    ],
-)
-def test_py_pkg_treemap_base_url(test_base_url: str | None, expect_link: bool) -> None:
-    """Test base_url handling for links and hover info."""
-    pkg_name = "my_pkg"
-    show_counts: Final = "value+percent"
-
-    fig = pmv.py_pkg_treemap(pkg_name, base_url=test_base_url, show_counts=show_counts)
-    trace = fig.data[0]
-
-    expected_texttemplate = (
-        "<a href='%{customdata[3]}' target='_blank'>%{customdata[2]}</a><br>"
-        "%{value:,}<br>%{percentEntry}"
-        if expect_link
-        else "%{label}<br>%{value:,}<br>%{percentEntry}"
-    )
-    assert trace.texttemplate == expected_texttemplate
-    assert trace.textinfo == "none"
-
-    custom_data = trace.customdata
-    assert custom_data is not None
-    assert custom_data.shape[1] == 12
-
-    file_urls = custom_data[:, 3]  # Index 3 is file_url
-    if expect_link:
-        assert all(
-            str(test_base_url) in str(file_urls[idx])
-            for idx, id_val in enumerate(trace.ids)
-            if ".py" in id_val and file_urls[idx] is not None
-        )
-    else:
-        assert not any(
-            isinstance(url, str) and url.startswith("http") for url in file_urls
-        )
-
-    hovertemplate = trace.hovertemplate
-    assert hovertemplate is not None
-    assert "<b>%{customdata[2]}</b>" in hovertemplate
-    assert "Path: %{customdata[1]}<br>" in hovertemplate
-    assert "Lines: %{customdata[11]:,}<br>" in hovertemplate
 
 
 def test_collect_package_modules_not_found() -> None:
@@ -311,34 +276,19 @@ def test_internal_imports(dummy_pkg_path: Path) -> None:
         "class InternalUser:\n    pass\n"
     )
 
-    fig = pmv.py_pkg_treemap(pkg_name)
-    hovertemplate = fig.data[0].hovertemplate
-    assert hovertemplate is not None
-
-    for hover_field in (
-        "Internal Imports: %{customdata[7]:,}<br>",
-        "External Imports: %{customdata[8]:,}<br>",
-        "Classes: %{customdata[4]:,}<br>",
-    ):
-        assert hover_field in hovertemplate
-
-    ids = fig.data[0].ids
-    custom_data = fig.data[0].customdata
-    internal_user_idx = next(
-        (idx for idx, id_val in enumerate(ids) if id_val.endswith("/internal_user")), -1
-    )
-    assert internal_user_idx != -1
-
-    assert [int(custom_data[internal_user_idx, idx]) for idx in (7, 8, 4)] == [4, 1, 1]
+    df_modules = pmv.treemap.py_pkg.collect_package_modules([pkg_name])
+    row = df_modules.set_index("filename").loc["internal_user"]
+    stats = ("n_internal_imports", "n_external_imports", "n_classes")
+    assert [int(row[stat]) for stat in stats] == [4, 1, 1]
+    assert "my_pkg/internal_user" in tree(pmv.py_pkg_treemap(pkg_name))
 
 
 def test_top_level_module(dummy_pkg_path: Path) -> None:
     """Test handling of Python files directly under the package root."""
     (dummy_pkg_path / "my_pkg" / "top_level_mod.py").write_text("print('top level')")
 
-    fig = pmv.py_pkg_treemap("my_pkg", group_by="module")
-    assert "top_level_mod" in fig.data[0].labels
-    assert any(id_val.endswith("/top_level_mod") for id_val in fig.data[0].ids)
+    nodes = tree(pmv.py_pkg_treemap("my_pkg", group_by="module"))
+    assert nodes["my_pkg/top_level_mod"]["label"] == "top_level_mod"
 
 
 def test_analyze_unicode_error(
@@ -349,99 +299,19 @@ def test_analyze_unicode_error(
     bad_file_path = dummy_pkg_path / pkg_name / "bad_encoding.py"
     bad_file_path.write_bytes(b"invalid byte seq \xff here")
 
-    fig = pmv.py_pkg_treemap(pkg_name)
+    widget = pmv.py_pkg_treemap(pkg_name)
     captured = capsys.readouterr()
 
     assert f"Warning: Could not analyze {bad_file_path}: 'utf-8' codec" in captured.out
     # Check that the bad file node does NOT exist because its cell_value will be 0
-    for id_val in fig.data[0].ids:
-        assert "bad_encoding" not in id_val
+    assert not any("bad_encoding" in node_id for node_id in tree(widget))
 
 
-@pytest.mark.parametrize(
-    ("metadata_dict", "expected_url_in_customdata"),
-    [
-        ({}, False),  # No URLs
-        ({"Home-page": "https://example.com"}, False),  # Non-GitHub
-        # Non-GitHub
-        ({"Project-URL": ["Source Code, https://gitlab.com/ase/ase"]}, False),
-        # GitHub homepage
-        ({"Home-page": "https://github.com/janosh/pymatviz"}, True),
-        # GitHub project URL
-        ({"Project-URL": ["Repository, https://github.com/janosh/matterviz"]}, True),
-    ],
-)
-def test_auto_base_url_metadata(
-    metadata_dict: dict[str, list[str]],
-    expected_url_in_customdata: bool,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Test base_url='auto' with various mocked package metadata."""
-    pkg_name = "my_pkg"
-
-    mock_metadata = MagicMock()
-    mock_metadata.get.side_effect = lambda key, default=None: metadata_dict.get(
-        key, default
-    )
-    mock_metadata.get_all.side_effect = lambda key, default=None: metadata_dict.get(
-        key, default or []
-    )
-    # Ensure membership and indexing mirror dict semantics
-    mock_metadata.__contains__.side_effect = metadata_dict.__contains__
-    mock_metadata.__getitem__.side_effect = metadata_dict.__getitem__
-
-    monkeypatch.setattr("importlib.metadata.metadata", lambda _: mock_metadata)
-
-    fig = pmv.py_pkg_treemap(pkg_name, base_url="auto")
-    custom_data = fig.data[0].customdata
-
-    if expected_url_in_customdata:
-        assert custom_data is not None
-        assert custom_data.shape[1] == 12
-        file_urls = custom_data[:, 3]
-        assert any(
-            url and "github.com/" in url and "/blob/main/" in url
-            for url in file_urls
-            if isinstance(url, str)
-        ), f"{file_urls=} did not contain a GitHub URL"
-    elif custom_data is not None:
-        assert not any(
-            url and "github.com" in url
-            for url in custom_data[:, 3]
-            if isinstance(url, str)
-        )
-
-
-def test_auto_base_url_metadata_exception(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Unexpected metadata lookup errors propagate for base_url='auto'."""
-
-    def mock_metadata_raises(_name: str) -> None:
-        raise RuntimeError("Metadata fetch failed")
-
-    monkeypatch.setattr("importlib.metadata.metadata", mock_metadata_raises)
-
-    with pytest.raises(RuntimeError, match="Metadata fetch failed"):
-        pmv.py_pkg_treemap("my_pkg", base_url="auto")
-
-
-@pytest.mark.parametrize(
-    ("show_counts_value", "expected_textinfo", "has_template"),
-    [
-        ("value", "none", True),  # Uses custom template for comma formatting
-        ("percent", "label+percent entry", False),  # Uses built-in textinfo
-        (False, "label", False),  # Uses built-in textinfo
-    ],
-)
-def test_show_counts_no_base_url(
-    show_counts_value: ShowCounts, expected_textinfo: str, has_template: bool
-) -> None:
-    """Test different show_counts values when base_url is None."""
-    fig = pmv.py_pkg_treemap("my_pkg", base_url=None, show_counts=show_counts_value)
-    assert fig.data[0].textinfo == expected_textinfo
-    if has_template:
-        assert fig.data[0].texttemplate is not None
-    else:
-        assert fig.data[0].texttemplate is None
+def test_py_pkg_treemap_label_text() -> None:
+    """Cells show label and percent by default, other label_text values pass on."""
+    assert pmv.py_pkg_treemap("my_pkg").label_text == "label+percent"
+    widget = pmv.py_pkg_treemap("my_pkg", label_text="label+value", max_depth=2)
+    assert (widget.label_text, widget.max_depth) == ("label+value", 2)
 
 
 @pytest.fixture
@@ -480,62 +350,31 @@ def mock_pkg_data() -> pd.DataFrame:
     return pd.DataFrame(data)
 
 
-def test_py_pkg_treemap_tooltip_data(mock_pkg_data: pd.DataFrame) -> None:
-    """Test that pmv.py_pkg_treemap generates correct customdata and hovertemplate."""
-    mock_collect_df = mock_pkg_data.copy()
-
-    with (
-        patch(
-            "pymatviz.treemap.py_pkg.collect_package_modules",
-            return_value=mock_collect_df,
-        ),
-        patch(
-            "pymatviz.treemap.py_pkg.px.treemap", wraps=px.treemap
-        ) as mock_px_treemap,
-    ):
-        expected_hovertemplate = (
-            "<b>%{customdata[2]}</b><br>"
-            "Path: %{customdata[1]}<br>"
-            "Cell Value: %{value:,}<br>"
-            "Lines: %{customdata[11]:,}<br>"
-            "%{customdata[10]:.1%} of %{customdata[0]} (by cell value)<br>"
-            "Classes: %{customdata[4]:,}<br>"
-            "Functions: %{customdata[5]:,}<br>"
-            "Methods: %{customdata[6]:,}<br>"
-            "Internal Imports: %{customdata[7]:,}<br>"
-            "External Imports: %{customdata[8]:,}<br>"
-            "Type Imports: %{customdata[9]:,}<br>"
-            "<extra></extra>"
-        )
-
-        fig = pmv.py_pkg_treemap(packages=["pkg1", "pkg2"], base_url=None)
-
-        assert fig.data[0].hovertemplate == expected_hovertemplate
-        custom_data = mock_px_treemap.call_args.kwargs["custom_data"]
-        mod_a = custom_data[custom_data["leaf_label"] == "modA"].iloc[0]
-        assert mod_a["percent_of_package_cell_value"] == pytest.approx(100 / 300)
-
-
-def test_py_pkg_treemap_wraps_long_underscore_labels(
-    mock_pkg_data: pd.DataFrame,
-) -> None:
-    """Long underscore labels are wrapped near the middle underscore."""
-    mock_collect_df = mock_pkg_data.iloc[:1].copy()
-    long_label = "very_long_module_name"
-    mock_collect_df["leaf_label"] = long_label
-    mock_collect_df["filename"] = long_label
-    mock_collect_df["top_module"] = long_label
-    mock_collect_df["full_module"] = f"pkg1.{long_label}"
-    mock_collect_df["repo_path_segment"] = f"pkg1/{long_label}.py"
-    mock_collect_df["module_parts"] = [[long_label]]
-
+def test_py_pkg_treemap_nested_nodes(mock_pkg_data: pd.DataFrame) -> None:
+    """Module paths nest into slash-joined IDs with leaf line counts as values."""
     with patch(
-        "pymatviz.treemap.py_pkg.collect_package_modules",
-        return_value=mock_collect_df,
+        "pymatviz.treemap.py_pkg.collect_package_modules", return_value=mock_pkg_data
     ):
-        fig = pmv.py_pkg_treemap(packages="pkg1", base_url=None)
+        widget = pmv.py_pkg_treemap(packages=["pkg1", "pkg2"], cell_text_fn=False)
+    nodes = tree(widget)
+    assert {node_id: node["total"] for node_id, node in nodes.items()} == {
+        "pkg1": 300,
+        "pkg1/modA": 100,
+        "pkg1/modB": 50,
+        "pkg1/modB/sub": 50,
+        "pkg1/modC": 150,
+        "pkg2": 200,
+        "pkg2/modX": 200,
+    }
+    assert "value" not in nodes["pkg1/modB"]  # branches sum their leaves
+    assert "color" not in nodes["pkg1/modA"]  # categorical colors without color_by
 
-    assert "very_long_<br>module_name" in fig.data[0].labels
+
+def test_module_tree_rejects_leaf_and_branch() -> None:
+    """A path ending at a node that other paths extend is reported, not dropped."""
+    paths = np.array([["pkg", "mod", None], ["pkg", "mod", "sub"]], dtype=object)
+    with pytest.raises(ValueError, match="'pkg/mod' is a leaf and a branch"):
+        pmv.treemap.py_pkg._module_tree(paths, np.ones(2), None, {"pkg": "pkg"})
 
 
 # Calculator functions for testing
@@ -572,40 +411,28 @@ def test_py_pkg_treemap_cell_size_fn(
     expected_filenames: set[str],
 ) -> None:
     """Test the cell_size_fn argument in py_pkg_treemap."""
-    with patch("plotly.express.treemap") as mock_px_treemap:
-        pmv.py_pkg_treemap(
-            ["my_pkg", "another_pkg"], cell_size_fn=calculator, group_by="file"
-        )
-
-    df_passed_to_plotly: pd.DataFrame = mock_px_treemap.call_args.kwargs["data_frame"]
-
-    assert "cell_value" in df_passed_to_plotly
-    assert set(df_passed_to_plotly["filename"]) >= expected_filenames
-
-    numeric_fields = {
-        "line_count",
-        "depth",
-        "n_classes",
-        "n_functions",
-        "n_methods",
-        "n_internal_imports",
-        "n_external_imports",
-        "n_type_checking_imports",
+    packages = ["my_pkg", "another_pkg"]
+    widget = pmv.py_pkg_treemap(
+        packages, cell_size_fn=calculator, group_by="file", cell_text_fn=False
+    )
+    leaves = {
+        node_id: node["value"]
+        for node_id, node in tree(widget).items()
+        if "children" not in node
     }
+    assert {node_id.split("/")[-1] for node_id in leaves} >= expected_filenames
 
-    for _, row in df_passed_to_plotly.iterrows():
-        metrics_instance = pmv.treemap.py_pkg.ModuleStats._make(
-            0 if field in numeric_fields and pd.isna(row[field]) else row[field]
-            for field in pmv.treemap.py_pkg.ModuleStats._fields
+    expected: dict[str, float] = {}
+    stats_fields = pmv.treemap.py_pkg.ModuleStats._fields
+    for _, row in pmv.treemap.py_pkg.collect_package_modules(packages).iterrows():
+        metrics = pmv.treemap.py_pkg.ModuleStats(
+            **{key: row[key] for key in stats_fields}
         )
-        expected_val = (
-            metrics_instance.line_count
-            if calculator is None
-            else calculator(metrics_instance)
-        )
-
-        assert expected_val > 0
-        assert int(row["cell_value"]) == expected_val
+        cell_value = metrics.line_count if calculator is None else calculator(metrics)
+        if cell_value > 0:
+            leaf_id = f"{metrics.package}/{metrics.filename}"
+            expected[leaf_id] = expected.get(leaf_id, 0) + cell_value
+    assert leaves == expected
 
 
 def test_normalize_package_input() -> None:
@@ -617,12 +444,6 @@ def test_normalize_package_input() -> None:
     import numpy.random
 
     assert pmv.treemap.py_pkg._normalize_package_input(numpy.random) == "numpy"
-
-    class MockObj:
-        pass
-
-    mock_obj = MockObj()
-    assert pmv.treemap.py_pkg._normalize_package_input(mock_obj) == str(mock_obj)
 
 
 def _write_package_files(pkg_dir: Path, files: dict[str, int]) -> None:
@@ -650,7 +471,7 @@ def test_mapped_colors(
     monkeypatch.setattr(
         pmv.treemap.py_pkg, "find_package_path", lambda _name: str(pkg_dir)
     )
-    fig = pmv.py_pkg_treemap(
+    widget = pmv.py_pkg_treemap(
         "color_pkg",
         color_by={
             str(pkg_dir / "longer/mod.py"): 100,
@@ -661,68 +482,44 @@ def test_mapped_colors(
         cell_text_fn=False,
         cell_size_fn=(lambda _cell: 1) if equal_area else None,
         min_lines_for_split=min_lines,
-        color="line_count",  # color_by controls the cells
-        labels={"color_value": "Coverage (%)"},
         color_range=(0, 100),
     )
-    trace = fig.data[0]
-    colors = dict(zip(trace.ids, trace.marker.colors, strict=True))
-    assert colors["color_pkg/shorter/mod"] == 0
+    colors = {node_id: node["color"] for node_id, node in tree(widget).items()}
+    expected: dict[str, float] = {"color_pkg/shorter/mod": 0, "color_pkg/shorter": 0}
     if not min_lines:
-        assert colors["color_pkg/longer/mod"] == 100
-        assert colors["color_pkg/longer/other"] == 50
-    np.testing.assert_allclose(
-        [colors["color_pkg/longer"], colors["color_pkg"]],
-        [75, 50] if equal_area else [60, 1200 / 23],
-        rtol=2e-15,
-        atol=0,  # one weighted division per tree level
+        expected |= {"color_pkg/longer/mod": 100, "color_pkg/longer/other": 50}
+    expected |= dict(
+        zip(
+            ["color_pkg/longer", "color_pkg"],
+            [75, 50] if equal_area else [60, 1200 / 23],
+            strict=True,
+        )
     )
-    axis = fig.layout.coloraxis
-    assert (axis.cmin, axis.cmid, axis.cmax) == (0, 50, 100)
-    assert axis.colorbar.title.text == "Coverage (%)"
-    assert "Coverage (%): %{color:" in trace.hovertemplate
+    assert {key: colors[key] for key in expected} == {
+        key: _viridis_hex(val / 100) for key, val in expected.items()
+    }
 
 
 @pytest.mark.parametrize(
-    ("color_by", "title"),
-    [({"other.py": 3}, "Color Value"), ("line_count", "Line Count")],
-)
-def test_colorbar_title(color_by: str | dict[str, float], title: str) -> None:
-    """Column and mapping colors have descriptive default colorbar titles."""
-    assert (
-        pmv.py_pkg_treemap(
-            "my_pkg", color_by=color_by
-        ).layout.coloraxis.colorbar.title.text
-        == title
-    )
-
-
-@pytest.mark.parametrize(
-    ("kwargs", "expected_color", "expected_width"),
+    ("fraction", "expected"),
     [
-        ({}, None, None),
-        ({"cell_border": {"color": "black", "width": 2}}, "black", 2),
-        ({"cell_border": {}}, None, None),
-        ({"color_by": "line_count"}, "white", 0.5),
-        (
-            {"color_by": "line_count", "cell_border": {"color": "red", "width": 3}},
-            "red",
-            3,
-        ),
-        ({"color_by": "line_count", "cell_border": {}}, None, None),
+        (-1, "#440154"),
+        (0, "#440154"),
+        (0.0625, "#461768"),
+        (1, "#fde725"),
+        (2, "#fde725"),
     ],
 )
-def test_py_pkg_treemap_cell_border(
-    kwargs: dict[str, Any],
-    expected_color: str | None,
-    expected_width: float | None,
-) -> None:
-    """Test cell_border parameter functionality."""
-    fig = pmv.py_pkg_treemap("my_pkg", **kwargs)
-    marker_line = fig.data[0].marker.line
-    assert marker_line.color == expected_color
-    if expected_width is not None:
-        assert marker_line.width == expected_width
+def test_viridis_hex(fraction: float, expected: str) -> None:
+    """Fractions interpolate between viridis stops and clamp to [0, 1]."""
+    assert _viridis_hex(fraction) == expected
+
+
+def test_color_by_column_uses_data_range() -> None:
+    """Without color_range, the extreme values map to the ends of the scale."""
+    nodes = tree(pmv.py_pkg_treemap("my_pkg", color_by="line_count"))
+    colors = {node["color"] for node in nodes.values()}
+    assert {"#440154", "#fde725"} <= colors
 
 
 # === collect_source_modules_from_dir ===
@@ -886,47 +683,23 @@ def rust_project(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return src
 
 
-@pytest.mark.parametrize(
-    ("kwargs", "checks"),
-    [
-        ({"base_url": None}, {"labels": {"lib", "math"}, "no_analysis": True}),
-        (
-            {"color_by": {"src/lib.rs": 100}, "base_url": None},
-            {"hover": "Color Value: %{color:,.2f}", "lib_color": 100},
-        ),
-        ({"base_url": "auto"}, {"no_urls": True}),
-        ({"base_url": "https://github.com/test/repo/blob/main"}, {"has_urls": True}),
-    ],
-)
-def test_treemap_source_dir_modes(
-    rust_project: Path, kwargs: dict[str, Any], checks: dict[str, Any]
+@pytest.mark.parametrize("color_by", [None, {"src/lib.rs": 100}])
+def test_treemap_source_dir(
+    rust_project: Path, color_by: dict[str, float] | None
 ) -> None:
-    """py_pkg_treemap source_dir mode handles labels, coverage, and URLs."""
-    fig = pmv.py_pkg_treemap(
+    """py_pkg_treemap source_dir mode scans non-Python files and colors them."""
+    widget = pmv.py_pkg_treemap(
         "my_crate",
         source_dir=str(rust_project),
         file_extensions=(".rs",),
-        **kwargs,
+        color_by=color_by,
     )
-    trace = fig.data[0]
-    if labels := checks.get("labels"):
-        assert labels <= set(trace.labels)
-    if checks.get("no_analysis"):
-        assert all(
-            field not in trace.hovertemplate
-            for field in ("Classes:", "Functions:", "Methods:")
-        )
-    if "lib_color" in checks:
-        assert (
-            trace.marker.colors[list(trace.labels).index("lib")] == checks["lib_color"]
-        )
-    if hover := checks.get("hover"):
-        assert hover in trace.hovertemplate
-    file_urls = [str(url) for url in trace.customdata[:, 3]]
-    if checks.get("no_urls"):
-        assert not any(url.startswith("http") for url in file_urls)
-    if checks.get("has_urls"):
-        assert any(kwargs["base_url"] in url for url in file_urls)
+    nodes = tree(widget)
+    assert {"lib", "math"} <= {node["label"] for node in nodes.values()}
+    lib_color = next(
+        node.get("color") for node in nodes.values() if node["label"] == "lib"
+    )
+    assert lib_color == ("#fde725" if color_by else None)
 
 
 def test_treemap_source_dir_no_matching_files(tmp_path: Path) -> None:
@@ -975,21 +748,14 @@ class TestMaxModuleDepth:
     @pytest.mark.parametrize("depth", [1, 2, 3])
     def test_max_depth_limits_nesting(self, depth: int) -> None:
         """Deeper path components should not appear when depth is capped."""
-        trace = pmv.py_pkg_treemap(
-            "deep_pkg", max_module_depth=depth, base_url=None
-        ).data[0]
-        max_id_depth = max(
-            id_val.count("/") for id_val in trace.ids if isinstance(id_val, str)
-        )
-        assert max_id_depth <= depth
+        nodes = tree(pmv.py_pkg_treemap("deep_pkg", max_module_depth=depth))
+        assert max(node_id.count("/") for node_id in nodes) <= depth
         if depth == 1:
-            leaf_labels = {
-                label
-                for label, parent in zip(trace.labels, trace.parents, strict=False)
-                if parent
+            child_labels = {
+                node["label"] for node_id, node in nodes.items() if "/" in node_id
             }
-            assert leaf_labels >= {"alpha", "beta", "gamma"}
-            assert leaf_labels.isdisjoint({"big", "core", "helpers"})
+            assert child_labels >= {"alpha", "beta", "gamma"}
+            assert child_labels.isdisjoint({"big", "core", "helpers"})
 
 
 @pytest.mark.usefixtures("_deep_pkg_on_path")
@@ -997,9 +763,9 @@ class TestAdaptivePruning:
     """Tests for min_lines_for_split and max_children_for_split."""
 
     @staticmethod
-    def _trace(**kwargs: Any) -> go.Treemap:
-        """Return a deep_pkg treemap trace for pruning tests."""
-        return pmv.py_pkg_treemap("deep_pkg", base_url=None, **kwargs).data[0]
+    def _labels(**kwargs: Any) -> set[str]:
+        """Node labels of a deep_pkg treemap for pruning tests."""
+        return labels(pmv.py_pkg_treemap("deep_pkg", cell_text_fn=False, **kwargs))
 
     @pytest.mark.parametrize(
         ("min_lines", "max_children"),
@@ -1009,13 +775,13 @@ class TestAdaptivePruning:
         self, min_lines: int, max_children: int | None
     ) -> None:
         """Beta's 6 children get collapsed."""
-        trace = self._trace(
+        node_labels = self._labels(
             max_module_depth=2,
             min_lines_for_split=min_lines,
             max_children_for_split=max_children,
         )
-        assert "beta" in trace.labels
-        assert set(trace.labels).isdisjoint({f"s{idx}" for idx in range(6)})
+        assert "beta" in node_labels
+        assert node_labels.isdisjoint({f"s{idx}" for idx in range(6)})
 
     @pytest.mark.parametrize(
         ("min_lines", "expected_present", "expected_absent"),
@@ -1028,62 +794,35 @@ class TestAdaptivePruning:
         self, min_lines: int, expected_present: set[str], expected_absent: set[str]
     ) -> None:
         """Children below min_lines merge into an 'other' bucket."""
-        labels = set(
-            self._trace(
-                max_module_depth=3,
-                min_lines_for_split=min_lines,
-                max_children_for_split=5,
-            ).labels
+        node_labels = self._labels(
+            max_module_depth=3, min_lines_for_split=min_lines, max_children_for_split=5
         )
-        assert expected_present <= labels
-        assert labels.isdisjoint(expected_absent)
+        assert expected_present <= node_labels
+        assert node_labels.isdisjoint(expected_absent)
 
     def test_max_children_only_at_deepest_level(self) -> None:
         """max_children_for_split does not collapse intermediate levels."""
-        labels = set(
-            self._trace(
-                max_module_depth=3,
-                min_lines_for_split=50,
-                max_children_for_split=2,
-            ).labels
+        node_labels = self._labels(
+            max_module_depth=3, min_lines_for_split=50, max_children_for_split=2
         )
-        assert {"alpha", "big", "medium", "core", "helpers"} <= labels
+        assert {"alpha", "big", "medium", "core", "helpers"} <= node_labels
 
     def test_aggregated_values_are_summed(self) -> None:
         """Collapsed groups have summed line counts."""
-        trace = self._trace(max_module_depth=2, min_lines_for_split=500)
-        assert list(trace.values)[list(trace.labels).index("beta")] == pytest.approx(
-            600, abs=5
+        widget = pmv.py_pkg_treemap(
+            "deep_pkg", max_module_depth=2, min_lines_for_split=500
         )
+        assert tree(widget)["deep_pkg/beta"]["total"] == pytest.approx(600, abs=5)
 
     def test_min_lines_uses_line_count_not_cell_value(self) -> None:
         """min_lines_for_split must compare against line_count, not cell_value."""
-        labels = set(
-            self._trace(
-                max_module_depth=3,
-                min_lines_for_split=200,
-                max_children_for_split=5,
-                cell_size_fn=lambda _module: 1,
-            ).labels
+        node_labels = self._labels(
+            max_module_depth=3,
+            min_lines_for_split=200,
+            max_children_for_split=5,
+            cell_size_fn=lambda _module: 1,
         )
-        assert {"big", "medium"} <= labels
-
-    @pytest.mark.parametrize(
-        "base_url",
-        [None, "https://github.com/test/repo/blob/main"],
-        ids=["no_links", "with_links"],
-    )
-    def test_depth_limiting_omits_customdata_from_templates(
-        self, base_url: str | None
-    ) -> None:
-        """Depth limiting skips customdata refs in text and hover templates."""
-        trace = pmv.py_pkg_treemap(
-            "deep_pkg", max_module_depth=2, color_by="line_count", base_url=base_url
-        ).data[0]
-        assert "customdata" not in (trace.texttemplate or "")
-        assert "%{label}" in (trace.texttemplate or "")
-        assert "customdata" not in (trace.hovertemplate or "")
-        assert "%{label}" in (trace.hovertemplate or "")
+        assert {"big", "medium"} <= node_labels
 
     @pytest.mark.parametrize(
         "kwargs",
@@ -1137,3 +876,27 @@ def test_python_file_metrics(
     assert (
         modules.set_index("filename").loc["mod", list(expected)].to_dict() == expected
     )
+
+
+def test_other_bucket_distinct_from_other_module(tmp_path: Path) -> None:
+    """A real module named "other" doesn't collide with the merged-modules bucket."""
+    pkg_dir = tmp_path / "pkg"
+    _write_package_files(
+        pkg_dir,
+        {"x/other/a.py": 600, "x/other/b.py": 600, "x/tiny.py": 5, "x/tiny2.py": 5},
+    )
+    nodes = tree(
+        pmv.py_pkg_treemap(
+            "pkg", source_dir=str(pkg_dir), cell_text_fn=False, min_lines_for_split=100
+        )
+    )
+    assert nodes["pkg/x/other"]["total"] == 1200
+    assert nodes["pkg/x/__other__"]["label"] == "other"
+    assert nodes["pkg/x/__other__"]["value"] == 10
+
+
+def test_color_by_uniform_values() -> None:
+    """A zero-width color range maps every cell to the scale's middle."""
+    nodes = tree(pmv.py_pkg_treemap("my_pkg", color_by="depth", color_range=(5, 5)))
+    assert {node["color"] for node in nodes.values()} == {_viridis_hex(0.5)}
+    assert not any("_color" in node for node in nodes.values())

@@ -1,4 +1,4 @@
-"""Periodic table histogram plotly examples."""
+"""Periodic table of per-element histograms."""
 
 # %%
 import numpy as np
@@ -14,28 +14,19 @@ data_dict = {
 }
 
 
-# %% Example 1: Basic histogram with colorbar
-fig = pmv.ptable_hists(
-    data_dict,
-    bins=30,
-    colorbar=dict(title="Element Distributions"),
-)
-fig.show()
-# pmv.io.save_and_compress_svg(fig, "ptable-hists-plotly")
+# %% Histograms on shared bins, bars colored by bin position
+widget = pmv.ptable_hists(data_dict, bins=30, color_bar={"title": "Values"})
+widget.show()
+widget.to_img(f"{pmv.ROOT}/assets/png/ptable-hists.png", width=1000)
 
 
-# %% Example 2: horizontal colorbar and custom annotations
-fig = pmv.ptable_hists(
+# %% Log-scaled bar heights, fixed x range and each element's mean as tile label
+widget = pmv.ptable_hists(
     data_dict,
-    bins=30,
-    colorbar=dict(title="Element Distributions", orientation="h"),
-    color_elem_strategy="background",
-    # symbol_kwargs=dict(x=0.25, y=0.8),
-    # add atomic numbers to top right of each element tile
-    annotations={
-        elem.symbol: dict(text=str(idx + 1), font_color="white", y=0.95)
-        for idx, elem in enumerate(Element)
-    },
+    bins=20,
+    x_range=(-4, 4),
+    log_y=True,
+    color_scale="interpolatePlasma",
+    labels=lambda vals: f"{vals.mean():.2f}",
 )
-fig.show()
-# pmv.io.save_and_compress_svg(fig, "ptable-hists-plotly-with-annotations")
+widget.show()

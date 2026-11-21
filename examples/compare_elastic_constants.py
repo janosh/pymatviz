@@ -14,7 +14,6 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-import plotly.express as px
 from ase.units import GPa
 from emmet.core.elasticity import ElasticityDoc
 from mace.calculators import mace_mp
@@ -29,7 +28,6 @@ try:
 except ImportError:
     raise SystemExit(0) from None
 
-pmv.set_plotly_template("pymatviz_white")
 checkpoint = "https://github.com/ACEsuit/mace-foundations/releases/download/mace_matpes_0/MACE-matpes-pbe-omat-ft.model"
 
 
@@ -82,20 +80,18 @@ df_ml[g_vrh_ref_col] = pd.Series(
 # filter unrealistic values
 df_ml = df_ml.query(f"0 <= {k_vrh_ref_col} < 1e4 and 0 <= {g_vrh_ref_col} < 1e4")
 
-# Bulk modulus plot
-fig = px.scatter(df_ml, x=k_vrh_ref_col, y=k_vrh_pred_col)
-fig.layout.title.update(text="MACE vs MP Bulk Modulus VRH", x=0.5)
-
-pmv.powerups.enhance_parity_plot(fig)
-fig.layout.margin.t = 30
-fig.show()
-
-# Shear modulus plot
-fig = px.scatter(df_ml, x=g_vrh_ref_col, y=g_vrh_pred_col)
-fig.layout.title.update(text="MACE vs MP Shear Modulus VRH", x=0.5)
-pmv.powerups.enhance_parity_plot(fig)
-fig.layout.margin.t = 30
-fig.show()
+# Bulk and shear modulus parity plots
+for ref_col, pred_col, title in (
+    (k_vrh_ref_col, k_vrh_pred_col, "MACE vs MP Bulk Modulus VRH"),
+    (g_vrh_ref_col, g_vrh_pred_col, "MACE vs MP Shear Modulus VRH"),
+):
+    widget = pmv.ScatterPlotWidget(
+        series=[{"x": df_ml[ref_col], "y": df_ml[pred_col], "markers": "points"}],
+        x_axis={"label": ref_col},
+        y_axis={"label": pred_col},
+    )
+    pmv.powerups.enhance_parity_plot(widget, stats={"prefix": f"{title}\n"})
+    widget.show()
 
 # df_ml.to_csv(f"elastic-constants-{checkpoint.split('/')[-1]}.csv", index=False)
 
@@ -112,14 +108,16 @@ calculator = mace_mp(model=checkpoint)
 elasticity_calc = ElasticityCalc(calculator, relax_structure=True)
 ml_results = elasticity_calc.calc(structure)
 
-fig_ml = px.imshow(ml_results["elastic_tensor"].voigt / GPa, text_auto=".2f")
-fig_ml.layout.coloraxis.colorbar.title.update(
-    text="ML Elastic Tensor [GPa]", side="right"
-)
-fig_ml.show()
-
-fig_pbe = px.imshow(np.asarray(elastic_doc.elastic_tensor.raw), text_auto=".2f")
-fig_pbe.layout.coloraxis.colorbar.title.update(
-    text="PBE Elastic Tensor [GPa]", side="right"
-)
-fig_pbe.show()
+voigt_labels = [str(idx) for idx in range(1, 7)]  # Voigt notation indices
+for tensor, title in (
+    (ml_results["elastic_tensor"].voigt / GPa, "ML Elastic Tensor [GPa]"),
+    (np.asarray(elastic_doc.elastic_tensor.raw), "PBE Elastic Tensor [GPa]"),
+):
+    widget = pmv.HeatmapMatrixWidget(
+        x_items=voigt_labels,
+        y_items=voigt_labels,
+        values=np.asarray(tensor).tolist(),
+        show_values=".2f",
+        color_bar={"title": title},
+    )
+    widget.show()

@@ -4,107 +4,77 @@ from __future__ import annotations
 
 from collections import defaultdict
 from inspect import isclass
-from typing import TYPE_CHECKING, Literal
-
-from pymatgen.analysis.local_env import NearNeighbors
+from typing import TYPE_CHECKING, Any, Literal
 
 from pymatviz.enums import LabelEnum
 from pymatviz.structure import helpers
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Hashable
-    from typing import Any
+    from collections.abc import Callable
 
-    from pymatgen.core import IMolecule, IStructure, Site, Structure
+    from pymatgen.analysis.local_env import NearNeighbors
+    from pymatgen.core import IMolecule, IStructure
 
 
 class CnSplitMode(LabelEnum):
-    """How to split the coordination number histogram into subplots."""
+    """How to split coordination number histograms into bar series. Values match
+    MatterViz's CoordinationBarPlot ``split_mode``.
+    """
 
-    none = "none", "None"
-    by_element = "by element", "By element"
-    by_structure = "by structure", "By structure"
-    by_structure_and_element = "by structure and element", "By structure and element"
-
-
-def create_hover_text(
-    *,
-    struct_key: Hashable,
-    elem_symbol: str,
-    cn: int,
-    count: int,
-    hover_data: dict[str, str],
-    data: dict[str, Any],
-    is_single_structure: bool,
-) -> str:
-    """Create hover text for a single bar in the histogram."""
-    hover_text = f"Formula: {struct_key}<br>" if not is_single_structure else ""
-    hover_text += f"Element: {elem_symbol}<br>" if elem_symbol else ""
-    hover_text += f"Coordination number: {cn}<br>Count: {count}"
-
-    for key, label in hover_data.items():
-        values = dict.fromkeys(
-            str(value) if value is not None else "N/A"
-            for site_cn, value in zip(data["cn"], data["hover_data"][key], strict=True)
-            if site_cn == cn
-        )
-        hover_text += f"<br>{label}: {', '.join(values) or 'N/A'}"
-
-    return hover_text
+    none = "none", "All sites"
+    by_element = "by_element", "By element"
+    by_structure = "by_structure", "By structure"
 
 
 def normalize_get_neighbors(
     strategy: float | NearNeighbors | type[NearNeighbors],
-) -> Callable[[Site, Any], list[Any]]:
-    """Normalize get_neighbors function."""
+) -> Callable[[IStructure | IMolecule], list[list[Any]]]:
+    """Normalize a neighbor-finding strategy to a function returning the neighbor
+    list of every site in a structure or molecule (in site order).
+
+    A float cutoff runs a single neighbor search for all sites of a periodic
+    structure (molecules lack get_all_neighbors, so get per-site neighbors).
+    """
     if isinstance(strategy, int | float):
-        return lambda site, structure: structure.get_neighbors(site, r=strategy)
+        from pymatgen.core import IMolecule
+
+        cutoff = float(strategy)
+
+        def get_all_neighbors(structure: IStructure | IMolecule) -> list[list[Any]]:
+            """Neighbors of each site within the cutoff."""
+            if isinstance(structure, IMolecule):
+                return [structure.get_neighbors(site, r=cutoff) for site in structure]
+            return structure.get_all_neighbors(r=cutoff)
+
+        return get_all_neighbors
+    from pymatgen.analysis.local_env import NearNeighbors
+
     is_nn_class = isclass(strategy) and issubclass(strategy, NearNeighbors)
     nn_instance = strategy() if is_nn_class else strategy
     if isinstance(nn_instance, NearNeighbors):
-        return lambda site, structure: nn_instance.get_nn_info(
-            structure, structure.index(site)
-        )
+        # index sites by position: structure.index(site) is O(N) per site and
+        # returns the first of duplicate sites
+        # NearNeighbors annotates Structure but also handles IStructure/molecules
+        return lambda structure: [
+            nn_instance.get_nn_info(structure, idx)  # ty: ignore[invalid-argument-type]
+            for idx in range(len(structure))
+        ]
     raise TypeError(
         f"Invalid {strategy=}. Expected float, NearNeighbors instance, or "
         "NearNeighbors subclass."
     )
 
 
-def calculate_average_cn(
-    structure: IStructure | IMolecule,
-    element: str,
-    get_neighbors: Callable[[Site, Any], list[Any]],
-) -> float:
-    """Calculate the average coordination number for a given element in a structure.
-
-    Args:
-        structure (IStructure | IMolecule): A pymatgen structure-like object.
-        element (str): Element symbol to calculate average CN for.
-        get_neighbors (Callable[[Site, Any], list[Any]]):
-            Function to get neighbors for a site.
-
-    Returns:
-        Average coordination number for the given element. Returns 0 if element is not
-        present in the structure.
-    """
-    element_sites = [
-        site for site in structure if element in helpers.get_site_elements(site)
-    ]
-    cn_sum = sum(len(get_neighbors(site, structure)) for site in element_sites)
-    return cn_sum / len(element_sites) if element_sites else 0
-
-
 def coordination_nums_in_structure(
-    structure: Structure,
+    structure: IStructure | IMolecule,
     strategy: float | NearNeighbors | type[NearNeighbors] = 3.0,
     group_by: Literal["element", "specie", "site"] = "element",
 ) -> dict[str, list[int]]:
     """Get coordination numbers (CN) for each element in a structure.
 
     Args:
-        structure (Structure): A pymatgen Structure object
+        structure (IStructure | IMolecule): A pymatgen structure or molecule
         strategy (float | NearNeighbors | type[NearNeighbors]): Neighbor-finding
             strategy. Can be one of:
             - float: Cutoff distance for neighbor search in Angstroms
@@ -129,19 +99,20 @@ def coordination_nums_in_structure(
         >>> print(cns)
         {"Si": [4, 4, 4], "O": [2, 2, 2, 2, 2, 2]}
     """
-    get_neighbors = normalize_get_neighbors(strategy=strategy)
+    site_neighbors = normalize_get_neighbors(strategy=strategy)(structure)
 
     cns: dict[str, list[int]] = defaultdict(list)
 
     # Calculate CNs for all sites in the structure
-    for idx, site in enumerate(structure, start=1):
+    for idx, (site, neighbors) in enumerate(
+        zip(structure, site_neighbors, strict=True), start=1
+    ):
         site_species = helpers.get_site_species(site)
         key = {
             "element": helpers.get_site_symbol(site),
             "site": str(idx),
             "specie": str(site_species),  # Preserve oxidation state for specie mode
         }[group_by]
-        cn = len(get_neighbors(site, structure))
-        cns[key] += [cn]
+        cns[key] += [len(neighbors)]
 
     return cns

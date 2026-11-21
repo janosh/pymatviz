@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 import pandas as pd
-import sklearn.preprocessing
 from pymatgen.core import Composition, Element
 
 
@@ -93,6 +92,8 @@ def matminer_featurize(
     features = np.nan_to_num(feature_df[feature_cols].to_numpy())
 
     if normalize:
+        import sklearn.preprocessing
+
         features = sklearn.preprocessing.normalize(features, norm="l2", axis=1)
 
     return features
@@ -138,6 +139,8 @@ def one_hot_encode(
             features[idx, column_of[element]] = fraction
 
     if normalize:
+        import sklearn.preprocessing
+
         features = sklearn.preprocessing.normalize(features, norm="l2", axis=1)
 
     return features

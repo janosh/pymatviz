@@ -7,8 +7,6 @@ import pandas as pd
 import pymatviz as pmv
 
 
-pmv.set_plotly_template("pymatviz_white")
-
 # Random classification data
 np_rng = np.random.default_rng(seed=0)
 rand_clf_size = 100
@@ -17,15 +15,14 @@ y_proba = np.clip(y_binary - 0.1 * np_rng.normal(scale=5, size=rand_clf_size), 0
 df_clf = pd.DataFrame({"target": y_binary, "probability": y_proba})
 
 
-# %% Plotly version - basic usage
-fig = pmv.precision_recall_curve(y_binary, y_proba)
-fig.show()
-# pmv.io.save_and_compress_svg(fig, "precision-recall-curve-plotly")
+# %% Basic usage
+widget = pmv.precision_recall_curve(y_binary, y_proba)
+widget.show()
 
 
-# %% Plotly version - with DataFrame
-fig = pmv.precision_recall_curve("target", "probability", df=df_clf)
-fig.show()
+# %% With DataFrame
+widget = pmv.precision_recall_curve("target", "probability", df=df_clf)
+widget.show()
 
 
 # %% Multiple PR curves on same plot
@@ -44,6 +41,6 @@ classifiers = {
     ),
 }
 
-fig = pmv.precision_recall_curve(targets=y_binary, probs_positive=classifiers)
-fig.show()
-pmv.io.save_and_compress_svg(fig, "precision-recall-curve-plotly-multiple")
+widget = pmv.precision_recall_curve(targets=y_binary, probs_positive=classifiers)
+widget.show()
+widget.to_img(f"{pmv.ROOT}/assets/svg/precision-recall-curve-multiple.svg", width=500)

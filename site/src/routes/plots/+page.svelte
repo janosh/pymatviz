@@ -5,16 +5,16 @@
 
   // Vite 8 SSR glob values are namespaces; `.default` is the URL string.
   const figs: PlotFig[] = Object.entries(
-    import.meta.glob<{ default: string }>(`#root/assets/svg/*.svg`, {
+    import.meta.glob<{ default: string }>(`#root/assets/{svg,png}/*.{svg,png}`, {
       eager: true,
       query: `?url`,
     }),
-  ).map(([id, svg]) => ({
+  ).map(([id, img]) => ({
     id,
-    src: svg.default,
+    src: img.default,
     title: id
       .slice(id.lastIndexOf(`/`) + 1)
-      .replace(/\.svg$/u, ``)
+      .replace(/\.(?:svg|png)$/u, ``)
       .replaceAll(`-`, ` `),
   }))
 </script>

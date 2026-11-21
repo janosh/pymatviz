@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-import re
 from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
 import pytest
+import sklearn.metrics as skm
 
 import pymatviz as pmv
+from pymatviz.widgets.binned_scatter_plot import BinnedScatterPlotWidget
+from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 from tests.conftest import df_regr, np_rng
 
 
@@ -21,483 +21,179 @@ if TYPE_CHECKING:
 
 
 X_COL, Y_COL, *_ = df_regr
-DF_TIPS = px.data.tips()
 
 
-@pytest.mark.parametrize(
-    ("log_density", "stats"),
-    [(True, False), (False, True), (None, dict(prefix="test", font=dict(size=10)))],
-)
+@pytest.mark.parametrize("log", [True, False, None])
 @pytest.mark.parametrize("n_bins", [None, False, 50])
 @pytest.mark.parametrize("density", ["kde", "empirical", None])
 def test_density_scatter(
     df_or_arrays: DfOrArrays,
-    log_density: bool | None,
-    n_bins: int | bool | None,
-    stats: bool | dict[str, Any],
+    log: bool | None,
+    n_bins: int | Literal[False] | None,
     density: Literal["kde", "empirical"] | None,
 ) -> None:
-    """Test density_scatter function with Plotly backend."""
+    """Density scatter colors points by density and adds parity powerups."""
     df, x, y = df_or_arrays
-    fig = pmv.density_scatter(
-        df=df,
-        x=x,
-        y=y,
-        log_density=log_density,
-        n_bins=n_bins,
-        stats=stats,
-        density=density,
-    )
-    assert fig.layout.xaxis.title.text == (x if isinstance(x, str) else "Actual")
-    assert fig.layout.yaxis.title.text == (y if isinstance(y, str) else "Predicted")
-
-    assert len(fig.data) > 0
-    assert all(isinstance(trace, go.Scatter) for trace in fig.data)
-
-    if stats:
-        # Check stats annotation exists and contains expected metrics
-        stats_annotations = [
-            ann
-            for ann in fig.layout.annotations
-            if any(metric in ann.text for metric in ("MAE", "RMSE", "R<sup>2</sup>"))
-        ]
-        assert len(stats_annotations) == 1, "Stats annotation not found"
+    widget = pmv.density_scatter(x, y, df=df, log=log, n_bins=n_bins, density=density)
+    assert isinstance(widget, ScatterPlotWidget)
+    assert widget.x_axis == {"label": x if isinstance(x, str) else "Actual"}
+    assert widget.y_axis == {"label": y if isinstance(y, str) else "Predicted"}
+    (srs,) = widget.series
+    colors = np.asarray(srs["color_values"])
+    assert len(colors) == len(srs["x"]) == len(srs["y"])
+    assert np.all(np.diff(colors) >= 0)  # densest points drawn last
+    if not n_bins:  # unbinned points are the inputs (reordered by density)
+        np.testing.assert_array_equal(np.sort(srs["x"]), np.sort(df_regr[X_COL]))
+    if density == "empirical" and not n_bins:
+        assert set(colors) == {1}
+    assert widget.color_scale["type"] == ("log" if log else "linear")
+    assert widget.color_bar == {"title": "Point density"}
+    assert [line["type"] for line in widget.ref_lines] == ["diagonal", "segment"]
+    # metrics of the unbinned data, also when binning
+    true_vals, pred_vals = df_regr[X_COL], df_regr[Y_COL]
+    mae = skm.mean_absolute_error(true_vals, pred_vals)
+    r2_val = skm.r2_score(true_vals, pred_vals)
+    assert widget.annotation == f"MAE = {mae:.3}\nR² = {r2_val:.3}"
 
 
 @pytest.mark.parametrize("plot_func", [pmv.density_scatter, pmv.density_hexbin])
 @pytest.mark.parametrize("stats", [1, (1,), "foo"])
 def test_density_plots_raise_on_bad_stats_type(
-    plot_func: Callable[..., go.Figure], stats: Any
+    plot_func: Callable[..., Any], stats: Any
 ) -> None:
     """Density plots raise TypeError for invalid stats type."""
-    err_msg = f"stats must be bool or dict, got {type(stats)} instead."
-
-    vals = [1, 2, 3]
-    with pytest.raises(TypeError, match=err_msg):
-        plot_func(x=vals, y=vals, stats=stats)
+    with pytest.raises(TypeError, match="stats must be bool or dict"):
+        plot_func(x=[1, 2, 3], y=[1, 3, 2], stats=stats)
 
 
-def test_density_scatter_uses_series_name_as_label() -> None:
-    """Test that density_scatter uses pandas Series names as axis labels."""
-    x = pd.Series(np_rng.random(5), name="x")
-    y = pd.Series(np_rng.random(5), name="y")
-    fig = pmv.density_scatter(x=x, y=y, log_density=False)
-
-    assert fig.layout.xaxis.title.text == "x"
-    assert fig.layout.yaxis.title.text == "y"
+@pytest.mark.parametrize("plot_func", [pmv.density_scatter, pmv.density_hexbin])
+def test_density_plots_use_series_names_and_drop_nan(
+    plot_func: Callable[..., Any],
+) -> None:
+    """Series names become axis labels and NaN rows are dropped."""
+    x_vals = pd.Series([*np_rng.random(5), np.nan], name="x")
+    y_vals = pd.Series([*np_rng.random(5), 1.0], name="y")
+    widget = plot_func(x_vals, y_vals, stats=False, xlabel=None, ylabel="custom")
+    assert widget.x_axis == {"label": "x"}
+    assert widget.y_axis == {"label": "custom"}
+    assert len(widget.series[0]["x"]) == 5
 
 
 @pytest.mark.parametrize(
-    ("plot_func", "marker_symbol"),
-    [
-        (pmv.density_scatter_with_hist, "circle"),
-        (pmv.density_hexbin_with_hist, "hexagon"),
-    ],
+    "plot_func",
+    [pmv.density_hexbin, pmv.density_hexbin_with_hist, pmv.density_scatter_with_hist],
 )
-def test_density_with_hist(
-    df_or_arrays: DfOrArrays,
-    plot_func: Callable[..., go.Figure],
-    marker_symbol: str,
+def test_binned_density_plots(
+    df_or_arrays: DfOrArrays, plot_func: Callable[..., BinnedScatterPlotWidget]
 ) -> None:
-    """Marginal histograms flank the main panel holding parity lines and stats."""
+    """Binned density plots send raw points, overlays and marginal histograms."""
     df, x, y = df_or_arrays
-    fig = plot_func(df=df, x=x, y=y, identity_line=True, best_fit_line=True, stats=True)
-    assert [type(trace) for trace in fig.data] == [go.Scatter, go.Bar, go.Bar]
-    assert fig.data[0].marker.symbol == marker_symbol
-    assert fig.layout.xaxis.title.text == (x if isinstance(x, str) else "Actual")
-    assert fig.layout.yaxis2.title.text == (y if isinstance(y, str) else "Predicted")
-    assert len(fig.layout.shapes) == 2
-    assert len(fig.layout.annotations) == 2
-    assert all(shape.xref == "x2" and shape.yref == "y2" for shape in fig.layout.shapes)
-    assert all(
-        anno.xref == "x2 domain" and anno.yref == "y2 domain"
-        for anno in fig.layout.annotations
-    )
-    for marginal_kwarg in ("marginal_x", "marginal_y"):
-        with pytest.raises(TypeError, match=rf"\['{marginal_kwarg}'\] not supported"):
-            plot_func(df=df, x=x, y=y, **{marginal_kwarg: "box"})
-
-
-@pytest.mark.parametrize("weighted", [False, True])
-def test_density_hexbin_cell_membership(weighted: bool) -> None:
-    """Bin by hexagonal cells, keeping zero and negative weighted totals."""
-    fig = pmv.density_hexbin(
-        [0, 2, 0.49, 0.51, 0.9],
-        [0, 2, 0.49, 0.51, 0.1],
-        weights=[0, 1, 2, -2, -3] if weighted else None,
-        gridsize=2,
-        identity_line=False,
-        best_fit_line=False,
-        stats=False,
-    )
-    trace = fig.data[0]
-    bins = dict(
-        zip(zip(trace.x, trace.y, strict=True), trace.marker.color, strict=True)
-    )
-    assert bins == {
-        (0, 0): 0 if weighted else 1,
-        (2, 2): 1,
-        (0.5, 0.5): 0 if weighted else 2,
-        (1, 0): -3 if weighted else 1,
-    }
-
-
-@pytest.mark.parametrize("constant", [False, True])
-def test_density_hexbin_weight_alignment(constant: bool) -> None:
-    """Preserve weights after filtering DataFrame rows and on constant coordinates."""
-    df = pd.DataFrame({"x": [1, np.nan, 1 if constant else 2], "y": [1, 2, 1]})
-    fig = pmv.density_hexbin(
-        "x",
-        "y",
-        df=df,
-        weights=[2, 100, 3],
-        gridsize=2,
-        identity_line=False,
-        best_fit_line=False,
-        stats=False,
-    )
-    assert sum(fig.data[0].marker.color) == 5
-    assert np.isfinite(fig.data[0].x).all()
-    assert np.isfinite(fig.data[0].y).all()
-    if constant:
-        assert tuple(fig.data[0].marker.color) == (5,)
-    with pytest.raises(ValueError, match="one weight per DataFrame row"):
-        pmv.density_hexbin("x", "y", df=df, weights=[1])
-
-
-@pytest.mark.parametrize("gridsize", [1, 3, 15])
-def test_density_hexbin_nearest_centers(gridsize: int) -> None:
-    """Match exhaustive nearest-center assignment across the hexagonal grid."""
-    points = np.vstack(([0, 0], [1, 1], np.random.default_rng(seed=0).random((100, 2))))
-    grid_x, grid_y = np.meshgrid(
-        np.arange(-1, gridsize + 2), np.arange(-1, gridsize + 2)
-    )
-    lattice = np.column_stack((grid_x.ravel(), grid_y.ravel()))
-    candidates = np.vstack((lattice, lattice + 0.5)) / gridsize
-    distances = ((points[:, None] - candidates) ** 2 * [1, 3]).sum(axis=2)
-    nearest = distances.argmin(axis=1)
-    occupied, counts = np.unique(nearest, return_counts=True)
-    expected = candidates[occupied]
-    order = np.lexsort((expected[:, 1], expected[:, 0]))
-    fig = pmv.density_hexbin(
-        *points.T,
-        gridsize=gridsize,
-        identity_line=False,
-        best_fit_line=False,
-        stats=False,
-    )
-    actual = np.column_stack((fig.data[0].x, fig.data[0].y))
-    # Coordinates in [0, 1] require only grid scaling; allow eight f64 epsilons.
-    np.testing.assert_allclose(
-        actual, expected[order], rtol=0, atol=8 * np.finfo(float).eps
-    )
-    np.testing.assert_array_equal(fig.data[0].marker.color, counts[order])
+    widget = plot_func(x, y, df=df, best_fit_line=True)
+    assert isinstance(widget, BinnedScatterPlotWidget)
+    np.testing.assert_array_equal(widget.series[0]["x"], df_regr[X_COL])
+    np.testing.assert_array_equal(widget.series[0]["y"], df_regr[Y_COL])
+    assert widget.x_axis == {"label": x if isinstance(x, str) else "Actual"}
+    lines = widget.overlays["ref_lines"]
+    assert [line["type"] for line in lines] == ["diagonal", "segment"]
+    assert all("annotation" not in line for line in lines)  # moved to the badge
+    assert widget.annotation.startswith("LS fit: y = ")
+    assert "\nMAE = " in widget.annotation
+    with_hist = plot_func is not pmv.density_hexbin
+    assert bool(widget.marginals) == with_hist
+    if with_hist:
+        assert widget.marginals["top"] == {"type": "histogram", "bins": 100}
+    expected_bin_px = 1.5 if plot_func is pmv.density_scatter_with_hist else None
+    assert widget.density.get("bin_px") == expected_bin_px
+    if with_hist:  # user marginals merge per side over the default histograms
+        custom = plot_func(x, y, df=df, marginals={"right": None}, stats=False)
+        assert custom.marginals == {
+            "top": {"type": "histogram", "bins": 100},
+            "right": None,
+        }
 
 
 @pytest.mark.parametrize(
-    ("coords", "weights", "gridsize", "message"),
+    ("plot_func", "kwargs", "match"),
     [
-        ([], None, 2, "non-empty 1D"),
-        ([1, np.inf], None, 2, "must be finite"),
-        ([1, 2], [1], 2, "finite weights"),
-        ([1, 2], [1, np.nan], 2, "finite weights"),
-        ([1, 2], None, 0, "must be positive"),
-    ],
-)
-def test_density_hexbin_invalid_inputs(
-    coords: list[float], weights: list[float] | None, gridsize: int, message: str
-) -> None:
-    """Reject inputs that cannot define a finite hexagonal grid."""
-    with pytest.raises(ValueError, match=message):
-        pmv.density_hexbin(coords, coords, weights=weights, gridsize=gridsize)
-
-
-@pytest.mark.parametrize(
-    ("log_density", "bin_counts_col", "n_bins", "kwargs", "expected_title"),
-    [
+        (pmv.density_hexbin, {"x": [], "y": []}, "at least one finite"),
+        (pmv.density_hexbin, {"x": [np.nan, 1], "y": [1, np.nan]}, "at least one"),
+        (pmv.density_hexbin, {"x": [np.nan], "y": [1]}, "at least one finite"),
+        (pmv.density_scatter, {"x": [np.nan], "y": [1]}, "at least one finite"),
+        (pmv.density_scatter, {"x": [1, 2], "y": [1]}, "equal length"),
         (
-            True,
-            "custom count col",
-            1,
-            {"color_continuous_scale": "Viridis"},
-            "custom<br>count<br>col",
-        ),
-        (True, None, 5, {"color_continuous_scale": None}, "Point<br>Density"),
-        (False, None, 10, {"template": "plotly_dark"}, "Point<br>Density"),
-    ],
-)
-def test_density_scatter_advanced(
-    log_density: bool,
-    bin_counts_col: str | None,
-    n_bins: int,
-    kwargs: dict[str, Any],
-    expected_title: str,
-) -> None:
-    """Binned density colorbar uses bin_counts_col title and log-scale ticks."""
-    fig = pmv.density_scatter(
-        df=df_regr,
-        x=X_COL,
-        y=Y_COL,
-        log_density=log_density,
-        bin_counts_col=bin_counts_col,
-        n_bins=n_bins,
-        **kwargs,
-    )
-    assert fig.layout.xaxis.title.text == X_COL
-    assert fig.layout.yaxis.title.text == Y_COL
-    assert fig.data[0].marker.color is not None
-    colorbar = fig.layout.coloraxis.colorbar
-    assert colorbar.title.text == expected_title
-
-    if log_density:
-        assert all(isinstance(val, float) for val in colorbar.tickvals)
-        assert all(isinstance(text, str) for text in colorbar.ticktext)
-    else:
-        assert colorbar.tickvals is None
-        assert colorbar.ticktext is None
-
-
-@pytest.mark.parametrize(
-    ("hover_template", "expected_content"),
-    [
-        (None, ["Point<br>Density"]),
-        (
-            "X: %{x}<br>Y: %{y}<br>Custom: %{marker.color}<extra></extra>",
-            ["Point<br>Density", "Custom"],
-        ),
-        (
-            "X: %{x}<br>Y: %{y}<br>Custom: %{marker.color}",
-            ["Point<br>Density", "<extra></extra>"],
+            pmv.density_hexbin_with_hist,
+            {"x": [1, 2], "y": [1, 2], "bins": 0},
+            "bins=0 must be a positive int",
         ),
     ],
 )
-def test_density_scatter_hover_templates(
-    hover_template: str | None, expected_content: list[str]
+def test_density_plots_invalid_inputs(
+    plot_func: Callable[..., Any], kwargs: dict[str, Any], match: str
 ) -> None:
-    """Test various hover template configurations."""
-    fig = pmv.density_scatter(
-        df=df_regr,
-        x=X_COL,
-        y=Y_COL,
-        log_density=True,
-        hovertemplate=hover_template,
-    )
-
-    for trace in fig.data:
-        for content in expected_content:
-            assert content in trace.hovertemplate
+    """Empty, non-finite or mismatched inputs and bad marginal bins raise."""
+    with pytest.raises(ValueError, match=match):
+        plot_func(**kwargs)
 
 
-def test_density_scatter_empty_dataframe() -> None:
-    empty_df = pd.DataFrame({X_COL: [], Y_COL: []})
-    with pytest.raises(ValueError, match="No valid traces with required data found"):
-        pmv.density_scatter(df=empty_df, x=X_COL, y=Y_COL)
+def test_density_scatter_binning_reduces_points() -> None:
+    """Over 1000 points auto-bin into at most 200x200 bin centers with counts."""
+    xs = np_rng.normal(size=5000)
+    widget = pmv.density_scatter(xs, xs + np_rng.normal(size=5000), stats=False)
+    (srs,) = widget.series
+    assert len(srs["x"]) < 5000
+    assert sum(srs["color_values"]) == 5000  # empirical counts of all points
 
 
 @pytest.mark.parametrize(
-    ("facet_col", "kwargs", "expected_checks"),
-    [
-        ("time", {"n_bins": 5}, []),
-        ("time", {"log_density": True, "n_bins": 5}, ["log_colorbar"]),
-        ("time", {"stats": True, "n_bins": 10}, ["stats_annotations"]),
-        ("time", {"best_fit_line": True, "n_bins": 5}, ["fit_lines"]),
-        # facet order differs from groupby order
-        (
-            "time",
-            {"n_bins": 5, "category_orders": {"time": ["Lunch", "Dinner"]}},
-            ["fit_lines", "stats_annotations"],
-        ),
-        # several traces per facet still get one fit and one stats box per facet
-        ("time", {"n_bins": 5, "symbol": "sex"}, ["fit_lines", "stats_annotations"]),
-        ("day", {"n_bins": 3}, []),  # more than two categories
-    ],
+    ("xs", "ys"),
+    [([1, 1, 1], [1, 2, 3]), ([1, 2, 3], [5, 5, 5]), ([1, 2, 3], [1, 2, 3])],
 )
-@pytest.mark.parametrize("density", ["kde", None])
-def test_density_scatter_facet_variations(
-    facet_col: str,
-    kwargs: dict[str, Any],
-    expected_checks: list[str],
-    density: str | None,
+@pytest.mark.parametrize("n_bins", [False, 2])
+def test_density_scatter_collinear_kde(
+    xs: list[int], ys: list[int], n_bins: int | Literal[False]
 ) -> None:
-    """Test various facet configurations."""
-    if density:
-        kwargs["density"] = density
-
-    fig = pmv.density_scatter(
-        df=DF_TIPS, x="total_bill", y="tip", facet_col=facet_col, **kwargs
-    )
-    # one subplot per facet value
-    assert len({trace.xaxis for trace in fig.data}) == DF_TIPS[facet_col].nunique()
-    assert "xaxis2" in fig.layout
-
-    if "log_colorbar" in expected_checks:
-        colorbar = fig.layout.coloraxis.colorbar
-        assert colorbar.tickvals is not None
-        assert colorbar.ticktext is not None
-        assert len(colorbar.tickvals) == len(colorbar.ticktext)
-        for tick_text in colorbar.ticktext:
-            assert isinstance(tick_text, str)
-            assert not tick_text.endswith(".0") or tick_text == "1.0"
-
-    # Check stats annotations: one per facet, positioned inside its subplot
-    if "stats_annotations" in expected_checks:
-        stats_annotations = [
-            ann
-            for ann in fig.layout.annotations
-            if any(metric in ann.text for metric in ("MAE", "RMSE", "R<sup>2</sup>"))
-        ]
-        assert sorted(ann.xref for ann in stats_annotations) == [
-            "x domain",
-            "x2 domain",
-        ]
-        assert all(0 <= ann.x <= 1 and 0 <= ann.y <= 1 for ann in stats_annotations)
-
-    if "fit_lines" in expected_checks:
-        line_traces = [
-            trace
-            for trace in fig.data
-            if hasattr(trace, "mode") and trace.mode == "lines"
-        ]
-        assert line_traces == []
-        # one least-squares fit per facet on its own axes, fitted to raw facet data
-        fit_shapes = [shape for shape in fig.layout.shapes if shape.line.width == 2]
-        facet_of_axis = {trace.xaxis: trace.customdata[0][1] for trace in fig.data}
-        assert sorted(shape.xref for shape in fit_shapes) == sorted(facet_of_axis)
-        for shape in fit_shapes:
-            facet_df = DF_TIPS[DF_TIPS[facet_col] == facet_of_axis[shape.xref]]
-            slope = np.polyfit(facet_df["total_bill"], facet_df["tip"], 1)[0]
-            fit_slope = (shape.y1 - shape.y0) / (shape.x1 - shape.x0)
-            np.testing.assert_allclose(fit_slope, slope, rtol=1e-9, atol=0)
-
-
-def test_density_scatter_colorbar_kwargs() -> None:
-    """colorbar_kwargs override the default colorbar settings."""
-    fig = pmv.density_scatter(
-        df=df_regr, x=X_COL, y=Y_COL, colorbar_kwargs={"thickness": 20, "len": 0.8}
-    )
-    colorbar = fig.layout.coloraxis.colorbar
-    assert (colorbar.thickness, colorbar.len) == (20, 0.8)
-
-
-@pytest.mark.parametrize(
-    ("centers", "scales"),
-    [((0, 10), (1, 1)), ((0, 5), (0.1, 2))],
-    ids=["two-clusters", "dense-and-sparse-clusters"],
-)
-def test_density_scatter_log_ticks(
-    centers: tuple[float, float], scales: tuple[float, float]
-) -> None:
-    """Log-density colorbar ticks are sorted and labeled without trailing .0."""
-    rng = np.random.default_rng(seed=0)
-    vals = np.concatenate(
-        [
-            rng.normal(center, scale, 50)
-            for center, scale in zip(centers, scales, strict=True)
-        ]
-    )
-    df = pd.DataFrame({"x": vals, "y": vals + rng.normal(0, 0.1, len(vals))})
-    fig = pmv.density_scatter(df=df, x="x", y="y", log_density=True, n_bins=10)
-
-    colorbar = fig.layout.coloraxis.colorbar
-    assert len(colorbar.tickvals) == len(colorbar.ticktext) > 0
-    assert list(colorbar.tickvals) == sorted(colorbar.tickvals)
-    for tick_text in colorbar.ticktext:
-        assert tick_text
-        assert not tick_text.endswith(".0")
-
-
-@pytest.mark.parametrize(
-    ("counts", "expected_ticks"),
-    [
-        (
-            [1, 10, 3000],
-            ["1", "2", "5", "10", "20", "50", "100", "200", "500", "1k", "2k"],
-        ),
-        ([5, 400], ["5", "15", "45", "134", "400"]),
-    ],
-    ids=["wide-range-decades", "narrow-range-logspace"],
-)
-def test_update_colorbar_for_log_density_ticks(
-    counts: list[int], expected_ticks: list[str]
-) -> None:
-    """Wide count ranges get 1-2-5 decade ticks, narrow ones log-spaced ticks."""
-    fig = go.Figure(go.Scatter(x=[1], y=[1]))
-    color_vals = np.log10(np.array(counts, dtype=float) + 1)
-    pmv.scatter._update_colorbar_for_log_density(fig, color_vals, "Point Density")
-    colorbar = fig.layout.coloraxis.colorbar
-    assert list(colorbar.ticktext) == expected_ticks
-    assert colorbar.title.text == "Point<br>Density"
-
-
-@pytest.mark.parametrize(
-    ("hover_format", "expected_format"),
-    [(".0f", ".0f"), (".2f", ".2f"), (".3f", ".3f")],
-)
-def test_density_scatter_hover_format(hover_format: str, expected_format: str) -> None:
-    """Test hover format configuration."""
-    fig = pmv.density_scatter(df=df_regr, x=X_COL, y=Y_COL, hover_format=hover_format)
-
-    for trace in fig.data:
-        assert expected_format in trace.hovertemplate
-
-
-@pytest.mark.parametrize(
-    ("stats_config", "expected_labels", "anno_props"),
-    [
-        (
-            {"prefix": "Model:", "x": 0.1, "y": 0.9},
-            ["MAE", "R<sup>2</sup>"],
-            {"x": 0.1, "y": 0.9},
-        ),
-        ({"metrics": ["MAE", "R2"], "fmt": ".2f"}, ["MAE", "R<sup>2</sup>"], {}),
-        (
-            {"font": {"size": 14, "color": "red"}},
-            ["MAE", "R<sup>2</sup>"],
-            {"font.size": 14, "font.color": "red"},
-        ),
-        ({"metrics": ["MAE"]}, ["MAE"], {}),
-        ({"metrics": ["R2"]}, ["R<sup>2</sup>"], {}),
-        ({"metrics": ["MAE", "RMSE", "R2"]}, ["MAE", "RMSE", "R<sup>2</sup>"], {}),
-    ],
-)
-def test_density_scatter_stats_annotation(
-    stats_config: dict[str, Any],
-    expected_labels: list[str],
-    anno_props: dict[str, Any],
-) -> None:
-    """Stats dicts control annotation metrics, prefix, number format and style."""
-    fig = pmv.density_scatter(df=df_regr, x=X_COL, y=Y_COL, stats=stats_config)
-    (ann,) = [ann for ann in fig.layout.annotations if "LS fit" not in ann.text]
-
-    prefix = stats_config.get("prefix", "")
-    assert ann.text.startswith(prefix)
-    lines = ann.text.removeprefix(prefix).removesuffix("<br>").split("<br>")
-    assert [line.split(" = ")[0] for line in lines] == expected_labels
-    if stats_config.get("fmt") == ".2f":
-        assert all(
-            re.fullmatch(r"-?\d+\.\d{2}", line.split(" = ")[1]) for line in lines
-        )
-    for key, expected in anno_props.items():
-        obj = ann
-        for attr in key.split("."):
-            obj = getattr(obj, attr)
-        assert obj == expected
+    """Collinear points have no 2D KDE and fall back to empirical density."""
+    with pytest.warns(UserWarning, match="KDE impossible for 3 point"):
+        widget = pmv.density_scatter(xs, ys, stats=False, density="kde", n_bins=n_bins)
+    assert sum(widget.series[0]["color_values"]) == 3  # counts of all 3 points
 
 
 def test_density_scatter_single_point() -> None:
-    """A single data point falls back to empirical density with undefined R^2."""
+    """A single point falls back to empirical density and skips the auto fit."""
     single_point_df = pd.DataFrame({X_COL: [1.0], Y_COL: [1.0]})
-    with (
-        pytest.warns(UserWarning, match="Not enough data points for KDE"),
-        pytest.warns(UserWarning, match="Skipping best fit line: needs >= 2 finite"),
-    ):
-        fig = pmv.density_scatter(df=single_point_df, x=X_COL, y=Y_COL, stats=True)
-    assert fig.layout.annotations[-1].text == "MAE = 0.0<br>R<sup>2</sup> = nan<br>"
-    assert len(fig.layout.shapes) == 1  # identity line only, no degenerate fit
+    with pytest.warns(UserWarning, match="KDE impossible for 1 point"):
+        widget = pmv.density_scatter(X_COL, Y_COL, df=single_point_df)
+    assert widget.annotation == "MAE = 0.0\nR² = nan"
+    assert [line["type"] for line in widget.ref_lines] == ["diagonal"]
 
 
-def test_density_scatter_zero_handling_log_density() -> None:
-    """Test log density auto-detection handles zeros without warnings."""
-    df_zero = pd.DataFrame({"x": [0, 1, 2], "y": [0, 1, 2]})
-    fig = pmv.density_scatter(df=df_zero, x="x", y="y", log_density=None, n_bins=3)
-    assert fig.layout.coloraxis.colorbar.tickvals is None  # No log scaling
+@pytest.mark.parametrize(
+    ("density_vals", "expected_log"), [([1, 1, 1], False), ([1, 1000], True)]
+)
+def test_density_scatter_auto_log(density_vals: list[int], expected_log: bool) -> None:
+    """log=None turns on log colors when densities span > 2 decades."""
+    xs = np.repeat(np.arange(len(density_vals), dtype=float), density_vals)
+    widget = pmv.density_scatter(xs, xs, n_bins=len(density_vals), stats=False)
+    assert widget.color_scale["type"] == ("log" if expected_log else "linear")
+
+
+def test_density_scatter_kwargs() -> None:
+    """Extra kwargs go to the widget, overriding defaults."""
+    widget = pmv.density_scatter(
+        [1, 2, 3],
+        [1, 2, 4],
+        color_bar={"title": "Count"},
+        color_scale="interpolatePlasma",
+        stats={"metrics": ["RMSE"], "fmt": ".2f"},
+        identity_line=False,
+    )
+    assert widget.color_bar == {"title": "Count"}
+    # a bare scheme name keeps the automatic log/linear color scale type
+    assert widget.color_scale == {"scheme": "interpolatePlasma", "type": "linear"}
+    xs = np.repeat([0.0, 1.0], [1, 1000])
+    log_widget = pmv.density_scatter(
+        xs, xs, n_bins=2, stats=False, color_scale="interpolatePlasma"
+    )
+    assert log_widget.color_scale == {"scheme": "interpolatePlasma", "type": "log"}
+    assert widget.annotation == "RMSE = 0.58"
+    assert [line["type"] for line in widget.ref_lines] == ["segment"]

@@ -17,7 +17,7 @@ def ensure_widget_assets() -> None:
     construction is fast. "main" is never cached on disk, so the class cache is
     what keeps it from being re-downloaded.
     """
-    MatterVizWidget._set_class_assets()
+    MatterVizWidget()._resolve_assets()
 
 
 def assert_widget_property_sync(

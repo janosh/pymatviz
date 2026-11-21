@@ -7,7 +7,7 @@ from typing import Any
 import traitlets as tl
 
 from pymatviz.widgets._normalize import _to_dict, normalize_plot_json
-from pymatviz.widgets._traits import PlotControlsTraits
+from pymatviz.widgets._traits import PlotControlsTraits, optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -27,12 +27,14 @@ class RdfPlotWidget(PlotControlsTraits, MatterVizWidget):
 
     patterns = tl.Any(allow_none=True).tag(sync=True)
     structures = tl.Any(allow_none=True).tag(sync=True)
-    mode = tl.Unicode(default_value="element_pairs").tag(sync=True)
+    mode = tl.CaselessStrEnum(
+        ["element_pairs", "full"], default_value="element_pairs"
+    ).tag(sync=True)
     show_reference_line = tl.Bool(default_value=True).tag(sync=True)
     cutoff = tl.Float(default_value=15).tag(sync=True)
     n_bins = tl.Int(default_value=75).tag(sync=True)
-    x_axis = tl.Dict(allow_none=True).tag(sync=True)
-    y_axis = tl.Dict(allow_none=True).tag(sync=True)
+    x_axis = optional_trait(tl.Dict)
+    y_axis = optional_trait(tl.Dict)
 
     def __init__(
         self,

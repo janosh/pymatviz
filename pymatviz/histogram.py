@@ -1,14 +1,16 @@
-"""Histograms."""
+"""Histograms as MatterViz bar plot widgets."""
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 import numpy as np
-import plotly.graph_objects as go
 
 from pymatviz.enums import ElemCountMode
 from pymatviz.process_data import count_elements
+from pymatviz.widgets._normalize import with_defaults
+from pymatviz.widgets.bar_plot import BarPlotWidget, bar_axis_defaults
 
 
 if TYPE_CHECKING:
@@ -29,102 +31,105 @@ def elements_hist(
     show_values: Literal["percent", "count"] | None = "percent",
     bar_width: float = 0.7,
     opacity: float = 0.8,
-    fig_kwargs: dict[str, Any] | None = None,
     **kwargs: Any,
-) -> go.Figure:
-    """Plot a histogram of elements (e.g. to show occurrence in a dataset) using Plotly.
+) -> BarPlotWidget:
+    """Bar chart of element occurrence counts, sorted from most to least common.
 
     Args:
-        formulas (list[str]): compositional strings, e.g. ["Fe2O3", "Bi2Te3"].
+        formulas (ElemValues): compositional strings, e.g. ["Fe2O3", "Bi2Te3"], or a
+            map/Series from element symbols to precomputed counts.
         count_mode ("composition" | "fractional_composition" | "reduced_composition"):
             Reduce or normalize compositions before counting. See `count_elements` for
             details. Only used when formulas is list of composition strings/objects.
         log_y (bool, optional): Whether y-axis is log or linear. Default = False.
         keep_top (int | None): Display only the top n elements by prevalence.
-        show_values ("percent"|"count"|None): "percent" (default) shows percentage
-            labels on bars. "count" shows count values. None removes labels.
+        show_values ("percent"|"count"|None): "percent" (default) labels bars with
+            their share of the total count (incl. elements dropped by keep_top),
+            "count" with the count, None hides labels.
         bar_width (float): Width of bars as fraction of available space. Default = 0.7.
         opacity (float): Bar opacity between 0 and 1. Default = 0.8.
-        fig_kwargs (dict | None): Additional arguments passed to go.Figure().
-        **kwargs: Additional keyword arguments passed to go.Bar().
+        **kwargs: BarPlotWidget traits, e.g. ``x_axis``, ``y_axis``, ``bar`` (merged
+            over the defaults set here), ``orientation``, ``style``.
 
     Returns:
-        go.Figure: Plotly figure object
+        BarPlotWidget: one bar per element.
     """
     elem_counts = count_elements(formulas, count_mode)
     non_zero = elem_counts[elem_counts > 0].sort_values(ascending=False)
-
+    total_count = non_zero.sum()  # percent labels are shares of all elements
     if keep_top is not None:
         non_zero = non_zero.head(keep_top)
 
-    non_zero_values = non_zero.to_numpy()
-    text_labels = None
+    counts = non_zero.to_numpy(dtype=float)
+    series: dict[str, Any] = {
+        "x": [str(elem) for elem in non_zero.index],
+        "y": counts,
+        "label": "Element Count",
+        "bar_width": bar_width,
+    }
     if show_values == "percent":
-        text_labels = [f"{val / non_zero.sum():.0%}" for val in non_zero_values]
+        series["labels"] = [f"{val / total_count:.0%}" for val in counts]
+    elif show_values == "count":
+        series["labels"] = [
+            f"{val:,.0f}" if val.is_integer() else f"{val:.3g}" for val in counts
+        ]
     elif show_values is not None:
-        text_labels = [str(int(val)) for val in non_zero_values]
+        raise ValueError(f"Invalid {show_values=}, must be 'percent', 'count' or None")
 
-    fig = go.Figure(**fig_kwargs or {})
-    fig.add_bar(
-        **dict(
-            x=non_zero.index,
-            y=non_zero_values,
-            text=text_labels,
-            textposition="outside",
-            opacity=opacity,
-            marker_line_width=1,
-            marker_line_color="black",
-            width=bar_width,
-        )
-        | kwargs,
+    count_axis = {"label": "Element Count", "scale_type": "log" if log_y else "linear"}
+    axes = bar_axis_defaults(kwargs, category={"label": "Element"}, value=count_axis)
+    return BarPlotWidget(
+        [series],
+        **with_defaults(
+            axes
+            | {
+                "bar": {"opacity": opacity, "stroke_width": 1, "stroke_color": "black"},
+                "show_legend": False,
+            },
+            kwargs,
+        ),
     )
-
-    y_title = "log(Element Count)" if log_y else "Element Count"
-    fig.update_yaxes(type="log" if log_y else "linear", title=y_title)
-    fig.update_xaxes(title="Element")
-    fig.layout.showlegend = False
-
-    return fig
 
 
 def histogram(
     values: Sequence[float]
     | np.ndarray
     | pd.Series
-    | dict[str, Sequence[float] | np.ndarray | pd.Series],
+    | Mapping[str, Sequence[float] | np.ndarray | pd.Series],
     *,
     bins: int | Sequence[float] | str = 200,
     x_range: tuple[float | None, float | None] | None = None,
     density: bool = False,
-    bin_width: float = 1.2,
+    bin_width: float = 1.0,
     log_y: bool = False,
-    fig_kwargs: dict[str, Any] | None = None,
     **kwargs: Any,
-) -> go.Figure:
-    """Get a histogram using Plotly with fast numpy pre-processing.
+) -> BarPlotWidget:
+    """Histogram of one or more distributions, binned in Python with NumPy.
 
-    Precompute bins with NumPy so rendering and HTML exports store bin counts
-    instead of every input value.
+    All series share one set of bin edges. Only bin counts reach the frontend (and
+    HTML exports), not every input value.
 
     Args:
-        values: Values to plot as a histogram. Accepts a sequence, NumPy array, pandas
-            Series, or dict of named series. Dict keys are used as legend labels.
-        bins (int or sequence, optional): The number of bins or the bin edges to use for
-            the histogram. If not provided, a default value will be used.
-        x_range (tuple, optional): The range of values to include in the histogram. If
-            not provided, the whole range of values will be used. Defaults to None.
-        density (bool, optional): Whether to normalize the histogram. Defaults to False.
-        bin_width (float, optional): The width of the histogram bins as a fraction of
-            distance between bin edges. Defaults to 1.2 (20% overlap).
-        log_y (bool, optional): Whether to log scale the y-axis. Defaults to False.
-        fig_kwargs (dict, optional): Additional keywords passed to go.Figure().
-        **kwargs: Additional keyword arguments to pass to go.Figure.add_bar().
+        values: Values to bin. Accepts a sequence, NumPy array, pandas Series, or dict
+            of named series. Dict keys are used as legend labels. NaN/inf values
+            raise a ValueError rather than being silently dropped.
+        bins (int | sequence | str, optional): Number of bins, bin edges or a NumPy
+            binning rule like "auto". Defaults to 200.
+        x_range (tuple, optional): The range of values to include in the histogram.
+            A None bound is taken from the data. Defaults to None (whole data range).
+        density (bool, optional): Whether to normalize each histogram to unit area.
+            Defaults to False.
+        bin_width (float, optional): Bar width as a fraction of the distance between
+            bin edges. Defaults to 1.0 (bars touch).
+        log_y (bool, optional): Whether to log scale the count axis. Defaults to False.
+        **kwargs: BarPlotWidget traits, e.g. ``x_axis``, ``y_axis``, ``bar`` (merged
+            over the defaults set here), ``orientation``, ``mode``, ``style``.
 
     Returns:
-        go.Figure: The Plotly figure object containing the histogram.
+        BarPlotWidget: one overlaid bar series per distribution.
     """
     x_axis_title = "Value" if (name := getattr(values, "name", None)) is None else name
-    data = values if isinstance(values, dict) else {x_axis_title: values}
+    data = values if isinstance(values, Mapping) else {x_axis_title: values}
     data_arrays = {label: np.asarray(vals, dtype=float) for label, vals in data.items()}
     if not data_arrays:
         raise ValueError("histogram values must not be empty.")
@@ -132,6 +137,12 @@ def histogram(
         if vals.ndim != 1 or len(vals) == 0:
             raise ValueError(
                 f"histogram values for {label!r} must be a non-empty 1D array."
+            )
+        if not np.isfinite(vals).all():
+            n_bad = int((~np.isfinite(vals)).sum())
+            raise ValueError(
+                f"histogram values for {label!r} contain {n_bad} non-finite "
+                "(NaN/inf) entries. Drop or replace them before plotting."
             )
 
     all_values = np.concatenate(list(data_arrays.values()))
@@ -145,23 +156,40 @@ def histogram(
     widths = np.diff(bin_edges)
     centers = bin_edges[:-1] + widths / 2
 
-    fig = go.Figure(**fig_kwargs or {})
-    for label, vals in data_arrays.items():
-        hist_vals, _ = np.histogram(vals, bins=bin_edges, density=density)
-        fig.add_bar(
-            **dict(
-                x=centers,
-                y=hist_vals,
-                name=label,
-                opacity=0.7,
-                width=bin_width * widths,
-                marker_line_width=0,
-            )
-            | kwargs,
+    counts = {
+        label: np.histogram(vals, bins=bin_edges)[0]
+        for label, vals in data_arrays.items()
+    }
+    if density and (empty := [label for label, cnt in counts.items() if not cnt.any()]):
+        raise ValueError(
+            f"density=True is undefined for series {empty} with no values in {x_range=}"
         )
+    series = [
+        {
+            "x": centers,
+            "y": cnt / (cnt.sum() * widths) if density else cnt,
+            "label": str(label),
+            "bar_width": bin_width * widths,
+        }
+        for label, cnt in counts.items()
+    ]
 
-    y_title = "Density" if density else "Count"
-    fig.update_yaxes(type="log" if log_y else "linear", title=y_title)
-    fig.update_xaxes(title=x_axis_title)
-
-    return fig
+    count_axis = {
+        "label": "Density" if density else "Count",
+        "scale_type": "log" if log_y else "linear",
+    }
+    axes = bar_axis_defaults(
+        kwargs, category={"label": str(x_axis_title)}, value=count_axis
+    )
+    return BarPlotWidget(
+        series,
+        **with_defaults(
+            axes
+            | {
+                "bar": {"border_radius": 0},
+                "mode": "overlay",
+                "show_legend": len(series) > 1,
+            },
+            kwargs,
+        ),
+    )

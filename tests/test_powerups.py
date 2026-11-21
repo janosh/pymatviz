@@ -1,586 +1,461 @@
 from __future__ import annotations
 
-import re
-from typing import TYPE_CHECKING
+import warnings
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
-import plotly.express as px
-import plotly.graph_objects as go
 import pytest
-from plotly.graph_objs.layout import Updatemenu
-from plotly.graph_objs.layout.annotation import Font
-from plotly.subplots import make_subplots
 
 from pymatviz import powerups
+from pymatviz.widgets.binned_scatter_plot import BinnedScatterPlotWidget
+from pymatviz.widgets.scatter_plot import ScatterPlotWidget
+from tests.conftest import y_pred, y_true
 
 
 if TYPE_CHECKING:
-    from typing import Any
-
-np_rng = np.random.default_rng(seed=0)
+    from collections.abc import Mapping, Sequence
 
 
-def test_powerups_custom_metrics_and_font_preservation() -> None:
-    """Metric dicts map labels to numbers or computed metric names; fonts persist."""
-    metrics = {"Custom": 1.23, "Mean abs. error": "MAE", "R2": "r2_score"}
-    metrics_fig = powerups.annotate_metrics(
-        [1, 2, 3], [1, 2, 4], fig=go.Figure(), metrics=metrics
-    )
-    assert metrics_fig.layout.annotations[0].text == (
-        "Custom = 1.23<br>Mean abs. error = 0.333<br>R<sup>2</sup> = 0.5<br>"
-    )
-    bad_metrics: Any = {"MAE": None}
-    with pytest.raises(TypeError, match="must be numbers or metric names"):
-        powerups.annotate_metrics([1], [1], fig=go.Figure(), metrics=bad_metrics)
-    with pytest.raises(ValueError, match=re.escape("Unrecognized metrics: {'bogus'}")):
-        powerups.annotate_metrics([1], [1], fig=go.Figure(), metrics={"B": "bogus"})
-
-    # faceted figures take one array (or None) per trace, a flat array can't be
-    # attributed to subplots
-    facet_fig = px.scatter(x=[1, 2, 3, 4], y=[1, 2, 4, 3], facet_col=[0, 0, 1, 1])
-    n_annos = len(facet_fig.layout.annotations)  # facet titles
-    powerups.annotate_metrics([[1, 2], None], [[1, 2], None], fig=facet_fig)
-    (stats_anno,) = facet_fig.layout.annotations[n_annos:]
-    assert (stats_anno.xref, stats_anno.text) == (
-        "x domain",
-        "MAE = 0.0<br>R<sup>2</sup> = 1.0<br>",
-    )
-    with pytest.raises(
-        ValueError, match=re.escape("one xs/ys array (or None) per trace")
-    ):
-        powerups.annotate_metrics([1, 2, 3, 4], [1, 2, 4, 3], fig=facet_fig)
-
-    # per_trace mode on facets with 2 traces each: stats stack inside each subplot
-    multi_fig = px.scatter(
-        x=[1, 2, 3, 4] * 2,
-        y=[1, 2, 4, 3] * 2,
-        facet_col=[0, 0, 1, 1] * 2,
-        color=["a"] * 4 + ["b"] * 4,
-    )
-    n_annos = len(multi_fig.layout.annotations)
-    powerups.enhance_parity_plot(
-        multi_fig, annotation_mode="per_trace", best_fit_line=False
-    )
-    stats_annos = multi_fig.layout.annotations[n_annos:]
-    assert sorted((anno.xref, round(anno.y, 2)) for anno in stats_annos) == [
-        ("x domain", 0.84),
-        ("x domain", 0.96),
-        ("x2 domain", 0.84),
-        ("x2 domain", 0.96),
+def make_series(n_series: int = 1) -> list[dict[str, Any]]:
+    """n_series labeled, colored slices of the shared regression data."""
+    chunks = np.array_split(np.arange(len(y_true)), n_series)
+    return [
+        {"x": y_true[idx], "y": y_pred[idx], "label": f"s{num}", "color": f"c{num}"}
+        for num, idx in enumerate(chunks)
     ]
 
-    fit_fig = powerups.add_best_fit_line(
-        go.Figure(),
-        xs=[1, 2, 3],
-        ys=[1, 2, 3],
-        annotate_params={"color": "red", "font": Font(family="Arial", size=13)},
-    )
-    anno_font = fit_fig.layout.annotations[0].font
-    assert anno_font.color == "red"
-    assert anno_font.family == "Arial"
-    assert anno_font.size == 13
 
-
-@pytest.mark.parametrize("explicit_data", [False, True])
-@pytest.mark.parametrize("stats", [False, True])
-@pytest.mark.parametrize("annotation_mode", ["combined", "per_trace"])
-def test_enhance_parity_plot_keeps_dict_best_fit_line(
-    explicit_data: bool, stats: bool, annotation_mode: powerups.AnnotationMode
-) -> None:
-    """Direct and trace-derived fits preserve styling with optional metrics."""
-    fig = go.Figure()
-    fig.add_scatter(x=[1, 2, 3], y=[1, 2, 4])
-
-    powerups.enhance_parity_plot(
-        fig,
-        xs=[1, 2, 3] if explicit_data else (),
-        ys=[1, 2, 4] if explicit_data else (),
-        identity_line=False,
-        best_fit_line={"color": "red"},
-        stats=stats,
-        annotation_mode=annotation_mode,
-    )
-
-    assert fig.layout.shapes[-1].line.color == "red"
-
-
-@pytest.mark.parametrize("axis_type", ["linear", "log"])
-def test_add_identity_line(axis_type: str) -> None:
-    """Identity line spans the overlap of the padded x and y ranges, retained limits
-    use axis units.
-    """
-    fig = go.Figure().add_scatter(x=[1, 100], y=[10, 1000])
-    fig.update_xaxes(type=axis_type).update_yaxes(type=axis_type)
-    powerups.add_identity_line(fig, retain_xy_limits=True)
-
-    (x_min, x_max), (y_min, y_max) = (
-        ((10**-0.1, 10**2.1), (10**0.9, 10**3.1))
-        if axis_type == "log"
-        else ((1 - 4.95, 100 + 4.95), (10 - 49.5, 1000 + 49.5))
-    )
-    shape = fig.layout.shapes[0]
-    np.testing.assert_allclose(
-        (shape.x0, shape.y0, shape.x1, shape.y1),
-        (max(x_min, y_min),) * 2 + (min(x_max, y_max),) * 2,
-        rtol=1e-12,
-        atol=0,
-    )
-    to_axis_units = np.log10 if axis_type == "log" else np.asarray
-    for axis_range, expected in (
-        (fig.layout.xaxis.range, (x_min, x_max)),
-        (fig.layout.yaxis.range, (y_min, y_max)),
-    ):
-        np.testing.assert_allclose(
-            axis_range, to_axis_units(expected), rtol=1e-12, atol=1e-15
-        )
-
-    # disjoint x and y ranges: y=x would lie outside the plot, so no line
-    disjoint = go.Figure().add_scatter(x=[0, 1], y=[10, 11])
-    with pytest.warns(UserWarning, match="Skipping identity line"):
-        powerups.add_identity_line(disjoint)
-    assert disjoint.layout.shapes == ()
+def make_widget(n_series: int = 1) -> ScatterPlotWidget:
+    """Parity ScatterPlotWidget with n_series slices of the regression data."""
+    return ScatterPlotWidget(series=make_series(n_series))
 
 
 @pytest.mark.parametrize(
-    ("annotation_mode", "expected_lines", "expected_texts"),
+    ("metrics", "fmt", "prefix", "suffix", "expected"),
     [
+        (("MAE", "R2"), ".3", "", "", "MAE = 0.121\nR² = 0.785"),
+        ("RMSE", ".2f", "Model A\n", "", "Model A\nRMSE = 0.15"),
         (
-            "per_trace",
-            [("red", 1, 3, 3, 7), ("navy", 1, 3, 3, 1)],
-            ["LS fit: y = 2x + 1", "LS fit: y = -1x + 4"],
+            {"Mean err": "MAE", "Fixed": 1.5},
+            ".1f",
+            "",
+            "\nn=100",
+            "Mean err = 0.1\nFixed = 1.5\nn=100",
         ),
-        ("combined", [("red", 1, 3, 3, 4)], ["LS fit: y = 0.5x + 2.5"]),
-        ("none", [("red", 1, 3, 3, 7), ("navy", 1, 3, 3, 1)], []),
+        (["max_error", "R2_adj"], ".2f", "", "", "max_error = 0.47\nR²_adj = 0.78"),
     ],
 )
-def test_add_best_fit_line_from_traces(
-    annotation_mode: powerups.AnnotationMode,
-    expected_lines: list[tuple[str, float, float, float, float]],
-    expected_texts: list[str],
+@pytest.mark.parametrize("widget_cls", [ScatterPlotWidget, BinnedScatterPlotWidget])
+def test_annotate_metrics(
+    metrics: Mapping[str, float | str] | Sequence[str] | str,
+    fmt: str,
+    prefix: str,
+    suffix: str,
+    expected: str,
+    widget_cls: type,
 ) -> None:
-    """Trace-derived fits skip NaNs, honor annotation_mode and forward shape kwargs."""
-    fig = go.Figure()
-    fig.add_scatter(x=[1, 2, 3, np.nan], y=[3, 5, 7, 0], marker_color="red")
-    fig.add_scatter(x=[1, 2, 3], y=[3, 2, 1])
-    for _ in range(2):  # repeat calls stack per-trace labels, replace combined ones
-        powerups.add_best_fit_line(fig, annotation_mode=annotation_mode, opacity=0.5)
-
-    shapes = fig.layout.shapes[-len(expected_lines) :]
-    assert len(fig.layout.shapes) == 2 * len(expected_lines)
-    np.testing.assert_allclose(
-        [(shape.x0, shape.y0, shape.x1, shape.y1) for shape in shapes],
-        [line[1:] for line in expected_lines],
-        rtol=0,
-        atol=1e-12,
+    """Metrics of the series data (or explicit xs/ys) go in the annotation badge."""
+    widget = widget_cls(series=make_series(2))
+    kwargs: dict[str, Any] = dict(
+        metrics=metrics, fmt=fmt, prefix=prefix, suffix=suffix
     )
-    assert [shape.line.color for shape in shapes] == [
-        line[0] for line in expected_lines
-    ]
-    assert {(shape.xref, shape.yref, shape.opacity) for shape in shapes} == {
-        ("x", "y", 0.5)
+    assert powerups.annotate_metrics(widget, **kwargs) is widget
+    assert widget.annotation == expected
+    explicit = powerups.annotate_metrics(make_widget(), y_true, y_pred, **kwargs)
+    assert explicit.annotation == expected
+    # repeated calls stack blocks
+    powerups.annotate_metrics(widget, series=0, metrics=["MAE"])
+    assert widget.annotation.startswith(f"{expected}\nMAE = ")
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "err_type", "match"),
+    [
+        ({"metrics": "foo"}, ValueError, "Unrecognized metric 'foo'"),
+        ({"metrics": 42}, TypeError, "metrics must be dict|list|tuple|set"),
+        ({"metrics": {"a": [1]}}, TypeError, "must be numbers or metric names"),
+        ({"series": 5}, IndexError, r"series indices \[5\] out of range"),
+        ({"series": [True]}, IndexError, r"series indices \[True\] out of range"),
+        ({"series": True}, IndexError, r"series indices \[True\] out of range"),
+        ({"xs": [1, 2], "ys": [1]}, ValueError, "equal length"),
+    ],
+)
+def test_annotate_metrics_raises(
+    kwargs: dict[str, Any], err_type: type[Exception], match: str
+) -> None:
+    """Invalid metrics, series indices and data shapes raise."""
+    with pytest.raises(err_type, match=match):
+        powerups.annotate_metrics(make_widget(), **kwargs)
+
+
+@pytest.mark.parametrize(
+    "func",
+    [
+        powerups.annotate_metrics,
+        powerups.add_identity_line,
+        powerups.add_best_fit_line,
+        powerups.enhance_parity_plot,
+        powerups.add_ecdf_line,
+    ],
+)
+def test_powerups_reject_non_widgets(func: Any) -> None:
+    """Powerups need a MatterViz scatter widget, and series data unless y = x."""
+    with pytest.raises(TypeError, match="widget must be ScatterPlotWidget"):
+        func({"data": []})
+    if func is not powerups.add_identity_line:
+        with pytest.raises(ValueError, match="has no series"):
+            func(ScatterPlotWidget(series=[]))
+
+
+@pytest.mark.parametrize("widget_cls", [ScatterPlotWidget, BinnedScatterPlotWidget])
+@pytest.mark.parametrize("style", [None, {"color": "red", "dash": ""}])
+def test_add_identity_line(widget_cls: type, style: dict[str, str] | None) -> None:
+    """The y = x line is a diagonal ref line (BinnedScatterPlot: an overlay)."""
+    widget = powerups.add_identity_line(widget_cls(series=make_series()), style=style)
+    lines = (
+        widget.overlays["ref_lines"]
+        if isinstance(widget, BinnedScatterPlotWidget)
+        else widget.ref_lines
+    )
+    (line,) = lines
+    assert (line["type"], line["slope"], line["intercept"]) == ("diagonal", 1, 0)
+    expected_style = {"color": "gray", "width": 1, "dash": "6 4"} | (style or {})
+    assert line["style"] == expected_style
+
+
+@pytest.mark.parametrize(
+    ("series", "explicit", "expected_color"),
+    [(None, False, "currentColor"), (1, False, "c1"), (None, True, "currentColor")],
+)
+def test_add_best_fit_line(
+    series: int | None, explicit: bool, expected_color: str
+) -> None:
+    """The LS fit segment spans the fitted x range and is labeled with its fit."""
+    widget = make_widget(2)
+    xs, ys = (y_true[:20], y_pred[:20]) if explicit else ((), ())
+    powerups.add_best_fit_line(widget, xs, ys, series=series)
+    (line,) = widget.ref_lines
+    if explicit:
+        fit_x, fit_y = xs, ys
+    else:
+        picked = widget.series if series is None else [widget.series[series]]
+        fit_x = np.concatenate([srs["x"] for srs in picked])
+        fit_y = np.concatenate([srs["y"] for srs in picked])
+    slope, intercept = np.polyfit(fit_x, fit_y, 1)
+    assert line["metadata"] == {
+        "slope": slope,
+        "intercept": intercept,
+        "log_x": False,
+        "log_y": False,
     }
-    n_repeats = 1 if annotation_mode == "combined" else 2
-    annos = fig.layout.annotations
-    assert [anno.text for anno in annos] == expected_texts * n_repeats
-    assert [anno.y for anno in annos] == pytest.approx(
-        [0.02 + 0.05 * idx for idx in range(len(annos))]
-    )
-    assert {(anno.xref, anno.yref) for anno in annos} <= {("x domain", "y domain")}
-
-
-@pytest.mark.parametrize("annotation_mode", ["per_trace", "combined"])
-def test_add_best_fit_line_faceted(annotation_mode: powerups.AnnotationMode) -> None:
-    """Faceted figures get fits and stacked labels inside each trace's own subplot."""
-    xs = np.tile([1.0, 2.0, 3.0], 4)
-    slopes = np.repeat([1.0, 2.0, 3.0, 4.0], 3)
-    df_facets = {
-        "x": xs,
-        "y": slopes * xs + 1,
-        "facet": np.repeat(["A", "B"], 6),
-        "group": np.tile(np.repeat(["p", "q"], 3), 2),
-    }
-    fig = px.scatter(df_facets, x="x", y="y", facet_col="facet", color="group")
-    powerups.add_best_fit_line(fig, annotation_mode=annotation_mode)
-
-    fit_annos = [anno for anno in fig.layout.annotations if "LS fit" in anno.text]
-    if annotation_mode == "combined":
-        expected_refs = [("x", "y"), ("x2", "y2")]
-        expected_texts = ["LS fit: y = 1.5x + 1", "LS fit: y = 3.5x + 1"]
-        expected_ys = [0.02, 0.02]
-    else:  # px orders traces by color group, then facet
-        expected_refs = [("x", "y"), ("x", "y"), ("x2", "y2"), ("x2", "y2")]
-        expected_texts = [f"LS fit: y = {slope}x + 1" for slope in (1, 2, 3, 4)]
-        expected_ys = [0.02, 0.07, 0.02, 0.07]
-    assert [(shape.xref, shape.yref) for shape in fig.layout.shapes] == expected_refs
-    assert [(anno.xref, anno.yref) for anno in fit_annos] == [
-        (f"{xref} domain", f"{yref} domain") for xref, yref in expected_refs
-    ]
-    assert [anno.text for anno in fit_annos] == expected_texts
-    assert [anno.y for anno in fit_annos] == pytest.approx(expected_ys)
+    assert line["p1"] == [min(fit_x), slope * min(fit_x) + intercept]
+    assert line["p2"] == [max(fit_x), slope * max(fit_x) + intercept]
+    assert line["style"]["color"] == line["annotation"]["color"] == expected_color
+    sign = "+" if intercept >= 0 else "-"
+    expected_text = f"LS fit: y = {slope:.2g}x {sign} {abs(intercept):.2g}"
+    assert line["annotation"]["text"] == expected_text
 
 
 @pytest.mark.parametrize(
-    ("trace_kwargs", "expected_name", "expected_color", "expected_dash"),
+    ("x_scale", "y_scale", "text"),
     [
-        (None, "Cumulative", "#636efa", "solid"),
-        ({"name": "foo", "line": {"color": "red"}}, "foo", "red", "solid"),
-        ({"line": {"dash": "dash"}}, "Cumulative", "#636efa", "dash"),
+        ("log", "log", "LS fit: log10(y) = 1.5·log10(x) + 0.48"),
+        ("linear", {"type": "log"}, "LS fit: log10(y) = 0.2x + 0.48"),
+        ("log", "linear", "LS fit: y = 2·log10(x) + 3"),
     ],
 )
-def test_add_ecdf_line(
-    plotly_scatter: go.Figure,
-    trace_kwargs: dict[str, Any] | None,
-    expected_name: str,
-    expected_color: str,
-    expected_dash: str,
+@pytest.mark.parametrize("widget_cls", [ScatterPlotWidget, BinnedScatterPlotWidget])
+def test_add_best_fit_line_log_axes(
+    x_scale: str | dict[str, str],
+    y_scale: str | dict[str, str],
+    text: str,
+    widget_cls: type,
 ) -> None:
-    fig = powerups.add_ecdf_line(plotly_scatter, trace_kwargs=trace_kwargs, traces=0)
-
-    ecdf_trace = fig.data[-1]
-    assert ecdf_trace.name == expected_name
-    dev_fig = fig.full_figure_for_development(warn=False)
-    assert dev_fig.data[-1].line.color.casefold() == expected_color.casefold()
-    assert ecdf_trace.line.dash == expected_dash
-    assert ecdf_trace.yaxis == "y2"
-    assert fig.layout.yaxis2.range == (0, 1)
-    assert fig.layout.yaxis2.title.text == expected_name
-    assert dev_fig.layout.yaxis2.color in (expected_color, "#444")
-
-    assert ecdf_trace.legendgroup == "0"
-
-
-def test_add_ecdf_line_stacked() -> None:
-    """Explicit values add one ECDF line, merging line kwargs into the defaults."""
-    x = ["A", "B", "C"]
-    y1 = [1, 2, 3]
-    y2 = [2, 3, 4]
-
-    fig = go.Figure()
-    fig.add_bar(x=x, y=y1, name="Group 1")
-    fig.add_bar(x=x, y=y2, name="Group 2")
-    fig.update_layout(barmode="stack")
-
-    fig = powerups.add_ecdf_line(
-        fig,
-        values=np.concatenate([y1, y2]),
-        trace_kwargs={"line": {"color": "orange", "width": 4}},
+    """On log axes the fit is linear in log10 space and spans the positive data."""
+    log_x = x_scale == "log"
+    log_y = y_scale != "linear"
+    xs = np.array([-1.0, 0.0, 1.0, 2.0, 5.0, 10.0])  # x <= 0 not shown on log x
+    pos = xs > 0
+    if log_x and log_y:  # power law y = 3 x^1.5
+        ys = 3 * np.abs(xs) ** 1.5
+    elif log_y:  # exponential y = 3 * 10^(0.2 x)
+        ys = 3 * 10 ** (0.2 * xs)
+    else:  # logarithmic y = 2 log10(x) + 3, placeholder where x <= 0
+        ys = np.where(pos, 2 * np.log10(np.where(pos, xs, 1)) + 3, -5)
+    widget = widget_cls(
+        series=[{"x": xs, "y": ys}],
+        x_axis={"scale_type": x_scale},
+        y_axis={"scale_type": y_scale},
     )
-
-    assert len(fig.data) == 3
-    ecdf_trace = fig.data[-1]
-    assert ecdf_trace.name == "Cumulative"
-    assert ecdf_trace.yaxis == "y2"
-    line = ecdf_trace.line
-    assert (line.color, line.dash, line.width) == ("orange", "solid", 4)
-    assert fig.layout.yaxis2.range == (0, 1)
-    assert fig.layout.yaxis2.title.text == "Cumulative"
-    assert fig.layout.yaxis2.color == "orange"
-    assert len(ecdf_trace.x) == len(y1) + len(y2)
-    assert ecdf_trace.y[-1] == 1.0
-
-
-def test_add_ecdf_line_faceted() -> None:
-    fig = make_subplots(rows=2, cols=2)
-    for row in range(1, 3):
-        for col in range(1, 3):
-            fig.add_scatter(
-                x=[1, 2, 3], y=[4, 5, 6], name=f"Trace {row}{col}", row=row, col=col
-            )
-
-    n_orig_traces = len(fig.data)
-    assert n_orig_traces == 4
-
-    fig = powerups.add_ecdf_line(fig)
-
-    assert len(fig.data) == 2 * n_orig_traces
-    assert [trace.name for trace in fig.data[4:]] == [
-        "Cumulative (Trace 11)",
-        "Cumulative (Trace 12)",
-        "Cumulative (Trace 21)",
-        "Cumulative (Trace 22)",
-    ]
+    powerups.add_best_fit_line(widget)
+    lines = (
+        widget.overlays["ref_lines"]
+        if widget_cls is BinnedScatterPlotWidget
+        else widget.ref_lines
+    )
+    (line,) = lines
+    fit_xs = xs[pos] if log_x else xs
+    true_y = dict(zip(xs.tolist(), ys.tolist(), strict=True))
+    for point, x_val in ((line["p1"], fit_xs.min()), (line["p2"], fit_xs.max())):
+        np.testing.assert_allclose(point, [x_val, true_y[x_val]], rtol=1e-12, atol=0)
+    assert (line["metadata"]["log_x"], line["metadata"]["log_y"]) == (log_x, log_y)
+    anno_text = (
+        widget.annotation
+        if widget_cls is BinnedScatterPlotWidget
+        else line["annotation"]["text"]
+    )
+    assert anno_text == text
 
 
 @pytest.mark.parametrize(
-    ("trace", "expected_x", "expected_y"),
+    ("axes", "match"),
     [
+        ({"x_axis": {"scale_type": "arcsinh"}}, "x_axis scale_type='arcsinh'"),
         (
-            go.Histogram(x=[1, 2, 2, 3, 3, 3, 4, 4, 4, 4]),
-            [1, 2, 2, 3, 3, 3, 4, 4, 4, 4],
-            np.arange(1, 11) / 10,
-        ),
-        (go.Bar(x=[1, 2, 3, 4], y=[1, 2, 3, 4]), [1, 2, 3, 4], [0.1, 0.3, 0.6, 1]),
-        # float bar heights are weights, not repeat counts
-        (go.Bar(x=[3, 1, 2], y=[0.5, 1.5, 2.0]), [1, 2, 3], [0.375, 0.875, 1]),
-        # bin edges: one more x than y, bars sit at the left edges
-        (go.Bar(x=[0, 1, 2, 3], y=[2, 1, 1]), [0, 1, 2], [0.5, 0.75, 1]),
-        # horizontal: values on the y-axis, ECDF along a top x2 axis
-        (go.Histogram(y=[1, 2, 2, 3]), [1, 2, 2, 3], [0.25, 0.5, 0.75, 1]),
-        (
-            go.Bar(x=[0.5, 1.5, 2.0], y=[3, 1, 2], orientation="h"),
-            [1, 2, 3],
-            [0.375, 0.875, 1],
-        ),
-    ],
-    ids=[
-        "histogram",
-        "bar-int",
-        "bar-float",
-        "bar-bin-edges",
-        "histogram-horizontal",
-        "bar-horizontal",
-    ],
-)
-def test_add_ecdf_line_single_trace(
-    trace: go.Histogram | go.Bar, expected_x: list[float], expected_y: list[float]
-) -> None:
-    """ECDFs of histograms use raw samples, of bars use lengths as weights."""
-    fig = powerups.add_ecdf_line(go.Figure(trace))
-
-    assert len(fig.data) == 2
-    ecdf_trace = fig.data[-1]
-    assert ecdf_trace.name == "Cumulative"
-    assert ecdf_trace.legendgroup == "0"
-    # values_axis holds the data values, prob_axis the cumulative fraction
-    horizontal = trace.orientation == "h" or trace.x is None
-    values_axis, prob_axis = ("y", "x") if horizontal else ("x", "y")
-    assert getattr(ecdf_trace, f"{prob_axis}axis") == f"{prob_axis}2"
-    prob_layout_axis = fig.layout[f"{prob_axis}axis2"]
-    assert (prob_layout_axis.overlaying, prob_layout_axis.range) == (prob_axis, (0, 1))
-    np.testing.assert_array_equal(getattr(ecdf_trace, values_axis), expected_x)
-    np.testing.assert_allclose(
-        getattr(ecdf_trace, prob_axis), expected_y, rtol=1e-12, atol=0
-    )
-
-
-def test_add_ecdf_line_raises() -> None:
-    invalid_figs: tuple[Any, ...] = (None, "foo", 42.0)
-    for fig in invalid_figs:
-        with pytest.raises(
-            TypeError,
-            match=f"{fig=} must be instance of go.Figure",
-        ):
-            powerups.add_ecdf_line(fig)
-
-    fig_violin = px.violin(x=[1, 2, 3], y=[4, 5, 6])
-    violin_trace = type(fig_violin.data[0])
-    qual_name = f"{violin_trace.__module__}.{violin_trace.__qualname__}"
-    with pytest.raises(
-        TypeError, match=f"Cannot auto-determine x-values for ECDF from {qual_name}"
-    ):
-        powerups.add_ecdf_line(fig_violin)
-
-    fig_with_ecdf = powerups.add_ecdf_line(fig_violin, values=[1, 2, 3])
-    assert len(fig_with_ecdf.data) == 2
-    assert fig_with_ecdf.data[1].name == "Cumulative"
-
-
-@pytest.mark.parametrize(
-    ("powerup", "button_specs"),
-    [
-        (
-            powerups.toggle_log_linear_y_axis,
-            [
-                ("Linear Y", "relayout", {"yaxis.type": "linear"}),
-                ("Log Y", "relayout", {"yaxis.type": "log"}),
-            ],
+            {"y_axis": {"scale_type": {"type": "arcsinh", "threshold": 2}}},
+            "y_axis scale_type=",
         ),
         (
-            powerups.toggle_log_linear_x_axis,
-            [
-                ("Linear X", "relayout", {"xaxis.type": "linear"}),
-                ("Log X", "relayout", {"xaxis.type": "log"}),
-            ],
-        ),
-        (
-            powerups.toggle_grid,
-            [
-                (
-                    "Show Grid",
-                    "relayout",
-                    {"xaxis.showgrid": True, "yaxis.showgrid": True},
-                ),
-                (
-                    "Hide Grid",
-                    "relayout",
-                    {"xaxis.showgrid": False, "yaxis.showgrid": False},
-                ),
-            ],
+            {"x_axis": {"scale_type": "log"}, "y_axis": {"scale_type": "log"}},
+            r"needs >= 2 finite points \(positive on log axes\), got 1 of 3",
         ),
     ],
 )
-def test_relayout_powerups(
-    plotly_scatter: go.Figure,
-    powerup: dict[str, Any],
-    button_specs: list[tuple[str, str, dict[str, Any]]],
-) -> None:
-    assert plotly_scatter.layout.updatemenus == ()
-    plotly_scatter.layout.updatemenus = [powerup]
+def test_add_best_fit_line_unsupported_axes(axes: dict[str, Any], match: str) -> None:
+    """Non linear/log scales and too few positive points on log axes raise."""
+    widget = ScatterPlotWidget(series=[{"x": [-1, 1, 2], "y": [1, 2, -3]}], **axes)
+    with pytest.raises(ValueError, match=match):
+        powerups.add_best_fit_line(widget)
 
-    menu = plotly_scatter.layout.updatemenus[0]
-    assert isinstance(menu, Updatemenu)
-    buttons = menu.buttons
-    assert len(buttons) == len(button_specs)
-    for button, (label, method, args) in zip(buttons, button_specs, strict=True):
-        assert (button.label, button.method, button.args[0]) == (label, method, args)
-        plotly_scatter.update_layout(args)
-        for key, val in args.items():
-            parent, attr = key.split(".")
-            assert getattr(getattr(plotly_scatter.layout, parent), attr) == val
+
+def test_add_best_fit_line_options_and_errors() -> None:
+    """Style overrides apply, annotations can be disabled, < 2 points raise."""
+    widget = powerups.add_best_fit_line(
+        make_widget(), style={"color": "red", "width": 3}, annotate_params=False
+    )
+    (line,) = widget.ref_lines
+    assert line["style"] == {"color": "red", "width": 3, "dash": "8 4"}
+    assert "annotation" not in line
+    with pytest.raises(ValueError, match="needs >= 2 finite points, got 1 of 2"):
+        powerups.add_best_fit_line(make_widget(), [1, np.nan], [1, 2])
+    with pytest.raises(ValueError, match=r"needs varying x values, all are 1\.0"):
+        powerups.add_best_fit_line(make_widget(), [1, 1, 1], [1, 2, 3])
 
 
 @pytest.mark.parametrize(
-    ("fig", "powerup", "button_specs", "apply"),
+    ("identity_line", "best_fit_line", "stats", "expected_lines", "has_stats"),
     [
+        (True, None, True, ["diagonal", "segment"], True),  # R² = 0.79 > 0.3
+        (False, False, True, [], True),
+        (True, False, False, ["diagonal"], False),
         (
-            go.Figure(go.Heatmap(z=[[1, 2], [3, 4]])),
-            powerups.select_colorscale,
-            [
-                (scale, "restyle", {"colorscale": scale})
-                for scale in ["Viridis", "Plasma", "Inferno", "Magma"]
-            ],
-            False,
-        ),
-        (
-            go.Figure(go.Scatter(x=[1, 2], y=[3, 4])),
-            powerups.select_marker_mode,
-            [
-                ("Scatter", "restyle", {"type": "scatter", "mode": "markers"}),
-                ("Line", "restyle", {"type": "scatter", "mode": "lines"}),
-                (
-                    "Line+Markers",
-                    "restyle",
-                    {"type": "scatter", "mode": "lines+markers"},
-                ),
-            ],
+            {"style": {"color": "red"}},
+            {"annotate_params": False},
+            {"fmt": ".1"},
+            ["diagonal", "segment"],
             True,
         ),
     ],
 )
-def test_restyle_powerups(
-    fig: go.Figure,
-    powerup: dict[str, Any],
-    button_specs: list[tuple[str, str, dict[str, Any]]],
-    apply: bool,
+def test_enhance_parity_plot(
+    identity_line: bool | dict[str, Any],
+    best_fit_line: bool | dict[str, Any] | None,
+    stats: bool | dict[str, Any],
+    expected_lines: list[str],
+    has_stats: bool,
 ) -> None:
-    assert fig.layout.updatemenus == ()
-    fig.layout.updatemenus = [powerup]
-
-    menu = fig.layout.updatemenus[0]
-    assert isinstance(menu, Updatemenu)
-    buttons = menu.buttons
-    assert len(buttons) == len(button_specs)
-    for button, (label, method, args) in zip(buttons, button_specs, strict=True):
-        assert (button.label, button.method, button.args[0]) == (label, method, args)
-        if apply:
-            fig.update_traces(args)
-            assert fig.data[0].mode == args["mode"]
-
-
-def test_add_ecdf_line_color_matching() -> None:
-    fig_explicit = go.Figure()
-    explicit_colors = ("red", "blue", "green", "purple")
-    for idx, color in enumerate(explicit_colors):
-        fig_explicit.add_bar(
-            x=[idx, idx + 1, idx + 2],
-            y=[3, 5, 2],
-            name=f"Trace {idx}",
-            marker=dict(color=color),
-        )
-
-    for idx in range(len(explicit_colors)):
-        fig_explicit = powerups.add_ecdf_line(fig_explicit, traces=idx)
-
-    assert len(fig_explicit.data) == 2 * len(explicit_colors)
-    dev_fig_explicit = fig_explicit.full_figure_for_development(warn=False)
-    for idx, color in enumerate(explicit_colors):
-        ecdf_trace_dev = dev_fig_explicit.data[idx + len(explicit_colors)]
-        assert ecdf_trace_dev.line.color == color
-        assert fig_explicit.data[idx + len(explicit_colors)].legendgroup == str(idx)
-
-    fig_colorway = go.Figure()
-    n_traces_colorway = 3
-    for idx in range(n_traces_colorway):
-        fig_colorway.add_histogram(x=np_rng.normal(idx * 5, 1, 100), name=f"Hist {idx}")
-
-    default_colorway = px.colors.qualitative.Plotly
-    fig_colorway = powerups.add_ecdf_line(fig_colorway)
-
-    assert len(fig_colorway.data) == 2 * n_traces_colorway
-    dev_fig_colorway = fig_colorway.full_figure_for_development(warn=False)
-    for idx in range(n_traces_colorway):
-        expected_color = default_colorway[idx % len(default_colorway)]
-        ecdf_trace_dev = dev_fig_colorway.data[idx + n_traces_colorway]
-        original_trace_dev = dev_fig_colorway.data[idx]
-        assert original_trace_dev.marker.color.casefold() == expected_color.casefold()
-        assert ecdf_trace_dev.line.color.casefold() == expected_color.casefold()
-        assert fig_colorway.data[idx + n_traces_colorway].legendgroup == str(idx)
-        assert f"Cumulative (Hist {idx})" == fig_colorway.data[idx + 3].name
-
-    fig_mixed = go.Figure()
-    mixed_colors = ("orange", None, "cyan", None)
-    for idx, mixed_color in enumerate(mixed_colors):
-        marker_dict = dict(color=mixed_color) if mixed_color else {}
-        fig_mixed.add_scatter(
-            x=[idx, idx + 1], y=[1, 2], name=f"Mixed {idx}", marker=marker_dict
-        )
-    fig_mixed = powerups.add_ecdf_line(fig_mixed)
-
-    assert len(fig_mixed.data) == 2 * len(mixed_colors)
-    dev_fig_mixed = fig_mixed.full_figure_for_development(warn=False)
-    for idx, expected_color in enumerate(
-        ["orange", default_colorway[1], "cyan", default_colorway[3]]
-    ):
-        ecdf_trace_dev = dev_fig_mixed.data[idx + len(mixed_colors)]
-        assert ecdf_trace_dev.line.color.casefold() == expected_color.casefold()
-        ecdf_trace = fig_mixed.data[idx + len(mixed_colors)]
-        assert (ecdf_trace.name, ecdf_trace.yaxis, ecdf_trace.legendgroup) == (
-            f"Cumulative (Mixed {idx})",
-            "y2",
-            str(idx),
-        )
+    """Identity line, best-fit line and stats are each optional and configurable."""
+    widget = powerups.enhance_parity_plot(
+        make_widget(3),
+        identity_line=identity_line,
+        best_fit_line=best_fit_line,
+        stats=stats,
+    )
+    assert [line["type"] for line in widget.ref_lines or []] == expected_lines
+    assert bool(widget.annotation) == has_stats
+    if isinstance(stats, dict):
+        assert widget.annotation == "MAE = 0.1\nR² = 0.8"
+    if isinstance(identity_line, dict):
+        assert widget.ref_lines[0]["style"]["color"] == "red"
+    if isinstance(best_fit_line, dict):
+        assert "annotation" not in widget.ref_lines[1]
 
 
-def test_add_ecdf_line_annotation_positioning() -> None:
-    fig = go.Figure()
-    for y_vals, name in [
-        ([1, 2, 3, 4, 5], "Trace 1"),
-        ([5, 4, 3, 2, 1], "Trace 2"),
-    ]:
-        fig.add_scatter(x=[1, 2, 3, 4, 5], y=y_vals, name=name)
-    for idx, text in enumerate(["Annotation 1", "Annotation 2"]):
-        fig = powerups.add_ecdf_line(fig, traces=idx, trace_kwargs={"text": text})
+def test_enhance_parity_plot_forwards_data_kwargs() -> None:
+    """Stats and best-fit dicts may select series or pass their own xs/ys."""
+    widget = powerups.enhance_parity_plot(
+        make_widget(2),
+        identity_line=False,
+        best_fit_line={"series": 1},
+        stats={"series": 0, "metrics": ["MAE"]},
+    )
+    srs0, srs1 = widget.series
+    expected_mae = np.abs(np.asarray(srs0["x"]) - np.asarray(srs0["y"])).mean()
+    assert widget.annotation == f"MAE = {expected_mae:.3}"
+    slope, _ = np.polyfit(srs1["x"], srs1["y"], 1)
+    np.testing.assert_allclose(
+        widget.ref_lines[0]["metadata"]["slope"], slope, rtol=1e-12, atol=0
+    )
+    explicit = powerups.enhance_parity_plot(
+        make_widget(),
+        identity_line=False,
+        best_fit_line=False,
+        stats={"xs": [1.0, 2.0], "ys": [1.5, 2.5], "metrics": ["MAE"]},
+    )
+    assert explicit.annotation == "MAE = 0.5"
 
-    assert len(fig.data) == 4
-    for trace, legendgroup, text in zip(
-        fig.data[2:], ["0", "1"], ["Annotation 1", "Annotation 2"], strict=True
-    ):
-        assert trace.name == "Cumulative"
-        assert trace.legendgroup == legendgroup
-        assert trace.text == text
 
-    fig.add_scatter(x=[1, 2, 3, 4, 5], y=[3, 3, 3, 3, 3], name="Trace 3")
-    fig = powerups.add_ecdf_line(fig, traces=4, trace_kwargs={"text": "Annotation 3"})
+def test_enhance_parity_plot_series_color() -> None:
+    """A single selected series (numpy int too) colors the fit line."""
+    widget = powerups.enhance_parity_plot(
+        make_widget(2), series=np.int64(1), best_fit_line=True
+    )
+    assert widget.ref_lines[1]["style"]["color"] == "c1"
 
-    assert len(fig.data) == 6
-    assert fig.data[5].name == "Cumulative"
-    assert fig.data[5].legendgroup == "4"
-    assert fig.data[5].text == "Annotation 3"
 
-    # text applies to every ECDF trace when selecting several at once
-    fig = powerups.add_ecdf_line(fig, traces=[0, 1], trace_kwargs={"text": "Both"})
-    assert len(fig.data) == 8
-    assert [trace.text for trace in fig.data[6:]] == ["Both", "Both"]
-    assert [list(trace.y) for trace in fig.data[6:]] == [[0.2, 0.4, 0.6, 0.8, 1]] * 2
-    assert fig.layout.annotations == ()
+def test_enhance_parity_plot_auto_best_fit_line() -> None:
+    """best_fit_line=None skips the fit for uncorrelated data."""
+    rng = np.random.default_rng(seed=0)
+    widget = ScatterPlotWidget(series=[{"x": rng.random(50), "y": rng.random(50)}])
+    powerups.enhance_parity_plot(widget)
+    assert [line["type"] for line in widget.ref_lines] == ["diagonal"]
+    # R² = 1, but a log y axis leaves one positive point: skipped, not raised
+    log_y = ScatterPlotWidget(
+        series=[{"x": [-2, -1, 1], "y": [-2, -1, 1]}], y_axis={"scale_type": "log"}
+    )
+    powerups.enhance_parity_plot(log_y)
+    assert [line["type"] for line in log_y.ref_lines] == ["diagonal"]
+    with pytest.raises(ValueError, match="needs >= 2 finite points"):
+        powerups.enhance_parity_plot(log_y, best_fit_line=True)
 
-    with pytest.raises(ValueError, match="offset_size"):
-        powerups.add_ecdf_line(fig, traces=[0, 1], trace_kwargs={"offset_size": 0.1})
+
+@pytest.mark.parametrize("values", [(), [3, 1, 2, 2]])
+@pytest.mark.parametrize("n_series", [1, 2])
+def test_add_ecdf_line(values: Sequence[float], n_series: int) -> None:
+    """ECDF step series go on a y2 axis spanning [0, 1]."""
+    widget = make_widget(n_series)
+    n_before = len(widget.series)
+    powerups.add_ecdf_line(widget, values, line_style={"dash": "4 2"})
+    new_series = widget.series[n_before:]
+    sources = (
+        [values] if len(values) else [srs["x"] for srs in widget.series[:n_before]]
+    )
+    assert len(new_series) == len(sources)
+    for srs, source in zip(new_series, sources, strict=True):
+        sorted_vals = np.sort(source)
+        fractions = np.arange(1, len(sorted_vals) + 1) / len(sorted_vals)
+        # post-step vertices: each value repeated, fraction rising after it
+        np.testing.assert_array_equal(srs["x"][::2], sorted_vals)
+        np.testing.assert_array_equal(srs["y"][1::2], fractions[:-1])
+        assert srs["y"][-1] == 1
+        assert srs["y_axis"] == "y2"
+        assert srs["line_style"]["dash"] == "4 2"
+    labels = [srs["label"] for srs in new_series]
+    if len(values) or n_series == 1:
+        assert labels == ["Cumulative"]
+    else:
+        assert labels == ["Cumulative (s0)", "Cumulative (s1)"]
+        assert [srs["line_style"]["color"] for srs in new_series] == ["c0", "c1"]
+    assert widget.y2_axis == {"label": "Cumulative"}
+    assert widget.y2_range == [0, 1]
+
+
+def test_add_ecdf_line_ignores_own_ecdf_series() -> None:
+    """Repeated ECDF calls and parity powerups skip earlier ECDF (y2) series."""
+    widget = make_widget()
+    powerups.add_ecdf_line(widget)
+    powerups.add_ecdf_line(widget)
+    assert [srs["label"] for srs in widget.series] == ["s0", *["Cumulative"] * 2]
+    # a differently labeled ECDF shares the [0, 1] y2 axis with earlier ones
+    powerups.add_ecdf_line(widget, [3, 1, 2], label="Reference")
+    assert widget.series[-1]["label"] == "Reference"
+    assert widget.y2_axis == {"label": "Cumulative"}
+    powerups.annotate_metrics(widget)
+    assert widget.annotation == "MAE = 0.121\nR² = 0.785"
+
+
+def test_add_ecdf_line_keeps_y2_range() -> None:
+    """A user-set y2_range survives adding ECDF lines."""
+    widget = ScatterPlotWidget(series=make_series(), y2_range=[0, 0.5])
+    powerups.add_ecdf_line(widget)
+    assert widget.y2_range == [0, 0.5]
+
+
+@pytest.mark.parametrize("y2_axis", [None, {"label": "Temperature"}])
+def test_add_ecdf_line_rejects_foreign_y2_series(
+    y2_axis: dict[str, str] | None,
+) -> None:
+    """An ECDF can't share the y2 axis with other data, whose range it would clip."""
+    temps = {"x": [0, 1], "y": [20, 90], "y_axis": "y2", "label": "T"}
+    widget = ScatterPlotWidget(series=[*make_series(), temps], y2_axis=y2_axis)
+    with pytest.raises(ValueError, match="y2 axis already plots 'T' with values"):
+        powerups.add_ecdf_line(widget)
+    assert widget.y2_range is None
+
+
+def test_add_ecdf_line_raises() -> None:
+    """ECDFs need finite values and a ScatterPlotWidget."""
+    with pytest.raises(ValueError, match="at least one finite value"):
+        powerups.add_ecdf_line(make_widget(), [np.nan])
+    with pytest.raises(TypeError, match="widget must be ScatterPlotWidget, got Bin"):
+        powerups.add_ecdf_line(BinnedScatterPlotWidget(series=make_series()))  # ty: ignore[invalid-argument-type]
 
 
 def test_annotate_metrics_r2_adj_two_points() -> None:
-    """R2_adj is undefined for n <= 2 samples, must not raise ZeroDivisionError."""
-    fig = powerups.annotate_metrics(
-        np.array([1.0, 2.0]), np.array([1.1, 2.2]), fig=go.Figure(), metrics=["R2_adj"]
+    """Adjusted R² is NaN for n <= 2 samples instead of dividing by zero."""
+    widget = powerups.annotate_metrics(
+        make_widget(), [1.0, 2.0], [1.1, 1.9], metrics=["R2_adj"]
     )
-    assert fig.layout.annotations[-1].text == "R<sup>2</sup><sub>adj</sub> = nan<br>"
+    assert widget.annotation == "R²_adj = nan"
+
+
+@pytest.mark.parametrize(
+    ("name", "sklearn_name"),
+    [("R2", "r2_score"), ("MAPE", "mean_absolute_percentage_error")],
+)
+def test_builtin_metrics_match_sklearn(name: str, sklearn_name: str) -> None:
+    """Built-in R2/MAPE match sklearn bit for bit, constant targets warn-free."""
+    import sklearn.metrics
+
+    xs, ys = np.append(y_true, 0.0), np.append(y_pred, 0.1)
+    expected = getattr(sklearn.metrics, sklearn_name)(xs, ys)
+    assert powerups.BUILTIN_METRICS[name](xs, ys) == expected
+    with warnings.catch_warnings():  # constant targets: nan/inf, no RuntimeWarning
+        warnings.simplefilter("error")
+        powerups.BUILTIN_METRICS[name](np.ones(3), np.array([1.0, 2.0, 1.0]))
+        powerups.BUILTIN_METRICS[name](np.ones(3), np.ones(3))
+
+
+@pytest.mark.parametrize("n_points", [50, 20_000])
+@pytest.mark.parametrize(
+    "func",
+    [
+        powerups.annotate_metrics,
+        powerups.add_best_fit_line,
+        powerups.add_ecdf_line,
+        powerups.enhance_parity_plot,
+    ],
+)
+def test_powerups_read_json_and_binary_series(func: Any, n_points: int) -> None:
+    """Powerups read small JSON and large binary series; large ECDFs sync binary."""
+    from pymatviz.widgets._binary import BINARY_FORMAT, series_column
+
+    xs = np.random.default_rng(seed=0).normal(size=n_points)
+    widget = ScatterPlotWidget(series=[{"x": xs, "y": 1.1 * xs + 0.1, "label": "a"}])
+    is_binary = n_points >= 10_000
+    assert (widget.series[0].get("format") == BINARY_FORMAT) is is_binary
+    func(widget)
+    if func is powerups.add_ecdf_line:
+        ecdf = widget.series[-1]
+        assert (ecdf.get("format") == BINARY_FORMAT) is is_binary
+        assert ecdf["label"] == "Cumulative"
+        np.testing.assert_array_equal(series_column(ecdf, "x")[::2], np.sort(xs))
+        assert series_column(ecdf, "y")[-1] == 1
+    if func in (powerups.add_best_fit_line, powerups.enhance_parity_plot):
+        fit = widget.ref_lines[-1]["metadata"]
+        np.testing.assert_allclose(  # exact line y = 1.1x + 0.1, f64 lstsq round-off
+            [fit["slope"], fit["intercept"]], [1.1, 0.1], rtol=0, atol=1e-12
+        )
+    if func in (powerups.annotate_metrics, powerups.enhance_parity_plot):
+        mae = float(np.abs(xs - (1.1 * xs + 0.1)).mean())
+        assert f"MAE = {mae:.3}" in widget.annotation

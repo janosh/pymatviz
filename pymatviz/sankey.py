@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import plotly.graph_objects as go
-
 from pymatviz.process_data import sankey_flow_data
+from pymatviz.widgets.sankey import SankeyWidget
 
 
 if TYPE_CHECKING:
@@ -20,66 +19,32 @@ def sankey_from_2_df_cols(
     cols: list[str],
     *,
     labels_with_counts: bool | Literal["percent"] = True,
-    annotate_columns: bool | dict[str, Any] = True,
     **kwargs: Any,
-) -> go.Figure:
-    """Plot two columns of a dataframe as a Plotly Sankey diagram.
+) -> SankeyWidget:
+    """Plot the co-occurrence of values in two dataframe columns as a Sankey diagram.
+
+    Each distinct value in the source column becomes a node on the left, each in
+    the target column a node on the right. Links carry the number of rows holding
+    each (source, target) pair. A value present in both columns gets one node per
+    side. Node metadata records the column each node comes from.
 
     Args:
         df (pd.DataFrame): Pandas dataframe.
         cols (list[str]): 2-tuple of source and target column names. Source
             corresponds to left, target to right side of the diagram.
-        labels_with_counts (bool, optional): Whether to append value counts to node
-            labels. Defaults to True.
-        annotate_columns (bool, dict[str, Any], optional): Whether to use the column
-            names as annotations vertically centered on the left and right sides of
-            the diagram. If a dict, passed as **kwargs to
-            plotly.graph_objects.Figure.add_annotation. Defaults to True.
-        **kwargs: Additional keyword arguments passed to plotly.graph_objects.Sankey.
+        labels_with_counts (bool | "percent", optional): Whether to append value
+            counts (or percentages of rows with values in both columns) to node
+            labels. Rows missing either value are left out. Defaults to True.
+        **kwargs: SankeyWidget traits, e.g. ``orientation``, ``node_align``,
+            ``link_color_mode``, ``value_format``, ``style``.
 
     Raises:
-        ValueError: If len(cols) != 2.
+        ValueError: If len(cols) != 2 or no row has values in both columns.
 
     Returns:
-        Figure: Plotly figure containing the Sankey diagram.
+        SankeyWidget: The Sankey diagram.
     """
     flow_data = sankey_flow_data(df, cols, labels_with_counts=labels_with_counts)
-
-    fig = go.Figure()
-    fig.add_sankey(
-        node=dict(
-            pad=20,
-            thickness=30,
-            line=dict(color="black", width=0.5),
-            label=flow_data["labels"],
-        ),
-        link=dict(
-            source=flow_data["source_indices"],
-            target=flow_data["target_indices"],
-            value=flow_data["value"],
-        ),
-        **kwargs,
-    )
-
-    if annotate_columns:
-        anno_kwargs = (
-            dict(annotate_columns) if isinstance(annotate_columns, dict) else {}
-        )
-        xshift = anno_kwargs.pop("xshift", 35)
-        fig.layout.margin = dict(l=xshift, r=xshift)
-        for idx, col in enumerate(cols):
-            anno_defaults = dict(
-                y=0.5,
-                xref="paper",
-                yref="paper",
-                xshift=(-1 if idx == 0 else 1) * xshift,
-                textangle=-90,
-                showarrow=False,
-                font_size=20,
-            )
-
-            fig.add_annotation(
-                x=idx, text=f"<b>{col}</b>", **anno_defaults | anno_kwargs
-            )
-
-    return fig
+    if not flow_data["links"]:
+        raise ValueError(f"No rows with values in both {cols=} to draw flows from")
+    return SankeyWidget(flow_data, **kwargs)

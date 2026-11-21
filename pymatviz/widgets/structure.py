@@ -147,7 +147,7 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
         >>> widget = StructureWidget(
         ...     structure=structure_data,
         ...     atom_radius=0.8,
-        ...     show_bonds=True,
+        ...     show_bonds="always",
         ...     color_scheme="Jmol",
         ...     style="border-radius: 10px; width: 100%; height: 600px;",
         ... )
@@ -181,10 +181,15 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
 
     # display options shared with TrajectoryWidget live in StructureVizTraits
 
-    structure = tl.Dict(allow_none=True).tag(sync=True)
+    structure = optional_trait(tl.Dict)
     structure_string = optional_trait(tl.Unicode)
 
     show_image_atoms = tl.Bool(default_value=True).tag(sync=True)
+    # Cell shown: the input cell or MatterViz's (moyo) conventional/primitive standard
+    # cell, which carries site properties over with vectors rotated into its frame
+    cell_type = tl.CaselessStrEnum(
+        ["original", "conventional", "primitive"], default_value="original"
+    ).tag(sync=True)
 
     # Isosurface: a list of pymatgen VolumetricData objects or dicts (see
     # volume_to_envelopes), or a {prefix: volume} mapping namespacing ids as
@@ -194,12 +199,13 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
     # isovalue, color, opacity, visible, show_negative, negative_color}], wireframe,
     # halo, display_range?}
     volumetric_data = tl.Any().tag(sync=True)
-    isosurface_settings = tl.Dict(allow_none=True).tag(sync=True)
+    isosurface_settings = optional_trait(tl.Dict)
     # Two-way synced isosurface view state (active volume id, structure/slice view,
     # plane). None selects the first volume.
     active_volume_id = optional_trait(tl.Unicode)
+    # "structure", "slice" (2D volume slice) or "split" (both side by side)
     display_mode = tl.CaselessStrEnum(
-        ["structure", "slice"], default_value="structure"
+        ["structure", "slice", "split"], default_value="structure"
     ).tag(sync=True)
     slice_settings = tl.Dict(default_value={}).tag(sync=True)
 
@@ -257,8 +263,6 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
                 "volumetric_data must be a list of volumes or a {prefix: volume} "
                 f"mapping, got {type(value).__name__}"
             )
-        if payloads:
-            self._require_binary_bundle()
         ids = [payload["id"] for payload in payloads]
         if dupes := sorted({vol_id for vol_id in ids if ids.count(vol_id) > 1}):
             raise ValueError(

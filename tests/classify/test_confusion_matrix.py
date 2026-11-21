@@ -1,17 +1,16 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
 
 from pymatviz.classify.confusion_matrix import confusion_matrix
+from pymatviz.widgets.heatmap_matrix import HeatmapMatrixWidget
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
-
-    AnnotationCallable = Callable[[int, int, float, float, float, float], str]
+    from collections.abc import Mapping, Sequence
 
 
 @pytest.fixture
@@ -20,466 +19,162 @@ def sample_conf_mat() -> np.ndarray:
     return np.array([[50, 10], [5, 35]])  # TN, FP, FN, TP
 
 
-@pytest.fixture
-def multi_class_conf_mat() -> np.ndarray:
-    """3x3 confusion matrix for multi-class classification."""
-    return np.array([[40, 5, 5], [4, 35, 6], [6, 4, 45]])
-
-
-def test_confusion_matrix_basic(sample_conf_mat: np.ndarray) -> None:
-    """Test basic functionality with pre-computed confusion matrix."""
-    fig = confusion_matrix(
-        sample_conf_mat,
-        x_labels=("Negative", "Positive"),
-        y_labels=("Negative", "Positive"),
-    )
-    assert fig.layout.xaxis.constrain == "domain"
-    assert fig.layout.yaxis.constrain == "domain"
-    assert fig.layout.yaxis.scaleanchor == "x"
-    assert fig.layout.font.size == 18
-
-
-def test_confusion_matrix_color_text_alignment(sample_conf_mat: np.ndarray) -> None:
-    """Test that colors and text annotations are properly aligned in the confusion
-    matrix. This test specifically checks that the cell colors (z values) match their
-    corresponding text annotations and hover text.
-    """
-    fig = confusion_matrix(
-        sample_conf_mat,
-        x_labels=("Negative", "Positive"),
-        y_labels=("Negative", "Positive"),
-        normalize=True,  # use normalization to get percentages
-    )
-
-    heatmap = fig.data[0]
-
-    # Get z-values (colors), annotations, and hover text
-    z_values = heatmap.z
-    # Filter out metric annotations (like Acc=85.0%) and keep only cell annotations
-    annotations = [
-        anno.text
-        for anno in fig.layout.annotations
-        if anno.text
-        and not any(
-            metric in anno.text for metric in ["Acc=", "Prec=", "F1=", "MCC=", "Rec="]
-        )
-    ]
-    hover_text = heatmap.text
-
-    # The largest value in the confusion matrix should correspond to
-    # the darkest color and highest percentage in both annotations and hover text
-    max_val_idx = np.unravel_index(np.argmax(z_values), z_values.shape)
-
-    # Check that the cell with maximum value has:
-    # 1. The highest z-value (darkest color)
-    assert z_values[max_val_idx] == np.max(z_values)
-
-    # 2. The highest percentage in its annotation
-    max_anno_pct = max(
-        float(anno.rstrip("%").split("<br>")[-1]) / 100
-        for anno in annotations
-        if anno and "%" in anno
-    )
-    assert abs(z_values[max_val_idx] - max_anno_pct) < 1e-10
-
-    # 3. The highest percentage in its hover text
-    max_hover_pct = max(
-        float(text.split("Percent: ")[1].split("%")[0]) / 100
-        for text in hover_text.flatten()
-        if text and "Percent:" in text
-    )
-    assert abs(z_values[max_val_idx] - max_hover_pct) < 1e-10
-
-    # TN is the largest cell when labels are inferred from raw targets.
-    y_true = ["Negative"] * 6 + ["Positive"] * 2
-    # 5 TN, 1 FP, 1 FN, 1 TP
-    y_pred = ["Negative"] * 5 + ["Positive", "Negative", "Positive"]
-
-    fig = confusion_matrix(y_true=y_true, y_pred=y_pred, normalize=True)
-    heatmap = fig.data[0]
-
-    z_values = heatmap.z
-    # Reversing true-class rows puts TN/FP above FN/TP.
-    assert z_values[1, 0] > z_values[1, 1]  # TN > FP
-    assert z_values[0, 1] == z_values[0, 0]  # TP = FN in this case
-
-    hover_text = heatmap.text
-    for row_idx, col_idx in [(1, 0), (1, 1), (0, 0), (0, 1)]:
-        text = hover_text[row_idx][col_idx]
-        pct = float(text.split("Percent: ")[1].split("%")[0]) / 100
-        assert abs(z_values[row_idx, col_idx] - pct) < 1e-10
-
-
 @pytest.mark.parametrize(
-    ("normalize", "colorscale", "float_fmt"),
-    [
-        (True, "blues", ".1%"),  # default settings
-        (False, "RdBu", ".2f"),  # raw counts, different colorscale
-        (True, "Viridis", ".2%"),  # normalized, different colorscale
-        (False, "YlOrRd", ".0f"),  # raw counts, integer format
-    ],
+    ("normalize", "float_fmt", "expected_fmt"),
+    [(True, "", ".1%"), (False, "", ".0f"), (True, ".2f", ".2f")],
 )
-def test_confusion_matrix_display_options(
-    sample_conf_mat: np.ndarray,
-    normalize: bool,
-    colorscale: str,
-    float_fmt: str,
+def test_confusion_matrix_basic(
+    sample_conf_mat: np.ndarray, normalize: bool, float_fmt: str, expected_fmt: str
 ) -> None:
-    """Test various display options."""
-    fig = confusion_matrix(
+    """Rows are true classes, columns predicted, values optionally normalized."""
+    widget = confusion_matrix(
         sample_conf_mat,
         x_labels=("Negative", "Positive"),
         normalize=normalize,
-        colorscale=colorscale,
         float_fmt=float_fmt,
     )
-
-    heatmap = fig.data[0]
-    first_color = heatmap.colorscale[0][1].lower()
-    expected_first_colors = {
-        "blues": "rgb(247,251,255)".lower(),
-        "rdbu": "rgb(103,0,31)".lower(),
-        "viridis": "#440154".lower(),
-        "ylorrd": "rgb(255,255,204)".lower(),
-    }
-    assert first_color == expected_first_colors[colorscale.lower()]
-
-    annotations = [anno.text for anno in fig.layout.annotations if anno.text]
-    if normalize:
-        assert all("%" in anno for anno in annotations if anno != "")
-    else:
-        assert not any("%" in anno for anno in annotations if anno != "")
+    assert isinstance(widget, HeatmapMatrixWidget)
+    assert [item["label"] for item in widget.x_items] == ["Negative", "Positive"]
+    assert widget.y_items == widget.x_items
+    expected = sample_conf_mat / (sample_conf_mat.sum() if normalize else 1)
+    np.testing.assert_array_equal(widget.values, expected)
+    assert widget.show_values == expected_fmt
+    assert widget.color_scale == "interpolateBlues"
+    assert widget.color_bar is None
+    assert widget.y_axis == {"label": "Actual"}
+    assert widget.x_axis["label"].startswith("Predicted (Acc=")
 
 
 @pytest.mark.parametrize(
-    ("metrics", "metrics_kwargs", "expected_metrics"),
+    ("metrics", "expected_title"),
     [
-        (("Acc", "MCC"), None, {"Acc", "MCC"}),  # default metrics
-        ({"Acc": ".2%", "MCC": ".3f"}, None, {"Acc", "MCC"}),  # custom formats
-        (("Prec", "Rec", "F1"), dict(y=1.1), {"Prec", "Rec", "F1"}),  # multiple metrics
-        ([], None, set()),  # no metrics
+        (("Acc", "MCC"), "Predicted (Acc=85.0%, MCC=69.8%)"),
+        ({"Acc": ".2f", "MCC": None}, "Predicted (Acc=0.85, MCC=69.8%)"),
+        (("Prec", "Rec", "F1"), "Predicted (Prec=77.8%, Rec=87.5%, F1=82.4%)"),
+        ((), "Predicted"),
     ],
 )
 def test_confusion_matrix_metrics(
     sample_conf_mat: np.ndarray,
-    metrics: dict[str, str | None] | Sequence[str],
-    metrics_kwargs: dict[str, Any] | None,
-    expected_metrics: set[str],
+    metrics: Mapping[str, str | None] | Sequence[str],
+    expected_title: str,
 ) -> None:
-    """Test metrics display options."""
-    fig = confusion_matrix(
+    """Requested metrics with their formats are appended to the x-axis title."""
+    widget = confusion_matrix(sample_conf_mat, x_labels=("N", "P"), metrics=metrics)
+    assert widget.x_axis == {"label": expected_title}
+    # rows in another class order are aligned for metrics, not for display
+    flipped = confusion_matrix(
+        sample_conf_mat[::-1], x_labels=("N", "P"), y_labels=("P", "N"), metrics=metrics
+    )
+    assert flipped.x_axis == {"label": expected_title}
+    assert flipped.values == widget.values[::-1]
+    # disjoint axis names (no shared class) are aligned by position
+    named = confusion_matrix(
         sample_conf_mat,
-        x_labels=("Negative", "Positive"),
+        x_labels=("Pred N", "Pred P"),
+        y_labels=("True N", "True P"),
         metrics=metrics,
-        metrics_kwargs=metrics_kwargs,
     )
-
-    metric_annotations = [
-        anno.text
-        for anno in fig.layout.annotations
-        if any(
-            f"{metric}=" in anno.text for metric in ("Acc", "MCC", "Prec", "Rec", "F1")
-        )
-    ]
-
-    if not expected_metrics:
-        assert metric_annotations == []
-    else:
-        # There should be exactly one annotation containing all metrics
-        assert len(metric_annotations) == 1
-        annotation = metric_annotations[0]
-        # Check that all expected metrics are present in the annotation
-        for metric in expected_metrics:
-            assert f"{metric}=" in annotation
-        # metrics above the plot need top margin, below the plot bottom margin
-        margin_side = "t" if metrics_kwargs else "b"
-        assert fig.layout.margin[margin_side] == 60
-
-
-def test_confusion_matrix_multi_class(multi_class_conf_mat: np.ndarray) -> None:
-    """Test handling of multi-class confusion matrices."""
-    labels = ("Class A", "Class B", "Class C")
-    fig = confusion_matrix(
-        multi_class_conf_mat,
-        x_labels=labels,
-        y_labels=labels,
-        metrics={"Acc"},  # only Acc available for multi-class
+    assert named.x_axis == {"label": expected_title}
+    assert named.values == widget.values
+    # int64 counts whose MCC denominator product overflows (2**64)
+    big = confusion_matrix(
+        np.eye(2, dtype=np.int64) * 65_536, x_labels=("N", "P"), metrics=("MCC",)
     )
-
-    # Check that only accuracy is shown for multi-class
-    anno_texts = [anno.text for anno in fig.layout.annotations]
-    assert len(anno_texts) == 10
-    assert any("Acc=" in anno_text for anno_text in anno_texts), f"{anno_texts=}"
-
-    with pytest.raises(ValueError, match="Unknown metric='Prec'"):
-        confusion_matrix(
-            multi_class_conf_mat,
-            x_labels=labels,
-            y_labels=labels,
-            metrics={"Prec"},
-        )
+    assert big.x_axis == {"label": "Predicted (MCC=100.0%)"}
 
 
-def test_confusion_matrix_error_cases() -> None:
-    """Test error handling."""
-    with pytest.raises(ValueError, match="Must provide either conf_mat or both"):
-        confusion_matrix()
-
-    with pytest.raises(ValueError, match="Must provide x_labels"):
-        confusion_matrix(np.array([[1, 2], [3, 4]]))
-
-    with pytest.raises(ValueError, match="Unknown metric='invalid'"):
-        confusion_matrix(
-            np.array([[1, 2], [3, 4]]),
-            x_labels=("A", "B"),
-            metrics={"invalid": None},
-        )
-
-    with pytest.raises(TypeError, match="Metric keys must be strings, got int"):
-        confusion_matrix(
-            np.array([[1, 2], [3, 4]]),
-            x_labels=("A", "B"),
-            metrics={1: None},  # ty: ignore[invalid-argument-type]
-        )
+def test_confusion_matrix_multi_class() -> None:
+    """Only accuracy is defined for multi-class matrices."""
+    conf_mat = np.array([[40, 5, 5], [4, 35, 6], [6, 4, 45]])
+    labels = ("A", "B", "C")
+    widget = confusion_matrix(conf_mat, x_labels=labels, normalize=False)
+    assert widget.x_axis == {"label": "Predicted (Acc=80.0%)"}
+    with pytest.raises(ValueError, match=r"Unknown metrics \['Prec'\]"):
+        confusion_matrix(conf_mat, x_labels=labels, metrics=("Prec",))
 
 
-def test_confusion_matrix_custom_annotations(sample_conf_mat: np.ndarray) -> None:
-    """Test custom cell annotations."""
-    custom_annotations = [["tile 11", "tile 12"], ["tile 21", "tile 22"]]
-    fig = confusion_matrix(
-        sample_conf_mat,
-        x_labels=("Negative", "Positive"),
-        annotations=custom_annotations,
-    )
-
-    # Check if custom annotations are used
-    anno_texts = {
-        anno.text.split("<br>")[0] for anno in fig.layout.annotations if anno.text
-    }
-    assert anno_texts > set(np.array(custom_annotations).flatten())
-
-
-def test_confusion_matrix_heatmap_kwargs(sample_conf_mat: np.ndarray) -> None:
-    """Test customization via heatmap_kwargs."""
-    heatmap_kwargs = {
-        "colorscale": "Viridis",
-        "showscale": True,
-        "xgap": 5,
-        "ygap": 5,
-    }
-    fig = confusion_matrix(
-        sample_conf_mat,
-        x_labels=("Negative", "Positive"),
-        heatmap_kwargs=heatmap_kwargs,
-    )
-
-    # Check if heatmap properties are applied
-    heatmap = fig.data[0]
-    assert heatmap.showscale is True
-    assert heatmap.xgap == 5
-    assert heatmap.ygap == 5
-    assert heatmap.colorscale[0][1].lower() == "#440154"
-
-
-def test_confusion_matrix_long_labels(sample_conf_mat: np.ndarray) -> None:
-    """Test handling of long labels."""
-    long_labels = ("Very Long Negative Label", "Very Long Positive Label")
-    fig = confusion_matrix(sample_conf_mat, x_labels=long_labels, y_labels=long_labels)
-
-    y_labels = [anno.y for anno in fig.layout.annotations]
-    x_labels = [anno.x for anno in fig.layout.annotations]
-
-    for label in long_labels:
-        split_label = label.replace("Long ", "Long<br>")
-        assert split_label in x_labels, f"{split_label} not in {x_labels=}"
-        assert split_label in y_labels, f"{split_label} not in {y_labels=}"
+@pytest.mark.parametrize(
+    ("kwargs", "match"),
+    [
+        ({}, "Must provide either conf_mat or both"),
+        ({"conf_mat": [[1]], "y_true": [0], "y_pred": [0]}, "Must provide either"),
+        ({"conf_mat": [[1]], "y_true": [0]}, "Must provide either conf_mat or both"),
+        ({"y_pred": [0]}, "Must provide either conf_mat or both"),
+        ({"conf_mat": [[1, 2], [3, 4]]}, "Must provide x_labels"),
+        ({"conf_mat": [[1, 2], [3, 4]], "x_labels": ("A",)}, "doesn't match"),
+        (
+            {"conf_mat": [[1, 2], [3, 4]], "x_labels": ("A", "B"), "metrics": ["x"]},
+            r"Unknown metrics \['x'\]",
+        ),
+        ({"y_true": [0, 1], "y_pred": [1, 1], "x_labels": ("0", "2")}, "must name"),
+        (
+            {"conf_mat": np.zeros((2, 2)), "x_labels": ("A", "B")},
+            "must contain samples",
+        ),
+        (
+            {"y_true": [0, 1], "y_pred": [1, 1], "y_labels": ("1", "0")},
+            "y_labels must equal",
+        ),
+        (
+            {"conf_mat": np.eye(2), "x_labels": ("A", "B"), "y_labels": ("A", "C")},
+            "metrics need x_labels and y_labels to name the same classes",
+        ),
+        (
+            {"y_true": [0, "a"], "y_pred": ["a", 0]},
+            r"mutually sortable \(one type\), got types \['int', 'str'\]",
+        ),
+    ],
+)
+def test_confusion_matrix_errors(kwargs: dict, match: str) -> None:
+    """Invalid inputs raise ValueError with a clear message."""
+    with pytest.raises(ValueError, match=match):
+        confusion_matrix(**kwargs)
 
 
 @pytest.mark.parametrize(
     ("y_true", "y_pred", "expected"),
     [
-        pytest.param(
-            ["Negative"] * 3 + ["Positive"] * 3,
-            ["Negative"] * 3 + ["Positive"] * 3,
-            [[0, 0.5], [0.5, 0]],
-            id="perfect",
-        ),
-        pytest.param(
-            ["Negative"] * 3 + ["Positive"] * 3,
-            ["Positive"] * 3 + ["Negative"] * 3,
-            [[0.5, 0], [0, 0.5]],
-            id="all-wrong",
-        ),
-        pytest.param(
-            ["Negative"] * 3 + ["Positive"] * 3,
-            ["Negative"] * 6,
-            [[0.5, 0], [0.5, 0]],
-            id="constant-negative",
-        ),
-        pytest.param(
-            ["Negative", "Positive"],
-            ["Negative", "Positive"],
-            [[0, 0.5], [0.5, 0]],
-            id="single-per-class",
-        ),
-        pytest.param(
-            ["Negative"] * 99 + ["Positive"],
-            ["Negative"] * 99 + ["Positive"],
-            [[0, 0.01], [0.99, 0]],
-            id="imbalanced",
-        ),
+        (["N"] * 3 + ["P"] * 3, ["N"] * 3 + ["P"] * 3, [[0.5, 0], [0, 0.5]]),
+        (["N"] * 3 + ["P"] * 3, ["P"] * 3 + ["N"] * 3, [[0, 0.5], [0.5, 0]]),
+        (["N"] * 3 + ["P"] * 3, ["N"] * 6, [[0.5, 0], [0.5, 0]]),
+        (["N"] * 99 + ["P"], ["N"] * 99 + ["P"], [[0.99, 0], [0, 0.01]]),
     ],
 )
-def test_confusion_matrix_edge_cases(
+def test_confusion_matrix_from_labels(
     y_true: list[str], y_pred: list[str], expected: list[list[float]]
 ) -> None:
-    """Preserve normalized cells and predicted-column orientation at edge cases."""
-    fig = confusion_matrix(y_true=y_true, y_pred=y_pred, normalize=True)
-    assert fig.data[0].z.tolist() == expected
+    """Raw labels give a normalized matrix with true rows and predicted columns."""
+    widget = confusion_matrix(y_true=y_true, y_pred=y_pred)
+    assert widget.values == expected
+    assert [item["key"] for item in widget.x_items] == ["N", "P"]
 
 
 def test_confusion_matrix_label_order() -> None:
-    """Test that confusion matrix maintains correct label order regardless of input
-    order.
-    """
-    # Test with labels in different orders
-    y_true = ["Positive", "Negative", "Positive", "Negative"]
-    y_pred = ["Positive", "Negative", "Negative", "Positive"]
-
-    # Case 1: Default label order (alphabetical)
-    fig1 = confusion_matrix(y_true=y_true, y_pred=y_pred)
-    labels1 = fig1.data[0].x
-
-    # Case 2: Explicit reverse label order
-    fig2 = confusion_matrix(
-        y_true=y_true,
-        y_pred=y_pred,
-        x_labels=("Positive", "Negative"),
-        y_labels=("Positive", "Negative"),
+    """Explicit x_labels reorder rows and columns of the matrix computed from labels."""
+    y_true = ["P", "N", "P", "N", "N"]
+    y_pred = ["P", "N", "N", "N", "P"]
+    default = confusion_matrix(y_true=y_true, y_pred=y_pred, normalize=False)
+    reordered = confusion_matrix(
+        y_true=y_true, y_pred=y_pred, x_labels=("P", "N"), normalize=False
     )
-    labels2 = fig2.data[0].x
-
-    # Values should be consistent regardless of label order
-    z1 = fig1.data[0].z
-    z2 = fig2.data[0].z
-    # Check that the matrices contain the same values (possibly in different positions)
-    assert {*z1.flatten()} == {*z2.flatten()}
-    # Check that labels are in the specified order
-    assert tuple(reversed(labels1)) == labels2 == ("Positive", "Negative")
+    assert default.values == [[2, 1], [1, 1]]  # rows/cols: N, P
+    assert reordered.values == [[1, 1], [1, 2]]  # rows/cols: P, N
+    assert [item["label"] for item in reordered.x_items] == ["P", "N"]
+    # integer classes match string labels
+    ints = confusion_matrix(y_true=[0, 1, 1], y_pred=[1, 1, 0], x_labels=("1", "0"))
+    assert [item["label"] for item in ints.x_items] == ["1", "0"]
 
 
-def make_annotation(count: int, total: int, row_pct: float, col_pct: float) -> str:
-    """Custom annotation function that shows all available metrics."""
-    return (
-        f"Count: {count}<br>"
-        f"Total: {total}<br>"
-        f"Global: {count / total:.1%}<br>"
-        f"Row: {row_pct:.1%}<br>"
-        f"Col: {col_pct:.1%}"
-    )
-
-
-def test_confusion_matrix_callable_annotations(sample_conf_mat: np.ndarray) -> None:
-    """Test that callable annotations work correctly."""
-    fig = confusion_matrix(
+def test_confusion_matrix_kwargs(sample_conf_mat: np.ndarray) -> None:
+    """Extra kwargs go to the widget, overriding defaults."""
+    widget = confusion_matrix(
         sample_conf_mat,
-        x_labels=("Negative", "Positive"),
-        y_labels=("Negative", "Positive"),
-        annotations=make_annotation,
-        normalize=True,
+        x_labels=("N", "P"),
+        color_scale="interpolateReds",
+        tile_size="80px",
     )
-
-    # Check that annotations contain all expected parts
-    # Filter out metrics annotations (like Acc=85.0%)
-    cell_annotations = [
-        anno.text
-        for anno in fig.layout.annotations
-        if anno.text
-        and not any(
-            metric in anno.text for metric in ["Acc=", "Prec=", "F1=", "MCC=", "Rec="]
-        )
-    ]
-
-    for anno in cell_annotations:
-        assert "Count:" in anno
-        assert "Total:" in anno
-        assert "Global:" in anno
-        assert "Row:" in anno
-        assert "Col:" in anno
-
-    # Verify values for a specific cell (e.g. TN = 50)
-    tn_anno = next(
-        anno.text
-        for anno in fig.layout.annotations
-        if anno.text and "Count: 50" in anno.text
-    )
-    assert "Total: 100" in tn_anno  # total should be sum of all cells (50+10+5+35)
-    assert "Global: 50.0%" in tn_anno  # 50/100
-    assert "Row: 83.3%" in tn_anno  # 50/(50+10)
-    assert "Col: 90.9%" in tn_anno  # 50/(50+5)
-
-
-def test_confusion_matrix_callable_annotations_multiclass(
-    multi_class_conf_mat: np.ndarray,
-) -> None:
-    """Test callable annotations with multi-class confusion matrices."""
-    fig = confusion_matrix(
-        multi_class_conf_mat,
-        x_labels=("A", "B", "C"),
-        annotations=make_annotation,
-        normalize=True,
-    )
-
-    cell_annotations = [
-        anno.text
-        for anno in fig.layout.annotations
-        if anno.text and "Acc=" not in anno.text
-    ]
-
-    # Check number of cells and required fields
-    assert len(cell_annotations) == 9  # 3x3 matrix
-    assert all(
-        all(field in anno for field in ["Count:", "Total:", "Global:", "Row:", "Col:"])
-        for anno in cell_annotations
-    )
-
-    # Verify values for first diagonal element (40)
-    diag_anno = next(anno for anno in cell_annotations if "Count: 40" in anno)
-    total = multi_class_conf_mat.sum()
-    assert all(
-        text in diag_anno
-        for text in [
-            f"Total: {total}",  # 150
-            "Global: 26.7%",  # 40/150
-            "Row: 80.0%",  # 40/(40+5+5)
-            "Col: 80.0%",  # 40/(40+4+6)
-        ]
-    )
-
-
-def test_confusion_matrix_orientation() -> None:
-    """Predicted classes render on the x-axis, true classes on y (regression:
-    np.rot90 transposed the matrix, contradicting docstring and hover text).
-    """
-    # 4 TN, 5 FP, 0 FN, 1 TP -- asymmetric so orientation is unambiguous
-    y_true, y_pred = ["Neg"] * 9 + ["Pos"], ["Neg"] * 4 + ["Pos"] * 6
-    fig = confusion_matrix(y_true=y_true, y_pred=y_pred, normalize=False)
-
-    heatmap = fig.data[0]
-    assert fig.layout.xaxis.title.text == "Predicted"
-    assert fig.layout.yaxis.title.text == "Actual"
-
-    x_idx = {label: idx for idx, label in enumerate(heatmap.x)}
-    y_idx = {label: idx for idx, label in enumerate(heatmap.y)}
-    z_vals = np.array(heatmap.z)  # cell (true=y, pred=x): TN=4 FP=5 FN=0 TP=1
-    assert z_vals[y_idx["Neg"], x_idx["Neg"]] == 4
-    assert z_vals[y_idx["Neg"], x_idx["Pos"]] == 5
-    assert z_vals[y_idx["Pos"], x_idx["Neg"]] == 0
-    assert z_vals[y_idx["Pos"], x_idx["Pos"]] == 1
-
-    # hover text must agree with cell position (5 of 10 samples, 5/9 row, 5/6 col)
-    fp_hover = np.array(heatmap.text)[y_idx["Neg"], x_idx["Pos"]]
-    assert fp_hover == (
-        "True: Neg<br>Pred: Pos<br>Count: 5<br>Percent: 50.0%<br>Row %: 55.6%<br>"
-        "Col %: 83.3%"
-    )
+    assert (widget.color_scale, widget.tile_size) == ("interpolateReds", "80px")
+    labels = np.array(["N", "P"])  # array labels must not hit truthiness checks
+    from_arrays = confusion_matrix(sample_conf_mat, x_labels=labels, y_labels=labels)
+    assert [item["key"] for item in from_arrays.y_items] == ["N", "P"]

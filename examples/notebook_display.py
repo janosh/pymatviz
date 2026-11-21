@@ -16,7 +16,7 @@ from monty.json import MontyDecoder
 from pymatgen.analysis.diffraction.xrd import XRDCalculator
 from pymatgen.core import Lattice, Structure
 
-import pymatviz as pmv
+import pymatviz  # noqa: F401  # importing in a kernel enables auto-display
 from pymatviz.phonons import PhononDBDoc
 from pymatviz.utils.testing import TEST_FILES, load_phonopy_nacl
 
@@ -105,32 +105,11 @@ structures["Hexagonal"]
 structures["Tetragonal"]
 
 
-# %% Manual control (optional) - New unified function
-nacl = Structure(Lattice.cubic(4.0), ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]])
-pmv.notebook_mode(on=False)  # Disable auto-rendering
-nacl  # Now displays as text
-
-
-# %%
-pmv.notebook_mode(on=True)  # Re-enable auto-rendering
-nacl  # Auto-renders again
-
-
 # %% ASE Atoms objects also auto-render
 bulk("Si", "diamond", a=5.43)
 
 
-# %% XRD patterns auto-render
-xrd_calc = XRDCalculator()
-nacl_xrd = xrd_calc.get_pattern(nacl)
+# %% XRD patterns auto-render (pymatviz.notebook_mode(on=False) turns it off)
+nacl = Structure(Lattice.cubic(4.0), ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+nacl_xrd = XRDCalculator().get_pattern(nacl)
 nacl_xrd  # Auto-renders as XRD pattern plot
-
-
-# %% Additional examples with the unified API
-pmv.notebook_mode(on=False)  # Disable auto-rendering
-nacl  # Now displays as text
-
-
-# %%
-pmv.notebook_mode(on=True)  # Re-enable auto-rendering
-nacl  # Auto-renders again

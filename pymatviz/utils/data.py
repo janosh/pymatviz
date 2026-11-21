@@ -79,8 +79,9 @@ def spg_num_to_from_symbol(spg: int | str) -> str | int:
 def html_tag(text: str, tag: str = "span", style: str = "", title: str = "") -> str:
     """Wrap text in a span with custom style.
 
-    Style defaults to decreased font size and weight e.g. to display units
-    in plotly labels and annotations.
+    Style defaults to decreased font size and weight e.g. to display units in
+    labels. MatterViz axis titles keep the text (and <sub>/<sup>) but drop other
+    tags' styling.
 
     Args:
         text (str): Text to wrap in span.

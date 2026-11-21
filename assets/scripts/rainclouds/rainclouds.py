@@ -6,8 +6,6 @@ import numpy as np
 import pymatviz as pmv
 
 
-pmv.set_plotly_template("pymatviz_white")
-
 # Set up the RNG with a seed for reproducibility
 rng = np.random.default_rng(seed=0)
 
@@ -22,16 +20,16 @@ data_bimodal = {
     ),
 }
 
-fig_bi = pmv.rainclouds(data_bimodal)
-fig_bi.layout.title.update(text="Raincloud Plot: Two Bimodal Distributions", x=0.5)
-fig_bi.layout.xaxis.title = "Value"
-fig_bi.layout.yaxis.title = "Distribution"
-fig_bi.layout.margin.t = 40
-fig_bi.show()
-pmv.io.save_and_compress_svg(fig_bi, "rainclouds-bimodal")
+widget_bi = pmv.rainclouds(
+    data_bimodal,
+    title="Raincloud Plot: Two Bimodal Distributions",
+    x_axis={"label": "Value"},
+)
+widget_bi.show()
+widget_bi.to_img(f"{pmv.ROOT}/assets/svg/rainclouds-bimodal.svg", width=700)
 
 
-# %% Example 2: Three trimodal distributions
+# %% Example 2: Three trimodal distributions as beeswarms
 data_trimodal = {
     "Distribution X": np.concatenate(
         [rng.normal(-3, 0.4, 300), rng.normal(0, 0.3, 400), rng.normal(3, 0.5, 300)]
@@ -44,10 +42,12 @@ data_trimodal = {
     ),
 }
 
-fig_tri = pmv.rainclouds(data_trimodal)
-fig_tri.layout.title.update(text="Raincloud Plot: Three Trimodal Distributions", x=0.5)
-fig_tri.layout.xaxis.title = "Value"
-fig_tri.layout.yaxis.title = "Distribution"
-fig_tri.layout.margin.t = 40
-fig_tri.show()
-pmv.io.save_and_compress_svg(fig_tri, "rainclouds-trimodal")
+widget_tri = pmv.rainclouds(
+    data_trimodal,
+    orientation="vertical",
+    points="swarm",
+    title="Raincloud Plot: Three Trimodal Distributions",
+    y_axis={"label": "Value"},
+)
+widget_tri.show()
+widget_tri.to_img(f"{pmv.ROOT}/assets/svg/rainclouds-trimodal.svg", width=700)

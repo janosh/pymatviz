@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
+import functools
 import itertools
+import math
+from collections import defaultdict
 from collections.abc import Hashable, Mapping, Sequence
 from numbers import Number
 from typing import TYPE_CHECKING, Any, Final
 
 import numpy as np
 import pandas as pd
-import scipy.stats
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 from pymatgen.core import Composition, IStructure, Structure
-from pymatgen.io.phonopy import get_pmg_structure
 
 from pymatviz.enums import ElemCountMode, Key
 from pymatviz.utils import df_ptable
@@ -90,10 +91,17 @@ def count_elements(
             attr = (
                 "element_composition" if count_mode == Key.composition else count_mode
             )
-            srs = pd.DataFrame(
-                getattr(Composition(formula, allow_negative=True), attr).as_dict()
-                for formula in srs
-            ).sum()  # sum up element occurrences
+            # collect each element's amounts and sum them with exactly rounded fsum
+            # (faster than summing a wide DataFrame of mostly-NaN dict rows)
+            elem_amounts: defaultdict[str, list[float]] = defaultdict(list)
+            for formula in srs:
+                comp = getattr(Composition(formula, allow_negative=True), attr)
+                for elem, amount in comp.as_dict().items():
+                    elem_amounts[elem].append(amount)
+            srs = pd.Series(
+                {elem: math.fsum(amounts) for elem, amounts in elem_amounts.items()},
+                dtype=float,
+            )
     else:
         raise ValueError(
             "Expected values to be map from element symbols to heatmap values or "
@@ -155,6 +163,36 @@ def count_elements(
     return srs
 
 
+def _system_and_formula(
+    item: str | Composition | Structure, group_by: FormulaGroupBy
+) -> tuple[tuple[str, ...], str]:
+    """Sorted element tuple and formula label of one count_formulas input item."""
+    if isinstance(item, str) and "-" in item:  # already a chemical system string
+        elems, formula = item.split("-"), item
+    else:
+        if isinstance(item, str):  # assume it's a formula string
+            try:
+                comp = Composition(item)
+            except (ValueError, KeyError) as exc:
+                raise ValueError(f"Invalid formula: {item}") from exc
+        elif isinstance(item, Structure | Composition):
+            comp = item.composition if isinstance(item, Structure) else item
+        else:
+            raise TypeError(
+                f"Expected str, Composition or Structure, got {type(item)} instead"
+            )
+        elems = comp.chemical_system.split("-")
+        if group_by == "reduced_formula":
+            formula = comp.reduced_formula
+        else:  # preserve original formula strings
+            formula = item if isinstance(item, str) else str(comp)
+
+    elems = sorted(set(elems))
+    if not all(elem in df_ptable.index for elem in elems):
+        raise ValueError(f"Invalid elements in system: {item}")
+    return tuple(elems), formula
+
+
 def count_formulas(
     data: Sequence[str | Composition | Structure],
     *,
@@ -204,42 +242,17 @@ def count_formulas(
         10: "denary",
     }
 
-    # Convert all inputs to chemical systems (sorted tuples of element strings)
-    systems: list[tuple[str, ...]] = []
-    formulas: list[str] = []  # only used if not grouping by chem_sys
-    for item in data:
-        if isinstance(item, str) and "-" in item:  # already a chemical system string
-            elems, formula = item.split("-"), item
-        else:
-            if isinstance(item, str):  # assume it's a formula string
-                try:
-                    comp = Composition(item)
-                except (ValueError, KeyError) as exc:
-                    raise ValueError(f"Invalid formula: {item}") from exc
-            elif isinstance(item, Structure | Composition):
-                comp = item.composition if isinstance(item, Structure) else item
-            else:
-                raise TypeError(
-                    f"Expected str, Composition or Structure, got {type(item)} instead"
-                )
-            elems = comp.chemical_system.split("-")
-            if group_by == "reduced_formula":
-                formula = comp.reduced_formula
-            else:  # preserve original formula strings
-                formula = item if isinstance(item, str) else str(comp)
-
-        # Remove duplicates and sort elements
-        elems = sorted(set(elems))
-        if not all(elem in df_ptable.index for elem in elems):
-            raise ValueError(f"Invalid elements in system: {item}")
-        systems += [tuple(elems)]
-        formulas += [formula]
-
-    # Create a DataFrame with arity and chemical system columns
-    df_systems = pd.DataFrame({"system": systems})
-    if group_by != Key.chem_sys:
-        df_systems[Key.formula] = formulas
-
+    # repeated strings, the common case for large datasets, are parsed once
+    parse_str = functools.cache(lambda item: _system_and_formula(item, group_by))
+    df_systems = pd.DataFrame(
+        [
+            parse_str(item)
+            if isinstance(item, str)
+            else _system_and_formula(item, group_by)
+            for item in data
+        ],
+        columns=pd.Index(["system", Key.formula]),
+    )
     df_systems[Key.arity] = df_systems["system"].map(len)
     df_systems["arity_name"] = df_systems[Key.arity].map(
         lambda n_elems: arity_names.get(n_elems, f"{n_elems}-component")
@@ -321,6 +334,8 @@ def normalize_structures(
         if isinstance(item, (IStructure, IMolecule)):
             return item
         if is_phonopy_atoms(item):  # convert PhonopyAtoms to pymatgen Structure
+            from pymatgen.io.phonopy import get_pmg_structure
+
             return get_pmg_structure(item)
         raise TypeError(
             "Item must be a pymatgen Structure, IStructure, Molecule, IMolecule, "
@@ -443,7 +458,7 @@ def bin_df_cols(
     n_bins: int | Sequence[int] = 100,
     bin_counts_col: str = "bin_counts",
     density_col: str = "",
-    verbose: bool = True,
+    verbose: bool = False,
 ) -> pd.DataFrame:
     """Bin columns of a DataFrame.
 
@@ -454,24 +469,17 @@ def bin_df_cols(
         n_bins (int): Number of bins to use. Defaults to 100.
         bin_counts_col (str): Column name for bin counts. Defaults to "bin_counts".
         density_col (str): Column name for density values. Defaults to "".
-        verbose (bool): If True, report df length reduction. Defaults to True.
+        verbose (bool): If True, print df length reduction. Defaults to False.
 
     Returns:
         pd.DataFrame: Binned DataFrame with original index name and values.
     """
-    # Create a copy of the input DataFrame to avoid modifying the original
-    df_in = df_in.copy()
-
     if isinstance(n_bins, int):
         # broadcast integer n_bins to all bin_by_cols
         n_bins = [n_bins] * len(bin_by_cols)
 
     if len(bin_by_cols) != len(n_bins):
         raise ValueError(f"{len(bin_by_cols)=} != {len(n_bins)=}")
-
-    cut_cols = [f"{col}_bins" for col in bin_by_cols]
-    for col, bins, cut_col in zip(bin_by_cols, n_bins, cut_cols, strict=True):
-        df_in[cut_col] = pd.cut(df_in[col].values, bins=bins)
 
     # Preserve the original index
     orig_index_name = df_in.index.name or "index"
@@ -480,7 +488,15 @@ def bin_df_cols(
     if orig_index_name not in df_in:
         df_in = df_in.reset_index()
 
-    group = df_in.groupby(by=[*cut_cols, *group_by_cols], observed=True)
+    # Bins are separate group keys rather than added columns, so df_in needn't be
+    # copied to stay unmodified
+    bin_keys = [
+        pd.Series(pd.cut(df_in[col].values, bins=bins), index=df_in.index).rename(
+            f"{col}_bins"
+        )
+        for col, bins in zip(bin_by_cols, n_bins, strict=True)
+    ]
+    group = df_in.groupby(by=[*bin_keys, *group_by_cols], observed=True)
 
     df_bin = group.first().dropna()
     df_bin[bin_counts_col] = group.size()
@@ -495,10 +511,12 @@ def bin_df_cols(
     if density_col:
         # compute kernel density estimate for each bin
         values = df_in[bin_by_cols].dropna().T
-        gaussian_kde = scipy.stats.gaussian_kde(values.astype(float))
+        import scipy.stats
+
+        kde = scipy.stats.gaussian_kde(values.astype(float))
 
         xy_binned = df_bin[bin_by_cols].T
-        density = gaussian_kde(xy_binned.astype(float))
+        density = kde(xy_binned.astype(float))
         # scale density to sum to the number of data points (values is transposed,
         # so its columns are the data points)
         df_bin[density_col] = density / density.sum() * values.shape[1]
@@ -557,7 +575,9 @@ def normalize_spacegroups(
     if len(data) == 0:
         raise ValueError("Cannot normalize empty spacegroup data")
 
-    result = pd.Series(data)
+    # infer_objects lets object-dtype numbers (e.g. [225.5, 2]) reach the range and
+    # integrality check below instead of being truncated by a later int cast
+    result = pd.Series(data).infer_objects()
     if result.isna().any():
         raise ValueError("Space group data must not contain missing values")
     first_item = result.iloc[0]
@@ -576,12 +596,23 @@ def normalize_spacegroups(
 
     # Convert Hermann-Mauguin symbols to space group numbers
     if isinstance(first_item, str):
-        from pymatgen.symmetry.groups import SpaceGroup
+        from pymatviz.utils.data import hm_symbol_to_spg_num_map
 
-        try:
-            return result.map(lambda symbol: SpaceGroup(symbol).int_number)
-        except ValueError as exc:
-            raise ValueError(f"Invalid Hermann-Mauguin symbol: {exc}") from exc
+        numbers = result.map(hm_symbol_to_spg_num_map)
+        if (missing := numbers.isna()).any():
+            # pymatgen parses looser spellings (e.g. "P2_1/c", "R-3m:H") the
+            # moyopy-derived lookup table lacks, but is slow, so only parse unique
+            # misses
+            from pymatgen.symmetry.groups import SpaceGroup
+
+            parsed: dict[str, int] = {}
+            for symbol in result[missing].unique():
+                try:
+                    parsed[symbol] = SpaceGroup(symbol).int_number
+                except ValueError as exc:
+                    raise ValueError(f"Invalid Hermann-Mauguin symbol: {exc}") from exc
+            numbers = numbers.fillna(result.map(parsed))
+        return numbers.astype(int)
 
     return result
 
@@ -640,23 +671,25 @@ def sankey_flow_data(
     cols: list[str],
     *,
     labels_with_counts: bool | str = True,
-) -> dict[str, Any]:
-    """Extract flow data from DataFrame columns for Sankey diagrams.
+) -> dict[str, list[dict[str, Any]]]:
+    """Count (source, target) value pairs in two DataFrame columns as Sankey data.
+
+    Only rows with values in both columns form links. Node counts (and percentage
+    denominators) come from those same rows, so each node's label matches the total
+    flow through it.
 
     Args:
         df (pd.DataFrame): DataFrame containing source and target columns.
         cols (list[str]): 2-element list of [source_col, target_col] column names.
         labels_with_counts (bool | "percent"): Whether to append counts to labels.
-            If "percent", shows percentages instead of counts. Defaults to True.
+            If "percent", shows percentages of linked rows instead. Defaults to True.
 
     Returns:
-        dict with keys:
-            - "source": list of source node values
-            - "target": list of target node values
-            - "value": list of flow values (counts)
-            - "labels": list of node labels (with optional counts)
-            - "source_indices": list of source node indices for links
-            - "target_indices": list of target node indices for links
+        dict[str, list[dict]]: SankeyWidget data with keys
+            - "nodes": ``{"id", "label", "metadata": {"column"}}`` per distinct value,
+              source-column nodes first. A value in both columns gets one node per
+              side, so no link is a self-loop.
+            - "links": ``{"source", "target", "value"}`` with node ids and row counts.
 
     Raises:
         ValueError: If cols doesn't have exactly 2 elements.
@@ -666,31 +699,38 @@ def sankey_flow_data(
             f"{cols=} should specify exactly two columns: (source_col, target_col)"
         )
 
-    df_flows = df[list(cols)].value_counts().reset_index()
-    # per-column tolist, to_numpy would coerce mixed int/float columns to one dtype
-    source, target, value = (df_flows[col].tolist() for col in df_flows)
+    # value_counts drops rows with NaN in either column. Its index levels keep each
+    # column's dtype (to_numpy would coerce mixed int/float columns to one), and
+    # unlike reset_index, they can't clash with a column named "count".
+    flows = df[list(cols)].value_counts()
+    source, target = (flows.index.get_level_values(lvl).tolist() for lvl in (0, 1))
+    value = flows.tolist()
 
-    # Each column is one side of the diagram, so a value in both gets two nodes
-    source_vals = list(dict.fromkeys(source))  # preserves order
-    target_vals = list(dict.fromkeys(target))
-    source_idx = {val: idx for idx, val in enumerate(source_vals)}
-    target_idx = {val: idx + len(source_vals) for idx, val in enumerate(target_vals)}
+    # Each column is one side of the diagram, so a value in both gets two nodes.
+    # Dicts keep first-seen order and each column's own value types.
+    side_counts: list[dict[Any, int]] = [{}, {}]
+    for src_val, tgt_val, count in zip(source, target, value, strict=True):
+        for counts, val in zip(side_counts, (src_val, tgt_val), strict=True):
+            counts[val] = counts.get(val, 0) + count
 
-    labels = [*source_vals, *target_vals]
-    if labels_with_counts:
-        as_percent = labels_with_counts == "percent"
-        fmt = ".1%" if as_percent else "d"
-        source_counts = df[cols[0]].value_counts(normalize=as_percent).to_dict()
-        target_counts = df[cols[1]].value_counts(normalize=as_percent).to_dict()
-        labels = [f"{val}: {source_counts[val]:{fmt}}" for val in source_vals] + [
-            f"{val}: {target_counts[val]:{fmt}}" for val in target_vals
-        ]
+    as_percent = labels_with_counts == "percent"
+    n_linked = sum(value)
+    nodes: list[dict[str, Any]] = []
+    node_ids: list[dict[Any, int]] = [{}, {}]
+    for col, counts, ids in zip(cols, side_counts, node_ids, strict=True):
+        for val, count in counts.items():
+            label = str(val)
+            if as_percent:
+                label += f": {count / n_linked:.1%}"
+            elif labels_with_counts:
+                label += f": {count:d}"
+            ids[val] = len(nodes)
+            nodes.append(
+                {"id": len(nodes), "label": label, "metadata": {"column": col}}
+            )
 
-    return {
-        "source": source,
-        "target": target,
-        "value": value,
-        "labels": labels,
-        "source_indices": [source_idx[val] for val in source],
-        "target_indices": [target_idx[val] for val in target],
-    }
+    links = [
+        {"source": node_ids[0][src_val], "target": node_ids[1][tgt_val], "value": count}
+        for src_val, tgt_val, count in zip(source, target, value, strict=True)
+    ]
+    return {"nodes": nodes, "links": links}

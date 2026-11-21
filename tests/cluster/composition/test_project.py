@@ -182,7 +182,7 @@ def test_project_vectors_random_state(sample_data: np.ndarray) -> None:
     [
         (100, {"method": "invalid_method"}, "Unknown projection method="),
         (100, {"n_components": 1}, "n_components must be at least 2"),
-        (1, {"n_components": 2}, "Not enough samples"),
+        (1, {"n_components": 2}, "Need at least n_components=2 samples, got 1"),
         (
             100,
             {"method": ProjectionMethod.tsne, "n_components": 4},

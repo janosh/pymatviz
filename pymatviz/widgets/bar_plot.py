@@ -15,6 +15,18 @@ from pymatviz.widgets._traits import (
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
+def bar_axis_defaults(
+    kwargs: dict[str, Any], *, category: dict[str, Any], value: dict[str, Any]
+) -> dict[str, dict[str, Any]]:
+    """Category and value axis defaults keyed by the axis each lands on: the category
+    axis is x for vertical bars and y for ``orientation="horizontal"`` in ``kwargs``.
+    Merge the user's kwargs over them with ``with_defaults``.
+    """
+    horizontal = str(kwargs.get("orientation")).lower() == "horizontal"
+    cat_key, val_key = ("y_axis", "x_axis") if horizontal else ("x_axis", "y_axis")
+    return {cat_key: category, val_key: value}
+
+
 class BarPlotWidget(CartesianPlotTraits, MatterVizWidget):
     """MatterViz widget wrapper for grouped/stacked/overlay bar plots."""
 
@@ -28,6 +40,16 @@ class BarPlotWidget(CartesianPlotTraits, MatterVizWidget):
     line = optional_trait(tl.Dict)  # style of line-rendered series
     color_scale = color_scale_trait()
     size_scale = optional_trait(tl.Dict)  # line-marker size scaling
+
+    @tl.validate("series")
+    def _validate_series(self, proposal: dict[str, Any]) -> list[dict[str, Any]] | None:
+        """Normalize series on init and reassignment (arrays to lists, reject
+        non-finite values) before syncing.
+        """
+        try:
+            return normalize_plot_series(proposal["value"], component_name="BarPlot")
+        except (TypeError, ValueError) as exc:
+            raise tl.TraitError(str(exc)) from exc
 
     def __init__(
         self,
@@ -44,8 +66,4 @@ class BarPlotWidget(CartesianPlotTraits, MatterVizWidget):
         """
         json_keys = (*self._JSON_KWARGS, "bar", "line", "color_scale", "size_scale")
         normalize_json_kwargs(kwargs, json_keys, "BarPlot")
-        super().__init__(
-            widget_type="bar_plot",
-            series=normalize_plot_series(series, component_name="BarPlot"),
-            **kwargs,
-        )
+        super().__init__(widget_type="bar_plot", series=series, **kwargs)

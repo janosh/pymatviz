@@ -34,7 +34,7 @@ class BandStructureWidget(PlotControlsTraits, MatterVizWidget):
     """
 
     # one band structure, or {label: band structure} to overlay several
-    band_structs = tl.Dict(allow_none=True).tag(sync=True)
+    band_structs = optional_trait(tl.Dict)
 
     # Display options
     show_legend = optional_trait(tl.Bool)

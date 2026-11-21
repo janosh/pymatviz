@@ -38,22 +38,16 @@ df_boltz.describe()
 
 
 # %%
-fig = pmv.ptable_heatmap(df_boltz[Key.formula], log=True)
-fig.layout.title.update(text="Elements in BoltzTraP MP dataset")
-fig.show()
-# pmv.save_fig(fig, "boltztrap_mp-ptable-heatmap.pdf")
+title = "Elements in BoltzTraP MP dataset"
+pmv.ptable_heatmap(df_boltz[Key.formula], log=True, color_bar={"title": title}).show()
 
 
 # %%
-fig = pmv.ptable_heatmap(
-    pmv.count_elements(df_boltz.sort_values("pf_n").tail(100)[Key.formula]),
-    colorbar=dict(tickformat=".1~s"),
+widget = pmv.ptable_heatmap(
+    df_boltz.sort_values("pf_n").tail(100)[Key.formula],
+    color_bar={"title": "Elements of top 100 n-type power factors"},
 )
-fig.layout.title.update(
-    text="Elements of top 100 n-type powerfactors in BoltzTraP MP dataset"
-)
-fig.show()
-# pmv.save_fig(fig, "boltztrap_mp-ptable-heatmap-top-100-nPF.pdf")
+widget.show()
 
 
 # %%

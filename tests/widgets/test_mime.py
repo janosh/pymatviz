@@ -98,7 +98,9 @@ def test_auto_display_registry(
     class_name: str, expected_widget: type | None, expected_param: str
 ) -> None:
     """_AUTO_DISPLAY maps pymatgen classes to correct widgets."""
-    from pymatviz.widgets.mime import _AUTO_DISPLAY
+    from pymatviz.widgets.mime import _AUTO_DISPLAY, register_matterviz_widgets
+
+    register_matterviz_widgets()
 
     registered = {
         cls.__name__: (widget, param) for cls, (widget, param) in _AUTO_DISPLAY.items()
@@ -112,7 +114,14 @@ def test_auto_display_registry(
 
 def test_marimo_display_registered() -> None:
     """Registered classes expose callable _display_ that creates widgets."""
-    from pymatviz.widgets.mime import _AUTO_DISPLAY, create_widget
+    from pymatviz.widgets.mime import (
+        _AUTO_DISPLAY,
+        create_widget,
+        register_matterviz_widgets,
+    )
+
+    register_matterviz_widgets()
+    assert _AUTO_DISPLAY
 
     for cls in _AUTO_DISPLAY:
         display_method = getattr(cls, "_display_", None)

@@ -17,11 +17,11 @@ from typing import Any
 import numpy as np
 
 from pymatviz.utils.data import element_symbols
-from pymatviz.widgets._binary import is_binary_envelope
+from pymatviz.widgets._binary import is_binary_envelope, series_column
 
 
 def _minmax(values: Any) -> list[float] | None:
-    """Find finite extrema in nested lists/tuples/mappings, ignoring bools."""
+    """Find finite extrema in nested lists/tuples/mappings/arrays, ignoring bools."""
     minimum, maximum = math.inf, -math.inf
     stack = [values]
     while stack:
@@ -36,6 +36,10 @@ def _minmax(values: Any) -> list[float] | None:
             if math.isfinite(num):
                 minimum = min(minimum, num)
                 maximum = max(maximum, num)
+        elif isinstance(item, np.ndarray) and item.dtype.kind in "iuf":
+            if (finite := item[np.isfinite(item)]).size:
+                minimum = min(minimum, float(finite.min()))
+                maximum = max(maximum, float(finite.max()))
         elif isinstance(item, (list, tuple)):
             stack.extend(item)
         elif isinstance(item, Mapping):
@@ -103,10 +107,11 @@ def _xy_facts(
     """
     series = _series_list(widget_data)
     samples = {
-        axis: [s.get("values" if histogram else axis) for s in series] for axis in axes
+        axis: [series_column(s, "values" if histogram else axis) for s in series]
+        for axis in axes
     }
     facts: dict[str, Any] = {"n_series": len(series)}
-    facts["n_points"] = sum(len(vals or []) for vals in samples["x"])
+    facts["n_points"] = sum(0 if vals is None else len(vals) for vals in samples["x"])
     if labels := [s.get("label") for s in series if s.get("label")]:
         facts["series_labels"] = labels
     for axis, axis_samples in samples.items():
@@ -180,11 +185,16 @@ def _describe_trajectory(data: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _describe_periodic_table(data: Mapping[str, Any]) -> dict[str, Any]:
-    """Element count and value range for a periodic-table heatmap."""
+    """Element count and value range for a periodic-table heatmap, plus the number
+    of elements with tile plots.
+    """
+    facts: dict[str, Any] = {"n_elements": 0}
+    if tile_plots := data.get("tile_plots"):
+        facts["n_tile_plots"] = len(tile_plots)
     values = data.get("heatmap_values")
     if not isinstance(values, (Mapping, list, tuple)):
-        return {"n_elements": 0}
-    facts: dict[str, Any] = {"n_elements": len(values)}
+        return facts
+    facts["n_elements"] = len(values)
     if (value_range := _minmax(values)) is not None:
         facts["value_range"] = value_range
     return facts
@@ -211,20 +221,56 @@ def _describe_composition(data: Mapping[str, Any]) -> dict[str, Any]:
     return _composition_facts(amounts) if amounts else {}
 
 
+def _payload_sequences(
+    payloads: Any, value_key: str, *, spin_keyed: bool = False
+) -> list[list[Any]] | None:
+    """The ``value_key`` lists of one payload or of a ``{label: payload}`` mapping
+    (None if neither). With ``spin_keyed``, a value may also be a ``{spin: list}``
+    mapping (pymatgen band structures key ``bands`` by spin), contributing each list.
+    """
+    if not isinstance(payloads, Mapping):
+        return None
+
+    def lists_of(value: Any) -> list[list[Any]] | None:
+        """A value's lists: itself if a list, its spin channels' lists, else None."""
+        if isinstance(value, (list, tuple)):
+            return [value]
+        if (
+            spin_keyed
+            and isinstance(value, Mapping)
+            and value
+            and all(isinstance(channel, (list, tuple)) for channel in value.values())
+        ):
+            return list(value.values())
+        return None
+
+    if (single := lists_of(payloads.get(value_key))) is not None:
+        return single
+    sequences = [
+        seq
+        for payload in payloads.values()
+        if isinstance(payload, Mapping)
+        and (seqs := lists_of(payload.get(value_key))) is not None
+        for seq in seqs
+    ]
+    return sequences or None
+
+
 def _describe_xrd(data: Mapping[str, Any]) -> dict[str, Any]:
-    """Peak count and 2-theta range for an XRD pattern."""
-    patterns = data.get("patterns")
-    two_theta = patterns.get("x") if isinstance(patterns, Mapping) else None
-    facts: dict[str, Any] = {"n_peaks": len(two_theta or [])}
-    if (two_theta_range := _minmax(two_theta)) is not None:
+    """Peak count and 2-theta range for one XRD pattern or ``{label: pattern}``
+    overlays (peaks summed over patterns).
+    """
+    two_thetas = _payload_sequences(data.get("patterns"), "x") or []
+    facts: dict[str, Any] = {"n_peaks": sum(map(len, two_thetas))}
+    if (two_theta_range := _minmax(two_thetas)) is not None:
         facts["two_theta_range"] = two_theta_range
     return facts
 
 
 def _describe_spacegroup_bar(data: Mapping[str, Any]) -> dict[str, Any]:
     """Total and unique space-group entry counts."""
-    values = data.get("data") or []
-    return {"n_entries": len(values), "n_unique": len(set(values))}
+    counts = data.get("data") or {}
+    return {"n_entries": sum(counts.values()), "n_unique": len(counts)}
 
 
 def _describe_spectral(
@@ -234,21 +280,12 @@ def _describe_spectral(
     value_key: str,
     count_key: str,
     range_key: str | None = None,
+    spin_keyed: bool = False,
 ) -> dict[str, Any]:
-    """Count (and optionally range) a field from one payload or named payloads."""
-    payloads = data.get(data_key)
-    if not isinstance(payloads, Mapping):
-        return {}
-    sequences = [
-        payload[value_key]
-        for payload in (
-            [payloads]
-            if isinstance(payloads.get(value_key), (list, tuple))
-            else payloads.values()
-        )
-        if isinstance(payload, Mapping)
-        and isinstance(payload.get(value_key), (list, tuple))
-    ]
+    """Count (and optionally range) a field from one payload or named payloads,
+    summing spin channels of ``{spin: list}`` values when ``spin_keyed``.
+    """
+    sequences = _payload_sequences(data.get(data_key), value_key, spin_keyed=spin_keyed)
     if not sequences:
         return {}
     facts: dict[str, Any] = {count_key: sum(map(len, sequences))}
@@ -269,6 +306,7 @@ _describe_band_structure = functools.partial(
     data_key="band_structs",
     value_key="bands",
     count_key="n_bands",
+    spin_keyed=True,  # n_bands sums band lines over spin channels
 )
 
 
@@ -351,7 +389,7 @@ _PRIMARY_DATA: dict[str, str | tuple[str, ...]] = {
     "scatter_plot_3d": "series",
     "structure": "structure",
     "trajectory": "trajectory",
-    "periodic_table": "heatmap_values",
+    "periodic_table": ("heatmap_values", "tile_plots"),
     "heatmap_matrix": "values",
     "convex_hull": "entries",
     "chem_pot_diagram": "entries",
@@ -398,6 +436,7 @@ def short_summary(report: Mapping[str, Any]) -> str:
         ("n_series", "series"),
         ("n_frames", "frames"),
         ("n_entries", "entries"),
+        ("n_tile_plots", "tile plots"),
         ("n_elements", "elements"),
         ("n_nodes", "nodes"),
     ):
@@ -431,7 +470,11 @@ def check_inputs(widget_data: Mapping[str, Any]) -> list[str]:
         # Histograms bin `values`; the other plots need `x`.
         hist = widget_type == "histogram"
         series = _series_list(widget_data)
-        if series and not any(s.get("values" if hist else "x") for s in series):
+        if series and not any(
+            (col := series_column(s, "values" if hist else "x")) is not None
+            and len(col)
+            for s in series
+        ):
             what = "samples ('values')" if hist else "'x'"
             warnings.append(
                 f"{widget_type}: all series have empty {what}; nothing to plot"

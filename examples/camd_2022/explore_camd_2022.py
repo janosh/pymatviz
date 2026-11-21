@@ -24,9 +24,6 @@ import pymatviz as pmv
 from pymatviz.enums import Key
 
 
-pmv.set_plotly_template("pymatviz_white")
-
-
 # %% Download data (if needed)
 if os.path.isfile("camd-2022-wo-features.csv.bz2"):
     print("Loading local data...")
@@ -49,18 +46,21 @@ df_camd.hist(bins=50)
 df_camd[Key.structure] = df_camd[Key.structure].map(Structure.from_dict)
 df_camd[Key.formula] = [struct.reduced_formula for struct in df_camd[Key.structure]]
 elem_counts = pmv.count_elements(df_camd[Key.formula])
-fig = pmv.ptable_heatmap(elem_counts, log=True)
-fig.layout.title.update(text="<b>Elements in CAMD 2022 dataset</b>")
-fig.show()
-# pmv.save_fig(fig, "camd-2022-ptable-heatmap.pdf")
+title = "Elements in CAMD 2022 dataset"
+pmv.ptable_heatmap(elem_counts, log=True, color_bar={"title": title}).show()
 
 
 # %%
-fig = df_camd.data_source.value_counts().plot.bar(backend="plotly")
-fig.show()
+source_counts = df_camd.data_source.value_counts()
+widget = pmv.BarPlotWidget(
+    series=[{"x": list(map(str, source_counts.index)), "y": source_counts.to_numpy()}],
+    x_axis={"label": "Data source"},
+    y_axis={"label": "Count"},
+)
+widget.show()
 
 
 # %%
-fig = pmv.spacegroup_sunburst(df_camd.space_group, show_counts="percent")
-pmv.save_fig(fig, "camd-2022-spacegroup-sunburst.pdf")
-fig.show()
+widget = pmv.spacegroup_sunburst(df_camd.space_group, label_text="label+percent")
+widget.to_img("camd-2022-spacegroup-sunburst.pdf")
+widget.show()

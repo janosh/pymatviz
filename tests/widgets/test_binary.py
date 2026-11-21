@@ -1,4 +1,4 @@
-"""Tests for the matterviz-binary-v1 trajectory and volume encoders."""
+"""Tests for the matterviz-binary-v1 trajectory, volume and plot-series encoders."""
 
 from __future__ import annotations
 
@@ -10,9 +10,22 @@ from typing import Any
 
 import numpy as np
 import pytest
+import traitlets as tl
 
-from pymatviz import StructureWidget, TrajectoryWidget
-from pymatviz.widgets._binary import BINARY_FORMAT, binary_array, volume_envelope
+from pymatviz import (
+    BinnedScatterPlotWidget,
+    BoxPlotWidget,
+    ScatterPlot3DWidget,
+    ScatterPlotWidget,
+    StructureWidget,
+    TrajectoryWidget,
+)
+from pymatviz.widgets._binary import (
+    BINARY_FORMAT,
+    BINARY_SERIES_MIN_POINTS,
+    binary_array,
+    volume_envelope,
+)
 from pymatviz.widgets._headless import _REVIVE_BUFFERS_JS, _widget_data_json
 from tests.widgets.conftest import decode_envelope
 
@@ -74,25 +87,131 @@ def test_envelope_kind_mismatch_raises() -> None:
         StructureWidget(volumetric_data=[volume | {"kind": "trajectory"}])
 
 
+_N_BIG = BINARY_SERIES_MIN_POINTS
+
+
+@pytest.mark.parametrize("widget_cls", [ScatterPlotWidget, BinnedScatterPlotWidget])
+def test_large_plot_series_sync_as_binary(widget_cls: type) -> None:
+    """Large numeric series sync as plot-series envelopes, others as JSON."""
+    x_vals = np.arange(_N_BIG, dtype=np.int32)
+    colors = np.full(_N_BIG, np.nan)
+    big = {"x": x_vals, "y": x_vals * 0.5, "color_values": colors, "label": "big"}
+    small = {"x": [1, 2], "y": [3.0, 4.0]}
+    categorical = {"x": ["a"] * _N_BIG, "y": np.ones(_N_BIG)}
+    widget = widget_cls(series=[big, small, categorical])
+    envelope, small_out, cat_out = widget.series
+    assert envelope["format"] == BINARY_FORMAT
+    assert envelope["kind"] == "plot-series"
+    assert envelope["label"] == "big"
+    arrays = decode_envelope(envelope)
+    assert set(arrays) == {"x", "y", "color_values"}
+    assert all(arr.dtype == np.float64 for arr in arrays.values())
+    np.testing.assert_array_equal(arrays["y"], x_vals * 0.5)
+    assert np.isnan(arrays["color_values"]).all()  # gaps allowed off x/y
+    assert small_out == small
+    assert cat_out["x"][0] == "a"
+    widget.series = [envelope]  # ready envelopes pass through on reassignment
+    assert widget.series[0] is envelope
+    widget.series = [small]
+    assert widget.series == [small]
+
+
+def test_large_box_samples_sync_as_binary() -> None:
+    """Box/raincloud samples (y only) of large series sync as binary arrays."""
+    samples = np.random.default_rng(seed=0).normal(size=_N_BIG)
+    (envelope, small) = BoxPlotWidget(
+        series=[{"y": samples, "label": "a"}, {"y": [1, 2]}]
+    ).series
+    assert envelope["kind"] == "plot-series"
+    assert envelope["label"] == "a"
+    np.testing.assert_array_equal(decode_envelope(envelope)["y"], samples)
+    assert small == {"y": [1, 2]}
+
+
+def test_large_scatter_plot_3d_series_sync_as_binary() -> None:
+    """Large 3D series sync as binary envelopes with a finite z column."""
+    xs = np.arange(_N_BIG, dtype=float)
+    widget = ScatterPlot3DWidget(
+        series=[{"x": xs, "y": -xs, "z": 2 * xs, "label": "big"}]
+    )
+    (envelope,) = widget.series
+    assert envelope["kind"] == "plot-series"
+    assert envelope["label"] == "big"
+    arrays = decode_envelope(envelope)
+    assert set(arrays) == {"x", "y", "z"}
+    np.testing.assert_array_equal(arrays["z"], 2 * xs)
+    assert widget.describe()["z_range"] == [0, 2 * (_N_BIG - 1)]
+    widget.series = [envelope]  # ready envelopes pass through
+    assert widget.series[0] is envelope
+    with pytest.raises(tl.TraitError, match=r"series\[0\]\.z has non-finite"):
+        widget.series = [{"x": xs, "y": xs, "z": np.r_[np.nan, xs[1:]]}]
+    assert widget.series[0] is envelope
+
+
+def test_plot_series_metadata_frame() -> None:
+    """A per-point metadata DataFrame becomes metadata.<col> arrays on binary series
+    and per-point dicts (non-finite as None) on JSON series.
+    """
+    import pandas as pd
+
+    xs = np.arange(_N_BIG, dtype=float)
+    meta = pd.DataFrame({"threshold": np.r_[np.inf, xs[1:]], "f1": np.nan})
+    (envelope,) = ScatterPlotWidget(
+        series=[{"x": xs, "y": xs, "metadata": meta}]
+    ).series
+    assert "metadata" not in envelope
+    arrays = decode_envelope(envelope)
+    np.testing.assert_array_equal(arrays["metadata.threshold"], meta["threshold"])
+    assert np.isnan(arrays["metadata.f1"]).all()
+
+    small = {"x": [1, 2], "y": [3, 4]}
+    frame = pd.DataFrame(
+        {
+            "threshold": [np.inf, 0.5],
+            "name": ["a", None],
+            "measurement": pd.Series([-np.inf, "unavailable"], dtype=object),
+        }
+    )
+    (json_series,) = ScatterPlotWidget(series=[small | {"metadata": frame}]).series
+    assert json_series["metadata"] == [
+        {"threshold": None, "name": "a", "measurement": None},
+        {"threshold": 0.5, "name": None, "measurement": "unavailable"},
+    ]
+    # non-numeric columns keep a large series' metadata as JSON records
+    labels = pd.DataFrame({"name": ["a"] * _N_BIG})
+    (mixed,) = ScatterPlotWidget(series=[{"x": xs, "y": xs, "metadata": labels}]).series
+    assert mixed["metadata"][0] == {"name": "a"}
+    assert "x" in mixed["arrays"]
+    dupes = pd.DataFrame([[1.0, 2.0]] * _N_BIG, columns=pd.Index(["a", "a"]))
+    for points, frame, match in [
+        (small, pd.DataFrame({"a": [1, 2, 3]}), r"one row per point \(2\), got 3"),
+        ({"x": xs, "y": xs}, pd.DataFrame({"a": [1.0]}), r"\(10000\), got 1"),
+        ({"x": xs, "y": xs}, dupes, r"uniquely named columns, got \['a', 'a'\]"),
+        # 1 and "1" would both sync as metadata.1
+        ({"x": xs, "y": xs}, pd.DataFrame({1: xs, "1": xs}), r"got \[1, '1'\]"),
+        (small, pd.DataFrame(index=range(2)), r"uniquely named columns, got \[\]"),
+    ]:
+        with pytest.raises(tl.TraitError, match=match):
+            ScatterPlotWidget(series=[points | {"metadata": frame}])
+
+
 @pytest.mark.parametrize(
-    ("widget_type", "kwargs"),
+    ("series", "match"),
     [
         (
-            TrajectoryWidget,
-            {"trajectory": {"format": BINARY_FORMAT, "kind": "trajectory"}},
+            {"x": np.arange(_N_BIG), "y": np.arange(_N_BIG + 1)},
+            r"share one length, got \{'x': 10000, 'y': 10001\}",
         ),
-        (StructureWidget, {"volumetric_data": [{"id": "mask", "grid": [[[True]]]}]}),
+        (
+            {"x": np.arange(_N_BIG), "y": np.r_[np.nan, np.ones(_N_BIG - 1)]},
+            r"series\[0\]\.y has non-finite value",
+        ),
     ],
 )
-def test_pinned_bundle_needs_decoder(
-    widget_type: type, kwargs: dict[str, Any], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """An incompatible pinned bundle raises before any bytes sync."""
-    from pymatviz.widgets import matterviz
-
-    monkeypatch.setattr(matterviz, "fetch_widget_asset", lambda *_args: "old bundle")
-    with pytest.raises(ValueError, match=r"0\.8\.0.*lacks matterviz-binary-v1"):
-        widget_type(version_override="0.8.0", **kwargs)
+def test_invalid_large_plot_series(series: dict[str, Any], match: str) -> None:
+    """Large series with ragged columns or non-finite x/y raise on assignment."""
+    with pytest.raises(tl.TraitError, match=match):
+        ScatterPlotWidget(series=[series])
 
 
 def _fallback_cases() -> list[Any]:
@@ -326,6 +445,14 @@ def test_volume_envelope_round_trip() -> None:
     assert widget.volumetric_data[0]["extra"] == "x"
 
 
+def _run_node(script: str) -> str:
+    """Run a script in node via stdin (a large series' base64 overflows argv)."""
+    cmd = ["node", "-"]
+    return subprocess.run(  # noqa: S603
+        cmd, input=script, capture_output=True, text=True, check=True
+    ).stdout
+
+
 @pytest.mark.skipif(shutil.which("node") is None, reason="needs node")
 def test_headless_json_embeds_buffers_as_base64() -> None:
     """Headless exports revive only binary array data as DataViews."""
@@ -336,8 +463,15 @@ def test_headless_json_embeds_buffers_as_base64() -> None:
     ).trajectory
     marker = {"__matterviz_buffer_b64__": "ordinary metadata"}
     volume = volume_envelope(_POSITIONS, id="grid")
+    xs = np.arange(_N_BIG)
+    (series,) = ScatterPlotWidget(series=[{"x": xs, "y": xs}]).series
     data_json = _widget_data_json(
-        {"trajectory": payload, "volumetric_data": [volume], "metadata": marker}
+        {
+            "trajectory": payload,
+            "volumetric_data": [volume],
+            "series": [series, {"x": [1], "y": [2]}],
+            "metadata": marker,
+        }
     )
     encoded = json.loads(data_json)["trajectory"]["arrays"]["positions"]["data"]
     assert base64.b64decode(encoded) == bytes(payload["arrays"]["positions"]["data"])
@@ -347,15 +481,16 @@ def test_headless_json_embeds_buffers_as_base64() -> None:
 const {{ data }} = widget_data.trajectory.arrays.positions;
 console.log(JSON.stringify([data instanceof DataView,
   widget_data.volumetric_data[0].arrays.values.data instanceof DataView,
+  widget_data.series[0].arrays.y.data instanceof DataView,
   widget_data.metadata, Array.from(new Float32Array(data.buffer))]));"""
-    result = subprocess.run(  # noqa: S603
-        ["node", "-e", script],  # noqa: S607
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    traj_view, vol_view, metadata, floats = json.loads(result.stdout)
+    traj_view, vol_view, series_view, metadata, floats = json.loads(_run_node(script))
     assert traj_view
     assert vol_view
+    assert series_view
     assert metadata == marker
     np.testing.assert_array_equal(floats, _POSITIONS[:1].astype(np.float32).ravel())
+    # unset traits sync as null and must not break the revive loop
+    nulls = {"trajectory": None, "volumetric_data": None, "series": None}
+    null_script = f"const widget_data = {_widget_data_json(nulls)};\n"
+    null_script += f"{_REVIVE_BUFFERS_JS}console.log('ok')"
+    assert _run_node(null_script).strip() == "ok"

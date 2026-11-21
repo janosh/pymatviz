@@ -4,25 +4,20 @@
 import pymatviz as pmv
 
 
-pmv.set_plotly_template("pymatviz_white")
 dummy_data = pmv.data.regression()
 
 
-# %% Uncertainty Plots
-fig = pmv.qq_gaussian(
-    dummy_data.y_pred,
-    dummy_data.y_true,
-    dummy_data.y_std,
-    identity_line={"line_kwargs": {"color": "red"}},
-)
-fig.show()
-pmv.io.save_and_compress_svg(fig, "qq-gaussian")
+# %% Q-Q plot of a single uncertainty estimate
+widget = pmv.qq_gaussian(dummy_data.y_true, dummy_data.y_pred, dummy_data.y_std)
+widget.show()
+widget.to_img(f"{pmv.ROOT}/assets/svg/qq-gaussian.svg", width=500)
 
 
-fig = pmv.qq_gaussian(
-    dummy_data.y_pred,
+# %% Compare two uncertainty estimates
+widget = pmv.qq_gaussian(
     dummy_data.y_true,
+    dummy_data.y_pred,
     {"overconfident": dummy_data.y_std, "less overconfident": 1.5 * dummy_data.y_std},
 )
-fig.show()
-pmv.io.save_and_compress_svg(fig, "qq-gaussian-multiple")
+widget.show()
+widget.to_img(f"{pmv.ROOT}/assets/svg/qq-gaussian-multiple.svg", width=500)

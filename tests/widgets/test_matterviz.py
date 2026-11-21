@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import builtins
 import io
 import os
@@ -61,25 +62,16 @@ def _fake_urlopen(url: str, *args: Any, **kwargs: Any) -> io.BytesIO:  # noqa: A
 
 
 @pytest.fixture
-def _clean_asset_cache() -> Generator[None]:
-    """Save and restore MatterVizWidget class-level asset state around a test."""
+def _clean_asset_cache(monkeypatch: pytest.MonkeyPatch) -> Generator[None]:
+    """Save and restore MatterVizWidget class-level asset state around a test, which
+    starts from the default remote bundle (no MATTERVIZ_ANYWIDGET_DIR).
+    """
+    monkeypatch.delenv("MATTERVIZ_ANYWIDGET_DIR", raising=False)
     cls = matterviz.MatterVizWidget
-    saved = {
-        attr: (hasattr(cls, attr), getattr(cls, attr, None))
-        for attr in ("_esm", "_css")
-    }
-    saved_cache = cls._asset_cache.copy()
-    saved_export_url = cls._export_esm_url
+    saved = cls._asset_cache.copy(), cls._marimo_urls.copy(), cls._configured
     cls._asset_cache.clear()
     yield
-    cls._asset_cache = saved_cache
-    cls._export_esm_url = saved_export_url
-    for attr, (had, val) in saved.items():
-        if had:
-            assert val is not None
-            setattr(cls, attr, val)
-        elif hasattr(cls, attr):
-            delattr(cls, attr)
+    cls._asset_cache, cls._marimo_urls, cls._configured = saved
 
 
 # === clear_widget_cache ===
@@ -136,6 +128,51 @@ def test_cdn_url(version: str, expected_url: str) -> None:
     assert matterviz._cdn_url(version, "matterviz.css") == expected_url
 
 
+@pytest.mark.parametrize("version", ["main", "0.10.0", "1.2.3-rc.1"])
+def test_bundle_sources_split_remote_js(
+    version: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Remote JS is the code-split entry (imported by URL, so its chunks resolve),
+    remote CSS and local builds (synced as text) the single files.
+    """
+    monkeypatch.delenv("MATTERVIZ_ANYWIDGET_DIR", raising=False)
+    assert matterviz._bundle_sources(version) == (
+        matterviz._cdn_url(version, "split/matterviz.js"),
+        matterviz._cdn_url(version, "matterviz.css"),
+    )
+    for ext in ("js", "css"):
+        (tmp_path / f"matterviz.{ext}").write_text(f"/* {ext} */")
+    monkeypatch.setenv("MATTERVIZ_ANYWIDGET_DIR", str(tmp_path))
+    assert matterviz._bundle_sources(version) == (
+        f"{tmp_path}/matterviz.js",
+        f"{tmp_path}/matterviz.css",
+    )
+    # a dev dir without the bundle (typo, unbuilt) fails instead of using the CDN
+    monkeypatch.setenv("MATTERVIZ_ANYWIDGET_DIR", str(tmp_path / "missing"))
+    with pytest.raises(FileNotFoundError, match="MATTERVIZ_ANYWIDGET_DIR has no"):
+        matterviz._bundle_sources(version)
+
+
+@pytest.mark.parametrize(
+    ("version", "match"),
+    [("0.9.0", "too old"), ("0.3.9-rc.1", "too old")]
+    + [(ver, "Invalid") for ver in ("v1.2.3", "not-a-version", "1.2", "1.2.x")],
+)
+@pytest.mark.usefixtures("cache_at_tmp")  # so fetch_widget_asset reaches the check
+def test_rejects_unsupported_versions(version: str, match: str) -> None:
+    """Pins predating the split build (0.10.0) or malformed ones raise in
+    _bundle_sources, configure_assets, version_override and fetch_widget_asset alike.
+    """
+    for call in (
+        matterviz._bundle_sources,
+        lambda ver: configure_assets(version=ver),
+        lambda ver: matterviz.MatterVizWidget(version_override=ver),
+        lambda ver: matterviz.fetch_widget_asset("matterviz.js", ver),
+    ):
+        with pytest.raises(ValueError, match=match):
+            call(version)
+
+
 def test_pinned_anywidget_version_resolves() -> None:
     """The default matterviz-anywidget version's bundle URL is fetchable.
 
@@ -149,16 +186,6 @@ def test_pinned_anywidget_version_resolves() -> None:
     except Exception as exc:  # noqa: BLE001
         pytest.skip(f"matterviz-anywidget bundle not reachable at {url}: {exc}")
     assert status == 200
-
-
-@pytest.mark.parametrize("bad_version", ["not-a-version", "1.2", "v1.2.3", "1.2.x"])
-def test_fetch_widget_asset_rejects_bad_version(
-    bad_version: str,
-    cache_at_tmp: Path,  # noqa: ARG001  -- isolates env/cache so the regex is reached
-) -> None:
-    """fetch_widget_asset rejects malformed (non-semver) versions."""
-    with pytest.raises(ValueError, match="Invalid matterviz-anywidget version"):
-        matterviz.fetch_widget_asset("matterviz.js", version_override=bad_version)
 
 
 # === fetch_widget_asset ===
@@ -186,14 +213,14 @@ def test_fetch_widget_asset_cached_file(cache_at_tmp: Path) -> None:
     """Cached npm versions skip the download; main ignores the cache, re-downloads
     and never writes it (its bundle changes with every matterviz deploy).
     """
-    for version in ("0.3.9", "main"):
+    for version in ("0.10.1", "main"):
         cache_file = cache_at_tmp / "matterviz-anywidget" / version / "matterviz.js"
         cache_file.parent.mkdir(parents=True)
         cache_file.write_text("cached content")
 
     with patch(f"{DOTTED_PATH}.urllib.request.urlopen") as mock_dl:
         assert (
-            matterviz.fetch_widget_asset("matterviz.js", version_override="0.3.9")
+            matterviz.fetch_widget_asset("matterviz.js", version_override="0.10.1")
             == "cached content"
         )
     mock_dl.assert_not_called()
@@ -213,16 +240,16 @@ def test_fetch_widget_asset_cached_file(cache_at_tmp: Path) -> None:
 def test_fetch_widget_asset_downloads_and_caches(cache_at_tmp: Path) -> None:
     """Missing assets are downloaded from the jsDelivr npm CDN and cached."""
     expected_url = (
-        "https://cdn.jsdelivr.net/npm/matterviz-anywidget@0.3.9/build/matterviz.js"
+        "https://cdn.jsdelivr.net/npm/matterviz-anywidget@0.10.1/build/matterviz.js"
     )
     with patch(
         f"{DOTTED_PATH}.urllib.request.urlopen", side_effect=_fake_urlopen
     ) as mock_dl:
-        result = matterviz.fetch_widget_asset("matterviz.js", version_override="0.3.9")
+        result = matterviz.fetch_widget_asset("matterviz.js", version_override="0.10.1")
 
     assert result == "downloaded content"
     assert mock_dl.call_args.args[0] == expected_url
-    cached = cache_at_tmp / "matterviz-anywidget" / "0.3.9" / "matterviz.js"
+    cached = cache_at_tmp / "matterviz-anywidget" / "0.10.1" / "matterviz.js"
     assert cached.read_text() == "downloaded content"
 
 
@@ -260,20 +287,13 @@ def test_read_asset_source_missing_file() -> None:
 
 
 def test_read_asset_source_http_url() -> None:
-    """Fetches content from an HTTP(S) URL."""
-    with patch(f"{DOTTED_PATH}.urllib.request.urlopen") as mock_urlopen:
-        mock_response = MagicMock()
-        mock_response.read.return_value = b"export default {}"
-        mock_response.__enter__ = lambda self: self
-        mock_response.__exit__ = MagicMock(return_value=False)
-        mock_urlopen.return_value = mock_response
-
-        result = _read_asset_source("https://cdn.example.com/matterviz.js")
-
-    assert result == "export default {}"
-    mock_urlopen.assert_called_once_with(
-        "https://cdn.example.com/matterviz.js", timeout=30
-    )
+    """Fetches content from an HTTP(S) URL with a timeout."""
+    url = "https://cdn.example.com/matterviz.js"
+    with patch(
+        f"{DOTTED_PATH}.urllib.request.urlopen", side_effect=_fake_urlopen
+    ) as dl:
+        assert _read_asset_source(url) == "downloaded content"
+    dl.assert_called_once_with(url, timeout=30)
 
 
 # === configure_assets ===
@@ -281,35 +301,44 @@ def test_read_asset_source_http_url() -> None:
 
 @pytest.mark.usefixtures("_clean_asset_cache")
 def test_configure_assets_with_version() -> None:
-    """configure_assets(version=...) fetches from jsDelivr npm CDN."""
+    """configure_assets(version=...) fetches nothing: widgets sync the version's
+    jsDelivr URLs and load its text on first use.
+    """
     with patch(f"{DOTTED_PATH}.fetch_widget_asset") as mock_fetch:
         mock_fetch.side_effect = lambda name, ver: f"{name}@{ver}"
-        configure_assets(version="v0.19.0")
+        configure_assets(version="0.19.0")
+        widget = matterviz.MatterVizWidget()
+        mock_fetch.assert_not_called()
+        assets = widget._resolve_assets()
 
-    cls = matterviz.MatterVizWidget
-    assert cls._esm == "matterviz.js@v0.19.0"
-    assert cls._css == "matterviz.css@v0.19.0"
-    assert "default" in cls._asset_cache
+    cdn = f"{matterviz._ANYWIDGET_CDN}@0.19.0/build"
+    # the frontend imports the CDN bundle, headless renders get its text
+    assert (widget._esm, widget._css) == (
+        f"{cdn}/split/matterviz.js",
+        f"{cdn}/matterviz.css",
+    )
+    assert assets == ("matterviz.js@0.19.0", "matterviz.css@0.19.0")
 
 
 @pytest.mark.usefixtures("_clean_asset_cache")
 def test_to_html_references_configured_version() -> None:
-    """to_html(inline=False) points JS at the configured version's CDN URL.
+    """to_html(inline=False) points JS and CSS at the configured version's CDN
+    URLs and downloads neither.
 
     Guards against pairing the pinned-default JS with custom-version CSS.
     """
     with patch(f"{DOTTED_PATH}.fetch_widget_asset") as mock_fetch:
-        mock_fetch.side_effect = lambda name, ver: (
-            "export default { render() {} }"
-            if name.endswith(".js")
-            else f".mv {{}} /* {name}@{ver} */"
-        )
-        configure_assets(version="0.3.6")
+        mock_fetch.side_effect = lambda name, ver: f".mv {{}} /* {name}@{ver} */"
+        configure_assets(version="0.10.6")
         html = matterviz.MatterVizWidget().to_html(inline=False)
 
-    assert "matterviz-anywidget@0.3.6/build/matterviz.js" in html  # JS = configured
+    mock_fetch.assert_not_called()
+    assert "matterviz-anywidget@0.10.6/build/split/matterviz.js" in html  # configured
     assert f"@{matterviz.MATTERVIZ_ANYWIDGET_VERSION}/" not in html  # not pinned
-    assert "/* matterviz.css@0.3.6 */" in html  # configured CSS inlined -> matches JS
+    assert (
+        'href="https://cdn.jsdelivr.net/npm/matterviz-anywidget@0.10.6/build/matterviz.css"'
+        in html
+    )
 
 
 @pytest.mark.parametrize("explicit_css", [True, False], ids=["css_src", "derived"])
@@ -328,8 +357,9 @@ def test_configure_assets_from_sources(tmp_path: Path, explicit_css: bool) -> No
     configure_assets(esm_src=str(esm_file), **css_kwargs)
 
     widget = matterviz.MatterVizWidget(widget_type="test")
-    for obj in (matterviz.MatterVizWidget, widget):
-        assert (obj._esm, obj._css) == ("configured esm", "configured css")
+    # local files sync as text: the browser can't load a local path
+    assert (widget._esm, widget._css) == ("configured esm", "configured css")
+    assert widget._resolve_assets() == ("configured esm", "configured css")
 
 
 @pytest.mark.usefixtures("_clean_asset_cache")
@@ -352,60 +382,60 @@ def test_local_bundle_survives_reconfiguration(
     assert widget.get_state("_esm") == {"_esm": "/* local js */"}
 
 
-@pytest.mark.parametrize("in_frontend", [False, True])
 @pytest.mark.usefixtures("_clean_asset_cache")
-def test_default_assets_deferred_without_frontend(
-    monkeypatch: pytest.MonkeyPatch, in_frontend: bool
-) -> None:
-    """Building a widget from local data needs no fetch unless a frontend syncs it;
-    the default bundle loads on first export instead.
+def test_default_assets_sync_as_urls() -> None:
+    """Remote bundles sync as URLs: construction fetches nothing (works offline),
+    saved widget state holds a short URL per widget instead of the bundle text, and
+    the text loads on the first headless render or inline export.
     """
+    import ipywidgets
+
     import pymatviz as pmv
 
-    monkeypatch.delenv("MATTERVIZ_ANYWIDGET_DIR", raising=False)
-    monkeypatch.setattr(matterviz, "_in_widget_frontend", lambda: in_frontend)
     offline = FileNotFoundError("offline")
     with patch(f"{DOTTED_PATH}.fetch_widget_asset", side_effect=offline) as fetch:
-        if in_frontend:  # a kernel needs the bundle before the comm opens
-            with pytest.raises(FileNotFoundError, match="offline"):
-                pmv.chem_sys_treemap(["Fe-O"])
-            return
-        widget = pmv.chem_sys_treemap(["Fe-O"])
-        assert widget.data[0]["children"][0]["label"] == "Fe-O"
-        assert widget.to_dict()["data"] == widget.data
+        widgets = [pmv.chem_sys_treemap(["Fe-O"]) for _ in range(3)]
+        state = ipywidgets.Widget.get_manager_state(widgets=widgets)["state"]
     fetch.assert_not_called()
+    assert widgets[0].data[0]["children"][0]["label"] == "Fe-O"
+    sources = matterviz._bundle_sources(matterviz.MATTERVIZ_ANYWIDGET_VERSION)
+    for widget in widgets:
+        model_state = state[widget.model_id]["state"]
+        assert (model_state["_esm"], model_state["_css"]) == sources
 
-    def fake_fetch(name: str) -> str:
+    def fake_fetch(name: str, _version: str | None = None) -> str:
         """Return stub bundle sources."""
         return "export default { render() {} }" if name.endswith(".js") else "/*c*/"
 
     with patch(f"{DOTTED_PATH}.fetch_widget_asset", side_effect=fake_fetch):
-        html = widget.to_html()
+        html = widgets[0].to_html(inline=True)
     assert "/*c*/" in html
-    assert (widget._esm, widget._css) == (fake_fetch("x.js"), "/*c*/")
+    assert widgets[0]._resolve_assets() == (fake_fetch("x.js"), "/*c*/")
+    assert (widgets[0]._esm, widgets[0]._css) == sources  # synced URLs unchanged
 
 
 @pytest.mark.usefixtures("_clean_asset_cache")
 def test_configure_assets_reset() -> None:
-    """configure_assets() with no args resets to auto-detect."""
+    """configure_assets() with no args resets to the default bundle."""
     with patch(f"{DOTTED_PATH}.fetch_widget_asset", return_value="preset"):
-        configure_assets(version="v1.0.0")
-
-    assert matterviz.MatterVizWidget._asset_cache.get("default") == (
-        "preset",
-        "preset",
-    )
+        configure_assets(version="1.0.0")
+        assert matterviz.MatterVizWidget()._resolve_assets() == ("preset", "preset")
 
     configure_assets()
 
-    assert matterviz.MatterVizWidget._asset_cache == {}
+    cls = matterviz.MatterVizWidget
+    assert (cls._asset_cache, cls._configured) == ({}, None)
+    assert (
+        cls()._esm
+        == matterviz._bundle_sources(matterviz.MATTERVIZ_ANYWIDGET_VERSION)[0]
+    )
 
 
 @pytest.mark.parametrize(
     ("kwargs", "match"),
     [
-        ({"version": "v1.0.0", "esm_src": "/f.js"}, "not both"),
-        ({"version": "v1.0.0", "css_src": "/f.css"}, "not both"),
+        ({"version": "1.0.0", "esm_src": "/f.js"}, "not both"),
+        ({"version": "1.0.0", "css_src": "/f.css"}, "not both"),
         ({"css_src": "/f.css"}, "requires 'esm_src'"),
         ({"esm_src": "/bundle"}, "derive 'css_src'"),
     ],
@@ -422,77 +452,37 @@ def test_configure_assets_rejects_invalid_combos(
 
 
 @pytest.mark.usefixtures("_clean_asset_cache")
-def test_lazy_matterviz_widget() -> None:
-    """Default init in a frontend fetches .js and .css and sets class-level assets."""
-    with (
-        patch(f"{DOTTED_PATH}.fetch_widget_asset", return_value="widget content"),
-        patch(f"{DOTTED_PATH}._in_widget_frontend", return_value=True),
-    ):
-        widget = matterviz.MatterVizWidget()
-
-    assert widget._esm == "widget content"
-    assert widget._css == "widget content"
-
-
-@pytest.mark.usefixtures("_clean_asset_cache")
 def test_lazy_matterviz_widget_version_override() -> None:
-    """Version override passes the version to fetch_widget_asset."""
+    """Version override syncs that version's URLs and loads its text on first use,
+    once per process for all widgets of that version.
+    """
     with patch(f"{DOTTED_PATH}.fetch_widget_asset", return_value="v2 content") as mock:
         widget = matterviz.MatterVizWidget(version_override="2.0.0")
+        mock.assert_not_called()
+        for _ in range(2):
+            assert widget._resolve_assets() == ("v2 content", "v2 content")
+            widget = matterviz.MatterVizWidget(version_override="2.0.0")
 
-    assert {mock_call.args for mock_call in mock.call_args_list} == {
+    assert [mock_call.args for mock_call in mock.call_args_list] == [
         ("matterviz.js", "2.0.0"),
         ("matterviz.css", "2.0.0"),
-    }
-    assert widget._esm == "v2 content"
-    assert widget._css == "v2 content"
+    ]
+    assert (widget._esm, widget._css) == matterviz._bundle_sources("2.0.0")
 
 
-@pytest.mark.parametrize(
-    ("init_kwargs", "updates", "expected_state"),
-    [
-        (
-            {
-                "widget_type": "composition",
-                "style": "width: 400px",
-                "show_controls": False,
-            },
-            {},
-            {
-                "widget_type": "composition",
-                "style": "width: 400px",
-                "show_controls": False,
-            },
-        ),
-        (
-            {},
-            {"widget_type": "xrd", "style": "height: 300px", "show_controls": False},
-            {"widget_type": "xrd", "style": "height: 300px", "show_controls": False},
-        ),
-    ],
-)
+@pytest.mark.parametrize("set_after_init", [False, True])
 @pytest.mark.usefixtures("_clean_asset_cache")
-def test_matterviz_widget_to_dict(
-    init_kwargs: dict[str, Any],
-    updates: dict[str, Any],
-    expected_state: dict[str, Any],
-) -> None:
-    """to_dict exports only public synced state fields."""
-    with patch(f"{DOTTED_PATH}.fetch_widget_asset", return_value="widget content"):
-        widget = matterviz.MatterVizWidget(**init_kwargs)
-
-    for key, value in updates.items():
+def test_matterviz_widget_to_dict(set_after_init: bool) -> None:
+    """to_dict exports exactly the public synced traits, set at or after init."""
+    values: dict[str, Any] = {
+        "widget_type": "xrd",
+        "style": "height: 300px",
+        "show_controls": False,
+    }
+    widget = matterviz.MatterVizWidget(**({} if set_after_init else values))
+    for key, value in values.items() if set_after_init else ():
         setattr(widget, key, value)
-
-    state = widget.to_dict()
-    assert {"widget_type", "style", "show_controls"} <= set(state)
-    assert not any(key.startswith("_") for key in state)
-    non_synced_internals = {"comm", "keys", "log"}
-    assert not non_synced_internals & set(state), (
-        f"Non-synced traitlets leaked into to_dict: {non_synced_internals & set(state)}"
-    )
-    for key, value in expected_state.items():
-        assert state[key] == value
+    assert widget.to_dict() == values
 
 
 # === MatterVizWidget.show ===
@@ -503,8 +493,6 @@ def test_matterviz_widget_to_dict(
 def test_show_interactive(static_val: str | None) -> None:
     """show() displays the widget interactively when PYMATVIZ_STATIC is unset/empty."""
     with (
-        patch(f"{DOTTED_PATH}.fetch_widget_asset", return_value="content"),
-        patch(f"{DOTTED_PATH}._in_marimo_runtime", return_value=False),
         patch.dict(os.environ, {}, clear=False),
         patch("IPython.display.display") as mock_display,
     ):
@@ -519,31 +507,24 @@ def test_show_interactive(static_val: str | None) -> None:
 
 @pytest.mark.parametrize("static_val", ["1", "0"], ids=["val_1", "val_0"])
 @pytest.mark.usefixtures("_clean_asset_cache")
-def test_show_static_png(static_val: str) -> None:
-    """show() renders static PNG when PYMATVIZ_STATIC is any non-empty string.
-
-    Note: "0" is truthy in Python strings, so PYMATVIZ_STATIC=0 still
-    enables static mode. Only unsetting or setting to "" disables it.
+def test_static_png_repr(static_val: str) -> None:
+    """With PYMATVIZ_STATIC set to any non-empty string ("0" too), notebooks display
+    widgets (bare expressions and show() alike) as a PNG instead of live state.
     """
     fake_png = b"\x89PNG fake image bytes"
-    mock_image_cls = MagicMock()
-    mock_image_instance = MagicMock()
-    mock_image_cls.return_value = mock_image_instance
-
-    with (
-        patch(f"{DOTTED_PATH}.fetch_widget_asset", return_value="content"),
-        patch(f"{DOTTED_PATH}._in_marimo_runtime", return_value=False),
-        patch.dict(os.environ, {"PYMATVIZ_STATIC": static_val}, clear=False),
-        patch("IPython.display.display") as mock_display,
-        patch("IPython.display.Image", mock_image_cls),
-    ):
+    with patch.dict(os.environ, {"PYMATVIZ_STATIC": static_val}, clear=False):
         widget = matterviz.MatterVizWidget()
         with patch.object(widget, "to_img", return_value=fake_png) as mock_to_img:
-            widget.show()
+            bundle = widget._repr_mimebundle_()
 
     mock_to_img.assert_called_once_with(fmt="png")
-    mock_image_cls.assert_called_once_with(data=fake_png)
-    mock_display.assert_called_once_with(mock_image_instance)
+    assert bundle == (
+        {
+            "image/png": base64.b64encode(fake_png).decode("ascii"),
+            "text/plain": "<MatterVizWidget>",
+        },
+        {},
+    )
 
 
 # === _in_marimo_runtime ===
@@ -640,21 +621,9 @@ def test_marimo_esm_url_returns_none_without_virtual_files() -> None:
     mods["marimo._output.data.data"].js.assert_not_called()
 
 
-def test_marimo_esm_url_returns_none_for_non_virtual_file() -> None:
-    """Returns None when js() returns a non-./@file/ URL (e.g. data URL)."""
-    mods = _mock_marimo_modules(vfile_url="data:text/javascript;base64,abc")
-    with patch.dict("sys.modules", mods):
-        assert _marimo_esm_url("code") is None
-
-
-@pytest.mark.parametrize(
-    "request_val",
-    [None, MagicMock(base_url="not-a-dict"), MagicMock(base_url={"scheme": 123})],
-    ids=["no_request", "base_url_not_dict", "scheme_not_str"],
-)
-def test_marimo_esm_url_falls_back_to_relative(request_val: Any) -> None:
-    """Falls back to relative ./@file/ URL when request context is unavailable."""
-    mods = _mock_marimo_modules(request=request_val)
+def test_marimo_esm_url_relative_without_request() -> None:
+    """Returns the relative ./@file/ URL when marimo has no request context."""
+    mods = _mock_marimo_modules(request=None)
     with patch.dict("sys.modules", mods):
         assert _marimo_esm_url("code") == "./@file/12345-abc.js"
 
@@ -662,36 +631,39 @@ def test_marimo_esm_url_falls_back_to_relative(request_val: Any) -> None:
 # === _init_marimo_assets ===
 
 
+@pytest.mark.parametrize(
+    ("local", "virtual_url", "expected_esm"),
+    [
+        (True, "http://localhost:2718/@file/123-abc.js", "virtual"),
+        (True, None, "text"),  # no virtual files: inline text
+        (False, "http://localhost:2718/@file/123-abc.js", "remote"),
+    ],
+)
 @pytest.mark.usefixtures("_clean_asset_cache")
-def test_init_marimo_assets_uses_esm_url() -> None:
-    """In marimo, _esm is set to absolute URL on instance, CSS stays inline."""
+def test_init_marimo_assets(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    local: bool,
+    virtual_url: str | None,
+    expected_esm: str,
+) -> None:
+    """In marimo, a local bundle's ESM is served as a virtual file (inline when that
+    fails) with CSS inline; a remote bundle keeps its URLs.
+    """
+    if local:
+        for ext in ("js", "css"):
+            (tmp_path / f"matterviz.{ext}").write_text(f"/* {ext} */")
+        monkeypatch.setenv("MATTERVIZ_ANYWIDGET_DIR", str(tmp_path))
     with (
-        patch(f"{DOTTED_PATH}.fetch_widget_asset") as mock_fetch,
         patch(f"{DOTTED_PATH}._in_marimo_runtime", return_value=True),
-        patch(
-            f"{DOTTED_PATH}._marimo_esm_url",
-            return_value="http://localhost:2718/@file/123-abc.js",
-        ),
+        patch(f"{DOTTED_PATH}._marimo_esm_url", return_value=virtual_url) as to_url,
     ):
-        mock_fetch.side_effect = lambda name, *_a, **_kw: (
-            "esm_content" if "mjs" in name else "css_content"
-        )
         widget = matterviz.MatterVizWidget()
 
-    assert widget._esm == "http://localhost:2718/@file/123-abc.js"
-    assert widget._css == "css_content"
-
-
-@pytest.mark.usefixtures("_clean_asset_cache")
-def test_init_marimo_assets_falls_back_on_url_failure() -> None:
-    """Falls back to class-level inline assets when URL resolution fails."""
-    with (
-        patch(f"{DOTTED_PATH}.fetch_widget_asset", return_value="fallback_content"),
-        patch(f"{DOTTED_PATH}._in_marimo_runtime", return_value=True),
-        patch(f"{DOTTED_PATH}._marimo_esm_url", return_value=None),
-    ):
-        widget = matterviz.MatterVizWidget()
-
-    assert widget._esm == "fallback_content"
-    assert widget._css == "fallback_content"
-    assert "_esm" not in widget.__dict__, "Should use class-level, not instance"
+    remote_js, remote_css = matterviz._bundle_sources(
+        matterviz.MATTERVIZ_ANYWIDGET_VERSION
+    )
+    expected = {"virtual": virtual_url, "text": "/* js */", "remote": remote_js}
+    assert widget._esm == expected[expected_esm]
+    assert widget._css == ("/* css */" if local else remote_css)
+    assert to_url.call_count == local

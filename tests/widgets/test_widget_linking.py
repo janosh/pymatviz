@@ -8,6 +8,7 @@ import pytest
 from pymatgen.core import Lattice, Structure
 
 from pymatviz import (
+    PeriodicTableWidget,
     ScatterPlotWidget,
     StructureWidget,
     TrajectoryWidget,
@@ -43,10 +44,12 @@ def _frames(n_frames: int = 4) -> list[Structure]:
         (StructureWidget, "selected_sites", [1, 2], []),
         (StructureWidget, "highlighted_sites", [0], []),
         (StructureWidget, "hovered_site_idx", 3, None),
+        (ScatterPlotWidget, "highlighted_ids", [0, 2], None),
+        (PeriodicTableWidget, "active_elements", ["Fe", "O"], None),
     ],
 )
 def test_interaction_traits_sync(
-    widget_cls: type[ScatterPlotWidget | StructureWidget],
+    widget_cls: type[ScatterPlotWidget | StructureWidget | PeriodicTableWidget],
     trait_name: str,
     value: object,
     default: object,
@@ -74,14 +77,15 @@ def test_link_selection_requires_two_widgets() -> None:
 
 
 @pytest.mark.parametrize("structures", [None, []])
+@pytest.mark.parametrize("sink_cls", [StructureWidget, PeriodicTableWidget])
 def test_link_selection_structure_requires_nonempty_structures(
     structures: list[Structure] | None,
+    sink_cls: type[StructureWidget | PeriodicTableWidget],
 ) -> None:
-    """Linking a StructureWidget without (non-empty) structures fails early."""
+    """Linking a structure/ptable sink without (non-empty) structures fails early."""
     scatter = ScatterPlotWidget(series=[{"x": [0], "y": [0]}])
-    structure = StructureWidget()
     with pytest.raises(ValueError, match="requires non-empty `structures`"):
-        link_selection(scatter, structure, structures=structures)
+        link_selection(scatter, sink_cls(), structures=structures)
 
 
 def test_link_selection_rejects_unsupported_widget() -> None:
@@ -241,3 +245,47 @@ def test_link_initial_sync_uses_trajectory_step() -> None:
 
     link_selection(traj, structure, structures=frames)
     assert structure.structure == frames[2].as_dict()
+
+
+def test_link_periodic_table_highlights_and_filters_scatter() -> None:
+    """Scatter clicks highlight the structure's elements in the periodic table,
+    tile clicks dim scatter points whose structure lacks the clicked elements.
+    """
+    frames = [
+        Structure(Lattice.cubic(3), species, ((0, 0, 0), (0.5,) * 3))
+        for species in (("Fe", "O"), ("Li", "O"), ("Li", "Li"))
+    ]
+    xs = list(range(len(frames)))
+    # without point_ids no point could dim, so linking refuses
+    no_ids = ScatterPlotWidget(series=[{"x": xs, "y": xs}])
+    with pytest.raises(ValueError, match="point_ids"):
+        link_selection(no_ids, PeriodicTableWidget(), structures=frames)
+    scatter = ScatterPlotWidget(series=[{"x": xs, "y": xs, "point_ids": xs}])
+    ptable = PeriodicTableWidget()
+
+    # a structure dict takes the serialized path, pymatgen ones their composition
+    link_selection(scatter, ptable, structures=[*frames[:2], frames[2].as_dict()])
+    assert ptable.active_elements == ["Fe", "O"]  # initial sync to index 0
+    # the frontend toggles clicks relative to the shown elements: clicking Li
+    # writes [Fe, O, Li], which filters by Li alone, not by all three
+    ptable.active_elements = ["Fe", "O", "Li"]
+    assert (ptable.active_elements, scatter.highlighted_ids) == (["Li"], [1, 2])
+
+    for clicked, expected_ids in (
+        (["Li", "O"], [1]),
+        (["O"], [0, 1]),
+        ([], None),
+        (None, None),
+    ):
+        ptable.active_elements = clicked  # as written by frontend tile clicks
+        assert scatter.highlighted_ids == expected_ids
+
+    scatter.active_point = {"series_idx": 0, "point_idx": 1}
+    assert ptable.active_elements == ["Li", "O"]
+    assert scatter.highlighted_ids is None  # index sync doesn't filter
+    ptable.active_elements = ["Li"]  # un-clicking O after a broadcast filters by O
+    assert (ptable.active_elements, scatter.highlighted_ids) == (["O"], [0, 1])
+
+    # selecting a point after filtering shows that structure, so the filter clears
+    scatter.active_point = {"series_idx": 0, "point_idx": 2}
+    assert (ptable.active_elements, scatter.highlighted_ids) == (["Li"], None)

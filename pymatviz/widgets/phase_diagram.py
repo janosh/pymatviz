@@ -6,6 +6,7 @@ from typing import Any
 
 import traitlets as tl
 
+from pymatviz.widgets._traits import optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -32,7 +33,7 @@ class PhaseDiagramWidget(MatterVizWidget):
         >>> widget
     """
 
-    data = tl.Dict(allow_none=True).tag(sync=True)
+    data = optional_trait(tl.Dict)
 
     def __init__(self, data: dict[str, Any] | None = None, **kwargs: Any) -> None:
         """Initialize the PhaseDiagramWidget.
