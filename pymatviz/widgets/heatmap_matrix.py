@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+import pandas as pd
 import traitlets as tl
 
 from pymatviz.widgets._normalize import normalize_json_kwargs, normalize_plot_json
@@ -73,7 +74,7 @@ class HeatmapMatrixWidget(HeatmapMatrixTraits, MatterVizWidget):
 
     def __init__(
         self,
-        x_items: str | Sequence[str | dict[str, Any]] | None = None,
+        x_items: str | Sequence[str | dict[str, Any]] | pd.DataFrame | None = None,
         y_items: str | Sequence[str | dict[str, Any]] | None = None,
         values: list[list[float]] | dict[str, dict[str, float]] | None = None,
         **kwargs: Any,
@@ -81,13 +82,23 @@ class HeatmapMatrixWidget(HeatmapMatrixTraits, MatterVizWidget):
         """Initialize a heatmap matrix widget.
 
         Args:
-            x_items: Column labels (strings or ``{key, label}`` dicts).
-                Plain strings are auto-converted to ``{"key": s, "label": s}``.
+            x_items: Column labels (strings or ``{key, label}`` dicts), or a
+                DataFrame whose columns, index and cells become x_items, y_items and
+                values. Plain strings are auto-converted to ``{"key": s, "label": s}``.
             y_items: Row labels (strings or ``{key, label}`` dicts).
                 Plain strings are auto-converted to ``{"key": s, "label": s}``.
             values: 2D list of values or nested dict keyed by item keys.
             **kwargs: Additional widget properties.
         """
+        if isinstance(x_items, pd.DataFrame):
+            if y_items is not None or values is not None:
+                raise ValueError("pass y_items and values in the DataFrame, not both")
+            df_matrix = x_items
+            x_items, y_items = (
+                list(map(str, df_matrix)),
+                list(map(str, df_matrix.index)),
+            )
+            values = df_matrix.to_numpy().tolist()
         x_axis_items = [x_items] if isinstance(x_items, str) else x_items or []
         y_axis_items = [y_items] if isinstance(y_items, str) else y_items or []
         normalize_json_kwargs(kwargs, ("color_scale", "color_bar"), "HeatmapMatrix")

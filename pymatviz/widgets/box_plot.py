@@ -8,7 +8,7 @@ import traitlets as tl
 
 from pymatviz.widgets._normalize import normalize_json_kwargs
 from pymatviz.widgets._schema_traits import BoxPlotTraits
-from pymatviz.widgets._traits import CartesianPlotTraits, optional_trait
+from pymatviz.widgets._traits import CartesianPlotTraits, df_series, optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -37,18 +37,25 @@ class BoxPlotWidget(CartesianPlotTraits, BoxPlotTraits, MatterVizWidget):
 
     def __init__(
         self,
-        series: list[dict[str, Any]] | tuple[dict[str, Any], ...] | None = None,
+        series: list[dict[str, Any]] | tuple[dict[str, Any], ...] | Any = None,
+        *,
+        y: str | None = None,
+        color: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize a box plot widget.
 
         Args:
             series: Series dicts ``{"y": [...], "label", "color", "kind", "side",
-                "bandwidth", "box_width", ...}`` with the raw samples in ``y``.
+                "bandwidth", "box_width", ...}`` with the raw samples in ``y``, or a
+                DataFrame whose columns ``y`` and ``color`` name.
+            y: DataFrame column of the samples.
+            color: DataFrame column to split into one series per value.
             **kwargs: Widget traits, e.g. ``kind``, ``side``, ``points``,
                 ``orientation``, ``whisker_mode``, axis/range configs (see
                 ``CartesianPlotTraits``).
         """
+        series = df_series(series, color, kwargs, y=y)
         json_keys = (
             *self._JSON_KWARGS, "box", "whisker", "median_style", "sample_style",
             "violin_style", "whisker_percentiles", "kde_clip",

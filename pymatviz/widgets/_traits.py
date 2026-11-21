@@ -6,7 +6,7 @@ from typing import Any
 
 import traitlets as tl
 
-from pymatviz.widgets._normalize import normalize_plot_json
+from pymatviz.widgets._normalize import normalize_plot_json, with_defaults
 
 
 # Enums of traits with non-None defaults (schema-generated traits read theirs from
@@ -135,3 +135,41 @@ class CartesianPlotTraits(PlotControlsTraits):
         "x_axis", "x2_axis", "y_axis", "y2_axis", "display", "legend", "ref_lines",
         "padding", "x_range", "x2_range", "y_range", "y2_range",
     )  # fmt: skip
+
+
+_AXIS_OF_KEY = {"x": "x_axis", "values": "x_axis", "y": "y_axis"}
+
+
+def df_series(
+    data: Any, color: str | None, kwargs: dict[str, Any], **columns: str | None
+) -> Any:
+    """Series from DataFrame columns (``columns`` maps series keys to column names),
+    one per value of the ``color`` column, dropping rows with NaN in any of them.
+    Column names become default axis labels in ``kwargs``. Non-DataFrame data passes
+    through unchanged.
+
+    Raises:
+        TypeError: If columns are named but data is no DataFrame.
+        ValueError: If data is a DataFrame but a column name is missing.
+    """
+    import pandas as pd
+
+    named = {key: col for key, col in columns.items() if col is not None}
+    if not isinstance(data, pd.DataFrame):
+        if named or color is not None:
+            raise TypeError(
+                f"columns {[*named.values(), color]} need a DataFrame, got "
+                f"{type(data).__name__}"
+            )
+        return data
+    if missing := sorted(columns.keys() - named.keys()):
+        raise ValueError(f"name the DataFrame column(s) for {missing}")
+    df_used = data[[*named.values(), *([color] if color else [])]].dropna()
+    axis_labels = {_AXIS_OF_KEY[key]: {"label": col} for key, col in named.items()}
+    kwargs.update(with_defaults(axis_labels, kwargs))
+    groups = df_used.groupby(color, sort=False) if color else [(None, df_used)]
+    return [
+        {key: group[col].to_numpy() for key, col in named.items()}
+        | ({"label": str(name)} if color else {})
+        for name, group in groups
+    ]

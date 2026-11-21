@@ -8,7 +8,7 @@ import traitlets as tl
 
 from pymatviz.widgets._normalize import normalize_json_kwargs, normalize_plot_series
 from pymatviz.widgets._schema_traits import HistogramTraits
-from pymatviz.widgets._traits import CartesianPlotTraits
+from pymatviz.widgets._traits import CartesianPlotTraits, df_series
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -41,17 +41,24 @@ class HistogramWidget(CartesianPlotTraits, HistogramTraits, MatterVizWidget):
 
     def __init__(
         self,
-        series: list[dict[str, Any]] | tuple[dict[str, Any], ...] | None = None,
+        series: list[dict[str, Any]] | tuple[dict[str, Any], ...] | Any = None,
+        *,
+        x: str | None = None,
+        color: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize a histogram widget.
 
         Args:
             series: Series dicts ``{"values": [...], "label", "color", ...}`` with
-                the raw samples in ``values``.
+                the raw samples in ``values``, or a DataFrame whose columns ``x``
+                and ``color`` name.
+            x: DataFrame column of the values to bin.
+            color: DataFrame column to split into one series per value.
             **kwargs: Widget traits, e.g. ``bins``, ``mode`` (``single`` or
                 ``overlay``), ``selected_series_idx``, axis/range configs (see
                 ``CartesianPlotTraits``), ``bar``.
         """
+        series = df_series(series, color, kwargs, values=x)
         normalize_json_kwargs(kwargs, (*self._JSON_KWARGS, "bar"), "Histogram")
         super().__init__(series=series, **kwargs)

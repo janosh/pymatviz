@@ -21,6 +21,7 @@ from pymatviz.widgets._traits import ELEMENT_COLOR_SCHEMES
 from pymatviz.widgets.band_structure import BandStructureWidget
 from pymatviz.widgets.bands_and_dos import BandsAndDosWidget
 from pymatviz.widgets.bar_plot import BarPlotWidget
+from pymatviz.widgets.box_plot import BoxPlotWidget
 from pymatviz.widgets.brillouin_zone import BrillouinZoneWidget
 from pymatviz.widgets.chem_pot_diagram import ChemPotDiagramWidget
 from pymatviz.widgets.composition import CompositionWidget
@@ -1575,3 +1576,62 @@ def test_unknown_kwargs_raise(make_widget: Any) -> None:
     """Typos and unsupported options raise instead of being dropped."""
     with pytest.raises(TypeError, match=r"Unknown \w+ options: \['bogus'\]"):
         make_widget(bogus=1)
+
+
+DF_XY = pd.DataFrame(
+    {"a": [1.0, 2.0, 3.0, np.nan], "b": [4.0, 5.0, 6.0, 7.0], "g": list("ppqq")}
+)
+
+
+@pytest.mark.parametrize(
+    ("widget_cls", "columns", "series_key", "x_label"),
+    [
+        (ScatterPlotWidget, {"x": "a", "y": "b"}, "x", "a"),
+        (BarPlotWidget, {"x": "a", "y": "b"}, "x", "a"),
+        (BoxPlotWidget, {"y": "a"}, "y", None),
+        (HistogramWidget, {"x": "a"}, "values", "a"),
+    ],
+)
+def test_cartesian_widgets_take_dataframe_columns(
+    widget_cls: type, columns: dict[str, str], series_key: str, x_label: str | None
+) -> None:
+    """DataFrame columns become series (one per color group, NaN rows dropped) and
+    default axis labels that user axis options extend.
+    """
+    widget = widget_cls(DF_XY, color="g", y_axis={"scale_type": "log"}, **columns)
+    assert [series_dict["label"] for series_dict in widget.series] == ["p", "q"]
+    assert [list(series_dict[series_key]) for series_dict in widget.series] == [
+        [1.0, 2.0],
+        [3.0],
+    ]
+    y_label = {"label": columns["y"]} if "y" in columns else {}
+    assert widget.y_axis == {"scale_type": "log"} | y_label
+    assert (widget.x_axis or {}).get("label") == x_label
+    assert len(widget_cls(DF_XY, **columns).series) == 1  # no color: one series
+
+
+@pytest.mark.parametrize(
+    ("data", "kwargs", "err", "match"),
+    [
+        ([{"x": [1], "y": [2]}], {"x": "a"}, TypeError, r"columns \['a', None\] need"),
+        (DF_XY, {"x": "a"}, ValueError, r"column\(s\) for \['y'\]"),
+        (DF_XY, {"x": "a", "y": "nope"}, KeyError, "nope"),
+    ],
+)
+def test_cartesian_dataframe_errors(
+    data: Any, kwargs: dict[str, str], err: type[Exception], match: str
+) -> None:
+    """Column names need a DataFrame that has them all."""
+    with pytest.raises(err, match=match):
+        ScatterPlotWidget(data, **kwargs)
+
+
+def test_heatmap_matrix_takes_dataframe() -> None:
+    """A DataFrame's columns, index and cells become x_items, y_items and values."""
+    df_matrix = pd.DataFrame({"c1": [1, 3], "c2": [2, 4]}, index=pd.Index(["r1", "r2"]))
+    widget = HeatmapMatrixWidget(df_matrix)
+    assert [item["key"] for item in widget.x_items] == ["c1", "c2"]
+    assert [item["key"] for item in widget.y_items] == ["r1", "r2"]
+    assert widget.values == [[1, 2], [3, 4]]  # noqa: PD011
+    with pytest.raises(ValueError, match="in the DataFrame, not both"):
+        HeatmapMatrixWidget(df_matrix, values=[[0]])

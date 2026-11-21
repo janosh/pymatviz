@@ -12,6 +12,7 @@ from pymatviz.widgets._traits import (
     CartesianPlotTraits,
     color_bar_trait,
     color_scale_trait,
+    df_series,
     optional_trait,
 )
 from pymatviz.widgets.matterviz import MatterVizWidget
@@ -39,13 +40,21 @@ class ScatterPlotWidget(CartesianPlotTraits, ScatterPlotTraits, MatterVizWidget)
 
     def __init__(
         self,
-        series: list[dict[str, Any]] | tuple[dict[str, Any], ...] | None = None,
+        series: list[dict[str, Any]] | tuple[dict[str, Any], ...] | Any = None,
+        *,
+        x: str | None = None,
+        y: str | None = None,
+        color: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize a scatter plot widget.
 
         Args:
-            series: Plot series with required ``x`` and ``y`` arrays.
+            series: Plot series dicts with ``x`` and ``y`` arrays, or a DataFrame whose
+                columns ``x``, ``y`` and ``color`` name.
+            x: DataFrame column of the x values.
+            y: DataFrame column of the y values.
+            color: DataFrame column to split into one series per value.
             **kwargs: Widget traits, e.g. axis/range configs (see
                 ``CartesianPlotTraits``), ``styles``, ``color_scale``,
                 ``fill_regions``, ``error_bands``, ``marker_renderer`` (``"auto"``,
@@ -53,6 +62,7 @@ class ScatterPlotWidget(CartesianPlotTraits, ScatterPlotTraits, MatterVizWidget)
                 (``{"series_idx", "point_idx"}`` to highlight; observe
                 ``active_point`` to react to clicks).
         """
+        series = df_series(series, color, kwargs, x=x, y=y)
         json_keys = (*self._JSON_KWARGS, *self._SCATTER_JSON_KWARGS)
         normalize_json_kwargs(kwargs, json_keys, "ScatterPlot")
         super().__init__(
