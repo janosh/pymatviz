@@ -35,31 +35,6 @@ def _unwrap_monty_arrays(value: Any, *, nested: bool = False) -> Any:
     return value
 
 
-def _lattice_from_parameters(
-    a: float, b: float, c: float, alpha: float, beta: float, gamma: float
-) -> np.ndarray:
-    """Row-vector lattice matrix from cell lengths (Å) and angles (degrees) in
-    pymatgen's Lattice.from_parameters orientation (c along z).
-    """
-    cos_alpha, cos_beta, cos_gamma = np.cos(np.radians([alpha, beta, gamma]))
-    sin_alpha, sin_beta = np.sin(np.radians([alpha, beta]))
-    cos_gamma_star = np.clip(
-        (cos_alpha * cos_beta - cos_gamma) / (sin_alpha * sin_beta), -1, 1
-    )
-    gamma_star = np.arccos(cos_gamma_star)
-    return np.array(
-        [
-            [a * sin_beta, 0.0, a * cos_beta],
-            [
-                -b * sin_alpha * np.cos(gamma_star),
-                b * sin_alpha * np.sin(gamma_star),
-                b * cos_alpha,
-            ],
-            [0.0, 0.0, c],
-        ]
-    )
-
-
 class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
     """MatterViz widget for visualizing molecular dynamics and geometry optimization
     trajectories in Python notebooks.
@@ -237,8 +212,11 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
             and "matrix" not in lattice
             and set(cell_params) <= lattice.keys()
         ):
-            matrix = _lattice_from_parameters(
-                *(float(lattice[key]) for key in cell_params)
+            import matscikit as mk
+
+            # pymatgen's orientation (c along z) for Cartesian xyz site coords
+            matrix = mk.lattice_from_parameters(
+                *(float(lattice[key]) for key in cell_params), c_along_z=True
             )
             completed["lattice"] = {**lattice, "matrix": matrix.tolist()}
         sites = []
