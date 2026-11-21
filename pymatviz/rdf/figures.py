@@ -146,8 +146,10 @@ def rdf_plot(
     n_sites = sum(map(len, struct_dict.values()))
     if element_pairs is None and colors is None and n_sites <= MAX_BROWSER_RDF_SITES:
         as_dicts = {key: struct.as_dict() for key, struct in struct_dict.items()}
+        # a lone structure goes unlabeled: no legend group heading for one structure
+        lone = next(iter(as_dicts.values())) if len(as_dicts) == 1 else as_dicts
         return RdfPlotWidget(
-            structures=as_dicts, mode=mode, cutoff=cutoff, n_bins=bins, **kwargs
+            structures=lone, mode=mode, cutoff=cutoff, n_bins=bins, **kwargs
         )
     if mode == "full":
         entries = [

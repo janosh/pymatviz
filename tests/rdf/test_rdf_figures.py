@@ -53,7 +53,9 @@ def test_rdf_plot_in_browser(mode: Literal["element_pairs", "full"]) -> None:
     assert Structure.from_dict(widget.structures["a"]) == NACL
     assert (widget.mode, widget.n_bins) == (mode, 40)
     assert widget.cutoff == pytest.approx(2 * 5.64)  # NaCl's cell is the longest
-    assert rdf_plot(NACL, cutoff=4).cutoff == 4
+    lone = rdf_plot(NACL, cutoff=4)  # a single structure is sent unlabeled
+    assert lone.cutoff == 4
+    assert Structure.from_dict(lone.structures) == NACL
 
 
 def test_rdf_plot_patterns() -> None:
