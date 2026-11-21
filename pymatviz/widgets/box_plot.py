@@ -20,8 +20,8 @@ class BoxPlotWidget(CartesianPlotTraits, MatterVizWidget):
     above, jittered samples below the box).
 
     Examples:
-        >>> from pymatviz.widgets import BoxPlotWidget
-        >>> BoxPlotWidget([{"y": [1, 2, 3, 8], "label": "a"}], kind="violin+box")
+        >>> import pymatviz as pmv
+        >>> pmv.box_plot([{"y": [1, 2, 3, 8], "label": "a"}], kind="violin+box")
     """
 
     orientation = optional_trait(tl.CaselessStrEnum, values=["vertical", "horizontal"])

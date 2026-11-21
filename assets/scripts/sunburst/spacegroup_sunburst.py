@@ -24,20 +24,21 @@ df_phonons[Key.spg_symbol] = df_phonons[Key.spg_num].map(
 # %% Sunburst Plots
 widget = pmv.spacegroup_sunburst(df_phonons[Key.spg_num], label_text="label+percent")
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/svg/spg-num-sunburst.svg", width=600)
+widget.to_img(
+    f"{pmv.utils.ROOT}/assets/svg/spg-num-sunburst.svg", width=600, transparent=True
+)
 
 widget = pmv.spacegroup_sunburst(df_phonons[Key.spg_symbol], label_text="label+percent")
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/svg/spg-symbol-sunburst.svg", width=600)
 
 
 # %% Show the top 6 space groups per crystal system, combine the rest into "Other"
 pmv.spacegroup_sunburst(
-    df_phonons[Key.spg_num], max_slices=6, max_slices_mode="other"
+    df_phonons[Key.spg_num], max_spacegroups=6, overflow="other"
 ).show()
 
 
 # %% Show the top 5 space groups per crystal system, discard the rest
 pmv.spacegroup_sunburst(
-    df_phonons[Key.spg_num], max_slices=5, max_slices_mode="drop"
+    df_phonons[Key.spg_num], max_spacegroups=5, overflow="drop"
 ).show()

@@ -25,11 +25,17 @@ df_spg = df_sym.query(f"{Key.spg_num} in @frequent_symbols")
 
 
 # %% Common space groups in matbench_phonons, flowing from their crystal systems
-widget = pmv.sankey_from_2_df_cols(
+widget = pmv.sankey(
     df_spg,
-    [Key.crystal_system, Key.spg_num],
+    Key.crystal_system,
+    Key.spg_num,
     labels_with_counts="percent",
     link_color_mode="gradient",
+    style="height: 500px",
 )
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/svg/sankey-crystal-sys-to-spg-num.svg", width=700)
+widget.to_img(
+    f"{pmv.utils.ROOT}/assets/svg/sankey-crystal-sys-to-spg-num.svg",
+    width=700,
+    transparent=True,
+)

@@ -27,7 +27,7 @@ df_gap[Key.formula] = df_gap[Key.structure].map(lambda cryst: cryst.formula)
 
 # %%
 # PBE band gap histogram of the Matbench MP band gap dataset
-widget = pmv.histogram(df_gap[gap_col], bins=50, log_y=True)
+widget = pmv.binned_histogram(df_gap[gap_col], bins=50, log_y=True)
 widget.show()
 # widget.to_img("pbe-gap-hist.pdf")
 
@@ -39,6 +39,6 @@ pmv.ptable_heatmap(df_gap[Key.formula], log=True, color_bar={"title": title}).sh
 
 # %%
 # Volume per atom histogram of the Matbench MP band gap dataset
-widget = pmv.histogram(df_gap[Key.vol_per_atom], bins=50, log_y=True)
+widget = pmv.binned_histogram(df_gap[Key.vol_per_atom], bins=50, log_y=True)
 widget.show()
 # widget.to_img("volume-per-atom-hist.pdf")

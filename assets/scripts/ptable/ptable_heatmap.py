@@ -23,9 +23,13 @@ df_expt_gap = load_dataset("matbench_expt_gap")
 
 
 # %% Atomic masses (the Series name titles the color bar)
-widget = pmv.ptable_heatmap(pmv.df_ptable[Key.atomic_mass])
+widget = pmv.ptable_heatmap(pmv.utils.df_ptable[Key.atomic_mass])
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/png/ptable-heatmap-atomic-mass.png", width=1000)
+widget.to_img(
+    f"{pmv.utils.ROOT}/assets/svg/ptable-heatmap-atomic-mass.svg",
+    width=1000,
+    transparent=True,
+)
 
 
 # %% Element counts as percentages of all atoms in the dataset
@@ -40,12 +44,14 @@ widget = pmv.ptable_heatmap(
     color_bar={"title": "Elements in Matbench experimental band gaps"},
 )
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/png/ptable-heatmap-log.png", width=1000)
+widget.to_img(
+    f"{pmv.utils.ROOT}/assets/svg/ptable-heatmap-log.svg", width=1000, transparent=True
+)
 
 
 # %% Specific heat on a log scale, excluding light elements
 widget = pmv.ptable_heatmap(
-    pmv.df_ptable[Key.specific_heat_capacity].dropna(),
+    pmv.utils.df_ptable[Key.specific_heat_capacity].dropna(),
     log=True,
     exclude_elements=["H", "He", "C", "O"],
     color_scale="interpolateYlOrRd",
@@ -98,9 +104,9 @@ try:
     df_price.columns = df_price.columns.droplevel(0)
     df_price = df_price.set_index("Symbol")
     prices = pd.to_numeric(df_price["USD/kg"], errors="coerce")
-    prices = prices[prices.index.isin(pmv.df_ptable.index)]  # drop footnote rows
+    prices = prices[prices.index.isin(pmv.utils.df_ptable.index)]  # drop footnote rows
 except (HTTPError, URLError):
-    prices = {elem: rng.lognormal(2, 1) * 1000 for elem in pmv.df_ptable.index}
+    prices = {elem: rng.lognormal(2, 1) * 1000 for elem in pmv.utils.df_ptable.index}
 
 widget = pmv.ptable_heatmap(
     prices, log=True, color_bar={"title": "Cost of element per kg"}

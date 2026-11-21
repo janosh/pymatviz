@@ -7,12 +7,12 @@ from typing import Any
 import pytest
 from pymatgen.core import Lattice, Structure
 
-from pymatviz import (
+from pymatviz import link_selection
+from pymatviz.widgets import (
     PeriodicTableWidget,
     ScatterPlotWidget,
     StructureWidget,
     TrajectoryWidget,
-    link_selection,
 )
 from pymatviz.widgets.link import WidgetLink
 
@@ -90,7 +90,7 @@ def test_link_selection_structure_requires_nonempty_structures(
 
 def test_link_selection_rejects_unsupported_widget() -> None:
     """Linking an unsupported widget type fails with a clear TypeError."""
-    from pymatviz import BarPlotWidget
+    from pymatviz.widgets import BarPlotWidget
 
     scatter = ScatterPlotWidget(series=[{"x": [0], "y": [0]}])
     bar = BarPlotWidget(series=[{"x": [0], "y": [0]}])

@@ -11,6 +11,7 @@ import pytest
 from pymatgen.core import Lattice, Structure
 
 import pymatviz as pmv
+from pymatviz.sunburst import spacegroup as spacegroup_mod
 from pymatviz.sunburst import spacegroup_sunburst
 
 
@@ -22,7 +23,7 @@ def rock_salt() -> Structure:
     )
 
 
-def spg_leaves(widget: pmv.SunburstWidget) -> dict[str, tuple[str, int]]:
+def spg_leaves(widget: pmv.widgets.SunburstWidget) -> dict[str, tuple[str, int]]:
     """Map leaf IDs to (label, value) of a crystal system/space group sunburst."""
     return {
         leaf["id"]: (leaf["label"], leaf["value"])
@@ -34,7 +35,7 @@ def spg_leaves(widget: pmv.SunburstWidget) -> dict[str, tuple[str, int]]:
 def test_spacegroup_sunburst_all_groups() -> None:
     """All 230 space groups nest under the 7 crystal systems with label+value text."""
     widget = spacegroup_sunburst(range(1, 231))
-    assert isinstance(widget, pmv.SunburstWidget)
+    assert isinstance(widget, pmv.widgets.SunburstWidget)
     assert widget.label_text == "label+value"
     assert {root["id"] for root in widget.data} == set(
         get_args(pmv.typing.CrystalSystem)
@@ -114,21 +115,19 @@ def test_spacegroup_sunburst_reports_moyopy_conversion_failure(
         """Simulate unsupported structure input."""
         raise TypeError("unsupported structure")
 
-    monkeypatch.setattr(
-        "pymatviz.sunburst.spacegroup.get_spacegroup_number", reject_structure
-    )
+    monkeypatch.setattr(spacegroup_mod, "get_spacegroup_number", reject_structure)
 
     with pytest.raises(TypeError, match="structure at index 0 \\(Structure\\)"):
         spacegroup_sunburst(structures)
 
 
 @pytest.mark.parametrize(
-    ("max_slices", "max_slices_mode", "expected_systems", "expected_others"),
+    ("max_spacegroups", "overflow", "expected_systems", "expected_others"),
     [
-        # Edge cases for max_slices
+        # Edge cases for max_spacegroups
         (None, "other", 7, None),  # no limit
         (10, "other", 7, None),  # greater than number of systems
-        # Normal cases with "other" mode. max_slices applies per crystal system:
+        # Normal cases with "other" mode. max_spacegroups applies per crystal system:
         # spg 1-2 are triclinic (2 entries), spg 3-7 monoclinic (5 entries)
         (
             1,
@@ -144,22 +143,22 @@ def test_spacegroup_sunburst_reports_moyopy_conversion_failure(
         (3, "drop", 5, None),  # top 3 monoclinic + both triclinic
     ],
 )
-def test_spacegroup_sunburst_max_slices(
-    max_slices: int | None,
-    max_slices_mode: Literal["other", "drop"],
+def test_spacegroup_sunburst_max_spacegroups(
+    max_spacegroups: int | None,
+    overflow: Literal["other", "drop"],
     expected_systems: int,
     expected_others: list[tuple[str, int]] | None,
 ) -> None:
-    """Test spacegroup_sunburst with max_slices functionality and edge cases.
+    """Test spacegroup_sunburst with max_spacegroups functionality and edge cases.
 
-    max_slices limits space groups shown *per crystal system* (regression: the
+    max_spacegroups limits space groups shown *per crystal system* (regression: the
     limit used to be applied globally, silently dropping entire crystal systems).
     """
     # Create a dataset with multiple space groups per crystal system
     spg_numbers = (1, 2, 3, 4, 5, 6, 7)
 
     widget = pmv.spacegroup_sunburst(
-        spg_numbers, max_slices=max_slices, max_slices_mode=max_slices_mode
+        spg_numbers, max_spacegroups=max_spacegroups, overflow=overflow
     )
     space_groups = dict(spg_leaves(widget).values())
     assert len(space_groups) == expected_systems
@@ -169,17 +168,19 @@ def test_spacegroup_sunburst_max_slices(
     assert others == sorted(expected_others or [])
 
 
-@pytest.mark.parametrize("max_slices", [0, -1])
-def test_spacegroup_sunburst_rejects_limit_below_one(max_slices: int) -> None:
-    """max_slices below 1 raises instead of silently meaning no limit."""
-    with pytest.raises(ValueError, match=f"at least 1 or None, got limit={max_slices}"):
-        pmv.spacegroup_sunburst([1, 2], max_slices=max_slices)
+@pytest.mark.parametrize("max_spacegroups", [0, -1])
+def test_spacegroup_sunburst_rejects_limit_below_one(max_spacegroups: int) -> None:
+    """max_spacegroups below 1 raises instead of silently meaning no limit."""
+    with pytest.raises(
+        ValueError, match=f"at least 1 or None, got limit={max_spacegroups}"
+    ):
+        pmv.spacegroup_sunburst([1, 2], max_spacegroups=max_spacegroups)
 
 
 def test_spacegroup_sunburst_invalid_limit_mode() -> None:
-    """Invalid max_slices_mode raises."""
-    with pytest.raises(ValueError, match="Invalid max_slices_mode="):
-        pmv.spacegroup_sunburst([1, 2, 3], max_slices=1, max_slices_mode="invalid")  # ty: ignore[invalid-argument-type]
+    """Invalid overflow raises."""
+    with pytest.raises(ValueError, match="Invalid overflow="):
+        pmv.spacegroup_sunburst([1, 2, 3], max_spacegroups=1, overflow="invalid")  # ty: ignore[invalid-argument-type]
 
 
 @pytest.mark.parametrize("normalize", [False, True])

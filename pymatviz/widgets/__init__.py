@@ -20,6 +20,7 @@ from pymatviz.widgets.convex_hull import ConvexHullWidget
 from pymatviz.widgets.coordination_bar_plot import CoordinationBarPlotWidget
 from pymatviz.widgets.dos import DosWidget
 from pymatviz.widgets.fermi_surface import FermiSurfaceWidget
+from pymatviz.widgets.grid import WidgetGrid, widget_grid
 from pymatviz.widgets.heatmap_matrix import HeatmapMatrixWidget
 from pymatviz.widgets.histogram import HistogramWidget
 from pymatviz.widgets.link import WidgetLink, link_selection

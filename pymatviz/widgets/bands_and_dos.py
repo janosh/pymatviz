@@ -8,6 +8,8 @@ import traitlets as tl
 
 from pymatviz.widgets._normalize import (
     _to_dict,
+    check_stack_grids,
+    labeled_keys,
     normalize_json_kwargs,
     structure_to_dict,
 )
@@ -29,12 +31,12 @@ class BandsAndDosWidget(PlotControlsTraits, MatterVizWidget):
 
     Examples:
         From pymatgen objects:
-        >>> from pymatviz import BandsAndDosWidget
-        >>> widget = BandsAndDosWidget(band_structs=bs, doses=dos)
+        >>> import pymatviz as pmv
+        >>> widget = pmv.bands_and_dos(band_structs=bs, doses=dos)
         >>> widget
 
         With custom options:
-        >>> widget = BandsAndDosWidget(
+        >>> widget = pmv.bands_and_dos(
         ...     band_structs=bs,
         ...     doses=dos,
         ...     style="height: 600px;",
@@ -69,22 +71,35 @@ class BandsAndDosWidget(PlotControlsTraits, MatterVizWidget):
 
         Args:
             band_structs: Band structure data -- a pymatgen BandStructure,
-                BandStructureSymmLine, PhononBandStructureSymmLine, a dict, or a
-                ``{label: band_structure}`` dict of those.
-            doses: DOS data -- a pymatgen Dos, CompleteDos, PhononDos, a dict, or a
-                ``{label: dos}`` dict of those.
+                BandStructureSymmLine, PhononBandStructureSymmLine, phonopy
+                BandStructure, a dict, or a ``{label: band_structure}`` dict of those.
+            doses: DOS data -- a pymatgen Dos, CompleteDos, PhononDos, phonopy
+                TotalDos, a dict, or a ``{label: dos}`` dict with the same labels as
+                band_structs.
             structure: Optional crystal (pymatgen Structure, ASE Atoms, PhonopyAtoms
                 or structure dict) adding its Brillouin zone with the bands' k-path.
             **kwargs: Additional widget properties, e.g. ``fermi_level`` for both
                 panels, ``show_legend`` for the bands panel, or ``stack``, ``sigma``
                 (THz for phonons, eV for electrons), ``normalize``, and ``spin_mode``
                 for the DOS panel.
+
+        Raises:
+            ValueError: If band_structs and doses labels differ, or ``stack=True``
+                and the DOS have different grids.
         """
         normalize_json_kwargs(kwargs, ("bz_props",), "BandsAndDos")
+        bands_dict = _to_dict(band_structs, "band structure")
+        doses_dict = _to_dict(doses, "DOS")
+        if band_structs is not None and doses is not None:
+            band_keys, dos_keys = labeled_keys(bands_dict), labeled_keys(doses_dict)
+            if band_keys != dos_keys:
+                raise ValueError(f"{band_keys=} and {dos_keys=} must be identical")
+        if kwargs.get("stack"):
+            check_stack_grids(doses_dict)
         super().__init__(
             widget_type="bands_and_dos",
-            band_structs=_to_dict(band_structs, "band structure"),
-            doses=_to_dict(doses, "DOS"),
+            band_structs=bands_dict,
+            doses=doses_dict,
             structure=structure_to_dict(structure, periodic=True),
             **kwargs,
         )

@@ -774,41 +774,6 @@ class Key(_PicklableStrEnum):
     dielectric_tensor = "dielectric_tensor"
 
 
-class Task(LabelEnum):
-    """What kind of task is being performed."""
-
-    static = "static", "Static"  # aka single-point
-    relax = "relax", "Relaxation"  # aka geometry optimization
-    geo_opt = "geo_opt", "Geometry Optimization"
-    double_relax = "double_relax", "Double Relaxation"
-    phonon = "phonon", "Phonon"  # aka vibrational analysis
-    eos = "eos", "Equation of State"  # aka volume optimization
-    band_structure = "band_structure", "Band Structure"  # aka electronic structure
-    dos = "dos", "Density of States"
-    line_non_scf = "line_non_scf", "Non-SCF Line"
-    defect = "defect", "Defect"
-    point_defect = "point_defect", "Point Defect"
-    line_defect = "line_defect", "Line Defect"
-    adsorption = "adsorption", "Adsorption"  # aka surface adsorption
-    surface = "surface", "Surface"  # aka surface energy
-    reaction = "reaction", "Reaction"  # aka chemical reaction
-    formation_energy = "formation_energy", "Formation Energy"
-    bandgap = "bandgap", "Band Gap"
-    elastic = "elastic", "Elastic"
-    thermal = "thermal", "Thermal"
-    magnetic = "magnetic", "Magnetic"
-    magnetic_ordering = "magnetic_ordering", "Magnetic Ordering"
-    optical = "optical", "Optical"
-    dielectric = "dielectric", "Dielectric"  # aka optical properties
-    electronic = "electronic", "Electronic"
-    synthesis = "synthesis", "Synthesis"
-    md = "md", "Molecular Dynamics"
-    ion_diffusion = "ion_diffusion", "Ion Diffusion"
-    electron_transport = "electron_transport", "Electron Transport"
-    charge_transport = "charge_transport", "Charge Transport"
-    thermal_transport = "thermal_transport", "Thermal Transport"
-
-
 @unique
 class ElemCountMode(LabelEnum):
     """Mode of counting elements in a chemical formula."""
@@ -858,15 +823,6 @@ class ElemColorScheme(LabelEnum):
         import pymatviz.colors as pmv_colors
 
         return getattr(pmv_colors, f"ELEM_COLORS_{self.value.upper()}")
-
-
-@unique
-class SiteCoords(LabelEnum):
-    """Site coordinate representations."""
-
-    cartesian = "cartesian", "Cartesian"
-    fractional = "fractional", "Fractional"
-    cartesian_fractional = "cartesian+fractional", "Cartesian and Fractional"
 
 
 class MetaFiles(EnumType):

@@ -15,7 +15,11 @@ widget = pmv.chem_env_treemap(
     structure, chem_env_settings="chemenv", style="height: 480px"
 )
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/svg/chem-env-treemap-basic.svg", width=700)
+widget.to_img(
+    f"{pmv.utils.ROOT}/assets/svg/chem-env-treemap-basic.svg",
+    width=700,
+    transparent=True,
+)
 
 
 # %% Retain the most common coordination numbers and environments within each group.
@@ -26,4 +30,8 @@ widget = pmv.chem_env_treemap(
     structures, max_coordination_numbers=3, max_environments=4, style="height: 480px"
 )
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/svg/chem-env-treemap-large-dataset.svg", width=700)
+widget.to_img(
+    f"{pmv.utils.ROOT}/assets/svg/chem-env-treemap-large-dataset.svg",
+    width=700,
+    transparent=True,
+)

@@ -2,9 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import numpy as np
+import pandas as pd
 import pytest
 
 import pymatviz as pmv
+from pymatviz.utils.data import df_to_arrays
+from tests.conftest import y_pred, y_true
 
 
 if TYPE_CHECKING:
@@ -140,3 +144,21 @@ def test_spg_num_to_from_symbol_roundtrip() -> None:
         symbol = pmv.utils.spg_num_to_from_symbol(num)
         num_back = pmv.utils.spg_num_to_from_symbol(symbol)
         assert num == num_back, f"Roundtrip failed for {num} -> {symbol} -> {num_back}"
+
+
+def test_df_to_arrays() -> None:
+    """Columns or arrays give the same data, and bad df or column names raise."""
+    df_regr = pd.DataFrame({"x": y_true, "y": y_pred})
+    for arrays in (df_to_arrays(None, y_true, y_pred), df_to_arrays(df_regr, "x", "y")):
+        np.testing.assert_allclose(arrays, [y_true, y_pred], rtol=0, atol=0)
+    with pytest.raises(TypeError, match="df should be pandas DataFrame or None"):
+        df_to_arrays("foo", y_true, y_pred)  # ty: ignore[invalid-argument-type]
+    with pytest.raises(KeyError, match="not-a-col"):
+        df_to_arrays(df_regr, "not-a-col", "x")
+    with pytest.raises(ValueError, match="got column names but no df"):
+        df_to_arrays(None, "x", y_pred)
+    with pytest.raises(ValueError, match="pass column names or arrays, not both"):
+        df_to_arrays(df_regr, "x", y_pred)
+    _, y_cols = df_to_arrays(df_regr, "x", ["y", "x"])
+    assert list(y_cols) == ["y", "x"]
+    np.testing.assert_array_equal(y_cols["y"], y_pred)

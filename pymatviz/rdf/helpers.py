@@ -9,7 +9,7 @@ import numpy as np
 # compiled cython module, has no type stubs
 from pymatgen.optimization.neighbors import find_points_in_spheres  # ty: ignore[import-not-found]
 
-from pymatviz.process_data import normalize_periodic_structures
+from pymatviz.structures import get_site_elements, normalize_periodic_structures
 
 
 if TYPE_CHECKING:
@@ -58,9 +58,6 @@ def partial_rdfs(
 
     bin_size = cutoff / n_bins
     radii = np.linspace(0, cutoff, n_bins + 1)[1:]
-
-    # Import here to avoid circular import
-    from pymatviz.structure.helpers import get_site_elements
 
     # site_has[species][idx]: whether site idx contains species (all sites for None,
     # disordered sites contain several elements)

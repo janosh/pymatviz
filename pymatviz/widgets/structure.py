@@ -139,12 +139,12 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
 
     Examples:
         Basic usage:
-        >>> from pymatviz import StructureWidget
+        >>> import pymatviz as pmv
         >>> structure_data = {...}  # Structure dictionary from pymatgen/ASE
-        >>> widget = StructureWidget(structure=structure_data)
+        >>> widget = pmv.structure(structure=structure_data)
 
         With custom visualization options:
-        >>> widget = StructureWidget(
+        >>> widget = pmv.structure(
         ...     structure=structure_data,
         ...     atom_radius=0.8,
         ...     show_bonds="always",
@@ -155,16 +155,16 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
         Site vectors (force/magmom/spin) are auto-detected from site properties.
         Single vector keys use element-colored arrows; multiple keys get palette
         colors with per-key toggles, scale sliders, and origin gap control:
-        >>> StructureWidget(structure=struct_with_forces)  # auto-detected
-        >>> StructureWidget(structure=struct, vector_origin_gap=0.3)  # multi-method
-        >>> StructureWidget(structure=struct, vector_normalize=True)  # direction only
+        >>> pmv.structure(structure=struct_with_forces)  # auto-detected
+        >>> pmv.structure(structure=struct, vector_origin_gap=0.3)  # multi-method
+        >>> pmv.structure(structure=struct, vector_normalize=True)  # direction only
 
         Isosurfaces: pymatgen ``VolumetricData`` objects or dicts plus explicit layers
         (``isovalue`` in the volume's units, e/Å³ for CHGCAR) that pick their volume by
         ``volume_id`` (a pymatgen ``data`` key, or a dict's ``id``/``label``):
         >>> layer = dict(isovalue=0.05, color="#3b82f6", opacity=0.6, visible=True)
         >>> layer |= dict(volume_id="total")
-        >>> StructureWidget(
+        >>> pmv.structure(
         ...     volumetric_data=[Chgcar.from_file("CHGCAR")],
         ...     isosurface_settings={"layers": [layer], "wireframe": False, "halo": 0},
         ... )
@@ -174,7 +174,7 @@ class StructureWidget(StructureVizTraits, MatterVizWidget):
         ``"prefix/key"``:
         >>> volumes = {"relaxed": chgcar_relaxed, "initial": chgcar_initial}
         >>> layer |= dict(volume_id="relaxed/total")
-        >>> StructureWidget(
+        >>> pmv.structure(
         ...     volumetric_data=volumes, isosurface_settings={"layers": [layer]}
         ... )
     """

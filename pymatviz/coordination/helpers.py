@@ -7,7 +7,7 @@ from inspect import isclass
 from typing import TYPE_CHECKING, Any, Literal
 
 from pymatviz.enums import LabelEnum
-from pymatviz.structure import helpers
+from pymatviz.structures import get_site_species, get_site_symbol
 
 
 if TYPE_CHECKING:
@@ -107,9 +107,9 @@ def coordination_nums_in_structure(
     for idx, (site, neighbors) in enumerate(
         zip(structure, site_neighbors, strict=True), start=1
     ):
-        site_species = helpers.get_site_species(site)
+        site_species = get_site_species(site)
         key = {
-            "element": helpers.get_site_symbol(site),
+            "element": get_site_symbol(site),
             "site": str(idx),
             "specie": str(site_species),  # Preserve oxidation state for specie mode
         }[group_by]

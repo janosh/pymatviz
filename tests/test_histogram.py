@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from pymatviz.histogram import elements_hist, histogram
+from pymatviz.histogram import binned_histogram, elements_hist
 from pymatviz.widgets.bar_plot import BarPlotWidget
 from tests.conftest import df_regr, y_true
 
@@ -29,7 +29,7 @@ from tests.conftest import df_regr, y_true
             "log",
         ),
         # percent labels stay shares of all elements, not just the kept ones
-        ({"keep_top": 2}, ["O", "Fe"], [7, 3], ["58%", "25%"], "linear"),
+        ({"max_elements": 2}, ["O", "Fe"], [7, 3], ["58%", "25%"], "linear"),
         (
             {"show_values": "count"},
             ["O", "Fe", "Li", "P"],
@@ -77,9 +77,9 @@ def test_elements_hist_invalid_show_values() -> None:
 @pytest.mark.parametrize("log_y", [True, False])
 @pytest.mark.parametrize("bins", [20, 100])
 @pytest.mark.parametrize("values", [y_true, df_regr.y_true])
-def test_histogram(values: Any, log_y: bool, bins: int) -> None:
+def test_binned_histogram(values: Any, log_y: bool, bins: int) -> None:
     """Counts match np.histogram over the data range and axes are configured."""
-    widget = histogram(values, log_y=log_y, bins=bins)
+    widget = binned_histogram(values, log_y=log_y, bins=bins)
     (series,) = widget.series
     counts, edges = np.histogram(np.asarray(values), bins=bins)
     np.testing.assert_array_equal(series["y"], counts)
@@ -93,9 +93,9 @@ def test_histogram(values: Any, log_y: bool, bins: int) -> None:
     assert widget.show_legend is False
 
 
-def test_histogram_dict_shares_bin_edges() -> None:
+def test_binned_histogram_dict_shares_bin_edges() -> None:
     """Dict input bins every series on edges spanning all values, with a legend."""
-    widget = histogram(
+    widget = binned_histogram(
         {"a": [0, 1], "b": [9, 10]}, bins=5, mode="grouped", bar={"opacity": 0.3}
     )
     assert widget.bar == {"border_radius": 0, "opacity": 0.3}
@@ -107,16 +107,16 @@ def test_histogram_dict_shares_bin_edges() -> None:
     assert widget.series[1]["y"] == [0, 0, 0, 0, 2]
     assert widget.show_legend is True
     assert widget.mode == "grouped"  # kwargs override defaults
-    density = histogram({"a": [0, 1], "b": [9, 10]}, bins=5, density=True)
+    density = binned_histogram({"a": [0, 1], "b": [9, 10]}, bins=5, density=True)
     for srs, vals in zip(density.series, ([0, 1], [9, 10]), strict=True):
         expected = np.histogram(vals, bins=np.linspace(0, 10, 6), density=True)[0]
         np.testing.assert_allclose(srs["y"], expected, rtol=1e-15, atol=0)
     # a series without values in x_range has zero counts but no defined density
     in_out: dict[str, list[float]] = {"inside": [0.25], "outside": [10.0]}
-    counts = histogram(in_out, bins=2, x_range=(0, 1))
+    counts = binned_histogram(in_out, bins=2, x_range=(0, 1))
     assert [srs["y"] for srs in counts.series] == [[1, 0], [0, 0]]
     with pytest.raises(ValueError, match=r"undefined for series \['outside'\]"):
-        histogram(in_out, bins=2, x_range=(0, 1), density=True)
+        binned_histogram(in_out, bins=2, x_range=(0, 1), density=True)
 
 
 @pytest.mark.parametrize(
@@ -129,15 +129,15 @@ def test_histogram_dict_shares_bin_edges() -> None:
         ({"ok": [1, 2], "bad": [np.inf, -np.inf]}, r"'bad' contain 2 non-finite"),
     ],
 )
-def test_histogram_rejects_invalid_values(values: Any, match: str) -> None:
+def test_binned_histogram_rejects_invalid_values(values: Any, match: str) -> None:
     """Histogram rejects empty, non-1D and non-finite inputs, naming the series."""
     with pytest.raises(ValueError, match=match):
-        histogram(values)
+        binned_histogram(values)
 
 
-def test_histogram_preserves_zero_x_range_boundary() -> None:
+def test_binned_histogram_preserves_zero_x_range_boundary() -> None:
     """Histogram treats zero x_range bounds as explicit values."""
-    (series,) = histogram([1, 2, 3], x_range=(0, None), bins=3).series
+    (series,) = binned_histogram([1, 2, 3], x_range=(0, None), bins=3).series
     assert series["x"][0] - series["bar_width"][0] / 2 == 0
 
 
@@ -149,7 +149,7 @@ def test_histogram_preserves_zero_x_range_boundary() -> None:
     ],
 )
 @pytest.mark.parametrize("density", [False, True])
-def test_histogram_bin_geometry(
+def test_binned_histogram_bin_geometry(
     values: list[float],
     bins: int | list[float],
     centers: list[float],
@@ -158,7 +158,9 @@ def test_histogram_bin_geometry(
     density: bool,
 ) -> None:
     """Bin centers and widths preserve counts and density area for uneven bins."""
-    (series,) = histogram(values, bins=bins, density=density, bin_width=0.5).series
+    (series,) = binned_histogram(
+        values, bins=bins, density=density, bin_width=0.5
+    ).series
     np.testing.assert_array_equal(series["x"], centers)
     np.testing.assert_array_equal(series["bar_width"], 0.5 * np.array(widths))
     expected = (
@@ -171,11 +173,11 @@ def test_histogram_bin_geometry(
     ("series_name", "expected_title"),
     [(None, "Value"), ("my_col", "my_col"), (0, "0"), ("", "")],
 )
-def test_histogram_series_x_axis_label(
+def test_binned_histogram_series_x_axis_label(
     series_name: str | int | None, expected_title: str
 ) -> None:
     """Histogram uses series name as x-axis title; only None falls back to 'Value'."""
-    widget = histogram(pd.Series([1.0, 2.0, 3.0], name=series_name))
+    widget = binned_histogram(pd.Series([1.0, 2.0, 3.0], name=series_name))
     assert widget.x_axis["label"] == expected_title
     assert widget.series[0]["label"] == expected_title
 
@@ -190,7 +192,7 @@ def test_horizontal_swaps_axis_defaults(
 ) -> None:
     """Horizontal bars (any case) put category defaults on y, count/log on x."""
     if func == "histogram":
-        widget = histogram([1.0, 2.0, 3.0], log_y=True, orientation=orientation)
+        widget = binned_histogram([1.0, 2.0, 3.0], log_y=True, orientation=orientation)
     else:
         widget = elements_hist(["Fe2O3"], log_y=True, orientation=orientation)
     assert widget.x_axis == {"label": count_label, "scale_type": "log"}

@@ -553,7 +553,7 @@ def test_widget_normalizes_numpy_values(
 
 def test_spacegroup_bar_data_inputs(monkeypatch: pytest.MonkeyPatch) -> None:
     """SpacegroupBarPlotWidget counts every input form per space group number."""
-    import pymatviz.process_data as pmv_pd
+    import pymatviz.structures as pmv_structures
 
     widget = SpacegroupBarPlotWidget(data=pd.Series([225, 166, 62, 225]))
     assert widget.data == {"62": 1, "166": 1, "225": 2}
@@ -565,7 +565,7 @@ def test_spacegroup_bar_data_inputs(monkeypatch: pytest.MonkeyPatch) -> None:
     # mapping keys normalize in one batch per key type (numbers, symbols), not one
     # call per key
     n_calls = 0
-    normalize = pmv_pd.normalize_spacegroups
+    normalize = pmv_structures.normalize_spacegroups
 
     def counting_normalize(*args: Any) -> Any:
         """Count normalize_spacegroups calls."""
@@ -573,7 +573,7 @@ def test_spacegroup_bar_data_inputs(monkeypatch: pytest.MonkeyPatch) -> None:
         n_calls += 1
         return normalize(*args)
 
-    monkeypatch.setattr(pmv_pd, "normalize_spacegroups", counting_normalize)
+    monkeypatch.setattr(pmv_structures, "normalize_spacegroups", counting_normalize)
     widget.data = {"Fm-3m": 1, "P2_1/c": 2, "Pnma": 3}
     assert (widget.data, n_calls) == ({"14": 2, "62": 3, "225": 1}, 1)
     widget.data = {225: 1, np.int64(62): 2, "225": 3, "Fm-3m": 4, "P 1 21/c 1": 5}

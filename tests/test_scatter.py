@@ -8,6 +8,7 @@ import pytest
 import sklearn.metrics as skm
 
 import pymatviz as pmv
+from pymatviz.scatter import _bin_points
 from pymatviz.widgets.binned_scatter_plot import BinnedScatterPlotWidget
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 from tests.conftest import df_regr, np_rng
@@ -34,7 +35,7 @@ def test_density_scatter(
 ) -> None:
     """Density scatter colors points by density and adds parity powerups."""
     df, x, y = df_or_arrays
-    widget = pmv.density_scatter(x, y, df=df, log=log, n_bins=n_bins, density=density)
+    widget = pmv.density_scatter(x, y, df=df, log=log, bins=n_bins, density=density)
     assert isinstance(widget, ScatterPlotWidget)
     assert widget.x_axis == {"label": x if isinstance(x, str) else "Actual"}
     assert widget.y_axis == {"label": y if isinstance(y, str) else "Predicted"}
@@ -80,15 +81,14 @@ def test_density_plots_use_series_names_and_drop_nan(
 
 
 @pytest.mark.parametrize(
-    "plot_func",
-    [pmv.density_hexbin, pmv.density_hexbin_with_hist, pmv.density_scatter_with_hist],
+    "hist_kwargs", [{}, {"marginal_bins": 100}, {"marginal_bins": 100, "bin_px": 1.5}]
 )
 def test_binned_density_plots(
-    df_or_arrays: DfOrArrays, plot_func: Callable[..., BinnedScatterPlotWidget]
+    df_or_arrays: DfOrArrays, hist_kwargs: dict[str, Any]
 ) -> None:
     """Binned density plots send raw points, overlays and marginal histograms."""
     df, x, y = df_or_arrays
-    widget = plot_func(x, y, df=df, best_fit_line=True)
+    widget = pmv.density_hexbin(x, y, df=df, best_fit_line=True, **hist_kwargs)
     assert isinstance(widget, BinnedScatterPlotWidget)
     np.testing.assert_array_equal(widget.series[0]["x"], df_regr[X_COL])
     np.testing.assert_array_equal(widget.series[0]["y"], df_regr[Y_COL])
@@ -98,14 +98,15 @@ def test_binned_density_plots(
     assert all("annotation" not in line for line in lines)  # moved to the badge
     assert widget.annotation.startswith("LS fit: y = ")
     assert "\nMAE = " in widget.annotation
-    with_hist = plot_func is not pmv.density_hexbin
+    with_hist = "marginal_bins" in hist_kwargs
     assert bool(widget.marginals) == with_hist
     if with_hist:
         assert widget.marginals["top"] == {"type": "histogram", "bins": 100}
-    expected_bin_px = 1.5 if plot_func is pmv.density_scatter_with_hist else None
-    assert widget.density.get("bin_px") == expected_bin_px
-    if with_hist:  # user marginals merge per side over the default histograms
-        custom = plot_func(x, y, df=df, marginals={"right": None}, stats=False)
+    assert widget.density.get("bin_px") == hist_kwargs.get("bin_px")
+    if with_hist:  # user marginals merge per side over the marginal_bins histograms
+        custom = pmv.density_hexbin(
+            x, y, df=df, marginals={"right": None}, stats=False, **hist_kwargs
+        )
         assert custom.marginals == {
             "top": {"type": "histogram", "bins": 100},
             "right": None,
@@ -121,9 +122,9 @@ def test_binned_density_plots(
         (pmv.density_scatter, {"x": [np.nan], "y": [1]}, "at least one finite"),
         (pmv.density_scatter, {"x": [1, 2], "y": [1]}, "equal length"),
         (
-            pmv.density_hexbin_with_hist,
-            {"x": [1, 2], "y": [1, 2], "bins": 0},
-            "bins=0 must be a positive int",
+            pmv.density_hexbin,
+            {"x": [1, 2], "y": [1, 2], "marginal_bins": 0},
+            "marginal_bins=0 must be a positive int",
         ),
     ],
 )
@@ -154,7 +155,7 @@ def test_density_scatter_collinear_kde(
 ) -> None:
     """Collinear points have no 2D KDE and fall back to empirical density."""
     with pytest.warns(UserWarning, match="KDE impossible for 3 point"):
-        widget = pmv.density_scatter(xs, ys, stats=False, density="kde", n_bins=n_bins)
+        widget = pmv.density_scatter(xs, ys, stats=False, density="kde", bins=n_bins)
     assert sum(widget.series[0]["color_values"]) == 3  # counts of all 3 points
 
 
@@ -173,7 +174,7 @@ def test_density_scatter_single_point() -> None:
 def test_density_scatter_auto_log(density_vals: list[int], expected_log: bool) -> None:
     """log=None turns on log colors when densities span > 2 decades."""
     xs = np.repeat(np.arange(len(density_vals), dtype=float), density_vals)
-    widget = pmv.density_scatter(xs, xs, n_bins=len(density_vals), stats=False)
+    widget = pmv.density_scatter(xs, xs, bins=len(density_vals), stats=False)
     assert widget.color_scale["type"] == ("log" if expected_log else "linear")
 
 
@@ -192,8 +193,17 @@ def test_density_scatter_kwargs() -> None:
     assert widget.color_scale == {"scheme": "interpolatePlasma", "type": "linear"}
     xs = np.repeat([0.0, 1.0], [1, 1000])
     log_widget = pmv.density_scatter(
-        xs, xs, n_bins=2, stats=False, color_scale="interpolatePlasma"
+        xs, xs, bins=2, stats=False, color_scale="interpolatePlasma"
     )
     assert log_widget.color_scale == {"scheme": "interpolatePlasma", "type": "log"}
     assert widget.annotation == "RMSE = 0.58"
     assert [line["type"] for line in widget.ref_lines] == ["segment"]
+
+
+def test_bin_points() -> None:
+    """Each occupied grid cell keeps its first point and counts all of its points."""
+    xs, ys = np.array([0.0, 0.1, 1.0, 0.05]), np.array([0.0, 0.1, 1.0, 0.9])
+    bin_x, bin_y, counts = _bin_points(xs, ys, 2)
+    assert bin_x.tolist() == [0.0, 0.05, 1.0]
+    assert bin_y.tolist() == [0.0, 0.9, 1.0]
+    assert counts.tolist() == [2, 1, 1]

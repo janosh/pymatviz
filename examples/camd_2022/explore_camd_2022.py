@@ -52,7 +52,7 @@ pmv.ptable_heatmap(elem_counts, log=True, color_bar={"title": title}).show()
 
 # %%
 source_counts = df_camd.data_source.value_counts()
-widget = pmv.BarPlotWidget(
+widget = pmv.bar_plot(
     series=[{"x": list(map(str, source_counts.index)), "y": source_counts.to_numpy()}],
     x_axis={"label": "Data source"},
     y_axis={"label": "Count"},

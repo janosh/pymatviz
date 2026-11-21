@@ -236,7 +236,7 @@ def test_projection_stats(
         ({"n_components": 4}, ValueError, "n_components=4 must be 2 or 3"),
         ({"embedding_method": "invalid_method"}, ValueError, "embedding_method="),
         (
-            {"df_in": pd.DataFrame({"composition": [object(), object()]})},
+            {"df": pd.DataFrame({"composition": [object(), object()]})},
             TypeError,
             "Expected str or Composition",
         ),
@@ -259,7 +259,7 @@ def test_projection_stats(
         ),
         (
             {
-                "df_in": pd.DataFrame({"composition": ["Fe", "Cu"], "prop": [-1, 0]}),
+                "df": pd.DataFrame({"composition": ["Fe", "Cu"], "prop": [-1, 0]}),
                 "prop_name": "prop",
                 "log": True,
             },
@@ -283,7 +283,7 @@ def test_cluster_compositions_invalid_inputs(
     df_prop: pd.DataFrame, kwargs: dict[str, Any], err_type: type[Exception], match: str
 ) -> None:
     """Invalid arguments raise informative errors."""
-    call_kwargs: dict[str, Any] = {"df_in": df_prop, **BASE_KWARGS, **kwargs}
+    call_kwargs: dict[str, Any] = {"df": df_prop, **BASE_KWARGS, **kwargs}
     with pytest.raises(err_type, match=match):
         pmv.cluster_compositions(**call_kwargs)
 
@@ -341,7 +341,7 @@ def test_custom_embedding_and_projection(df_prop: pd.DataFrame) -> None:
 
 
 def test_annotate_points(df_prop: pd.DataFrame) -> None:
-    """annotate_points labels get each df_in row plus projected coordinates."""
+    """annotate_points labels get each df row plus projected coordinates."""
     rows: list[pd.Series] = []
 
     def label(row: pd.Series) -> str | dict[str, str] | None:

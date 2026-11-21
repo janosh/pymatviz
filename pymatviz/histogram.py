@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from pymatviz.composition import count_elements
 from pymatviz.enums import ElemCountMode
-from pymatviz.process_data import count_elements
 from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.bar_plot import BarPlotWidget, bar_axis_defaults
 
@@ -23,11 +23,11 @@ if TYPE_CHECKING:
 
 
 def elements_hist(
-    formulas: ElemValues,
+    values: ElemValues,
     *,
     count_mode: ElemCountMode = ElemCountMode.composition,
     log_y: bool = False,
-    keep_top: int | None = None,
+    max_elements: int | None = None,
     show_values: Literal["percent", "count"] | None = "percent",
     bar_width: float = 0.7,
     opacity: float = 0.8,
@@ -36,15 +36,15 @@ def elements_hist(
     """Bar chart of element occurrence counts, sorted from most to least common.
 
     Args:
-        formulas (ElemValues): compositional strings, e.g. ["Fe2O3", "Bi2Te3"], or a
+        values (ElemValues): compositional strings, e.g. ["Fe2O3", "Bi2Te3"], or a
             map/Series from element symbols to precomputed counts.
         count_mode ("composition" | "fractional_composition" | "reduced_composition"):
             Reduce or normalize compositions before counting. See `count_elements` for
-            details. Only used when formulas is list of composition strings/objects.
+            details. Only used when values is a list of composition strings/objects.
         log_y (bool, optional): Whether y-axis is log or linear. Default = False.
-        keep_top (int | None): Display only the top n elements by prevalence.
+        max_elements (int | None): Display only the top n elements by prevalence.
         show_values ("percent"|"count"|None): "percent" (default) labels bars with
-            their share of the total count (incl. elements dropped by keep_top),
+            their share of the total count (incl. elements dropped by max_elements),
             "count" with the count, None hides labels.
         bar_width (float): Width of bars as fraction of available space. Default = 0.7.
         opacity (float): Bar opacity between 0 and 1. Default = 0.8.
@@ -54,11 +54,11 @@ def elements_hist(
     Returns:
         BarPlotWidget: one bar per element.
     """
-    elem_counts = count_elements(formulas, count_mode)
+    elem_counts = count_elements(values, count_mode)
     non_zero = elem_counts[elem_counts > 0].sort_values(ascending=False)
     total_count = non_zero.sum()  # percent labels are shares of all elements
-    if keep_top is not None:
-        non_zero = non_zero.head(keep_top)
+    if max_elements is not None:
+        non_zero = non_zero.head(max_elements)
 
     counts = non_zero.to_numpy(dtype=float)
     series: dict[str, Any] = {
@@ -91,7 +91,7 @@ def elements_hist(
     )
 
 
-def histogram(
+def binned_histogram(
     values: Sequence[float]
     | np.ndarray
     | pd.Series

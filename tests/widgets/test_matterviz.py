@@ -12,7 +12,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from pymatviz import PKG_NAME
 from pymatviz.widgets import matterviz
 from pymatviz.widgets.matterviz import (
     _in_marimo_runtime,
@@ -27,7 +26,7 @@ if TYPE_CHECKING:
     from collections.abc import Generator
     from pathlib import Path
 
-DOTTED_PATH = f"{PKG_NAME}.widgets.matterviz"
+DOTTED_PATH = "pymatviz.widgets.matterviz"
 
 _real_import = builtins.__import__
 
@@ -80,7 +79,7 @@ def _clean_asset_cache(monkeypatch: pytest.MonkeyPatch) -> Generator[None]:
 @pytest.mark.parametrize("cache_exists", [True, False])
 def test_clear_widget_cache(cache_exists: bool, tmp_path: Path) -> None:
     """Clearing cache removes the directory whether or not it exists."""
-    cache_dir = tmp_path / ".cache" / PKG_NAME
+    cache_dir = tmp_path / ".cache" / "pymatviz"
     if cache_exists:
         cache_dir.mkdir(parents=True)
         (cache_dir / "test.txt").write_text("test")
@@ -367,7 +366,7 @@ def test_local_bundle_survives_reconfiguration(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Existing widgets export and sync with the local bundle they loaded."""
-    from pymatviz import TrajectoryWidget
+    from pymatviz.widgets import TrajectoryWidget
 
     for ext in ("js", "css"):
         (tmp_path / f"matterviz.{ext}").write_text(f"/* local {ext} */")

@@ -20,13 +20,17 @@ for mp_id, formula in (("mp-2758", "Sr4Se4"), ("mp-23907", "H2")):
         with zopen(path, mode="rt") as file:
             docs[key] = json.loads(file.read(), cls=MontyDecoder)
 
-    widget = pmv.phonon_bands_and_dos(
-        {key: doc.phonon_bandstructure for key, doc in docs.items()},
-        {key: doc.phonon_dos for key, doc in docs.items()},
+    widget = pmv.bands_and_dos(
+        band_structs={key: doc.phonon_bandstructure for key, doc in docs.items()},
+        doses={key: doc.phonon_dos for key, doc in docs.items()},
         structure=next(iter(docs.values())).structure,
         sigma=0.05,
         style="height: 500px",
     )
     widget.show()
     # PNG since the Brillouin zone inset renders with WebGL
-    widget.to_img(f"{pmv.ROOT}/assets/png/phonon-bands-and-dos-{mp_id}.png", width=900)
+    widget.to_img(
+        f"{pmv.utils.ROOT}/assets/png/phonon-bands-and-dos-{mp_id}.png",
+        width=1300,  # MatterViz's desktop layout: zone, bands and DOS side by side
+        transparent=True,
+    )

@@ -21,8 +21,8 @@ class ChemPotDiagramWidget(MatterVizWidget):
     from phase diagram entry data.
 
     Examples:
-        >>> from pymatviz import ChemPotDiagramWidget
-        >>> widget = ChemPotDiagramWidget(
+        >>> import pymatviz as pmv
+        >>> widget = pmv.chem_pot_diagram(
         ...     entries=[
         ...         {"name": "Li2O", "energy": -14.3, "composition": {"Li": 2, "O": 1}},
         ...     ],

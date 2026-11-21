@@ -19,8 +19,8 @@ class RdfPlotWidget(PlotControlsTraits, MatterVizWidget):
 
     Examples:
         From a pymatgen Structure dict:
-        >>> from pymatviz import RdfPlotWidget
-        >>> widget = RdfPlotWidget(
+        >>> import pymatviz as pmv
+        >>> widget = pmv.rdf_plot(
         ...     structures={"lattice": {...}, "sites": [...]}, cutoff=10
         ... )
     """

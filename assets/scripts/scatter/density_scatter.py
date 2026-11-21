@@ -15,13 +15,19 @@ y_true, y_pred, _y_std = pmv.data.regression()
 # %% Basic density scatter with regression data
 widget = pmv.density_scatter(y_true, y_pred)
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/svg/density-scatter.svg", width=500)
+widget.to_img(
+    f"{pmv.utils.ROOT}/assets/svg/density-scatter.svg", width=500, transparent=True
+)
 
 
 # %% Fine-grained density with marginal histograms
-widget = pmv.density_scatter_with_hist(y_true, y_pred)
+widget = pmv.density_hexbin(y_true, y_pred, bin_px=1.5, marginal_bins=100)
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/svg/density-scatter-with-hist.svg", width=500)
+widget.to_img(
+    f"{pmv.utils.ROOT}/assets/svg/density-scatter-with-hist.svg",
+    width=500,
+    transparent=True,
+)
 
 
 # %% ML model predictions: 20k points binned into 200x200 bins
@@ -71,5 +77,5 @@ x_vals = np.concatenate(
     ]
 )
 y_vals = x_vals + np_rng.normal(0, 2, len(x_vals))
-widget = pmv.density_hexbin_with_hist(x_vals, y_vals, identity_line=False)
+widget = pmv.density_hexbin(x_vals, y_vals, marginal_bins=100, identity_line=False)
 widget.show()

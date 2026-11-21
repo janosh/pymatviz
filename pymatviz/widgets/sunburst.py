@@ -16,8 +16,8 @@ class SunburstWidget(HierarchyPlotTraits, MatterVizWidget):
     Clicking a branch updates ``zoom_root_id``; assign an ID to zoom from Python.
 
     Examples:
-        >>> from pymatviz import SunburstWidget
-        >>> SunburstWidget(data=[{"label": "Fe-O", "value": 4}], shape="icicle")
+        >>> import pymatviz as pmv
+        >>> pmv.sunburst(data=[{"label": "Fe-O", "value": 4}], shape="icicle")
     """
 
     _chart_type = "sunburst"

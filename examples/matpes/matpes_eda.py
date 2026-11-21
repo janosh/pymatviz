@@ -47,7 +47,7 @@ for df_data, expected_rows in ((df_r2scan, N_R2SCAN), (df_pbe, N_PBE)):
 
 
 # %% plot histogram of energies
-widget = pmv.histogram(
+widget = pmv.binned_histogram(
     {"r2scan": df_r2scan[Key.energy], "pbe": df_pbe[Key.energy]},
     x_axis={"label": Key.energy.label},
     bar={"opacity": 0.8},
@@ -61,7 +61,7 @@ widget.show()
 # Update: Seems fine actually. Parity plot reveals this nice collection of bands which
 # looks like within each chemical system, you indeed get consistent energy differences.
 # just across different systems, the zero-level energies differ wildly
-widget = pmv.ScatterPlotWidget(
+widget = pmv.scatter_plot(
     series=[
         {
             "x": df_r2scan[Key.energy].head(1000),
@@ -83,7 +83,7 @@ df_r2scan[total_force_col] = df_r2scan[Key.forces].map(
     lambda arr: np.abs(arr).sum(axis=1)
 )
 
-widget = pmv.histogram(
+widget = pmv.binned_histogram(
     {
         "r2scan": np.concatenate(df_r2scan[total_force_col].to_list()),
         "pbe": np.concatenate(df_pbe[total_force_col].to_list()),
@@ -187,13 +187,13 @@ widget.show()
 
 
 # %% spacegroup histogram
-pmv.spacegroup_bar(df_r2scan[Key.spg_num], log_y=True).show()
+pmv.spacegroup_bar_plot(df_r2scan[Key.spg_num], log_y=True).show()
 
 
 # %% most calcs missing r2SCAN results have 4 sites, almost all 2 or 3-site r2SCAN calcs
 # completed
 max_sites = max(df_r2scan[Key.n_sites].max(), df_pbe[Key.n_sites].max())
-widget = pmv.histogram(
+widget = pmv.binned_histogram(
     {"r2scan": df_r2scan[Key.n_sites], "pbe": df_pbe[Key.n_sites]},
     bins=np.arange(0.5, max_sites + 1.5).tolist(),  # one bin per integer site count
     x_axis={"label": Key.n_sites.label},
@@ -239,7 +239,7 @@ pmv.ptable_heatmap_splits(
 # %%
 df_e_atoms = pd.read_csv(f"{module_dir}/2024-10-30-MatPES-atomic-energies.csv")
 
-widget = pmv.BarPlotWidget(
+widget = pmv.bar_plot(
     series=[
         {
             "x": df_e_atoms[Key.element].astype(str).to_list(),

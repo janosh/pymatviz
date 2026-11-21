@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import functools
 import importlib.util
+import io
 import json
 import os
 import threading
@@ -12,13 +14,16 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import numpy as np
 import pytest
+from PIL import Image
 
 import pymatviz.widgets._headless as headless_mod
 from pymatviz.widgets._headless import (
     _MOUNT_JS,
     _PROBE_JS,
     _SVG_EXPORT_JS,
+    _TRANSPARENT_STYLE,
     _build_html,
+    _trim_png,
     build_interactive_html,
     png_blank_fraction,
     render_diagnostics,
@@ -137,22 +142,30 @@ def test_sync_export_inside_running_loop() -> None:
 
 
 @pytest.mark.parametrize(
-    ("fmt", "dpi", "webgl", "expected_scale", "expected_bytes"),
+    ("fmt", "dpi", "webgl", "expected_scale", "expected_bytes", "transparent"),
     [
-        ("png", 72, False, 1.0, b"\x89PNG dpi"),
-        ("png", 144, False, 2.0, b"\x89PNG dpi"),
-        ("png", 36, False, 1.0, b"\x89PNG dpi"),  # sub-72 DPI clamps to 1x
-        ("jpeg", 216, False, 3.0, b"\xff\xd8 dpi"),
-        ("svg", 144, False, 2.0, b"<svg>dpi</svg>"),  # scales canvas layers in SVG
-        ("pdf", 72, False, 1.0, b"%PDF-vector"),  # SVG/HTML/2D canvas: native vector
-        ("pdf", 216, True, 3.0, b"%PDF-raster"),  # print pipeline can't see WebGL
+        ("png", 72, False, 1.0, b"\x89PNG dpi", False),
+        ("png", 144, False, 2.0, b"\x89PNG dpi", False),
+        ("png", 36, False, 1.0, b"\x89PNG dpi", False),  # sub-72 DPI clamps to 1x
+        ("jpeg", 216, False, 3.0, b"\xff\xd8 dpi", False),
+        ("svg", 144, False, 2.0, b"<svg>dpi</svg>", False),  # canvas layers at DPI
+        ("pdf", 72, False, 1.0, b"%PDF-vector", False),  # SVG/HTML/2D canvas: vector
+        ("pdf", 216, True, 3.0, b"%PDF-raster", False),  # print can't see WebGL
+        ("png", 144, False, 2.0, b"trimmed", True),
+        ("svg", 72, False, 1.0, b"<svg>trimmed</svg>", True),
     ],
 )
 def test_render_widget_headless_formats_and_dpi(
-    fmt: str, dpi: int, webgl: bool, expected_scale: float, expected_bytes: bytes
+    fmt: str,
+    dpi: int,
+    webgl: bool,
+    expected_scale: float,
+    expected_bytes: bytes,
+    transparent: bool,
 ) -> None:
-    """DPI maps to the browser scale for every format, and PDFs rasterize iff the
-    widget shows WebGL.
+    """DPI maps to the browser scale for every format, PDFs rasterize iff the widget
+    shows WebGL, and transparent exports drop backgrounds and trim (PNG by pixels at
+    the export scale, SVG by viewBox).
     """
     svg_result = {"svg": expected_bytes.decode()} if fmt == "svg" else None
     page = _mock_page(svg_result=svg_result, webgl=webgl)
@@ -162,17 +175,37 @@ def test_render_widget_headless_formats_and_dpi(
     with (
         patch(f"{HEADLESS_PATH}._get_browser", AsyncMock(return_value=browser)),
         patch(f"{HEADLESS_PATH}._png_to_pdf", return_value=b"%PDF-raster") as to_pdf,
+        patch(f"{HEADLESS_PATH}._trim_png", return_value=b"trimmed") as trim_png,
     ):
         result = render_widget_headless(
-            DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS, fmt=fmt, dpi=dpi
+            DUMMY_WIDGET_DATA,
+            DUMMY_ESM,
+            DUMMY_CSS,
+            fmt=fmt,
+            dpi=dpi,
+            transparent=transparent,
         )
 
     assert result == expected_bytes
+    mount_style = next(
+        call.args[1][1]["style"]
+        for call in page.evaluate.await_args_list
+        if call.args[0] == _MOUNT_JS
+    )
+    # the transparent theme goes before the widget's own style, which may override it
+    theme = f"{_TRANSPARENT_STYLE}; " if transparent else ""
+    assert mount_style.startswith(f"{theme}width: 800px")
+    if fmt == "png":
+        page.locator.return_value.screenshot.assert_awaited_once_with(
+            type="png", omit_background=transparent
+        )
+        if transparent:  # 4 CSS px of margin at the 2x export scale
+            trim_png.assert_called_once_with(b"trimmed", 8)
     browser.new_page.assert_awaited_once_with(
         viewport={"width": 1024, "height": 768}, device_scale_factor=expected_scale
     )
     if fmt == "svg":  # MatterViz embeds canvas layers at the export DPI
-        page.evaluate.assert_any_await(_SVG_EXPORT_JS, dpi)
+        page.evaluate.assert_any_await(_SVG_EXPORT_JS, [dpi, 4 if transparent else 0])
     if webgl:
         to_pdf.assert_called_once_with(expected_bytes, scale=expected_scale)
     assert page.pdf.await_count == (fmt == "pdf" and not webgl)
@@ -382,8 +415,11 @@ def test_bundle_load_error_surfaces() -> None:
 # Renders an <svg>, then (per ``kind``) throws asynchronously, rejects a promise, or
 # creates a WebGL canvas plus one without any context, kept on window for probing
 SYNTHETIC_ESM = """\
+export const export_svg = (el) => el.dataset.svg;
 export default { render({ model, el }) {
   el.innerHTML = '<svg width="100" height="100"><rect width="50" height="50"/></svg>';
+  el.dataset.svg = model.get("svg") ?? "";
+  el.style.maxWidth = "100%";  // as the bundle caps widgets at their parent's width
   const kind = model.get("kind");
   if (kind === "throw") setTimeout(() => { throw new Error("async boom"); }, 0);
   if (kind === "reject") Promise.reject(new Error("rejected boom"));
@@ -438,6 +474,58 @@ def test_webgl_pdf_rasterized_and_contexts_freed() -> None:
         ]
     finally:
         headless_mod._run_in_browser_thread(headless_mod._retire(warm))
+
+
+@needs_playwright
+@pytest.mark.parametrize(
+    ("svg", "expected"),
+    [
+        # 10x5 rect at (20, 30) plus the 4px pad
+        (
+            '<rect x="20" y="30" width="10" height="5"/>',
+            'viewBox="16 26 18 13" width="18" height="13"',
+        ),
+        ("", "trim failed: transparent export painted no pixels"),
+        (None, "trim failed: exported SVG has no viewBox"),
+    ],
+)
+def test_transparent_svg_trims_to_painted_pixels(
+    svg: str | None, expected: str
+) -> None:
+    """Transparent SVG exports shrink the viewBox to the painted pixels plus a pad,
+    and report unpaintable or unmeasurable SVGs as export errors.
+    """
+    view_box = "" if svg is None else ' viewBox="0 0 100 100"'
+    data = {
+        **DUMMY_WIDGET_DATA,
+        "svg": f'<svg xmlns="http://www.w3.org/2000/svg"{view_box}>{svg or ""}</svg>',
+    }
+    export = functools.partial(
+        render_widget_headless,
+        data,
+        SYNTHETIC_ESM,
+        DUMMY_CSS,
+        fmt="svg",
+        dpi=72,
+        timeout=10,
+        transparent=True,
+    )
+    if expected.startswith("trim failed"):
+        with pytest.raises(RuntimeError, match=f"SVG export failed: {expected}"):
+            export()
+    else:
+        assert expected in export().decode()
+
+
+@needs_playwright
+def test_export_wider_than_page() -> None:
+    """Widgets keep their export width past the 1024px page, though the bundle caps
+    widgets at their parent's width.
+    """
+    png = render_widget_headless(
+        DUMMY_WIDGET_DATA, SYNTHETIC_ESM, DUMMY_CSS, dpi=72, width=1300, timeout=10
+    )
+    assert Image.open(io.BytesIO(png)).size == (1300, 600)
 
 
 # === _build_html ===
@@ -534,6 +622,46 @@ def test_to_html_writes_file(tmp_path: Any) -> None:
     assert "https://example.com/mv.js" in html
     with open(out_path, encoding="utf-8") as file:
         assert file.read() == html
+
+
+@pytest.mark.parametrize("fmt", ["jpeg", "pdf"])
+def test_transparent_rejects_opaque_formats(fmt: str) -> None:
+    """Transparent export raises for formats without alpha (JPEG) or trimming (PDF)."""
+    with pytest.raises(ValueError, match=f"supports png and svg, got fmt='{fmt}'"):
+        render_widget_headless(
+            DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS, fmt=fmt, transparent=True
+        )
+
+
+@pytest.mark.parametrize(
+    ("mode", "painted_box", "pad", "expected_size"),
+    [
+        ("RGBA", (10, 20, 30, 25), 0, (20, 5)),
+        ("RGBA", (10, 20, 30, 25), 4, (28, 13)),
+        ("RGBA", (0, 0, 40, 40), 4, (40, 40)),  # pad clamps to the image edges
+        ("RGB", (0, 0, 40, 40), 4, (40, 40)),  # Chromium drops alpha when opaque
+        ("RGBA", None, 4, None),  # nothing painted
+    ],
+)
+def test_trim_png(
+    mode: str,
+    painted_box: tuple[int, int, int, int] | None,
+    pad: int,
+    expected_size: tuple[int, int] | None,
+) -> None:
+    """_trim_png crops to opaque pixels plus a pad, and raises on blank captures."""
+    img = Image.new(mode, (40, 40))
+    if painted_box:
+        img.paste((200, 0, 0, 255)[: len(mode)], painted_box)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    if expected_size is None:
+        with pytest.raises(RuntimeError, match="no painted pixels"):
+            _trim_png(buf.getvalue(), pad)
+        return
+    trimmed = Image.open(io.BytesIO(_trim_png(buf.getvalue(), pad)))
+    assert trimmed.size == expected_size
+    assert trimmed.getpixel((pad, pad)) == (200, 0, 0, 255)
 
 
 def test_png_blank_fraction_uniform_image() -> None:

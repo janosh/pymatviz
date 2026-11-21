@@ -26,7 +26,9 @@ widget_bi = pmv.rainclouds(
     x_axis={"label": "Value"},
 )
 widget_bi.show()
-widget_bi.to_img(f"{pmv.ROOT}/assets/svg/rainclouds-bimodal.svg", width=700)
+widget_bi.to_img(
+    f"{pmv.utils.ROOT}/assets/svg/rainclouds-bimodal.svg", width=700, transparent=True
+)
 
 
 # %% Example 2: Three trimodal distributions as beeswarms
@@ -50,4 +52,6 @@ widget_tri = pmv.rainclouds(
     y_axis={"label": "Value"},
 )
 widget_tri.show()
-widget_tri.to_img(f"{pmv.ROOT}/assets/svg/rainclouds-trimodal.svg", width=700)
+widget_tri.to_img(
+    f"{pmv.utils.ROOT}/assets/svg/rainclouds-trimodal.svg", width=700, transparent=True
+)

@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
+import numpy as np
 import pandas as pd
 from moyopy import SpaceGroupType
 
@@ -163,3 +164,35 @@ def si_fmt(
 
 
 si_fmt_int = partial(si_fmt, fmt=".0f")
+
+
+def df_to_arrays(df: pd.DataFrame | None, *args: Any) -> list[Any]:
+    """Columns of df (rows with NaN in any of them dropped) if df is given, else args
+    as arrays. A list of column names becomes a ``{col: array}`` dict.
+
+    Raises:
+        TypeError: If df is neither a DataFrame nor None.
+        ValueError: If df is None but args holds column names, or df is given and args
+            holds arrays.
+    """
+    if df is None:
+        if cols := [arg for arg in args if isinstance(arg, str)]:
+            raise ValueError(f"got column names but no df to get data from: {cols}")
+        return list(map(np.asarray, args))
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError(f"df should be pandas DataFrame or None, got {type(df)}")
+    if arrays := [arg for arg in args if isinstance(arg, np.ndarray)]:
+        raise ValueError(f"pass column names or arrays, not both, got {arrays}")
+    is_col = [isinstance(arg, str | int) for arg in args]
+    flat_cols = [
+        col
+        for arg, single in zip(args, is_col, strict=True)
+        for col in ([arg] if single else arg)
+    ]
+    df_no_nan = df.dropna(subset=flat_cols)
+    return [
+        df_no_nan[arg].to_numpy()
+        if single
+        else {col: df_no_nan[col].to_numpy() for col in arg}
+        for arg, single in zip(args, is_col, strict=True)
+    ]

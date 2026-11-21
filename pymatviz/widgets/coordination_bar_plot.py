@@ -29,9 +29,9 @@ class CoordinationBarPlotWidget(PlotControlsTraits, MatterVizWidget):
 
     Examples:
         >>> from pymatgen.core import Lattice, Structure
-        >>> from pymatviz.widgets import CoordinationBarPlotWidget
+        >>> import pymatviz as pmv
         >>> nacl = Structure(Lattice.cubic(5.6), ["Na", "Cl"], [[0] * 3, [0.5] * 3])
-        >>> CoordinationBarPlotWidget({"NaCl": nacl}, split_mode="by_element")
+        >>> pmv.coordination_bar_plot({"NaCl": nacl}, split_mode="by_element")
     """
 
     # a structure dict or {label: structure dict}

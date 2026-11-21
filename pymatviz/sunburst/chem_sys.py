@@ -21,7 +21,7 @@ def chem_sys_sunburst(
     *,
     group_by: FormulaGroupBy = "chem_sys",
     max_systems: int | None = None,
-    mode: Literal["other", "drop"] = "other",
+    overflow: Literal["other", "drop"] = "other",
     **kwargs: Any,
 ) -> SunburstWidget:
     """Show chemical systems within each arity as an interactive sunburst.
@@ -29,10 +29,10 @@ def chem_sys_sunburst(
     Input can contain formulas, chemical systems such as ``"Fe-O"``, compositions,
     and structures. Set ``group_by="formula"`` or ``"reduced_formula"`` to add formula
     leaves. A positive ``max_systems`` keeps the most frequent systems per arity
-    (alphabetical ties) and all their formulas. ``mode="other"`` combines the rest
+    (alphabetical ties) and all their formulas. ``overflow="other"`` combines the rest
     in one leaf per arity; ``"drop"`` excludes their counts. Additional options,
     such as ``label_text`` and ``max_depth``, go to ``SunburstWidget``.
     """
     return SunburstWidget(
-        _chem_sys_hierarchy(data, group_by, max_systems, mode), **kwargs
+        _chem_sys_hierarchy(data, group_by, max_systems, overflow), **kwargs
     )

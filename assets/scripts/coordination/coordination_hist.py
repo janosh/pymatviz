@@ -26,7 +26,11 @@ three_structs = {key: structures[key] for key in (key1, key2, key3)}
 # %% Single structure with a 4 Å cutoff
 widget = pmv.coordination_hist(structures[key1], strategy=4.0, annotate_bars=True)
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/svg/coordination-hist-single.svg", width=700)
+widget.to_img(
+    f"{pmv.utils.ROOT}/assets/svg/coordination-hist-single.svg",
+    width=700,
+    transparent=True,
+)
 
 
 # %% pymatgen NearNeighbors strategies
@@ -44,7 +48,9 @@ for split_mode in CnSplitMode:
     widget.show()
     if split_mode == CnSplitMode.by_element:  # shown in the readme
         widget.to_img(
-            f"{pmv.ROOT}/assets/svg/coordination-hist-by-element.svg", width=700
+            f"{pmv.utils.ROOT}/assets/svg/coordination-hist-by-element.svg",
+            width=700,
+            transparent=True,
         )
 
 

@@ -219,7 +219,10 @@ WIDGET_CASES: dict[
         lambda _: ScatterPlot3DWidget(series=[{"x": XS, "y": YS, "z": XS * YS}]),
         False,
     ),
-    SpacegroupBarPlotWidget: (lambda _: pmv.spacegroup_bar([225, 225, 194, 62]), True),
+    SpacegroupBarPlotWidget: (
+        lambda _: pmv.spacegroup_bar_plot([225, 225, 194, 62]),
+        True,
+    ),
     StructureWidget: (lambda _: StructureWidget(structure=NACL), False),
     SunburstWidget: (lambda _: pmv.spacegroup_sunburst([225, 225, 194, 62]), True),
     TrajectoryWidget: (lambda _: TrajectoryWidget(trajectory=[NACL, FE_O]), False),

@@ -20,12 +20,12 @@ class BandStructureWidget(PlotControlsTraits, MatterVizWidget):
 
     Examples:
         From a pymatgen BandStructureSymmLine:
-        >>> from pymatviz import BandStructureWidget
-        >>> widget = BandStructureWidget(band_structs=bs)
+        >>> import pymatviz as pmv
+        >>> widget = pmv.band_structure(band_structs=bs)
         >>> widget
 
         With custom options:
-        >>> widget = BandStructureWidget(
+        >>> widget = pmv.band_structure(
         ...     band_structs={"PBE": bs_pbe, "HSE": bs_hse},
         ...     show_legend=True,
         ...     fermi_level=0.0,
@@ -47,8 +47,9 @@ class BandStructureWidget(PlotControlsTraits, MatterVizWidget):
 
         Args:
             band_structs: Band structure data -- a pymatgen BandStructure,
-                BandStructureSymmLine, PhononBandStructureSymmLine, a dict, or a
-                ``{label: band_structure}`` dict of those to overlay.
+                BandStructureSymmLine, PhononBandStructureSymmLine, phonopy
+                BandStructure, a dict, or a ``{label: band_structure}`` dict of those
+                to overlay.
             **kwargs: Additional widget properties.
         """
         super().__init__(

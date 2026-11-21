@@ -52,8 +52,8 @@ class HeatmapMatrixWidget(MatterVizWidget):
     labeled grids with color scaling.
 
     Examples:
-        >>> from pymatviz import HeatmapMatrixWidget
-        >>> widget = HeatmapMatrixWidget(
+        >>> import pymatviz as pmv
+        >>> widget = pmv.heatmap_matrix(
         ...     x_items=["Fe", "O", "Li"],
         ...     y_items=["Fe", "O", "Li"],
         ...     values=[[1, 0.5, 0.2], [0.5, 1, 0.3], [0.2, 0.3, 1]],

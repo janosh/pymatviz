@@ -22,14 +22,14 @@ class PhaseDiagramWidget(MatterVizWidget):
 
     Examples:
         From a phase diagram data dict:
-        >>> from pymatviz import PhaseDiagramWidget
+        >>> import pymatviz as pmv
         >>> data = {
         ...     "components": ["Fe", "C"],
         ...     "temperature_range": [300, 2000],
         ...     "regions": [...],
         ...     "boundaries": [...],
         ... }
-        >>> widget = PhaseDiagramWidget(data=data)
+        >>> widget = pmv.phase_diagram(data=data)
         >>> widget
     """
 

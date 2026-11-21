@@ -8,7 +8,6 @@ from typing import Any
 import numpy as np
 import traitlets as tl
 
-from pymatviz.structure.helpers import add_vacuum_if_needed
 from pymatviz.widgets._binary import (
     _is_number,
     force_stats,
@@ -51,9 +50,9 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
 
     Examples:
         Basic usage with list of structures:
-        >>> from pymatviz import TrajectoryWidget
+        >>> import pymatviz as pmv
         >>> trajectory_data = [...]  # List of structures
-        >>> widget = TrajectoryWidget(trajectory=trajectory_data)
+        >>> widget = pmv.trajectory(trajectory=trajectory_data)
         >>> widget
 
         With per-frame properties (scalars are plotted; per-atom ``forces`` of shape
@@ -62,13 +61,13 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
         ...     {"structure": struct1, "energy": -1.23, "forces": forces1},
         ...     {"structure": struct2, "energy": -1.25, "forces": forces2},
         ... ]
-        >>> widget = TrajectoryWidget(trajectory=trajectory_with_props)
+        >>> widget = pmv.trajectory(trajectory=trajectory_with_props)
 
         A pymatgen ``Trajectory`` syncs as binary arrays (its ``as_dict()`` as JSON):
-        >>> widget = TrajectoryWidget(trajectory=Trajectory.from_file("XDATCAR"))
+        >>> widget = pmv.trajectory(trajectory=Trajectory.from_file("XDATCAR"))
 
         With custom visualization options:
-        >>> widget = TrajectoryWidget(
+        >>> widget = pmv.trajectory(
         ...     trajectory=trajectory_data,
         ...     display_mode="structure+plot",
         ...     plot_type="distribution",
@@ -79,11 +78,11 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
         ... )
 
         With local file path (automatically detected and loaded):
-        >>> widget = TrajectoryWidget(data_url="path/to/trajectory.xyz")
-        >>> widget = TrajectoryWidget(data_url="path/to/trajectory.h5")
+        >>> widget = pmv.trajectory(data_url="path/to/trajectory.xyz")
+        >>> widget = pmv.trajectory(data_url="path/to/trajectory.h5")
 
         LAMMPS dumps only carry integer atom types; name them with atom_type_mapping:
-        >>> widget = TrajectoryWidget(
+        >>> widget = pmv.trajectory(
         ...     data_url="path/to/dump.lammpstrj", atom_type_mapping={1: "Si", 2: "O"}
         ... )
     """
@@ -159,7 +158,7 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
         """Convert a structure-like frame to its JSON representation."""
         from pymatgen.core import SiteCollection
 
-        from pymatviz.process_data import normalize_structures
+        from pymatviz.structures import add_vacuum_if_needed, normalize_structures
 
         # only pymatgen structures: MSONAtoms.as_dict() is an ASE (not site) dict
         if isinstance(structure_input, SiteCollection):
@@ -391,7 +390,7 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
 
         from pymatgen.core.trajectory import Trajectory
 
-        from pymatviz.process_data import is_structure_like
+        from pymatviz.structures import is_structure_like
 
         is_pymatgen = isinstance(trajectory, Trajectory)
         if is_pymatgen or (

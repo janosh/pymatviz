@@ -26,7 +26,7 @@ def spacegroup_counts(data: Any) -> dict[str, int]:
         TypeError: If mapping counts aren't integers.
         ValueError: For negative counts or invalid space groups.
     """
-    from pymatviz.process_data import normalize_spacegroups
+    from pymatviz.structures import normalize_spacegroups
 
     if data is None or len(data) == 0:
         return {}
@@ -64,7 +64,7 @@ class SpacegroupBarPlotWidget(MatterVizWidget):
     mappings and syncs them as per-space-group counts.
 
     Examples:
-        >>> from pymatviz import SpacegroupBarPlotWidget
+        >>> from pymatviz.widgets import SpacegroupBarPlotWidget
         >>> widget = SpacegroupBarPlotWidget(data=[225, 225, 166, 62, 62, 62])
         >>> widget.data
         {'62': 3, '166': 1, '225': 2}

@@ -19,9 +19,9 @@ class TreemapWidget(HierarchyPlotTraits, MatterVizWidget):
     Python re-roots the view (None = data root).
 
     Examples:
-        >>> from pymatviz import TreemapWidget
+        >>> import pymatviz as pmv
         >>> nodes = {"label": "systems", "children": [{"label": "Li-Fe-O", "value": 4}]}
-        >>> widget = TreemapWidget(data=nodes)
+        >>> widget = pmv.treemap(data=nodes)
     """
 
     _chart_type = "treemap"

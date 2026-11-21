@@ -24,7 +24,7 @@ class XrdWidget(PlotControlsTraits, MatterVizWidget):
 
     Examples:
         From a pymatgen DiffractionPattern:
-        >>> from pymatviz import XrdWidget
+        >>> from pymatviz.widgets import XrdWidget
         >>> widget = XrdWidget(patterns=diffraction_pattern)
         >>> widget
 

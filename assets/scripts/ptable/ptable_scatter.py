@@ -38,7 +38,11 @@ widget = pmv.ptable_scatter(
     labels={elem.symbol: str(elem.Z) for elem in Element},
 )
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/png/ptable-scatter-markers.png", width=1000)
+widget.to_img(
+    f"{pmv.utils.ROOT}/assets/svg/ptable-scatter-markers.svg",
+    width=1000,
+    transparent=True,
+)
 
 
 # %% Lines on a shared y range

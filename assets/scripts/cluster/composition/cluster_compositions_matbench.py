@@ -130,14 +130,14 @@ def process_dataset(
         if len(comp_str) > 20:  # if comp too long, use row ID/ material ID
             comp_str = f"ID: {row.name}"
         text = f"{comp_str.replace(' ', '')} {target_symbol}={row[target_label]:.2f}"
-        return dict(text=text, font_size="11px")
+        return dict(text=text, font_size="11px", auto_placement=True)
 
     embed_col = "embeddings"
     if embed_col not in df_plot:
         df_plot[embed_col] = [embeddings_dict[comp] for comp in compositions]
 
     return pmv.cluster_compositions(
-        df_in=df_plot,
+        df=df_plot,
         composition_col="composition",
         prop_name=target_label,
         embedding_method=embed_col,
@@ -147,7 +147,16 @@ def process_dataset(
         if len(compositions) < 1000 and n_components == 2
         else None,
         annotate_points=annotate_top_points if n_components == 2 else None,
-        style="height: 600px",
+        # thousands of markers leave no free spot: keep labels apart, not off markers
+        **(
+            dict(label_placement_config={"weights": {"marker": 1, "overlap": 100}})
+            if n_components == 2
+            else {}
+        ),
+        # point labels sit on dense markers: a light halo keeps them readable (the halo
+        # variable needs a MatterViz build newer than 0.10.0)
+        style="height: 600px; --scatter-point-label-fill: #333; "
+        "--scatter-point-label-halo: rgba(255, 255, 255, 0.85)",
         **kwargs,
     )
 
@@ -237,4 +246,10 @@ for (
     widget.to_html(f"{plot_dir}/{img_name}.html")
     widget.show()
     if data_name == "matbench_perovskites":  # shown in the readme
-        widget.to_img(f"{pmv.ROOT}/assets/png/{img_name}.png", width=600)
+        # 3D scatter draws to a canvas, which has no vector form
+        ext = "png" if n_components == 3 else "svg"
+        widget.to_img(
+            f"{pmv.utils.ROOT}/assets/{ext}/{img_name}.{ext}",
+            width=600,
+            transparent=True,
+        )

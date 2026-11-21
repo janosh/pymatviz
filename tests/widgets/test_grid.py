@@ -1,57 +1,11 @@
-from typing import Any
+"""Tests for the widget grid layout."""
+
+from __future__ import annotations
 
 import ipywidgets as ipw
 import pytest
-from pymatgen.core import (
-    Composition,
-    DummySpecies,
-    Element,
-    Lattice,
-    PeriodicSite,
-    Species,
-)
 
-from pymatviz.structure.helpers import (
-    get_site_elements,
-    get_site_species,
-    get_site_symbol,
-    widget_grid,
-)
-
-
-@pytest.mark.parametrize(
-    ("species_input", "expected_type", "expected_elements", "expected_symbol"),
-    [
-        ("Si", Element, {"Si"}, "Si"),
-        (Element("O"), Element, {"O"}, "O"),
-        (Species("Fe", 2), Species, {"Fe"}, "Fe"),
-        (Composition({"Fe": 0.75, "Co": 0.25}), Composition, {"Fe", "Co"}, "Fe"),
-        (
-            Composition({"Fe": 0.2, "Co": 0.3, "Ni": 0.5}),
-            Composition,
-            {"Fe", "Co", "Ni"},
-            "Ni",
-        ),
-        (DummySpecies("X"), DummySpecies, {"X"}, "X"),
-        (
-            Composition({"Li": 0.75, DummySpecies("X"): 0.25}),
-            Composition,
-            {"Li", "X"},
-            "Li",
-        ),
-    ],
-)
-def test_get_site_species_elements_symbol(
-    species_input: Any,
-    expected_type: type,
-    expected_elements: set[str],
-    expected_symbol: str,
-) -> None:
-    """Species, element set and majority symbol for ordered and disordered sites."""
-    site = PeriodicSite(species_input, [0, 0, 0], Lattice.cubic(3.0))
-    assert isinstance(get_site_species(site), expected_type)
-    assert get_site_elements(site) == expected_elements
-    assert get_site_symbol(site) == expected_symbol
+from pymatviz.widgets.grid import widget_grid
 
 
 @pytest.mark.parametrize(

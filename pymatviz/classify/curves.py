@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import ArrayLike
 
-from pymatviz.process_data import df_to_arrays
+from pymatviz.utils.data import df_to_arrays
 from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 
@@ -144,8 +144,8 @@ def _point_metadata(**columns: ArrayLike) -> pd.DataFrame:
 def roc_curve(
     targets: ArrayLike | str,
     probs_positive: Predictions,
-    df: pd.DataFrame | None = None,
     *,
+    df: pd.DataFrame | None = None,
     no_skill: dict[str, Any] | Literal[False] | None = None,
     **kwargs: Any,
 ) -> ScatterPlotWidget:
@@ -234,8 +234,8 @@ def roc_curve(
 def precision_recall_curve(
     targets: ArrayLike | str,
     probs_positive: Predictions,
-    df: pd.DataFrame | None = None,
     *,
+    df: pd.DataFrame | None = None,
     no_skill: dict[str, Any] | Literal[False] | None = None,
     **kwargs: Any,
 ) -> ScatterPlotWidget:

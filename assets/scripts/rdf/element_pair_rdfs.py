@@ -15,10 +15,15 @@ df_phonons[Key.n_sites] = df_phonons[Key.structure].map(len)
 
 # plot element-pair RDFs for the 2 largest structures
 for struct in df_phonons.nlargest(2, Key.n_sites)[Key.structure]:
-    widget = pmv.element_pair_rdfs(struct, n_bins=100, cutoff=10)
+    widget = pmv.element_pair_rdfs(struct, bins=100, cutoff=10)
     widget.show()
     formula = struct.formula.replace(" ", "")
-    widget.to_img(f"{pmv.ROOT}/assets/svg/element-pair-rdfs-{formula}.svg", width=700)
+    if formula == "Na8Nb8O24":  # in readme
+        widget.to_img(
+            f"{pmv.utils.ROOT}/assets/svg/element-pair-rdfs-{formula}.svg",
+            width=700,
+            transparent=True,
+        )
 
 
 # %% compare RDFs for crystalline LiPO4 and randomly-placed "amorphous" LiPO4
@@ -45,5 +50,5 @@ widget = pmv.element_pair_rdfs(
     element_pairs=[("Li", "O"), ("O", "P"), ("O", "O")],
 )
 widget.show()
-svg_path = f"{pmv.ROOT}/assets/svg/element-pair-rdfs-crystal-vs-amorphous.svg"
-widget.to_img(svg_path, width=700)
+svg_path = f"{pmv.utils.ROOT}/assets/svg/element-pair-rdfs-crystal-vs-amorphous.svg"
+widget.to_img(svg_path, width=700, transparent=True)

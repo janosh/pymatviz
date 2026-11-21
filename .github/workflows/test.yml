@@ -34,7 +34,7 @@ jobs:
       # at runtime (no Node build).
       # playwright + chromium so the headless export and JS prop parity tests run
       install-cmd: |
-        uv pip install -e '.[test,brillouin,export]' --system
+        uv pip install -e '.[test,export]' --system
         playwright install --with-deps chromium
       # pytest-split distributes work load so parallel jobs finish in similar time
       # update durations file with `pytest --store-durations --durations-path tests/files/.pytest-split-durations`

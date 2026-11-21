@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pymatviz.process_data import normalize_periodic_structures
 from pymatviz.rdf.helpers import calculate_rdf, partial_rdfs
+from pymatviz.structures import normalize_periodic_structures
 from pymatviz.widgets.rdf_plot import RdfPlotWidget
 
 
@@ -23,11 +23,11 @@ if TYPE_CHECKING:
 def _resolve_n_bins(
     struct_dict: Mapping[Hashable, IStructure],
     cutoff: float,
-    n_bins: int,
+    bins: int | None,
     bin_size: float | None,
 ) -> int:
-    """Check structures have sites and that n_bins and bin_size aren't both set.
-    Returns n_bins, derived from bin_size if given.
+    """Check structures have sites and that bins and bin_size aren't both set.
+    Returns the number of bins: bins, derived from bin_size, or 75 by default.
     """
     for key, struct in struct_dict.items():
         if len(struct) == 0:
@@ -35,10 +35,10 @@ def _resolve_n_bins(
                 f"input structure{f' {key}' if key else ''} contains no sites"
             )
     if bin_size is None:
-        return n_bins
-    if n_bins != 75:
+        return 75 if bins is None else bins
+    if bins is not None:
         raise ValueError(
-            f"Cannot specify both {n_bins=} and {bin_size=}. Pick one or the other."
+            f"Cannot specify both {bins=} and {bin_size=}. Pick one or the other."
         )
     return int(cutoff / bin_size)
 
@@ -76,8 +76,9 @@ def element_pair_rdfs(
     | Sequence[AnyStructure]
     | Mapping[str, AnyStructure]
     | pd.Series,
+    *,
     cutoff: float | None = None,
-    n_bins: int = 75,
+    bins: int | None = None,
     bin_size: float | None = None,
     element_pairs: list[tuple[str, str]] | None = None,
     colors: Sequence[str] | None = None,
@@ -101,9 +102,9 @@ def element_pair_rdfs(
             structures (up to 15A). If negative, its absolute value is used as a scaling
             factor for the longest lattice vector length (e.g. -1.5 means 1.5x the
             longest lattice vector). Default is None.
-        n_bins (int, optional): Number of bins for RDF calculation. Default is 75.
-        bin_size (float, optional): Size of bins for RDF calculation. If specified, it
-            overrides n_bins. Default is None.
+        bins (int, optional): Number of bins for RDF calculation. Defaults to 75.
+        bin_size (float, optional): Size of bins for RDF calculation, an alternative
+            to bins. Default is None.
         element_pairs (list[tuple[str, str]], optional): Element pairs to plot.
             If None, all pairs present in any structure are plotted.
         colors (Sequence[str], optional): CSS colors cycled over the curves. Defaults
@@ -117,7 +118,7 @@ def element_pair_rdfs(
 
     Raises:
         ValueError: If no structures are provided, if structures have no sites,
-            if invalid element pairs are provided, or if both n_bins and bin_size are
+            if invalid element pairs are provided, or if both bins and bin_size are
             specified.
         TypeError: If input structures are not pymatgen Structures or ASE Atoms.
     """
@@ -130,7 +131,7 @@ def element_pair_rdfs(
     elif cutoff < 0:
         cutoff = abs(cutoff) * max_cell_len
 
-    n_bins = _resolve_n_bins(struct_dict, cutoff, n_bins, bin_size)
+    n_bins = _resolve_n_bins(struct_dict, cutoff, bins, bin_size)
 
     all_elements = set.union(
         *(struct.chemical_system_set for struct in struct_dict.values())
@@ -176,8 +177,9 @@ def full_rdf(
     | Sequence[AnyStructure]
     | Mapping[str, AnyStructure]
     | pd.Series,
+    *,
     cutoff: float = 15,
-    n_bins: int = 75,
+    bins: int | None = None,
     bin_size: float | None = None,
     colors: Sequence[str] | None = None,
     **kwargs: Any,
@@ -192,9 +194,9 @@ def full_rdf(
             - list of pymatgen Structures or ASE Atoms objects
             - dictionary mapping labels to pymatgen Structures or ASE Atoms objects.
         cutoff (float, optional): Maximum distance for RDF calculation. Default is 15 Å.
-        n_bins (int, optional): Number of bins for RDF calculation. Default is 75.
-        bin_size (float, optional): Size of bins for RDF calculation. If specified, it
-            overrides n_bins. Default is None.
+        bins (int, optional): Number of bins for RDF calculation. Defaults to 75.
+        bin_size (float, optional): Size of bins for RDF calculation, an alternative
+            to bins. Default is None.
         colors (Sequence[str], optional): CSS colors cycled over the structures'
             curves. Defaults to the MatterViz palette.
         **kwargs: Passed to RdfPlotWidget, e.g. ``show_reference_line=False`` to hide
@@ -205,10 +207,10 @@ def full_rdf(
 
     Raises:
         ValueError: If no structures are provided, if structures have no sites,
-            or if both n_bins and bin_size are specified.
+            or if both bins and bin_size are specified.
     """
     struct_dict = normalize_periodic_structures(structures)
-    n_bins = _resolve_n_bins(struct_dict, cutoff, n_bins, bin_size)
+    n_bins = _resolve_n_bins(struct_dict, cutoff, bins, bin_size)
     entries = [
         _rdf_entry(
             str(label),

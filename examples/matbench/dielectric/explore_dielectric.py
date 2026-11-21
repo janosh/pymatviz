@@ -57,7 +57,7 @@ pmv.ptable_heatmap(df_diel[Key.formula], log=True, color_bar={"title": title}).s
 
 
 # %%
-pmv.spacegroup_bar(df_diel[Key.spg_num]).show()
+pmv.spacegroup_bar_plot(df_diel[Key.spg_num]).show()
 
 
 # %%
@@ -69,7 +69,7 @@ widget.show()
 # %% MatterViz has no rich-text tick labels, so per-group stats go into series labels
 def violins_by_crystal_system(
     y_col: str, title: str, *, log_y: bool = False, show_mean: bool = False
-) -> pmv.BoxPlotWidget:
+) -> pmv.widgets.BoxPlotWidget:
     """Violin plot (with all points) of y_col per crystal system, labeled with each
     group's size (and optionally mean).
     """
@@ -81,7 +81,7 @@ def violins_by_crystal_system(
         if show_mean:
             label += f" mean={df_group[y_col].mean():.1f}"
         series += [{"y": df_group[y_col], "label": label}]
-    return pmv.BoxPlotWidget(
+    return pmv.box_plot(
         series,
         kind="violin",
         points="strip",
@@ -111,7 +111,7 @@ widget.show()
 
 # %% Matbench Dielectric: Refractive Index vs. Volume (marker size = n)
 df_vol = df_diel.query(f"{Key.volume} < 1500")  # exclude few large-volume outliers
-widget = pmv.ScatterPlotWidget(
+widget = pmv.scatter_plot(
     series=[
         {
             "x": df_group[Key.volume],

@@ -27,15 +27,15 @@ class FermiSurfaceWidget(MatterVizWidget):
 
     Examples:
         From pre-computed Fermi surface data:
-        >>> from pymatviz import FermiSurfaceWidget
-        >>> widget = FermiSurfaceWidget(fermi_data=fermi_dict)
+        >>> import pymatviz as pmv
+        >>> widget = pmv.fermi_surface(fermi_data=fermi_dict)
         >>> widget
 
         From raw band grid data:
-        >>> widget = FermiSurfaceWidget(band_data=band_grid_dict)
+        >>> widget = pmv.fermi_surface(band_data=band_grid_dict)
 
         With custom options:
-        >>> widget = FermiSurfaceWidget(
+        >>> widget = pmv.fermi_surface(
         ...     fermi_data=fermi_dict,
         ...     surface_opacity=0.8,
         ...     show_bz=True,

@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 import traitlets as tl
 
-from pymatviz import StructureWidget
+from pymatviz.widgets import StructureWidget
 from tests.widgets.conftest import assert_widget_property_sync, decode_envelope
 
 
@@ -332,3 +332,15 @@ def test_widget_isosurface_volume_swap() -> None:
         widget.volumetric_data = [{**_VOLUME, "id": "elf"}]
         widget.isosurface_settings = {"layers": [{"volume_id": "elf"}]}
     assert [vol["id"] for vol in widget.volumetric_data] == ["elf"]
+
+
+@pytest.mark.parametrize("cell_type", ["original", "conventional", "primitive"])
+def test_widget_cell_type(cell_type: str) -> None:
+    """cell_type reaches MatterViz, which standardizes; the input cell is synced."""
+    from pymatgen.core import Lattice, Structure
+
+    struct = Structure(Lattice.cubic(4), ["Fe", "O"], [[-0.1, 0, 0], [0.5, 0.5, 0.5]])
+    struct.add_site_property("force", [[1, 0, 0], [0, 1, 0]])
+    widget = StructureWidget(structure=struct, cell_type=cell_type)
+    assert widget.cell_type == cell_type
+    assert widget.structure == struct.as_dict()

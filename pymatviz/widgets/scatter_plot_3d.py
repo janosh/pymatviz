@@ -21,8 +21,8 @@ class ScatterPlot3DWidget(PlotControlsTraits, MatterVizWidget):
     """MatterViz widget for 3D scatter/surface plots with camera controls.
 
     Examples:
-        >>> from pymatviz import ScatterPlot3DWidget
-        >>> widget = ScatterPlot3DWidget(
+        >>> import pymatviz as pmv
+        >>> widget = pmv.scatter_plot_3d(
         ...     series=[{"x": [1, 2], "y": [3, 4], "z": [5, 6], "label": "pts"}],
         ... )
     """

@@ -22,7 +22,7 @@ def chem_env_treemap(
     normalize: bool = False,
     max_coordination_numbers: int | None = None,
     max_environments: int | None = None,
-    mode: Literal["other", "drop"] = "other",
+    overflow: Literal["other", "drop"] = "other",
     **kwargs: Any,
 ) -> TreemapWidget:
     """Show coordination numbers and their chemical environments as a treemap.
@@ -41,6 +41,6 @@ def chem_env_treemap(
         normalize=normalize,
         max_coordination_numbers=max_coordination_numbers,
         max_environments=max_environments,
-        mode=mode,
+        overflow=overflow,
     )
     return TreemapWidget(data=nodes, **kwargs)

@@ -16,8 +16,8 @@ from glob import glob
 import pymatviz as pmv
 
 
-os.chdir(pmv.ROOT)
-with open(f"{pmv.ROOT}/site/package.json") as file:
+os.chdir(pmv.utils.ROOT)
+with open(f"{pmv.utils.ROOT}/site/package.json") as file:
     pkg = json.load(file)
 route = "site/api-docs"
 

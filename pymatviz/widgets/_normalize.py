@@ -93,12 +93,61 @@ def _as_dict(obj: Any) -> dict[str, Any]:
     return {key: val for key, val in view.as_dict().items() if key not in _UNREAD_KEYS}
 
 
+def _from_phonopy(obj: Any) -> Any:
+    """Phonopy BandStructure and TotalDos as their pymatgen counterparts, other
+    objects unchanged.
+    """
+    cls_name = f"{type(obj).__module__}.{type(obj).__qualname__}"
+    if cls_name == "phonopy.phonon.band_structure.BandStructure":
+        from pymatviz.phonons.helpers import phonopy_to_pymatgen_bands
+
+        return phonopy_to_pymatgen_bands(obj)
+    if cls_name == "phonopy.phonon.dos.TotalDos":
+        from pymatgen.phonon.dos import PhononDos
+
+        return PhononDos(frequencies=obj.frequency_points, densities=obj.dos)
+    return obj
+
+
+def labeled_keys(data: dict[str, Any] | None) -> set[str]:
+    """Legend labels of a converted ``{label: obj_dict}`` mapping (all values are
+    dicts), ``{""}`` for a single object's dict, which also holds arrays.
+    """
+    if not data or not all(isinstance(val, dict) for val in data.values()):
+        return {""}
+    return set(data)
+
+
+def check_stack_grids(doses: dict[str, Any] | None) -> None:
+    """Raise ValueError unless all labeled DOS share one frequency or energy grid,
+    since MatterViz stacks curves by index.
+    """
+    if doses is None or labeled_keys(doses) == {""}:
+        return
+    import numpy as np
+
+    grids = {
+        label: dos.get("frequencies", dos.get("energies"))
+        for label, dos in doses.items()
+    }
+    first_label, first_grid = next(iter(grids.items()))
+    # array_equal so list and tuple grids with equal values match
+    if mismatched := [
+        label for label, grid in grids.items() if not np.array_equal(grid, first_grid)
+    ]:
+        raise ValueError(
+            f"stack=True needs all DOS on one grid, but {mismatched} differ from "
+            f"{first_label!r}"
+        )
+
+
 def _to_dict(obj: Any, label: str) -> dict[str, Any] | None:
     """Convert None/dict/MSONable object to a JSON-serializable dict.
 
     Args:
         obj: None, a dict (MSONable values converted via ``as_dict``), or any
-            object with .as_dict(). Converted dicts drop ``_UNREAD_KEYS``.
+            object with .as_dict(). phonopy BandStructure and TotalDos are converted
+            to pymatgen first. Converted dicts drop ``_UNREAD_KEYS``.
         label: Human-readable name for error messages (e.g. "band structure").
 
     Returns:
@@ -112,10 +161,12 @@ def _to_dict(obj: Any, label: str) -> dict[str, Any] | None:
     if isinstance(obj, dict):
         converted = {
             key: _as_dict(value)
-            for key, value in obj.items()
-            if callable(getattr(value, "as_dict", None)) and not isinstance(value, dict)
+            for key, raw in obj.items()
+            if callable(getattr(value := _from_phonopy(raw), "as_dict", None))
+            and not isinstance(value, dict)
         }
         return {**obj, **converted} if converted else obj
+    obj = _from_phonopy(obj)
     if hasattr(obj, "as_dict"):
         return _as_dict(obj)
     raise TypeError(
@@ -376,7 +427,7 @@ def structure_to_dict(
             )
         struct = structure
     else:
-        from pymatviz.process_data import is_structure_like, normalize_structures
+        from pymatviz.structures import is_structure_like, normalize_structures
 
         if not is_structure_like(structure):
             raise TypeError(

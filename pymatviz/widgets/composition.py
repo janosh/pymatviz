@@ -20,14 +20,14 @@ class CompositionWidget(MatterVizWidget):
 
     Examples:
         Basic usage:
-        >>> from pymatviz import CompositionWidget
+        >>> import pymatviz as pmv
         >>> from pymatgen.core import Composition
         >>> comp = Composition("Fe2O3")
-        >>> widget = CompositionWidget(composition=comp)
+        >>> widget = pmv.composition(composition=comp)
         >>> widget
 
         With custom visualization options:
-        >>> widget = CompositionWidget(
+        >>> widget = pmv.composition(
         ...     composition=comp,
         ...     mode="bar",
         ...     show_percentages=True,

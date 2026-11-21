@@ -5,8 +5,8 @@ from __future__ import annotations
 from operator import itemgetter
 from typing import TYPE_CHECKING, Any, Literal
 
+from pymatviz.composition import count_formulas
 from pymatviz.enums import Key
-from pymatviz.process_data import count_formulas
 
 
 if TYPE_CHECKING:
@@ -17,16 +17,16 @@ if TYPE_CHECKING:
     from pymatviz.typing import FormulaGroupBy
 
 
-def _validate_limit_mode(mode: Literal["other", "drop"]) -> None:
+def _validate_overflow(overflow: Literal["other", "drop"]) -> None:
     """Reject invalid aggregation modes before preparing plot data."""
-    if mode not in ("other", "drop"):
-        raise ValueError(f"Invalid {mode=}, must be 'other' or 'drop'")
+    if overflow not in ("other", "drop"):
+        raise ValueError(f"Invalid {overflow=}, must be 'other' or 'drop'")
 
 
 def _limit_nodes(
     nodes: list[dict[str, Any]],
     limit: int | None,
-    mode: Literal["other", "drop"],
+    overflow: Literal["other", "drop"],
     *,
     parent_id: str = "",
 ) -> list[dict[str, Any]]:
@@ -41,7 +41,7 @@ def _limit_nodes(
         return nodes
     ranked = sorted(nodes, key=itemgetter("value"), reverse=True)
     kept = ranked[:limit]
-    if mode == "other":
+    if overflow == "other":
         omitted = ranked[limit:]
         kept.append(
             {
@@ -58,10 +58,10 @@ def _chem_sys_hierarchy(
     data: Sequence[str | Composition | Structure],
     group_by: FormulaGroupBy,
     max_systems: int | None,
-    mode: Literal["other", "drop"],
+    overflow: Literal["other", "drop"],
 ) -> list[dict[str, Any]]:
     """Group systems and formulas by arity with stable path IDs and counts."""
-    _validate_limit_mode(mode)
+    _validate_overflow(overflow)
     counts = count_formulas(data, group_by=group_by)
     roots = []
     for arity, group in counts.groupby("arity_name", sort=False):
@@ -71,7 +71,7 @@ def _chem_sys_hierarchy(
             {"id": f"{arity}/{system}", "label": system, "value": count}
             for system, count in totals.items()
         ]
-        children = _limit_nodes(systems, max_systems, mode, parent_id=str(arity))
+        children = _limit_nodes(systems, max_systems, overflow, parent_id=str(arity))
         if group_by != "chem_sys":
             by_system = {node["label"]: node for node in children}
             for system, formula, count in zip(
