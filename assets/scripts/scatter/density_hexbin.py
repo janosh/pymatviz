@@ -12,10 +12,12 @@ y_true, y_pred, _y_std = pmv.data.regression()
 # %% Binned density parity plot, bins recomputed on zoom
 widget = pmv.density_hexbin(y_true, y_pred, best_fit_line=True, bin_px=8)
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/svg/density-hexbin.svg", width=500)
+widget.to_img(f"{pmv.ROOT}/assets/svg/density-hexbin.svg", width=500, transparent=True)
 
 
 # %% With marginal histograms
 widget = pmv.density_hexbin_with_hist(y_true, y_pred, best_fit_line=True, bin_px=8)
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/svg/density-hexbin-with-hist.svg", width=500)
+widget.to_img(
+    f"{pmv.ROOT}/assets/svg/density-hexbin-with-hist.svg", width=500, transparent=True
+)

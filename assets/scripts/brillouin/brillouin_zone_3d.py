@@ -31,7 +31,9 @@ for (mp_id, _formula, system), struct in structures.items():
     display(widget)
     if system in {"cubic", "hexagonal", "monoclinic", "orthorhombic"}:  # in readme
         widget.to_img(
-            f"{pmv.ROOT}/assets/png/brillouin-{system}-{mp_id}.png", width=500
+            f"{pmv.ROOT}/assets/png/brillouin-{system}-{mp_id}.png",
+            width=500,
+            transparent=True,
         )
 
 

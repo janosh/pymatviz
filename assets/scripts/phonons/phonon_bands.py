@@ -35,7 +35,12 @@ for mp_id, formula in (("mp-2758", "Sr4Se4"), ("mp-23907", "H2")):
     }
     widget = pmv.phonon_bands(ph_bands, style="height: 450px")
     widget.show()
-    widget.to_img(f"{pmv.ROOT}/assets/svg/phonon-bands-{mp_id}.svg", width=800)
+    if mp_id == "mp-2758":  # in readme
+        widget.to_img(
+            f"{pmv.ROOT}/assets/svg/phonon-bands-{mp_id}.svg",
+            width=800,
+            transparent=True,
+        )
 
 
 # %% phonopy band structures work too

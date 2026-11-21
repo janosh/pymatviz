@@ -15,7 +15,9 @@ widget = pmv.error_decay_with_uncert(
     dummy_data.y_true, dummy_data.y_pred, dummy_data.y_std
 )
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/svg/error-decay-with-uncert.svg", width=500)
+widget.to_img(
+    f"{pmv.ROOT}/assets/svg/error-decay-with-uncert.svg", width=500, transparent=True
+)
 
 
 # %% Compare two uncertainty estimates
@@ -26,4 +28,8 @@ widget = pmv.error_decay_with_uncert(
     {"better": dummy_data.y_std, "worse": dummy_data.y_std + eps},
 )
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/svg/error-decay-with-uncert-multiple.svg", width=500)
+widget.to_img(
+    f"{pmv.ROOT}/assets/svg/error-decay-with-uncert-multiple.svg",
+    width=500,
+    transparent=True,
+)

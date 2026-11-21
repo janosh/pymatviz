@@ -26,4 +26,6 @@ widget = pmv.chem_sys_sunburst(
     style="height: 480px",
 )
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/svg/chem-sys-sunburst-ward-bmg.svg", width=700)
+widget.to_img(
+    f"{pmv.ROOT}/assets/svg/chem-sys-sunburst-ward-bmg.svg", width=700, transparent=True
+)

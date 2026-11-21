@@ -445,6 +445,8 @@ class MatterVizWidget(AnyWidget):
         width: int | None = None,
         height: int | None = None,
         quality: int = 90,
+        *,
+        transparent: bool = False,
     ) -> bytes:
         """Capture the widget as an image via headless Chromium rendering.
 
@@ -487,6 +489,9 @@ class MatterVizWidget(AnyWidget):
                 uses the widget's style or defaults to 600px.
             quality: JPEG compression quality (1-100). Defaults to 90.
                 Ignored for PNG, SVG, and PDF.
+            transparent: Export PNG or SVG without backgrounds, with theme text in a
+                mid gray and trimmed to the painted content, so the image reads on
+                light and dark pages alike (e.g. READMEs). Defaults to False.
 
         Returns:
             Raw image/document bytes (PNG, JPEG, SVG, or PDF).
@@ -534,6 +539,7 @@ class MatterVizWidget(AnyWidget):
             quality=quality,
             width=width,
             height=height,
+            transparent=transparent,
         )
 
         if filename:

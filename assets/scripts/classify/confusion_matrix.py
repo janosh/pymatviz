@@ -28,7 +28,9 @@ widget = pmv.confusion_matrix(
     metrics={"Prec": ".1%", "F1": ".0%", "MCC": ".2f"},
 )
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/png/stability-confusion-matrix.png", width=500)
+widget.to_img(
+    f"{pmv.ROOT}/assets/png/stability-confusion-matrix.png", width=500, transparent=True
+)
 
 
 # %% Multi-class crystal system classification
@@ -50,4 +52,8 @@ widget = pmv.confusion_matrix(
     tile_size="90px",
 )
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/png/crystal-system-confusion-matrix.png", width=500)
+widget.to_img(
+    f"{pmv.ROOT}/assets/png/crystal-system-confusion-matrix.png",
+    width=500,
+    transparent=True,
+)

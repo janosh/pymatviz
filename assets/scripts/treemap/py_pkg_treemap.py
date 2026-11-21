@@ -22,7 +22,12 @@ for pkg in ("pymatviz", np):  # Mix strings and module objects
     widget = pmv.py_pkg_treemap(pkg, style="height: 500px")
     widget.show()
     pkg_name = str(getattr(pkg, "__name__", pkg)).replace("_", "-")
-    widget.to_img(f"{pmv.ROOT}/assets/svg/py-pkg-treemap-{pkg_name}.svg", width=800)
+    if pkg_name == "pymatviz":  # in readme
+        widget.to_img(
+            f"{pmv.ROOT}/assets/svg/py-pkg-treemap-{pkg_name}.svg",
+            width=800,
+            transparent=True,
+        )
 
 
 # %% Compare multiple packages, only including files with at least 50 lines
@@ -33,7 +38,9 @@ widget = pmv.py_pkg_treemap(
     padding_inner=2,
 )
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/svg/py-pkg-treemap-multiple.svg", width=800)
+widget.to_img(
+    f"{pmv.ROOT}/assets/svg/py-pkg-treemap-multiple.svg", width=800, transparent=True
+)
 
 
 # %% Different ways to group packages
@@ -88,7 +95,11 @@ widget = pmv.py_pkg_treemap(
     cell_size_fn=lambda cell: cell.line_count if cell.line_count >= 20 else 0,
 )
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/svg/py-pkg-treemap-pymatviz-coverage.svg", width=800)
+widget.to_img(
+    f"{pmv.ROOT}/assets/svg/py-pkg-treemap-pymatviz-coverage.svg",
+    width=800,
+    transparent=True,
+)
 
 
 # %% pymatgen treemap with coverage heatmap and manual color range (0-100%)
@@ -117,4 +128,8 @@ widget = pmv.py_pkg_treemap(
     max_children_for_split=5,  # only expand if parent has <=5 children
 )
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/svg/py-pkg-treemap-pymatgen-coverage.svg", width=800)
+widget.to_img(
+    f"{pmv.ROOT}/assets/svg/py-pkg-treemap-pymatgen-coverage.svg",
+    width=800,
+    transparent=True,
+)

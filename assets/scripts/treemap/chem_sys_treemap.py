@@ -12,7 +12,9 @@ widget = pmv.chem_sys_treemap(
     formulas, group_by="formula", label_text="label+value", style="height: 480px"
 )
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/svg/chem-sys-treemap-formula.svg", width=700)
+widget.to_img(
+    f"{pmv.ROOT}/assets/svg/chem-sys-treemap-formula.svg", width=700, transparent=True
+)
 
 
 # %% Compare all observed systems with a view limited to five per arity.
@@ -25,4 +27,9 @@ for max_systems, name in ((None, "ward-bmg"), (5, "top-5")):
         ward[Key.composition], max_systems=max_systems, style="height: 480px"
     )
     widget.show()
-    widget.to_img(f"{pmv.ROOT}/assets/svg/chem-sys-treemap-{name}.svg", width=700)
+    if max_systems is None:  # in readme
+        widget.to_img(
+            f"{pmv.ROOT}/assets/svg/chem-sys-treemap-{name}.svg",
+            width=700,
+            transparent=True,
+        )

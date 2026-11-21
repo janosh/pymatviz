@@ -26,7 +26,10 @@ for mp_id, formula in (("mp-2758", "Sr4Se4"), ("mp-23907", "H2")):
     ph_doses: dict[str, PhononDos] = {key: doc.phonon_dos for key, doc in docs.items()}
     widget = pmv.phonon_dos(ph_doses, sigma=0.05, style="height: 400px")
     widget.show()
-    widget.to_img(f"{pmv.ROOT}/assets/svg/phonon-dos-{mp_id}.svg", width=800)
+    if mp_id == "mp-2758":  # in readme
+        widget.to_img(
+            f"{pmv.ROOT}/assets/svg/phonon-dos-{mp_id}.svg", width=800, transparent=True
+        )
 
 
 # %% phonopy TotalDos works too
