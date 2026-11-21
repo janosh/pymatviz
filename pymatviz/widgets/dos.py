@@ -6,7 +6,7 @@ from typing import Any
 
 import traitlets as tl
 
-from pymatviz.widgets._normalize import _to_dict
+from pymatviz.widgets._normalize import _to_dict, check_stack_grids
 from pymatviz.widgets._traits import (
     DOS_NORMALIZATIONS,
     DOS_SPIN_MODES,
@@ -55,8 +55,14 @@ class DosWidget(PlotControlsTraits, MatterVizWidget):
         """Initialize the DosWidget.
 
         Args:
-            doses: DOS data -- a pymatgen Dos, CompleteDos, PhononDos, a dict, or a
-                ``{label: dos}`` dict of those to overlay.
+            doses: DOS data -- a pymatgen Dos, CompleteDos, PhononDos, phonopy
+                TotalDos, a dict, or a ``{label: dos}`` dict of those to overlay.
             **kwargs: Additional widget properties.
+
+        Raises:
+            ValueError: If ``stack=True`` and the DOS have different grids.
         """
-        super().__init__(widget_type="dos", doses=_to_dict(doses, "DOS"), **kwargs)
+        doses = _to_dict(doses, "DOS")
+        if kwargs.get("stack"):
+            check_stack_grids(doses)
+        super().__init__(widget_type="dos", doses=doses, **kwargs)

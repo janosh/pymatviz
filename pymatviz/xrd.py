@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 from pymatgen.core import IStructure
 
-from pymatviz.process_data import is_ase_atoms
+from pymatviz.structures import is_ase_atoms
 from pymatviz.widgets.xrd import XrdWidget
 
 

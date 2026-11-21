@@ -25,16 +25,16 @@ def chart(request: pytest.FixtureRequest) -> ChemicalChart:
 
 
 @pytest.mark.parametrize("group_by", ["chem_sys", "formula", "reduced_formula"])
-@pytest.mark.parametrize("mode", ["other", "drop"])
+@pytest.mark.parametrize("overflow", ["other", "drop"])
 def test_system_limit(
-    chart: ChemicalChart, group_by: FormulaGroupBy, mode: Literal["other", "drop"]
+    chart: ChemicalChart, group_by: FormulaGroupBy, overflow: Literal["other", "drop"]
 ) -> None:
     """Keep the most frequent whole system per arity (O beats Fe by count), with
     alphabetical tie-breaking (Fe-O beats Li-O at 3 each) across all formulas.
     """
     samples = ["Li2O"] * 3 + ["Fe2O3", "Fe4O6", "FeO", "Na2O", "Fe", "O", "O"]
     widget = chart(
-        samples, group_by=group_by, max_systems=1, mode=mode, label_text="value"
+        samples, group_by=group_by, max_systems=1, overflow=overflow, label_text="value"
     )
     assert widget.widget_type == (
         "treemap" if chart is pmv.chem_sys_treemap else "sunburst"
@@ -65,7 +65,7 @@ def test_system_limit(
             {"id": f"binary/Fe-O/{formula}", "label": formula, "value": count}
             for formula, count in sorted(formulas.items())
         ]
-    if mode == "other":
+    if overflow == "other":
         assert unary_other == [
             {"id": "unary/__omitted__", "label": "Other (1 more not shown)", "value": 1}
         ]
@@ -105,7 +105,7 @@ def test_mixed_inputs(chart: ChemicalChart, limit: int | None) -> None:
         ([], {}, ValueError, "Empty input"),
         (["?"], {}, ValueError, "Invalid formula"),
         ([1], {}, TypeError, "Expected str, Composition or Structure"),
-        (["Fe"], {"mode": "merge"}, ValueError, "Invalid mode="),
+        (["Fe"], {"overflow": "merge"}, ValueError, "Invalid overflow="),
         (["Fe"], {"max_cells": 1}, TypeError, "max_cells"),
     ],
 )

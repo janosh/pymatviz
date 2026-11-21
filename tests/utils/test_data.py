@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pandas as pd
 import pytest
 
 import pymatviz as pmv
+from pymatviz.utils.data import df_to_arrays
+from tests.conftest import y_pred, y_true
 
 
 if TYPE_CHECKING:
@@ -140,3 +143,26 @@ def test_spg_num_to_from_symbol_roundtrip() -> None:
         symbol = pmv.utils.spg_num_to_from_symbol(num)
         num_back = pmv.utils.spg_num_to_from_symbol(symbol)
         assert num == num_back, f"Roundtrip failed for {num} -> {symbol} -> {num_back}"
+
+
+def test_df_to_arrays() -> None:
+    df_regr = pd.DataFrame([y_true, y_pred]).T
+    x1, y1 = df_to_arrays(None, y_true, y_pred)
+    x_col, y_col = df_regr.columns[:2]
+    x2, y2 = df_to_arrays(df_regr, x_col, y_col)
+    assert x1 == pytest.approx(x2)
+    assert y1 == pytest.approx(y2)
+    assert x1 == pytest.approx(y_true)
+    assert y1 == pytest.approx(y_pred)
+
+    with pytest.raises(TypeError, match="df should be pandas DataFrame or None"):
+        df_to_arrays("foo", y_true, y_pred)  # ty: ignore[invalid-argument-type]
+
+    bad_col_name = "not-real-col-name"
+    with pytest.raises(KeyError) as exc:
+        df_to_arrays(df_regr, bad_col_name, df_regr.columns[0])
+
+    assert "not-real-col-name" in str(exc.value)
+
+    args = df_to_arrays(42, "foo", "bar", strict=False)  # ty: ignore[invalid-argument-type]
+    assert args == ["foo", "bar"]

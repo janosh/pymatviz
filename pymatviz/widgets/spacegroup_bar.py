@@ -26,7 +26,7 @@ def spacegroup_counts(data: Any) -> dict[str, int]:
         TypeError: If mapping counts aren't integers.
         ValueError: For negative counts or invalid space groups.
     """
-    from pymatviz.process_data import normalize_spacegroups
+    from pymatviz.structures import normalize_spacegroups
 
     if data is None or len(data) == 0:
         return {}

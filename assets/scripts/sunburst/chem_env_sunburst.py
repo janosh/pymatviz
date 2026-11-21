@@ -18,7 +18,9 @@ widget = pmv.chem_env_sunburst(
 )
 widget.show()
 widget.to_img(
-    f"{pmv.ROOT}/assets/svg/chem-env-sunburst-basic.svg", width=700, transparent=True
+    f"{pmv.utils.ROOT}/assets/svg/chem-env-sunburst-basic.svg",
+    width=700,
+    transparent=True,
 )
 
 
@@ -35,7 +37,7 @@ widget = pmv.chem_env_sunburst(
 )
 widget.show()
 widget.to_img(
-    f"{pmv.ROOT}/assets/svg/chem-env-sunburst-normalized.svg",
+    f"{pmv.utils.ROOT}/assets/svg/chem-env-sunburst-normalized.svg",
     width=700,
     transparent=True,
 )

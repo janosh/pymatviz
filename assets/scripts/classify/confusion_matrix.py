@@ -29,7 +29,9 @@ widget = pmv.confusion_matrix(
 )
 widget.show()
 widget.to_img(
-    f"{pmv.ROOT}/assets/png/stability-confusion-matrix.png", width=500, transparent=True
+    f"{pmv.utils.ROOT}/assets/svg/stability-confusion-matrix.svg",
+    width=500,
+    transparent=True,
 )
 
 
@@ -53,7 +55,7 @@ widget = pmv.confusion_matrix(
 )
 widget.show()
 widget.to_img(
-    f"{pmv.ROOT}/assets/png/crystal-system-confusion-matrix.png",
+    f"{pmv.utils.ROOT}/assets/svg/crystal-system-confusion-matrix.svg",
     width=500,
     transparent=True,
 )

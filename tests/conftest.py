@@ -117,7 +117,7 @@ def fe3co4_disordered() -> IStructure:
     """Disordered Fe3C-O2 structure without site properties. This structure has
     disordered sites with Fe:C ratio of 3:1.
     """
-    from pymatviz.structure import fe3co4_disordered
+    from pymatviz.utils.testing import fe3co4_disordered
 
     return copy.deepcopy(fe3co4_disordered)
 

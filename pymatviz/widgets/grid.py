@@ -1,4 +1,4 @@
-"""Site and layout helpers for structure plots."""
+"""Grid layout of several titled widgets."""
 
 from __future__ import annotations
 
@@ -11,28 +11,6 @@ import ipywidgets as ipw
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
-
-    from pymatgen.core import Composition, Site, Species
-    from pymatgen.core.periodic_table import DummySpecies, Element
-
-
-MIN_ASE_CELL_VOLUME = 1e-6  # Å³
-
-
-def get_site_species(site: Site) -> Composition | Species | Element | DummySpecies:
-    """Species of an ordered site, composition of a disordered one."""
-    return site.specie if site.is_ordered else site.species
-
-
-def get_site_elements(site: Site) -> set[str]:
-    """Element symbols on a site (several for disordered sites)."""
-    return {species.symbol for species in site.species}
-
-
-def get_site_symbol(site: Site) -> str:
-    """Element symbol of a site, the highest-occupancy one for disordered sites."""
-    el_amt_dict = site.species.get_el_amt_dict()
-    return max(el_amt_dict, key=el_amt_dict.__getitem__)
 
 
 class WidgetGrid(ipw.GridBox):
@@ -65,10 +43,19 @@ class WidgetGrid(ipw.GridBox):
         }
 
 
-def widget_grid(widgets: Mapping[Any, ipw.DOMWidget], n_cols: int) -> WidgetGrid:
-    """Lay out labeled widgets in a grid with n_cols columns. Each cell is a VBox of
-    an HTML title and the widget, so ``grid.children[idx].children[1]`` is the
-    idx-th widget.
+def widget_grid(widgets: Mapping[Any, ipw.DOMWidget], n_cols: int = 3) -> WidgetGrid:
+    """Lay out labeled widgets in a grid with n_cols columns, e.g. several structures:
+    ``widget_grid({key: StructureWidget(structure=struct) for key, struct in ...})``.
+    Each cell is a VBox of an HTML title and the widget, so
+    ``grid.children[idx].children[1]`` is the idx-th widget.
+
+    Args:
+        widgets (Mapping[Any, ipw.DOMWidget]): Cell titles mapped to their widgets.
+        n_cols (int): Number of grid columns, capped at the number of widgets.
+            Defaults to 3.
+
+    Returns:
+        WidgetGrid: An ipywidgets GridBox of titled cells.
 
     Raises:
         ValueError: If n_cols is not positive.
@@ -84,13 +71,3 @@ def widget_grid(widgets: Mapping[Any, ipw.DOMWidget], n_cols: int) -> WidgetGrid
         cells,
         layout=ipw.Layout(grid_template_columns=f"repeat({n_cols}, minmax(0, 1fr))"),
     )
-
-
-def add_vacuum_if_needed(struct: Any) -> Any:
-    """Center ASE Atoms without a proper cell (e.g. molecules) in 10 Å of vacuum."""
-    from pymatviz.process_data import is_ase_atoms
-
-    if is_ase_atoms(struct) and struct.cell.volume < MIN_ASE_CELL_VOLUME:
-        struct = struct.copy()
-        struct.center(vacuum=10.0)
-    return struct

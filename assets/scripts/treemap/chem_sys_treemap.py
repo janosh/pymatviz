@@ -13,13 +13,15 @@ widget = pmv.chem_sys_treemap(
 )
 widget.show()
 widget.to_img(
-    f"{pmv.ROOT}/assets/svg/chem-sys-treemap-formula.svg", width=700, transparent=True
+    f"{pmv.utils.ROOT}/assets/svg/chem-sys-treemap-formula.svg",
+    width=700,
+    transparent=True,
 )
 
 
 # %% Compare all observed systems with a view limited to five per arity.
 ward = pd.read_csv(
-    f"{pmv.ROOT}/examples/ward_metallic_glasses/ward-metallic-glasses.csv.xz",
+    f"{pmv.utils.ROOT}/examples/ward_metallic_glasses/ward-metallic-glasses.csv.xz",
     na_values=(),
 ).query("comment.isna()")
 for max_systems, name in ((None, "ward-bmg"), (5, "top-5")):
@@ -29,7 +31,7 @@ for max_systems, name in ((None, "ward-bmg"), (5, "top-5")):
     widget.show()
     if max_systems is None:  # in readme
         widget.to_img(
-            f"{pmv.ROOT}/assets/svg/chem-sys-treemap-{name}.svg",
+            f"{pmv.utils.ROOT}/assets/svg/chem-sys-treemap-{name}.svg",
             width=700,
             transparent=True,
         )

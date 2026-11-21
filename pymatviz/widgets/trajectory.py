@@ -8,7 +8,6 @@ from typing import Any
 import numpy as np
 import traitlets as tl
 
-from pymatviz.structure.helpers import add_vacuum_if_needed
 from pymatviz.widgets._binary import (
     _is_number,
     force_stats,
@@ -159,7 +158,7 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
         """Convert a structure-like frame to its JSON representation."""
         from pymatgen.core import SiteCollection
 
-        from pymatviz.process_data import normalize_structures
+        from pymatviz.structures import add_vacuum_if_needed, normalize_structures
 
         # only pymatgen structures: MSONAtoms.as_dict() is an ASE (not site) dict
         if isinstance(structure_input, SiteCollection):
@@ -391,7 +390,7 @@ class TrajectoryWidget(StructureVizTraits, MatterVizWidget):
 
         from pymatgen.core.trajectory import Trajectory
 
-        from pymatviz.process_data import is_structure_like
+        from pymatviz.structures import is_structure_like
 
         is_pymatgen = isinstance(trajectory, Trajectory)
         if is_pymatgen or (

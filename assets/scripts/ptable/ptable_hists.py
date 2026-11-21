@@ -17,7 +17,9 @@ data_dict = {
 # %% Histograms on shared bins, bars colored by bin position
 widget = pmv.ptable_hists(data_dict, bins=30, color_bar={"title": "Values"})
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/png/ptable-hists.png", width=1000, transparent=True)
+widget.to_img(
+    f"{pmv.utils.ROOT}/assets/svg/ptable-hists.svg", width=1000, transparent=True
+)
 
 
 # %% Log-scaled bar heights, fixed x range and each element's mean as tile label

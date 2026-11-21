@@ -295,7 +295,7 @@ def test_coordination_vs_cutoff_line_one_neighbor_search(
 
 def test_coordination_vs_cutoff_line_disordered_structure() -> None:
     """A disordered Fe:C site contributes lines for both elements."""
-    from pymatviz.structure import fe3co4_disordered
+    from pymatviz.utils.testing import fe3co4_disordered
 
     widget = coordination_vs_cutoff_line(fe3co4_disordered, strategy=(1, 5))
     assert {srs["label"] for srs in widget.series} == {"C", "Fe", "O"}

@@ -156,6 +156,6 @@ for bulk_str, model_results in results.items():
         if band_structure is None or ph_total_dos is None:
             raise RuntimeError(f"missing band structure or total DOS for {key}")
         bands[key], doses[key] = band_structure, ph_total_dos
-    widget = pmv.phonon_bands_and_dos(bands, doses)
+    widget = pmv.BandsAndDosWidget(band_structs=bands, doses=doses)
     widget.show()
     widget.to_img(f"{fig_dir}/{bulk_str}.pdf")

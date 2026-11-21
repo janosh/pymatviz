@@ -16,7 +16,9 @@ widget = pmv.chem_env_treemap(
 )
 widget.show()
 widget.to_img(
-    f"{pmv.ROOT}/assets/svg/chem-env-treemap-basic.svg", width=700, transparent=True
+    f"{pmv.utils.ROOT}/assets/svg/chem-env-treemap-basic.svg",
+    width=700,
+    transparent=True,
 )
 
 
@@ -29,7 +31,7 @@ widget = pmv.chem_env_treemap(
 )
 widget.show()
 widget.to_img(
-    f"{pmv.ROOT}/assets/svg/chem-env-treemap-large-dataset.svg",
+    f"{pmv.utils.ROOT}/assets/svg/chem-env-treemap-large-dataset.svg",
     width=700,
     transparent=True,
 )

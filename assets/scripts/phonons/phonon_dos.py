@@ -28,7 +28,9 @@ for mp_id, formula in (("mp-2758", "Sr4Se4"), ("mp-23907", "H2")):
     widget.show()
     if mp_id == "mp-2758":  # in readme
         widget.to_img(
-            f"{pmv.ROOT}/assets/svg/phonon-dos-{mp_id}.svg", width=800, transparent=True
+            f"{pmv.utils.ROOT}/assets/svg/phonon-dos-{mp_id}.svg",
+            width=800,
+            transparent=True,
         )
 
 

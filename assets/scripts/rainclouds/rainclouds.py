@@ -27,7 +27,7 @@ widget_bi = pmv.rainclouds(
 )
 widget_bi.show()
 widget_bi.to_img(
-    f"{pmv.ROOT}/assets/svg/rainclouds-bimodal.svg", width=700, transparent=True
+    f"{pmv.utils.ROOT}/assets/svg/rainclouds-bimodal.svg", width=700, transparent=True
 )
 
 
@@ -53,5 +53,5 @@ widget_tri = pmv.rainclouds(
 )
 widget_tri.show()
 widget_tri.to_img(
-    f"{pmv.ROOT}/assets/svg/rainclouds-trimodal.svg", width=700, transparent=True
+    f"{pmv.utils.ROOT}/assets/svg/rainclouds-trimodal.svg", width=700, transparent=True
 )

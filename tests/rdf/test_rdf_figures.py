@@ -28,12 +28,12 @@ NACL = Structure(Lattice.cubic(5.64), ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]]
         ("not a structure", {}, TypeError, "Input must be a pymatgen Structure"),
         (
             SI_STRUCTS,
-            {"n_bins": 100, "bin_size": 0.1},
+            {"bins": 100, "bin_size": 0.1},
             ValueError,
-            "Cannot specify both n_bins=.* and bin_size=.*",
+            "Cannot specify both bins=.* and bin_size=.*",
         ),
     ],
-    ids=["empty", "empty_in_dict", "invalid_type", "n_bins_and_bin_size"],
+    ids=["empty", "empty_in_dict", "invalid_type", "bins_and_bin_size"],
 )
 def test_rdf_figures_invalid_input(
     rdf_func: Callable[..., RdfPlotWidget],
@@ -62,7 +62,7 @@ def test_element_pair_rdfs_entries(
     element_pairs: list[tuple[str, str]] | None, expected_labels: list[str] | None
 ) -> None:
     """One pre-computed curve per sorted element pair, matching calculate_rdf."""
-    widget = element_pair_rdfs(NACL, cutoff=6, n_bins=30, element_pairs=element_pairs)
+    widget = element_pair_rdfs(NACL, cutoff=6, bins=30, element_pairs=element_pairs)
     assert isinstance(widget, RdfPlotWidget)
     assert widget.structures is None
     assert widget.mode == "full"  # keeps all curves visible
@@ -98,7 +98,7 @@ def test_element_pair_rdfs_one_search_matches_calculate_rdf(
         return find_points(*args, **kwargs)
 
     monkeypatch.setattr(rdf_helpers, "find_points_in_spheres", counting_find_points)
-    widget = element_pair_rdfs(struct, cutoff=cutoff, n_bins=40)
+    widget = element_pair_rdfs(struct, cutoff=cutoff, bins=40)
     assert n_searches == 1
     assert len(widget.patterns) == 15  # 5 elements -> 15 pairs
     for entry in widget.patterns:
@@ -161,7 +161,7 @@ def test_full_rdf(structs_type: str) -> None:
         "list": SI_STRUCTS[:2],
         "ase": SI_ATOMS[:2],
     }[structs_type]
-    widget = full_rdf(structures, cutoff=5, n_bins=20, colors=["red"])
+    widget = full_rdf(structures, cutoff=5, bins=20, colors=["red"])
     n_structs = 1 if structs_type == "single" else 2
     assert len(widget.patterns) == n_structs
     if structs_type == "dict":

@@ -39,7 +39,9 @@ widget = pmv.ptable_scatter(
 )
 widget.show()
 widget.to_img(
-    f"{pmv.ROOT}/assets/png/ptable-scatter-markers.png", width=1000, transparent=True
+    f"{pmv.utils.ROOT}/assets/svg/ptable-scatter-markers.svg",
+    width=1000,
+    transparent=True,
 )
 
 

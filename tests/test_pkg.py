@@ -13,17 +13,17 @@ import pymatviz as pmv
 
 
 def test_pkg_metadata() -> None:
-    assert pmv.__version__ == version(pmv.PKG_NAME)
+    assert pmv.__version__ == version("pymatviz")
 
     # ensure __init__.py and site/package.json are in sync
     with open("site/package.json") as file:
         pkg_data = json.load(file)
-    assert pkg_data["name"] == pmv.PKG_NAME
+    assert pkg_data["name"] == "pymatviz"
 
     with open("pyproject.toml", mode="rb") as file:
         pyproject = tomllib.load(file)
 
-    assert pyproject["project"]["name"] == pmv.PKG_NAME
+    assert pyproject["project"]["name"] == "pymatviz"
     assert pyproject["project"]["version"] == pmv.__version__
     assert pyproject["project"]["description"] == pkg_data["description"]
 
@@ -31,21 +31,21 @@ def test_pkg_metadata() -> None:
 def test_all_modules_reexported() -> None:
     """Importing the package explicitly re-exports its public top-level modules."""
     # Test a fresh package namespace without leaking it into subsequent tests.
-    original_module = sys.modules.pop(pmv.PKG_NAME)
+    original_module = sys.modules.pop("pymatviz")
     try:
         import pymatviz
 
-        for file in glob(f"{pmv.PKG_DIR}/[!_]*.py"):
+        for file in glob(f"{pmv.utils.PKG_DIR}/[!_]*.py"):
             module_name = os.path.basename(file).removesuffix(".py")
             # These modules share their names with public plotting functions.
-            if module_name in ("histogram", "rainclouds"):
+            if module_name in ("histogram", "rainclouds", "sankey"):
                 continue
 
             assert isinstance(getattr(pymatviz, module_name, None), ModuleType), (
-                f"{module_name} is not a module exported in {pmv.PKG_NAME}/__init__.py"
+                f"{module_name} is not a module exported in pymatviz/__init__.py"
             )
     finally:
-        sys.modules[pmv.PKG_NAME] = original_module
+        sys.modules["pymatviz"] = original_module
 
 
 HEAVY_MODULES = (

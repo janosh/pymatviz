@@ -20,10 +20,10 @@ CHEMENV_MODULE = "pymatgen.analysis.chemenv.coordination_environments"
 
 
 @pytest.mark.parametrize("chart", ["treemap", "sunburst"])
-@pytest.mark.parametrize("mode", ["other", "drop"])
+@pytest.mark.parametrize("overflow", ["other", "drop"])
 def test_chem_env_hierarchy(
     chart: str,
-    mode: Literal["other", "drop"],
+    overflow: Literal["other", "drop"],
     structures: tuple[Structure, Structure],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -48,7 +48,7 @@ def test_chem_env_hierarchy(
         normalize=True,
         max_coordination_numbers=1,
         max_environments=1,
-        mode=mode,
+        overflow=overflow,
         value_format=".2f",
     )
     collect.assert_called_once()
@@ -57,14 +57,14 @@ def test_chem_env_hierarchy(
     assert widget.value_format == ".2f"
     root, *omitted = widget.data
     children = [dict(id="CN 4/T:4", label="T:4", value=0.75)]
-    if mode == "other":
+    if overflow == "other":
         children.append(
             dict(id="CN 4/__omitted__", label="Other (1 more not shown)", value=0.75)
         )
     assert root == dict(id="CN 4", label="CN 4", children=children)
     assert omitted == (
         [dict(id="__omitted__", label="Other (2 more not shown)", value=1.25)]
-        if mode == "other"
+        if overflow == "other"
         else []
     )
 
@@ -142,7 +142,7 @@ def test_chem_env_treemap_analysis_errors(
     ("options", "message"),
     [
         ({"chem_env_settings": "unknown"}, "Invalid chem_env_settings"),
-        ({"mode": "keep"}, "mode"),
+        ({"overflow": "keep"}, "overflow"),
     ],
 )
 def test_chem_env_treemap_invalid_options(

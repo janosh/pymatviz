@@ -31,7 +31,7 @@ A toolkit for visualizations in materials informatics.
 pip install pymatviz
 ```
 
-See `pyproject.toml` for available extras like `pip install 'pymatviz[brillouin]'` to render 3d Brillouin zones.
+See `pyproject.toml` for available extras like `pip install 'pymatviz[export]'` for static image export.
 
 ## API Docs
 
@@ -63,19 +63,19 @@ See [`pymatviz/ptable/figures.py`](pymatviz/ptable/figures.py). The module suppo
 | [`ptable_heatmap_splits(2_vals_per_elem)`](pymatviz/ptable/figures.py#L204) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_splits.py) |                            [`ptable_heatmap_splits(3_vals_per_elem)`](pymatviz/ptable/figures.py#L204)                            |
 |                                                     ![ptable-heatmap-splits-2]                                                     |                                                 ![ptable-heatmap-splits-3]                                                 |
 
-[ptable-heatmap-log]: assets/png/ptable-heatmap-log.png
-[ptable-heatmap-atomic-mass]: assets/png/ptable-heatmap-atomic-mass.png
-[ptable-heatmap-splits-2]: assets/png/ptable-heatmap-splits-2.png
-[ptable-heatmap-splits-3]: assets/png/ptable-heatmap-splits-3.png
-[ptable-hists]: assets/png/ptable-hists.png
-[ptable-scatter-markers]: assets/png/ptable-scatter-markers.png
+[ptable-heatmap-log]: assets/svg/ptable-heatmap-log.svg
+[ptable-heatmap-atomic-mass]: assets/svg/ptable-heatmap-atomic-mass.svg
+[ptable-heatmap-splits-2]: assets/svg/ptable-heatmap-splits-2.svg
+[ptable-heatmap-splits-3]: assets/svg/ptable-heatmap-splits-3.svg
+[ptable-hists]: assets/svg/ptable-hists.svg
+[ptable-scatter-markers]: assets/svg/ptable-scatter-markers.svg
 
 ## Phonons
 
-| [`phonon_bands(bands_dict)`](pymatviz/phonons/figures.py#L120) [![fig-icon]](assets/scripts/phonons/phonon_bands.py) |                  [`phonon_dos(doses_dict)`](pymatviz/phonons/figures.py#L142) [![fig-icon]](assets/scripts/phonons/phonon_dos.py)                  |
+| [`BandStructureWidget(band_structs=bands_dict)`](pymatviz/widgets/band_structure.py) [![fig-icon]](assets/scripts/phonons/phonon_bands.py) |                  [`phonon_dos(doses_dict)`](pymatviz/phonons/figures.py) [![fig-icon]](assets/scripts/phonons/phonon_dos.py)                  |
 | :-----------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                                   ![phonon-bands]                                                   |                                                                   ![phonon-dos]                                                                    |
-|                 [`phonon_bands_and_dos(bands_dict, doses_dict)`](pymatviz/phonons/figures.py#L202)                  | [`phonon_bands_and_dos(single_bands, single_dos)`](pymatviz/phonons/figures.py#L202) [![fig-icon]](assets/scripts/phonons/phonon_bands_and_dos.py) |
+|                 [`BandsAndDosWidget(band_structs=bands_dict, doses=doses_dict)`](pymatviz/widgets/bands_and_dos.py)                  | [`BandsAndDosWidget(band_structs=single_bands, doses=single_dos)`](pymatviz/widgets/bands_and_dos.py) [![fig-icon]](assets/scripts/phonons/phonon_bands_and_dos.py) |
 |                                           ![phonon-bands-and-dos-mp-2758]                                           |                                                          ![phonon-bands-and-dos-mp-23907]                                                          |
 
 [phonon-bands]: assets/svg/phonon-bands-mp-2758.svg
@@ -85,11 +85,11 @@ See [`pymatviz/ptable/figures.py`](pymatviz/ptable/figures.py). The module suppo
 
 ### Composition Clustering
 
-| [`cluster_compositions(df_in, composition_col, *, prop_name, embedding_method, projection, n_components=2)`](pymatviz/cluster/composition/plot.py#L122) [![fig-icon]](assets/scripts/cluster/composition/cluster_compositions_matbench.py) | [`cluster_compositions(df_in, composition_col, *, prop_name, embedding_method, projection, n_components=3)`](pymatviz/cluster/composition/plot.py#L122) |
+| [`cluster_compositions(df, *, composition_col, prop_name, embedding_method, projection, n_components=2)`](pymatviz/cluster/composition/plot.py#L122) [![fig-icon]](assets/scripts/cluster/composition/cluster_compositions_matbench.py) | [`cluster_compositions(df, *, composition_col, prop_name, embedding_method, projection, n_components=3)`](pymatviz/cluster/composition/plot.py#L122) |
 | :-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                                                                                 ![matbench-perovskites-magpie-pca-2d]                                                                                                 |                                                       ![matbench-perovskites-magpie-tsne-3d]                                                       |
 
-[matbench-perovskites-magpie-pca-2d]: assets/png/matbench-perovskites-magpie-pca-2d.png
+[matbench-perovskites-magpie-pca-2d]: assets/svg/matbench-perovskites-magpie-pca-2d.svg
 [matbench-perovskites-magpie-tsne-3d]: assets/png/matbench-perovskites-magpie-tsne-3d.png
 
 Visualize 2D or 3D relationships between compositions and properties using multiple embedding and dimensionality reduction techniques:
@@ -124,17 +124,18 @@ On the roadmap but no ETA yet.
 
 ## Structure
 
-See [`pymatviz/structure/figures.py`](pymatviz/structure/figures.py).
+See [`pymatviz/widgets/structure.py`](pymatviz/widgets/structure.py).
 
-|                            [`structure_3d(hea_structure)`](pymatviz/structure/figures.py)                            | [`structure_3d(lco_supercell)`](pymatviz/structure/figures.py) [![fig-icon]](assets/scripts/structure/structure_3d.py) |
+|                            [`StructureWidget(structure=hea_structure)`](pymatviz/widgets/structure.py)                            | [`StructureWidget(structure=lco_supercell)`](pymatviz/widgets/structure.py) [![fig-icon]](assets/scripts/structure/structure_widget.py) |
 | :------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------------------: |
 |                                                 ![hea-structure-3d]                                                  |                                                  ![lco-structure-3d]                                                   |
-| [`structure_3d(batio3)`](pymatviz/structure/figures.py) [![fig-icon]](assets/scripts/structure/structure_3d.py) | |
-|                                          ![batio3-structure-3d]                                           | |
+| [`StructureWidget(structure=batio3)`](pymatviz/widgets/structure.py) [![fig-icon]](assets/scripts/structure/structure_widget.py) | [`StructureWidget(structure=mos2)`](pymatviz/widgets/structure.py) [![fig-icon]](assets/scripts/structure/structure_widget.py) |
+|                                          ![batio3-structure-3d]                                           | ![mos2-structure-3d] |
 
 [batio3-structure-3d]: assets/png/batio3-structure-3d.png
 [hea-structure-3d]: assets/png/hea-structure-3d.png
 [lco-structure-3d]: assets/png/lco-structure-3d.png
+[mos2-structure-3d]: assets/png/mos2-structure-3d.png
 
 ## Interactive Widgets
 
@@ -169,7 +170,7 @@ widget.describe()  # machine-readable facts: counts, ranges, formula, chemical s
 widget.render_report()  # headless render health check: blank fraction, warnings
 ```
 
-Given several structures, `structure_3d` and `brillouin_zone_3d` return an `ipywidgets.GridBox` of widgets: export each of its `.children`.
+Lay out several widgets with `widget_grid({title: widget, ...}, n_cols=3)`, e.g. one `StructureWidget` per structure. It returns an `ipywidgets.GridBox` of titled cells: export each widget from its `.children`.
 
 `to_img` and `render_report` require [Playwright](https://playwright.dev/python): `pip install pymatviz[export] && playwright install chromium` (on Linux CI runners without Chromium system libraries, use `playwright install --with-deps chromium`). Exports render in headless Chromium. Set the `PYMATVIZ_STATIC` env var to make `widget.show()` render static PNGs instead of live widgets (useful for CI notebook execution).
 
@@ -188,12 +189,12 @@ Importing `pymatviz` auto-registers all widgets for their respective sets of sup
 
 ## Brillouin Zone
 
-See [`pymatviz/brillouin.py`](pymatviz/brillouin.py).
+See [`pymatviz/widgets/brillouin_zone.py`](pymatviz/widgets/brillouin_zone.py). MatterViz standardizes any input cell, so the zone and its high-symmetry k-path labels match the Setyawan-Curtarolo convention.
 
-|   [`brillouin_zone_3d(cubic_struct)`](pymatviz/brillouin.py#L65) [![fig-icon]](assets/scripts/brillouin/brillouin_zone_3d.py)    |  [`brillouin_zone_3d(hexagonal_struct)`](pymatviz/brillouin.py#L65)   |
+|   [`BrillouinZoneWidget(structure=cubic_struct)`](pymatviz/widgets/brillouin_zone.py) [![fig-icon]](assets/scripts/brillouin/brillouin_zone_widget.py)    |  [`BrillouinZoneWidget(structure=hexagonal_struct)`](pymatviz/widgets/brillouin_zone.py)   |
 | :------------------------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------: |
 |                                                   ![brillouin-cubic-mp-10018]                                                    |                   ![brillouin-hexagonal-mp-862690]                    |
-| [`brillouin_zone_3d(monoclinic_struct)`](pymatviz/brillouin.py#L65) [![fig-icon]](assets/scripts/brillouin/brillouin_zone_3d.py) | [`brillouin_zone_3d(orthorhombic_struct)`](pymatviz/brillouin.py#L65) |
+| [`BrillouinZoneWidget(structure=monoclinic_struct)`](pymatviz/widgets/brillouin_zone.py) [![fig-icon]](assets/scripts/brillouin/brillouin_zone_widget.py) | [`BrillouinZoneWidget(structure=orthorhombic_struct)`](pymatviz/widgets/brillouin_zone.py) |
 |                                                ![brillouin-monoclinic-mp-1183089]                                                |                  ![brillouin-orthorhombic-mp-1183085]                 |
 
 [brillouin-cubic-mp-10018]: assets/png/brillouin-cubic-mp-10018.png
@@ -227,10 +228,10 @@ See [`pymatviz/rdf/figures.py`](pymatviz/rdf/figures.py).
 
 See [`pymatviz/coordination/figures.py`](pymatviz/coordination/figures.py).
 
-|              [`coordination_hist(struct_dict)`](pymatviz/coordination/figures.py#L74)              |            [`coordination_hist(struct_dict, split_mode="by_element")`](pymatviz/coordination/figures.py#L74) [![fig-icon]](assets/scripts/coordination/coordination_hist.py)             |
+|              [`coordination_hist(struct_dict)`](pymatviz/coordination/figures.py#L73)              |            [`coordination_hist(struct_dict, split_mode="by_element")`](pymatviz/coordination/figures.py#L73) [![fig-icon]](assets/scripts/coordination/coordination_hist.py)             |
 | :------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                    ![coordination-hist-single]                                     |                                                                  ![coordination-hist-by-element]                                                                   |
-| [`coordination_vs_cutoff_line(struct_dict)`](pymatviz/coordination/figures.py#L177) | [`coordination_vs_cutoff_line(struct_dict)`](pymatviz/coordination/figures.py#L177) [![fig-icon]](assets/scripts/coordination/coordination_vs_cutoff_line.py#L52) |
+| [`coordination_vs_cutoff_line(struct_dict)`](pymatviz/coordination/figures.py#L176) | [`coordination_vs_cutoff_line(struct_dict)`](pymatviz/coordination/figures.py#L176) [![fig-icon]](assets/scripts/coordination/coordination_vs_cutoff_line.py#L52) |
 |                                  ![coordination-vs-cutoff-single]                                  |                                                                        ![coordination-vs-cutoff-multiple]                                                                        |
 
 [coordination-hist-single]: assets/svg/coordination-hist-single.svg
@@ -255,7 +256,7 @@ See [`pymatviz/coordination/figures.py`](pymatviz/coordination/figures.py).
 
 ## Treemap
 
-Chemical-system and coordination-environment treemaps return MatterViz `TreemapWidget` instances. `max_systems` limits systems per arity. Set `mode="drop"` to omit the remaining systems or use the default `"other"` to retain their combined count.
+Chemical-system and coordination-environment treemaps return MatterViz `TreemapWidget` instances. `max_systems` limits systems per arity. Set `overflow="drop"` to omit the remaining systems or use the default `"other"` to retain their combined count.
 
 | [`chem_sys_treemap(formulas, group_by="formula")`](pymatviz/treemap/chem_sys.py#L19) [![fig-icon]](assets/scripts/treemap/chem_sys_treemap.py) | [`chem_sys_treemap(ward_compositions)`](pymatviz/treemap/chem_sys.py#L19) |
 | :----------------------------------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------: |
@@ -293,7 +294,7 @@ See [`pymatviz/rainclouds.py`](pymatviz/rainclouds.py).
 
 See [`pymatviz/sankey.py`](pymatviz/sankey.py).
 
-| [`sankey_from_2_df_cols(df_space_groups, [crystal_system, spg_num])`](pymatviz/sankey.py#L17) [![fig-icon]](assets/scripts/sankey/sankey_from_2_df_cols.py) |
+| [`sankey(df_space_groups, crystal_system, spg_num)`](pymatviz/sankey.py) [![fig-icon]](assets/scripts/sankey/sankey.py) |
 | :---: |
 | ![sankey-crystal-sys-to-spg-num] |
 
@@ -324,10 +325,10 @@ See [`pymatviz/histogram.py`](pymatviz/histogram.py).
 
 See [`pymatviz/scatter.py`](pymatviz/scatter.py).
 
-| [`density_scatter(xs, ys, ...)`](pymatviz/scatter.py) [![fig-icon]](assets/scripts/scatter/density_scatter.py) | [`density_scatter_with_hist(xs, ys, ...)`](pymatviz/scatter.py) [![fig-icon]](assets/scripts/scatter/density_scatter.py) |
+| [`density_scatter(xs, ys, ...)`](pymatviz/scatter.py) [![fig-icon]](assets/scripts/scatter/density_scatter.py) | [`density_hexbin(xs, ys, bin_px=1.5, marginal_bins=100)`](pymatviz/scatter.py) [![fig-icon]](assets/scripts/scatter/density_scatter.py) |
 | :------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------: |
 |                                               ![density-scatter]                                               |                                               ![density-scatter-with-hist]                                               |
-|  [`density_hexbin(xs, ys, ...)`](pymatviz/scatter.py) [![fig-icon]](assets/scripts/scatter/density_hexbin.py)  |  [`density_hexbin_with_hist(xs, ys, ...)`](pymatviz/scatter.py) [![fig-icon]](assets/scripts/scatter/density_hexbin.py)  |
+|  [`density_hexbin(xs, ys, ...)`](pymatviz/scatter.py) [![fig-icon]](assets/scripts/scatter/density_hexbin.py)  |  [`density_hexbin(xs, ys, bin_px=8, marginal_bins=100)`](pymatviz/scatter.py) [![fig-icon]](assets/scripts/scatter/density_hexbin.py)  |
 |                                               ![density-hexbin]                                                |                                               ![density-hexbin-with-hist]                                                |
 
 [density-hexbin-with-hist]: assets/svg/density-hexbin-with-hist.svg
@@ -361,8 +362,8 @@ See [`pymatviz/classify/curves.py`](pymatviz/classify/curves.py).
 
 [roc-curve-multiple]: assets/svg/roc-curve-multiple.svg
 [precision-recall-curve-multiple]: assets/svg/precision-recall-curve-multiple.svg
-[stability-confusion-matrix]: assets/png/stability-confusion-matrix.png
-[crystal-system-confusion-matrix]: assets/png/crystal-system-confusion-matrix.png
+[stability-confusion-matrix]: assets/svg/stability-confusion-matrix.svg
+[crystal-system-confusion-matrix]: assets/svg/crystal-system-confusion-matrix.svg
 [error-decay-with-uncert-multiple]: assets/svg/error-decay-with-uncert-multiple.svg
 [error-decay-with-uncert]: assets/svg/error-decay-with-uncert.svg
 [elements-hist]: assets/svg/elements-hist.svg

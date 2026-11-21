@@ -16,7 +16,9 @@ widget = pmv.error_decay_with_uncert(
 )
 widget.show()
 widget.to_img(
-    f"{pmv.ROOT}/assets/svg/error-decay-with-uncert.svg", width=500, transparent=True
+    f"{pmv.utils.ROOT}/assets/svg/error-decay-with-uncert.svg",
+    width=500,
+    transparent=True,
 )
 
 
@@ -29,7 +31,7 @@ widget = pmv.error_decay_with_uncert(
 )
 widget.show()
 widget.to_img(
-    f"{pmv.ROOT}/assets/svg/error-decay-with-uncert-multiple.svg",
+    f"{pmv.utils.ROOT}/assets/svg/error-decay-with-uncert-multiple.svg",
     width=500,
     transparent=True,
 )

@@ -19,11 +19,13 @@ def test_no_missing_images() -> None:
 
 
 def get_function_names_from_file(file_path: str) -> set[str]:
-    """Extract public function names defined in a Python file using inspect."""
+    """Extract public function and class names defined in a Python file."""
     module = importlib.import_module(file_path.removesuffix(".py").replace("/", "."))
     return {
         name
-        for name, obj in inspect.getmembers(module, inspect.isfunction)
+        for name, obj in inspect.getmembers(
+            module, lambda obj: inspect.isfunction(obj) or inspect.isclass(obj)
+        )
         if not name.startswith("_") and obj.__module__ == module.__name__
     }
 

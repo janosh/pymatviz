@@ -29,7 +29,7 @@ from tests.conftest import df_regr, y_true
             "log",
         ),
         # percent labels stay shares of all elements, not just the kept ones
-        ({"keep_top": 2}, ["O", "Fe"], [7, 3], ["58%", "25%"], "linear"),
+        ({"max_elements": 2}, ["O", "Fe"], [7, 3], ["58%", "25%"], "linear"),
         (
             {"show_values": "count"},
             ["O", "Fe", "Li", "P"],

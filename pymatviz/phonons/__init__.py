@@ -1,7 +1,7 @@
-"""Plotting functions for phonon band structures and density of states. Supports
-pymatgen PhononDos and PhononBandStructureSymmLine as well as phonopy TotalDos and
-BandStructure objects.
+"""Phonon density of states plots (with element/site projections) and phonon
+database helpers. Plot band structures with BandStructureWidget or
+BandsAndDosWidget, which take pymatgen and phonopy objects directly.
 """
 
-from pymatviz.phonons.figures import phonon_bands, phonon_bands_and_dos, phonon_dos
+from pymatviz.phonons.figures import phonon_dos
 from pymatviz.phonons.helpers import PhononDBDoc

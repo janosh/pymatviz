@@ -15,8 +15,7 @@ from pymatviz.coordination.helpers import (
     normalize_get_neighbors,
 )
 from pymatviz.enums import ElemColorScheme
-from pymatviz.process_data import normalize_structures
-from pymatviz.structure.helpers import get_site_elements
+from pymatviz.structures import get_site_elements, normalize_structures
 from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.bar_plot import BarPlotWidget, bar_axis_defaults
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget

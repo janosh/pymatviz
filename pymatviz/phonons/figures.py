@@ -5,54 +5,15 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Literal
 
-import numpy as np
-
-from pymatviz.process_data import normalize_phonon_bands
-from pymatviz.widgets.band_structure import BandStructureWidget
-from pymatviz.widgets.bands_and_dos import BandsAndDosWidget
 from pymatviz.widgets.dos import DosWidget
 
 
 if TYPE_CHECKING:
-    from phonopy.phonon.band_structure import BandStructure as PhonopyBandStructure
-    from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
     from pymatgen.phonon.dos import CompletePhononDos, PhononDos
 
     from pymatviz.typing import AnyDos
 
-type BandsInput = (
-    PhononBands
-    | PhonopyBandStructure
-    | Mapping[str, PhononBands | PhonopyBandStructure]
-)
 type DosInput = AnyDos | CompletePhononDos | Mapping[str, AnyDos | CompletePhononDos]
-
-
-def _bands_docs(band_structs: BandsInput) -> dict[str, dict[str, Any]]:
-    """Band structure dicts without eigendisplacements, which the band plot doesn't
-    use but which can grow the widget state to hundreds of MB.
-    """
-    from pymatviz.widgets._normalize import _as_dict
-
-    return {
-        label: _as_dict(bands)
-        for label, bands in normalize_phonon_bands(band_structs).items()
-    }
-
-
-def _check_stack_grids(dos_dict: Mapping[str, PhononDos]) -> None:
-    """Raise ValueError unless all DOS share one frequency grid, since MatterViz
-    stacks curves by index.
-    """
-    grids = {label: dos.frequencies for label, dos in dos_dict.items()}
-    first_label, first_grid = next(iter(grids.items()))
-    if mismatched := [
-        label for label, grid in grids.items() if not np.array_equal(grid, first_grid)
-    ]:
-        raise ValueError(
-            f"stack=True needs all DOS on one frequency grid, but {mismatched} "
-            f"differ from {first_label!r}"
-        )
 
 
 def _unwrap_single[T](labeled: dict[str, T]) -> T | dict[str, T]:
@@ -117,28 +78,6 @@ def _dos_dict(
     return dos_dict
 
 
-def phonon_bands(band_structs: BandsInput, **kwargs: Any) -> BandStructureWidget:
-    """Plot one or several (overlaid) pymatgen or phonopy phonon band structures.
-
-    Args:
-        band_structs (BandsInput): A PhononBandStructureSymmLine or phonopy
-            BandStructure, or a dict mapping legend labels to them. Band structures
-            must share their q-point path.
-        **kwargs: Passed to BandStructureWidget, e.g. ``reference_frequency``,
-            ``show_legend`` or ``style``.
-
-    Returns:
-        BandStructureWidget: MatterViz band structure plot.
-
-    Raises:
-        TypeError: If band_structs is not a PhononBandStructureSymmLine, phonopy
-            BandStructure or dict of these.
-        ValueError: If band_structs is an empty mapping.
-    """
-    bands = _unwrap_single(_bands_docs(band_structs))
-    return BandStructureWidget(band_structs=bands, **kwargs)
-
-
 def phonon_dos(
     doses: DosInput,
     *,
@@ -188,47 +127,10 @@ def phonon_dos(
             f"got {show_total=} and {n_labels} DOS"
         )
     dos_dict = _dos_dict(doses, project, show_total=show_total)
-    if stack:
-        _check_stack_grids(dos_dict)
     return DosWidget(
         doses=_unwrap_single(dos_dict),
         stack=stack,
         sigma=sigma,
         normalize=normalize,
         **kwargs,
-    )
-
-
-def phonon_bands_and_dos(
-    band_structs: BandsInput,
-    doses: DosInput,
-    **kwargs: Any,
-) -> BandsAndDosWidget:
-    """Plot phonon band structures next to their densities of states, sharing the
-    frequency axis.
-
-    Args:
-        band_structs (BandsInput): A PhononBandStructureSymmLine or phonopy
-            BandStructure, or a dict mapping legend labels to them.
-        doses (DosInput): A PhononDos, CompletePhononDos or phonopy TotalDos, or a
-            dict with the same labels as band_structs.
-        **kwargs: Passed to BandsAndDosWidget, e.g. ``structure`` to add its
-            Brillouin zone, or ``stack``, ``sigma`` (THz) and ``normalize`` for the
-            DOS panel.
-
-    Returns:
-        BandsAndDosWidget: MatterViz combined band structure and DOS plot.
-
-    Raises:
-        ValueError: If band_structs and doses keys don't match, or stacked DOS have
-            different frequency grids.
-    """
-    bands = _bands_docs(band_structs)
-    dos_dict = _dos_dict(doses, None, show_total=False)
-    if (band_keys := set(bands)) != (dos_keys := set(dos_dict)):
-        raise ValueError(f"{band_keys=} and {dos_keys=} must be identical")
-    if kwargs.get("stack"):
-        _check_stack_grids(dos_dict)
-    return BandsAndDosWidget(
-        band_structs=_unwrap_single(bands), doses=_unwrap_single(dos_dict), **kwargs
     )

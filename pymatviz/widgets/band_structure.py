@@ -47,8 +47,9 @@ class BandStructureWidget(PlotControlsTraits, MatterVizWidget):
 
         Args:
             band_structs: Band structure data -- a pymatgen BandStructure,
-                BandStructureSymmLine, PhononBandStructureSymmLine, a dict, or a
-                ``{label: band_structure}`` dict of those to overlay.
+                BandStructureSymmLine, PhononBandStructureSymmLine, phonopy
+                BandStructure, a dict, or a ``{label: band_structure}`` dict of those
+                to overlay.
             **kwargs: Additional widget properties.
         """
         super().__init__(

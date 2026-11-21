@@ -15,7 +15,7 @@ for group_by in ("formula", "reduced_formula", "chem_sys"):
 
 # %% Group rare systems into an Other sector within each arity.
 ward = pd.read_csv(
-    f"{pmv.ROOT}/examples/ward_metallic_glasses/ward-metallic-glasses.csv.xz",
+    f"{pmv.utils.ROOT}/examples/ward_metallic_glasses/ward-metallic-glasses.csv.xz",
     na_values=(),
 ).query("comment.isna()")
 widget = pmv.chem_sys_sunburst(
@@ -27,5 +27,7 @@ widget = pmv.chem_sys_sunburst(
 )
 widget.show()
 widget.to_img(
-    f"{pmv.ROOT}/assets/svg/chem-sys-sunburst-ward-bmg.svg", width=700, transparent=True
+    f"{pmv.utils.ROOT}/assets/svg/chem-sys-sunburst-ward-bmg.svg",
+    width=700,
+    transparent=True,
 )

@@ -28,7 +28,7 @@ key1, key2, key3, *_ = structures
 widget = pmv.coordination_vs_cutoff_line(structures[key1])
 widget.show()
 widget.to_img(
-    f"{pmv.ROOT}/assets/svg/coordination-vs-cutoff-single.svg",
+    f"{pmv.utils.ROOT}/assets/svg/coordination-vs-cutoff-single.svg",
     width=700,
     transparent=True,
 )
@@ -42,7 +42,7 @@ widget = pmv.coordination_vs_cutoff_line(
 )
 widget.show()
 widget.to_img(
-    f"{pmv.ROOT}/assets/svg/coordination-vs-cutoff-multiple.svg",
+    f"{pmv.utils.ROOT}/assets/svg/coordination-vs-cutoff-multiple.svg",
     width=700,
     transparent=True,
 )

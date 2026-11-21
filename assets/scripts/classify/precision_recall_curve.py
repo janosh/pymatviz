@@ -44,7 +44,7 @@ classifiers = {
 widget = pmv.precision_recall_curve(targets=y_binary, probs_positive=classifiers)
 widget.show()
 widget.to_img(
-    f"{pmv.ROOT}/assets/svg/precision-recall-curve-multiple.svg",
+    f"{pmv.utils.ROOT}/assets/svg/precision-recall-curve-multiple.svg",
     width=500,
     transparent=True,
 )

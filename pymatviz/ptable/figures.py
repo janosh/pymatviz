@@ -9,8 +9,8 @@ import numpy as np
 import pandas as pd
 from pandas.api.types import is_numeric_dtype
 
+from pymatviz.composition import count_elements
 from pymatviz.enums import ElemCountMode
-from pymatviz.process_data import count_elements
 from pymatviz.utils import df_ptable
 from pymatviz.widgets.periodic_table import (
     SPLIT_LAYOUTS,

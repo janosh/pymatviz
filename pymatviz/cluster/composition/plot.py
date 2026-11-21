@@ -42,7 +42,7 @@ type Projector = PCA | TSNE | Isomap | KernelPCA | None
 class ClusterScatterPlot(ScatterPlotWidget):
     """2D composition cluster widget carrying the fitted ``projector`` (None for
     custom or pre-computed projections) and the ``embeddings`` that were projected.
-    ``embeddings`` rows follow ``df_in`` order.
+    ``embeddings`` rows follow ``df`` order.
     """
 
     projector: Projector = None
@@ -120,9 +120,9 @@ def _composition_strings(
 
 
 def cluster_compositions(
-    df_in: pd.DataFrame,
-    composition_col: str = "composition",
+    df: pd.DataFrame,
     *,
+    composition_col: str = "composition",
     prop_name: str | None = None,
     embedding_method: str
     | EmbeddingMethod
@@ -148,7 +148,7 @@ def cluster_compositions(
     between different materials.
 
     Args:
-        df_in (pd.DataFrame): DataFrame containing composition data and optionally
+        df (pd.DataFrame): DataFrame containing composition data and optionally
             properties and/or pre-computed embeddings.
         composition_col (str): Name of the column containing one of:
             - Chemical formulas (as strings)
@@ -226,7 +226,7 @@ def cluster_compositions(
         annotate_points (Callable[[pd.Series], str | dict[str, Any] | None] | None):
             2D only. Function returning a text label for each point (or a matterviz
             LabelStyle dict like {"text": ..., "font_size": "10px"}, or None for no
-            label). Takes a pandas Series of a df_in row plus the projected
+            label). Takes a pandas Series of a df row plus the projected
             coordinates (e.g., 'pca1', 'pca2').
         **kwargs: Passed to ScatterPlotWidget or ScatterPlot3DWidget
             (depending on n_components)
@@ -236,7 +236,7 @@ def cluster_compositions(
             attributes:
             - projector: Fitted projection object (PCA, TSNE, etc.) or None for
               custom projection functions and pre-computed coordinates
-            - embeddings: Embeddings used for projection (df_in row order)
+            - embeddings: Embeddings used for projection (df row order)
     """
     if n_components not in (2, 3):  # Validate inputs
         raise ValueError(f"{n_components=} must be 2 or 3")
@@ -253,13 +253,13 @@ def cluster_compositions(
     if n_components == 3 and annotate_points is not None:
         raise ValueError("annotate_points needs n_components=2 (no 3D point labels)")
 
-    if composition_col not in df_in:
-        columns = df_in.columns.tolist()
+    if composition_col not in df:
+        columns = df.columns.tolist()
         raise ValueError(f"{composition_col=} not found in DataFrame {columns=}")
 
-    if prop_name is not None and prop_name not in df_in:
+    if prop_name is not None and prop_name not in df:
         raise ValueError(
-            f"{prop_name=} not found in DataFrame columns: {df_in.columns.tolist()}"
+            f"{prop_name=} not found in DataFrame columns: {df.columns.tolist()}"
         )
 
     if projection is None:
@@ -285,15 +285,15 @@ def cluster_compositions(
     is_method_name = isinstance(projection, str) and projection in list(
         ProjectionMethod
     )
-    if is_method_name and projection in df_in:
+    if is_method_name and projection in df:
         raise ValueError(
-            f"df_in has a column named {projection!r}, which is also a projection "
+            f"df has a column named {projection!r}, which is also a projection "
             "method name; rename the column to plot its pre-computed coordinates"
         )
-    using_precomputed_coords = not is_method_name and projection in df_in
+    using_precomputed_coords = not is_method_name and projection in df
 
     if using_precomputed_coords:
-        first_coords = df_in[projection].iloc[0]
+        first_coords = df[projection].iloc[0]
         if not isinstance(first_coords, (list, np.ndarray)):
             raise ValueError(
                 f"Column {projection} must contain arrays or lists of coordinates"
@@ -307,8 +307,8 @@ def cluster_compositions(
     projection_kwargs = projection_kwargs or {}
     embedding_kwargs = embedding_kwargs or {}
 
-    compositions = df_in[composition_col]
-    properties = None if prop_name is None else df_in[prop_name].infer_objects()
+    compositions = df[composition_col]
+    properties = None if prop_name is None else df[prop_name].infer_objects()
     # Numbers with None/pd.NA gaps (object or nullable dtypes) become float NaN
     if (
         properties is not None
@@ -320,19 +320,17 @@ def cluster_compositions(
     projector: Projector = None
     embeddings: np.ndarray | None = None
     if using_precomputed_coords:
-        projected = np.array([np.array(coords) for coords in df_in[projection]])
+        projected = np.array([np.array(coords) for coords in df[projection]])
         comp_strs = _composition_strings(compositions, strict=False)
     else:
         if isinstance(compositions.iloc[0], (list, np.ndarray)):
             # composition_col holds pre-computed embeddings, label points by index
-            comp_strs = df_in.index.tolist()
+            comp_strs = df.index.tolist()
             embeddings = np.array([np.array(val) for val in compositions])
         else:
             comp_strs = _composition_strings(compositions)
-            if isinstance(embedding_method, str) and embedding_method in df_in:
-                embeddings = np.array(
-                    [np.array(val) for val in df_in[embedding_method]]
-                )
+            if isinstance(embedding_method, str) and embedding_method in df:
+                embeddings = np.array([np.array(val) for val in df[embedding_method]])
             elif callable(embedding_method):
                 embedding_fn = cast("EmbeddingCallable", embedding_method)
                 embeddings = embedding_fn(compositions, **embedding_kwargs)
@@ -451,12 +449,12 @@ def cluster_compositions(
             # (None, NaN, pd.NA) the pandas version stores in object/str columns
             categories = ["nan" if pd.isna(val) else str(val) for val in properties]
 
-    plot_order = np.arange(len(df_in))  # df_in position of each plotted point
+    plot_order = np.arange(len(df))  # df position of each plotted point
     if sort and numeric_props is not None:
         if callable(sort):
             plot_order = np.asarray(sort(numeric_props))
             if plot_order.dtype.kind not in "iu" or not np.array_equal(
-                np.sort(plot_order), np.arange(len(df_in))
+                np.sort(plot_order), np.arange(len(df))
             ):
                 raise ValueError(
                     f"sort callable must return a permutation of indices, got "
@@ -478,7 +476,7 @@ def cluster_compositions(
         return value.item() if isinstance(value, np.generic) else value
 
     def point_metadata(pos: int) -> dict[str, Any]:
-        """Tooltip metadata of the point at df_in position pos."""
+        """Tooltip metadata of the point at df position pos."""
         meta: dict[str, Any] = {"composition": str(comp_strs[pos])}
         if properties is not None:
             meta[str(prop_name)] = finite_or_none(properties.iloc[pos])
@@ -488,12 +486,12 @@ def cluster_compositions(
 
     point_labels: dict[int, dict[str, Any]] = {}
     if callable(annotate_points):
-        # Rows are df_in's (raw values, original index label in row.name) plus the
+        # Rows are df's (raw values, original index label in row.name) plus the
         # projected coordinates
-        df_rows = df_in.copy()
+        df_rows = df.copy()
         for dim, name in enumerate(coord_names):
             df_rows[name] = projected[:, dim]
-        for pos in range(len(df_in)):
+        for pos in range(len(df)):
             label = annotate_points(df_rows.iloc[pos])
             if label:
                 point_labels[pos] = (

@@ -11,8 +11,8 @@ from collections import defaultdict
 from math import fsum
 from typing import TYPE_CHECKING, Any, Literal
 
-from pymatviz._hierarchy import _limit_nodes, _validate_limit_mode
-from pymatviz.process_data import normalize_periodic_structures
+from pymatviz._hierarchy import _limit_nodes, _validate_overflow
+from pymatviz.structures import normalize_periodic_structures
 
 
 if TYPE_CHECKING:
@@ -235,7 +235,7 @@ def chem_env_nodes(
     normalize: bool,
     max_coordination_numbers: int | None,
     max_environments: int | None,
-    mode: Literal["other", "drop"],
+    overflow: Literal["other", "drop"],
 ) -> list[dict[str, Any]]:
     """Build coordination-number branches with environment counts as leaves.
 
@@ -244,7 +244,7 @@ def chem_env_nodes(
     """
     from pymatgen.core import Structure
 
-    _validate_limit_mode(mode)
+    _validate_overflow(overflow)
 
     if not isinstance(chem_env_settings, dict) and chem_env_settings not in (
         "chemenv",
@@ -284,11 +284,11 @@ def chem_env_nodes(
         )
         for coord_num, children in by_cn.items()
     ]
-    roots = _limit_nodes(nodes, max_coordination_numbers, mode)
+    roots = _limit_nodes(nodes, max_coordination_numbers, overflow)
     for root in roots:
         if children := root.get("children"):
             root["children"] = _limit_nodes(
-                children, max_environments, mode, parent_id=root["id"]
+                children, max_environments, overflow, parent_id=root["id"]
             )
             del root["value"]  # The renderer derives branch totals from visible leaves.
     return roots

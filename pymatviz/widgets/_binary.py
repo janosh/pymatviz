@@ -233,8 +233,7 @@ def _frame(item: Any) -> _Frame | None:
     """Extract geometry, or select JSON for richer structures."""
     from pymatgen.core import IStructure, SiteCollection
 
-    from pymatviz.process_data import is_ase_atoms
-    from pymatviz.structure.helpers import MIN_ASE_CELL_VOLUME
+    from pymatviz.structures import MIN_ASE_CELL_VOLUME, is_ase_atoms
 
     structure, props = frame_input(item)
     if isinstance(item, Mapping) and len(item) > 1 and object_metadata(structure):

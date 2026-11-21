@@ -137,7 +137,7 @@ def process_dataset(
         df_plot[embed_col] = [embeddings_dict[comp] for comp in compositions]
 
     return pmv.cluster_compositions(
-        df_in=df_plot,
+        df=df_plot,
         composition_col="composition",
         prop_name=target_label,
         embedding_method=embed_col,
@@ -246,6 +246,10 @@ for (
     widget.to_html(f"{plot_dir}/{img_name}.html")
     widget.show()
     if data_name == "matbench_perovskites":  # shown in the readme
+        # 3D scatter draws to a canvas, which has no vector form
+        ext = "png" if n_components == 3 else "svg"
         widget.to_img(
-            f"{pmv.ROOT}/assets/png/{img_name}.png", width=600, transparent=True
+            f"{pmv.utils.ROOT}/assets/{ext}/{img_name}.{ext}",
+            width=600,
+            transparent=True,
         )

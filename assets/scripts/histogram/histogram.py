@@ -14,7 +14,7 @@ gauss2 = np_rng.normal(10, 2, rand_regression_size)
 
 widget = pmv.histogram({"Gaussian 1": gauss1, "Gaussian 2": gauss2}, bins=100)
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/svg/histogram.svg", width=600, transparent=True)
+widget.to_img(f"{pmv.utils.ROOT}/assets/svg/histogram.svg", width=600, transparent=True)
 
 
 # %% Same data as probability densities on a log y-axis

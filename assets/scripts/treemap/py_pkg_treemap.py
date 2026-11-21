@@ -24,7 +24,7 @@ for pkg in ("pymatviz", np):  # Mix strings and module objects
     pkg_name = str(getattr(pkg, "__name__", pkg)).replace("_", "-")
     if pkg_name == "pymatviz":  # in readme
         widget.to_img(
-            f"{pmv.ROOT}/assets/svg/py-pkg-treemap-{pkg_name}.svg",
+            f"{pmv.utils.ROOT}/assets/svg/py-pkg-treemap-{pkg_name}.svg",
             width=800,
             transparent=True,
         )
@@ -39,7 +39,9 @@ widget = pmv.py_pkg_treemap(
 )
 widget.show()
 widget.to_img(
-    f"{pmv.ROOT}/assets/svg/py-pkg-treemap-multiple.svg", width=800, transparent=True
+    f"{pmv.utils.ROOT}/assets/svg/py-pkg-treemap-multiple.svg",
+    width=800,
+    transparent=True,
 )
 
 
@@ -96,7 +98,7 @@ widget = pmv.py_pkg_treemap(
 )
 widget.show()
 widget.to_img(
-    f"{pmv.ROOT}/assets/svg/py-pkg-treemap-pymatviz-coverage.svg",
+    f"{pmv.utils.ROOT}/assets/svg/py-pkg-treemap-pymatviz-coverage.svg",
     width=800,
     transparent=True,
 )
@@ -129,7 +131,7 @@ widget = pmv.py_pkg_treemap(
 )
 widget.show()
 widget.to_img(
-    f"{pmv.ROOT}/assets/svg/py-pkg-treemap-pymatgen-coverage.svg",
+    f"{pmv.utils.ROOT}/assets/svg/py-pkg-treemap-pymatgen-coverage.svg",
     width=800,
     transparent=True,
 )

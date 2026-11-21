@@ -25,7 +25,9 @@ key1, key2, key3, *_ = xrd_patterns
 # %% Single pattern: MatterViz labels the 5 strongest peaks with hkl and 2θ
 widget = pmv.xrd_pattern(xrd_patterns[key1], style="height: 400px")
 widget.show()
-widget.to_img(f"{pmv.ROOT}/assets/svg/xrd-pattern.svg", width=700, transparent=True)
+widget.to_img(
+    f"{pmv.utils.ROOT}/assets/svg/xrd-pattern.svg", width=700, transparent=True
+)
 
 
 # %% Overlay patterns of several structures (computed with a Mo K-alpha wavelength)
@@ -34,7 +36,7 @@ widget = pmv.xrd_pattern(
 )
 widget.show()
 widget.to_img(
-    f"{pmv.ROOT}/assets/svg/xrd-pattern-multiple.svg", width=700, transparent=True
+    f"{pmv.utils.ROOT}/assets/svg/xrd-pattern-multiple.svg", width=700, transparent=True
 )
 
 

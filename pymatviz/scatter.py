@@ -9,13 +9,14 @@ import numpy as np
 import pandas as pd
 
 from pymatviz.powerups import enhance_parity_plot
-from pymatviz.process_data import bin_df_cols, df_to_arrays
+from pymatviz.utils.data import df_to_arrays
 from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.binned_scatter_plot import BinnedScatterPlotWidget
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from typing import Any, Literal
 
     from numpy.typing import ArrayLike
@@ -102,7 +103,7 @@ def density_scatter(
     df: pd.DataFrame | None = None,
     density: Literal["kde", "empirical"] | None = None,
     log: bool | None = None,
-    n_bins: int | Literal[False] | None = None,
+    bins: int | Literal[False] | None = None,
     xlabel: str | None = None,
     ylabel: str | None = None,
     identity_line: bool | dict[str, Any] = True,
@@ -124,7 +125,7 @@ def density_scatter(
             kernel density estimate).
         log (bool | None): Log-scale the color mapping. None (default)
             enables it when positive densities span more than 2 decades.
-        n_bins (int | False | None): Number of bins per axis. None (default) bins
+        bins (int | False | None): Number of bins per axis. None (default) bins
             into 200 bins only for more than 1000 points.
         xlabel (str, optional): x-axis label. Auto-detected from data if None.
         ylabel (str, optional): y-axis label. Auto-detected from data if None.
@@ -143,10 +144,10 @@ def density_scatter(
         ScatterPlotWidget: The density scatter widget.
     """
     xs, ys, xlabel, ylabel = _parity_data(x, y, df, xlabel, ylabel)
-    if n_bins is None:  # auto-enable binning depending on data size
-        n_bins = 200 if len(xs) > 1000 else False
+    if bins is None:  # auto-enable binning depending on data size
+        bins = 200 if len(xs) > 1000 else False
     plot_x, plot_y, point_density = _point_density(
-        xs, ys, density or ("empirical" if n_bins else "kde"), n_bins
+        xs, ys, density or ("empirical" if bins else "kde"), bins
     )
     if log is None:
         positive = point_density[point_density > 0]
@@ -192,6 +193,7 @@ def density_hexbin(
     *,
     df: pd.DataFrame | None = None,
     bin_px: float | None = None,
+    marginal_bins: int | None = None,
     identity_line: bool | dict[str, Any] = True,
     best_fit_line: bool | dict[str, Any] | None = None,
     stats: bool | dict[str, Any] = True,
@@ -207,7 +209,10 @@ def density_hexbin(
         y (array | str): y-values or dataframe column name.
         df (pd.DataFrame, optional): DataFrame with x and y columns.
         bin_px (float, optional): Bin size in screen pixels. Defaults to
-            matterviz' default (2.8 px).
+            matterviz' default (2.8 px). Small bins (e.g. 1.5) look like a
+            density-colored scatter plot that stays fast for millions of points.
+        marginal_bins (int, optional): Add top x and right y marginal histograms
+            with this many bins. Defaults to None (no marginals).
         identity_line (bool | dict): Add a y = x line. A dict is passed to
             add_identity_line(). Defaults to True.
         best_fit_line (bool | dict | None): Add a least-squares fit line. A dict is
@@ -216,13 +221,25 @@ def density_hexbin(
             annotate_metrics(). Defaults to True.
         xlabel (str, optional): x-axis label. Auto-detected if None.
         ylabel (str, optional): y-axis label. Auto-detected if None.
-        **kwargs: Passed to BinnedScatterPlotWidget, e.g. marginals,
-            color_bar or density (merged with bin_px).
+        **kwargs: Passed to BinnedScatterPlotWidget, e.g. marginals (merged over
+            the marginal_bins histograms per side), color_bar or density (merged
+            with bin_px).
 
     Returns:
         BinnedScatterPlotWidget: The binned density widget.
+
+    Raises:
+        ValueError: If marginal_bins is not a positive int.
     """
     xs, ys, xlabel, ylabel = _parity_data(x, y, df, xlabel, ylabel)
+    marginals = {}
+    if marginal_bins is not None:
+        if not isinstance(marginal_bins, int) or marginal_bins < 1:
+            raise ValueError(f"{marginal_bins=} must be a positive int")
+        marginals = {
+            side: {"type": "histogram", "bins": marginal_bins}
+            for side in ("top", "right")
+        }
     widget = BinnedScatterPlotWidget(
         series=[{"x": xs, "y": ys}],
         **with_defaults(
@@ -231,6 +248,7 @@ def density_hexbin(
                 "y_axis": {"label": ylabel},
                 "color_bar": {"title": "Count"},
                 "density": {"bin_px": bin_px} if bin_px is not None else {},
+                **({"marginals": marginals} if marginals else {}),
             },
             kwargs,
         ),
@@ -245,70 +263,76 @@ def density_hexbin(
     )
 
 
-def _histogram_marginals(bins: int) -> dict[str, dict[str, Any]]:
-    """Top x and right y marginal histograms with the given bin count."""
-    if not isinstance(bins, int) or bins < 1:
-        raise ValueError(f"{bins=} must be a positive int")
-    return {side: {"type": "histogram", "bins": bins} for side in ("top", "right")}
-
-
-def density_scatter_with_hist(
-    x: ArrayLike | str,
-    y: ArrayLike | str,
+def bin_df_cols(
+    df_in: pd.DataFrame,
+    bin_by_cols: Sequence[str],
     *,
-    df: pd.DataFrame | None = None,
-    bins: int = 100,
-    bin_px: float = 1.5,
-    **kwargs: Any,
-) -> BinnedScatterPlotWidget:
-    """Fine-grained density parity plot with marginal x/y histograms.
-
-    MatterViz' ScatterPlot widget doesn't expose marginals, so this renders a
-    BinnedScatterPlot with small (default 1.5 px) bins, which looks like a
-    density-colored scatter plot and stays fast for millions of points.
+    group_by_cols: Sequence[str] = (),
+    n_bins: int | Sequence[int] = 100,
+    bin_counts_col: str = "bin_counts",
+    density_col: str = "",
+    verbose: bool = False,
+) -> pd.DataFrame:
+    """Bin columns of a DataFrame.
 
     Args:
-        x (array | str): x-values or dataframe column name.
-        y (array | str): y-values or dataframe column name.
-        df (pd.DataFrame, optional): DataFrame with x and y columns.
-        bins (int): Number of bins per marginal histogram. Defaults to 100.
-        bin_px (float): Density bin size in screen pixels. Defaults to 1.5.
-        **kwargs: Passed to density_hexbin(). A marginals dict is merged over the
-            default top/right histograms per side.
+        df_in (pd.DataFrame): Input dataframe to bin.
+        bin_by_cols (Sequence[str]): Columns to bin.
+        group_by_cols (Sequence[str]): Additional columns to group by. Defaults to ().
+        n_bins (int): Number of bins to use. Defaults to 100.
+        bin_counts_col (str): Column name for bin counts. Defaults to "bin_counts".
+        density_col (str): Column name for density values. Defaults to "".
+        verbose (bool): If True, print df length reduction. Defaults to False.
 
     Returns:
-        BinnedScatterPlotWidget: Density widget with marginal histograms.
+        pd.DataFrame: Binned DataFrame with original index name and values.
     """
-    return density_hexbin(
-        x,
-        y,
-        df=df,
-        bin_px=bin_px,
-        **with_defaults({"marginals": _histogram_marginals(bins)}, kwargs),
-    )
+    if isinstance(n_bins, int):
+        # broadcast integer n_bins to all bin_by_cols
+        n_bins = [n_bins] * len(bin_by_cols)
 
+    if len(bin_by_cols) != len(n_bins):
+        raise ValueError(f"{len(bin_by_cols)=} != {len(n_bins)=}")
 
-def density_hexbin_with_hist(
-    x: ArrayLike | str,
-    y: ArrayLike | str,
-    *,
-    df: pd.DataFrame | None = None,
-    bins: int = 100,
-    **kwargs: Any,
-) -> BinnedScatterPlotWidget:
-    """Binned density parity plot with marginal x/y histograms.
+    # Preserve the original index
+    orig_index_name = df_in.index.name or "index"
+    # Reset index so it participates in groupby. If the index name is already in the
+    # columns, we it'll participate already and be set back to the index at the end.
+    if orig_index_name not in df_in:
+        df_in = df_in.reset_index()
 
-    Args:
-        x (array | str): x-values or dataframe column name.
-        y (array | str): y-values or dataframe column name.
-        df (pd.DataFrame, optional): DataFrame with x and y columns.
-        bins (int): Number of bins per marginal histogram. Defaults to 100.
-        **kwargs: Passed to density_hexbin(), e.g. bin_px. A marginals dict is
-            merged over the default top/right histograms per side.
+    # Bins are separate group keys rather than added columns, so df_in needn't be
+    # copied to stay unmodified
+    bin_keys = [
+        pd.Series(pd.cut(df_in[col].values, bins=bins), index=df_in.index).rename(
+            f"{col}_bins"
+        )
+        for col, bins in zip(bin_by_cols, n_bins, strict=True)
+    ]
+    group = df_in.groupby(by=[*bin_keys, *group_by_cols], observed=True)
 
-    Returns:
-        BinnedScatterPlotWidget: Density widget with marginal histograms.
-    """
-    return density_hexbin(
-        x, y, df=df, **with_defaults({"marginals": _histogram_marginals(bins)}, kwargs)
-    )
+    df_bin = group.first().dropna()
+    df_bin[bin_counts_col] = group.size()
+    df_bin = df_bin.reset_index()
+
+    if verbose:
+        print(  # noqa: T201
+            f"{1 - len(df_bin) / len(df_in):.1%} sample reduction from binning: from "
+            f"{len(df_in):,} to {len(df_bin):,}"
+        )
+
+    if density_col:
+        # compute kernel density estimate for each bin
+        values = df_in[bin_by_cols].dropna().T
+        import scipy.stats
+
+        kde = scipy.stats.gaussian_kde(values.astype(float))
+
+        xy_binned = df_bin[bin_by_cols].T
+        density = kde(xy_binned.astype(float))
+        # scale density to sum to the number of data points (values is transposed,
+        # so its columns are the data points)
+        df_bin[density_col] = density / density.sum() * values.shape[1]
+
+    # Set the index back to the original index name
+    return df_bin.set_index(orig_index_name)

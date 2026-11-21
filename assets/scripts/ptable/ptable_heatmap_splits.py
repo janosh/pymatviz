@@ -23,7 +23,7 @@ for n_splits in range(2, 5):
     widget.show()
     if n_splits < 4:  # readme shows the 2- and 3-fold splits
         widget.to_img(
-            f"{pmv.ROOT}/assets/png/ptable-heatmap-splits-{n_splits}.png",
+            f"{pmv.utils.ROOT}/assets/svg/ptable-heatmap-splits-{n_splits}.svg",
             width=1000,
             transparent=True,
         )
