@@ -726,7 +726,8 @@ def _trim_png(png_bytes: bytes, pad: int) -> bytes:
     """Crop a transparent PNG to its non-transparent pixels plus ``pad`` pixels."""
     from PIL import Image
 
-    img = Image.open(io.BytesIO(png_bytes))
+    # Chromium drops the alpha channel of fully painted screenshots
+    img = Image.open(io.BytesIO(png_bytes)).convert("RGBA")
     if (bbox := img.getchannel("A").getbbox()) is None:
         raise RuntimeError("Transparent export captured no painted pixels")
     left, top, right, bottom = bbox

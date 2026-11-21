@@ -171,6 +171,11 @@ def test_bands_and_dos_widget_phonons(phonon_bands_doses_mp_2758: BandsDoses) ->
         pmv.BandsAndDosWidget(band_structs=bands, doses=doses, stack=True)
     with pytest.raises(ValueError, match=r"one grid, but \['MACE'\]"):
         pmv.DosWidget(doses=doses, stack=True)
+    list_and_tuple = {  # equal grids in different containers stack
+        label: {"frequencies": grid, "densities": [1, 2]}
+        for label, grid in (("list", [0, 1]), ("tuple", (0, 1)))
+    }
+    assert pmv.DosWidget(doses=list_and_tuple, stack=True).stack is True
     shared_grid = dict.fromkeys(doses, doses["DFT"])
     widget = pmv.BandsAndDosWidget(band_structs=bands, doses=shared_grid, stack=True)
     assert widget.stack is True

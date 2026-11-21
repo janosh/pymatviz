@@ -124,12 +124,17 @@ def check_stack_grids(doses: dict[str, Any] | None) -> None:
     """
     if doses is None or labeled_keys(doses) == {""}:
         return
+    import numpy as np
+
     grids = {
         label: dos.get("frequencies", dos.get("energies"))
         for label, dos in doses.items()
     }
     first_label, first_grid = next(iter(grids.items()))
-    if mismatched := [label for label, grid in grids.items() if grid != first_grid]:
+    # array_equal so list and tuple grids with equal values match
+    if mismatched := [
+        label for label, grid in grids.items() if not np.array_equal(grid, first_grid)
+    ]:
         raise ValueError(
             f"stack=True needs all DOS on one grid, but {mismatched} differ from "
             f"{first_label!r}"

@@ -634,23 +634,25 @@ def test_transparent_rejects_opaque_formats(fmt: str) -> None:
 
 
 @pytest.mark.parametrize(
-    ("painted_box", "pad", "expected_size"),
+    ("mode", "painted_box", "pad", "expected_size"),
     [
-        ((10, 20, 30, 25), 0, (20, 5)),
-        ((10, 20, 30, 25), 4, (28, 13)),
-        ((0, 0, 40, 40), 4, (40, 40)),  # pad clamps to the image edges
-        (None, 4, None),  # nothing painted
+        ("RGBA", (10, 20, 30, 25), 0, (20, 5)),
+        ("RGBA", (10, 20, 30, 25), 4, (28, 13)),
+        ("RGBA", (0, 0, 40, 40), 4, (40, 40)),  # pad clamps to the image edges
+        ("RGB", (0, 0, 40, 40), 4, (40, 40)),  # Chromium drops alpha when opaque
+        ("RGBA", None, 4, None),  # nothing painted
     ],
 )
 def test_trim_png(
+    mode: str,
     painted_box: tuple[int, int, int, int] | None,
     pad: int,
     expected_size: tuple[int, int] | None,
 ) -> None:
     """_trim_png crops to opaque pixels plus a pad, and raises on blank captures."""
-    img = Image.new("RGBA", (40, 40), (0, 0, 0, 0))
+    img = Image.new(mode, (40, 40))
     if painted_box:
-        img.paste((200, 0, 0, 255), painted_box)
+        img.paste((200, 0, 0, 255)[: len(mode)], painted_box)
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     if expected_size is None:
