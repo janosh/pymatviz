@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import functools
 import importlib.util
 import io
@@ -745,3 +746,21 @@ def test_batch_budget_covers_full_waves() -> None:
     (coro, _), kwargs = run.call_args
     coro.close()
     assert kwargs["budget"] == 5 * headless_mod._call_budget(1)
+
+
+def test_cancel_during_eviction_releases_page() -> None:
+    """A render cancelled while evicting idle pages still releases and retires its
+    checked-out page, instead of leaving it marked in use forever.
+    """
+    page = _mock_page()
+    evict = AsyncMock(side_effect=[asyncio.CancelledError(), None])
+    with (
+        patch(
+            f"{HEADLESS_PATH}._get_browser", AsyncMock(return_value=_mock_browser(page))
+        ),
+        patch(f"{HEADLESS_PATH}._evict_idle", evict),
+        pytest.raises((asyncio.CancelledError, concurrent.futures.CancelledError)),
+    ):
+        render_widget_headless(DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS)
+    assert headless_mod._warm_pages == []
+    page.close.assert_awaited_once()

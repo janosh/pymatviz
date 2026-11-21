@@ -165,10 +165,11 @@ def df_series(
     if missing := sorted(columns.keys() - named.keys()):
         raise ValueError(f"name the DataFrame column(s) for {missing}")
     # one column may fill several roles (e.g. color=x), but is selected once
-    used_cols = list(dict.fromkeys([*named.values(), *([color] if color else [])]))
+    grouped = color is not None  # "" is a valid column name
+    used_cols = list(dict.fromkeys([*named.values(), *([color] if grouped else [])]))
     df_used = data[used_cols].dropna()
     # horizontal bars and boxes put the x column's values on the y axis
-    flip = kwargs.get("orientation") == "horizontal"
+    flip = str(kwargs.get("orientation", "")).lower() == "horizontal"
     axes = {"x_axis": "y_axis", "y_axis": "x_axis"} if flip else {}
     axis_labels = {
         axes.get(_AXIS_OF_KEY[key], _AXIS_OF_KEY[key]): {"label": col}
@@ -177,11 +178,11 @@ def df_series(
     kwargs.update(with_defaults(axis_labels, kwargs))
     groups = (
         df_used.groupby(color, sort=False, observed=True)
-        if color
+        if grouped
         else [(None, df_used)]
     )
     return [
         {key: group[col].to_numpy() for key, col in named.items()}
-        | ({"label": str(name)} if color else {})
+        | ({"label": str(name)} if grouped else {})
         for name, group in groups
     ]

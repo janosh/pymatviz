@@ -1666,12 +1666,16 @@ def test_from_json_rejects_unknown_widget_type() -> None:
         from_json('{"widget_type": "nope"}')
 
 
-def test_bar_plot_dataframe_column_roles_and_orientation() -> None:
-    """One column may be x and color; horizontal bars label y with the x column."""
-    df_bars = pd.DataFrame({"c": ["a", "b"], "v": [1, 2]})
-    widget = BarPlotWidget(df_bars, x="c", y="v", color="c")
-    assert [series_dict["label"] for series_dict in widget.series] == ["a", "b"]
-    flipped = BarPlotWidget(df_bars, x="c", y="v", orientation="horizontal")
+@pytest.mark.parametrize("orientation", ["horizontal", "HORIZONTAL"])
+def test_bar_plot_dataframe_column_roles_and_orientation(orientation: str) -> None:
+    """One column may be x and color, "" is a column name too, and horizontal bars
+    (in any case) label y with the x column.
+    """
+    df_bars = pd.DataFrame({"c": ["a", "b"], "v": [1, 2], "": ["p", "q"]})
+    for color, labels in (("c", ["a", "b"]), ("", ["p", "q"])):
+        widget = BarPlotWidget(df_bars, x="c", y="v", color=color)
+        assert [series_dict["label"] for series_dict in widget.series] == labels
+    flipped = BarPlotWidget(df_bars, x="c", y="v", orientation=orientation)
     assert (flipped.y_axis, flipped.x_axis) == ({"label": "c"}, {"label": "v"})
 
 
