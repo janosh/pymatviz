@@ -42,9 +42,7 @@ def to_composition(obj: Any, *, allow_negative: bool = False) -> mk.Composition:
     """
     if isinstance(obj, mk.Composition):
         return obj
-    if is_instance_of(obj, "pymatgen.core.composition.Composition"):
-        obj = obj.get_el_amt_dict()
-    elif is_structure_like(obj):
+    if is_structure_like(obj):
         return to_structure(obj).composition
     if not isinstance(obj, str | Mapping):
         raise TypeError(

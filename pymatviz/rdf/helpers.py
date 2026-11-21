@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import matscikit as mk
 import numpy as np
 
 from pymatviz.structures import (
@@ -80,13 +79,7 @@ def partial_rdfs(
         return [(radii, np.zeros_like(radii)) for _ in pairs]
 
     if tuple(pbc_array.astype(bool)) != struct.pbc:
-        struct = mk.Structure(
-            struct.lattice,
-            struct.site_occupancies,
-            struct.frac_coords,
-            fractional=True,
-            pbc=pbc_array.astype(bool).tolist(),
-        )
+        struct = struct.replace(pbc=pbc_array.astype(bool).tolist())
     center_ids, neighbor_ids, _, distances = struct.neighbor_list(cutoff)
     # Exclude coincident atoms (the self pair is never listed), count periodic
     # images of a site itself.

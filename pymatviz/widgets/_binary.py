@@ -233,7 +233,7 @@ def _frame(item: Any) -> _Frame | None:
     """Extract geometry, or select JSON for richer structures."""
     import matscikit as mk
 
-    from pymatviz.structures import MIN_ASE_CELL_VOLUME, is_ase_atoms, is_instance_of
+    from pymatviz.structures import is_ase_atoms, is_instance_of
 
     structure, props = frame_input(item)
     if isinstance(item, Mapping) and len(item) > 1 and object_metadata(structure):
@@ -276,8 +276,8 @@ def _frame(item: Any) -> _Frame | None:
     cell, pbc = np.asarray(structure.cell), tuple(structure.pbc.tolist())
     if not cell.any() and not any(pbc):
         cell, pbc = None, None
-    elif structure.cell.volume < MIN_ASE_CELL_VOLUME:
-        return None  # The JSON path pads a degenerate cell with vacuum.
+    elif structure.cell.volume < 1e-6:  # Å³
+        return None  # The JSON path completes a degenerate cell.
     site_props = {
         key: val
         for key, val in structure.arrays.items()

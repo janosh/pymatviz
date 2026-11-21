@@ -44,7 +44,7 @@ def test_widget_composition_inputs(
 
 @pytest.mark.parametrize(
     ("invalid_composition", "expected_error"),
-    [("InvalidComposition123", ValueError), ({"invalid": "composition"}, ValueError)],
+    [("InvalidComposition123", ValueError), ({"invalid": "composition"}, TypeError)],
 )
 def test_widget_invalid_composition_handling(
     invalid_composition: Any, expected_error: type[Exception]

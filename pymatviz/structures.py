@@ -4,12 +4,10 @@ and space group numbers for matscikit, pymatgen, ASE and phonopy structures.
 
 from __future__ import annotations
 
-import functools
 from collections.abc import Hashable, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
 import matscikit as mk
-import numpy as np
 import pandas as pd
 
 
@@ -29,9 +27,6 @@ def is_instance_of(obj: Any, *qualnames: str) -> bool:
     return any(
         f"{cls.__module__}.{cls.__qualname__}" in qualnames for cls in type(obj).__mro__
     )
-
-
-MIN_ASE_CELL_VOLUME = 1e-6  # Å³, smaller ASE cells get 10 Å of vacuum
 
 
 def is_ase_atoms(struct: Any) -> TypeIs[Atoms]:
@@ -77,9 +72,9 @@ def _pymatgen_occupancies(species: Mapping[Any, float]) -> dict[str, float]:
 def to_structure(obj: Any) -> mk.Structure:
     """Convert a matscikit/pymatgen structure or molecule, ASE Atoms or PhonopyAtoms
     to a matscikit Structure. Disordered pymatgen sites become {element: occupancy}
-    sites; pymatgen oxidation states are dropped. Molecules (cell-less inputs) get
-    a 1 Å placeholder cell with periodic boundaries off, partially periodic ASE
-    Atoms with a singular cell (2D slabs) are centered in 10 Å of vacuum.
+    sites; pymatgen oxidation states are dropped. Molecules get an identity
+    placeholder cell with periodic boundaries off; matscikit completes missing ASE
+    cell vectors along non-periodic axes (slabs, wires).
 
     Raises:
         TypeError: For any other type.
@@ -97,13 +92,10 @@ def to_structure(obj: Any) -> mk.Structure:
                 fractional=True,
                 pbc=pmg.lattice.pbc,
             )
-        return mk.Structure(np.eye(3), species, pmg.cart_coords, pbc=(False,) * 3)
+        return mk.Structure(None, species, pmg.cart_coords, pbc=(False,) * 3)
     if is_ase_atoms(obj):
         from matscikit.interop import structure_from_ase
 
-        if any(obj.pbc) and obj.cell.volume < MIN_ASE_CELL_VOLUME:
-            obj = obj.copy()  # e.g. a 2D slab without c vector
-            obj.center(vacuum=10.0)
         return structure_from_ase(obj)
     if is_phonopy_atoms(obj):
         return mk.Structure(
@@ -232,27 +224,6 @@ def get_spacegroup_number(structure: Any) -> int:
     return mk.symmetry_dataset(struct).number
 
 
-@functools.cache
-def _loose_hm_symbols() -> dict[str, int]:
-    """Space group numbers keyed by Hermann-Mauguin symbols without spaces and
-    screw-axis underscores (P2_1/c and P 21/c both become P21/c).
-    """
-    from pymatviz.utils.data import hm_symbol_to_spg_num_map
-
-    return {
-        symbol.replace(" ", "").replace("_", ""): number
-        for symbol, number in hm_symbol_to_spg_num_map.items()
-    }
-
-
-def _hm_symbol_to_number(symbol: str) -> int | None:
-    """Space group number of a loosely spelled Hermann-Mauguin symbol, ignoring
-    setting suffixes (R-3m:H), None if unknown.
-    """
-    loose = symbol.split(":", 1)[0].replace(" ", "").replace("_", "")
-    return _loose_hm_symbols().get(loose)
-
-
 def normalize_spacegroups(
     data: Sequence[int | str | Any] | pd.Series,
 ) -> pd.Series:
@@ -286,11 +257,15 @@ def normalize_spacegroups(
         return result.astype(int)
 
     if isinstance(first_item, str):
-        numbers = result.map(_hm_symbol_to_number)
-        if (missing := numbers.isna()).any():
-            raise ValueError(
-                f"Invalid Hermann-Mauguin symbols: {result[missing].unique().tolist()}"
-            )
-        return numbers.astype(int)
+        numbers: dict[str, int] = {}
+        invalid: list[str] = []
+        for symbol in result.unique():  # loose spellings, settings, Hall symbols
+            try:
+                numbers[symbol] = mk.space_group_number(symbol)
+            except ValueError:
+                invalid.append(symbol)
+        if invalid:
+            raise ValueError(f"Invalid space group symbols: {invalid}")
+        return result.map(numbers).astype(int)
 
     return result

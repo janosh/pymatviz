@@ -54,9 +54,9 @@ def site_neighbor_distances(struct: mk.Structure, cutoff: float) -> list[np.ndar
     """Sorted distances from each site to its neighbors within cutoff (Å), with
     pymatgen's tolerance: up to cutoff + NEIGHBOR_TOL, coincident atoms excluded.
     """
-    centers, _, _, distances = struct.neighbor_list(cutoff + 2 * NEIGHBOR_TOL)
-    keep = (distances > NEIGHBOR_TOL) & (distances <= cutoff + NEIGHBOR_TOL)
-    centers, distances = centers[keep], distances[keep]
+    centers, _, _, distances = struct.neighbor_list(
+        cutoff + NEIGHBOR_TOL, inclusive=True
+    )
     order = np.lexsort((distances, centers))
     splits = np.cumsum(np.bincount(centers, minlength=len(struct)))[:-1]
     return np.split(distances[order], splits)
