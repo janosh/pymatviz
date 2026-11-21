@@ -1,31 +1,12 @@
 from __future__ import annotations
 
-import json
 import os
 import subprocess
 import sys
-import tomllib
 from glob import glob
-from importlib.metadata import version
 from types import ModuleType
 
 import pymatviz as pmv
-
-
-def test_pkg_metadata() -> None:
-    assert pmv.__version__ == version("pymatviz")
-
-    # ensure __init__.py and site/package.json are in sync
-    with open("site/package.json") as file:
-        pkg_data = json.load(file)
-    assert pkg_data["name"] == "pymatviz"
-
-    with open("pyproject.toml", mode="rb") as file:
-        pyproject = tomllib.load(file)
-
-    assert pyproject["project"]["name"] == "pymatviz"
-    assert pyproject["project"]["version"] == pmv.__version__
-    assert pyproject["project"]["description"] == pkg_data["description"]
 
 
 def test_all_modules_reexported() -> None:

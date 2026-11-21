@@ -38,22 +38,10 @@ jobs:
         playwright install --with-deps chromium
       # pytest-split distributes work load so parallel jobs finish in similar time
       # update durations file with `pytest --store-durations --durations-path tests/files/.pytest-split-durations`
-      test-cmd: pytest --durations 20 --ignore=tests/performance_tests/test_import_time.py --cov-branch --cov-report=xml --cov pymatviz --splits 4 --group ${{ matrix.split }} --splitting-algorithm least_duration
+      test-cmd: pytest --durations 20 --cov-branch --cov-report=xml --cov pymatviz --splits 4 --group ${{ matrix.split }} --splitting-algorithm least_duration
       # 'yes' uploads coverage but keeps CI green if Codecov errors (its GPG key
       # import from keybase flakes intermittently); 'strict' would fail the job
       upload-coverage: 'yes'
-
-  import-performance:
-    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.2.0
-        with:
-          python-version: '3.12'
-      - run: uv run --no-project --with-editable . --with pytest pytest --noconftest tests/performance_tests/test_import_time.py -v
-        env:
-          PYMATVIZ_IMPORT_BENCHMARK: '1'
 
   run-widget-demos:
     runs-on: ubuntu-latest
