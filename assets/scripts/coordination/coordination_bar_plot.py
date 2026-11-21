@@ -9,7 +9,6 @@ from pymatgen.core import Structure
 import pymatviz as pmv
 from pymatviz.coordination import CnSplitMode
 from pymatviz.utils.testing import TEST_FILES, formula_spg_str
-from pymatviz.widgets import CoordinationBarPlotWidget
 
 
 # %%
@@ -24,7 +23,7 @@ three_structs = {key: structures[key] for key in (key1, key2, key3)}
 
 
 # %% Single structure with a 4 Å cutoff
-widget = pmv.coordination_hist(structures[key1], strategy=4.0, annotate_bars=True)
+widget = pmv.coordination_bar_plot(structures[key1], strategy=4.0, annotate_bars=True)
 widget.show()
 widget.to_img(
     f"{pmv.utils.ROOT}/assets/svg/coordination-hist-single.svg",
@@ -35,16 +34,18 @@ widget.to_img(
 
 # %% pymatgen NearNeighbors strategies
 for strategy in (CrystalNN(), VoronoiNN()):
-    pmv.coordination_hist(structures[key1], strategy=strategy).show()
+    pmv.coordination_bar_plot(structures[key1], strategy=strategy).show()
 
 
-# %% MatterViz bonding computed in the frontend (drop more structure files onto it)
-CoordinationBarPlotWidget(three_structs, strategy="electroneg_ratio").show()
+# %% MatterViz bonding in the browser, the default (drop more structure files onto it)
+pmv.coordination_bar_plot(three_structs).show()
 
 
 # %% Multiple structures: one series per element (summed), per structure, or all sites
 for split_mode in CnSplitMode:
-    widget = pmv.coordination_hist(three_structs, split_mode=split_mode)
+    widget = pmv.coordination_bar_plot(
+        three_structs, strategy=3.0, split_mode=split_mode
+    )
     widget.show()
     if split_mode == CnSplitMode.by_element:  # shown in the readme
         widget.to_img(
@@ -55,7 +56,11 @@ for split_mode in CnSplitMode:
 
 
 # %% Side-by-side bars per structure with custom element colors
-pmv.coordination_hist(three_structs, split_mode="by_structure", mode="grouped").show()
-pmv.coordination_hist(
-    three_structs, element_color_scheme={"Fe": "red", "O": "blue", "H": "green"}
+pmv.coordination_bar_plot(
+    three_structs, strategy=3.0, split_mode="by_structure", mode="grouped"
+).show()
+pmv.coordination_bar_plot(
+    three_structs,
+    strategy=3.0,
+    element_color_scheme={"Fe": "red", "O": "blue", "H": "green"},
 ).show()

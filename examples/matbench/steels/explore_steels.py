@@ -20,7 +20,7 @@ df_steels = load_dataset("matbench_steels")
 
 # %%
 # Yield strength histogram of the Matbench Steels dataset
-widget = pmv.binned_histogram(df_steels["yield strength"], bins=100)
+widget = pmv.histogram(df_steels["yield strength"], bins=100)
 widget.show()
 # widget.to_img("steels-yield-strength-hist.pdf")
 

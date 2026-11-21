@@ -297,13 +297,10 @@ def _(mo):
 
 @app.cell
 def _(pmv, scatter_series):
-    histogram_series = [
-        {"label": series["label"], "values": series["y"]} for series in scatter_series
-    ]
+    histogram_values = {series["label"]: series["y"] for series in scatter_series}
     pmv.histogram(
-        series=histogram_series,
+        histogram_values,
         bins=20,
-        mode="overlay",
         x_axis={"label": "Value"},
         y_axis={"label": "Count"},
         style="height: 360px;",
@@ -653,9 +650,9 @@ def _(mo):
 @app.cell
 def _(_struct, pmv):
     pmv.rdf_plot(
-        structures=_struct.as_dict(),
+        _struct,
         cutoff=10,
-        n_bins=80,
+        bins=80,
         style="height: 400px;",
     )
 

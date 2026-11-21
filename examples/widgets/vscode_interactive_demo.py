@@ -310,13 +310,10 @@ bar_plot_widget.show()
 
 
 # %% Histogram Widget — distribution overlay for scatter data
-histogram_series = [
-    {"label": series["label"], "values": series["y"]} for series in scatter_series
-]
+histogram_values = {series["label"]: series["y"] for series in scatter_series}
 histogram_widget = pmv.histogram(
-    series=histogram_series,
+    histogram_values,
     bins=20,
-    mode="overlay",
     x_axis={"label": "Value"},
     y_axis={"label": "Count"},
     style="height: 360px;",
@@ -632,9 +629,9 @@ chem_pot_widget.show()
 
 # %% RdfPlot — GaN pair distribution
 rdf_widget = pmv.rdf_plot(
-    structures=struct.as_dict(),
+    struct,
     cutoff=10,
-    n_bins=80,
+    bins=80,
     style="height: 400px;",
 )
 rdf_widget.show()

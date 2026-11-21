@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pytest
+import traitlets as tl
 from pymatgen.analysis.local_env import (
     CrystalNN,
     CutOffDictNN,
@@ -13,11 +14,12 @@ from pymatgen.analysis.local_env import (
 )
 from pymatgen.core import Lattice, Structure
 
-from pymatviz.coordination import coordination_hist, coordination_vs_cutoff_line
+from pymatviz.coordination import coordination_bar_plot, coordination_vs_cutoff_line
 from pymatviz.coordination.figures import _element_colors
 from pymatviz.coordination.helpers import CnSplitMode, coordination_nums_in_structure
 from pymatviz.enums import ElemColorScheme
 from pymatviz.widgets.bar_plot import BarPlotWidget
+from pymatviz.widgets.coordination_bar_plot import CoordinationBarPlotWidget
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 
 
@@ -34,12 +36,12 @@ def nacl() -> Structure:
 
 
 @pytest.mark.parametrize("split_mode", list(CnSplitMode))
-def test_coordination_hist_split_modes(
+def test_coordination_bar_plot_split_modes(
     structures: Sequence[Structure], split_mode: CnSplitMode
 ) -> None:
     """Series per split mode partition the same site CNs, on a contiguous CN axis."""
     struct_dict = {f"s{idx}": struct for idx, struct in enumerate(structures)}
-    widget = coordination_hist(struct_dict, split_mode=split_mode)
+    widget = coordination_bar_plot(struct_dict, strategy=3.0, split_mode=split_mode)
     assert isinstance(widget, BarPlotWidget)
 
     site_cns = {
@@ -86,14 +88,18 @@ def test_coordination_hist_split_modes(
         ("none", {"All sites": [8, 8, 0]}),
     ],
 )
-def test_coordination_hist_literal_counts(
+def test_coordination_bar_plot_literal_counts(
     nacl: Structure, split_mode: str, expected: dict[str, list[int]]
 ) -> None:
     """Rocksalt (CN 6) plus diamond Si (CN 4) at 3 Å, as hand-counted literals."""
     si = Structure.from_spacegroup(227, Lattice.cubic(5.43), ["Si"], [[0, 0, 0]])
-    widget = coordination_hist(
-        {"NaCl": nacl, "Si": si}, split_mode=split_mode, x_axis={"range": [3, 7]}
+    widget = coordination_bar_plot(
+        {"NaCl": nacl, "Si": si},
+        strategy=3.0,
+        split_mode=split_mode,
+        x_axis={"range": [3, 7]},
     )
+    assert isinstance(widget, BarPlotWidget)
     assert widget.series[0]["x"] == [4, 5, 6]
     assert {srs["label"]: srs["y"] for srs in widget.series} == {
         label: [counts[0], 0, counts[1]] for label, counts in expected.items()
@@ -108,24 +114,27 @@ def test_coordination_hist_literal_counts(
 @pytest.mark.parametrize(
     "strategy", [3.0, 2.5, CrystalNN, CrystalNN(), VoronoiNN(tol=0.5)]
 )
-def test_coordination_hist_strategies(nacl: Structure, strategy: Any) -> None:
+def test_coordination_bar_plot_strategies(nacl: Structure, strategy: Any) -> None:
     """Cutoffs and NearNeighbors are computed in Python; rocksalt is CN 6."""
-    widget = coordination_hist(nacl, strategy=strategy)
+    widget = coordination_bar_plot(nacl, strategy=strategy)
+    assert isinstance(widget, BarPlotWidget)
     expected_cn = 0 if strategy == 2.5 else 6
     for srs in widget.series:
         assert dict(zip(srs["x"], srs["y"], strict=True)) == {expected_cn: 4}
 
 
-def test_coordination_hist_style_options(nacl: Structure) -> None:
+def test_coordination_bar_plot_style_options(nacl: Structure) -> None:
     """Colors, bar labels, bar mode and axis options reach the BarPlotWidget."""
-    widget = coordination_hist(
+    widget = coordination_bar_plot(
         nacl,
+        strategy=3.0,
         element_color_scheme={"Na": "red"},
         annotate_bars=True,
         mode="grouped",
         y_axis={"label": "Sites"},
         orientation="horizontal",
     )
+    assert isinstance(widget, BarPlotWidget)
     cl_srs, na_srs = widget.series
     assert na_srs["color"] == "red"
     assert cl_srs["color"] == _element_colors(ElemColorScheme.jmol)["Cl"]
@@ -142,29 +151,51 @@ def test_coordination_hist_style_options(nacl: Structure) -> None:
     [
         ([], {}, ValueError, "Cannot plot empty set of structures"),
         ("invalid input", {}, TypeError, "Input must be a pymatgen Structure"),
-        (None, {"strategy": "electroneg_ratio"}, TypeError, "Invalid strategy="),
+        (None, {"strategy": "nope"}, tl.TraitError, "strategy"),
+        (None, {"annotate_bars": True}, ValueError, "need a Python strategy"),
         (None, {"split_mode": "by_structure_and_element"}, ValueError, "not a valid"),
         (
             None,
-            {"split_mode": "by_structure", "annotate_bars": True},
+            {"strategy": 3.0, "split_mode": "by_structure", "annotate_bars": True},
             ValueError,
             "annotate_bars needs",
         ),
-        (None, {"element_color_scheme": "pastel"}, TypeError, "color_scheme"),
-        (None, {"element_color_scheme": {"Na": (255, 0, 0)}}, ValueError, "fractions"),
-        (None, {"element_color_scheme": {"Na": [1, 0, 0]}}, ValueError, "fractions"),
+        (None, {"strategy": 3, "element_color_scheme": "pastel"}, TypeError, "scheme"),
+        (
+            None,
+            {"strategy": 3, "element_color_scheme": {"Na": (255, 0, 0)}},
+            ValueError,
+            "fractions",
+        ),
     ],
 )
-def test_coordination_hist_invalid_inputs(
+def test_coordination_bar_plot_invalid_inputs(
     nacl: Structure,
     structs: Any,
     kwargs: dict[str, Any],
     err_cls: type[Exception],
     match: str,
 ) -> None:
-    """coordination_hist rejects invalid structures and options."""
+    """coordination_bar_plot rejects invalid structures and options."""
     with pytest.raises(err_cls, match=match):
-        coordination_hist(nacl if structs is None else structs, **kwargs)
+        coordination_bar_plot(nacl if structs is None else structs, **kwargs)
+
+
+@pytest.mark.parametrize("split_mode", list(CnSplitMode))
+def test_coordination_bar_plot_in_browser(
+    nacl: Structure, split_mode: CnSplitMode
+) -> None:
+    """MatterViz strategy names bond in the browser, the default included."""
+    widget = coordination_bar_plot({"NaCl": nacl}, split_mode=split_mode)
+    assert isinstance(widget, CoordinationBarPlotWidget)
+    assert (widget.strategy, widget.split_mode) == (
+        "electroneg_ratio",
+        split_mode.value,
+    )
+    assert list(widget.structures) == ["NaCl"]
+    widget = coordination_bar_plot(nacl, strategy="explicit_only")
+    assert isinstance(widget, CoordinationBarPlotWidget)
+    assert widget.strategy == "explicit_only"
 
 
 @pytest.mark.parametrize("scheme", [*ElemColorScheme, {"Na": "red", "Cl": "#00ff00"}])

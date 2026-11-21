@@ -24,7 +24,7 @@ df_e_form = load_dataset("matbench_mp_e_form")
 
 # %%
 # Formation energy histogram of the Matbench formation energy dataset
-widget = pmv.binned_histogram(df_e_form["e_form"], log_y=True)
+widget = pmv.histogram(df_e_form["e_form"], log_y=True)
 widget.show()
 # widget.to_img("mp-e-form-hist.pdf")
 

@@ -2,5 +2,5 @@
 
 from __future__ import annotations
 
-from pymatviz.rdf.figures import element_pair_rdfs, full_rdf
+from pymatviz.rdf.figures import rdf_plot
 from pymatviz.rdf.helpers import calculate_rdf

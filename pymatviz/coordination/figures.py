@@ -18,6 +18,7 @@ from pymatviz.enums import ElemColorScheme
 from pymatviz.structures import get_site_elements, normalize_structures
 from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.bar_plot import BarPlotWidget, bar_axis_defaults
+from pymatviz.widgets.coordination_bar_plot import CoordinationBarPlotWidget
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 
 
@@ -70,56 +71,69 @@ def _element_colors(
     return {elem: to_css(color) for elem, color in color_map.items()}
 
 
-def coordination_hist(
+def coordination_bar_plot(
     structures: AnyStructure
     | Mapping[str, AnyStructure]
     | Sequence[AnyStructure]
     | pd.Series,
     *,
-    strategy: float | NearNeighbors | type[NearNeighbors] = 3.0,
+    strategy: str | float | NearNeighbors | type[NearNeighbors] = "electroneg_ratio",
     split_mode: CnSplitMode | str = CnSplitMode.by_element,
-    element_color_scheme: ElemColorScheme | dict[str, str] = ElemColorScheme.pastel,
+    element_color_scheme: ElemColorScheme | dict[str, str] | None = None,
     annotate_bars: bool = False,
     **kwargs: Any,
-) -> BarPlotWidget:
+) -> BarPlotWidget | CoordinationBarPlotWidget:
     """Bar chart of how many sites have each coordination number (CN).
 
-    CNs are computed in Python with a cutoff radius or a pymatgen ``NearNeighbors``
-    strategy, neither of which MatterViz has. To bond structures in the frontend
-    with MatterViz's ``electroneg_ratio``/``explicit_only`` strategies instead, use
-    ``pymatviz.widgets.CoordinationBarPlotWidget`` (same ``split_mode`` names).
+    A MatterViz bonding strategy name (``"electroneg_ratio"``, ``"explicit_only"``,
+    ``"pair_cutoffs"``) bonds the structures in the browser, where the controls pane
+    switches strategy and split mode live. A cutoff radius or pymatgen
+    ``NearNeighbors`` strategy computes the CNs in Python instead.
 
     Args:
         structures (AnyStructure | dict[str, AnyStructure] | Sequence[AnyStructure]):
             A single structure or a dict, sequence or pd.Series of structures.
-        strategy (float | NearNeighbors | type[NearNeighbors]): Neighbor-finding
-            strategy. Can be one of:
-            - float: Cutoff distance for neighbor search in Angstroms.
-            - NearNeighbors: An instance of a NearNeighbors subclass.
-            - Type[NearNeighbors]: A NearNeighbors subclass (will be instantiated).
-            Defaults to 3.0 (Angstroms cutoff).
+        strategy (str | float | NearNeighbors | type[NearNeighbors]): A MatterViz
+            bonding strategy name (computed in the browser), or for Python: a cutoff
+            distance in Å, a NearNeighbors instance or subclass (instantiated).
+            Defaults to "electroneg_ratio".
         split_mode (CnSplitMode | str): Which bar series to draw:
             "by_element": one series per element, summed over all structures.
             "by_structure": one series per structure.
             "none": one series holding all sites of all structures.
         element_color_scheme (ElemColorScheme | dict[str, str]): Bar colors in
-            "by_element" mode, a scheme or a custom ``{element: color}`` dict merged
-            over Jmol colors. Defaults to pastel.
+            "by_element" mode (Python strategies only), a scheme or a custom
+            ``{element: color}`` dict merged over Jmol colors. Defaults to pastel.
         annotate_bars (bool): Label each non-empty bar with its element symbol.
-            Only valid with split_mode="by_element".
-        **kwargs: BarPlotWidget traits, e.g. ``mode`` (``"stacked"`` default,
+            Only valid with split_mode="by_element" and a Python strategy.
+        **kwargs: Widget traits, e.g. ``mode`` (``"stacked"`` default in Python,
             ``"grouped"`` or ``"overlay"``), ``orientation``, ``x_axis``, ``y_axis``
             (merged over the defaults set here), ``legend``, ``style``.
 
     Returns:
-        BarPlotWidget: The coordination histogram.
+        CoordinationBarPlotWidget | BarPlotWidget: The coordination histogram,
+            computed in the browser or Python.
+
+    Raises:
+        ValueError: For Python-only options with a MatterViz strategy, or
+            annotate_bars without split_mode="by_element".
     """
     split_mode = CnSplitMode(split_mode)
+    struct_dict = normalize_structures(structures)
+    if isinstance(strategy, str):
+        if element_color_scheme is not None or annotate_bars:
+            raise ValueError(
+                "element_color_scheme and annotate_bars need a Python strategy (cutoff "
+                f"radius or NearNeighbors), got {strategy=}"
+            )
+        labeled = {str(key): struct for key, struct in struct_dict.items()}
+        return CoordinationBarPlotWidget(
+            labeled, strategy=strategy, split_mode=split_mode.value, **kwargs
+        )
     if annotate_bars and split_mode != CnSplitMode.by_element:
         raise ValueError(
             f"annotate_bars needs split_mode='by_element', got {split_mode=}"
         )
-    struct_dict = normalize_structures(structures)
 
     # {struct_key: {element: [CN of each site]}}
     struct_cns = {
@@ -146,7 +160,7 @@ def coordination_hist(
 
     all_cns = {cn for counts in groups.values() for cn in counts}
     cn_values = list(range(min(all_cns), max(all_cns) + 1))
-    elem_colors = _element_colors(element_color_scheme)
+    elem_colors = _element_colors(element_color_scheme or ElemColorScheme.pastel)
     series: list[dict[str, Any]] = []
     for label, counts in groups.items():
         entry: dict[str, Any] = {

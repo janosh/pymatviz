@@ -36,7 +36,7 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
         (pmv.bar_plot(series=[{"x": [0, 1], "y": [2, 3]}]), {"n_series": 1}),
         # Histogram samples use `values` (binned on x); counts are not a y_range.
         (
-            pmv.histogram(
+            pmv.widgets.HistogramWidget(
                 series=[
                     {"values": [1, 5, 3], "label": "a"},
                     {"values": [7, 2]},
@@ -285,9 +285,9 @@ def test_short_summary(report: dict[str, Any], expected: str) -> None:
             False,
         ),
         # Histogram blank-state detection uses sample arrays.
-        (pmv.histogram(), True),
-        (pmv.histogram(series=[{"values": [1, 2, 3]}]), False),
-        (pmv.histogram(series=[{"values": []}, {"values": []}]), True),
+        (pmv.widgets.HistogramWidget(), True),
+        (pmv.widgets.HistogramWidget(series=[{"values": [1, 2, 3]}]), False),
+        (pmv.widgets.HistogramWidget(series=[{"values": []}, {"values": []}]), True),
         (pmv.periodic_table(), True),
         (pmv.periodic_table(heatmap_values={"Fe": 1}), False),
         (pmv.periodic_table(tile_plots={"Fe": {"x": [1], "y": [2]}}), False),
@@ -298,10 +298,15 @@ def test_short_summary(report: dict[str, Any], expected: str) -> None:
         (pmv.bands_and_dos(), True),
         (pmv.bands_and_dos(doses={"energies": [0]}), False),
         # rdf_plot warns when neither source given, incl. empty (not just None)
-        (pmv.rdf_plot(), True),
-        (pmv.rdf_plot(structures=[]), True),
-        (pmv.rdf_plot(patterns=[]), True),
-        (pmv.rdf_plot(patterns=[{"label": "a", "x": [1.0], "y": [2.0]}]), False),
+        (pmv.widgets.RdfPlotWidget(), True),
+        (pmv.widgets.RdfPlotWidget(structures=[]), True),
+        (pmv.widgets.RdfPlotWidget(patterns=[]), True),
+        (
+            pmv.widgets.RdfPlotWidget(
+                patterns=[{"label": "a", "x": [1.0], "y": [2.0]}]
+            ),
+            False,
+        ),
         (pmv.sunburst(), True),
         (pmv.treemap(), True),
         (pmv.treemap(data={"label": "root", "value": 1}), False),

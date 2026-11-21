@@ -75,7 +75,7 @@ df_grvh[Key.volume] = [x.volume for x in df_grvh[Key.structure]]
 df_grvh[Key.formula] = [x.formula for x in df_grvh[Key.structure]]
 
 # Volume histogram of the Matbench bulk/shear modulus datasets
-widget = pmv.binned_histogram(
+widget = pmv.histogram(
     df_grvh[Key.volume], bins=100, log_y=True, x_axis={"label": Key.volume.label}
 )
 widget.show()
@@ -124,7 +124,7 @@ for idx, structure, target, *_ in df_grvh.query("graph_size == 0").itertuples():
 # %%
 df_grvh[Key.volume] = df_grvh[Key.structure].map(lambda struct: struct.volume)
 
-pmv.binned_histogram(
+pmv.histogram(
     df_grvh[Key.volume], bins=100, log_y=True, x_axis={"label": Key.volume.label}
 ).show()
 

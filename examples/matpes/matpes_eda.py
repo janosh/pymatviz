@@ -47,7 +47,7 @@ for df_data, expected_rows in ((df_r2scan, N_R2SCAN), (df_pbe, N_PBE)):
 
 
 # %% plot histogram of energies
-widget = pmv.binned_histogram(
+widget = pmv.histogram(
     {"r2scan": df_r2scan[Key.energy], "pbe": df_pbe[Key.energy]},
     x_axis={"label": Key.energy.label},
     bar={"opacity": 0.8},
@@ -83,7 +83,7 @@ df_r2scan[total_force_col] = df_r2scan[Key.forces].map(
     lambda arr: np.abs(arr).sum(axis=1)
 )
 
-widget = pmv.binned_histogram(
+widget = pmv.histogram(
     {
         "r2scan": np.concatenate(df_r2scan[total_force_col].to_list()),
         "pbe": np.concatenate(df_pbe[total_force_col].to_list()),
@@ -193,7 +193,7 @@ pmv.spacegroup_bar_plot(df_r2scan[Key.spg_num], log_y=True).show()
 # %% most calcs missing r2SCAN results have 4 sites, almost all 2 or 3-site r2SCAN calcs
 # completed
 max_sites = max(df_r2scan[Key.n_sites].max(), df_pbe[Key.n_sites].max())
-widget = pmv.binned_histogram(
+widget = pmv.histogram(
     {"r2scan": df_r2scan[Key.n_sites], "pbe": df_pbe[Key.n_sites]},
     bins=np.arange(0.5, max_sites + 1.5).tolist(),  # one bin per integer site count
     x_axis={"label": Key.n_sites.label},

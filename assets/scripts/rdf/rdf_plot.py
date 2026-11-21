@@ -1,4 +1,4 @@
-"""Element-pair RDF examples."""
+"""RDF examples: element-pair and full RDFs, computed in the browser or Python."""
 
 # %%
 import numpy as np
@@ -13,9 +13,9 @@ from pymatviz.enums import Key
 df_phonons = load_dataset("matbench_phonons")
 df_phonons[Key.n_sites] = df_phonons[Key.structure].map(len)
 
-# plot element-pair RDFs for the 2 largest structures
+# element-pair RDFs of the 2 largest structures, computed in the browser
 for struct in df_phonons.nlargest(2, Key.n_sites)[Key.structure]:
-    widget = pmv.element_pair_rdfs(struct, bins=100, cutoff=10)
+    widget = pmv.rdf_plot(struct, bins=100, cutoff=10)
     widget.show()
     formula = struct.formula.replace(" ", "")
     if formula == "Na8Nb8O24":  # in readme
@@ -44,11 +44,17 @@ n_atoms = n_formula_units * 6
 coords = np.random.default_rng(seed=0).uniform(size=(n_atoms, 3))
 amorphous_lipo4 = Structure(Lattice.cubic(20), species * n_formula_units, coords)
 
-# Each structure's element-pair curves share a legend group
-widget = pmv.element_pair_rdfs(
+# selected element pairs (computed in Python), each structure's curves in a legend group
+widget = pmv.rdf_plot(
     {"Crystal": crystal_lipo4, "Amorphous": amorphous_lipo4},
     element_pairs=[("Li", "O"), ("O", "P"), ("O", "O")],
 )
 widget.show()
 svg_path = f"{pmv.utils.ROOT}/assets/svg/element-pair-rdfs-crystal-vs-amorphous.svg"
 widget.to_img(svg_path, width=700, transparent=True)
+
+
+# %% one all-atom RDF per structure
+pmv.rdf_plot(
+    {"Crystal": crystal_lipo4, "Amorphous": amorphous_lipo4}, mode="full"
+).show()
