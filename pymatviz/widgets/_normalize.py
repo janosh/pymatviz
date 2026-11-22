@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import math
 import re
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 
 if TYPE_CHECKING:
@@ -153,7 +153,28 @@ def _object_dict(obj: Any) -> dict[str, Any] | None:
     return _as_dict(obj) if callable(getattr(obj, "as_dict", None)) else None
 
 
-def _to_dict(obj: Any, label: str) -> dict[str, Any] | None:
+_VASPRUN_SUFFIXES = (".xml", ".xml.gz", ".xml.xz", ".xml.bz2")
+
+
+def _vasprun_part(obj: Any, part: Literal["bands", "dos"] | None) -> Any:
+    """The bands or DOS (matscikit ElectronicBands / ElectronicDos) of a vasprun.xml
+    path (str or PathLike, optionally compressed) when ``part`` is set, else obj.
+    """
+    import os
+
+    is_path = isinstance(obj, os.PathLike) or (
+        isinstance(obj, str) and obj.endswith(_VASPRUN_SUFFIXES)
+    )
+    if part is None or not is_path:
+        return obj
+    from matscikit.io import read_vasprun
+
+    return getattr(read_vasprun(os.fspath(obj)), part)
+
+
+def _to_dict(
+    obj: Any, label: str, *, vasprun: Literal["bands", "dos"] | None = None
+) -> dict[str, Any] | None:
     """Convert None/dict/MSONable object to a JSON-serializable dict.
 
     Args:
@@ -163,6 +184,8 @@ def _to_dict(obj: Any, label: str) -> dict[str, Any] | None:
             Phonopy objects go through matscikit's PhononBands / PhononDos. Converted
             dicts drop ``_UNREAD_KEYS``.
         label: Human-readable name for error messages (e.g. "band structure").
+        vasprun: Read vasprun.xml paths (obj or dict values) for this part of the
+            run, "bands" or "dos". None leaves paths unconverted.
 
     Returns:
         The dict, or None if obj is None.
@@ -176,14 +199,15 @@ def _to_dict(obj: Any, label: str) -> dict[str, Any] | None:
         converted = {
             key: dct
             for key, val in obj.items()
-            if not isinstance(val, dict) and (dct := _object_dict(val)) is not None
+            if not isinstance(val, dict)
+            and (dct := _object_dict(_vasprun_part(val, vasprun))) is not None
         }
         return {**obj, **converted} if converted else obj
-    if (dct := _object_dict(obj)) is not None:
+    if (dct := _object_dict(_vasprun_part(obj, vasprun))) is not None:
         return dct
     raise TypeError(
         f"Unsupported type for {label}: {type(obj)}. "
-        "Expected dict or object with .as_dict()."
+        "Expected dict, vasprun.xml path or object with .as_dict()."
     )
 
 

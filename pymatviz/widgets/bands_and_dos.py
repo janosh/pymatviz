@@ -52,11 +52,13 @@ class BandsAndDosWidget(PlotControlsTraits, BandsAndDosTraits, MatterVizWidget):
         """Initialize the BandsAndDosWidget.
 
         Args:
-            band_structs: Band structure data -- a pymatgen BandStructure,
-                BandStructureSymmLine, PhononBandStructureSymmLine, phonopy
-                BandStructure, a dict, or a ``{label: band_structure}`` dict of those.
-            doses: DOS data -- a pymatgen Dos, CompleteDos, PhononDos, phonopy
-                TotalDos, a dict, or a ``{label: dos}`` dict with the same labels as
+            band_structs: Band structure data -- a matscikit PhononBands or
+                ElectronicBands, pymatgen BandStructure, BandStructureSymmLine or
+                PhononBandStructureSymmLine, phonopy BandStructure, a vasprun.xml
+                path, a dict, or a ``{label: band_structure}`` dict of those.
+            doses: DOS data -- a matscikit PhononDos or ElectronicDos, pymatgen Dos,
+                CompleteDos or PhononDos, phonopy TotalDos or Phonopy, a vasprun.xml
+                path, a dict, or a ``{label: dos}`` dict with the same labels as
                 band_structs.
             structure: Optional crystal (pymatgen Structure, ASE Atoms, PhonopyAtoms
                 or structure dict) adding its Brillouin zone with the bands' k-path.
@@ -70,8 +72,8 @@ class BandsAndDosWidget(PlotControlsTraits, BandsAndDosTraits, MatterVizWidget):
                 and the DOS have different grids.
         """
         normalize_json_kwargs(kwargs, ("bz_props",), "BandsAndDos")
-        bands_dict = _to_dict(band_structs, "band structure")
-        doses_dict = _to_dict(doses, "DOS")
+        bands_dict = _to_dict(band_structs, "band structure", vasprun="bands")
+        doses_dict = _to_dict(doses, "DOS", vasprun="dos")
         if band_structs is not None and doses is not None:
             band_keys, dos_keys = labeled_keys(bands_dict), labeled_keys(doses_dict)
             if band_keys != dos_keys:

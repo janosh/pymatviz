@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from ase.atoms import Atoms as AseAtoms
     from matscikit import Composition, Structure
     from matscikit import PhononDos as MskPhononDos
+    from phonopy.api_phonopy import Phonopy
     from phonopy.phonon.dos import TotalDos
     from phonopy.structure.atoms import PhonopyAtoms
     from pymatgen.core import Composition as PmgComposition
@@ -24,7 +25,7 @@ if TYPE_CHECKING:
 # structure-like inputs, converted to matscikit Structures by normalize_structures
 type AnyStructure = "Structure | IStructure | IMolecule | AseAtoms | PhonopyAtoms"
 type PeriodicStructure = "Structure | IStructure | AseAtoms | PhonopyAtoms"
-type AnyDos = "MskPhononDos | PhononDos | TotalDos"
+type AnyDos = "MskPhononDos | PhononDos | TotalDos | Phonopy"
 
 # ElemCountMode values, so callers can pass plain strings (count_mode="occurrence")
 ElemCountModeName = Literal[

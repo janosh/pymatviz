@@ -7,7 +7,6 @@ from glob import glob
 import numpy as np
 from monty.io import zopen
 from monty.json import MontyDecoder
-from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
 
 import pymatviz as pmv
 from pymatviz.phonons import PhononDBDoc
@@ -30,9 +29,7 @@ for mp_id, formula in (("mp-2758", "Sr4Se4"), ("mp-23907", "H2")):
         with zopen(path, mode="rt") as file:
             docs[model_label] = json.loads(file.read(), cls=MontyDecoder)
 
-    ph_bands: dict[str, PhononBands] = {
-        key: doc.phonon_bandstructure for key, doc in docs.items()
-    }
+    ph_bands = {key: doc.phonon_bandstructure for key, doc in docs.items()}
     widget = pmv.band_structure(band_structs=ph_bands, style="height: 450px")
     widget.show()
     if mp_id == "mp-2758":  # in readme

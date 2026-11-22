@@ -7,8 +7,6 @@ from typing import Any
 
 from monty.io import zopen
 from monty.json import MontyDecoder
-from pymatgen.io.phonopy import get_pmg_structure
-from pymatgen.phonon.dos import CompletePhononDos, PhononDos
 
 import pymatviz as pmv
 from pymatviz.phonons.helpers import PhononDBDoc
@@ -23,7 +21,7 @@ for mp_id, formula in (("mp-2758", "Sr4Se4"), ("mp-23907", "H2")):
         with zopen(path, mode="rt") as file:
             docs[key] = json.loads(file.read(), cls=MontyDecoder)
 
-    ph_doses: dict[str, PhononDos] = {key: doc.phonon_dos for key, doc in docs.items()}
+    ph_doses = {key: doc.phonon_dos for key, doc in docs.items()}
     widget = pmv.phonon_dos(ph_doses, sigma=0.05, style="height: 400px")
     widget.show()
     if mp_id == "mp-2758":  # in readme
@@ -48,23 +46,10 @@ if phonopy_nacl.total_dos is None:
 pmv.phonon_dos(phonopy_nacl.total_dos).show()
 
 
-# %% Element- and site-projected DOS from a CompletePhononDos built with phonopy
+# %% Element- and site-projected DOS straight from a phonopy object
 phonopy_nacl.run_mesh([10, 10, 10], with_eigenvectors=True, is_mesh_symmetry=False)
-phonopy_nacl.run_projected_dos()
 phonopy_nacl.run_total_dos()
-total_dos, projected_dos = phonopy_nacl.total_dos, phonopy_nacl.projected_dos
-if total_dos is None or projected_dos is None:
-    raise RuntimeError("phonopy total or projected DOS not computed")
-total_densities, site_densities = total_dos.dos, projected_dos.projected_dos
-if total_densities is None or site_densities is None:
-    raise RuntimeError("phonopy total or projected densities not computed")
-
-struct = get_pmg_structure(phonopy_nacl.primitive)
-complete_dos = CompletePhononDos(
-    struct,
-    PhononDos(total_dos.frequency_points, total_densities),
-    {site: site_densities[idx] for idx, site in enumerate(struct)},
-)
+phonopy_nacl.run_projected_dos()
 projected_examples: list[dict[str, Any]] = [
     {"project": "element"},
     {"project": "element", "show_total": False, "stack": True},
@@ -72,10 +57,10 @@ projected_examples: list[dict[str, Any]] = [
     {"project": "element", "normalize": "max"},
 ]
 for plot_kwargs in projected_examples:
-    pmv.phonon_dos(complete_dos, **plot_kwargs).show()
+    pmv.phonon_dos(phonopy_nacl, **plot_kwargs).show()
 
 
 # %% Compare multiple models with element projection
 pmv.phonon_dos(
-    {"model A": complete_dos, "model B": complete_dos}, project="element"
+    {"model A": phonopy_nacl, "model B": phonopy_nacl}, project="element"
 ).show()

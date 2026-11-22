@@ -17,7 +17,11 @@ from pymatviz.utils.testing import TEST_FILES
 
 @pytest.mark.parametrize("via_monty", [False, True])
 def test_phonon_db_doc_deserialization(via_monty: bool) -> None:
-    """Decode database fields without changing dataclass construction or replacement."""
+    """Decode database fields to matscikit objects (equal to pymatgen's) without
+    changing dataclass construction or replacement.
+    """
+    import matscikit as mk
+
     with zopen(f"{TEST_FILES}/phonons/mp-2758-Sr4Se4-pbe.json.xz", mode="rt") as source:
         raw = json.load(source)
     original_init = PhononDBDoc.__init__
@@ -25,13 +29,20 @@ def test_phonon_db_doc_deserialization(via_monty: bool) -> None:
         MontyDecoder().process_decoded(raw) if via_monty else PhononDBDoc.from_dict(raw)
     )
     assert isinstance(doc, PhononDBDoc)
-    assert isinstance(doc.structure, Structure)
-    assert isinstance(doc.phonon_bandstructure, PhononBands)
-    assert isinstance(doc.phonon_dos, PhononDos)
-    assert doc.structure.as_dict() == Structure.from_dict(raw["structure"]).as_dict()
+    assert isinstance(doc.structure, mk.Structure)
+    assert isinstance(doc.phonon_bandstructure, mk.PhononBands)
+    assert isinstance(doc.phonon_dos, mk.PhononDos)
+    pmg_struct = Structure.from_dict(raw["structure"])
+    np.testing.assert_array_equal(doc.structure.positions, pmg_struct.cart_coords)
+    pmg_bands = PhononBands.from_dict(raw["phonon_bandstructure"])
     np.testing.assert_array_equal(
-        doc.phonon_dos.densities, raw["phonon_dos"]["densities"]
+        doc.phonon_bandstructure.frequencies.T, pmg_bands.bands
     )
+    np.testing.assert_array_equal(
+        doc.phonon_dos.total_dos, PhononDos.from_dict(raw["phonon_dos"]).densities
+    )
+    assert doc.supercell is not None
+    assert np.shape(doc.supercell) == (3, 3)
     assert doc.free_energies == raw["free_energies"]
     assert not hasattr(doc, "builder_meta")
     assert replace(doc, formula="SrSe").formula == "SrSe"

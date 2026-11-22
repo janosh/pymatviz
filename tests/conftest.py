@@ -3,15 +3,16 @@ from __future__ import annotations
 import copy
 import json
 from glob import glob
-from typing import TYPE_CHECKING, TypedDict, cast
+from typing import TYPE_CHECKING, Any, TypedDict, cast
 
 import numpy as np
 import pandas as pd
 import pytest
 from monty.io import zopen
-from monty.json import MontyDecoder
 from pymatgen.core import IStructure, Lattice, Structure
 from pymatgen.io.ase import AseAtomsAdaptor
+from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
+from pymatgen.phonon.dos import PhononDos
 
 from pymatviz.utils.testing import TEST_FILES, load_phonopy_nacl
 
@@ -19,8 +20,7 @@ from pymatviz.utils.testing import TEST_FILES, load_phonopy_nacl
 if TYPE_CHECKING:
     import ase
     from phonopy import Phonopy
-    from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
-    from pymatgen.phonon.dos import CompletePhononDos, PhononDos
+    from pymatgen.phonon.dos import CompletePhononDos
 
 
 # random regression data
@@ -141,22 +141,28 @@ class BandsDoses(TypedDict):
     doses: dict[str, PhononDos]
 
 
-bs_key, dos_key = "phonon_bandstructure", "phonon_dos"
+def load_phonon_doc(path: str) -> dict[str, Any]:
+    """Raw JSON of a phonon DB doc, with its band structure and DOS as pymatgen
+    objects (PhononDBDoc decodes them as matscikit objects instead).
+    """
+    with zopen(path, mode="rt") as file:
+        raw = json.load(file)
+    return {
+        "bands": PhononBands.from_dict(raw["phonon_bandstructure"]),
+        "dos": PhononDos.from_dict(raw["phonon_dos"]),
+    }
 
 
 @pytest.fixture
 def phonon_bands_doses_mp_2758() -> BandsDoses:
-    with zopen(f"{TEST_FILES}/phonons/mp-2758-Sr4Se4-pbe.json.xz", "rt") as file:
-        dft_doc = json.loads(file.read(), cls=MontyDecoder)
-
-    with zopen(
-        f"{TEST_FILES}/phonons/mp-2758-Sr4Se4-mace-y7uhwpje.json.xz", "rt"
-    ) as file:
-        ml_doc = json.loads(file.read(), cls=MontyDecoder)
-
-    bands = {"DFT": getattr(dft_doc, bs_key), "MACE": getattr(ml_doc, bs_key)}
-    doses = {"DFT": getattr(dft_doc, dos_key), "MACE": getattr(ml_doc, dos_key)}
-    return {"bands": bands, "doses": doses}
+    docs = {
+        label: load_phonon_doc(f"{TEST_FILES}/phonons/mp-2758-Sr4Se4-{model}.json.xz")
+        for label, model in (("DFT", "pbe"), ("MACE", "mace-y7uhwpje"))
+    }
+    return {
+        "bands": {label: doc["bands"] for label, doc in docs.items()},
+        "doses": {label: doc["dos"] for label, doc in docs.items()},
+    }
 
 
 @pytest.fixture
@@ -164,9 +170,7 @@ def phonon_doses() -> dict[str, PhononDos]:
     paths = glob(f"{TEST_FILES}/phonons/mp-*-pbe.json.xz")
     assert len(paths) >= 2
     return {
-        path.split("/")[-1].split("-pbe")[0]: getattr(
-            json.loads(zopen(path, mode="rt").read(), cls=MontyDecoder), dos_key
-        )
+        path.split("/")[-1].split("-pbe")[0]: load_phonon_doc(path)["dos"]
         for path in paths
     }
 

@@ -1686,3 +1686,27 @@ def test_heatmap_matrix_dataframe_missing_cells() -> None:
     """NaN cells become None (empty cells) instead of failing as non-finite."""
     widget = HeatmapMatrixWidget(pd.DataFrame({"a": [1.0, float("nan")]}))
     assert widget.values == [[1.0], [None]]  # noqa: PD011
+
+
+@pytest.mark.parametrize("labeled", [False, True])
+def test_vasprun_paths_match_pymatgen(labeled: bool) -> None:
+    """vasprun.xml paths (single or as dict values) give pymatgen's bands and DOS."""
+    from pymatgen.electronic_structure.core import Spin
+    from pymatgen.io.vasp import Vasprun
+
+    from pymatviz.utils.testing import TEST_FILES
+
+    path = f"{TEST_FILES}/vasprun/MgO.vasprun.xml.xz"
+    vasprun = Vasprun(path, parse_projected_eigen=False)
+    pmg_bands, pmg_dos = vasprun.get_band_structure().as_dict(), vasprun.complete_dos
+    inputs = {"MgO": path} if labeled else path
+    widget = pmv.bands_and_dos(band_structs=inputs, doses=inputs)
+    bands = widget.band_structs["MgO"] if labeled else widget.band_structs
+    doses = widget.doses["MgO"] if labeled else widget.doses
+    np.testing.assert_array_equal(bands["bands"]["1"], pmg_bands["bands"]["1"])
+    np.testing.assert_array_equal(bands["kpoints"], pmg_bands["kpoints"])
+    assert bands["efermi"] == pmg_bands["efermi"]
+    np.testing.assert_array_equal(doses["energies"], pmg_dos.energies)
+    np.testing.assert_array_equal(doses["densities"]["1"], pmg_dos.densities[Spin.up])
+    assert pmv.dos(doses=path).doses["energies"] == doses["energies"]
+    assert pmv.band_structure(band_structs=path).band_structs["bands"] == bands["bands"]
