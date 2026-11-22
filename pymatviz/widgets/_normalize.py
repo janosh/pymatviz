@@ -528,7 +528,7 @@ def normalize_convex_hull_entries(obj: Any) -> list[dict[str, Any]] | None:
     """Convex hull entries (composition, energy, stability) of entry dicts, a matscikit
     or pymatgen PhaseDiagram or an iterable of entries (pymatgen ComputedEntry,
     PDEntry, entry dicts); energies above hull and stability from matscikit's
-    PhaseDiagram, total energies as energy per atom times atoms.
+    PhaseDiagram.
 
     Args:
         obj: Entry dicts (passed through, formula strings parsed), a PhaseDiagram,
@@ -558,16 +558,17 @@ def normalize_convex_hull_entries(obj: Any) -> list[dict[str, Any]] | None:
     return [
         {
             "composition": composition.as_dict(),
-            "energy": energy_per_atom * composition.num_atoms,
+            "energy": energy,
             "energy_per_atom": energy_per_atom,
             "e_above_hull": e_above_hull,
             "is_stable": is_stable,
         }
-        for composition, energy_per_atom, e_above_hull, is_stable in zip(
+        for composition, energy, energy_per_atom, e_above_hull, is_stable in zip(
             phase_diagram.compositions,
+            phase_diagram.energies.tolist(),
             phase_diagram.energies_per_atom.tolist(),
             phase_diagram.e_above_hull().tolist(),
-            phase_diagram.is_stable(),
+            phase_diagram.is_stable().tolist(),
             strict=True,
         )
     ]

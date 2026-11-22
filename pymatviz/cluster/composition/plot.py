@@ -161,7 +161,7 @@ def cluster_compositions(
         embedding_method (str | EmbeddingMethod | Callable[[list[str], Any], ndarray]):
             Method to convert compositions to vectors (default: "magpie"). Options:
             - "one-hot": One-hot encoding of element fractions
-            - "magpie": Matminer's MagPie featurization
+            - "magpie": Magpie element-property features (matscikit, as matminer's)
             - "deml": Matminer's DEML featurization
             - "matminer": Matminer's ElementProperty featurization
             - "matscholar_el": Matminer's Matscholar Element featurization

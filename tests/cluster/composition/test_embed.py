@@ -1,5 +1,6 @@
 """Tests for chemical composition embedding functions."""
 
+import importlib.util
 from collections.abc import Callable
 from typing import Any
 
@@ -59,8 +60,6 @@ def test_embed_invalid_input(
     embed_func: Callable[..., np.ndarray], compositions: list[Any]
 ) -> None:
     """Non-composition inputs raise a TypeError naming the expected types."""
-    if embed_func is matminer_featurize:
-        pytest.importorskip("matminer")
     with pytest.raises(TypeError, match="Expected a formula string, mapping"):
         embed_func(compositions)
 
@@ -69,36 +68,42 @@ def test_embed_invalid_input(
     "preset", ["magpie", "deml", "matminer", "matscholar_el", "megnet_el"]
 )
 def test_matminer_featurize(preset: MatminerElementPropertyPreset) -> None:
-    """Featurize a Series with each preset, with and without a feature subset."""
-    pytest.importorskip("matminer")
-    from matminer.featurizers.composition import ElementProperty
+    """Featurize a Series with each preset (magpie by matscikit, bit-identical to
+    matminer), normalized or not, with and without a feature subset.
+    """
+    compositions = pd.Series(["H2O", "CO2", "NaCl", "Fe2O3"])
+    if preset == "magpie":
+        import matscikit as mk
 
-    compositions = pd.Series(["H2O", "CO2", "NaCl"])
+        labels = mk.composition_feature_labels()
+    else:
+        pytest.importorskip("matminer")
+        from matminer.featurizers.composition import ElementProperty
 
-    result = matminer_featurize(compositions, preset=preset, normalize=True)
-    first_fea_col = ElementProperty.from_preset(preset).feature_labels()[0]
-    subset = [first_fea_col]
+        labels = ElementProperty.from_preset(preset).feature_labels()
 
-    assert result.shape[0] == len(compositions)
-    assert not np.isnan(result).any()
-
-    # Check normalization: opt-in, raw features by default
-    assert np.allclose(np.linalg.norm(result, axis=1), 1.0)
     raw = matminer_featurize(compositions, preset=preset)
-    assert not np.allclose(np.linalg.norm(raw, axis=1), 1.0)
+    assert raw.shape == (len(compositions), len(labels))
+    assert not np.isnan(raw).any()
+    result = matminer_featurize(compositions, preset=preset, normalize=True)
+    np.testing.assert_allclose(np.linalg.norm(result, axis=1), 1.0)
     np.testing.assert_allclose(raw / np.linalg.norm(raw, axis=1)[:, None], result)
-
-    result_subset = matminer_featurize(
-        compositions, preset=preset, feature_subset=subset
+    subset = matminer_featurize(
+        compositions, preset=preset, feature_subset=labels[1::50]
     )
+    np.testing.assert_array_equal(subset, raw[:, 1::50])
 
-    # Check that the subset has the right shape
-    assert result_subset.shape == (len(compositions), len(subset))
+    if preset == "magpie" and importlib.util.find_spec("matminer"):
+        from matminer.featurizers.composition import ElementProperty
+        from pymatgen.core import Composition
+
+        featurizer = ElementProperty.from_preset("magpie")
+        expected = [featurizer.featurize(Composition(comp)) for comp in compositions]
+        np.testing.assert_array_equal(raw, np.nan_to_num(expected))
 
 
 def test_matminer_featurize_invalid_feature_subset() -> None:
-    """Test matminer featurization with invalid feature subset."""
-    pytest.importorskip("matminer")
+    """Unknown feature names raise."""
     compositions = ["H2O", "CO2", "NaCl"]
 
     with pytest.raises(ValueError, match="None of the requested features"):
@@ -108,15 +113,11 @@ def test_matminer_featurize_invalid_feature_subset() -> None:
 
 
 def test_matminer_featurize_n_jobs() -> None:
-    """Test matminer featurization with different n_jobs values."""
+    """Matminer presets give the same features with 1 or 2 worker processes."""
     pytest.importorskip("matminer")
     compositions = ["H2O", "CO2", "NaCl"]
-
-    # Test with n_jobs=1 (default)
-    result1 = matminer_featurize(compositions, n_jobs=1)
-
-    # Test with n_jobs=2
-    result2 = matminer_featurize(compositions, n_jobs=2)
+    result1 = matminer_featurize(compositions, preset="deml", n_jobs=1)
+    result2 = matminer_featurize(compositions, preset="deml", n_jobs=2)
 
     # Results should be the same regardless of n_jobs
     assert np.allclose(result1, result2)

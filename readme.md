@@ -31,7 +31,7 @@ A toolkit for visualizations in materials informatics.
 pip install pymatviz
 ```
 
-See `pyproject.toml` for available extras like `pip install 'pymatviz[export]'` for static image export. Structures, compositions, symmetry, RDFs, coordination numbers, chemical environments and XRD patterns are computed with [matscikit](https://github.com/janosh/matscikit). pymatgen, ASE and phonopy objects are accepted as inputs and converted on the way in. So are ChemEnv environments (`chem_env_hierarchy`), CrystalNN and Voronoi coordination numbers, and phonon band structures and DOS (from phonopy or pymatgen). `pip install 'pymatviz[pymatgen]'` adds what still needs pymatgen: pymatgen `Trajectory` JSON and matminer featurization.
+See `pyproject.toml` for available extras like `pip install 'pymatviz[export]'` for static image export. Structures, compositions, symmetry, RDFs, coordination numbers, chemical environments and XRD patterns are computed with [matscikit](https://github.com/janosh/matscikit). pymatgen, ASE and phonopy objects are accepted as inputs and converted on the way in. So are ChemEnv environments (`chem_env_hierarchy`), CrystalNN and Voronoi coordination numbers, and phonon band structures and DOS (from phonopy or pymatgen). `pip install 'pymatviz[pymatgen]'` adds what still needs pymatgen: pymatgen `Trajectory` JSON and matminer's non-Magpie featurization presets (Magpie features come from matscikit).
 
 ## API Docs
 

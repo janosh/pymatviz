@@ -35,16 +35,16 @@ def matminer_featurize(
     feature_subset: list[str] | None = None,
     n_jobs: int | None = 1,  # Disable multiprocessing by default
 ) -> np.ndarray:
-    """Apply matminer featurization to chemical formulas or compositions.
-
-    This uses matminer's ElementProperty featurizer with the specified preset,
-    which includes physical and chemical properties of elements.
+    """Featurize chemical formulas or compositions with matminer's ElementProperty
+    presets (element-property statistics). "magpie" is computed by matscikit
+    (bit-identical to matminer, no matminer or pymatgen needed), the other presets by
+    matminer.
 
     Args:
         compositions (Sequence[CompositionLike] | pd.Series): chemical
             formulas as strings or matscikit/pymatgen Composition objects.
-        preset (str): Matminer preset to use. Options: "magpie", "deml", "matminer",
-            "matscholar_el", "megnet_el" (default: "magpie").
+        preset (str): ElementProperty preset: "magpie" (default), "deml", "matminer",
+            "matscholar_el" or "megnet_el".
         normalize (bool): If True, L2-normalize each feature vector (default: False).
             Magpie-style features mix units (e.g. kelvin and eV), so a row norm is
             dominated by the largest-magnitude ones (melting temperature) and divides
@@ -52,43 +52,45 @@ def matminer_featurize(
             puts features on a common scale.
         feature_subset (list[str] | None): List of specific features to use from the
             full feature set. If None (default), all available features will be used.
-        n_jobs (int | None): Number of jobs to run in parallel. Set to 1 to disable
-            multiprocessing (default). Set to None to use all available cores.
+        n_jobs (int | None): matminer worker processes for non-magpie presets. 1
+            (default) disables multiprocessing, None uses all cores.
 
     Returns:
         np.ndarray: Array of shape (n_compositions, n_features) with featurized
-            compositions.
+            compositions, missing values as 0.
     """
-    try:
-        from matminer.featurizers.composition import ElementProperty
-    except ImportError:
-        raise ImportError(
-            f"{preset} featurization requires pip install matminer"
-        ) from None
+    comps = [to_composition(comp) for comp in compositions]
+    if preset == "magpie":
+        import matscikit as mk
 
-    from pymatgen.core import Composition  # matminer featurizes pymatgen objects
+        features = mk.composition_features(comps)
+        feature_cols = mk.composition_feature_labels()
+    else:
+        try:
+            from matminer.featurizers.composition import ElementProperty
+        except ImportError:
+            raise ImportError(
+                f"{preset} featurization requires pip install matminer"
+            ) from None
+        from pymatgen.core import Composition  # matminer featurizes pymatgen objects
 
-    comp_objs = [Composition(to_composition(comp).as_dict()) for comp in compositions]
-
-    featurizer = ElementProperty.from_preset(preset)
-    featurizer.set_n_jobs(n_jobs)
-
-    df_comps = pd.DataFrame({"composition": comp_objs})
-
-    feature_df = featurizer.featurize_dataframe(df_comps, "composition")
-
-    feature_cols = [col for col in feature_df if col != "composition"]
+        featurizer = ElementProperty.from_preset(preset)
+        featurizer.set_n_jobs(n_jobs)
+        df_comps = pd.DataFrame(
+            {"composition": [Composition(c.as_dict()) for c in comps]}
+        )
+        feature_df = featurizer.featurize_dataframe(df_comps, "composition")
+        feature_cols = [col for col in feature_df if col != "composition"]
+        features = feature_df[feature_cols].to_numpy()
 
     if feature_subset is not None:
-        valid_cols = [col for col in feature_subset if col in feature_cols]
-        if not valid_cols:
+        if not (valid_cols := [col for col in feature_subset if col in feature_cols]):
             raise ValueError(
                 f"None of the requested features {feature_subset} are available. "
                 f"{feature_cols=}"
             )
-        feature_cols = valid_cols
-
-    features = np.nan_to_num(feature_df[feature_cols].to_numpy())
+        features = features[:, [feature_cols.index(col) for col in valid_cols]]
+    features = np.nan_to_num(features)
 
     if normalize:
         import sklearn.preprocessing

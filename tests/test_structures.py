@@ -109,7 +109,7 @@ def test_to_structure_species_and_molecules() -> None:
 
     with pytest.raises(TypeError, match="expected a matscikit or pymatgen"):
         to_structure(42)
-    with pytest.raises(ValueError, match="unknown structure file format"):
+    with pytest.raises(FileNotFoundError, match="no structure file at 'Si'"):
         to_structure("Si")  # strings are file paths
     # a vacancy-only site stays a (vacant) site, so site indices match pymatgen's
     vacant = to_structure(
@@ -149,7 +149,11 @@ def test_site_elements_and_symbols() -> None:
     [
         ("not a structure", TypeError, "Input must be a matscikit or pymatgen"),
         (12345, TypeError, "Input must be a matscikit or pymatgen"),
-        ([SI_STRUCTS[0], "invalid"], ValueError, "unknown structure file format"),
+        (
+            [SI_STRUCTS[0], "invalid"],
+            FileNotFoundError,
+            "no structure file at 'invalid'",
+        ),
         ([], ValueError, "Cannot plot empty set of structures"),
         ({}, ValueError, "Cannot plot empty set of structures"),
     ],
