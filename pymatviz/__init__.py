@@ -55,6 +55,7 @@ from pymatviz.rdf.figures import rdf_plot
 from pymatviz.sankey import sankey
 from pymatviz.scatter import density_hexbin, density_scatter
 from pymatviz.sunburst import spacegroup_sunburst
+from pymatviz.treemap import py_pkg_treemap
 from pymatviz.uncertainty import error_decay_with_uncert, qq_gaussian
 from pymatviz.widgets import (
     configure_assets,

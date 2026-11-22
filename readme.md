@@ -261,9 +261,19 @@ Chemical-system and coordination-environment treemaps return MatterViz treemap w
 |                                                           ![chem-sys-treemap-formula]                                                            |                                        ![chem-sys-treemap-ward-bmg]                                        |
 |           [`chem_env_hierarchy(structure, kind="treemap")`](pymatviz/chem_env.py) [![fig-icon]](assets/scripts/treemap/chem_env_treemap.py)           |     [`chem_env_hierarchy(structures, max_coordination_numbers=3, max_environments=4, kind="treemap")`](pymatviz/chem_env.py)     |
 |                                                            ![chem-env-treemap-basic]                                                             |                                     ![chem-env-treemap-large-dataset]                                      |
+|             [`py_pkg_treemap("pymatviz")`](pymatviz/treemap/py_pkg.py#L392) [![fig-icon]](assets/scripts/treemap/py_pkg_treemap.py)              |           [`py_pkg_treemap(["pymatviz", "flame", "pymatgen"])`](pymatviz/treemap/py_pkg.py#L392)           |
+|                                                            ![py-pkg-treemap-pymatviz]                                                            |                                         ![py-pkg-treemap-multiple]                                         |
+|   [`py_pkg_treemap("pymatviz", color_by=coverage_by_path)`](pymatviz/treemap/py_pkg.py#L392) [![fig-icon]](assets/scripts/treemap/py_pkg_treemap.py)   | [`py_pkg_treemap("pymatgen", color_by=coverage_by_path, color_range=(0, 100))`](pymatviz/treemap/py_pkg.py#L392) |
+|                                                       ![py-pkg-treemap-pymatviz-coverage]                                                        |                                    ![py-pkg-treemap-pymatgen-coverage]                                     |
+
+For coverage coloring, pass a `color_by` dictionary mapping file paths to coverage percentages. Use `color_range=(0, 100)` for a fixed percentage scale. The gallery script shows how to read a coverage.py JSON report.
 
 [chem-sys-treemap-formula]: assets/svg/chem-sys-treemap-formula.svg
 [chem-sys-treemap-ward-bmg]: assets/svg/chem-sys-treemap-ward-bmg.svg
+[py-pkg-treemap-pymatviz]: assets/svg/py-pkg-treemap-pymatviz.svg
+[py-pkg-treemap-multiple]: assets/svg/py-pkg-treemap-multiple.svg
+[py-pkg-treemap-pymatgen-coverage]: assets/svg/py-pkg-treemap-pymatgen-coverage.svg
+[py-pkg-treemap-pymatviz-coverage]: assets/svg/py-pkg-treemap-pymatviz-coverage.svg
 [chem-env-treemap-large-dataset]: assets/svg/chem-env-treemap-large-dataset.svg
 [chem-env-treemap-basic]: assets/svg/chem-env-treemap-basic.svg
 
