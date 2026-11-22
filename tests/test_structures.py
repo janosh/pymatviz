@@ -111,9 +111,13 @@ def test_to_structure_species_and_molecules() -> None:
         to_structure(42)
     with pytest.raises(ValueError, match="unknown structure file format"):
         to_structure("Si")  # strings are file paths
-    vacancy_only = IStructure(Lattice.cubic(3), [DummySpecies("X")], [[0, 0, 0]])
-    with pytest.raises(ValueError, match="only vacancies"):
-        to_structure(vacancy_only)
+    # a vacancy-only site stays a (vacant) site, so site indices match pymatgen's
+    vacant = to_structure(
+        IStructure(Lattice.cubic(3), [DummySpecies("X"), "Fe"], [[0, 0, 0], [0.5] * 3])
+    )
+    assert vacant.site_occupancies == [{}, {"Fe": 1.0}]
+    assert site_symbols(vacant) == ["X", "Fe"]
+    assert structure_dict(vacant)["sites"][0]["label"] == "X0+"
 
 
 def test_structure_dict() -> None:

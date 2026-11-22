@@ -52,26 +52,12 @@ def is_structure_like(obj: Any) -> bool:
 
 def structure_dict(obj: Any) -> dict[str, Any]:
     """Dict in pymatgen's format (MatterViz's JSON structure format) of a structure-like
-    object. pymatgen objects keep their own ``as_dict()`` (oxidation states, labels,
-    site properties), non-periodic structures become molecule dicts without lattice.
+    object: pymatgen's own ``as_dict()`` for pymatgen objects, else matscikit's
+    ``Structure.as_dict()``/``Molecule.as_dict()`` payload (molecules without lattice).
     """
     if is_pymatgen_structure(obj):
         return obj.as_dict()
-    struct = to_structure(obj)
-    dct = structure_to_pymatgen_dict(struct)
-    if not any(struct.pbc):
-        info = struct.info
-        dct = {key: val for key, val in dct.items() if key != "lattice"}
-        dct |= {
-            "@class": "Molecule",
-            "charge": info.get("charge", 0),
-            "spin_multiplicity": info.get("spin_multiplicity"),
-            "sites": [
-                {key: val for key, val in site.items() if key != "abc"}
-                for site in dct["sites"]
-            ],
-        }
-    return dct
+    return structure_to_pymatgen_dict(to_structure(obj))
 
 
 def site_elements(struct: mk.Structure) -> list[set[str]]:
@@ -80,8 +66,13 @@ def site_elements(struct: mk.Structure) -> list[set[str]]:
 
 
 def site_symbols(struct: mk.Structure) -> list[str]:
-    """Element symbol of each site, the highest-occupancy one for disordered sites."""
-    return [max(occu, key=occu.__getitem__) for occu in struct.site_occupancies]
+    """Element symbol of each site, the highest-occupancy one for disordered sites,
+    "X" for vacant sites (pymatgen's vacancy DummySpecies).
+    """
+    return [
+        max(occu, key=occu.__getitem__) if occu else "X"
+        for occu in struct.site_occupancies
+    ]
 
 
 type _StructureInput = AnyStructure | PhonopyAtoms
