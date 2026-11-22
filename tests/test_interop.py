@@ -1111,7 +1111,6 @@ def _fallback_cases() -> list[Any]:
     coords = [[0, 0, 0], [0.5, 0.5, 0.5]]
     fe2 = Structure(lattice, ["Fe", "Fe"], coords)
     dummy = Structure(lattice, [DummySpecies("X"), "Si"], coords)
-    forces = [{"forces": np.zeros((2, 3))}, {"forces": np.zeros((3, 3))}]
     zeros = np.zeros((2, 3))
     with_force = Structure(
         lattice, ["Fe", "Fe"], coords, site_properties={"force": zeros}
@@ -1146,7 +1145,6 @@ def _fallback_cases() -> list[Any]:
         [Structure(lattice, ["Fe", "Fe"], coords, labels=["Fe1", "Fe2"])],
         [Molecule(["H", "H"], [[0, 0, 0], [0, 0, 0.7]], charge=1, spin_multiplicity=2)],
         [Molecule(["H", "H"], [[0, 0, 0], [0, 0, 0.7]], spin_multiplicity=3)],
-        Trajectory.from_structures([fe2, fe2], frame_properties=forces),  # ragged
         [Structure(lattice, ["Fe", "Fe"], coords, charge=1)],
         # singular cell (2D slab without c): the JSON path pads it with vacuum
         [Atoms("H2", h2_pos, cell=[0.009] * 3, pbc=True)],
@@ -1162,7 +1160,7 @@ def _fallback_cases() -> list[Any]:
     ]
 
 
-_N_FALLBACK_CASES = 28
+_N_FALLBACK_CASES = 27
 
 
 @pytest.mark.parametrize("case_idx", range(_N_FALLBACK_CASES))
@@ -1176,7 +1174,20 @@ def test_unsupported_pymatgen_ase_frames_fall_back_to_json(case_idx: int) -> Non
     assert len(cases) == _N_FALLBACK_CASES
     traj = TrajectoryWidget(trajectory=cases[case_idx]).trajectory
     assert "format" not in traj
-    assert "frames" in traj or traj.get("@class") == "Trajectory"
+    assert "frames" in traj
+
+
+def test_pymatgen_trajectory_ragged_forces_raise() -> None:
+    """Per-frame forces of the wrong shape raise instead of syncing."""
+    pytest.importorskip("pymatgen.core")
+    from pymatgen.core import Lattice, Structure
+    from pymatgen.core.trajectory import Trajectory
+
+    fe2 = Structure(Lattice.cubic(3), ["Fe", "Fe"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+    forces = [{"forces": np.zeros((2, 3))}, {"forces": np.zeros((3, 3))}]
+    traj = Trajectory.from_structures([fe2, fe2], frame_properties=forces)
+    with pytest.raises(ValueError, match="'forces' must be per-atom"):
+        TrajectoryWidget(trajectory=traj)
 
 
 @pytest.mark.parametrize("source", ["object", "dict", "json"])
@@ -1211,14 +1222,13 @@ def test_disordered_pymatgen_trajectory_frames(source: str) -> None:
                 | {
                     "coords": traj.coords,
                     "lattice": _CELL,
-                    "site_properties": [traj.site_properties],
+                    "site_properties": traj.site_properties,
                 },
                 cls=MontyEncoder,
             )
         ),
     }[source]
-    with pytest.warns(UserWarning, match="sum of oxidation states"):
-        widget = TrajectoryWidget(trajectory=value)
+    widget = TrajectoryWidget(trajectory=value)
     assert widget.describe() == {
         "widget_type": "trajectory",
         "n_frames": 2,
@@ -1239,8 +1249,9 @@ def test_disordered_pymatgen_trajectory_frames(source: str) -> None:
         3,
         4,
     ]
-    for frame, pos in zip(payload["frames"], frac[:, 0], strict=True):
-        assert frame["structure"]["charge"] == 2
+    for idx, (frame, pos) in enumerate(zip(payload["frames"], frac[:, 0], strict=True)):
+        # as pymatgen's frames: Trajectory drops an explicit charge on disordered ones
+        assert frame["structure"]["charge"] == traj[idx].charge == 3
         site, iron = frame["structure"]["sites"]
         assert iron["species"][0]["oxidation_state"] == 3
         assert site["species"] == [
@@ -1307,10 +1318,9 @@ def test_invalid_pymatgen_time_step(step: Any) -> None:
 
 @pytest.mark.parametrize("monty_coords", [False, True])
 def test_serialized_pymatgen_trajectory_facts(monty_coords: bool) -> None:
-    """Serialized pymatgen Trajectories count frames, symbols, and decorated site
-    occupancies.
+    """Serialized pymatgen Trajectories (read without pymatgen) count frames, symbols
+    and decorated site occupancies.
     """
-    pytest.importorskip("pymatgen.core")
     coords = [[[0, 0, 0]] * 4] * 3
     widget = pmv.trajectory(
         trajectory={
@@ -1334,10 +1344,12 @@ def test_serialized_pymatgen_trajectory_facts(monty_coords: bool) -> None:
             ],
         }
     )
-    oxygen, iron, ferrous, _ = widget.trajectory["species"]
-    assert oxygen == "O"
-    assert iron["element"] == ferrous["element"] == "Fe"
-    assert ferrous["oxidation_state"] == 2
+    sites = widget.trajectory["frames"][0]["structure"]["sites"]
+    oxygen, iron, ferrous, ferric = (site["species"] for site in sites)
+    assert oxygen == [{"element": "O", "occu": 1}]
+    assert iron == [{"element": "Fe", "occu": 1}]
+    assert ferrous == [{"element": "Fe", "oxidation_state": 2, "occu": 1}]
+    assert ferric == [{"element": "Fe", "oxidation_state": 3, "occu": 0.5}]
     assert widget.describe() == {
         "widget_type": "trajectory",
         "n_frames": 3,
@@ -1348,15 +1360,19 @@ def test_serialized_pymatgen_trajectory_facts(monty_coords: bool) -> None:
 
 
 def test_serialized_pymatgen_molecule_trajectory() -> None:
-    """Molecular Trajectory JSON without the constructor's charge passes as is."""
-    pytest.importorskip("pymatgen.core")
+    """Molecular Trajectory JSON without the constructor's charge syncs as binary
+    (read without pymatgen).
+    """
     serialized = {
         "@class": "Trajectory",
         "coords": [[[0, 0, 0]]],
         "species": ["H"],
         "lattice": None,
     }
-    assert TrajectoryWidget(trajectory=serialized).trajectory == serialized
+    arrays = decode_envelope(TrajectoryWidget(trajectory=serialized).trajectory)
+    assert arrays["numbers"].tolist() == [1]
+    np.testing.assert_array_equal(arrays["positions"], [[[0, 0, 0]]])
+    assert "lattice" not in arrays
 
 
 @pytest.mark.parametrize("n_frames", [1, 3])

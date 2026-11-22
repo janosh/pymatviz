@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from typing import Any
 
 import numpy as np
@@ -258,82 +257,29 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
             frames.append(self._attach_forces(frame, step_idx))
         return {"frames": frames, "metadata": metadata}
 
-    def _pymatgen_json(self, data: dict[str, Any]) -> dict[str, Any]:
-        """Expand occupancy mappings into the renderer's per-site species lists.
-        Needs the optional pymatgen dependency.
+    @staticmethod
+    def _pymatgen_frames(trajectory: Any) -> list[dict[str, Any]]:
+        """``{"structure", **frame properties, **results}`` items of a pymatgen
+        ``Trajectory`` or its ``as_dict()``, read by matscikit (no pymatgen needed).
         """
-        from matscikit.interop import decode_monty
-        from pymatgen.core import DummySpecies, Molecule, Species, Structure
-        from pymatgen.core.periodic_table import get_el_sp
+        from matscikit.interop import to_trajectory
 
-        from pymatviz.utils.data import atomic_numbers
-
-        # The renderer accepts symbols and species dicts; pymatgen also accepts
-        # atomic numbers and decorated strings such as Fe2+.
-        species = [
-            get_el_sp(entry)
-            if isinstance(entry, (str, int, float, np.number))
-            and entry not in atomic_numbers
-            else entry
-            for entry in data.get("species", [])
-        ]
-        if not any(
-            isinstance(entry, Mapping) and "element" not in entry for entry in species
-        ):
-            return data | {"species": species}
-        # Rebuild only the known species fields when raw JSON mixes decorated
-        # elements with occupancy dictionaries. Metadata stays plain data.
-        for idx, entry in enumerate(species):
-            if isinstance(entry, dict) and "element" in entry:
-                atom = entry["element"]
-                if entry.get("oxidation_state") is not None:
-                    cls = (
-                        DummySpecies
-                        if entry.get("@class") == "DummySpecies"
-                        else Species
-                    )
-                    atom = cls.from_dict(entry)
-                species[idx] = {atom: entry.get("occu", 1)}
-            elif isinstance(entry, dict):
-                species[idx] = {
-                    key: val for key, val in entry.items() if not key.startswith("@")
-                }
-        coords = np.asarray(decode_monty(data["coords"]), dtype=float)
-        if data.get("coords_are_displacement"):
-            coords = np.cumsum(coords, axis=0) + decode_monty(data["base_positions"])
-        lattice = decode_monty(data.get("lattice"))
-        cells = (
-            None if lattice is None else np.broadcast_to(lattice, (len(coords), 3, 3))
-        )
-        site_props = decode_monty(data.get("site_properties")) or {}
-        if isinstance(site_props, list) and len(site_props) == 1:
-            (site_props,) = site_props  # The renderer broadcasts a single property map.
-        frame_props = decode_monty(data.get("frame_properties")) or [{}] * len(coords)
-        frames = []
-        for idx, (positions, props) in enumerate(zip(coords, frame_props, strict=True)):
-            per_site = site_props[idx] if isinstance(site_props, list) else site_props
-            if cells is None:
-                structure = Molecule(
-                    species,
-                    positions,
-                    charge=data.get("charge") or 0,
-                    spin_multiplicity=data.get("spin_multiplicity"),
-                    site_properties=per_site,
-                )
-            else:
-                structure = Structure(
-                    cells[idx],
-                    species,
-                    positions,
-                    charge=data.get("charge"),
-                    site_properties=per_site,
-                )
-            frame = {"structure": structure.as_dict(), "step": idx, "metadata": props}
-            frames.append(self._attach_forces(frame, idx))
-        result: dict[str, Any] = {"frames": frames}
-        if (step := data.get("time_step")) is not None:
-            result["time_step"] = {"value": step, "unit": "fs"}
-        return result
+        items = []
+        for frame in to_trajectory(trajectory):
+            structure = frame.structure
+            props = structure.info.get("properties") or {}
+            structure.info = {  # frame properties go to the item, not the structure
+                key: val
+                for key, val in structure.info.items()
+                if key not in ("properties", "time_step")
+            }
+            results = {
+                key: val
+                for key in ("energy", "free_energy", "forces", "stress")
+                if (val := getattr(frame, key)) is not None
+            }
+            items.append({"structure": structure, **props, **results})
+        return items
 
     def _normalize_trajectory(self, trajectory: Any) -> dict[str, Any] | None:
         """Convert trajectory to a ``matterviz-binary-v1`` envelope when the binary
@@ -357,11 +303,10 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
                 raise ValueError(
                     f"time_step value must be finite and > 0, got {step!r}"
                 )
-            if is_pymatgen:
-                if envelope := trajectory_to_envelope(trajectory):
-                    return envelope
-                trajectory = trajectory.as_dict()
-            return self._pymatgen_json(trajectory)
+            result = self._normalize_frames(self._pymatgen_frames(trajectory), {})
+            if step is not None:
+                result["time_step"] = {"value": float(step), "unit": "fs"}
+            return result
 
         if isinstance(trajectory, dict):
             frames_data = trajectory.get("frames")

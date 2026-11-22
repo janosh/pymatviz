@@ -14,17 +14,15 @@ from pymatviz.widgets import StructureWidget
 from tests.widgets.conftest import assert_widget_property_sync, decode_envelope
 
 
-_SITE_PROPS = {  # pymatgen-format site data (magmoms, other site properties)
-    "magmoms": [[0, 0, 1], [0, 0, -1]],
-    "site_properties": {"force": [[1.0, 1.0, 1.0], [-1.0, -1.0, -1.0]]},
+_SITE_PROPS = {  # typed magmoms plus a custom site property
+    "magmoms": np.array([[0, 0, 1], [0, 0, -1]]),
+    "force": np.array([[1.0, 1.0, 1.0], [-1.0, -1.0, -1.0]]),
 }
 
 
 def _with_site_data(struct: mk.Structure, site_data: dict[str, Any]) -> mk.Structure:
-    """Copy of struct carrying pymatgen-format site data in info["pymatgen"]."""
-    struct = struct.copy()
-    struct.info = {"pymatgen": site_data}
-    return struct
+    """Copy of struct carrying per-site data (one array entry per site)."""
+    return struct.replace(site_data=site_data)
 
 
 # minimal flat matterviz VolumetricData payload (2x1x1 grid)
@@ -114,10 +112,8 @@ def test_widget_handles_large_structures(
 
 
 _MULTI_VECTOR_PROPS = {
-    "site_properties": {
-        "force_DFT": [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
-        "force_MLFF": [[0.9, 0.1, 0.0], [0.1, 0.9, 0.0]],
-    }
+    "force_DFT": np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]),
+    "force_MLFF": np.array([[0.9, 0.1, 0.0], [0.1, 0.9, 0.0]]),
 }
 
 
@@ -315,7 +311,7 @@ def test_widget_cell_type(cell_type: str) -> None:
         ["Fe", "O"],
         [[-0.1, 0, 0], [0.5, 0.5, 0.5]],
         fractional=True,
-        info={"pymatgen": {"site_properties": {"force": [[1, 0, 0], [0, 1, 0]]}}},
+        site_data={"force": np.array([[1, 0, 0], [0, 1, 0]])},
     )
     widget = StructureWidget(structure=struct, cell_type=cell_type)
     assert widget.cell_type == cell_type

@@ -44,6 +44,16 @@ hull = mk.PhaseDiagram(
 widgets = [
     pmv.structure(structure=nacl),
     pmv.trajectory(trajectory=[nacl, nacl]),
+    pmv.trajectory(  # pymatgen Trajectory JSON, read by matscikit
+        trajectory={{
+            "@module": "pymatgen.core.trajectory",
+            "@class": "Trajectory",
+            "species": ["Fe2+", {{"Fe": 0.5, "Co": 0.5}}],
+            "coords": [[[0, 0, 0], [0.5, 0.5, 0.5]]] * 2,
+            "lattice": (np.eye(3) * 3).tolist(),
+            "frame_properties": [{{"energy": -1.0}}, {{"energy": -1.5}}],
+        }}
+    ),
     pmv.brillouin_zone(structure=nacl),
     pmv.rdf_plot(structures, mode="full"),
     pmv.rdf_plot(nacl, element_pairs=[("Na", "Cl")]),
@@ -95,4 +105,4 @@ def test_widgets_without_optional_deps() -> None:
         [sys.executable, "-c", SCRIPT], capture_output=True, text=True, check=False
     )
     assert result.returncode == 0, result.stderr
-    assert int(result.stdout.split()[-1]) >= 25
+    assert int(result.stdout.split()[-1]) >= 30

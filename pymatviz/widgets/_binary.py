@@ -243,13 +243,22 @@ def _frame(item: Any) -> _Frame | None:
     if isinstance(item, Mapping) and len(item) > 1 and object_metadata(structure):
         return None  # JSON keeps frame metadata separate from structure properties.
     if isinstance(structure, mk.Structure):
-        # disordered sites and info beyond properties (pymatgen site data such as
-        # oxidation states, molecule charge) need JSON
-        if not structure.is_ordered or set(structure.info) - {"properties"}:
+        # disordered sites, site data (oxidation states, labels, site properties), a
+        # net charge, a non-default spin or other info need JSON
+        if not structure.is_ordered:
+            return None
+        numbers = structure.numbers.astype(int)
+        spin = structure.info.get("spin_multiplicity")
+        if (
+            structure.site_data
+            or structure.charge
+            or (spin is not None and spin != 1 + int(numbers.sum()) % 2)
+            or set(structure.info) - {"properties", "spin_multiplicity"}
+        ):
             return None
         periodic = any(structure.pbc)
         return _Frame(
-            structure.numbers.astype(int),
+            numbers,
             structure.positions,
             structure.lattice if periodic else None,
             structure.pbc if periodic else None,
@@ -389,83 +398,45 @@ def trajectory_to_envelope(
     metadata: Mapping[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Encode supported trajectories, or return None for JSON-only data."""
-    from matscikit.interop import has_class
-
     fields: dict[str, Any] = {}
     if metadata:
         fields["metadata"] = normalize_plot_json(dict(metadata), "trajectory metadata")
 
-    if has_class(trajectory, "pymatgen.core.trajectory.Trajectory"):
-        from pymatgen.core.periodic_table import get_el_sp
-
-        if (step := trajectory.time_step) is not None:
-            fields["time_step"] = {"value": float(step), "unit": "fs"}
-        site_props = trajectory.site_properties
-        if any(site_props or ()) or any(
-            isinstance(species, Mapping) for species in trajectory.species
-        ):
+    frames: list[_Frame] = []
+    for item in trajectory:
+        frame = _frame(item)
+        if frame is None:
             return None
-        numbers = _pmg_numbers(
-            [get_el_sp(species) for species in trajectory.species],
-            trajectory.charge,
-            trajectory.spin_multiplicity,
-        )
-        if numbers is None or not _numbers_ok(numbers) or not len(numbers):
-            return None
-        if not len(trajectory.coords):
-            return None
-        positions = np.asarray(trajectory.coords, dtype=float)
-        if trajectory.coords_are_displacement:
-            positions = trajectory.base_positions + np.cumsum(positions, axis=0)
-        cell = trajectory.lattice
-        if cell is not None:
-            positions = positions @ cell  # Preserve unwrapped fractional coordinates.
-        props = trajectory.frame_properties
-        if props is not None and len(props) != len(positions):
-            return None
-        channels = _channels(
-            (({}, frame or {}) for frame in props or []),
-            len(positions),
-            len(numbers),
-        )
-    else:
-        frames: list[_Frame] = []
-        for item in trajectory:
-            frame = _frame(item)
-            if frame is None:
+        if frames:
+            first = frames[0]
+            if (
+                not np.array_equal(frame.numbers, first.numbers)
+                or frame.pbc != first.pbc
+                or (frame.cell is None) != (first.cell is None)
+            ):
                 return None
-            if frames:
-                first = frames[0]
-                if (
-                    not np.array_equal(frame.numbers, first.numbers)
-                    or frame.pbc != first.pbc
-                    or (frame.cell is None) != (first.cell is None)
-                ):
-                    return None
-            elif not len(frame.numbers) or not _numbers_ok(frame.numbers):
-                return None
-            frames.append(frame)
-        if not frames:
+        elif not len(frame.numbers) or not _numbers_ok(frame.numbers):
             return None
-        numbers = frames[0].numbers
-        if frames[0].pbc is not None:
-            fields["pbc"] = list(frames[0].pbc)
-        channels = _channels(
-            ((frame.site_props, frame.props) for frame in frames),
-            len(frames),
-            len(numbers),
-        )
-        if channels is None:
-            return None
-        with np.errstate(over="ignore"):  # The wire check below rejects overflow.
-            positions = np.stack([frame.positions for frame in frames], dtype="<f4")
-        cell = (
-            np.array([frame.cell for frame in frames])
-            if frames[0].cell is not None
-            else None
-        )
+        frames.append(frame)
+    if not frames:
+        return None
+    numbers = frames[0].numbers
+    if frames[0].pbc is not None:
+        fields["pbc"] = list(frames[0].pbc)
+    channels = _channels(
+        ((frame.site_props, frame.props) for frame in frames),
+        len(frames),
+        len(numbers),
+    )
     if channels is None:
         return None
+    with np.errstate(over="ignore"):  # The wire check below rejects overflow.
+        positions = np.stack([frame.positions for frame in frames], dtype="<f4")
+    cell = (
+        np.array([frame.cell for frame in frames])
+        if frames[0].cell is not None
+        else None
+    )
     arrays = {
         "positions": binary_array(
             positions,
