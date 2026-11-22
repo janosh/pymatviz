@@ -466,7 +466,8 @@ def py_pkg_treemap(
             - dict: Numeric values keyed by absolute file path or repo_path_segment
                 (e.g. test coverage). Absolute paths take precedence; missing files
                 get zero.
-            - None: Categorical MatterViz colors per package (default)
+            - None (default): one palette color per top-level module, deeper cells
+                a translucent white overlay on it
         color_range (tuple[float, float] | None): Values mapped to the ends of the
             color scale, e.g. (0, 100) for coverage percentages. Values outside are
             clamped. If None, uses the data's min/max.
@@ -665,8 +666,52 @@ def py_pkg_treemap(
     if len(roots) == 1 and "children" in roots[0]:
         # one package: its modules are the top level, each in its own color
         roots = roots[0]["children"]
-    defaults = {"label_text": "label+value", "value_format": ".3~s"}  # e.g. 54.3k
-    return TreemapWidget(roots, **defaults | kwargs)
+    if not has_color_mode:
+        _shade_by_module(roots)
+    return TreemapWidget(roots, **_SOURCE_MAP_STYLE | kwargs)
+
+
+# Mid-tones that read on light and dark pages, one per top-level module
+SOURCE_MAP_PALETTE = (
+    *("#1f8a9e", "#d97f0a", "#5f6b78", "#7a5ea8", "#3f8f5a", "#b5523b", "#2f6db5"),
+    *("#a3790f", "#8a4f7d", "#4d8a8a", "#6b7f2a", "#9a5a2e", "#53607a", "#2e8f80"),
+)
+# Bold module headers, then top-left names with compact line counts (e.g. 54.3k) below,
+# in white on rounded cells separated by small gaps
+_SOURCE_MAP_STYLE: dict[str, Any] = {
+    "label_text": "label+value",
+    "value_format": ".3~s",
+    "label_align": "top-left",
+    "label_max_font_size": 11,
+    "padding_inner": 2,
+    "padding_outer": 3,
+    "padding_top": 22,
+    "style": (
+        "--treemap-label-color: white; --treemap-cell-radius: 3px; "
+        "--treemap-cell-stroke: none; font-family: Inter, -apple-system, "
+        "'Segoe UI', Helvetica, Arial, sans-serif"
+    ),
+}
+
+
+def _shade_by_module(roots: list[dict[str, Any]]) -> None:
+    """Color each top-level node from SOURCE_MAP_PALETTE (sorted by size, largest
+    first) and draw its descendants as a translucent white overlay on that color.
+    """
+
+    def total(node: dict[str, Any]) -> float:
+        """Summed leaf value of a node."""
+        return node.get("value", 0) + sum(map(total, node.get("children", [])))
+
+    def overlay(nodes: list[dict[str, Any]]) -> None:
+        """Translucent white fill for nodes and their descendants."""
+        for node in nodes:
+            node["color"] = "rgba(255, 255, 255, 0.13)"
+            overlay(node.get("children", []))
+
+    for idx, root in enumerate(sorted(roots, key=total, reverse=True)):
+        root["color"] = SOURCE_MAP_PALETTE[idx % len(SOURCE_MAP_PALETTE)]
+        overlay(root.get("children", []))
 
 
 # viridis at 9 evenly spaced stops (matplotlib's colormap)

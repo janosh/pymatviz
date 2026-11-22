@@ -12,7 +12,7 @@ import pytest
 
 import pymatviz as pmv
 from pymatviz.treemap import py_pkg
-from pymatviz.treemap.py_pkg import _viridis_hex
+from pymatviz.treemap.py_pkg import SOURCE_MAP_PALETTE, _viridis_hex
 
 
 if TYPE_CHECKING:
@@ -312,6 +312,8 @@ def test_py_pkg_treemap_label_text() -> None:
     """
     widget = pmv.py_pkg_treemap("my_pkg")
     assert (widget.label_text, widget.value_format) == ("label+value", ".3~s")
+    assert (widget.label_align, widget.padding_inner) == ("top-left", 2)
+    assert "--treemap-label-color: white" in widget.style
     assert all(root["id"].startswith("my_pkg/") for root in widget.data)
     widget = pmv.py_pkg_treemap("my_pkg", label_text="label+value", max_depth=2)
     assert (widget.label_text, widget.max_depth) == ("label+value", 2)
@@ -370,7 +372,13 @@ def test_py_pkg_treemap_nested_nodes(mock_pkg_data: pd.DataFrame) -> None:
         "pkg2/modX": 200,
     }
     assert "value" not in nodes["pkg1/modB"]  # branches sum their leaves
-    assert "color" not in nodes["pkg1/modA"]  # categorical colors without color_by
+    # without color_by: palette colors per top-level node by size, overlays below
+    overlay = "rgba(255, 255, 255, 0.13)"
+    assert {node_id: node["color"] for node_id, node in nodes.items()} == {
+        "pkg1": SOURCE_MAP_PALETTE[0],
+        "pkg2": SOURCE_MAP_PALETTE[1],
+        **{node_id: overlay for node_id in nodes if "/" in node_id},
+    }
 
 
 def test_module_tree_rejects_leaf_and_branch() -> None:
@@ -688,7 +696,7 @@ def test_treemap_source_dir(
     lib_color = next(
         node.get("color") for node in nodes.values() if node["label"] == "lib"
     )
-    assert lib_color == ("#fde725" if color_by else None)
+    assert (lib_color == "#fde725") if color_by else (lib_color in SOURCE_MAP_PALETTE)
 
 
 def test_treemap_source_dir_no_matching_files(tmp_path: Path) -> None:

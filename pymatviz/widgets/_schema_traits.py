@@ -493,6 +493,7 @@ class TreemapTraits(tl.HasTraits):
     export_filename = optional_trait(tl.Unicode)
     export_formats = optional_trait(tl.List)
     fullscreen_toggle = optional_trait(tl.Bool)
+    label_align = optional_trait(tl.CaselessStrEnum, values=['center', 'top-left'])
     label_fit = optional_trait(tl.CaselessStrEnum, values=['clip', 'hide', 'shrink'])
     label_max_font_size = optional_trait(tl.Float)
     label_min_font_size = optional_trait(tl.Float)
