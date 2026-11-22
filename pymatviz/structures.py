@@ -1,5 +1,5 @@
-"""Structure inputs: detection, conversion to matscikit Structures, per-site elements
-and space group numbers for matscikit, pymatgen, ASE and phonopy structures.
+"""Structure inputs: detection, conversion to kemio Structures, per-site elements
+and space group numbers for kemio, pymatgen, ASE and phonopy structures.
 """
 
 from __future__ import annotations
@@ -8,9 +8,9 @@ import os
 from collections.abc import Hashable, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
-import matscikit as mk
+import kemio
 import pandas as pd
-from matscikit.interop import (
+from kemio.interop import (
     is_pymatgen_structure,
     is_structure_like,
     structure_to_pymatgen_dict,
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 def structure_dict(obj: AnyStructure) -> dict[str, Any]:
     """Dict in pymatgen's format (MatterViz's JSON structure format) of a structure-like
-    object: pymatgen's own ``as_dict()`` for pymatgen objects, else matscikit's
+    object: pymatgen's own ``as_dict()`` for pymatgen objects, else kemio's
     ``Structure.as_dict()``/``Molecule.as_dict()`` payload (molecules without lattice).
     """
     if is_pymatgen_structure(obj):
@@ -32,12 +32,12 @@ def structure_dict(obj: AnyStructure) -> dict[str, Any]:
     return structure_to_pymatgen_dict(to_structure(obj))
 
 
-def site_elements(struct: mk.Structure) -> list[set[str]]:
+def site_elements(struct: kemio.Structure) -> list[set[str]]:
     """Element symbols on each site (several for disordered sites)."""
     return [set(occupancies) for occupancies in struct.site_occupancies]
 
 
-def site_symbols(struct: mk.Structure) -> list[str]:
+def site_symbols(struct: kemio.Structure) -> list[str]:
     """Element symbol of each site, the highest-occupancy one for disordered sites,
     "X" for vacant sites (pymatgen's vacancy DummySpecies).
     """
@@ -55,8 +55,8 @@ type _StructureInputs = (
 )
 
 
-def normalize_structures(systems: _StructureInputs) -> dict[Hashable, mk.Structure]:
-    """Map structure-like inputs (single, sequence or mapping) to matscikit
+def normalize_structures(systems: _StructureInputs) -> dict[Hashable, kemio.Structure]:
+    """Map structure-like inputs (single, sequence or mapping) to kemio
     Structures, keyed by formula for a single input, by "{index} {formula}" for
     sequences, and by the given keys for mappings/Series. A structure file path or
     pymatgen-format structure dict (with "sites") counts as a single input.
@@ -87,7 +87,7 @@ def normalize_structures(systems: _StructureInputs) -> dict[Hashable, mk.Structu
         }
 
     raise TypeError(
-        "Input must be a matscikit or pymatgen Structure/Molecule, ASE Atoms or "
+        "Input must be a kemio or pymatgen Structure/Molecule, ASE Atoms or "
         "PhonopyAtoms, a sequence (list, tuple, pd.Series) or a mapping of them. "
         f"Got {type(systems)=}"
     )
@@ -107,7 +107,7 @@ def str_labels[T](labeled: Mapping[Any, T]) -> dict[str, T]:
 
 def normalize_periodic_structures(
     systems: _StructureInputs,
-) -> dict[Hashable, mk.Structure]:
+) -> dict[Hashable, kemio.Structure]:
     """normalize_structures, raising TypeError for structures not periodic along all
     three axes (molecules, slabs, wires, ASE Atoms with the default pbc=False).
     """
@@ -131,7 +131,7 @@ def spacegroup_numbers(structures: Sequence[PeriodicStructure]) -> list[int]:
             symmetry search fails (naming their indices).
     """
     structs = list(normalize_periodic_structures(list(structures)).values())
-    numbers = mk.symmetry_summary(structs).number
+    numbers = kemio.symmetry_summary(structs).number
     if failed := [idx for idx, number in enumerate(numbers) if number is None]:
         raise TypeError(f"Symmetry search failed for structures at indices {failed}")
     return [number for number in numbers if number is not None]
@@ -173,7 +173,7 @@ def normalize_spacegroups(data: Sequence[SpacegroupLike] | pd.Series) -> pd.Seri
         invalid_symbols: list[str] = []
         for symbol in result.unique():  # loose spellings, settings, Hall symbols
             try:
-                numbers_of[symbol] = mk.space_group_number(symbol)
+                numbers_of[symbol] = kemio.space_group_number(symbol)
             except ValueError:
                 invalid_symbols.append(symbol)
         if invalid_symbols:

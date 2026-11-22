@@ -31,7 +31,7 @@ def partial_rdfs(
     pairs from one neighbor search.
 
     Args:
-        struct (AnyStructure): Periodic structure-like object (matscikit, pymatgen,
+        struct (AnyStructure): Periodic structure-like object (kemio, pymatgen,
             ASE, phonopy; disordered sites allowed).
         pairs (Sequence[tuple[str | None, str | None]]): (center, neighbor) element
             symbols, None meaning all sites. (None, None) gives the full RDF.
@@ -125,7 +125,7 @@ def calculate_rdf(
     for the specified element pair. Otherwise, calculates the full RDF.
 
     Args:
-        structure (PeriodicStructure): A periodic structure (matscikit, pymatgen,
+        structure (PeriodicStructure): A periodic structure (kemio, pymatgen,
             ASE, phonopy; disordered sites allowed).
         center_species (str, optional): Symbol of the central species. If None, all
             species are considered.

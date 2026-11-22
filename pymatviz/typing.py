@@ -9,19 +9,19 @@ import pandas as pd
 
 
 if TYPE_CHECKING:
-    from matscikit.interop import CompositionLike, PhononDosLike, StructureLike
+    from kemio.interop import CompositionLike, PhononDosLike, StructureLike
 
     from pymatviz.enums import ElemCountMode
 
 # Quoted unions: PEP 695 treats a bare `"Name"` as Literal, not a forward ref
-# structure-like inputs (matscikit, pymatgen, ASE, phonopy), converted to matscikit
-# Structures by normalize_structures; matscikit's interop types
+# structure-like inputs (kemio, pymatgen, ASE, phonopy), converted to kemio
+# Structures by normalize_structures; kemio's interop types
 # (periodic ones checked at runtime)
 type AnyStructure = "StructureLike"
 type PeriodicStructure = "StructureLike"
 type AnyDos = "PhononDosLike"
-# CompositionLike (matscikit): formula strings, {element: amount} mappings (pymatgen
-# Compositions among them) or matscikit Compositions. FormulaLike adds chemical system
+# CompositionLike (kemio): formula strings, {element: amount} mappings (pymatgen
+# Compositions among them) or kemio Compositions. FormulaLike adds chemical system
 # strings ("Fe-O") and structures, as count_formulas takes them
 type FormulaLike = "CompositionLike | AnyStructure"
 # space group numbers, Hermann-Mauguin/Hall symbols or periodic structures
@@ -40,7 +40,6 @@ type ElemValues = (
     | Sequence["CompositionLike"]
 )
 
-type Rgb256ColorType = tuple[int, int, int]  # 8-bit RGB
 type RgbColorType = tuple[float, float, float] | str  # normalized to [0, 1]
 type RgbAColorType = (  # normalized to [0, 1] with alpha
     str  # "none" or "#RRGGBBAA"/"#RGBA" hex strings

@@ -73,7 +73,7 @@ bands
 dos
 
 
-# %% matscikit phonon DOS (here read from phonopy files) auto-renders too
+# %% kemio phonon DOS (here read from phonopy files) auto-renders too
 nacl_dos = load_nacl_phonons().projected_dos([10, 10, 10])
 nacl_dos  # Auto-renders as interactive DOS plot
 

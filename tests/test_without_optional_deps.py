@@ -21,7 +21,7 @@ for name in {OPTIONAL_DEPS!r}:
 import json
 import lzma
 
-import matscikit as mk
+import kemio
 import numpy as np
 
 import pymatviz as pmv
@@ -29,7 +29,7 @@ from pymatviz.notebook import create_widget
 from pymatviz.phonons import PhononDBDoc
 from pymatviz.utils.testing import fe3co4_disordered, load_nacl_phonons
 
-nacl = mk.Structure(
+nacl = kemio.Structure(
     np.eye(3) * 5.64, ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]], fractional=True
 )
 structures = {{"NaCl": nacl, "Fe3CO4": fe3co4_disordered}}
@@ -37,14 +37,14 @@ phonons = load_nacl_phonons()
 nacl_dos = phonons.projected_dos([4, 4, 4])
 nacl_bands = phonons.bands([[[0, 0, 0], [0.5, 0, 0]]], labels=["G", "X"])
 vasprun = "{TEST_FILES}/vasprun/MgO.vasprun.xml.xz"
-hull = mk.PhaseDiagram(
-    [mk.Composition(formula) for formula in ("Li", "O", "Li2O")], [-1.9, -4.2, -4.8]
+hull = kemio.PhaseDiagram(
+    [kemio.Composition(formula) for formula in ("Li", "O", "Li2O")], [-1.9, -4.2, -4.8]
 )
 
 widgets = [
     pmv.structure(structure=nacl),
     pmv.trajectory(trajectory=[nacl, nacl]),
-    pmv.trajectory(  # pymatgen Trajectory JSON, read by matscikit
+    pmv.trajectory(  # pymatgen Trajectory JSON, read by kemio
         trajectory={{
             "@module": "pymatgen.core.trajectory",
             "@class": "Trajectory",
@@ -61,7 +61,7 @@ widgets = [
     pmv.coordination_bar_plot(nacl, strategy="crystal_nn"),
     pmv.coordination_vs_cutoff_line(structures),
     pmv.chem_env_hierarchy(nacl, kind="treemap"),
-    pmv.chem_sys_hierarchy(["Fe2O3", mk.Composition("NaCl"), nacl]),
+    pmv.chem_sys_hierarchy(["Fe2O3", kemio.Composition("NaCl"), nacl]),
     pmv.spacegroup_sunburst([nacl, nacl]),
     pmv.spacegroup_bar_plot([nacl, nacl]),
     pmv.spacegroup_bar_plot(["Fm-3m", "P2_1/c"]),
@@ -72,15 +72,15 @@ widgets = [
     pmv.dos(doses=vasprun),
     pmv.bands_and_dos(band_structs=vasprun, doses=vasprun),
     pmv.convex_hull(entries=hull),
-    pmv.composition(composition=mk.Composition("Fe2O3")),
-    pmv.ptable_heatmap(pmv.count_elements(["Fe2O3", mk.Composition("NaCl")])),
+    pmv.composition(composition=kemio.Composition("Fe2O3")),
+    pmv.ptable_heatmap(pmv.count_elements(["Fe2O3", kemio.Composition("NaCl")])),
     pmv.cluster_compositions(
         __import__("pandas").DataFrame({{"composition": ["Fe2O3", "NaCl", "LiCoO2"]}}),
         embedding_method="magpie",
         projection="pca",
     ),
 ]
-for obj in (nacl, mk.Composition("NaCl"), nacl_dos, nacl_bands, hull):
+for obj in (nacl, kemio.Composition("NaCl"), nacl_dos, nacl_bands, hull):
     widgets.append(create_widget(obj))
 with lzma.open("{TEST_FILES}/phonons/mp-2758-Sr4Se4-pbe.json.xz", "rt") as file:
     doc = PhononDBDoc.from_dict(json.load(file))

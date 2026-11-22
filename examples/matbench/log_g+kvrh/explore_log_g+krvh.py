@@ -22,7 +22,7 @@ https://ml.materialsproject.org/projects/matbench_log_kvrh
 from time import perf_counter
 from typing import get_args
 
-import matscikit as mk
+import kemio
 import numpy as np
 import pandas as pd
 from matbench_discovery.structure import prototype
@@ -45,7 +45,7 @@ df_sym = pd.DataFrame(
     struct.get_symmetry_dataset(backend="moyopy", return_raw_dataset=True).as_dict()
     for struct in df_grvh["structure"]
 )
-df_sym["crystal_system"] = df_sym["number"].map(mk.crystal_system)
+df_sym["crystal_system"] = df_sym["number"].map(kemio.crystal_system)
 df_grvh["protostructure"] = [
     prototype.get_protostructure_label(struct)
     for struct in tqdm(df_grvh["structure"], desc="matbench_log_gvrh Wyckoff strings")

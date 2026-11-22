@@ -15,7 +15,6 @@ from pymatviz import (
     chem_env,
     classify,
     cluster,
-    colors,
     coordination,
     data,
     enums,

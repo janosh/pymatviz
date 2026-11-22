@@ -34,7 +34,7 @@ def spacegroup_bar_plot(
 
     Args:
         data (Sequence[SpacegroupLike] | pd.Series | Mapping): Space
-            group symbols, integral numbers (1-230), structures (matscikit, pymatgen,
+            group symbols, integral numbers (1-230), structures (kemio, pymatgen,
             ASE, phonopy),
             or a ``{spacegroup: count}`` mapping.
         show_counts (bool, optional): Whether to annotate each crystal system region

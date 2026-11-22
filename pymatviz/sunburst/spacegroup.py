@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import Counter
 from typing import TYPE_CHECKING, Any, Literal
 
-import matscikit as mk
+import kemio
 import pandas as pd
 
 from pymatviz.hierarchy import _limit_nodes, _validate_overflow
@@ -30,7 +30,7 @@ def spacegroup_sunburst(
 
     Args:
         data (Sequence[SpacegroupLike] | pd.Series): Space group numbers (1 -
-            230), international symbols or structures (matscikit, pymatgen, ASE,
+            230), international symbols or structures (kemio, pymatgen, ASE,
             phonopy).
         max_spacegroups (int | None): Maximum number of space groups to show for each
             crystal system. If None (default), all space groups are shown. If a
@@ -61,8 +61,8 @@ def spacegroup_sunburst(
 
     by_system: dict[str, list[dict[str, Any]]] = {}
     for number, count in Counter(numbers.tolist()).most_common():
-        crystal_sys = mk.crystal_system(number)
-        label = mk.space_group_symbol(number) if as_symbols else str(number)
+        crystal_sys = kemio.crystal_system(number)
+        label = kemio.space_group_symbol(number) if as_symbols else str(number)
         by_system.setdefault(crystal_sys, []).append(
             {"id": f"{crystal_sys}/{label}", "label": label, "value": count}
         )

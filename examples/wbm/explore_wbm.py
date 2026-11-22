@@ -7,7 +7,7 @@ See also https://matbench-discovery.materialsproject.org/data.
 # %%
 from typing import get_args
 
-import matscikit as mk
+import kemio
 import pandas as pd
 
 import pymatviz as pmv
@@ -27,7 +27,7 @@ df_wbm = df_wbm.set_index("material_id", drop=False)
 
 df_wbm["batch_idx"] = df_wbm.index.str.split("-").str[2].astype(int)
 df_wbm["spg_num"] = df_wbm["wyckoff_spglib"].str.split("_").str[2].astype(int)
-df_wbm["crystal_system"] = df_wbm["spg_num"].map(mk.crystal_system)
+df_wbm["crystal_system"] = df_wbm["spg_num"].map(kemio.crystal_system)
 df_wbm["energy_per_atom"] = df_wbm["energy"] / df_wbm["n_sites"]
 
 

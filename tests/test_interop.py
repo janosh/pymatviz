@@ -1,6 +1,6 @@
-"""pymatgen, ASE and phonopy inputs are routed through matscikit (and match pymatgen,
+"""pymatgen, ASE and phonopy inputs are routed through kemio (and match pymatgen,
 matminer or phonopy references where those are the ground truth). Every other test
-uses matscikit inputs. Optional libraries are imported inside each test via
+uses kemio inputs. Optional libraries are imported inside each test via
 pytest.importorskip, so this module runs with any subset of them installed.
 """
 
@@ -10,7 +10,7 @@ import json
 import lzma
 from typing import TYPE_CHECKING, Any
 
-import matscikit as mk
+import kemio
 import numpy as np
 import pandas as pd
 import pytest
@@ -63,10 +63,10 @@ WIDGET_MIME = "application/vnd.jupyter.widget-view+json"
 SR_SE_DOC = f"{TEST_FILES}/phonons/mp-2758-Sr4Se4-pbe.json.xz"
 
 
-def pmg_structure(struct: mk.Structure) -> Any:
-    """Pymatgen Structure of a matscikit Structure (skips without pymatgen)."""
+def pmg_structure(struct: kemio.Structure) -> Any:
+    """Pymatgen Structure of a kemio Structure (skips without pymatgen)."""
     pytest.importorskip("pymatgen")
-    from matscikit.interop import structure_to_pymatgen_dict
+    from kemio.interop import structure_to_pymatgen_dict
     from pymatgen.core import Structure
 
     return Structure.from_dict(structure_to_pymatgen_dict(struct))
@@ -127,7 +127,7 @@ def pmg_li_o_entries() -> list[Any]:
 def test_normalize_structures_pymatgen_ase(
     kind: str, expected_keys: list[Hashable], ase_atoms: tuple[Any, Any]
 ) -> None:
-    """Pymatgen Structures/Molecules and ASE Atoms normalize to matscikit."""
+    """Pymatgen Structures/Molecules and ASE Atoms normalize to kemio."""
     pytest.importorskip("pymatgen")
     from pymatgen.core import IMolecule, IStructure, Molecule
 
@@ -144,7 +144,7 @@ def test_normalize_structures_pymatgen_ase(
     }[kind]
     struct_dict = normalize_structures(input_raw)
     assert list(struct_dict) == expected_keys
-    assert all(isinstance(struct, mk.Structure) for struct in struct_dict.values())
+    assert all(isinstance(struct, kemio.Structure) for struct in struct_dict.values())
 
 
 @pytest.mark.parametrize("source", ["pymatgen", "ase"])
@@ -256,7 +256,7 @@ def test_normalize_spacegroups_disordered_matches_pymatgen() -> None:
 
 
 def test_spacegroup_sunburst_rejects_ase_default_pbc(
-    structures: tuple[mk.Structure, mk.Structure],
+    structures: tuple[kemio.Structure, kemio.Structure],
 ) -> None:
     """ASE Atoms with the default pbc=False are rejected with how to fix it."""
     pytest.importorskip("ase")
@@ -298,7 +298,7 @@ def test_site_environments_chemenv_matches_pymatgen() -> None:
 
 @pytest.mark.parametrize("kind", ["pymatgen", "istructure", "ase"])
 def test_calculate_rdf_pymatgen_ase(kind: str, ase_atoms: tuple[Any, Any]) -> None:
-    """Pymatgen (I)Structures and ASE Atoms give the matscikit Structure's RDFs."""
+    """Pymatgen (I)Structures and ASE Atoms give the kemio Structure's RDFs."""
     if kind == "ase":
         obj = ase_atoms[0]
     else:
@@ -322,7 +322,7 @@ def test_calculate_rdf_pymatgen_ase(kind: str, ase_atoms: tuple[Any, Any]) -> No
 
 
 def test_rdf_plot_full_ase(ase_atoms: tuple[Any, Any]) -> None:
-    """One full RDF per ASE Atoms, matching calculate_rdf of the matscikit cell."""
+    """One full RDF per ASE Atoms, matching calculate_rdf of the kemio cell."""
     widget = rdf_plot(ase_atoms, mode="full", cutoff=5, bins=20, colors=["red"])
     assert len(widget.patterns) == 2
     radii, _g_r = calculate_rdf(SI_STRUCTS[0], cutoff=5, n_bins=20)
@@ -343,7 +343,7 @@ def test_rdf_plot_full_ase(ase_atoms: tuple[Any, Any]) -> None:
 def test_coordination_nums_match_pymatgen(
     strategy: float | Literal["crystal_nn", "voronoi"], as_molecule: bool
 ) -> None:
-    """Matscikit CNs of converted pymatgen systems equal pymatgen's get_neighbors /
+    """Kemio CNs of converted pymatgen systems equal pymatgen's get_neighbors /
     CrystalNN / VoronoiNN.
     """
     pytest.importorskip("pymatgen")
@@ -353,7 +353,7 @@ def test_coordination_nums_match_pymatgen(
     rng = np.random.default_rng(seed=0)
     struct = Structure(Lattice.cubic(6.0), ["Na", "Cl"] * 10, rng.uniform(size=(20, 3)))
     system = Molecule.from_sites(struct) if as_molecule else struct
-    (cns,) = mk.coordination_numbers([to_structure(system)], strategy)
+    (cns,) = kemio.coordination_numbers([to_structure(system)], strategy)
     if isinstance(strategy, float):
         expected = [len(system.get_neighbors(site, r=strategy)) for site in system]  # ty: ignore[invalid-argument-type]
     else:
@@ -443,7 +443,7 @@ def test_count_formulas_and_chem_sys_hierarchy_pymatgen() -> None:
 
 
 def test_phonopy_inputs(phonopy_nacl: Any) -> None:
-    """Phonopy band structures, TotalDos and projected DOS go through matscikit."""
+    """Phonopy band structures, TotalDos and projected DOS go through kemio."""
     phonopy_nacl.run_mesh([5, 5, 5])
     phonopy_nacl.run_total_dos(freq_pitch=1, use_tetrahedron_method=False)
     total_dos = phonopy_nacl.total_dos
@@ -483,10 +483,10 @@ def test_phonopy_inputs(phonopy_nacl: Any) -> None:
 
 @pytest.mark.parametrize("project", ["element", "site"])
 def test_pymatgen_phonon_dos(
-    complete_phonon_dos: mk.PhononDos, project: Literal["element", "site"]
+    complete_phonon_dos: kemio.PhononDos, project: Literal["element", "site"]
 ) -> None:
     """Pymatgen PhononDos plots its total, CompletePhononDos projects per element or
-    site like the equivalent matscikit PhononDos.
+    site like the equivalent kemio PhononDos.
     """
     pytest.importorskip("pymatgen")
     from pymatgen.phonon.dos import CompletePhononDos, PhononDos
@@ -517,7 +517,7 @@ def test_pymatgen_phonon_dos(
 
 
 def test_pymatgen_phonon_db_doc() -> None:
-    """MontyDecoder builds PhononDBDoc with matscikit fields equal to pymatgen's,
+    """MontyDecoder builds PhononDBDoc with kemio fields equal to pymatgen's,
     pymatgen band structures convert without serializing eigendisplacements and
     without mutating the input.
     """
@@ -534,9 +534,9 @@ def test_pymatgen_phonon_db_doc() -> None:
         raw = json.load(file)
     doc = MontyDecoder().process_decoded(raw)
     assert isinstance(doc, PhononDBDoc)
-    assert isinstance(doc.structure, mk.Structure)
-    assert isinstance(doc.phonon_bandstructure, mk.PhononBands)
-    assert isinstance(doc.phonon_dos, mk.PhononDos)
+    assert isinstance(doc.structure, kemio.Structure)
+    assert isinstance(doc.phonon_bandstructure, kemio.PhononBands)
+    assert isinstance(doc.phonon_dos, kemio.PhononDos)
     pmg_struct = Structure.from_dict(raw["structure"])
     np.testing.assert_array_equal(doc.structure.positions, pmg_struct.cart_coords)
     bands = PhononBandStructureSymmLine.from_dict(raw["phonon_bandstructure"])
@@ -612,7 +612,7 @@ def test_pymatgen_xrd_inputs(
     expected = inputs[expected_key]
     widget = pmv.xrd_plot(make_input(inputs), style="height: 300px")
     assert isinstance(widget, pmv.widgets.XrdWidget)
-    # matscikit's xrd_patterns vs pymatgen's XRDCalculator: observed max rel. 2θ
+    # kemio's xrd_patterns vs pymatgen's XRDCalculator: observed max rel. 2θ
     # difference 4.5e-16 (2 eps), ASE Atoms round trip perturbs coordinates by
     # ~1.5e-14 relative (~70 eps)
     for key in ("x", "y"):
@@ -707,7 +707,7 @@ def make_pmg_structure_subclass() -> Any:
 def test_create_widget_pymatgen(
     obj_factory: Callable[[], Any], expected_widget: str, expected_type: str
 ) -> None:
-    """create_widget handles pymatgen objects (and subclasses) like matscikit's."""
+    """create_widget handles pymatgen objects (and subclasses) like kemio's."""
     from pymatviz.notebook import create_widget
 
     widget = create_widget(obj_factory())
@@ -748,7 +748,7 @@ def test_magpie_featurize_matches_matminer() -> None:
 
     formulas = ["H2O", "CO2", "NaCl", "Fe2O3"]
     featurizer = ElementProperty.from_preset("magpie")
-    assert featurizer.feature_labels() == mk.composition_feature_labels()
+    assert featurizer.feature_labels() == kemio.composition_feature_labels()
     compositions = [Composition(formula) for formula in formulas]
     expected = np.nan_to_num(list(map(featurizer.featurize, compositions)))
     for inputs in (formulas, compositions):
@@ -777,7 +777,7 @@ def test_structure_widget_pymatgen_site_properties(
     as their as_dict().
     """
     pytest.importorskip("pymatgen.core")
-    from matscikit.interop import structure_to_pymatgen_dict
+    from kemio.interop import structure_to_pymatgen_dict
     from pymatgen.core import IStructure
 
     site_props = {
@@ -879,13 +879,13 @@ def test_widget_volumetric_data_from_pymatgen() -> None:
 # === Phase diagrams, XRD, vasprun ===
 
 
-@pytest.mark.parametrize("source", ["pymatgen", "entries", "generator", "matscikit"])
+@pytest.mark.parametrize("source", ["pymatgen", "entries", "generator", "kemio"])
 def test_normalize_convex_hull_entries_pymatgen(source: str) -> None:
-    """Phase diagrams (pymatgen, matscikit), entry lists and generators give
-    pymatgen's energies above hull and stability (computed by matscikit).
+    """Phase diagrams (pymatgen, kemio), entry lists and generators give
+    pymatgen's energies above hull and stability (computed by kemio).
     """
     entries = pmg_li_o_entries()
-    from matscikit.interop import to_phase_diagram
+    from kemio.interop import to_phase_diagram
     from pymatgen.analysis.phase_diagram import PhaseDiagram
 
     phase_diag = PhaseDiagram(entries)
@@ -895,15 +895,14 @@ def test_normalize_convex_hull_entries_pymatgen(source: str) -> None:
         "pymatgen": phase_diag,
         "entries": entries,
         "generator": (entry for entry in entries),
-        "matscikit": to_phase_diagram(entries),
+        "kemio": to_phase_diagram(entries),
     }[source]
     result = normalize_convex_hull_entries(obj)
     assert result is not None
     assert [entry["composition"] for entry in result] == [
         entry.composition.as_dict() for entry in entries
     ]
-    ids = {entry.get("entry_id") for entry in result}
-    assert ids == ({None} if source == "matscikit" else {None, "mp-3"})
+    assert {entry.get("entry_id") for entry in result} == {None, "mp-3"}
     # total energy = energy per atom x atoms, within round-off of pymatgen's
     np.testing.assert_allclose(
         [entry["energy"] for entry in result],
@@ -951,14 +950,14 @@ def test_normalize_xrd_pattern_diffraction_pattern() -> None:
 
 def test_xrd_widget_labeled_diffraction_patterns() -> None:
     """A {label: pattern} mapping normalizes pymatgen DiffractionPatterns (next to
-    matscikit patterns and dicts), keeping label order and d_hkls.
+    kemio patterns and dicts), keeping label order and d_hkls.
     """
     computed = pmg_diffraction_pattern(2)
-    widget = pmv.xrd_plot({"pmg": computed, "mk": mk.XrdPattern([10], [1])})
+    widget = pmv.xrd_plot({"pmg": computed, "kemio": kemio.XrdPattern([10], [1])})
     assert widget.patterns["pmg"]["d_hkls"] == [2.5, 2.0]
     widget = XrdWidget(patterns={"computed": computed, "scan": {"x": [5], "y": [1]}})
     assert list(widget.patterns) == ["computed", "scan"]
-    # matscikit's XrdPattern defaults missing multiplicities to 1
+    # kemio's XrdPattern defaults missing multiplicities to 1
     assert widget.patterns["computed"]["hkls"][0] == [
         {"hkl": [1, 0, 0], "multiplicity": 1}
     ]
@@ -1003,13 +1002,12 @@ def test_invalid_ase_frame_arrays(key: str, value: float) -> None:
         atoms.info["force"] = [[value, 0, 0]]
     else:
         atoms.cell[0, 0] = value
-        if np.isfinite(value):  # Lattice uses float64.
-            arrays = decode_envelope(TrajectoryWidget(trajectory=atoms).trajectory)
-            assert arrays["lattice"][0, 0] == value
-            return
-    with pytest.raises(
-        ValueError, match=f"{key} (has non-finite value|beyond float32 range)"
-    ):
+    # kemio rejects non-finite positions and lattices and singular cells itself
+    match = (
+        f"{key} (has non-finite value|beyond float32 range)"
+        f"|non-finite (coordinates|lattice)|singular lattice"
+    )
+    with pytest.raises(ValueError, match=match):
         TrajectoryWidget(trajectory=atoms)
 
 
@@ -1018,7 +1016,6 @@ def _fallback_cases() -> list[Any]:
     hold.
     """
     from ase import Atoms
-    from ase.constraints import FixAtoms
     from pymatgen.core import DummySpecies, Molecule, Species
     from pymatgen.core.trajectory import Trajectory
 
@@ -1035,8 +1032,6 @@ def _fallback_cases() -> list[Any]:
         [pmg_cubic([{"Fe": 0.5, "Co": 0.5}])],  # disordered
         [fe2.copy(site_properties={"aux": [[0, 1, 2], [3, 4]]})],
         [with_force.copy(site_properties={"force_max": zeros})],
-        [Atoms("H2", h2_pos, cell=[5, 5, 5], constraint=FixAtoms(indices=[0]))],
-        [Atoms("H2", h2_pos, cell=[5, 5, 5], magmoms=[[0, 0, 1], [0, 0, 2]])],
         [
             {
                 "structure": pmg_cubic(["Fe", "Fe"], properties={"phase": "alpha"}),
@@ -1047,7 +1042,7 @@ def _fallback_cases() -> list[Any]:
         Trajectory.from_structures([dummy, dummy]),
         [pmg_cubic([])] * 2,  # zero atoms
         [fe_o_oxidized],
-        # matscikit keeps oxidation states in info["pymatgen"]
+        # kemio keeps oxidation states in info["pymatgen"]
         [to_structure(pmg_cubic([Species("Fe", 2), "O"]))],
         Trajectory.from_structures([fe_o_oxidized] * 2),
         [pmg_cubic(["Fe", "Fe"], labels=["Fe1", "Fe2"])],
@@ -1056,7 +1051,6 @@ def _fallback_cases() -> list[Any]:
         [pmg_cubic(["Fe", "Fe"], charge=1)],
         # singular cell (2D slab without c): the JSON path pads it with vacuum
         [Atoms("H2", h2_pos, cell=[0.009] * 3, pbc=True)],
-        [Atoms("H2", h2_pos, cell=[5, 5, 0], pbc=[1, 1, 0])] * 2,
         [with_force.copy(site_properties={"forces": zeros})],  # force and forces
         [{"structure": fe2, "n_evals": 2**53 + 1}],  # float64 would round it
         [h2_bulk, Atoms("H2", h2_pos, cell=np.eye(3) * 5, pbc=[1, 1, 0])],  # pbc
@@ -1068,7 +1062,7 @@ def _fallback_cases() -> list[Any]:
     ]
 
 
-_N_FALLBACK_CASES = 27
+_N_FALLBACK_CASES = 24
 
 
 @pytest.mark.parametrize("case_idx", range(_N_FALLBACK_CASES))
@@ -1201,7 +1195,7 @@ def test_pymatgen_trajectory_per_frame_lattice(displacement: bool) -> None:
     traj.frame_properties = [
         {"forces": np.zeros((n_atoms, 3))} for n_atoms in (1, 2, 1)
     ]
-    with pytest.raises(ValueError, match="'forces' must be per-atom"):
+    with pytest.raises(ValueError, match=r"forces need shape \(1, 3\) for 1 sites"):
         TrajectoryWidget(trajectory=traj)
 
 
@@ -1300,23 +1294,20 @@ def test_pymatgen_structure_sequence_trajectory(n_frames: int) -> None:
 
 
 @pytest.mark.parametrize(
-    ("metadata_field", "metadata_value"),
+    "metadata_value",
     [
-        ("properties", {"energy": -1.23, "forces": [[0.0, 0.3, 0.4], [0.0, 0.0, 0.0]]}),
-        ("info", {"temperature": 300, "pressure": 1.0}),
+        {"energy": -1.23, "forces": [[0.0, 0.3, 0.4], [0.0, 0.0, 0.0]]},
+        {"temperature": 300, "pressure": 1.0},
     ],
 )
 def test_trajectory_widget_with_pymatgen_structure_metadata(
-    metadata_field: str, metadata_value: dict[str, Any]
+    metadata_value: dict[str, Any],
 ) -> None:
-    """TrajectoryWidget forwards pymatgen structure properties/info to frame metadata,
+    """TrajectoryWidget forwards pymatgen structure properties to frame metadata,
     per-atom forces to the sites.
     """
     structure = pmg_cubic(["Fe", "Fe"])
-    if metadata_field == "properties":
-        structure.properties = metadata_value
-    else:
-        object.__setattr__(structure, "info", metadata_value)
+    structure.properties = metadata_value
 
     arrays = decode_envelope(TrajectoryWidget(trajectory=structure).trajectory)
     scalars = {key: arr.tolist() for key, arr in arrays.items() if arr.ndim == 1}
@@ -1337,7 +1328,7 @@ def test_trajectory_widget_with_pymatgen_structure_metadata(
 
 @pytest.mark.parametrize("shape", [(6,), (3, 3)])
 def test_ase_stress_transfer(shape: tuple[int, ...]) -> None:
-    """Transfer raw ASE stress losslessly as binary frame_stress."""
+    """ASE stress (Voigt or 3x3) arrives as 3x3 binary frame_stress, values kept."""
     pytest.importorskip("ase")
     from ase import Atoms
     from ase.calculators.singlepoint import SinglePointCalculator
@@ -1350,7 +1341,10 @@ def test_ase_stress_transfer(shape: tuple[int, ...]) -> None:
     widget = TrajectoryWidget(trajectory=frames)
     wire = decode_envelope(widget.trajectory)["frame_stress"]
     assert wire.dtype == np.dtype("<f8")
-    np.testing.assert_array_equal(wire, tensors.reshape(2, -1))
+    from ase.stress import voigt_6_to_full_3x3_stress
+
+    full = voigt_6_to_full_3x3_stress(tensors) if shape == (6,) else tensors
+    np.testing.assert_array_equal(wire, full.reshape(2, 9))
 
 
 @pytest.mark.parametrize(
@@ -1386,7 +1380,7 @@ def test_trajectory_widget_with_ase_atoms(
 
         atoms_cls = MSONAtoms
 
-    atoms = atoms_cls(symbols, positions=positions, cell=cell)
+    atoms = atoms_cls(symbols, positions=positions, cell=cell, pbc=cell is not None)
     atoms.info = {"temperature": 300}
     forces = np.zeros((len(atoms), 3))
     forces[0] = [0.0, 0.0, 2.0]
@@ -1406,16 +1400,18 @@ def test_trajectory_widget_with_ase_atoms(
     np.testing.assert_allclose(arrays["force_norm"], [2 / np.sqrt(len(atoms))])
     assert arrays["force"][0].tolist() == forces.tolist()
 
-    (frame,) = TrajectoryWidget(
-        trajectory=[{"structure": atoms, "step": 7}]
-    ).trajectory["frames"]
-    assert frame["step"] == 7
-    assert {key: frame["metadata"][key] for key in ("temperature", "energy")} == {
-        "temperature": 300,
-        "energy": energy,
+    step_arrays = decode_envelope(
+        TrajectoryWidget(trajectory=[{"structure": atoms, "step": 7}]).trajectory
+    )
+    assert {key: step_arrays[key].tolist() for key in ("steps", "energy")} == {
+        "steps": [7],
+        "energy": [energy],
     }
     atoms.set_momenta(np.ones((len(atoms), 3)))
     velocities = decode_envelope(TrajectoryWidget(trajectory=atoms).trajectory)[
         "velocities"
     ]
-    np.testing.assert_allclose(velocities[0], atoms.get_velocities(), rtol=1e-6)
+    from ase.units import fs
+
+    # Å/fs, as kemio converts ASE momenta
+    np.testing.assert_allclose(velocities[0], atoms.get_velocities() * fs, rtol=1e-6)

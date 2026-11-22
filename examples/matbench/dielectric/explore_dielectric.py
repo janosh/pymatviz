@@ -23,7 +23,7 @@ https://ml.materialsproject.org/projects/matbench_dielectric
 # %%
 from typing import get_args
 
-import matscikit as mk
+import kemio
 from matbench_discovery.structure import prototype
 from matminer.datasets import load_dataset
 from tqdm import tqdm
@@ -53,7 +53,7 @@ df_diel[n_wyckoff_pos_key] = df_diel[proto_label_key].map(
     prototype.count_wyckoff_positions
 )
 
-df_diel["crystal_system"] = df_diel["spg_num"].map(mk.crystal_system)
+df_diel["crystal_system"] = df_diel["spg_num"].map(kemio.crystal_system)
 
 df_diel["volume"] = [x.volume for x in df_diel["structure"]]
 df_diel["formula"] = [x.formula for x in df_diel["structure"]]

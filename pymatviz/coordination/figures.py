@@ -5,10 +5,9 @@ from __future__ import annotations
 from collections import Counter
 from typing import TYPE_CHECKING
 
-import matscikit as mk
+import kemio
 import numpy as np
 
-from pymatviz.colors import ELEM_COLORS_JMOL
 from pymatviz.coordination.helpers import (
     BrowserCnStrategy,
     CnSplitMode,
@@ -35,6 +34,16 @@ if TYPE_CHECKING:
 
     from pymatviz.typing import AnyStructure
 
+# Jmol CSS colors of the elements that have one, for bars and lines colored here
+ELEM_COLORS_JMOL: dict[str, str] = {
+    symbol: f"rgb({red}, {green}, {blue})"
+    for symbol, (red, green, blue) in zip(
+        kemio.element_table().symbols[1:],  # row 0 is a placeholder
+        kemio.element_table().jmol_colors[1:].tolist(),
+        strict=True,
+    )
+    if red >= 0  # -1 marks a missing color
+}
 # Line dash per structure in coordination_vs_cutoff_line (colors encode elements)
 _STRUCT_DASHES = ("none", "6 3", "2 3", "8 3 2 3", "12 4")
 
@@ -71,7 +80,7 @@ def coordination_bar_plot(
     A MatterViz bonding strategy name (``"electroneg_ratio"``, ``"explicit_only"``,
     ``"pair_cutoffs"``) bonds the structures in the browser, where the controls pane
     switches strategy and split mode live. A cutoff radius, ``"crystal_nn"`` or
-    ``"voronoi"`` computes the CNs in Python (with matscikit) instead.
+    ``"voronoi"`` computes the CNs in Python (with kemio) instead.
 
     Args:
         structures (AnyStructure | dict[str, AnyStructure] | Sequence[AnyStructure]):
@@ -119,7 +128,7 @@ def coordination_bar_plot(
     # {series label: CN counts} from one neighbor search over all structures;
     # by_element sums each element (majority one on disordered sites) over them
     groups: dict[str, Counter[int]] = {}
-    all_cns = mk.coordination_numbers(list(labeled.values()), strategy)
+    all_cns = kemio.coordination_numbers(list(labeled.values()), strategy)
     for (label, struct), cns in zip(labeled.items(), all_cns, strict=True):
         if split_mode == CnSplitMode.by_element:
             for symbol, cn in zip(site_symbols(struct), cns.tolist(), strict=True):
@@ -202,7 +211,7 @@ def coordination_vs_cutoff_line(
     elem_colors = _element_colors(element_colors)
     multi_struct = len(struct_dict) > 1
     # (n_sites, n_cutoffs) CNs per structure from one neighbor search each
-    all_site_cns = mk.coordination_numbers(list(struct_dict.values()), cutoffs)
+    all_site_cns = kemio.coordination_numbers(list(struct_dict.values()), cutoffs)
 
     series: list[dict[str, Any]] = []
     for struct_idx, ((struct_name, structure), site_cns) in enumerate(

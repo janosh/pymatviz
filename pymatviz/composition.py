@@ -9,23 +9,21 @@ import re
 from collections import defaultdict
 from collections.abc import Mapping
 from numbers import Number
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
-import matscikit as mk
+import kemio
 import numpy as np
 import pandas as pd
+from kemio.interop import is_composition_like
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 
 from pymatviz.enums import ElemCountMode
 from pymatviz.structures import is_structure_like, to_structure
-from pymatviz.utils import df_ptable
+from pymatviz.utils import df_ptable, element_symbols
 
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-
-    from matscikit.interop import CompositionLike
-    from typing_extensions import TypeIs
 
     from pymatviz.typing import (
         ElemCountModeLike,
@@ -35,22 +33,17 @@ if TYPE_CHECKING:
     )
 
 
-def is_composition_like(obj: Any) -> TypeIs[CompositionLike]:
-    """Whether obj is a formula string, {element: amount} mapping or Composition
-    (matscikit or pymatgen, the latter a Mapping too).
-    """
-    return isinstance(obj, str | Mapping | mk.Composition)
-
-
-def to_composition(obj: FormulaLike, *, allow_negative: bool = False) -> mk.Composition:
-    """Composition (matscikit) of a formula string, {element: amount} mapping,
-    matscikit or pymatgen Composition (oxidation states summed per element) or
+def to_composition(
+    obj: FormulaLike, *, allow_negative: bool = False
+) -> kemio.Composition:
+    """Composition (kemio) of a formula string, {element: amount} mapping,
+    kemio or pymatgen Composition (oxidation states summed per element) or
     structure-like object.
 
     Raises:
         TypeError: For any other type.
     """
-    if isinstance(obj, mk.Composition):
+    if isinstance(obj, kemio.Composition):
         return obj
     if is_structure_like(obj):
         return to_structure(obj).composition
@@ -59,7 +52,7 @@ def to_composition(obj: FormulaLike, *, allow_negative: bool = False) -> mk.Comp
             "Expected a formula string, mapping, Composition or structure, got "
             f"{type(obj).__name__}"
         )
-    return mk.Composition(obj, allow_negative=allow_negative)
+    return kemio.Composition(obj, allow_negative=allow_negative)
 
 
 def count_elements(
@@ -152,9 +145,7 @@ def count_elements(
                 f"atomic numbers, but values range from {numbers.min()} to "
                 f"{numbers.max()}, expected range [1, 118]."
             )
-        srs.index = atomic_numbers.map(
-            df_ptable.reset_index().set_index("atomic_number").symbol
-        )
+        srs.index = atomic_numbers.map(element_symbols)
 
     bad_symbols = srs.index.difference(df_ptable.index)
     if len(bad_symbols) > 0:
@@ -212,8 +203,8 @@ def count_formulas(
         data (Sequence[FormulaLike]): Chemical systems. Can be:
             - Chemical system strings like ["Fe-O", "Li-P-O"]
             - Formula strings like ["Fe2O3", "LiPO4"]
-            - matscikit or pymatgen Compositions
-            - structure-like objects (matscikit, pymatgen, ASE, phonopy)
+            - kemio or pymatgen Compositions
+            - structure-like objects (kemio, pymatgen, ASE, phonopy)
         group_by ("formula" | "reduced_formula" | "chem_sys"): How to group formulas:
             - "formula": Each unique formula is counted separately.
             - "reduced_formula": Formulas are reduced to simplest ratios.

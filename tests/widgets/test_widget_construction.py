@@ -8,12 +8,12 @@ from contextlib import nullcontext
 from typing import TYPE_CHECKING, Any, Literal
 from unittest.mock import Mock, patch
 
-import matscikit as mk
+import kemio
 import numpy as np
 import pandas as pd
 import pytest
 import traitlets as tl
-from matscikit.interop import structure_to_pymatgen_dict
+from kemio.interop import structure_to_pymatgen_dict
 
 import pymatviz as pmv
 from pymatviz.widgets import _headless as headless_mod
@@ -747,14 +747,14 @@ def test_color_scale_config_normalized_and_validated(widget_cls: type) -> None:
     ],
 )
 def test_widgets_accept_structure(widget_cls: type, trait: str) -> None:
-    """Structure traits sync a matscikit Structure as a dict."""
+    """Structure traits sync a kemio Structure as a dict."""
     struct = SI_STRUCT
     synced = getattr(widget_cls(**{trait: struct}), trait)
     assert isinstance(synced, dict)
     assert "lattice" in synced
 
 
-H2_MOLECULE = mk.Structure(
+H2_MOLECULE = kemio.Structure(
     None, ["H", "H"], [[0, 0, 0], [0, 0, 0.74]], pbc=(False,) * 3
 )
 
@@ -808,7 +808,7 @@ def test_widgets_reject_invalid_data_sources(
 
 def test_xrd_widget_labeled_patterns() -> None:
     """A {label: pattern} mapping normalizes each pattern, keeping label order."""
-    computed = mk.XrdPattern(
+    computed = kemio.XrdPattern(
         [10, 20], [100, 50], d_spacings=[2, 1], hkls=[[([1, 0, 0], 6)]] * 2
     )
     widget = XrdWidget(patterns={"computed": computed, "scan": {"x": [5], "y": [1]}})
@@ -1583,8 +1583,8 @@ def test_bar_plot_dataframe_column_roles_and_orientation(orientation: str) -> No
 
 @pytest.mark.parametrize("labeled", [False, True])
 def test_vasprun_paths(labeled: bool) -> None:
-    """vasprun.xml paths (single or as dict values) give matscikit's bands and DOS."""
-    from matscikit.io import read_vasprun
+    """vasprun.xml paths (single or as dict values) give kemio's bands and DOS."""
+    from kemio.io import read_vasprun
 
     from pymatviz.utils.testing import TEST_FILES
 
@@ -1610,21 +1610,21 @@ def test_vasprun_paths(labeled: bool) -> None:
         (
             StructureWidget,
             "structure",
-            lambda: mk.Structure(np.eye(3) * 3, ["Fe"], [[0, 0, 0]]),
+            lambda: kemio.Structure(np.eye(3) * 3, ["Fe"], [[0, 0, 0]]),
         ),
-        (DosWidget, "doses", lambda: mk.PhononDos([0, 1, 2], [0, 1, 0])),
+        (DosWidget, "doses", lambda: kemio.PhononDos([0, 1, 2], [0, 1, 0])),
         (
             BandStructureWidget,
             "band_structs",
-            lambda: mk.PhononBands(
+            lambda: kemio.PhononBands(
                 [[0, 0, 0], [0.5, 0, 0]], [[0, 0, 0], [1, 1, 2]], np.eye(3)
             ),
         ),
-        (XrdWidget, "patterns", lambda: {"a": mk.XrdPattern([10], [100])}),
+        (XrdWidget, "patterns", lambda: {"a": kemio.XrdPattern([10], [100])}),
         (
             ConvexHullWidget,
             "entries",
-            lambda: mk.PhaseDiagram(["Li", "O", "Li2O"], [-1.9, -4.2, -14.3 / 3]),
+            lambda: kemio.PhaseDiagram(["Li", "O", "Li2O"], [-1.9, -4.2, -14.3 / 3]),
         ),
     ],
 )
@@ -1642,8 +1642,8 @@ def test_widgets_normalize_assigned_objects(
 def test_dos_widget_stack_checks_grids_in_either_order() -> None:
     """stack=True rejects DOS on different grids whether doses or stack comes last."""
     doses = {
-        "a": mk.PhononDos([0, 1, 2], [0, 1, 0]),
-        "b": mk.PhononDos([0, 1, 3], [0, 1, 0]),
+        "a": kemio.PhononDos([0, 1, 2], [0, 1, 0]),
+        "b": kemio.PhononDos([0, 1, 3], [0, 1, 0]),
     }
     with pytest.raises(ValueError, match=r"one grid, but \['b'\]"):
         DosWidget(doses).stack = True

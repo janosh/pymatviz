@@ -60,7 +60,7 @@ class RdfPlotWidget(PlotControlsTraits, RdfPlotTraits, MatterVizWidget):
         """Initialize the RdfPlotWidget.
 
         Args:
-            structures: A structure (matscikit, pymatgen, ASE, phonopy or structure
+            structures: A structure (kemio, pymatgen, ASE, phonopy or structure
                 dict), or a list or ``{label: structure}`` dict of them, for
                 on-the-fly RDF computation.
             patterns: Pre-computed RDF data (list of ``{r, g_r, label}`` dicts).

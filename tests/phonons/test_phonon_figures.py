@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Literal
 
-import matscikit as mk
+import kemio
 import numpy as np
 import pytest
 
@@ -13,7 +13,7 @@ from pymatviz.utils.testing import load_nacl_phonons
 if TYPE_CHECKING:
     from tests.conftest import BandsDoses
 
-GRID_012 = mk.PhononDos([0, 1, 2], [1, 2, 1])
+GRID_012 = kemio.PhononDos([0, 1, 2], [1, 2, 1])
 
 
 @pytest.mark.parametrize("labeled", [False, True])
@@ -48,7 +48,7 @@ def test_band_structure_widget_phonons(
     [(False, 0, None), (True, 0.1, "max"), (False, 0.2, "integral"), (True, 0, "sum")],
 )
 def test_phonon_dos(
-    phonon_doses: dict[str, mk.PhononDos],
+    phonon_doses: dict[str, kemio.PhononDos],
     stack: bool,
     sigma: float,
     normalize: Literal["max", "sum", "integral"] | None,
@@ -57,7 +57,7 @@ def test_phonon_dos(
     if stack:  # MatterViz stacks by index, so stacked DOS must share a grid
         freqs = next(iter(phonon_doses.values())).frequency_points
         phonon_doses = {
-            label: mk.PhononDos(freqs, dos.total_dos)
+            label: kemio.PhononDos(freqs, dos.total_dos)
             for label, dos in phonon_doses.items()
         }
     widget = pmv.phonon_dos(phonon_doses, stack=stack, sigma=sigma, normalize=normalize)
@@ -78,14 +78,14 @@ def test_phonon_dos(
         (
             dict(doses="invalid"),
             TypeError,
-            r"to_phonon_dos takes a matscikit, phonopy or pymatgen object.*key ''\)",
+            r"to_phonon_dos takes a kemio, phonopy or pymatgen object.*key ''\)",
         ),
         (dict(normalize="invalid"), ValueError, "Invalid normalize='invalid'"),
         (dict(project="invalid"), ValueError, "Invalid project='invalid'"),
         (dict(project="element"), TypeError, "project='element' needs a DOS with site"),
         (
             dict(
-                doses={"a": GRID_012, "b": mk.PhononDos([0, 2, 4], [1, 2, 1])},
+                doses={"a": GRID_012, "b": kemio.PhononDos([0, 2, 4], [1, 2, 1])},
                 stack=True,
             ),
             ValueError,
@@ -94,7 +94,7 @@ def test_phonon_dos(
     ],
 )
 def test_phonon_dos_raises(
-    phonon_doses: dict[str, mk.PhononDos],
+    phonon_doses: dict[str, kemio.PhononDos],
     kwargs: dict[str, Any],
     err_type: type[Exception],
     match: str,
@@ -117,7 +117,7 @@ def test_phonon_dos_raises(
     ],
 )
 def test_phonon_dos_projection(
-    complete_phonon_dos: mk.PhononDos,
+    complete_phonon_dos: kemio.PhononDos,
     project: Literal["element", "site"] | None,
     show_total: bool,
     labeled: bool,
@@ -184,10 +184,10 @@ def test_bands_and_dos_widget_phonons(phonon_bands_doses_mp_2758: BandsDoses) ->
 
 
 def test_nacl_phonons_inputs() -> None:
-    """Band structures, mesh DOS and projected DOS of matscikit Phonons."""
+    """Band structures, mesh DOS and projected DOS of kemio Phonons."""
     phonons = load_nacl_phonons()
     mesh = phonons.mesh([5, 5, 5], total_dos=True)
-    total_dos = mk.PhononDos(mesh.frequency_points, mesh.total_dos)
+    total_dos = kemio.PhononDos(mesh.frequency_points, mesh.total_dos)
     band_structure = phonons.bands(
         [[[0, 0, 0], [1 / 2, 0, 0]]], labels=["Γ", "X"], n_points=11
     )
@@ -222,7 +222,7 @@ def test_nacl_phonons_inputs() -> None:
     ("labeled", "show_total"), [(False, True), (True, False), (True, True)]
 )
 def test_phonon_dos_stack_projection_raises(
-    complete_phonon_dos: mk.PhononDos, labeled: bool, show_total: bool
+    complete_phonon_dos: kemio.PhononDos, labeled: bool, show_total: bool
 ) -> None:
     """MatterViz stacks all curves onto one sum, so stacking partials with their
     total or with another DOS's partials would double count.

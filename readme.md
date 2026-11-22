@@ -31,7 +31,7 @@ A toolkit for visualizations in materials informatics.
 pip install pymatviz
 ```
 
-See `pyproject.toml` for available extras like `pip install 'pymatviz[export]'` for static image export. Structures, compositions, symmetry, RDFs, coordination numbers, chemical environments and XRD patterns are computed with [matscikit](https://github.com/janosh/matscikit). pymatgen, ASE and phonopy objects are accepted as inputs and converted on the way in. So are ChemEnv environments (`chem_env_hierarchy`), CrystalNN and Voronoi coordination numbers, and phonon band structures and DOS (from phonopy or pymatgen). `pip install 'pymatviz[pymatgen]'` adds what still needs pymatgen: pymatgen `Trajectory` JSON and matminer's non-Magpie featurization presets (Magpie features come from matscikit).
+See `pyproject.toml` for available extras like `pip install 'pymatviz[export]'` for static image export. Structures, compositions, symmetry, RDFs, coordination numbers, chemical environments and XRD patterns are computed with [kemio](https://github.com/janosh/kemio). pymatgen, ASE and phonopy objects are accepted as inputs and converted on the way in. So are ChemEnv environments (`chem_env_hierarchy`), CrystalNN and Voronoi coordination numbers, and phonon band structures and DOS (from phonopy or pymatgen). `pip install 'pymatviz[pymatgen]'` adds what still needs pymatgen: pymatgen `Trajectory` JSON and matminer's non-Magpie featurization presets (Magpie features come from kemio).
 
 ## API Docs
 
@@ -139,16 +139,16 @@ See [`pymatviz/widgets/structure.py`](pymatviz/widgets/structure.py).
 
 ## Interactive Widgets
 
-See [`pymatviz/widgets`](pymatviz/widgets). Interactive 3D structure, molecular dynamics trajectory and composition visualization widgets for [Jupyter](https://jupyter.org), [Marimo](https://marimo.io), and VSCode notebooks, powered by [anywidget](https://anywidget.dev) and [MatterViz](https://matterviz.janosh.dev) (<https://github.com/janosh/matterviz>). Supports matscikit and pymatgen `Structure`, ASE `Atoms`, and `PhonopyAtoms`, as well as ASE, `pymatgen` and plain Python trajectory formats.
+See [`pymatviz/widgets`](pymatviz/widgets). Interactive 3D structure, molecular dynamics trajectory and composition visualization widgets for [Jupyter](https://jupyter.org), [Marimo](https://marimo.io), and VSCode notebooks, powered by [anywidget](https://anywidget.dev) and [MatterViz](https://matterviz.janosh.dev) (<https://github.com/janosh/matterviz>). Supports kemio and pymatgen `Structure`, ASE `Atoms`, and `PhonopyAtoms`, as well as ASE, `pymatgen` and plain Python trajectory formats.
 
 ```py
 import pymatviz as pmv
-from matscikit.io import read_structure
+from kemio.io import read_structure
 
 # Interactive 3D structure visualization
 struct_widget = pmv.structure(read_structure("structure.cif"))
 
-# Interactive composition visualization (formula strings, dicts, matscikit or pymatgen Composition)
+# Interactive composition visualization (formula strings, dicts, kemio or pymatgen Composition)
 comp_widget = pmv.composition("Fe2O3")
 
 # Interactive trajectory visualization from structures or dicts of structure and properties
@@ -183,7 +183,7 @@ Each MatterViz component has a pymatviz function of the same name in snake_case 
 > [!TIP]
 > Checkout the **✅ MatterViz VSCode extension** for using the same viewers directly in VSCode/Cursor editor tabs for rendering local and remote files: [marketplace.visualstudio.com/items?itemName=janosh.matterviz](https://marketplace.visualstudio.com/items?itemName=janosh.matterviz)
 
-In Jupyter, VS Code and marimo, importing `pymatviz` renders matscikit, pymatgen, ASE and phonopy objects (structures, band structures, DOS, XRD patterns, phase diagrams, compositions) as their widgets. Toggle it with [`notebook_mode(on=False)`](pymatviz/notebook.py).
+In Jupyter, VS Code and marimo, importing `pymatviz` renders kemio, pymatgen, ASE and phonopy objects (structures, band structures, DOS, XRD patterns, phase diagrams, compositions) as their widgets. Toggle it with [`notebook_mode(on=False)`](pymatviz/notebook.py).
 
 ## Brillouin Zone
 

@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import Literal
 
-    import matscikit as mk
+    import kemio
 
 
 def check_basic_rdf_properties(
@@ -92,7 +92,7 @@ def test_calculate_rdf_pbc_consistency() -> None:
     assert np.sum(rdf_no_pbc > 0) < np.sum(rdf_full_pbc > 0)
     assert np.sum(rdf_no_pbc) == pytest.approx(29.0232140)
     # a periodic self-image at exactly the 10 Å lattice constant sits on a bin edge:
-    # matscikit's 9.999999999999998 Å (2 ulp below pymatgen's 10.0) bins it at 9.9 Å
+    # kemio's 9.999999999999998 Å (2 ulp below pymatgen's 10.0) bins it at 9.9 Å
     assert np.sum(rdf_full_pbc) == pytest.approx(136.9477329)
 
 
@@ -125,7 +125,7 @@ def test_calculate_rdf_edge_cases(cutoff: float, frac_coords: list[float]) -> No
     assert np.all(rdf == 0), f"{rdf=}"
 
 
-def test_calculate_rdf_disordered_structure(fe3co4_disordered: mk.Structure) -> None:
+def test_calculate_rdf_disordered_structure(fe3co4_disordered: kemio.Structure) -> None:
     """Disordered sites (Fe3CO4 and an equimolar FCC high-entropy alloy) give
     regression peak positions, heights and spreads.
     """

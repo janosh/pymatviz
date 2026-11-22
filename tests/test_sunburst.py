@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import Any, Literal, get_args
 
-import matscikit as mk
+import kemio
 import numpy as np
 import pandas as pd
 import pytest
-from matscikit.options import CrystalSystem
+from kemio.options import CrystalSystem
 
 import pymatviz as pmv
 from pymatviz.sunburst import spacegroup_sunburst
@@ -103,10 +103,10 @@ def test_spacegroup_sunburst_symbol_counts(spg_symbols: list[str]) -> None:
 
 @pytest.mark.parametrize("pbc", [(False,) * 3, (True, True, False)])
 def test_spacegroup_sunburst_rejects_non_periodic(
-    structures: list[mk.Structure], pbc: tuple[bool, bool, bool]
+    structures: list[kemio.Structure], pbc: tuple[bool, bool, bool]
 ) -> None:
     """Structures not periodic along all three axes are rejected with how to fix it."""
-    struct = mk.Structure(np.eye(3) * 3, ["Si"], [[0, 0, 0]], pbc=pbc)
+    struct = kemio.Structure(np.eye(3) * 3, ["Si"], [[0, 0, 0]], pbc=pbc)
     with pytest.raises(
         TypeError, match=r"periodic along a, b and c.*atoms\.pbc = True"
     ):
@@ -176,7 +176,7 @@ def test_spacegroup_sunburst_invalid_limits(kwargs: dict[str, Any], match: str) 
 def test_chem_env_sunburst_rock_salt(normalize: bool) -> None:
     """ChemEnv classifies all eight rocksalt sites as CN 6 octahedra (O:6)."""
     rock_salt = rocksalt()
-    empty = mk.Structure(rock_salt.lattice, [], np.zeros((0, 3)))
+    empty = kemio.Structure(rock_salt.lattice, [], np.zeros((0, 3)))
     widget = pmv.chem_env_hierarchy([empty, rock_salt], normalize=normalize)
     expected = 1 if normalize else len(rock_salt)
     assert widget.data == [

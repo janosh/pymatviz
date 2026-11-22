@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, get_args
 
 import pandas as pd
 import pytest
-from matscikit import Composition
+from kemio import Composition
 
 import pymatviz as pmv
 from pymatviz.composition import count_elements, count_formulas

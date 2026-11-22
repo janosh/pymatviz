@@ -13,7 +13,7 @@ from pymatviz.widgets.matterviz import MatterVizWidget
 class BandStructureWidget(PlotControlsTraits, BandStructureTraits, MatterVizWidget):
     """MatterViz widget for visualizing electronic and phonon band structures.
 
-    Accepts matscikit PhononBands and ElectronicBands, pymatgen BandStructure,
+    Accepts kemio PhononBands and ElectronicBands, pymatgen BandStructure,
     BandStructureSymmLine and PhononBandStructureSymmLine, phonopy BandStructure,
     vasprun.xml paths, or a pre-computed dict. Pass a ``{label: band_structure}``
     dict to overlay several band structures.
@@ -41,10 +41,10 @@ class BandStructureWidget(PlotControlsTraits, BandStructureTraits, MatterVizWidg
         """Initialize the BandStructureWidget.
 
         Args:
-            band_structs: Band structure data -- a matscikit PhononBands or
+            band_structs: Band structure data -- a kemio PhononBands or
                 ElectronicBands, pymatgen BandStructure, BandStructureSymmLine or
                 PhononBandStructureSymmLine, phonopy BandStructure, a vasprun.xml
-                path (read by matscikit), a dict, or a ``{label: band_structure}``
+                path (read by kemio), a dict, or a ``{label: band_structure}``
                 dict of those to overlay.
             **kwargs: Additional widget properties.
         """

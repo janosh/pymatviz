@@ -8,11 +8,12 @@ from typing import TYPE_CHECKING, Any, Literal, Protocol, cast
 
 import numpy as np
 import pandas as pd
+from kemio.interop import is_composition_like
 from pandas.api.types import is_bool_dtype, is_numeric_dtype
 
 from pymatviz.cluster.composition.embed import magpie_featurize, one_hot_encode
 from pymatviz.cluster.composition.project import project_vectors
-from pymatviz.composition import is_composition_like, to_composition
+from pymatviz.composition import to_composition
 from pymatviz.enums import LabelEnum
 from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
@@ -148,7 +149,7 @@ def cluster_compositions(
             properties and/or pre-computed embeddings.
         composition_col (str): Name of the column containing one of:
             - Chemical formulas (as strings)
-            - matscikit or pymatgen Composition objects
+            - kemio or pymatgen Composition objects
             - Pre-computed embeddings (as numpy arrays or lists)
             Default is "composition".
         prop_name (str | None): Name of the column to use for coloring points.
@@ -157,7 +158,7 @@ def cluster_compositions(
         embedding_method (str | EmbeddingMethod | Callable[[list[str], Any], ndarray]):
             Method to convert compositions to vectors (default: "magpie"). Options:
             - "one-hot": One-hot encoding of element fractions
-            - "magpie": Magpie element-property features (matscikit, as matminer's)
+            - "magpie": Magpie element-property features (kemio, as matminer's)
             - Callable: Custom embedding function (any other featurization, e.g.
               matminer presets) that takes (N, ) array of compositions and returns
               (N, D) array of values where D is the number of dimensions in the

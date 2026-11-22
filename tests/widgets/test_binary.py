@@ -8,7 +8,7 @@ import shutil
 import subprocess
 from typing import Any
 
-import matscikit as mk
+import kemio
 import numpy as np
 import pytest
 import traitlets as tl
@@ -60,12 +60,12 @@ def test_binary_array_copies_only_when_needed(
     [("force", np.nan), ("force", np.inf), ("force", 1e39), ("positions", 1e39)],
 )
 def test_invalid_frame_arrays(key: str, value: float) -> None:
-    """Non-finite data and float32 overflow fail before a frame syncs (matscikit
+    """Non-finite data and float32 overflow fail before a frame syncs (kemio
     rejects non-finite positions and lattices itself).
     """
     positions = [[value if key == "positions" else 0, 0, 0]]
     properties = {"force": [[value, 0, 0]]} if key == "force" else {}
-    struct = mk.Structure(
+    struct = kemio.Structure(
         np.eye(3) * 2, ["H"], positions, info={"properties": properties}
     )
     with pytest.raises(
@@ -213,12 +213,12 @@ def test_invalid_large_plot_series(series: dict[str, Any], match: str) -> None:
 def _fallback_cases() -> list[Any]:
     """Frame lists the binary format can't hold."""
     coords = [[0, 0, 0], [0.5] * 3]
-    fe2_phase = mk.Structure(
+    fe2_phase = kemio.Structure(
         _FE2.lattice, ["Fe"] * 2, _FE2.positions, info={"properties": {"phase": "a"}}
     )
     h2_pos = [[0, 0, 0], [0, 0, 0.7]]
-    h2_bulk = mk.Structure(np.eye(3) * 5, ["H", "H"], h2_pos)
-    h2_mol = mk.Structure(None, ["H", "H"], h2_pos, pbc=(False,) * 3)
+    h2_bulk = kemio.Structure(np.eye(3) * 5, ["H", "H"], h2_pos)
+    h2_mol = kemio.Structure(None, ["H", "H"], h2_pos, pbc=(False,) * 3)
     return [
         [_FE2, cubic_structure(3, ["Fe", "Co"], coords)],  # varying species
         [{"structure": _FE2, "label": "relaxed"}],  # string frame property
@@ -229,8 +229,8 @@ def _fallback_cases() -> list[Any]:
         [cubic_structure(3, ["Fe2+", "O2-"], coords)],
         [_FE2.replace(site_data={"labels": ["Fe1", "Fe2"]})],
         [_FE2.replace(site_data={"magmoms": np.array([1.0, -1.0])})],
-        [mk.Structure(None, ["H", "H"], h2_pos, pbc=(False,) * 3, charge=1)],
-        [mk.Structure(np.eye(3) * 0.009, ["H", "H"], h2_pos)],  # 7e-7 A^3 cell
+        [kemio.Structure(None, ["H", "H"], h2_pos, pbc=(False,) * 3, charge=1)],
+        [kemio.Structure(np.eye(3) * 0.009, ["H", "H"], h2_pos)],  # 7e-7 A^3 cell
         [{"structure": _FE2, "n_evals": 2**53 + 1}],  # float64 would round it
         [h2_bulk, h2_bulk.replace(pbc=(True, True, False))],  # pbc
         [h2_mol, h2_bulk],  # cell in only some frames
@@ -297,7 +297,7 @@ def _run_node(script: str) -> str:
 def test_headless_json_embeds_buffers_as_base64() -> None:
     """Headless exports revive only binary array data as DataViews."""
     positions = np.random.default_rng(seed=0).random((4, 3, 3)) * 10
-    molecule = mk.Structure(None, [8, 1, 1], positions[0], pbc=(False,) * 3)
+    molecule = kemio.Structure(None, [8, 1, 1], positions[0], pbc=(False,) * 3)
     payload = TrajectoryWidget(trajectory=molecule).trajectory
     marker = {"__matterviz_buffer_b64__": "ordinary metadata"}
     volume = volume_envelope(positions, id="grid")

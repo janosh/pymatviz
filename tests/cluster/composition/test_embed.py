@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from typing import Any
 
-import matscikit as mk
+import kemio
 import numpy as np
 import pandas as pd
 import pytest
@@ -16,13 +16,15 @@ from pymatviz.cluster.composition import magpie_featurize, one_hot_encode
     [
         pytest.param(["H2O", "CO2", "NaCl"], id="strings"),
         pytest.param(
-            [mk.Composition(comp) for comp in ["H2O", "CO2", "NaCl"]],
+            [kemio.Composition(comp) for comp in ["H2O", "CO2", "NaCl"]],
             id="compositions",
         ),
         pytest.param(pd.Series(["H2O", "CO2", "NaCl"]), id="series"),
     ],
 )
-def test_one_hot_encode(compositions: list[str | mk.Composition] | pd.Series) -> None:
+def test_one_hot_encode(
+    compositions: list[str | kemio.Composition] | pd.Series,
+) -> None:
     """Encode supported inputs with all elements or a selected subset."""
     result = one_hot_encode(compositions)
     assert result.shape == (3, 118)
@@ -39,7 +41,7 @@ def test_one_hot_encode(compositions: list[str | mk.Composition] | pd.Series) ->
 def test_one_hot_encode_oxidation_states(normalize: bool) -> None:
     """Oxidation states do not change elemental fractions or normalized embeddings."""
     result = one_hot_encode(
-        ["Fe2O3", mk.Composition({"Fe3+": 2, "O2-": 3})],
+        ["Fe2O3", kemio.Composition({"Fe3+": 2, "O2-": 3})],
         elements=["Fe", "O"],
         normalize=normalize,
     )
@@ -65,7 +67,7 @@ def test_embed_invalid_input(
 def test_magpie_featurize() -> None:
     """Featurize a Series, normalized or not, with and without a feature subset."""
     compositions = pd.Series(["H2O", "CO2", "NaCl", "Fe2O3"])
-    labels = mk.composition_feature_labels()
+    labels = kemio.composition_feature_labels()
 
     raw = magpie_featurize(compositions)
     assert raw.shape == (len(compositions), len(labels))

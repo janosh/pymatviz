@@ -5,7 +5,7 @@ from __future__ import annotations
 import functools
 from typing import TYPE_CHECKING, Any, Literal
 
-import matscikit as mk
+import kemio
 import pytest
 
 import pymatviz as pmv
@@ -90,7 +90,7 @@ def test_mixed_inputs(chart: ChemicalChart, limit: int | None) -> None:
         "Fe-O",
         " Fe2O3 ",
         structure,
-        mk.Composition("LiPO4"),
+        kemio.Composition("LiPO4"),
         "Zr48Al8Cu32Ni4Ag8",
     ]
     widget = chart(inputs, max_systems=limit)

@@ -23,7 +23,7 @@ urls = { Homepage = "https://github.com/janosh/pymatviz" }
 requires-python = ">=3.12"
 dependencies = [
   "anywidget>=0.11",
-  "matscikit>=0.1.0b5",
+  "kemio>=0.1.0",
   "numpy>=2.5",
   "pandas>=2.3",
   "scikit-learn>=1.9",
@@ -37,7 +37,7 @@ make-assets = ["pymatviz[export,pymatgen]", "lxml>=6", "matminer>=0.10.1", "moyo
 gh-pages = ["jupyter>=1.1.1", "nbconvert>=7.17"]
 phonons = ["phonopy>=4.8"] # only needed if user passes in phonopy objects
 # pymatgen-only features: pymatgen Trajectory JSON in TrajectoryWidget, matminer's
-# non-magpie presets in cluster_compositions (magpie is computed by matscikit)
+# non-magpie presets in cluster_compositions (magpie is computed by kemio)
 pymatgen = ["pymatgen>=2026.9.24"]
 test = [
   "ase>=3.29",
@@ -60,7 +60,6 @@ build-backend = "uv_build"
 [tool.uv.build-backend]
 module-name = "pymatviz"
 module-root = ""
-source-include = ["pymatviz/**/*.csv", "pymatviz/**/*.yml"]
 source-exclude = [".venv"]
 
 [tool.pytest.ini_options]

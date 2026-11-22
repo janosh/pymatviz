@@ -3,9 +3,9 @@
 # %%
 from glob import glob
 
-import matscikit as mk
+import kemio
 import numpy as np
-from matscikit.io import read_structure
+from kemio.io import read_structure
 
 import pymatviz as pmv
 from pymatviz.utils.testing import TEST_FILES, formula_spg_str
@@ -18,7 +18,7 @@ structures = {
     + glob(f"{TEST_FILES}/structures/*.json.gz")
 }
 xrd_patterns = dict(
-    zip(structures, mk.xrd_patterns(list(structures.values())), strict=True)
+    zip(structures, kemio.xrd_patterns(list(structures.values())), strict=True)
 )
 key1, key2, key3, *_ = xrd_patterns
 

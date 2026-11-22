@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from typing_extensions import TypeIs
 
 
-# Neighbor strategies computed in Python by matscikit.coordination_numbers: a cutoff
+# Neighbor strategies computed in Python by kemio.coordination_numbers: a cutoff
 # in Å, or pymatgen's CrystalNN() and VoronoiNN()
 type CnStrategy = float | Literal["crystal_nn", "voronoi"]
 # MatterViz bonding strategies, computed in the browser

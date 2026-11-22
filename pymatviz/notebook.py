@@ -1,4 +1,4 @@
-"""Display matscikit, pymatgen, ASE and phonopy objects as MatterViz widgets in
+"""Display kemio, pymatgen, ASE and phonopy objects as MatterViz widgets in
 notebooks.
 """
 
@@ -8,7 +8,7 @@ import importlib
 import sys
 from typing import TYPE_CHECKING, Any
 
-from matscikit.io import Frame
+from kemio.io import Frame
 
 from pymatviz.widgets.band_structure import BandStructureWidget
 from pymatviz.widgets.composition import CompositionWidget
@@ -27,14 +27,14 @@ if TYPE_CHECKING:
 # by dotted class name so nothing is imported until such an object is displayed.
 # pymatgen's PhaseDiagram is an energy convex hull, so it maps to ConvexHullWidget.
 _DISPLAY_SPECS: tuple[tuple[str, tuple[str, ...], type[MatterVizWidget], str], ...] = (
-    ("matscikit", ("Structure",), StructureWidget, "structure"),
-    ("matscikit", ("Composition",), CompositionWidget, "composition"),
-    ("matscikit", ("PhononBands",), BandStructureWidget, "band_structs"),
-    ("matscikit", ("PhononDos",), DosWidget, "doses"),
-    ("matscikit", ("XrdPattern",), XrdWidget, "patterns"),
-    ("matscikit", ("PhaseDiagram",), ConvexHullWidget, "entries"),
-    ("matscikit.electronic", ("ElectronicBands",), BandStructureWidget, "band_structs"),
-    ("matscikit.electronic", ("ElectronicDos",), DosWidget, "doses"),
+    ("kemio", ("Structure",), StructureWidget, "structure"),
+    ("kemio", ("Composition",), CompositionWidget, "composition"),
+    ("kemio", ("PhononBands",), BandStructureWidget, "band_structs"),
+    ("kemio", ("PhononDos",), DosWidget, "doses"),
+    ("kemio", ("XrdPattern",), XrdWidget, "patterns"),
+    ("kemio", ("PhaseDiagram",), ConvexHullWidget, "entries"),
+    ("kemio.electronic", ("ElectronicBands",), BandStructureWidget, "band_structs"),
+    ("kemio.electronic", ("ElectronicDos",), DosWidget, "doses"),
     (
         "pymatgen.core.structure",
         ("Structure", "IStructure", "Molecule", "IMolecule"),
@@ -92,7 +92,7 @@ def _display_spec(obj: Any) -> tuple[type[MatterVizWidget], str] | None:
 
 def create_widget(obj: Any) -> MatterVizWidget:
     """MatterViz widget for a pymatgen/ASE/phonopy object (subclasses included), or
-    a trajectory widget for a sequence of structures, matscikit Frames or frame dicts.
+    a trajectory widget for a sequence of structures, kemio Frames or frame dicts.
 
     Raises:
         ValueError: If no widget displays obj's type, or obj is an empty sequence.
@@ -139,7 +139,7 @@ def _set_marimo_display(
 
 
 def notebook_mode(*, on: bool) -> None:
-    """Enable or disable rendering matscikit/pymatgen/ASE/phonopy objects as widgets.
+    """Enable or disable rendering kemio/pymatgen/ASE/phonopy objects as widgets.
 
     In IPython (Jupyter, JupyterLab, VS Code interactive windows), the types are
     registered by name with the MIME-bundle formatter, so nothing is imported until

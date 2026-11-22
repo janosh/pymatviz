@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-import matscikit as mk
+import kemio
 import numpy as np
 import pandas as pd
 import pytest
@@ -145,7 +145,7 @@ def test_chemical_system_visualization(
     )
     df_points = points(widget)
     systems = {
-        comp: mk.Composition(comp).chemical_system for comp in df_prop.composition
+        comp: kemio.Composition(comp).chemical_system for comp in df_prop.composition
     }
     assert df_points["chem_system"].to_dict() == systems
     ordered_systems = sorted(set(systems.values()))

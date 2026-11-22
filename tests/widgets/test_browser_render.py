@@ -22,7 +22,7 @@ import xml.etree.ElementTree as ET
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from typing import TYPE_CHECKING, Any
 
-import matscikit as mk
+import kemio
 import numpy as np
 import pytest
 
@@ -227,7 +227,7 @@ WIDGET_CASES: dict[
         lambda _: pmv.chem_sys_hierarchy(["Fe2O3", "NaCl", "Fe"], kind="treemap"),
         True,
     ),
-    XrdWidget: (lambda _: XrdWidget(patterns=mk.xrd_patterns([NACL])[0]), True),
+    XrdWidget: (lambda _: XrdWidget(patterns=kemio.xrd_patterns([NACL])[0]), True),
 }
 
 

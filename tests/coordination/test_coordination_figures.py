@@ -3,13 +3,13 @@ from __future__ import annotations
 from collections import Counter
 from typing import TYPE_CHECKING, Any
 
-import matscikit as mk
+import kemio
 import numpy as np
 import pandas as pd
 import pytest
 
-from pymatviz.colors import ELEM_COLORS_JMOL
 from pymatviz.coordination import coordination_bar_plot, coordination_vs_cutoff_line
+from pymatviz.coordination.figures import ELEM_COLORS_JMOL
 from pymatviz.coordination.helpers import CnSplitMode
 from pymatviz.structures import site_symbols
 from pymatviz.widgets.bar_plot import BarPlotWidget
@@ -27,7 +27,7 @@ NACL = rocksalt()  # every site octahedral (CN 6 within 3 Å)
 
 @pytest.mark.parametrize("split_mode", list(CnSplitMode))
 def test_coordination_bar_plot_split_modes(
-    structures: Sequence[mk.Structure], split_mode: CnSplitMode
+    structures: Sequence[kemio.Structure], split_mode: CnSplitMode
 ) -> None:
     """Series per split mode partition the same site CNs, on a contiguous CN axis."""
     struct_dict = {f"s{idx}": struct for idx, struct in enumerate(structures)}
@@ -36,7 +36,7 @@ def test_coordination_bar_plot_split_modes(
 
     site_cns: dict[str, dict[str, list[int]]] = {}
     for key, struct in struct_dict.items():
-        (cns,) = mk.coordination_numbers([struct], 3.0)
+        (cns,) = kemio.coordination_numbers([struct], 3.0)
         for symbol, cn in zip(site_symbols(struct), cns.tolist(), strict=True):
             site_cns.setdefault(key, {}).setdefault(symbol, []).append(cn)
     if split_mode == CnSplitMode.by_element:
@@ -147,7 +147,7 @@ def test_coordination_bar_plot_style_options() -> None:
         ),
         (NACL, {"strategy": "nope"}, ValueError, "unknown coordination strategy"),
         (
-            mk.Structure(np.eye(3) * 3, [], np.zeros((0, 3))),
+            kemio.Structure(np.eye(3) * 3, [], np.zeros((0, 3))),
             {"strategy": 3.0},
             ValueError,
             "no sites to count",
@@ -208,7 +208,7 @@ def test_coordination_bar_plot_in_browser(split_mode: CnSplitMode) -> None:
 
 @pytest.mark.parametrize("cutoff_range", [(0, 3), (1.0, 5.0)])
 def test_coordination_vs_cutoff_line(
-    structures: Sequence[mk.Structure],
+    structures: Sequence[kemio.Structure],
     cutoff_range: tuple[float, float],
 ) -> None:
     """One line per structure and element, grouped and dashed per structure."""
@@ -265,7 +265,7 @@ def test_coordination_vs_cutoff_line_single_structure() -> None:
     ],
 )
 def test_coordination_vs_cutoff_line_one_neighbor_search(
-    structure: mk.Structure,
+    structure: kemio.Structure,
     cutoff_range: tuple[float, float],
     num_points: int,
     monkeypatch: pytest.MonkeyPatch,
@@ -288,7 +288,7 @@ def test_coordination_vs_cutoff_line_one_neighbor_search(
         for elem in sorted(set(symbols))
     }
     n_calls = 0
-    coordination_numbers = mk.coordination_numbers
+    coordination_numbers = kemio.coordination_numbers
 
     def counting_search(*args: Any, **kwargs: Any) -> Any:
         """Count neighbor searches."""
@@ -296,7 +296,7 @@ def test_coordination_vs_cutoff_line_one_neighbor_search(
         n_calls += 1
         return coordination_numbers(*args, **kwargs)
 
-    monkeypatch.setattr(mk, "coordination_numbers", counting_search)
+    monkeypatch.setattr(kemio, "coordination_numbers", counting_search)
     widget = coordination_vs_cutoff_line(
         structure, cutoff_range=cutoff_range, num_points=num_points
     )
@@ -305,7 +305,7 @@ def test_coordination_vs_cutoff_line_one_neighbor_search(
 
 
 def test_coordination_vs_cutoff_line_disordered_structure(
-    fe3co4_disordered: mk.Structure,
+    fe3co4_disordered: kemio.Structure,
 ) -> None:
     """A disordered Fe:C site contributes lines for both elements."""
     widget = coordination_vs_cutoff_line(fe3co4_disordered, cutoff_range=(1, 5))

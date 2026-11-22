@@ -233,7 +233,7 @@ def _element_symbols(structure: Any) -> set[str]:
     """Element symbols of one structure-like object or structure dict (none for
     ``None``).
     """
-    from matscikit.interop import is_structure_like, to_structure
+    from kemio.interop import is_structure_like, to_structure
 
     if is_structure_like(structure):  # without serializing every site
         return set(to_structure(structure).composition.elements)

@@ -7,7 +7,7 @@ from typing import Any
 import numpy as np
 import pytest
 import traitlets as tl
-from matscikit.interop import structure_to_pymatgen_dict
+from kemio.interop import structure_to_pymatgen_dict
 
 from pymatviz.coordination import CnSplitMode
 from pymatviz.widgets.box_plot import BoxPlotWidget

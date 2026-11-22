@@ -1,5 +1,5 @@
 """Coordination numbers and ChemEnv chemical environments of structures as
-hierarchies, classified with matscikit's chemenv.
+hierarchies, classified with kemio's chemenv.
 """
 
 from __future__ import annotations
@@ -8,7 +8,7 @@ from collections import defaultdict
 from math import fsum
 from typing import TYPE_CHECKING, Any, Literal
 
-import matscikit as mk
+import kemio
 
 from pymatviz.hierarchy import _limit_nodes, _validate_overflow, hierarchy_widget
 from pymatviz.structures import normalize_periodic_structures
@@ -23,14 +23,14 @@ if TYPE_CHECKING:
 
 
 def site_environments(
-    structures: Sequence[mk.Structure],
+    structures: Sequence[kemio.Structure],
 ) -> list[list[tuple[int, str]]]:
     """(coordination number, ChemEnv symbol such as "O:6") of each site of each
     structure: pymatgen's LocalGeometryFinder with SimplestChemenvStrategy on the input
     cell. Sites whose coordination number has no reference geometry are "CN:<n>".
 
     Raises:
-        ValueError: For structures matscikit can't classify (e.g. coincident sites).
+        ValueError: For structures kemio can't classify (e.g. coincident sites).
     """
     return [
         [
@@ -39,7 +39,7 @@ def site_environments(
                 result.coordination_numbers.tolist(), result.symbols, strict=True
             )
         ]
-        for result in mk.chemenv(structures)
+        for result in kemio.chemenv(structures)
     ]
 
 

@@ -17,13 +17,13 @@ def _normalize_patterns(patterns: Any) -> dict[str, Any] | None:
     Raises:
         ValueError: If a labeled mapping is empty.
     """
-    import matscikit as mk
-    from matscikit.interop import has_class
+    import kemio
+    from kemio.interop import has_class
 
     from pymatviz.widgets._normalize import normalize_xrd_pattern
 
     is_labeled = isinstance(patterns, Mapping) and all(
-        isinstance(val, mk.XrdPattern | Mapping)
+        isinstance(val, kemio.XrdPattern | Mapping)
         or has_class(val, "pymatgen.analysis.diffraction.core.DiffractionPattern")
         for val in patterns.values()
     )
@@ -40,7 +40,7 @@ def _normalize_patterns(patterns: Any) -> dict[str, Any] | None:
 class XrdWidget(PlotControlsTraits, XrdTraits, MatterVizWidget):
     """MatterViz widget for visualizing X-ray diffraction patterns.
 
-    Accepts a matscikit XrdPattern, pymatgen DiffractionPattern or a dict with keys
+    Accepts a kemio XrdPattern, pymatgen DiffractionPattern or a dict with keys
     x (2-theta), y (intensity) and optional hkls/d_hkls/kind.
 
     Patterns without hkls are treated as measured scans (``kind="profile"``): drawn
@@ -73,7 +73,7 @@ class XrdWidget(PlotControlsTraits, XrdTraits, MatterVizWidget):
         """Initialize the XrdWidget.
 
         Args:
-            patterns: XRD pattern data -- a matscikit XrdPattern, pymatgen
+            patterns: XRD pattern data -- a kemio XrdPattern, pymatgen
                 DiffractionPattern, a dict with
                 x (2-theta angles) and y (intensities) keys, or a ``{label: pattern}``
                 mapping of those.

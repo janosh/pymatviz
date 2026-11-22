@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import matscikit as mk
+import kemio
 import numpy as np
 import pandas as pd
 import pytest
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from typing import Any
 
 
-H2O = mk.Structure(
+H2O = kemio.Structure(
     None, ["H", "H", "O"], [[0, 0, 0], [0, 0, 1.5], [0, 0, 0.75]], pbc=(False,) * 3
 )
 
@@ -53,24 +53,24 @@ H2O = mk.Structure(
     ],
 )
 def test_normalize_structures(input_raw: Any, expected_keys: list[Hashable]) -> None:
-    """Single inputs key by formula, mappings keep keys, all become matscikit."""
+    """Single inputs key by formula, mappings keep keys, all become kemio."""
     struct_dict = normalize_structures(input_raw)
     assert list(struct_dict) == expected_keys
-    assert all(isinstance(struct, mk.Structure) for struct in struct_dict.values())
+    assert all(isinstance(struct, kemio.Structure) for struct in struct_dict.values())
 
 
 def test_to_structure_and_site_helpers() -> None:
-    """Matscikit Structures pass through, vacant sites keep their index, disordered
+    """Kemio Structures pass through, vacant sites keep their index, disordered
     sites give element sets and majority symbols, molecules become pymatgen-style
     dicts without lattice or fractional coordinates.
     """
     assert to_structure(SI2_STRUCT) is SI2_STRUCT
-    with pytest.raises(TypeError, match="expected a matscikit or pymatgen"):
+    with pytest.raises(TypeError, match="expected a kemio or pymatgen"):
         to_structure(42)
     with pytest.raises(FileNotFoundError, match="no structure file at 'Si'"):
         to_structure("Si")  # strings are file paths
 
-    vacant = mk.Structure(
+    vacant = kemio.Structure(
         np.eye(3) * 3, [{}, "Fe"], [[0, 0, 0], [0.5] * 3], fractional=True
     )
     assert vacant.site_occupancies == [{}, {"Fe": 1.0}]
@@ -94,7 +94,7 @@ def test_to_structure_and_site_helpers() -> None:
     ("invalid_input", "err_cls", "error_match"),
     [
         ("not a structure", FileNotFoundError, "no structure file at 'not a struct"),
-        (12345, TypeError, "Input must be a matscikit or pymatgen"),
+        (12345, TypeError, "Input must be a kemio or pymatgen"),
         (
             [SI_STRUCTS[0], "invalid"],
             FileNotFoundError,

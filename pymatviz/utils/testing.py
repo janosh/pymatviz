@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Final
 
-import matscikit as mk
+import kemio
 import numpy as np
 
 from pymatviz.utils import ROOT
@@ -19,13 +19,13 @@ TEST_FILES: str = f"{ROOT}/tests/files"
 # === Disordered structures for tests and examples ===
 
 
-fe3co4_disordered = mk.Structure(
+fe3co4_disordered = kemio.Structure(
     np.eye(3) * 5,
     [{"Fe": 0.75, "C": 0.25}, "O"],
     [[0, 0, 0], [0.5, 0.5, 0.5]],
     fractional=True,
 )
-batio3_disordered = mk.Structure(
+batio3_disordered = kemio.Structure(
     np.eye(3) * 4.0,
     [
         "Ba",  # Pure Ba site
@@ -39,8 +39,8 @@ batio3_disordered = mk.Structure(
 )
 
 # Li-ion cathode with vacancy disorder
-lico2_disordered = mk.Structure(
-    mk.lattice_from_parameters(2.82, 2.82, 14.05, 90, 90, 120, c_along_z=True),
+lico2_disordered = kemio.Structure(
+    kemio.lattice_from_parameters(2.82, 2.82, 14.05, 90, 90, 120, c_along_z=True),
     [
         {"Li": 0.75},  # Li site with 25% vacancies
         "Co",
@@ -52,7 +52,7 @@ lico2_disordered = mk.Structure(
 )
 
 # High-entropy alloy with ternary disorder (3 species on one site)
-hea_disordered = mk.Structure(
+hea_disordered = kemio.Structure(
     np.eye(3) * 3.6,
     [
         {"Fe": 0.5, "Ni": 0.3, "Cr": 0.2},  # Ternary disordered site
@@ -63,7 +63,7 @@ hea_disordered = mk.Structure(
 )
 
 # Complex multisite disorder - solid solution with multiple disordered sites
-solid_solution = mk.Structure(
+solid_solution = kemio.Structure(
     np.eye(3) * 5.0,
     [
         {"Ca": 0.6, "Sr": 0.4},  # Disordered A-site
@@ -76,7 +76,7 @@ solid_solution = mk.Structure(
     fractional=True,
 )
 
-disordered_demo_structures: Final[dict[str, mk.Structure]] = {
+disordered_demo_structures: Final[dict[str, kemio.Structure]] = {
     "BaTi₀.₆Zr₀.₄O₃": batio3_disordered,
     "Li₀.₇₅CoO₂ (with vacancies)": lico2_disordered,
     "Fe₀.₅Ni₀.₃Cr₀.₂Al": hea_disordered,
@@ -88,7 +88,7 @@ def formula_spg_str(struct: PeriodicStructure) -> str:
     """Get a string with formula and space group number for a structure.
 
     Args:
-        struct: A periodic structure (matscikit, pymatgen, ASE, phonopy).
+        struct: A periodic structure (kemio, pymatgen, ASE, phonopy).
 
     Returns:
         String in format "Formula (spg_number)", e.g. "Na4 Cl4 (225)".
@@ -96,18 +96,18 @@ def formula_spg_str(struct: PeriodicStructure) -> str:
     from pymatviz.structures import to_structure
 
     struct = to_structure(struct)
-    return f"{struct.composition.formula} ({mk.symmetry_dataset(struct).number})"
+    return f"{struct.composition.formula} ({kemio.symmetry_dataset(struct).number})"
 
 
-def load_nacl_phonons() -> mk.Phonons:
+def load_nacl_phonons() -> kemio.Phonons:
     """Harmonic phonons of NaCl (2x2x2 supercell, force constants not symmetrized)
-    from the test phonopy files, read by matscikit, for tests and examples.
+    from the test phonopy files, read by kemio, for tests and examples.
 
     Example:
         >>> phonons = load_nacl_phonons()
         >>> pmv.phonon_dos(phonons.projected_dos([10, 10, 10]), project="element")
     """
-    return mk.Phonons.from_phonopy_yaml(
+    return kemio.Phonons.from_phonopy_yaml(
         f"{TEST_FILES}/phonons/NaCl/phonopy_disp.yaml.xz",
         force_sets=f"{TEST_FILES}/phonons/NaCl/force_sets.dat",
         symmetrize=False,

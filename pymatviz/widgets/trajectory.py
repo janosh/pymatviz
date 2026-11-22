@@ -99,9 +99,9 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
             trajectory: Trajectory data in one of these formats:
                 - dict with 'frames' key (matterviz format, structures as dicts
                   or objects)
-                - pymatgen ``Trajectory`` or its ``as_dict()`` (read by matscikit)
-                - list of structures (matscikit, pymatgen, ASE, PhonopyAtoms) or
-                  matscikit ``io.Frame``s (e.g. from ``read_extxyz``)
+                - pymatgen ``Trajectory`` or its ``as_dict()`` (read by kemio)
+                - list of structures (kemio, pymatgen, ASE, PhonopyAtoms) or
+                  kemio ``io.Frame``s (e.g. from ``read_extxyz``)
                 - list of dicts with properties: [
                     {"structure": struct, "step": 10, "energy": 1.23, ...}, ...
                 ] (``step``, else the frame index, is the plots' x axis; structure
@@ -200,10 +200,10 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
             and "matrix" not in lattice
             and set(cell_params) <= lattice.keys()
         ):
-            import matscikit as mk
+            import kemio
 
             # pymatgen's orientation (c along z) for Cartesian xyz site coords
-            matrix = mk.lattice_from_parameters(
+            matrix = kemio.lattice_from_parameters(
                 *(float(lattice[key]) for key in cell_params), c_along_z=True
             )
             completed["lattice"] = {**lattice, "matrix": matrix.tolist()}
@@ -277,9 +277,9 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
     @staticmethod
     def _pymatgen_frames(trajectory: Any) -> list[dict[str, Any]]:
         """``{"structure", **frame properties, **results}`` items of a pymatgen
-        ``Trajectory`` or its ``as_dict()``, read by matscikit (no pymatgen needed).
+        ``Trajectory`` or its ``as_dict()``, read by kemio (no pymatgen needed).
         """
-        from matscikit.interop import to_trajectory
+        from kemio.interop import to_trajectory
 
         return [
             frame_item(frame, drop=("time_step",))
@@ -295,7 +295,7 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
         if trajectory is None or is_binary_envelope(trajectory, "trajectory"):
             return trajectory
 
-        from matscikit.interop import has_class, is_structure_like
+        from kemio.interop import has_class, is_structure_like
 
         is_pymatgen = has_class(trajectory, "pymatgen.core.trajectory.Trajectory")
         if is_pymatgen or (

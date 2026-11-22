@@ -5,12 +5,12 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-import matscikit as mk
+import kemio
 import numpy as np
 import pytest
 import traitlets as tl
-from matscikit.interop import structure_to_pymatgen_dict
-from matscikit.io import Frame
+from kemio.interop import structure_to_pymatgen_dict
+from kemio.io import Frame
 
 from pymatviz.notebook import create_widget
 from pymatviz.widgets import TrajectoryWidget
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from typing import Any
 
 
-def _fe2_frames(n_frames: int) -> list[mk.Structure]:
+def _fe2_frames(n_frames: int) -> list[kemio.Structure]:
     """Cubic Fe2 structures whose lattice grows by 0.1 A per frame."""
     return [
         cubic_structure(3.0 + idx * 0.1, ["Fe"] * 2, [[0, 0, 0], [0.5] * 3])
@@ -35,7 +35,7 @@ def _fe2_frames(n_frames: int) -> list[mk.Structure]:
 # args revisit tests/widgets after another directory, e.g.
 # `pytest tests/widgets/a.py tests/b.py tests/widgets/c.py`.
 @pytest.fixture
-def multi_frame_trajectory(fe3co4_disordered: mk.Structure) -> dict[str, Any]:
+def multi_frame_trajectory(fe3co4_disordered: kemio.Structure) -> dict[str, Any]:
     """Five-frame trajectory dict of the same disordered structure."""
     frames = [
         {
@@ -51,7 +51,7 @@ def multi_frame_trajectory(fe3co4_disordered: mk.Structure) -> dict[str, Any]:
 @pytest.mark.parametrize("input_format", ["dict", "list", "tuple", "structure"])
 def test_widget_trajectory_updates(
     multi_frame_trajectory: dict[str, Any],
-    fe3co4_disordered: mk.Structure,
+    fe3co4_disordered: kemio.Structure,
     input_format: str,
 ) -> None:
     """Widget must handle trajectory updates correctly."""
@@ -103,7 +103,7 @@ def test_widget_trajectory_updates(
 
 
 def test_widget_complete_lifecycle(
-    multi_frame_trajectory: dict[str, Any], fe3co4_disordered: mk.Structure
+    multi_frame_trajectory: dict[str, Any], fe3co4_disordered: kemio.Structure
 ) -> None:
     """Synced trait defaults, non-default construction and state restoration."""
     widget = TrajectoryWidget(trajectory=multi_frame_trajectory)
@@ -251,8 +251,8 @@ def test_trajectory_widget_property_extraction(
     assert traj["frames"][0]["metadata"] == expected_properties
 
 
-def test_trajectory_widget_matscikit_frames_and_info() -> None:
-    """Matscikit io.Frames (also via create_widget) and Structure info keys (extxyz
+def test_trajectory_widget_kemio_frames_and_info() -> None:
+    """Kemio io.Frames (also via create_widget) and Structure info keys (extxyz
     frame metadata) become per-frame scalars, site data vectors per-atom arrays,
     leaving the frames unchanged.
     """
@@ -275,12 +275,10 @@ def test_trajectory_widget_matscikit_frames_and_info() -> None:
     assert structures[0].info["temperature"] == 300
 
 
-@pytest.mark.parametrize(
-    "extra", [{}, {"stress": np.eye(3)}, {"stress": np.ones(6), "frame_stress": 42}]
-)
+@pytest.mark.parametrize("extra", [{}, {"stress": np.ones(6), "frame_stress": 42}])
 def test_partial_or_conflicting_stress_stays_json(extra: dict[str, Any]) -> None:
-    """Keep missing stresses, mixed shapes, and user-defined channels intact."""
-    atoms = mk.Structure(None, ["H"], [[0, 0, 0]], pbc=(False,) * 3)
+    """Keep missing stresses and user-defined channels intact."""
+    atoms = kemio.Structure(None, ["H"], [[0, 0, 0]], pbc=(False,) * 3)
     widget = TrajectoryWidget()
     widget.set_trait(
         "trajectory",
@@ -404,7 +402,7 @@ def test_trajectory_widget_with_structure_metadata(properties: dict[str, Any]) -
 
 
 def test_trajectory_widget_normalization_regressions(
-    fe3co4_disordered: mk.Structure,
+    fe3co4_disordered: kemio.Structure,
 ) -> None:
     """Numpy forces become per-site numeric lists (matterviz 0.8 ignores vectors in
     frame metadata) plus force_max/force_norm, malformed forces raise, the layout trait

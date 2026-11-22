@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
-import matscikit as mk
+import kemio
 import numpy as np
 import pytest
 import traitlets as tl
-from matscikit.interop import structure_to_pymatgen_dict
+from kemio.interop import structure_to_pymatgen_dict
 
 from pymatviz.widgets import StructureWidget
 from tests.widgets.conftest import assert_widget_property_sync, decode_envelope
@@ -97,7 +97,7 @@ def test_widget_invalid_structure_handling(invalid_structure: Any) -> None:
     ],
 )
 def test_widget_property_sync_structure(
-    structures: tuple[mk.Structure, mk.Structure],
+    structures: tuple[kemio.Structure, kemio.Structure],
     property_name: str,
     test_values: list[Any],
 ) -> None:
@@ -109,7 +109,7 @@ def test_widget_property_sync_structure(
 
 
 def test_widget_handles_large_structures(
-    structures: tuple[mk.Structure, mk.Structure],
+    structures: tuple[kemio.Structure, kemio.Structure],
 ) -> None:
     """Widget preserves all sites in a 2000-atom supercell."""
     widget = StructureWidget(structure=structures[0].make_supercell(10))
@@ -275,7 +275,7 @@ def test_widget_isosurface_volume_swap() -> None:
 @pytest.mark.parametrize("cell_type", ["original", "conventional", "primitive"])
 def test_widget_cell_type(cell_type: str) -> None:
     """cell_type reaches MatterViz, which standardizes; the input cell is synced."""
-    struct = mk.Structure(
+    struct = kemio.Structure(
         np.eye(3) * 4,
         ["Fe", "O"],
         [[-0.1, 0, 0], [0.5, 0.5, 0.5]],

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Literal
 from unittest.mock import MagicMock
 
-import matscikit as mk
+import kemio
 import pytest
 
 import pymatviz as pmv
@@ -17,7 +17,7 @@ from pymatviz import chem_env
 def test_chem_env_hierarchy(
     chart: Literal["treemap", "sunburst"],
     overflow: Literal["other", "drop"],
-    structures: tuple[mk.Structure, mk.Structure],
+    structures: tuple[kemio.Structure, kemio.Structure],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Aggregate duplicate symbols, weight sites per structure, rank full CNs, break
@@ -58,7 +58,7 @@ def test_chem_env_hierarchy(
 
 
 def test_chem_env_treemap_invalid_overflow(
-    structures: tuple[mk.Structure, mk.Structure], monkeypatch: pytest.MonkeyPatch
+    structures: tuple[kemio.Structure, kemio.Structure], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """An invalid omission mode fails before any environment is classified."""
     collect = MagicMock()
@@ -72,7 +72,7 @@ def test_chem_env_requires_periodic_structure(monkeypatch: pytest.MonkeyPatch) -
     """Nonperiodic inputs are rejected before neighbor analysis."""
     collect = MagicMock()
     monkeypatch.setattr(chem_env, "site_environments", collect)
-    molecule = mk.Structure(
+    molecule = kemio.Structure(
         None, ["H", "H"], [[0, 0, 0], [0.7, 0, 0]], pbc=(False,) * 3
     )
     with pytest.raises(

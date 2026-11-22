@@ -5,15 +5,15 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Literal
 
-import matscikit as mk
-from matscikit.interop import to_phonon_dos
+import kemio
+from kemio.interop import to_phonon_dos
 
 from pymatviz.structures import site_symbols
 from pymatviz.widgets.dos import DosWidget
 
 
 if TYPE_CHECKING:
-    from matscikit.results import PhononDosDict
+    from kemio.results import PhononDosDict
 
     from pymatviz.typing import AnyDos
 
@@ -45,14 +45,14 @@ def _labeled_doses(
         except TypeError as exc:
             raise TypeError(f"{exc} (key {label!r})") from exc
         freqs = ph_dos.frequency_points
-        total = mk.PhononDos(freqs, ph_dos.total_dos).as_dict()
+        total = kemio.PhononDos(freqs, ph_dos.total_dos).as_dict()
         if project is None:
             dos_dict[label] = total
             continue
         if ph_dos.projected_dos is None or ph_dos.structure is None:
             raise TypeError(
                 f"project={project!r} needs a DOS with site projections (pymatgen "
-                "CompletePhononDos, matscikit Phonons.projected_dos, phonopy after "
+                "CompletePhononDos, kemio Phonons.projected_dos, phonopy after "
                 "run_total_dos and run_projected_dos on one mesh), got "
                 f"{type(raw_dos).__name__} for key {label!r}"
             )
@@ -69,7 +69,7 @@ def _labeled_doses(
         )
         prefix = f"{label} - " if label else ""
         dos_dict |= {
-            f"{prefix}{key}": mk.PhononDos(freqs, densities).as_dict()
+            f"{prefix}{key}": kemio.PhononDos(freqs, densities).as_dict()
             for key, densities in projected.items()
         }
         if show_total:
@@ -90,7 +90,7 @@ def phonon_dos(
     """Plot one or several (overlaid) phonon densities of states.
 
     Args:
-        doses (DosInput): matscikit PhononDos, phonopy TotalDos or Phonopy (after
+        doses (DosInput): kemio PhononDos, phonopy TotalDos or Phonopy (after
             run_total_dos), pymatgen PhononDos or CompletePhononDos, or a dict
             mapping legend labels to them.
         stack (bool): Whether to plot the DOS as a stacked area graph. Defaults to
@@ -100,7 +100,7 @@ def phonon_dos(
         normalize ("max" | "sum" | "integral" | None): Normalization mode MatterViz
             applies to each DOS. Defaults to None.
         project ("element" | "site" | None): Decompose each site-projected DOS
-            (pymatgen CompletePhononDos, matscikit PhononDos with projections,
+            (pymatgen CompletePhononDos, kemio PhononDos with projections,
             phonopy after run_total_dos and run_projected_dos on one mesh) into
             per-element or per-site partial DOS (sites labeled by symbol and 1-based
             index, e.g. ``Na1``, like coordination plots). Defaults to None (total

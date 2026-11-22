@@ -8,7 +8,7 @@
 # ///
 
 # %%
-import matscikit as mk
+import kemio
 from matminer.datasets import load_dataset
 from tqdm import tqdm
 
@@ -23,7 +23,7 @@ df_phonons["spg_num"] = [
     for struct in tqdm(df_phonons["structure"])
 ]
 
-df_phonons["spg_symbol"] = df_phonons["spg_num"].map(mk.space_group_symbol)
+df_phonons["spg_symbol"] = df_phonons["spg_num"].map(kemio.space_group_symbol)
 
 
 # %% Sunburst Plots

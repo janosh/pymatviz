@@ -124,7 +124,7 @@ def test_rdf_plot_one_search_matches_calculate_rdf(
     to_structure = rdf_helpers.to_structure
 
     class CountingStructure:
-        """matscikit Structure proxy counting neighbor searches."""
+        """kemio Structure proxy counting neighbor searches."""
 
         def __init__(self, struct: Any) -> None:
             self._struct = struct

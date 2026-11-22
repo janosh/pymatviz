@@ -1,17 +1,18 @@
-"""Element lookups and DataFrame column extraction."""
+"""Element lookups (from kemio's element table) and DataFrame column extraction."""
 
 from __future__ import annotations
 
 from typing import Any
 
+import kemio
 import numpy as np
 import pandas as pd
 
-from pymatviz.utils import ROOT
 
-
-_elements_csv = f"{ROOT}/pymatviz/elements.csv"
-df_ptable: pd.DataFrame = pd.read_csv(_elements_csv, comment="#").set_index("symbol")
+# kemio's element properties (masses, radii, ...), one row per element in Z order
+df_ptable: pd.DataFrame = pd.DataFrame(kemio.element_table().as_dict()).set_index(
+    "symbols"
+)
 
 
 atomic_numbers: dict[str, int] = {

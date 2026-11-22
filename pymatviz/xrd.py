@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
-import matscikit as mk
+import kemio
 import numpy as np
 import pandas as pd
 
@@ -15,7 +15,7 @@ from pymatviz.widgets.xrd import XrdWidget
 
 
 if TYPE_CHECKING:
-    from matscikit.interop import XrdPatternLike
+    from kemio.interop import XrdPatternLike
 
     from pymatviz.typing import AnyStructure
 
@@ -27,14 +27,14 @@ cu_k_alpha_wavelength = 1.54184  # Angstroms
 def _to_pattern_dict(
     label: str, pattern_or_struct: Any, wavelength: float
 ) -> dict[str, Any]:
-    """Pattern dict of a structure (computed with matscikit) or pattern object, with
+    """Pattern dict of a structure (computed with kemio) or pattern object, with
     its intensities checked to be present, finite and non-negative.
     """
     if is_structure_like(pattern_or_struct):
         struct = to_structure(pattern_or_struct)
-        (pattern_or_struct,) = mk.xrd_patterns([struct], wavelength=wavelength)
+        (pattern_or_struct,) = kemio.xrd_patterns([struct], wavelength=wavelength)
     expected = (
-        f"{label!r}: expected a structure (matscikit, pymatgen, ASE, phonopy), "
+        f"{label!r}: expected a structure (kemio, pymatgen, ASE, phonopy), "
         f"XrdPattern or DiffractionPattern, got {type(pattern_or_struct).__name__}"
     )
     try:
@@ -57,8 +57,8 @@ def xrd_plot(
     wavelength: float = cu_k_alpha_wavelength,
     **kwargs: Any,
 ) -> XrdWidget:
-    """Plot XRD patterns of structures (computed with matscikit's xrd_patterns) or
-    precomputed matscikit XrdPatterns / pymatgen DiffractionPatterns.
+    """Plot XRD patterns of structures (computed with kemio's xrd_patterns) or
+    precomputed kemio XrdPatterns / pymatgen DiffractionPatterns.
 
     Patterns of several inputs are overlaid with a legend and scaled to a shared
     maximum of 100. MatterViz labels each pattern's 5 strongest peaks with their
@@ -66,7 +66,7 @@ def xrd_plot(
 
     Args:
         patterns (PatternOrStruct | Mapping[str, PatternOrStruct]): A single
-            structure (matscikit, pymatgen, ASE, phonopy; disordered sites scatter
+            structure (kemio, pymatgen, ASE, phonopy; disordered sites scatter
             by occupancy), XrdPattern, DiffractionPattern or pattern dict (2θ and
             intensity arrays under x and y), or a mapping from legend labels to them.
         wavelength (float): X-ray wavelength in Å used to compute patterns of

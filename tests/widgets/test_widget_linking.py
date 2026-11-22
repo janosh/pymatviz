@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 import pytest
-from matscikit.interop import structure_to_pymatgen_dict
+from kemio.interop import structure_to_pymatgen_dict
 
 from pymatviz import link_selection
 from pymatviz.widgets import (
@@ -20,10 +20,10 @@ from tests.conftest import cubic_structure
 
 
 if TYPE_CHECKING:
-    import matscikit as mk
+    import kemio
 
 
-def _frames(n_frames: int = 4) -> list[mk.Structure]:
+def _frames(n_frames: int = 4) -> list[kemio.Structure]:
     """Return n_frames distinct cubic structures (lattice grows per frame)."""
     return [
         cubic_structure(3.0 + 0.1 * idx, ["Fe"] * 2, [[0, 0, 0], [0.5] * 3])

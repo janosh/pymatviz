@@ -45,7 +45,7 @@ for mp_id, formula in (("mp-2758", "Sr4Se4"), ("mp-23907", "H2")):
         )
 
 
-# %% Band structure of matscikit phonons (from phonopy files) along L-Γ-X-K-Γ-W
+# %% Band structure of kemio phonons (from phonopy files) along L-Γ-X-K-Γ-W
 nacl_bands = load_nacl_phonons().bands(
     [
         [
@@ -59,4 +59,4 @@ nacl_bands = load_nacl_phonons().bands(
     ],
     labels=["L", "Γ", "X", "K", "Γ", "W"],
 )
-pmv.band_structure(band_structs={"NaCl (matscikit)": nacl_bands}).show()
+pmv.band_structure(band_structs={"NaCl (kemio)": nacl_bands}).show()

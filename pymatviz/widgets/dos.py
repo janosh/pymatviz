@@ -19,7 +19,7 @@ from pymatviz.widgets.matterviz import MatterVizWidget
 class DosWidget(PlotControlsTraits, DosTraits, MatterVizWidget):
     """MatterViz widget for visualizing electronic and phonon density of states.
 
-    Accepts matscikit PhononDos and ElectronicDos, pymatgen Dos, CompleteDos and
+    Accepts kemio PhononDos and ElectronicDos, pymatgen Dos, CompleteDos and
     PhononDos, phonopy TotalDos and Phonopy objects, vasprun.xml paths, or a
     pre-computed dict. Pass a ``{label: dos}`` dict to overlay several DOS curves.
 
@@ -48,9 +48,9 @@ class DosWidget(PlotControlsTraits, DosTraits, MatterVizWidget):
         """Initialize the DosWidget.
 
         Args:
-            doses: DOS data -- a matscikit PhononDos or ElectronicDos, pymatgen Dos,
+            doses: DOS data -- a kemio PhononDos or ElectronicDos, pymatgen Dos,
                 CompleteDos or PhononDos, phonopy TotalDos or Phonopy (after
-                run_total_dos), a vasprun.xml path (read by matscikit), a dict, or a
+                run_total_dos), a vasprun.xml path (read by kemio), a dict, or a
                 ``{label: dos}`` dict of those to overlay.
             **kwargs: Additional widget properties.
 

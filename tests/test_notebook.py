@@ -1,4 +1,4 @@
-"""Test notebook integration for automatic matscikit object rendering."""
+"""Test notebook integration for automatic kemio object rendering."""
 
 from __future__ import annotations
 
@@ -6,10 +6,10 @@ import subprocess
 import sys
 from typing import Any
 
-import matscikit as mk
+import kemio
 import numpy as np
 import pytest
-from matscikit.electronic import ElectronicDos
+from kemio.electronic import ElectronicDos
 
 import pymatviz as pmv
 from pymatviz import notebook
@@ -18,13 +18,13 @@ from tests.conftest import cubic_structure
 
 
 @pytest.fixture
-def test_objects(structures: tuple[mk.Structure, mk.Structure]) -> dict[str, Any]:
+def test_objects(structures: tuple[kemio.Structure, kemio.Structure]) -> dict[str, Any]:
     """Create test objects for all supported types using existing fixtures."""
     hkls = [[([1, 0, 0], 1)], [([1, 1, 0], 1)], [([1, 1, 1], 1)]]
     return {
         "structure": structures[0],
-        "composition": mk.Composition("Fe2O3"),
-        "xrd_pattern": mk.XrdPattern(
+        "composition": kemio.Composition("Fe2O3"),
+        "xrd_pattern": kemio.XrdPattern(
             [10, 20, 30], [100, 50, 75], [2.5, 2.0, 1.8], hkls
         ),
     }
@@ -59,11 +59,11 @@ def test_notebook_mode_formats_objects(
 
 
 def test_notebook_mode_preserves_third_party_printers(
-    shell: Any, structures: tuple[mk.Structure, mk.Structure]
+    shell: Any, structures: tuple[kemio.Structure, kemio.Structure]
 ) -> None:
     """Turning off restores a prior printer and keeps one installed meanwhile."""
     formatter = shell.display_formatter.mimebundle_formatter
-    key = ("matscikit", "Structure")
+    key = ("kemio", "Structure")
     prior = lambda _obj: {"text/plain": "prior"}
     formatter.for_type_by_name(*key, prior)
     pmv.notebook_mode(on=True)
@@ -73,10 +73,10 @@ def test_notebook_mode_preserves_third_party_printers(
 
     pmv.notebook_mode(on=True)
     replacement = lambda _obj: {"text/plain": "replacement"}
-    formatter.for_type(mk.Structure, replacement)
+    formatter.for_type(kemio.Structure, replacement)
     pmv.notebook_mode(on=False)
     assert formatter.lookup(structures[0]) is replacement
-    formatter.pop(mk.Structure)
+    formatter.pop(kemio.Structure)
 
 
 def test_notebook_mode_imports_nothing() -> None:
@@ -118,7 +118,9 @@ def electronic_dos(cls: type[ElectronicDos] = ElectronicDos) -> ElectronicDos:
     return cls(np.array([-1, 0, 1]), np.array([[0, 1, 0]]), 0.0)
 
 
-def test_widget_mime_bundle(structures: tuple[mk.Structure, mk.Structure]) -> None:
+def test_widget_mime_bundle(
+    structures: tuple[kemio.Structure, kemio.Structure],
+) -> None:
     """Registered types get widget MIME; others raise instead of a silent repr."""
     bundle = notebook._widget_mime_bundle(structures[0])
     assert isinstance(bundle, tuple)
@@ -130,16 +132,16 @@ def test_widget_mime_bundle(structures: tuple[mk.Structure, mk.Structure]) -> No
 @pytest.mark.parametrize(
     ("obj_factory", "expected_widget", "expected_type"),
     [
-        (lambda: mk.Composition("Fe2O3"), "CompositionWidget", "composition"),
-        (lambda: mk.XrdPattern([10], [100]), "XrdWidget", "xrd"),
+        (lambda: kemio.Composition("Fe2O3"), "CompositionWidget", "composition"),
+        (lambda: kemio.XrdPattern([10], [100]), "XrdWidget", "xrd"),
         (
-            lambda: mk.PhaseDiagram(["Li", "O", "Li2O"], [-1.9, -4.2, -14.3 / 3]),
+            lambda: kemio.PhaseDiagram(["Li", "O", "Li2O"], [-1.9, -4.2, -14.3 / 3]),
             "ConvexHullWidget",
             "convex_hull",
         ),
-        (lambda: mk.PhononDos([0, 1, 2], [0, 1, 0]), "DosWidget", "dos"),
+        (lambda: kemio.PhononDos([0, 1, 2], [0, 1, 0]), "DosWidget", "dos"),
         (
-            lambda: mk.PhononBands(
+            lambda: kemio.PhononBands(
                 [[0, 0, 0], [0.5, 0, 0]], [[0, 0, 0], [1, 1, 2]], np.eye(3)
             ),
             "BandStructureWidget",
@@ -157,8 +159,14 @@ def test_widget_mime_bundle(structures: tuple[mk.Structure, mk.Structure]) -> No
         ),
     ],
     ids=[
-        *("composition", "xrd", "phase_diagram", "mk_phonon_dos", "mk_phonon_bands"),
-        *("mk_electronic_dos", "electronic_dos_subclass", "trajectory_dicts"),
+        *(
+            "composition",
+            "xrd",
+            "phase_diagram",
+            "kemio_phonon_dos",
+            "kemio_phonon_bands",
+        ),
+        *("kemio_electronic_dos", "electronic_dos_subclass", "trajectory_dicts"),
     ],
 )
 def test_create_widget(
@@ -188,8 +196,8 @@ def test_notebook_mode_in_marimo(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setitem(sys.modules, "marimo", type(sys)("marimo"))
     pmv.notebook_mode(on=True)
     try:
-        widget = mk.Composition("Fe2O3")._display_()  # ty: ignore[missing-attribute]
+        widget = kemio.Composition("Fe2O3")._display_()  # ty: ignore[missing-attribute]
         assert widget.widget_type == "composition"
     finally:
         pmv.notebook_mode(on=False)
-    assert not hasattr(mk.Composition, "_display_")
+    assert not hasattr(kemio.Composition, "_display_")

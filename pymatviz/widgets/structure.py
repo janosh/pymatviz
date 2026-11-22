@@ -128,7 +128,7 @@ class StructureWidget(StructureVizTraits, StructureTraits, MatterVizWidget):
 
     Structure data can be provided as:
     - ``structure``: A structure dict (e.g. pymatgen ``Structure.as_dict()``) or a
-      matscikit/pymatgen ``Structure``, ASE ``Atoms`` or ``PhonopyAtoms`` object,
+      kemio/pymatgen ``Structure``, ASE ``Atoms`` or ``PhonopyAtoms`` object,
       converted on construction and on later assignment.
     - ``structure_string``: A raw file string (CIF, POSCAR, XYZ, etc.)
       parsed on the frontend. Useful when you have the file content but

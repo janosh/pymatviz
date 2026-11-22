@@ -8,7 +8,7 @@ from enum import IntEnum
 from types import SimpleNamespace
 from typing import Any
 
-import matscikit as mk
+import kemio
 import numpy as np
 import pandas as pd
 import pytest
@@ -157,18 +157,18 @@ _HULL_ENTRIES = (("Li", -1.9), ("O", -4.2), ("Li2O", -14.3), ("Li2O2", -16.0))
 _HULL_ENTRIES += (("Li3O", -16.3),)
 
 
-@pytest.mark.parametrize("source", ["matscikit", "objects", "generator"])
+@pytest.mark.parametrize("source", ["kemio", "objects", "generator"])
 def test_normalize_convex_hull_entries_from_phase_diagram(source: str) -> None:
-    """Matscikit PhaseDiagrams, entry objects and generators give compositions, total
+    """Kemio PhaseDiagrams, entry objects and generators give compositions, total
     energies, energies above hull, stability and entry ids in input order.
     """
     entries = [
         SimpleNamespace(composition=formula, energy=energy, entry_id=f"id-{formula}")
         for formula, energy in _HULL_ENTRIES
     ]
-    compositions = [mk.Composition(formula) for formula, _ in _HULL_ENTRIES]
+    compositions = [kemio.Composition(formula) for formula, _ in _HULL_ENTRIES]
     obj = {
-        "matscikit": mk.PhaseDiagram(
+        "kemio": kemio.PhaseDiagram(
             compositions,
             [
                 entry.energy / comp.num_atoms
@@ -198,9 +198,7 @@ def test_normalize_convex_hull_entries_from_phase_diagram(source: str) -> None:
     )
     assert [entry["is_stable"] for entry in result] == [True] * 3 + [False, True]
     ids = [entry.get("entry_id") for entry in result]
-    assert ids == [
-        None if source == "matscikit" else f"id-{f}" for f, _ in _HULL_ENTRIES
-    ]
+    assert ids == [None if source == "kemio" else f"id-{f}" for f, _ in _HULL_ENTRIES]
 
 
 # === normalize_xrd_pattern ===
@@ -260,7 +258,7 @@ def test_normalize_xrd_pattern_from_xrd_pattern() -> None:
     """XrdPatterns give plain floats/ints, sticks with hkls and profiles without."""
     two_theta, intensities = np.array([10.0, 20.0, 30.0]), np.array([100.0, 50, 25])
     result = normalize_xrd_pattern(
-        mk.XrdPattern(
+        kemio.XrdPattern(
             two_theta,
             intensities,
             d_spacings=np.array([2.5, 2.0, 1.5]),
@@ -269,7 +267,7 @@ def test_normalize_xrd_pattern_from_xrd_pattern() -> None:
     )
     assert result is not None
     assert "kind" not in result
-    measured = normalize_xrd_pattern(mk.XrdPattern(two_theta, intensities))
+    measured = normalize_xrd_pattern(kemio.XrdPattern(two_theta, intensities))
     assert measured == {"x": [10.0, 20, 30], "y": [100.0, 50, 25], "kind": "profile"}
     assert result["x"] == [10.0, 20.0, 30.0]
     assert result["d_hkls"] == [2.5, 2.0, 1.5]
@@ -284,11 +282,11 @@ def test_normalize_xrd_pattern_from_xrd_pattern() -> None:
 
 @pytest.mark.parametrize("pbc", [(True,) * 3, (False,) * 3])
 def test_structure_to_dict_objects(pbc: tuple[bool, bool, bool]) -> None:
-    """Matscikit crystals convert to dicts with lattice and sites, molecules without
+    """Kemio crystals convert to dicts with lattice and sites, molecules without
     lattice.
     """
     lattice = np.eye(3) * 3 if any(pbc) else None
-    result = structure_to_dict(mk.Structure(lattice, ["Si"], [[0, 0, 0]], pbc=pbc))
+    result = structure_to_dict(kemio.Structure(lattice, ["Si"], [[0, 0, 0]], pbc=pbc))
     assert isinstance(result, dict)
     assert ("lattice" in result) is any(pbc)
     assert len(result["sites"]) == 1
@@ -298,9 +296,9 @@ def test_structure_to_dict_objects(pbc: tuple[bool, bool, bool]) -> None:
     ("bad_input", "err_cls", "match"),
     [
         (42, TypeError, "got int"),
-        (mk.Composition("Si"), TypeError, "got Composition"),  # has as_dict()
+        (kemio.Composition("Si"), TypeError, "got Composition"),  # has as_dict()
         (
-            [mk.Structure(np.eye(3) * 3, ["Si"], [[0, 0, 0]])],
+            [kemio.Structure(np.eye(3) * 3, ["Si"], [[0, 0, 0]])],
             TypeError,
             "got list",
         ),

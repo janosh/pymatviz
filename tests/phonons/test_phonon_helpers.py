@@ -4,7 +4,7 @@ import json
 import lzma
 from dataclasses import fields, replace
 
-import matscikit as mk
+import kemio
 import numpy as np
 import pytest
 
@@ -13,7 +13,7 @@ from pymatviz.utils.testing import TEST_FILES
 
 
 def test_phonon_db_doc_deserialization() -> None:
-    """Decode database fields to matscikit objects (equal to the raw JSON) without
+    """Decode database fields to kemio objects (equal to the raw JSON) without
     changing dataclass construction or replacement.
     """
     with lzma.open(f"{TEST_FILES}/phonons/mp-2758-Sr4Se4-pbe.json.xz", "rt") as source:
@@ -21,9 +21,9 @@ def test_phonon_db_doc_deserialization() -> None:
     original_init = PhononDBDoc.__init__
     doc = PhononDBDoc.from_dict(raw)
     assert isinstance(doc, PhononDBDoc)
-    assert isinstance(doc.structure, mk.Structure)
-    assert isinstance(doc.phonon_bandstructure, mk.PhononBands)
-    assert isinstance(doc.phonon_dos, mk.PhononDos)
+    assert isinstance(doc.structure, kemio.Structure)
+    assert isinstance(doc.phonon_bandstructure, kemio.PhononBands)
+    assert isinstance(doc.phonon_dos, kemio.PhononDos)
     np.testing.assert_array_equal(
         doc.structure.positions, [site["xyz"] for site in raw["structure"]["sites"]]
     )

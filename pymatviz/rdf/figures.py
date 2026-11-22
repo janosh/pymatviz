@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
     from typing import Any
 
-    import matscikit as mk
+    import kemio
     import numpy as np
     import pandas as pd
 
@@ -48,7 +48,7 @@ def _rdf_entry(
 
 
 def _pair_entries(
-    struct_dict: Mapping[str, mk.Structure],
+    struct_dict: Mapping[str, kemio.Structure],
     element_pairs: Sequence[tuple[str, str]] | None,
     cutoff: float,
     n_bins: int,
@@ -109,7 +109,7 @@ def rdf_plot(
     ``MAX_BROWSER_RDF_SITES`` sites computes them in Python instead.
 
     Args:
-        structures: A matscikit or pymatgen Structure, ASE Atoms or PhonopyAtoms,
+        structures: A kemio or pymatgen Structure, ASE Atoms or PhonopyAtoms,
             or a sequence, dict or pd.Series of them (dict/Series keys label the
             structures).
         patterns: Precomputed MatterViz RDF entries (``{label, pattern: {r, g_r}}``)

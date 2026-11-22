@@ -21,8 +21,8 @@ class CompositionWidget(CompositionTraits, MatterVizWidget):
     Examples:
         Basic usage:
         >>> import pymatviz as pmv
-        >>> import matscikit as mk
-        >>> comp = mk.Composition("Fe2O3")
+        >>> import kemio
+        >>> comp = kemio.Composition("Fe2O3")
         >>> widget = pmv.composition(composition=comp)
         >>> widget
 
@@ -49,7 +49,7 @@ class CompositionWidget(CompositionTraits, MatterVizWidget):
         """Initialize the CompositionWidget.
 
         Args:
-            composition: A formula string, {element: amount} dict, matscikit or
+            composition: A formula string, {element: amount} dict, kemio or
                 pymatgen Composition, or structure (negative amounts allowed).
             **kwargs: Additional widget properties
         """

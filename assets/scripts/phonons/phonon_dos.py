@@ -38,7 +38,7 @@ for mp_id, formula in (("mp-2758", "Sr4Se4"), ("mp-23907", "H2")):
         )
 
 
-# %% Total and element- or site-projected DOS of matscikit phonons (from phonopy files)
+# %% Total and element- or site-projected DOS of kemio phonons (from phonopy files)
 nacl_dos = load_nacl_phonons().projected_dos([10, 10, 10])
 pmv.phonon_dos(nacl_dos).show()
 projected_examples: list[dict[str, Any]] = [

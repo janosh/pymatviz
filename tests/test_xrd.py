@@ -3,11 +3,11 @@ from __future__ import annotations
 from collections import OrderedDict
 from typing import TYPE_CHECKING
 
-import matscikit as mk
+import kemio
 import numpy as np
 import pandas as pd
 import pytest
-from matscikit.io import read_structure
+from kemio.io import read_structure
 
 import pymatviz as pmv
 from pymatviz.utils.testing import TEST_FILES
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from typing import Any
 
 MOCK_HKLS = [(1, 0, 0), (1, 1, 0), (1, 1, 1), (2, 0, 0), (2, 1, 0)]
-MOCK_XRD_PATTERN = mk.XrdPattern(
+MOCK_XRD_PATTERN = kemio.XrdPattern(
     [10, 20, 30, 40, 50],
     [100, 50, 75, 25, 60],
     [2.5, 2.0, 1.8, 1.5, 1.3],
@@ -28,12 +28,12 @@ MOCK_XRD_PATTERN = mk.XrdPattern(
 BI2_ZR2_O7_STRUCT = read_structure(
     f"{TEST_FILES}/xrd/Bi2Zr2O7-Fm3m-experimental-sqs.cif"
 )
-(BI2_ZR2_O7_XRD,) = mk.xrd_patterns([BI2_ZR2_O7_STRUCT])
+(BI2_ZR2_O7_XRD,) = kemio.xrd_patterns([BI2_ZR2_O7_STRUCT])
 
 
-def single_peak_pattern(intensity: float) -> mk.XrdPattern:
+def single_peak_pattern(intensity: float) -> kemio.XrdPattern:
     """One-peak XrdPattern with the given intensity."""
-    return mk.XrdPattern([10], [intensity], [1], [[([1, 0, 0], 1)]])
+    return kemio.XrdPattern([10], [intensity], [1], [[([1, 0, 0], 1)]])
 
 
 @pytest.mark.parametrize(
@@ -44,7 +44,7 @@ def single_peak_pattern(intensity: float) -> mk.XrdPattern:
         (BI2_ZR2_O7_STRUCT, BI2_ZR2_O7_XRD),
     ],
 )
-def test_xrd_pattern_single(input_data: Any, expected: mk.XrdPattern) -> None:
+def test_xrd_pattern_single(input_data: Any, expected: kemio.XrdPattern) -> None:
     """A single pattern or structure is passed as one unlabeled pattern."""
     widget = pmv.xrd_plot(input_data, style="height: 300px")
     assert isinstance(widget, pmv.widgets.XrdWidget)
@@ -83,12 +83,12 @@ def test_xrd_pattern_mapping() -> None:
 @pytest.mark.parametrize(
     ("patterns", "err_type", "match"),
     [
-        (mk.XrdPattern([], []), ValueError, "No intensities found"),
+        (kemio.XrdPattern([], []), ValueError, "No intensities found"),
         ({}, ValueError, "patterns must not be empty"),
         ("invalid", TypeError, "'XRD Pattern': expected a structure"),
         ({"bad": "invalid"}, TypeError, "'bad': expected a structure"),
-        *[
-            (single_peak_pattern(val), *err)
+        *[  # pattern dicts (kemio's XrdPattern rejects these values itself)
+            ({"x": [10], "y": [val]}, *err)
             for val, err in [
                 (0, (ValueError, "At least one diffraction intensity")),
                 (-1, (ValueError, "must be finite and non-negative")),

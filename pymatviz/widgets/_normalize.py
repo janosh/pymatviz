@@ -5,7 +5,6 @@ for matterviz Svelte components.
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Literal
 
 
@@ -61,7 +60,7 @@ def _as_dict(obj: Any) -> dict[str, Any]:
     return {key: val for key, val in view.as_dict().items() if key not in _UNREAD_KEYS}
 
 
-# phonopy objects matscikit.interop converts to PhononBands / PhononDos
+# phonopy objects kemio.interop converts to PhononBands / PhononDos
 _PHONOPY_BANDS = ("phonopy.phonon.band_structure.BandStructure",)
 _PHONOPY_DOS = ("phonopy.phonon.dos.TotalDos", "phonopy.api_phonopy.Phonopy")
 
@@ -99,12 +98,12 @@ def check_stack_grids(doses: dict[str, Any] | None) -> None:
 
 
 def _object_dict(obj: Any) -> dict[str, Any] | None:
-    """Dict of a structure-like, matscikit/phonopy phonon, matscikit electronic or
+    """Dict of a structure-like, kemio/phonopy phonon, kemio electronic or
     MSONable object (pymatgen's ``as_dict()`` layout), None for others.
     """
-    import matscikit as mk
-    from matscikit.electronic import ElectronicBands, ElectronicDos
-    from matscikit.interop import (
+    import kemio
+    from kemio.electronic import ElectronicBands, ElectronicDos
+    from kemio.interop import (
         has_class,
         is_structure_like,
         to_phonon_bands,
@@ -119,7 +118,9 @@ def _object_dict(obj: Any) -> dict[str, Any] | None:
         obj = to_phonon_bands(obj)
     elif has_class(obj, *_PHONOPY_DOS):
         obj = to_phonon_dos(obj)
-    if isinstance(obj, (mk.PhononBands, mk.PhononDos, ElectronicBands, ElectronicDos)):
+    if isinstance(
+        obj, (kemio.PhononBands, kemio.PhononDos, ElectronicBands, ElectronicDos)
+    ):
         return {
             key: val for key, val in obj.as_dict().items() if key not in _UNREAD_KEYS
         }
@@ -130,7 +131,7 @@ _VASPRUN_SUFFIXES = (".xml", ".xml.gz", ".xml.xz", ".xml.bz2")
 
 
 def _vasprun_part(obj: Any, part: Literal["bands", "dos"] | None) -> Any:
-    """The bands or DOS (matscikit ElectronicBands / ElectronicDos) of a vasprun.xml
+    """The bands or DOS (kemio ElectronicBands / ElectronicDos) of a vasprun.xml
     path (str or PathLike, optionally compressed) when ``part`` is set, else obj.
     """
     import os
@@ -140,7 +141,7 @@ def _vasprun_part(obj: Any, part: Literal["bands", "dos"] | None) -> Any:
     )
     if part is None or not is_path:
         return obj
-    from matscikit.io import read_vasprun
+    from kemio.io import read_vasprun
 
     return getattr(read_vasprun(os.fspath(obj)), part)
 
@@ -152,9 +153,9 @@ def _to_dict(
 
     Args:
         obj: None, a dict (MSONable values converted via ``as_dict``), or any
-            object with .as_dict(). Structure-like objects (matscikit, pymatgen, ASE,
+            object with .as_dict(). Structure-like objects (kemio, pymatgen, ASE,
             phonopy) become structure dicts, phonopy BandStructure, TotalDos and
-            Phonopy objects go through matscikit's PhononBands / PhononDos. Converted
+            Phonopy objects go through kemio's PhononBands / PhononDos. Converted
             dicts drop ``_UNREAD_KEYS``.
         label: Human-readable name for error messages (e.g. "band structure").
         vasprun: Read vasprun.xml paths (obj or dict values) for this part of the
@@ -436,13 +437,13 @@ def structure_to_dict(
             )
         struct = structure
     else:
-        from matscikit.interop import is_structure_like
+        from kemio.interop import is_structure_like
 
         from pymatviz.structures import structure_dict
 
         if not is_structure_like(structure):
             raise TypeError(
-                "structure must be a dict, matscikit or pymatgen Structure/Molecule, "
+                "structure must be a dict, kemio or pymatgen Structure/Molecule, "
                 f"ASE Atoms or PhonopyAtoms, got {type(structure).__name__}"
             )
         struct = structure_dict(structure)
@@ -454,15 +455,15 @@ def structure_to_dict(
 
 
 def _formula_dict(formula: str) -> dict[str, float]:
-    """``{element: amount}`` of a formula string (parsed by matscikit's Composition,
+    """``{element: amount}`` of a formula string (parsed by kemio's Composition,
     groupings like ``Ca(OH)2`` included).
 
     Raises:
         ValueError: For malformed or empty formulas.
     """
-    import matscikit as mk
+    import kemio
 
-    if not (composition := mk.Composition(formula).as_dict()):
+    if not (composition := kemio.Composition(formula).as_dict()):
         raise ValueError(f"Formula must not be empty, got {formula!r}")
     return composition
 
@@ -485,9 +486,9 @@ def _normalize_entry_compositions(
 
 
 def normalize_convex_hull_entries(obj: Any) -> list[dict[str, Any]] | None:
-    """Convex hull entries (composition, energy, stability) of entry dicts, a matscikit
+    """Convex hull entries (composition, energy, stability) of entry dicts, a kemio
     or pymatgen PhaseDiagram or an iterable of entries (pymatgen ComputedEntry,
-    PDEntry, entry dicts); energies above hull and stability from matscikit's
+    PDEntry, entry dicts); energies above hull and stability from kemio's
     PhaseDiagram.
 
     Args:
@@ -504,28 +505,17 @@ def normalize_convex_hull_entries(obj: Any) -> list[dict[str, Any]] | None:
         return None
     if isinstance(obj, (list, tuple)) and all(isinstance(entry, dict) for entry in obj):
         return _normalize_entry_compositions(obj)
-    import matscikit as mk
-    from matscikit.interop import to_phase_diagram
+    import kemio
+    from kemio.interop import to_phase_diagram
 
-    try:  # materialize generators and pymatgen phase diagrams' entries
-        entries = (
-            []
-            if isinstance(obj, mk.PhaseDiagram)
-            else list(getattr(obj, "all_entries", obj))
-        )
-        phase_diagram = to_phase_diagram(entries or obj)
+    try:  # materialize generators, keep phase diagrams (all_entries) as they are
+        is_diagram = isinstance(obj, kemio.PhaseDiagram) or hasattr(obj, "all_entries")
+        phase_diagram = to_phase_diagram(obj if is_diagram else list(obj))
     except TypeError as exc:
         raise TypeError(
             f"Unsupported type for convex hull entries: {type(obj)}. Expected list of "
-            f"dicts, a PhaseDiagram (matscikit, pymatgen) or entry objects ({exc})."
+            f"dicts, a PhaseDiagram (kemio, pymatgen) or entry objects ({exc})."
         ) from exc
-    # matscikit's PhaseDiagram drops entry ids, which matterviz keys selections by
-    entry_ids = [
-        entry.get("entry_id")
-        if isinstance(entry, Mapping)
-        else getattr(entry, "entry_id", None)
-        for entry in entries
-    ] or [None] * len(phase_diagram.compositions)
     keys = ("composition", "energy", "energy_per_atom", "e_above_hull", "is_stable")
     rows = zip(
         [composition.as_dict() for composition in phase_diagram.compositions],
@@ -538,7 +528,7 @@ def normalize_convex_hull_entries(obj: Any) -> list[dict[str, Any]] | None:
     return [
         dict(zip(keys, row, strict=True))
         | ({} if entry_id is None else {"entry_id": entry_id})
-        for row, entry_id in zip(rows, entry_ids, strict=True)
+        for row, entry_id in zip(rows, phase_diagram.ids, strict=True)
     ]
 
 
@@ -550,7 +540,7 @@ def _with_xrd_kind(pattern: dict[str, Any]) -> dict[str, Any]:
 
     matterviz draws ``profile`` patterns as a line and never broadens them, while
     ``sticks`` (its default) are discrete reflections drawn as bars. Computed patterns
-    (matscikit, pymatgen) carry ``hkls`` and stay untagged; an explicit ``kind`` wins.
+    (kemio, pymatgen) carry ``hkls`` and stay untagged; an explicit ``kind`` wins.
 
     Raises:
         ValueError: If ``pattern["kind"]`` is not one of ``XRD_PATTERN_KINDS``.
@@ -585,11 +575,11 @@ def normalize_xrd_pattern(obj: Any) -> dict[str, Any] | None:
 
 
 def _xrd_pattern_to_dict(obj: Any) -> dict[str, Any]:
-    """Convert an ``{x, y, hkls?, d_hkls?, kind?}`` dict, matscikit XrdPattern or
+    """Convert an ``{x, y, hkls?, d_hkls?, kind?}`` dict, kemio XrdPattern or
     pymatgen DiffractionPattern to a dict.
 
     Args:
-        obj: A matscikit XrdPattern, pymatgen DiffractionPattern or a dict.
+        obj: A kemio XrdPattern, pymatgen DiffractionPattern or a dict.
 
     Returns:
         XRD pattern dict with x, y, and optional hkls, d_hkls keys.
@@ -612,26 +602,15 @@ def _xrd_pattern_to_dict(obj: Any) -> dict[str, Any]:
         }
         return {**obj, **series} if series else obj
 
-    import matscikit as mk
-    from matscikit.interop import has_class, to_xrd_pattern
+    import kemio
+    from kemio.interop import has_class, to_xrd_pattern
 
     if has_class(obj, "pymatgen.analysis.diffraction.core.DiffractionPattern"):
         obj = to_xrd_pattern(obj)
-    if isinstance(obj, mk.XrdPattern):
-        result: dict[str, Any] = {
-            "x": obj.two_theta.tolist(),
-            "y": obj.intensities.tolist(),
-        }
-        if obj.hkls is not None:
-            result["hkls"] = [
-                [{"hkl": list(hkl), "multiplicity": mult} for hkl, mult in family]
-                for family in obj.hkls
-            ]
-        if obj.d_spacings is not None:
-            result["d_hkls"] = obj.d_spacings.tolist()
-        return result
+    if isinstance(obj, kemio.XrdPattern):
+        return dict(obj.as_dict())  # matterviz's layout
 
     raise TypeError(
         f"Unsupported type for XRD pattern: {type(obj)}. "
-        "Expected dict, matscikit XrdPattern or pymatgen DiffractionPattern."
+        "Expected dict, kemio XrdPattern or pymatgen DiffractionPattern."
     )

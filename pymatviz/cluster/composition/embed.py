@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     import pandas as pd
-    from matscikit.interop import CompositionLike
+    from kemio.interop import CompositionLike
 
 
 def magpie_featurize(
@@ -28,19 +28,19 @@ def magpie_featurize(
 ) -> np.ndarray:
     """Magpie element-property features of chemical formulas or compositions
     (matminer's ElementProperty "magpie" preset, computed by
-    matscikit.composition_features). For other featurizations, pass a feature matrix
+    kemio.composition_features). For other featurizations, pass a feature matrix
     or callable to cluster_compositions.
 
     Args:
         compositions (Sequence[CompositionLike] | pd.Series): chemical
-            formulas as strings or matscikit/pymatgen Composition objects.
+            formulas as strings or kemio/pymatgen Composition objects.
         normalize (bool): If True, L2-normalize each feature vector (default: False).
             Magpie-style features mix units (e.g. kelvin and eV), so a row norm is
             dominated by the largest-magnitude ones (melting temperature) and divides
             every feature by it; column standardization in project_vectors already
             puts features on a common scale.
         feature_subset (Sequence[str] | None): Feature labels to keep, in this order
-            (see matscikit.composition_feature_labels). Defaults to all 132.
+            (see kemio.composition_feature_labels). Defaults to all 132.
 
     Returns:
         np.ndarray: Array of shape (n_compositions, n_features), missing values as 0.
@@ -48,11 +48,13 @@ def magpie_featurize(
     Raises:
         ValueError: For unknown feature labels.
     """
-    import matscikit as mk
+    import kemio
 
-    features = mk.composition_features([to_composition(comp) for comp in compositions])
+    features = kemio.composition_features(
+        [to_composition(comp) for comp in compositions]
+    )
     if feature_subset is not None:
-        labels = mk.composition_feature_labels()
+        labels = kemio.composition_feature_labels()
         if unknown := [label for label in feature_subset if label not in labels]:
             raise ValueError(f"Unknown Magpie features {unknown}, expected {labels}")
         features = features[:, [labels.index(label) for label in feature_subset]]
@@ -74,7 +76,7 @@ def one_hot_encode(
 
     Args:
         compositions (Sequence[CompositionLike] | pd.Series): chemical
-            formulas as strings or matscikit/pymatgen Composition objects.
+            formulas as strings or kemio/pymatgen Composition objects.
         normalize (bool): Whether to normalize the feature vectors to unit norm
             (default: True)
         elements (Sequence[str] | None): Element symbols to include in the one-hot
