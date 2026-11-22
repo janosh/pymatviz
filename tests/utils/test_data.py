@@ -12,7 +12,7 @@ from tests.conftest import y_pred, y_true
 
 
 if TYPE_CHECKING:
-    from pymatviz.typing import CrystalSystem
+    from matscikit.options import CrystalSystem
 
 
 SPG_BY_CRYSTAL_SYS = {
@@ -39,7 +39,9 @@ def test_spg_to_crystal_sys(spg: int | str, crystal_sys: CrystalSystem) -> None:
     assert crystal_sys == pmv.utils.spg_to_crystal_sys(spg)
 
 
-@pytest.mark.parametrize("spg", [-1, 0, 231, 1.2, "invalid", "P999", "X2/m"])
+@pytest.mark.parametrize(
+    "spg", [-1, 0, 231, 1.2, float("inf"), "invalid", "P999", "X2/m"]
+)
 def test_spg_to_crystal_sys_invalid(spg: float | str) -> None:
     """Out-of-range numbers and unknown symbols raise."""
     with pytest.raises(ValueError, match=f"Invalid space group {spg}"):
@@ -117,6 +119,10 @@ def test_spg_num_to_from_symbol_roundtrip() -> None:
     for num in range(1, 231):
         symbol = pmv.utils.spg_num_to_from_symbol(num)
         assert pmv.utils.spg_num_to_from_symbol(symbol) == num, f"{num=}, {symbol=}"
+    assert pmv.utils.spg_num_to_from_symbol(225.0) == "Fm-3m"
+    for bad in (2.5, float("inf"), float("nan")):
+        with pytest.raises(ValueError, match="Invalid space group number"):
+            pmv.utils.spg_num_to_from_symbol(bad)
 
 
 def test_df_to_arrays() -> None:
@@ -130,8 +136,10 @@ def test_df_to_arrays() -> None:
         df_to_arrays(df_regr, "not-a-col", "x")
     with pytest.raises(ValueError, match="got column names but no df"):
         df_to_arrays(None, "x", y_pred)
-    with pytest.raises(ValueError, match="pass column names or arrays, not both"):
+    with pytest.raises(ValueError, match="with a df, pass column names"):
         df_to_arrays(df_regr, "x", y_pred)
+    with pytest.raises(ValueError, match="with a df, pass column names"):
+        df_to_arrays(df_regr, "x", [y_pred])
     _, y_cols = df_to_arrays(df_regr, "x", ["y", "x"])
     assert list(y_cols) == ["y", "x"]
     np.testing.assert_array_equal(y_cols["y"], y_pred)

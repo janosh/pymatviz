@@ -10,7 +10,9 @@ import numpy as np
 import pytest
 import traitlets as tl
 from matscikit.interop import structure_to_pymatgen_dict
+from matscikit.io import Frame
 
+from pymatviz.notebook import create_widget
 from pymatviz.widgets import TrajectoryWidget
 from tests.conftest import cubic_structure
 from tests.widgets.conftest import decode_envelope
@@ -194,17 +196,22 @@ def test_widget_complete_lifecycle(
                     "structure": "struct1",
                     "other_tensor": [[0.1, 0, 0], [0, 0.1, 0], [0, 0, 0.1]],
                     "temp": 300,
+                    "step": 5,
                 }
             ],
-            {"other_tensor": [[0.1, 0, 0], [0, 0.1, 0], [0, 0, 0.1]], "temp": 300},
+            {
+                "other_tensor": [[0.1, 0, 0], [0, 0.1, 0], [0, 0, 0.1]],
+                "temp": 300,
+                "step": 5,
+            },
             False,
         ),
         (
             [
-                {"structure": "struct1", "step": 0, "density": 3.0},
-                {"structure": "struct2", "step": 1, "density": 3.1},
+                {"structure": "struct1", "step": 10, "density": 3.0},
+                {"structure": "struct2", "step": 20, "density": 3.1},
             ],
-            {"step": 0, "density": 3.0},
+            {"steps": 10, "density": 3.0},  # user steps: matterviz's x axis
             True,
         ),
         # a scalar named like a reserved array ('lattice') stays JSON
@@ -220,7 +227,9 @@ def test_trajectory_widget_property_extraction(
     expected_properties: dict[str, Any],
     is_binary: bool,
 ) -> None:
-    """Numeric frame properties become binary per-frame scalars, others JSON frames."""
+    """Numeric frame properties become binary per-frame scalars, others JSON frames,
+    user steps (else frame indices) the x axis either way.
+    """
     structures = _fe2_frames(len(trajectory_input))
     trajectory_with_structures = [
         {**item, "structure": structures[idx]}
@@ -237,8 +246,33 @@ def test_trajectory_widget_property_extraction(
         assert set(arrays) == {"positions", "numbers", "lattice", *expected_properties}
         return
     assert set(traj) == {"frames", "metadata"}
-    assert [frame["step"] for frame in traj["frames"]] == list(range(n_frames))
+    steps = [item.get("step", idx) for idx, item in enumerate(trajectory_input)]
+    assert [frame["step"] for frame in traj["frames"]] == steps
     assert traj["frames"][0]["metadata"] == expected_properties
+
+
+def test_trajectory_widget_matscikit_frames_and_info() -> None:
+    """Matscikit io.Frames (also via create_widget) and Structure info keys (extxyz
+    frame metadata) become per-frame scalars, site data vectors per-atom arrays,
+    leaving the frames unchanged.
+    """
+    velocities = np.arange(6.0).reshape(2, 3)
+    structures = [
+        struct.replace(site_data={"velocities": velocities})
+        for struct in _fe2_frames(2)
+    ]
+    for idx, struct in enumerate(structures):
+        struct.info = {"temperature": 300.0 + idx, "properties": {"density": 3.0}}
+    frames = [Frame(struct, energy=-1.0 - idx) for idx, struct in enumerate(structures)]
+    for traj, energies in ((frames, [-1, -2]), (structures, None)):
+        widget = create_widget(traj)
+        assert isinstance(widget, TrajectoryWidget)
+        arrays = decode_envelope(widget.trajectory)
+        assert arrays["temperature"].tolist() == [300, 301]
+        assert arrays["density"].tolist() == [3, 3]
+        np.testing.assert_array_equal(arrays["velocities"], [velocities] * 2)
+        assert (arrays["energy"].tolist() if "energy" in arrays else None) == energies
+    assert structures[0].info["temperature"] == 300
 
 
 @pytest.mark.parametrize(
@@ -394,6 +428,14 @@ def test_trajectory_widget_normalization_regressions(
     ):
         with pytest.raises(ValueError, match=match):
             TrajectoryWidget(trajectory=[{"structure": fe3co4_disordered, **bad_frame}])
+    # a frames dict takes structure objects too, and frames lacking one raise
+    obj_frames = {"frames": [{"structure": fe3co4_disordered, "energy": -1.5}]}
+    (obj_frame,) = TrajectoryWidget(trajectory=obj_frames).trajectory["frames"]
+    assert len(obj_frame["structure"]["sites"]) == len(fe3co4_disordered)
+    with pytest.raises(
+        ValueError, match=r"frame 0 must be .* 'structure' key, got \['sites'"
+    ):
+        TrajectoryWidget(trajectory={"frames": [{"sites": [], "lattice": {}}]})
     json.dumps(widget.trajectory)  # round-trips as standard JSON
     # layout used to be filtered from to_dict() by _EXCLUDED_TRAITS, so headless
     # to_img/to_html exports silently ignored it

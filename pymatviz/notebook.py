@@ -8,6 +8,8 @@ import importlib
 import sys
 from typing import TYPE_CHECKING, Any
 
+from matscikit.io import Frame
+
 from pymatviz.widgets.band_structure import BandStructureWidget
 from pymatviz.widgets.composition import CompositionWidget
 from pymatviz.widgets.convex_hull import ConvexHullWidget
@@ -90,7 +92,7 @@ def _display_spec(obj: Any) -> tuple[type[MatterVizWidget], str] | None:
 
 def create_widget(obj: Any) -> MatterVizWidget:
     """MatterViz widget for a pymatgen/ASE/phonopy object (subclasses included), or
-    a trajectory widget for a sequence of structures or frame dicts.
+    a trajectory widget for a sequence of structures, matscikit Frames or frame dicts.
 
     Raises:
         ValueError: If no widget displays obj's type, or obj is an empty sequence.
@@ -103,11 +105,14 @@ def create_widget(obj: Any) -> MatterVizWidget:
             raise ValueError("Cannot create widget from empty sequence")
         first_spec = _display_spec(obj[0])
         is_struct = first_spec is not None and first_spec[0] is StructureWidget
-        if is_struct or (isinstance(obj[0], dict) and "structure" in obj[0]):
+        is_frame = isinstance(obj[0], Frame) or (
+            isinstance(obj[0], dict) and "structure" in obj[0]
+        )
+        if is_struct or is_frame:
             return TrajectoryWidget(trajectory=obj)
     raise ValueError(
         f"No widget registered for {type(obj).__name__}. Supported types: "
-        f"{', '.join(name.rsplit('.', 1)[1] for name in _WIDGET_OF)}"
+        f"{', '.join(sorted({name.rsplit('.', 1)[1] for name in _WIDGET_OF}))}"
     )
 
 

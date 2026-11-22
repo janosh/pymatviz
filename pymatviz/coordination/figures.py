@@ -153,6 +153,8 @@ def coordination_bar_plot(
         groups = dict(sorted(groups.items()))
 
     all_cns = {cn for counts in groups.values() for cn in counts}
+    if not all_cns:
+        raise ValueError("structures have no sites to count coordination numbers of")
     cn_values = list(range(min(all_cns), max(all_cns) + 1))
     elem_colors = _element_colors(element_color_scheme or ElemColorScheme.pastel)
     series: list[dict[str, Any]] = []

@@ -5,12 +5,11 @@ from __future__ import annotations
 from collections import Counter
 from typing import TYPE_CHECKING, Any, Literal
 
-import numpy as np
+import matscikit as mk
 import pandas as pd
 
 from pymatviz.hierarchy import _limit_nodes, _validate_overflow
-from pymatviz.structures import is_structure_like, spacegroup_numbers
-from pymatviz.utils import spg_to_crystal_sys
+from pymatviz.structures import normalize_spacegroups
 from pymatviz.widgets.sunburst import SunburstWidget
 
 
@@ -56,20 +55,16 @@ def spacegroup_sunburst(
     if len(data) == 0:
         raise ValueError("spacegroup_sunburst requires non-empty data")
 
-    # materialize as list[Any] for Series-safe positional access and untyped iteration
-    values: list[Any] = data.tolist() if isinstance(data, pd.Series) else list(data)
-    if is_structure_like(values[0]):  # if 1st item is structure-like, assume all are
-        values = list(spacegroup_numbers(values))
-    if pd.isna(pd.Series(values, dtype=object)).any():
-        raise ValueError("Space group data must not contain missing values")
-    # NumPy scalars to Python ints/floats/strings, which spg_to_crystal_sys accepts
-    values = [val.item() if isinstance(val, np.generic) else val for val in values]
+    numbers = normalize_spacegroups(data)  # merges spellings, settings, int/float
+    # symbol inputs are labeled with their canonical short symbol, others by number
+    as_symbols = isinstance(pd.Series(data).iloc[0], str)
 
     by_system: dict[str, list[dict[str, Any]]] = {}
-    for spg, count in Counter(values).most_common():
-        crystal_sys = spg_to_crystal_sys(spg)
+    for number, count in Counter(numbers.tolist()).most_common():
+        crystal_sys = mk.crystal_system(number)
+        label = mk.space_group_symbol(number) if as_symbols else str(number)
         by_system.setdefault(crystal_sys, []).append(
-            {"id": f"{crystal_sys}/{spg}", "label": str(spg), "value": count}
+            {"id": f"{crystal_sys}/{label}", "label": label, "value": count}
         )
     nodes = [
         {

@@ -8,6 +8,7 @@ import matscikit as mk
 import numpy as np
 import pandas as pd
 import pytest
+from matscikit.options import CrystalSystem
 
 import pymatviz as pmv
 from pymatviz.sunburst import spacegroup_sunburst
@@ -28,20 +29,41 @@ def test_spacegroup_sunburst_all_groups() -> None:
     widget = spacegroup_sunburst(range(1, 231))
     assert isinstance(widget, pmv.widgets.SunburstWidget)
     assert widget.label_text == "label+value"
-    assert {root["id"] for root in widget.data} == set(
-        get_args(pmv.typing.CrystalSystem)
-    )
+    assert {root["id"] for root in widget.data} == set(get_args(CrystalSystem))
     leaves = spg_leaves(widget)
     assert len(leaves) == 230
     assert leaves["cubic/225"] == ("225", 1)
     assert spacegroup_sunburst([1], label_text="percent").label_text == "percent"
 
 
-@pytest.mark.parametrize("invalid", [None, float("nan"), pd.NA, 0, 231, 2.5, "invalid"])
-def test_spacegroup_sunburst_invalid_data(invalid: Any) -> None:
-    """Reject missing and invalid groups instead of losing or mislabeling slices."""
-    with pytest.raises(ValueError, match=r"missing values|Invalid space group"):
+@pytest.mark.parametrize(
+    ("invalid", "err", "match"),
+    [
+        *[(val, ValueError, "missing values") for val in (None, float("nan"), pd.NA)],
+        *[(val, ValueError, r"must be in \[1, 230\]") for val in (0, 231, 2.5)],
+        ("invalid", TypeError, "one kind"),
+        (True, TypeError, "bool"),
+    ],
+)
+def test_spacegroup_sunburst_invalid_data(
+    invalid: Any, err: type[Exception], match: str
+) -> None:
+    """Reject missing, out-of-range, mixed-kind and bool groups instead of losing
+    or mislabeling slices.
+    """
+    with pytest.raises(err, match=match):
         spacegroup_sunburst([1, invalid])
+
+
+def test_spacegroup_sunburst_merges_spellings() -> None:
+    """Symbol spellings and int/float numbers of one group share a slice labeled
+    with the canonical symbol.
+    """
+    assert spg_leaves(spacegroup_sunburst(["Fm-3m", "F m -3 m", "P1"])) == {
+        "cubic/Fm-3m": ("Fm-3m", 2),
+        "triclinic/P1": ("P1", 1),
+    }
+    assert spg_leaves(spacegroup_sunburst([225, 225.0])) == {"cubic/225": ("225", 2)}
 
 
 @pytest.mark.parametrize(

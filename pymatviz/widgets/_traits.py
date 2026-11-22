@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import traitlets as tl
 
 from pymatviz.widgets._normalize import normalize_plot_json, with_defaults
+
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 # Enums of traits with non-None defaults (schema-generated traits read theirs from
@@ -32,6 +36,35 @@ CONTROLS_MODES = ("always", "hover", "never")  # svelte-widgets ControlsConfig.m
 def optional_trait(trait_cls: Any, **kwargs: Any) -> Any:
     """Synced trait defaulting to None so the frontend component default applies."""
     return trait_cls(allow_none=True, default_value=None, **kwargs).tag(sync=True)
+
+
+# JSON container traits a normalized value is checked against
+type _OutputTrait = tl.Dict[Any, Any] | tl.List[Any] | tl.Union
+
+
+class _Normalized(tl.Any):
+    """Trait converting every assigned value (in the constructor or later) with a
+    normalizer, e.g. structure objects to structure dicts, checked against the
+    output trait the frontend expects. None skips both.
+    """
+
+    def __init__(self, normalize: Callable[[Any], Any], output: _OutputTrait) -> None:
+        """Store the normalizer and output trait, defaulting the trait to None."""
+        super().__init__(default_value=None, allow_none=True)
+        self.normalize, self.output = normalize, output
+
+    def validate(self, obj: Any, value: Any) -> Any:
+        """Normalized value, validated by the output trait."""
+        return self.output.validate(obj, self.normalize(value))
+
+
+def normalized_trait(
+    normalize: Callable[[Any], Any], output: _OutputTrait | None = None
+) -> Any:
+    """Synced trait passing every assigned value through ``normalize``, whose
+    result must be a dict (or match ``output``).
+    """
+    return _Normalized(normalize, output or tl.Dict()).tag(sync=True)
 
 
 def color_scale_trait() -> Any:

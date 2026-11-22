@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from numbers import Integral
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -196,7 +197,8 @@ def histogram(
     }
     in_browser = (
         not density
-        and isinstance(bins, int)
+        and isinstance(bins, Integral)
+        and not isinstance(bins, bool)
         and bin_width == 1
         and "orientation" not in kwargs
         and len(all_values) <= MAX_BROWSER_HISTOGRAM_VALUES
@@ -214,7 +216,9 @@ def histogram(
             {"values": vals[(vals >= lo) & (vals <= hi)], "label": str(label)}
             for label, vals in data_arrays.items()
         ]
-        return HistogramWidget(series, bins=bins, **with_defaults(defaults, kwargs))
+        return HistogramWidget(
+            series, bins=int(bins), **with_defaults(defaults, kwargs)
+        )
 
     bin_edges = np.histogram_bin_edges(all_values, bins=bins, range=x_range)
     widths = np.diff(bin_edges)

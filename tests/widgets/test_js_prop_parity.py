@@ -21,6 +21,7 @@ import pytest
 import traitlets as tl
 
 import pymatviz.widgets
+from pymatviz.widgets._traits import _Normalized
 from pymatviz.widgets.matterviz import MatterVizWidget, fetch_widget_asset
 
 
@@ -74,8 +75,10 @@ def js_schema() -> dict[str, dict[str, dict[str, list[str]]]]:
 
 def _trait_kinds(trait: tl.TraitType) -> tuple[set[str], list[str] | None]:
     """JSON kinds a trait accepts besides None, and its string enum values (None for
-    an open string). tl.Any accepts every kind.
+    an open string). tl.Any accepts every kind, a normalized trait its output's.
     """
+    if isinstance(trait, _Normalized):
+        trait = trait.output
     if isinstance(trait, tl.Union):
         kinds: set[str] = set()
         enums: list[str] = []

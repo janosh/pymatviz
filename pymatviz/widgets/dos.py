@@ -8,7 +8,11 @@ import traitlets as tl
 
 from pymatviz.widgets._normalize import _to_dict, check_stack_grids
 from pymatviz.widgets._schema_traits import DosTraits
-from pymatviz.widgets._traits import PlotControlsTraits, optional_trait
+from pymatviz.widgets._traits import (
+    PlotControlsTraits,
+    normalized_trait,
+    optional_trait,
+)
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -38,6 +42,7 @@ class DosWidget(PlotControlsTraits, DosTraits, MatterVizWidget):
     # frequencies), eV for electronic DOS. matterviz reads sigma in the data unit
     # whatever frequency unit the plot displays.
     sigma = optional_trait(tl.Float, min=0.0)
+    doses = normalized_trait(lambda value: _to_dict(value, "DOS", vasprun="dos"))
 
     def __init__(self, doses: Any | None = None, **kwargs: Any) -> None:
         """Initialize the DosWidget.
@@ -52,7 +57,13 @@ class DosWidget(PlotControlsTraits, DosTraits, MatterVizWidget):
         Raises:
             ValueError: If ``stack=True`` and the DOS have different grids.
         """
-        doses = _to_dict(doses, "DOS", vasprun="dos")
-        if kwargs.get("stack"):
-            check_stack_grids(doses)
         super().__init__(doses=doses, **kwargs)
+
+    @tl.validate("doses", "stack")
+    def _check_stack_grids(self, proposal: tl.Bunch) -> Any:
+        """Stacked DOS need a shared grid, whichever of doses and stack is set last."""
+        is_doses = proposal["trait"].name == "doses"
+        doses = proposal["value"] if is_doses else self.doses
+        if doses and (self.stack if is_doses else proposal["value"]):
+            check_stack_grids(doses)
+        return proposal["value"]

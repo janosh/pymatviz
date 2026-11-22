@@ -10,6 +10,7 @@ import pymatviz.rdf.figures as rdf_figures
 from pymatviz.rdf.figures import rdf_plot
 from pymatviz.rdf.helpers import calculate_rdf
 from pymatviz.structures import structure_dict
+from pymatviz.widgets import RdfPlotWidget
 from tests.conftest import SI_STRUCTS, cubic_structure
 
 
@@ -69,6 +70,13 @@ def test_rdf_plot_in_browser(mode: Literal["element_pairs", "full"]) -> None:
     lone = rdf_plot(NACL, cutoff=4)  # a single structure is sent unlabeled
     assert lone.cutoff == 4
     assert lone.structures == structure_dict(NACL)
+    # the widget itself takes structure objects alone, in lists or labeled
+    for structs, expected in (
+        ([NACL], [structure_dict(NACL)]),
+        ({1: NACL}, {"1": structure_dict(NACL)}),
+        (NACL, structure_dict(NACL)),
+    ):
+        assert RdfPlotWidget(structures=structs).structures == expected
 
 
 def test_rdf_plot_patterns() -> None:

@@ -11,7 +11,7 @@ from __future__ import annotations
 import functools
 import math
 from collections import Counter, defaultdict
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
 from typing import Any
 
 import numpy as np
@@ -62,33 +62,25 @@ def _composition_facts(amounts: Mapping[str, float]) -> dict[str, Any]:
     }
 
 
-def _species_facts(species: Iterable[Any], n_sites: int) -> dict[str, Any]:
-    """Sum occupancies across site species in structure and trajectory JSON."""
-    counts: defaultdict[str, float] = defaultdict(float)
-    for entry in species:
-        if isinstance(entry, str):
-            counts[entry] += 1
-        elif isinstance(entry, Mapping) and isinstance(
-            element := entry.get("element"), str
-        ):
-            occu = entry.get("occu")
-            counts[element] += 1 if occu is None else occu
-    return {"n_sites": n_sites, **(_composition_facts(counts) if counts else {})}
-
-
 def _structure_facts(struct: Any) -> dict[str, Any]:
-    """Element counts, formula, and site count from a serialized structure dict."""
+    """Element counts (occupancies summed), formula, and site count from a
+    serialized structure dict.
+    """
     if not isinstance(struct, Mapping):
         return {}
     sites = struct.get("sites") or []
-    species = (
-        entry
-        for site in sites
-        if isinstance(site, Mapping)
-        and isinstance(entries := site.get("species"), list)
-        for entry in entries
-    )
-    return _species_facts(species, len(sites))
+    counts: defaultdict[str, float] = defaultdict(float)
+    for site in sites:
+        entries = site.get("species") if isinstance(site, Mapping) else None
+        for entry in entries if isinstance(entries, list) else []:
+            if isinstance(entry, str):
+                counts[entry] += 1
+            elif isinstance(entry, Mapping) and isinstance(
+                element := entry.get("element"), str
+            ):
+                occu = entry.get("occu")
+                counts[element] += 1 if occu is None else occu
+    return {"n_sites": len(sites), **(_composition_facts(counts) if counts else {})}
 
 
 def _series_list(widget_data: Mapping[str, Any]) -> list[Mapping[str, Any]]:
@@ -171,12 +163,6 @@ def _describe_trajectory(data: Mapping[str, Any]) -> dict[str, Any]:
             "n_sites": len(atomic_numbers),
             **_composition_facts(counts),
         }
-    if traj.get("@class") == "Trajectory":
-        species = traj.get("species") or []
-        coords = traj.get("coords", [])
-        if isinstance(coords, Mapping) and coords.get("@class") == "array":
-            coords = coords["data"]
-        return {"n_frames": len(coords), **_species_facts(species, len(species))}
     frames = traj.get("frames") or []
     facts: dict[str, Any] = {"n_frames": len(frames)}
     if frames and isinstance(frames[0], Mapping):
@@ -294,13 +280,23 @@ def _describe_spectral(
     return facts
 
 
-_describe_dos = functools.partial(
-    _describe_spectral,
-    data_key="doses",
-    value_key="energies",
-    count_key="n_energies",
-    range_key="energy_range",
-)
+def _describe_dos(data: Mapping[str, Any]) -> dict[str, Any]:
+    """Energy (electronic) or frequency (phonon) grid size and range of DOS."""
+    return _describe_spectral(
+        data,
+        data_key="doses",
+        value_key="energies",
+        count_key="n_energies",
+        range_key="energy_range",
+    ) or _describe_spectral(
+        data,
+        data_key="doses",
+        value_key="frequencies",
+        count_key="n_frequencies",
+        range_key="frequency_range",
+    )
+
+
 _describe_band_structure = functools.partial(
     _describe_spectral,
     data_key="band_structs",

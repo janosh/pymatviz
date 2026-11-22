@@ -13,7 +13,7 @@ from pymatviz.utils import ROOT
 
 
 if TYPE_CHECKING:
-    from pymatviz.typing import CrystalSystem
+    from matscikit.options import CrystalSystem
 
 _elements_csv = f"{ROOT}/pymatviz/elements.csv"
 df_ptable: pd.DataFrame = pd.read_csv(_elements_csv, comment="#").set_index("symbol")
@@ -38,11 +38,11 @@ def spg_to_crystal_sys(spg: float | str) -> CrystalSystem:
         if number != int(number):
             raise ValueError(f"{number} is not integral")  # noqa: TRY301
         return mk.crystal_system(int(number))
-    except ValueError as exc:
+    except (ValueError, OverflowError) as exc:
         raise ValueError(f"Invalid space group {spg}: {exc}") from exc
 
 
-def spg_num_to_from_symbol(spg: int | str) -> str | int:
+def spg_num_to_from_symbol(spg: float | str) -> str | int:
     """Short Hermann-Mauguin symbol (e.g. "Fm-3m") of a space group number, or the
     number of a Hermann-Mauguin/Hall symbol (loose spellings and settings allowed).
 
@@ -54,7 +54,9 @@ def spg_num_to_from_symbol(spg: int | str) -> str | int:
             return mk.space_group_number(spg)
         except ValueError as exc:
             raise ValueError(f"Invalid space group symbol {spg}") from exc
-    return mk.space_group_symbol(spg)
+    if spg % 1 != 0:  # also catches inf and nan
+        raise ValueError(f"Invalid space group number {spg}")
+    return mk.space_group_symbol(int(spg))
 
 
 def html_tag(text: str, tag: str = "span", style: str = "", title: str = "") -> str:
@@ -161,9 +163,18 @@ def df_to_arrays(df: pd.DataFrame | None, *args: Any) -> list[Any]:
         return list(map(np.asarray, args))
     if not isinstance(df, pd.DataFrame):
         raise TypeError(f"df should be pandas DataFrame or None, got {type(df)}")
-    if arrays := [arg for arg in args if isinstance(arg, np.ndarray)]:
-        raise ValueError(f"pass column names or arrays, not both, got {arrays}")
     is_col = [isinstance(arg, str | int) for arg in args]
+    if bad := [
+        arg
+        for arg, single in zip(args, is_col, strict=True)
+        if not single
+        and not (
+            isinstance(arg, list | tuple) and all(isinstance(c, str | int) for c in arg)
+        )
+    ]:
+        raise ValueError(
+            f"with a df, pass column names (or lists of them), not data, got {bad}"
+        )
     flat_cols = [
         col
         for arg, single in zip(args, is_col, strict=True)

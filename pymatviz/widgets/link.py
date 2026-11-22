@@ -209,7 +209,7 @@ class WidgetLink:
                 widget.highlighted_ids = None
         elif isinstance(widget, StructureWidget) and self._structures is not None:
             if 0 <= index < len(self._structures):
-                widget.structure = structure_to_dict(self._structures[index])
+                widget.structure = self._structures[index]
             else:
                 warnings.warn(
                     f"link_selection: {index=} out of range for {len(self._structures)}"

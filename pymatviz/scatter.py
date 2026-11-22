@@ -29,9 +29,15 @@ def _get_axis_labels(
     """Axis labels from column names, array names (e.g. pd.Series) or defaults."""
     if df is not None:
         return str(x), str(y)
-    xlabel = str(getattr(x, "name", x if isinstance(x, str) else "Actual"))
-    ylabel = str(getattr(y, "name", y if isinstance(y, str) else "Predicted"))
-    return xlabel, ylabel
+
+    def label(arr: ArrayLike | str, default: str) -> str:
+        """Column name, array name (unnamed pd.Series: default) or default."""
+        if isinstance(arr, str):
+            return arr
+        name = getattr(arr, "name", None)
+        return default if name is None else str(name)
+
+    return label(x, "Actual"), label(y, "Predicted")
 
 
 def _parity_data(

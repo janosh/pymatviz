@@ -6,10 +6,25 @@ from typing import Any
 
 import traitlets as tl
 
-from pymatviz.widgets._normalize import _to_dict, normalize_plot_json
+from pymatviz.widgets._normalize import normalize_plot_json, structure_to_dict
 from pymatviz.widgets._schema_traits import RdfPlotTraits
-from pymatviz.widgets._traits import PlotControlsTraits
+from pymatviz.widgets._traits import PlotControlsTraits, normalized_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
+
+
+def _rdf_structures(structures: Any) -> dict[str, Any] | list[Any]:
+    """Structure dict of one structure (object or dict), or a list or
+    ``{label: structure}`` dict of them as structure dicts.
+    """
+    if isinstance(structures, list | tuple):
+        converted: Any = [structure_to_dict(struct) for struct in structures]
+    elif isinstance(structures, dict) and "sites" not in structures:
+        converted = {
+            str(key): structure_to_dict(val) for key, val in structures.items()
+        }
+    else:
+        converted = structure_to_dict(structures)
+    return normalize_plot_json(converted, "RdfPlot.structures")
 
 
 class RdfPlotWidget(PlotControlsTraits, RdfPlotTraits, MatterVizWidget):
@@ -27,7 +42,7 @@ class RdfPlotWidget(PlotControlsTraits, RdfPlotTraits, MatterVizWidget):
     """
 
     patterns = tl.Any(allow_none=True).tag(sync=True)
-    structures = tl.Any(allow_none=True).tag(sync=True)
+    structures = normalized_trait(_rdf_structures, tl.Union([tl.Dict(), tl.List()]))
     mode = tl.CaselessStrEnum(
         ["element_pairs", "full"], default_value="element_pairs"
     ).tag(sync=True)
@@ -45,14 +60,12 @@ class RdfPlotWidget(PlotControlsTraits, RdfPlotTraits, MatterVizWidget):
         """Initialize the RdfPlotWidget.
 
         Args:
-            structures: Structure data (pymatgen Structure dict, or list/dict of them)
-                for on-the-fly RDF computation.
+            structures: A structure (matscikit, pymatgen, ASE, phonopy or structure
+                dict), or a list or ``{label: structure}`` dict of them, for
+                on-the-fly RDF computation.
             patterns: Pre-computed RDF data (list of ``{r, g_r, label}`` dicts).
             **kwargs: Additional widget properties.
         """
-        if structures is not None and not isinstance(structures, (list, dict)):
-            structures = _to_dict(structures, "RDF structures")
-
         if structures is not None and patterns is not None:
             raise ValueError(
                 "RdfPlotWidget accepts either 'structures' (for on-the-fly RDF "
@@ -60,7 +73,7 @@ class RdfPlotWidget(PlotControlsTraits, RdfPlotTraits, MatterVizWidget):
             )
 
         super().__init__(
-            structures=normalize_plot_json(structures, "RdfPlot.structures"),
+            structures=structures,
             patterns=normalize_plot_json(patterns, "RdfPlot.patterns"),
             **kwargs,
         )

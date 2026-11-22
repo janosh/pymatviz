@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 import matscikit as mk
 import numpy as np
+import pandas as pd
 import pytest
 from matscikit.io import read_structure
 
@@ -138,9 +139,14 @@ def test_xrd_pattern_wavelength() -> None:
     ids=["canonical", "ferrox"],
 )
 def test_xrd_plot_pattern_dict(pattern: dict[str, list[float]]) -> None:
-    """A bare pattern dict (canonical or Ferrox keys) is one unlabeled pattern."""
+    """A bare pattern dict (canonical or Ferrox keys) is one unlabeled pattern,
+    also when holding pandas Series, which serialize as arrays.
+    """
     widget = pmv.xrd_plot(pattern)
     assert (widget.patterns["x"], widget.patterns["y"]) == ([10, 20], [50, 100])
+    series_widget = pmv.xrd_plot({key: pd.Series(val) for key, val in pattern.items()})
+    np.testing.assert_array_equal(series_widget.patterns["y"], [50, 100])
+    assert '"patterns"' in series_widget.to_json()
 
 
 def test_xrd_pattern_labels() -> None:

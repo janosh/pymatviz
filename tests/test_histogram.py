@@ -35,7 +35,7 @@ def test_histogram_bins_in_browser_unless_python_needed(
     kwargs: dict[str, Any], browser: bool
 ) -> None:
     """Raw values go to the browser unless an option needs NumPy binning."""
-    opts: dict[str, Any] = {"bins": 4} | kwargs
+    opts: dict[str, Any] = {"bins": np.int64(4)} | kwargs  # NumPy ints as bins
     widget = histogram({"a": [0.0, 1.0, 2.0], "b": [5.0, 6.0]}, **opts)
     assert isinstance(widget, HistogramWidget if browser else BarPlotWidget)
     if isinstance(widget, HistogramWidget):

@@ -14,7 +14,7 @@ import pandas as pd
 import pytest
 
 from pymatviz.widgets._normalize import (
-    _parse_formula_to_dict,
+    _formula_dict,
     _to_dict,
     normalize_convex_hull_entries,
     normalize_plot_json,
@@ -104,29 +104,29 @@ def test_to_dict_drops_unread_fields() -> None:
     assert _to_dict(big, "band structure") is big
 
 
-# === _parse_formula_to_dict ===
+# === _formula_dict ===
 
 
 @pytest.mark.parametrize(
     ("formula", "expected"),
     [
         ("Li", {"Li": 1.0}),
-        ("Li2O", {"Li": 2.0, "O": 1.0}),
         ("Fe2O3", {"Fe": 2.0, "O": 3.0}),
         ("LiFePO4", {"Li": 1.0, "Fe": 1.0, "P": 1.0, "O": 4.0}),
-        ("O", {"O": 1.0}),
+        ("Ca(OH)2", {"Ca": 1.0, "O": 2.0, "H": 2.0}),  # groupings
+        ("Fe0.5O", {"Fe": 0.5, "O": 1.0}),
     ],
 )
-def test_parse_formula_to_dict(formula: str, expected: dict[str, float]) -> None:
-    """Formula strings are parsed to element-count dicts."""
-    assert _parse_formula_to_dict(formula) == expected
+def test_formula_dict(formula: str, expected: dict[str, float]) -> None:
+    """Formula strings are parsed to element-amount dicts."""
+    assert _formula_dict(formula) == expected
 
 
-@pytest.mark.parametrize("formula", ["", "   ", "(Li)2O", "Li[Fe]O2", "2LiO", "Li2O!"])
-def test_parse_formula_to_dict_rejects_malformed(formula: str) -> None:
-    """Malformed formulas raise instead of silently dropping invalid tokens."""
-    with pytest.raises(ValueError, match=r"Formula|Unsupported|Invalid"):
-        _parse_formula_to_dict(formula)
+@pytest.mark.parametrize("formula", ["", "   ", "2LiO", "Li2O!", "Li2O)", "Xx2"])
+def test_formula_dict_rejects_malformed(formula: str) -> None:
+    """Malformed and empty formulas raise instead of silently dropping tokens."""
+    with pytest.raises(ValueError, match=r"Formula must not be empty|invalid formula"):
+        _formula_dict(formula)
 
 
 # === normalize_convex_hull_entries ===
@@ -160,10 +160,10 @@ _HULL_ENTRIES += (("Li3O", -16.3),)
 @pytest.mark.parametrize("source", ["matscikit", "objects", "generator"])
 def test_normalize_convex_hull_entries_from_phase_diagram(source: str) -> None:
     """Matscikit PhaseDiagrams, entry objects and generators give compositions, total
-    energies, energies above hull and stability in input order.
+    energies, energies above hull, stability and entry ids in input order.
     """
     entries = [
-        SimpleNamespace(composition=formula, energy=energy)
+        SimpleNamespace(composition=formula, energy=energy, entry_id=f"id-{formula}")
         for formula, energy in _HULL_ENTRIES
     ]
     compositions = [mk.Composition(formula) for formula, _ in _HULL_ENTRIES]
@@ -197,6 +197,10 @@ def test_normalize_convex_hull_entries_from_phase_diagram(source: str) -> None:
         atol=1e-12,
     )
     assert [entry["is_stable"] for entry in result] == [True] * 3 + [False, True]
+    ids = [entry.get("entry_id") for entry in result]
+    assert ids == [
+        None if source == "matscikit" else f"id-{f}" for f, _ in _HULL_ENTRIES
+    ]
 
 
 # === normalize_xrd_pattern ===
@@ -258,10 +262,21 @@ def test_normalize_xrd_pattern_dict_validation_errors(
 
 
 @pytest.mark.parametrize(
-    "hkls_in", [[[1, 0, 0], [1, 1, 0]], [[[1, 0, 0]], [[1, 1, 0]]], _HKLS]
+    ("hkls_in", "expected"),
+    [
+        ([[1, 0, 0], [1, 1, 0]], _HKLS),
+        ([[[1, 0, 0]], [[1, 1, 0]]], _HKLS),
+        (_HKLS, _HKLS),
+        (  # every equivalent reflection of a group is kept
+            [[[1, 0, 0], [0, 1, 0]], [[1, 1, 0]]],
+            [[{"hkl": [1, 0, 0]}, {"hkl": [0, 1, 0]}], [{"hkl": [1, 1, 0]}]],
+        ),
+    ],
 )
-def test_normalize_xrd_pattern_ferrox_hkls_shapes(hkls_in: list[Any]) -> None:
-    """Test Ferrox hkls normalization for flat, nested, and passthrough forms."""
+def test_normalize_xrd_pattern_ferrox_hkls_shapes(
+    hkls_in: list[Any], expected: list[Any]
+) -> None:
+    """Ferrox hkls normalize from flat, grouped and passthrough forms."""
     ferrox_dict = {
         "two_theta": [10.0, 20.0],
         "intensities": [100.0, 50.0],
@@ -273,7 +288,7 @@ def test_normalize_xrd_pattern_ferrox_hkls_shapes(hkls_in: list[Any]) -> None:
     assert result["x"] == [10.0, 20.0]
     assert result["y"] == [100.0, 50.0]
     assert result["d_hkls"] == [2.5, 2.0]
-    assert result["hkls"] == _HKLS
+    assert result["hkls"] == expected
 
 
 def test_normalize_xrd_pattern_mixed_schema_prefers_complete_ferrox() -> None:

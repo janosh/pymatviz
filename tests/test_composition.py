@@ -126,8 +126,9 @@ def test_count_elements_raises(values: Any, kwargs: dict[str, Any], match: str) 
         ),
         (FE_P_O_COMPS, {"exclude_elements": ["Fe", "P"]}, {"O": 63}, ["Fe", "P"]),
         (FE_P_O_COMPS, {"exclude_elements": "Fe"}, {"O": 63, "P": 12}, ["Fe"]),
+        ([{"Fe": 2, "O": 3}, {"Fe": 1}], {}, {"Fe": 3, "O": 3}, []),
     ],
-    ids=["mixed-input", "exclude-list", "exclude-str"],
+    ids=["mixed-input", "exclude-list", "exclude-str", "dicts"],
 )
 @pytest.mark.parametrize("fill_value", [None, 0])
 def test_count_elements_options(
@@ -186,6 +187,7 @@ def test_count_formulas_chem_sys(
         ([], "chem_sys", "Empty input: data sequence is empty"),
         (["Fe2O3", "NotAFormula"], "chem_sys", "Invalid formula"),
         (["Fe-Zz"], "chem_sys", "Invalid elements in system"),
+        (["CH3-"], "chem_sys", "Invalid formula: CH3-"),  # not a chemical system
         (["Fe2O3"], "invalid", "Invalid group_by="),
     ],
 )

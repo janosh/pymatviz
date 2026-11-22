@@ -12,7 +12,7 @@ import traitlets as tl
 from pymatviz.widgets._binary import is_binary_envelope, volume_envelope
 from pymatviz.widgets._normalize import normalize_plot_json, structure_to_dict
 from pymatviz.widgets._schema_traits import StructureTraits
-from pymatviz.widgets._traits import StructureVizTraits
+from pymatviz.widgets._traits import StructureVizTraits, normalized_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -127,8 +127,9 @@ class StructureWidget(StructureVizTraits, StructureTraits, MatterVizWidget):
     """MatterViz widget for visualizing structures in Python notebooks.
 
     Structure data can be provided as:
-    - ``structure``: A parsed dict (from pymatgen/ASE ``.as_dict()``), or
-      a pymatgen ``Structure``/ASE ``Atoms`` object (auto-converted).
+    - ``structure``: A structure dict (e.g. pymatgen ``Structure.as_dict()``) or a
+      matscikit/pymatgen ``Structure``, ASE ``Atoms`` or ``PhonopyAtoms`` object,
+      converted on construction and on later assignment.
     - ``structure_string``: A raw file string (CIF, POSCAR, XYZ, etc.)
       parsed on the frontend. Useful when you have the file content but
       not a parsed object. If both are provided, ``structure`` takes
@@ -182,6 +183,7 @@ class StructureWidget(StructureVizTraits, StructureTraits, MatterVizWidget):
 
     # display options shared with TrajectoryWidget live in StructureVizTraits
 
+    structure = normalized_trait(structure_to_dict)
     show_image_atoms = tl.Bool(default_value=True).tag(sync=True)
     # Cell shown: the input cell or MatterViz's (moyo) conventional/primitive standard
     # cell, which carries site properties over with vectors rotated into its frame
@@ -286,4 +288,4 @@ class StructureWidget(StructureVizTraits, StructureTraits, MatterVizWidget):
             **kwargs: Additional widget properties (e.g.
                 ``structure_string``, ``atom_radius``, ``show_bonds``).
         """
-        super().__init__(structure=structure_to_dict(structure), **kwargs)
+        super().__init__(structure=structure, **kwargs)

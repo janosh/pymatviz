@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from typing import Any
 
+import matscikit as mk
 import numpy as np
 import pytest
 
@@ -95,6 +96,10 @@ from tests.conftest import SI2_STRUCT, cubic_structure
         (
             pmv.dos(doses={"energies": [-1, 0, 1], "extra": {"energies": [-2, 2]}}),
             {"n_energies": 3, "energy_range": [-1.0, 1.0]},
+        ),
+        (  # phonon DOS: frequency grid
+            pmv.dos(doses=mk.PhononDos([0, 1, 2], [0, 1, 0])),
+            {"n_frequencies": 3, "frequency_range": [0.0, 2.0]},
         ),
         (pmv.band_structure(band_structs={"bands": [[-1, 0, 1]]}), {"n_bands": 1}),
         (

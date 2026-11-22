@@ -6,8 +6,35 @@ from collections.abc import Mapping
 from typing import Any
 
 from pymatviz.widgets._schema_traits import XrdTraits
-from pymatviz.widgets._traits import PlotControlsTraits
+from pymatviz.widgets._traits import PlotControlsTraits, normalized_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
+
+
+def _normalize_patterns(patterns: Any) -> dict[str, Any] | None:
+    """Pattern dict of one pattern, or ``{label: pattern dict}`` of a mapping of
+    pattern objects or dicts (a dict of arrays is one pattern).
+
+    Raises:
+        ValueError: If a labeled mapping is empty.
+    """
+    import matscikit as mk
+    from matscikit.interop import has_class
+
+    from pymatviz.widgets._normalize import normalize_xrd_pattern
+
+    is_labeled = isinstance(patterns, Mapping) and all(
+        isinstance(val, mk.XrdPattern | Mapping)
+        or has_class(val, "pymatgen.analysis.diffraction.core.DiffractionPattern")
+        for val in patterns.values()
+    )
+    if is_labeled and not patterns:
+        raise ValueError("XrdWidget patterns mapping must not be empty")
+    if is_labeled:
+        return {
+            str(label): normalize_xrd_pattern(pattern)
+            for label, pattern in patterns.items()
+        }
+    return normalize_xrd_pattern(patterns)
 
 
 class XrdWidget(PlotControlsTraits, XrdTraits, MatterVizWidget):
@@ -41,6 +68,8 @@ class XrdWidget(PlotControlsTraits, XrdTraits, MatterVizWidget):
         ... )
     """
 
+    patterns = normalized_trait(_normalize_patterns)
+
     def __init__(self, patterns: Any | None = None, **kwargs: Any) -> None:
         """Initialize the XrdWidget.
 
@@ -52,26 +81,4 @@ class XrdWidget(PlotControlsTraits, XrdTraits, MatterVizWidget):
             **kwargs: Additional widget properties (e.g. ``controls_open`` to
                 start with the control pane expanded).
         """
-        import matscikit as mk
-        from matscikit.interop import has_class
-
-        from pymatviz.widgets._normalize import normalize_xrd_pattern
-
-        # a mapping of patterns (pattern objects or dicts) is labeled, a dict of
-        # arrays is one pattern
-        is_labeled = isinstance(patterns, Mapping) and all(
-            isinstance(val, mk.XrdPattern | Mapping)
-            or has_class(val, "pymatgen.analysis.diffraction.core.DiffractionPattern")
-            for val in patterns.values()
-        )
-        if is_labeled and not patterns:
-            raise ValueError("XrdWidget patterns mapping must not be empty")
-        normalized = (
-            {
-                str(label): normalize_xrd_pattern(pattern)
-                for label, pattern in patterns.items()
-            }
-            if is_labeled
-            else normalize_xrd_pattern(patterns)
-        )
-        super().__init__(patterns=normalized, **kwargs)
+        super().__init__(patterns=patterns, **kwargs)

@@ -6,7 +6,7 @@ from typing import Any
 
 from pymatviz.widgets._normalize import _to_dict
 from pymatviz.widgets._schema_traits import BandStructureTraits
-from pymatviz.widgets._traits import PlotControlsTraits
+from pymatviz.widgets._traits import PlotControlsTraits, normalized_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -33,6 +33,10 @@ class BandStructureWidget(PlotControlsTraits, BandStructureTraits, MatterVizWidg
         ... )
     """
 
+    band_structs = normalized_trait(
+        lambda value: _to_dict(value, "band structure", vasprun="bands")
+    )
+
     def __init__(self, band_structs: Any | None = None, **kwargs: Any) -> None:
         """Initialize the BandStructureWidget.
 
@@ -44,7 +48,4 @@ class BandStructureWidget(PlotControlsTraits, BandStructureTraits, MatterVizWidg
                 dict of those to overlay.
             **kwargs: Additional widget properties.
         """
-        super().__init__(
-            band_structs=_to_dict(band_structs, "band structure", vasprun="bands"),
-            **kwargs,
-        )
+        super().__init__(band_structs=band_structs, **kwargs)

@@ -11,6 +11,7 @@ from pymatviz.widgets._binary import (
     _is_number,
     force_stats,
     frame_input,
+    frame_item,
     is_binary_envelope,
     trajectory_to_envelope,
 )
@@ -96,12 +97,15 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
 
         Args:
             trajectory: Trajectory data in one of these formats:
-                - dict with 'frames' key (matterviz format)
-                - pymatgen ``Trajectory`` or its ``as_dict()`` (parsed by matterviz)
-                - list of structures (pymatgen Structure, ASE Atoms, PhonopyAtoms, etc.)
+                - dict with 'frames' key (matterviz format, structures as dicts
+                  or objects)
+                - pymatgen ``Trajectory`` or its ``as_dict()`` (read by matscikit)
+                - list of structures (matscikit, pymatgen, ASE, PhonopyAtoms) or
+                  matscikit ``io.Frame``s (e.g. from ``read_extxyz``)
                 - list of dicts with properties: [
-                    {"structure": struct, "energy": 1.23, ...}, ...
-                ]
+                    {"structure": struct, "step": 10, "energy": 1.23, ...}, ...
+                ] (``step``, else the frame index, is the plots' x axis; structure
+                info and ASE calculator results add to the properties)
                 Per-atom forces under a frame's ``force``/``forces`` key (or an ASE
                 calculator's results) move to site ``properties.force`` and add
                 ``force_max``/``force_norm`` to the frame metadata, the layout
@@ -225,19 +229,29 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
         self, trajectory_data: dict[str, Any]
     ) -> dict[str, Any]:
         """Complete every frame of a ``{"frames": [{"structure", "step"?, ...}]}``
-        dict; ``step`` (x axis of the property plots) defaults to the frame index.
+        dict (structures as dicts or objects); ``step`` (x axis of the property
+        plots) defaults to the frame index.
+
+        Raises:
+            ValueError: If a frame is not a dict with a ``structure`` key.
         """
-        frames = [
-            self._attach_forces(
-                {
-                    **frame,
-                    "step": frame.get("step", frame_idx),
-                    "structure": self._complete_structure_fields(frame["structure"]),
-                },
-                frame_idx,
-            )
-            for frame_idx, frame in enumerate(trajectory_data["frames"])
-        ]
+        frames = []
+        for frame_idx, frame in enumerate(trajectory_data["frames"]):
+            if not isinstance(frame, dict) or "structure" not in frame:
+                keys = list(frame) if isinstance(frame, dict) else type(frame).__name__
+                raise ValueError(
+                    f"trajectory frame {frame_idx} must be a structure or a dict with "
+                    f"a 'structure' key, got {keys}"
+                )
+            structure = frame["structure"]
+            if not isinstance(structure, dict):
+                structure = self._to_structure_dict(structure)
+            completed = {
+                **frame,
+                "step": frame.get("step", frame_idx),
+                "structure": self._complete_structure_fields(structure),
+            }
+            frames.append(self._attach_forces(completed, frame_idx))
         return {**trajectory_data, "frames": frames}
 
     def _normalize_frames(
@@ -251,7 +265,10 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
         frames: list[dict[str, Any]] = []
         for step_idx, item in enumerate(items):
             structure, properties = frame_input(item)
-            frame = {"structure": self._to_structure_dict(structure), "step": step_idx}
+            frame = {
+                "structure": self._to_structure_dict(structure),
+                "step": properties.get("step", step_idx),
+            }
             if properties:
                 frame["metadata"] = properties
             frames.append(self._attach_forces(frame, step_idx))
@@ -264,22 +281,10 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
         """
         from matscikit.interop import to_trajectory
 
-        items = []
-        for frame in to_trajectory(trajectory):
-            structure = frame.structure
-            props = structure.info.get("properties") or {}
-            structure.info = {  # frame properties go to the item, not the structure
-                key: val
-                for key, val in structure.info.items()
-                if key not in ("properties", "time_step")
-            }
-            results = {
-                key: val
-                for key in ("energy", "free_energy", "forces", "stress")
-                if (val := getattr(frame, key)) is not None
-            }
-            items.append({"structure": structure, **props, **results})
-        return items
+        return [
+            frame_item(frame, drop=("time_step",))
+            for frame in to_trajectory(trajectory)
+        ]
 
     def _normalize_trajectory(self, trajectory: Any) -> dict[str, Any] | None:
         """Convert trajectory to a ``matterviz-binary-v1`` envelope when the binary

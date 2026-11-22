@@ -5,6 +5,7 @@ from __future__ import annotations
 import functools
 import itertools
 import math
+import re
 from collections import defaultdict
 from collections.abc import Mapping
 from numbers import Number
@@ -13,7 +14,6 @@ from typing import TYPE_CHECKING, Any
 import matscikit as mk
 import numpy as np
 import pandas as pd
-from matscikit.interop import has_class
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 
 from pymatviz.enums import ElemCountMode
@@ -36,10 +36,10 @@ if TYPE_CHECKING:
 
 
 def is_composition_like(obj: Any) -> TypeIs[CompositionLike]:
-    """Whether obj is a formula string, a matscikit or pymatgen Composition."""
-    return isinstance(obj, str | mk.Composition) or has_class(
-        obj, "pymatgen.core.composition.Composition"
-    )
+    """Whether obj is a formula string, {element: amount} mapping or Composition
+    (matscikit or pymatgen, the latter a Mapping too).
+    """
+    return isinstance(obj, str | Mapping | mk.Composition)
 
 
 def to_composition(obj: FormulaLike, *, allow_negative: bool = False) -> mk.Composition:
@@ -173,11 +173,14 @@ def count_elements(
     return srs.drop(excluded_elements)
 
 
+_CHEM_SYS_PATTERN = re.compile(r"[A-Z][a-z]?(-[A-Z][a-z]?)+")
+
+
 def _system_and_formula(
     item: FormulaLike, group_by: FormulaGroupBy
 ) -> tuple[tuple[str, ...], str]:
     """Sorted element tuple and formula label of one count_formulas input item."""
-    if isinstance(item, str) and "-" in item:  # already a chemical system string
+    if isinstance(item, str) and _CHEM_SYS_PATTERN.fullmatch(item):  # e.g. "Fe-O"
         elems, formula = item.split("-"), item
     else:
         try:

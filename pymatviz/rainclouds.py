@@ -84,6 +84,8 @@ def rainclouds(
                 values = np.asarray(data_itm, dtype=float)
         if values.ndim != 1 or len(values) == 0:
             raise ValueError(f"rainclouds data for {label!r} must be a non-empty 1D")
+        if not np.isfinite(values).all():
+            raise ValueError(f"rainclouds data for {label!r} holds non-finite values")
         entry: dict[str, Any] = {
             "y": values,
             "label": str(label),

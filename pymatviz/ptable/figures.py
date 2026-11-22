@@ -105,7 +105,7 @@ def ptable_heatmap(
     values: ElemValues,
     *,
     count_mode: ElemCountModeLike = ElemCountMode.composition,
-    exclude_elements: Sequence[str] = (),
+    exclude_elements: str | Sequence[str] = (),
     fill_value: float | None = None,
     heat_mode: Literal["value", "fraction", "percent"] = "value",
     log: bool = False,
@@ -159,6 +159,13 @@ def ptable_heatmap(
         )
     if heat_mode not in ("value", "fraction", "percent"):
         raise ValueError(f"{heat_mode=} must be 'value', 'fraction' or 'percent'")
+    if heat_mode != "value" and fill_value is not None:
+        raise ValueError(
+            f"{fill_value=} would count toward the {heat_mode} total; drop it or use "
+            "heat_mode='value'"
+        )
+    if isinstance(exclude_elements, str):
+        exclude_elements = [exclude_elements]
     is_numeric = isinstance(values, pd.Series) and is_numeric_dtype(values)
     title = values.name if is_numeric else None
 

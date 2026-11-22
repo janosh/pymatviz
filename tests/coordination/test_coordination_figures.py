@@ -145,6 +145,12 @@ def test_coordination_bar_plot_style_options() -> None:
             "no structure file at 'invalid input'",
         ),
         (NACL, {"strategy": "nope"}, ValueError, "unknown coordination strategy"),
+        (
+            mk.Structure(np.eye(3) * 3, [], np.zeros((0, 3))),
+            {"strategy": 3.0},
+            ValueError,
+            "no sites to count",
+        ),
         (NACL, {"annotate_bars": True}, ValueError, "need a Python strategy"),
         (NACL, {"split_mode": "by_structure_and_element"}, ValueError, "not a valid"),
         (

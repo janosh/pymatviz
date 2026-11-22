@@ -106,7 +106,7 @@ def pmg_li_o_entries() -> list[Any]:
             PDEntry(Composition(formula), energy)
             for formula, energy in formula_energies
         ),
-        ComputedEntry("Li3O", -16.0, correction=-0.3),
+        ComputedEntry("Li3O", -16.0, correction=-0.3, entry_id="mp-3"),
     ]
 
 
@@ -901,6 +901,8 @@ def test_normalize_convex_hull_entries_pymatgen(source: str) -> None:
     assert [entry["composition"] for entry in result] == [
         entry.composition.as_dict() for entry in entries
     ]
+    ids = {entry.get("entry_id") for entry in result}
+    assert ids == ({None} if source == "matscikit" else {None, "mp-3"})
     # total energy = energy per atom x atoms, within round-off of pymatgen's
     np.testing.assert_allclose(
         [entry["energy"] for entry in result],
@@ -1373,7 +1375,8 @@ def test_trajectory_widget_with_ase_atoms(
 ) -> None:
     """ASE frames (incl. pymatgen MSONAtoms, whose as_dict() is not a structure dict)
     keep info and calculator results (which AseAtomsAdaptor drops) with and without a
-    simulation cell; calculator forces become site vectors.
+    simulation cell; calculator forces become site vectors, momenta velocities.
+    A frame dict's extra keys add to (not replace) the calculator results.
     """
     atoms_cls = pytest.importorskip("ase").Atoms
     from ase.calculators.singlepoint import SinglePointCalculator
@@ -1403,3 +1406,17 @@ def test_trajectory_widget_with_ase_atoms(
     assert arrays["force_max"].tolist() == [2.0]
     np.testing.assert_allclose(arrays["force_norm"], [2 / np.sqrt(len(atoms))])
     assert arrays["force"][0].tolist() == forces.tolist()
+
+    (frame,) = TrajectoryWidget(
+        trajectory=[{"structure": atoms, "step": 7}]
+    ).trajectory["frames"]
+    assert frame["step"] == 7
+    assert {key: frame["metadata"][key] for key in ("temperature", "energy")} == {
+        "temperature": 300,
+        "energy": energy,
+    }
+    atoms.set_momenta(np.ones((len(atoms), 3)))
+    velocities = decode_envelope(TrajectoryWidget(trajectory=atoms).trajectory)[
+        "velocities"
+    ]
+    np.testing.assert_allclose(velocities[0], atoms.get_velocities(), rtol=1e-6)

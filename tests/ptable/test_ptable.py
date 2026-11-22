@@ -98,6 +98,8 @@ def test_ptable_heatmap_exclude_and_fill() -> None:
     )
     assert "O" not in widget.heatmap_values
     assert widget.heatmap_values["Fe"] == 2
+    excl_str = pmv.ptable_heatmap({"Fe": 1, "O": 2}, exclude_elements="O")
+    assert "O" not in excl_str.heatmap_values
     assert widget.heatmap_values["Na"] == 0
     assert len(widget.heatmap_values) == 116
     assert widget.labels == {"O": "excl.", "N": "user", "Li": "x"}  # user label wins
@@ -132,6 +134,7 @@ def test_ptable_heatmap_series_title(srs: Any, title: str) -> None:
         (dict(values={"Fe": -1, "O": 1}, heat_mode="fraction"), "nonzero sum"),
         (dict(values={"Fe": np.nan}), "no finite values"),
         (dict(values={}), "no finite values"),
+        (dict(heat_mode="fraction", fill_value=0), "would count toward the fraction"),
     ],
 )
 def test_ptable_heatmap_raises(kwargs: dict[str, Any], err_msg: str) -> None:

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 import matscikit as mk
 import numpy as np
+import pandas as pd
 
 from pymatviz.structures import is_structure_like, to_structure
 from pymatviz.widgets._normalize import normalize_xrd_pattern
@@ -84,7 +85,7 @@ def xrd_plot(
     # arrays) is one pattern; labels named like those keys hold pattern objects
     is_single = not isinstance(patterns, Mapping) or any(
         set(keys) <= patterns.keys()
-        and isinstance(patterns[keys[0]], list | tuple | np.ndarray)
+        and isinstance(patterns[keys[0]], list | tuple | np.ndarray | pd.Series)
         for keys in (("x", "y"), ("two_theta", "intensities"))
     )
     labeled = {"XRD Pattern": patterns} if is_single else patterns

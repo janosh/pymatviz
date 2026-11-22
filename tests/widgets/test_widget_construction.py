@@ -1601,3 +1601,51 @@ def test_vasprun_paths(labeled: bool) -> None:
     np.testing.assert_array_equal(doses["densities"]["1"], ref_dos["densities"]["1"])
     assert pmv.dos(doses=path).doses["energies"] == doses["energies"]
     assert pmv.band_structure(band_structs=path).band_structs["bands"] == bands["bands"]
+
+
+@pytest.mark.parametrize(
+    ("widget_cls", "trait", "make_value"),
+    [
+        (
+            StructureWidget,
+            "structure",
+            lambda: mk.Structure(np.eye(3) * 3, ["Fe"], [[0, 0, 0]]),
+        ),
+        (DosWidget, "doses", lambda: mk.PhononDos([0, 1, 2], [0, 1, 0])),
+        (
+            BandStructureWidget,
+            "band_structs",
+            lambda: mk.PhononBands(
+                [[0, 0, 0], [0.5, 0, 0]], [[0, 0, 0], [1, 1, 2]], np.eye(3)
+            ),
+        ),
+        (XrdWidget, "patterns", lambda: {"a": mk.XrdPattern([10], [100])}),
+        (
+            ConvexHullWidget,
+            "entries",
+            lambda: mk.PhaseDiagram(["Li", "O", "Li2O"], [-1.9, -4.2, -14.3 / 3]),
+        ),
+    ],
+)
+def test_widgets_normalize_assigned_objects(
+    widget_cls: type[MatterVizWidget], trait: str, make_value: Any
+) -> None:
+    """Objects assigned after construction convert like constructor input."""
+    widget = widget_cls()
+    setattr(widget, trait, make_value())
+    as_json = lambda val: json.dumps(val, default=np.ndarray.tolist, sort_keys=True)
+    expected = getattr(widget_cls(**{trait: make_value()}), trait)
+    assert as_json(getattr(widget, trait)) == as_json(expected)
+
+
+def test_dos_widget_stack_checks_grids_in_either_order() -> None:
+    """stack=True rejects DOS on different grids whether doses or stack comes last."""
+    doses = {
+        "a": mk.PhononDos([0, 1, 2], [0, 1, 0]),
+        "b": mk.PhononDos([0, 1, 3], [0, 1, 0]),
+    }
+    with pytest.raises(ValueError, match=r"one grid, but \['b'\]"):
+        DosWidget(doses).stack = True
+    widget = DosWidget(stack=True)
+    with pytest.raises(ValueError, match=r"one grid, but \['b'\]"):
+        widget.doses = doses

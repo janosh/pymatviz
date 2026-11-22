@@ -5,7 +5,7 @@ for matterviz Svelte components.
 from __future__ import annotations
 
 import math
-import re
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Literal
 
 
@@ -57,10 +57,10 @@ def _normalize_ferrox_hkls(hkls_data: Any) -> Any:
     if all(is_miller(hkl_entry) for hkl_entry in hkls_data):
         return [[{"hkl": hkl_entry}] for hkl_entry in hkls_data]
     if all(
-        isinstance(hkl_group, list) and hkl_group and is_miller(hkl_group[0])
+        isinstance(hkl_group, list) and hkl_group and all(map(is_miller, hkl_group))
         for hkl_group in hkls_data
-    ):
-        return [[{"hkl": hkl_group[0]}] for hkl_group in hkls_data]
+    ):  # one group of symmetry-equivalent reflections per peak
+        return [[{"hkl": hkl} for hkl in hkl_group] for hkl_group in hkls_data]
     return hkls_data
 
 
@@ -485,32 +485,17 @@ def structure_to_dict(
     return struct
 
 
-def _parse_formula_to_dict(formula: str) -> dict[str, float]:
-    """Parse a chemical formula string into an element->amount dict.
+def _formula_dict(formula: str) -> dict[str, float]:
+    """``{element: amount}`` of a formula string (parsed by matscikit's Composition,
+    groupings like ``Ca(OH)2`` included).
 
-    Handles simple formulas like "Li2O", "Fe2O3", "LiFePO4".
-    For formulas that are just an element symbol (e.g. "Li"), returns {"Li": 1}.
-
-    Args:
-        formula: Chemical formula string.
-
-    Returns:
-        Dict mapping element symbols to their counts.
+    Raises:
+        ValueError: For malformed or empty formulas.
     """
-    if not formula.strip():
-        raise ValueError("Formula must not be empty.")
-    if any(char in formula for char in "()[]{}"):
-        raise ValueError(f"Unsupported grouping in formula: {formula!r}.")
+    import matscikit as mk
 
-    composition: dict[str, float] = {}
-    matches = list(re.finditer(r"([A-Z][a-z]?)(\d*\.?\d*)", formula))
-    if "".join(match.group(0) for match in matches) != formula:
-        raise ValueError(f"Invalid formula syntax: {formula!r}.")
-    for match in matches:
-        element = match.group(1)
-        count_str = match.group(2)
-        count = float(count_str) if count_str else 1.0
-        composition[element] = composition.get(element, 0) + count
+    if not (composition := mk.Composition(formula).as_dict()):
+        raise ValueError(f"Formula must not be empty, got {formula!r}")
     return composition
 
 
@@ -524,7 +509,7 @@ def _normalize_entry_compositions(
     leaving dict compositions unchanged.
     """
     return [
-        {**entry, "composition": _parse_formula_to_dict(entry["composition"])}
+        {**entry, "composition": _formula_dict(entry["composition"])}
         if isinstance(entry.get("composition"), str)
         else entry
         for entry in entries
@@ -554,30 +539,38 @@ def normalize_convex_hull_entries(obj: Any) -> list[dict[str, Any]] | None:
     import matscikit as mk
     from matscikit.interop import to_phase_diagram
 
-    try:  # materialize generators, keep phase diagrams (all_entries) as they are
-        is_diagram = isinstance(obj, mk.PhaseDiagram) or hasattr(obj, "all_entries")
-        phase_diagram = to_phase_diagram(obj if is_diagram else list(obj))
+    try:  # materialize generators and pymatgen phase diagrams' entries
+        entries = (
+            []
+            if isinstance(obj, mk.PhaseDiagram)
+            else list(getattr(obj, "all_entries", obj))
+        )
+        phase_diagram = to_phase_diagram(entries or obj)
     except TypeError as exc:
         raise TypeError(
             f"Unsupported type for convex hull entries: {type(obj)}. Expected list of "
             f"dicts, a PhaseDiagram (matscikit, pymatgen) or entry objects ({exc})."
         ) from exc
+    # matscikit's PhaseDiagram drops entry ids, which matterviz keys selections by
+    entry_ids = [
+        entry.get("entry_id")
+        if isinstance(entry, Mapping)
+        else getattr(entry, "entry_id", None)
+        for entry in entries
+    ] or [None] * len(phase_diagram.compositions)
+    keys = ("composition", "energy", "energy_per_atom", "e_above_hull", "is_stable")
+    rows = zip(
+        [composition.as_dict() for composition in phase_diagram.compositions],
+        phase_diagram.energies.tolist(),
+        phase_diagram.energies_per_atom.tolist(),
+        phase_diagram.e_above_hull().tolist(),
+        phase_diagram.is_stable().tolist(),
+        strict=True,
+    )
     return [
-        {
-            "composition": composition.as_dict(),
-            "energy": energy,
-            "energy_per_atom": energy_per_atom,
-            "e_above_hull": e_above_hull,
-            "is_stable": is_stable,
-        }
-        for composition, energy, energy_per_atom, e_above_hull, is_stable in zip(
-            phase_diagram.compositions,
-            phase_diagram.energies.tolist(),
-            phase_diagram.energies_per_atom.tolist(),
-            phase_diagram.e_above_hull().tolist(),
-            phase_diagram.is_stable().tolist(),
-            strict=True,
-        )
+        dict(zip(keys, row, strict=True))
+        | ({} if entry_id is None else {"entry_id": entry_id})
+        for row, entry_id in zip(rows, entry_ids, strict=True)
     ]
 
 
@@ -623,6 +616,18 @@ def normalize_xrd_pattern(obj: Any) -> dict[str, Any] | None:
     return _with_xrd_kind(_xrd_pattern_to_dict(obj))
 
 
+def _is_series(values: Any) -> bool:
+    """Whether values is a pandas Series (or Index), which widget JSON can't hold."""
+    return hasattr(values, "to_numpy")
+
+
+def _unwrap(arrays: dict[str, Any]) -> dict[str, Any]:
+    """Values with pandas Series swapped for their NumPy arrays."""
+    return {
+        key: val.to_numpy() if _is_series(val) else val for key, val in arrays.items()
+    }
+
+
 def _xrd_pattern_to_dict(obj: Any) -> dict[str, Any]:
     """Convert a canonical/Ferrox dict, matscikit XrdPattern or pymatgen
     DiffractionPattern to a dict.
@@ -640,7 +645,8 @@ def _xrd_pattern_to_dict(obj: Any) -> dict[str, Any]:
                     "XRD pattern dict has mismatched canonical lengths: "
                     f"len(x)={len(obj['x'])}, len(y)={len(obj['y'])}."
                 )
-            return obj
+            arrays = {key: obj[key] for key in ("x", "y") if _is_series(obj[key])}
+            return {**obj, **_unwrap(arrays)} if arrays else obj
 
         if all(key in obj for key in ("two_theta", "intensities")):
             if len(obj["two_theta"]) != len(obj["intensities"]):
@@ -651,8 +657,7 @@ def _xrd_pattern_to_dict(obj: Any) -> dict[str, Any]:
                 )
 
             normalized: dict[str, Any] = {
-                "x": obj["two_theta"],
-                "y": obj["intensities"],
+                **_unwrap({"x": obj["two_theta"], "y": obj["intensities"]}),
             }
             if "d_spacings" in obj:
                 normalized["d_hkls"] = obj["d_spacings"]

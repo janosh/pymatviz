@@ -102,6 +102,11 @@ def test_to_structure_and_site_helpers() -> None:
         ),
         ([], ValueError, "Cannot plot empty set of structures"),
         ({}, ValueError, "Cannot plot empty set of structures"),
+        (
+            pd.Series(SI_STRUCTS, index=["a", "a"]),
+            ValueError,
+            r"labels must be unique, got duplicates \['a'\]",
+        ),
     ],
 )
 def test_normalize_structures_errors(

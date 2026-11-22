@@ -75,6 +75,9 @@ def normalize_structures(systems: _StructureInputs) -> dict[Hashable, mk.Structu
         raise ValueError("Cannot plot empty set of structures")
 
     if isinstance(systems, (pd.Series, Mapping)):  # keep original keys/index
+        if isinstance(systems, pd.Series) and systems.index.has_duplicates:
+            dupes = systems.index[systems.index.duplicated()].unique().tolist()
+            raise ValueError(f"structure labels must be unique, got duplicates {dupes}")
         return {key: to_structure(val) for key, val in systems.items()}
 
     if isinstance(systems, Sequence):
@@ -156,7 +159,7 @@ def normalize_spacegroups(data: Sequence[SpacegroupLike] | pd.Series) -> pd.Seri
         numbers = spacegroup_numbers(result.tolist())
         return pd.Series(numbers, index=result.index, name=result.name)
 
-    if pd.api.types.is_numeric_dtype(result):
+    if pd.api.types.is_numeric_dtype(result) and not pd.api.types.is_bool_dtype(result):
         invalid = result[(result < 1) | (result > 230) | (result % 1 != 0)]
         if len(invalid) > 0:
             raise ValueError(

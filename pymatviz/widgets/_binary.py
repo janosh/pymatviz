@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Collection, Iterable, Mapping
 from typing import Any, NamedTuple
 
 import numpy as np
@@ -12,6 +12,8 @@ from pymatviz.widgets._normalize import normalize_plot_json
 
 BINARY_FORMAT = "matterviz-binary-v1"
 TRAJECTORY_RESERVED = {"positions", "numbers", "lattice", "steps"}
+# matscikit Structure info keys describing the structure, not frame metadata
+STRUCTURE_INFO_KEYS = ("properties", "spin_multiplicity")
 MAX_ATOMIC_NUMBER = 118
 
 
@@ -187,31 +189,20 @@ def _is_number(value: Any) -> bool:
 
 
 def object_metadata(structure: Any) -> dict[str, Any]:
-    """Metadata of a structure-like object: its properties (a matscikit Structure's
-    ``info["properties"]``) or ASE info, plus ASE calculator results (energy, forces,
-    stress, ...) which pymatgen's ``AseAtomsAdaptor`` drops.
+    """Metadata of a structure-like object: a matscikit Structure's info (extxyz frame
+    keys, ``info["properties"]`` merged in) or ASE info, plus ASE calculator results
+    (energy, forces, stress, ...) which pymatgen's ``AseAtomsAdaptor`` drops.
     """
     import matscikit as mk
 
     if isinstance(structure, mk.Structure):
-        return dict(structure.info.get("properties") or {})
+        info = structure.info
+        return {
+            key: val for key, val in info.items() if key not in STRUCTURE_INFO_KEYS
+        } | dict(info.get("properties") or {})
     metadata = getattr(structure, "properties", None) or getattr(structure, "info", {})
     calc = getattr(structure, "calc", None)
     return {**(metadata or {}), **(getattr(calc, "results", None) or {})}
-
-
-def _pmg_numbers(
-    species: Sequence[Any], charge: float | None, spin: float | None
-) -> np.ndarray | None:
-    """Atomic numbers of pymatgen species, or None if binary would drop information:
-    oxidation states, a net charge or a non-default spin multiplicity.
-    """
-    if any(getattr(sp, "oxi_state", None) is not None for sp in species):
-        return None
-    numbers = np.array([getattr(sp, "Z", 0) for sp in species])
-    if charge or (spin is not None and spin != 1 + int(numbers.sum()) % 2):
-        return None
-    return numbers
 
 
 # Cells below this volume (Å³) are degenerate: such frames go to JSON
@@ -229,35 +220,61 @@ class _Frame(NamedTuple):
     props: Mapping[str, Any]
 
 
+def frame_item(frame: Any, drop: Collection[str] = ()) -> dict[str, Any]:
+    """``{"structure", **metadata, **results}`` of a matscikit ``io.Frame``, its
+    structure's info (minus ``drop`` keys) moved to the item on a copy.
+    """
+    structure = frame.structure.replace()
+    metadata = object_metadata(structure)
+    structure.info = {  # frame metadata goes to the item, not the structure
+        key: val for key, val in structure.info.items() if key == "spin_multiplicity"
+    }
+    results = {
+        key: val
+        for key in ("energy", "free_energy", "forces", "stress")
+        if (val := getattr(frame, key)) is not None
+    }
+    kept = {key: val for key, val in metadata.items() if key not in drop}
+    return {"structure": structure, **kept, **results}
+
+
 def frame_input(item: Any) -> tuple[Any, Mapping[str, Any]]:
-    """Unwrap a frame and select its explicit properties or the object's metadata."""
+    """Unwrap a frame into its structure and properties: the object's metadata
+    overridden by a ``{"structure", **props}`` dict's explicit ones.
+    """
+    from matscikit.io import Frame
+
+    if isinstance(item, Frame):
+        item = frame_item(item)
     if isinstance(item, Mapping) and "structure" in item:
         structure = item["structure"]
         props = {key: val for key, val in item.items() if key != "structure"}
-        return structure, props or object_metadata(structure)
+        return structure, {**object_metadata(structure), **props}
     return item, object_metadata(item)
 
 
 def _frame(item: Any) -> _Frame | None:
     """Extract geometry, or select JSON for richer structures."""
     import matscikit as mk
-    from matscikit.interop import has_class, is_ase_atoms
+    from matscikit.interop import has_class, is_ase_atoms, to_structure
 
     structure, props = frame_input(item)
     if isinstance(item, Mapping) and len(item) > 1 and object_metadata(structure):
         return None  # JSON keeps frame metadata separate from structure properties.
+    if has_class(structure, "pymatgen.core.structure.SiteCollection"):
+        structure = to_structure(structure)  # site properties become site data
     if isinstance(structure, mk.Structure):
-        # disordered sites, site data (oxidation states, labels, site properties), a
-        # net charge, a non-default spin or other info need JSON
+        # disordered sites, labels, oxidation states, a net charge or a non-default
+        # spin need JSON; other site data travel as per-atom vectors
         if not structure.is_ordered:
             return None
         numbers = structure.numbers.astype(int)
         spin = structure.info.get("spin_multiplicity")
+        site_data = dict(structure.site_data)
         if (
-            structure.site_data
+            site_data.keys() & {"labels", "oxidation_states"}
             or structure.charge
             or (spin is not None and spin != 1 + int(numbers.sum()) % 2)
-            or set(structure.info) - {"properties", "spin_multiplicity"}
         ):
             return None
         periodic = any(structure.pbc)
@@ -268,28 +285,7 @@ def _frame(item: Any) -> _Frame | None:
             structure.positions,
             structure.lattice if periodic else None,
             structure.pbc if periodic else None,
-            {},
-            props,
-        )
-    if has_class(structure, "pymatgen.core.structure.SiteCollection"):
-        if not structure.is_ordered or any(
-            site.label != site.species_string for site in structure
-        ):
-            return None
-        numbers = _pmg_numbers(
-            structure.species,
-            structure.charge,
-            getattr(structure, "spin_multiplicity", None),
-        )
-        if numbers is None:
-            return None
-        lattice = getattr(structure, "lattice", None)
-        return _Frame(
-            numbers,
-            structure.cart_coords,
-            lattice.matrix if lattice else None,
-            lattice.pbc if lattice else None,
-            structure.site_properties,
+            site_data,
             props,
         )
     if not is_ase_atoms(structure) or structure.constraints:
@@ -302,10 +298,12 @@ def _frame(item: Any) -> _Frame | None:
     site_props = {
         key: val
         for key, val in structure.arrays.items()
-        if key not in ("numbers", "positions")
+        if key not in ("numbers", "positions", "momenta")
     }
     if "initial_magmoms" in site_props:  # The adaptor maps these to site magmom.
         return None
+    if "momenta" in structure.arrays:  # velocities, as the JSON path sends them
+        site_props["velocities"] = structure.get_velocities()
     return _Frame(structure.numbers, structure.positions, cell, pbc, site_props, props)
 
 
@@ -321,8 +319,9 @@ def _channels(
     for idx, (site_props, props) in enumerate(frames):
         seen: set[str] = set()
         for key, value in (*site_props.items(), *props.items()):
-            name = "force" if key == "forces" else key
-            if name in seen or name in TRAJECTORY_RESERVED:
+            # user steps are the reserved steps array matterviz plots against
+            name = {"forces": "force", "step": "steps"}.get(key, key)
+            if name in seen or key in TRAJECTORY_RESERVED:
                 return None
             seen.add(name)
             frame_property = name != "force" and key not in site_props
@@ -359,12 +358,16 @@ def _channels(
                 vectors.setdefault(name, []).append(array)
             else:
                 return None
-    if any(len(series) != n_frames for series in vectors.values()) or (
-        stress
-        and (
-            len(stress) != n_frames
-            or "frame_stress" in scalars
-            or "frame_stress" in vectors
+    if (
+        any(len(series) != n_frames for series in vectors.values())
+        or ("steps" in scalars and np.isnan(scalars["steps"]).any())
+        or (
+            stress
+            and (
+                len(stress) != n_frames
+                or "frame_stress" in scalars
+                or "frame_stress" in vectors
+            )
         )
     ):
         return None

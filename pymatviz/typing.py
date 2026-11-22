@@ -33,17 +33,6 @@ ElemCountModeName = Literal[
 ]
 type ElemCountModeLike = "ElemCountMode | ElemCountModeName"
 
-# Bare Literal assignments (not `type`): get_args() is empty on PEP 695 type aliases
-CrystalSystem = Literal[
-    "triclinic",
-    "monoclinic",
-    "orthorhombic",
-    "tetragonal",
-    "trigonal",
-    "hexagonal",
-    "cubic",
-]
-
 type ElemValues = (
     Mapping[str, int | float]
     | Mapping[int, int | float]

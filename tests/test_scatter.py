@@ -78,6 +78,11 @@ def test_density_plots_use_series_names_and_drop_nan(
     assert widget.x_axis == {"label": "x"}
     assert widget.y_axis == {"label": "custom"}
     assert len(widget.series[0]["x"]) == 5
+    unnamed = plot_func(pd.Series(x_vals.to_numpy()), y_vals.rename(None), stats=False)
+    assert (unnamed.x_axis, unnamed.y_axis) == (
+        {"label": "Actual"},
+        {"label": "Predicted"},
+    )
 
 
 @pytest.mark.parametrize(

@@ -6,7 +6,9 @@ from typing import Any
 
 import traitlets as tl
 
+from pymatviz.widgets._normalize import normalize_convex_hull_entries
 from pymatviz.widgets._schema_traits import ConvexHullTraits
+from pymatviz.widgets._traits import normalized_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -41,6 +43,7 @@ class ConvexHullWidget(ConvexHullTraits, MatterVizWidget):
         ... )
     """
 
+    entries = normalized_trait(normalize_convex_hull_entries, tl.List())
     # Display options
     show_stable = tl.Bool(default_value=True).tag(sync=True)
     show_unstable = tl.Bool(default_value=True).tag(sync=True)
@@ -54,9 +57,4 @@ class ConvexHullWidget(ConvexHullTraits, MatterVizWidget):
                 pymatgen entries, or a list of dicts with composition and energy keys.
             **kwargs: Additional widget properties.
         """
-        from pymatviz.widgets._normalize import normalize_convex_hull_entries
-
-        super().__init__(
-            entries=normalize_convex_hull_entries(entries),
-            **kwargs,
-        )
+        super().__init__(entries=entries, **kwargs)
