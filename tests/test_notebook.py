@@ -6,7 +6,10 @@ import subprocess
 import sys
 from typing import Any
 
+import matscikit as mk
+import numpy as np
 import pytest
+from matscikit.electronic import ElectronicDos
 from pymatgen.analysis.diffraction.xrd import DiffractionPattern
 from pymatgen.analysis.phase_diagram import PDEntry, PhaseDiagram
 from pymatgen.core import Composition, Lattice, Structure
@@ -157,6 +160,19 @@ def test_phonopy_dos_integration(shell: Any) -> None:
             "ConvexHullWidget",
             "convex_hull",
         ),
+        (lambda: mk.PhononDos([0, 1, 2], [0, 1, 0]), "DosWidget", "dos"),
+        (
+            lambda: mk.PhononBands(
+                [[0, 0, 0], [0.5, 0, 0]], [[0, 0, 0], [1, 1, 2]], np.eye(3)
+            ),
+            "BandStructureWidget",
+            "band_structure",
+        ),
+        (
+            lambda: ElectronicDos(np.array([-1, 0, 1]), np.array([[0, 1, 0]]), 0.0),
+            "DosWidget",
+            "dos",
+        ),
         # trajectory fallback for a list of frame dicts
         (
             lambda: (
@@ -172,7 +188,10 @@ def test_phonopy_dos_integration(shell: Any) -> None:
             "trajectory",
         ),
     ],
-    ids=["composition", "xrd", "phase_diagram", "trajectory_dicts"],
+    ids=[
+        *("composition", "xrd", "phase_diagram", "mk_phonon_dos", "mk_phonon_bands"),
+        *("mk_electronic_dos", "trajectory_dicts"),
+    ],
 )
 def test_create_widget(
     obj_factory: Any, expected_widget: str, expected_type: str

@@ -36,7 +36,7 @@ widget.to_img(
 # %% Multiple structures: legend group and line dash per structure
 widget = pmv.coordination_vs_cutoff_line(
     {key1: structures[key1], key2: structures[key2], key3: structures[key3]},
-    strategy=(1.0, 6.0),
+    cutoff_range=(1.0, 6.0),
     num_points=100,
 )
 widget.show()

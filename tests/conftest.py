@@ -117,10 +117,11 @@ def fe3co4_disordered() -> IStructure:
     """Disordered Fe3C-O2 pymatgen structure without site properties (Fe:C 3:1 on
     the first site), as a user would pass one.
     """
-    from pymatviz.structures import to_pymatgen
+    from matscikit.interop import structure_to_pymatgen_dict
+
     from pymatviz.utils.testing import fe3co4_disordered
 
-    return IStructure.from_sites(to_pymatgen(fe3co4_disordered))
+    return IStructure.from_dict(structure_to_pymatgen_dict(fe3co4_disordered))
 
 
 @pytest.fixture

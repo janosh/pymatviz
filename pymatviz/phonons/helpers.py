@@ -1,4 +1,4 @@
-"""Phonon database documents and phonopy to pymatgen conversion."""
+"""Phonon database documents."""
 
 from __future__ import annotations
 
@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Any, Self
 
-    from phonopy.phonon.band_structure import BandStructure as PhonopyBandStructure
     from pymatgen.core import Structure
     from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
     from pymatgen.phonon.dos import PhononDos
@@ -50,24 +49,3 @@ class PhononDBDoc:
                 if field.init and field.name in data
             }
         )
-
-
-def phonopy_to_pymatgen_bands(band_struct: PhonopyBandStructure) -> PhononBands:
-    """Convert phonopy BandStructure to pymatgen PhononBandStructureSymmLine.
-
-    Args:
-        band_struct (PhonopyBandStructure): Phonopy band structure object
-
-    Returns:
-        PhononBands: Converted pymatgen phonon band structure
-    """
-    import tempfile
-
-    import yaml
-    from pymatgen.io.phonopy import get_ph_bs_symm_line_from_dict
-
-    with tempfile.NamedTemporaryFile() as tmp_file:
-        band_struct.write_yaml(filename=tmp_file.name)
-        with open(tmp_file.name) as file:
-            bands_dict = yaml.safe_load(file)
-        return get_ph_bs_symm_line_from_dict(bands_dict)

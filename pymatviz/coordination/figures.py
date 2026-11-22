@@ -3,18 +3,17 @@
 from __future__ import annotations
 
 from collections import Counter
-from inspect import isclass
 from typing import TYPE_CHECKING
 
+import matscikit as mk
 import numpy as np
 
 from pymatviz.colors import ELEM_COLORS_JMOL
 from pymatviz.coordination.helpers import (
-    NEIGHBOR_TOL,
+    PYTHON_CN_STRATEGIES,
     CnSplitMode,
+    CnStrategy,
     coordination_nums_in_structure,
-    is_near_neighbors,
-    site_neighbor_distances,
 )
 from pymatviz.enums import ElemColorScheme
 from pymatviz.structures import normalize_structures, site_elements, str_labels
@@ -29,7 +28,6 @@ if TYPE_CHECKING:
     from typing import Any
 
     import pandas as pd
-    from pymatgen.analysis.local_env import NearNeighbors
 
     from pymatviz.typing import AnyStructure
 
@@ -77,7 +75,7 @@ def coordination_bar_plot(
     | Sequence[AnyStructure]
     | pd.Series,
     *,
-    strategy: str | float | NearNeighbors | type[NearNeighbors] = "electroneg_ratio",
+    strategy: str | CnStrategy = "electroneg_ratio",
     split_mode: CnSplitMode | str = CnSplitMode.by_element,
     element_color_scheme: ElemColorScheme | dict[str, str] | None = None,
     annotate_bars: bool = False,
@@ -87,16 +85,15 @@ def coordination_bar_plot(
 
     A MatterViz bonding strategy name (``"electroneg_ratio"``, ``"explicit_only"``,
     ``"pair_cutoffs"``) bonds the structures in the browser, where the controls pane
-    switches strategy and split mode live. A cutoff radius or pymatgen
-    ``NearNeighbors`` strategy computes the CNs in Python instead.
+    switches strategy and split mode live. A cutoff radius, ``"crystal_nn"`` or
+    ``"voronoi"`` computes the CNs in Python (with matscikit) instead.
 
     Args:
         structures (AnyStructure | dict[str, AnyStructure] | Sequence[AnyStructure]):
             A single structure or a dict, sequence or pd.Series of structures.
-        strategy (str | float | NearNeighbors | type[NearNeighbors]): A MatterViz
-            bonding strategy name (computed in the browser), or for Python: a cutoff
-            distance in Å, a NearNeighbors instance or subclass (instantiated).
-            Defaults to "electroneg_ratio".
+        strategy (str | float): A MatterViz bonding strategy name (computed in the
+            browser), or for Python: a cutoff distance in Å, "crystal_nn" (pymatgen's
+            CrystalNN) or "voronoi" (VoronoiNN). Defaults to "electroneg_ratio".
         split_mode (CnSplitMode | str): Which bar series to draw:
             "by_element": one series per element, summed over all structures.
             "by_structure": one series per structure.
@@ -120,11 +117,11 @@ def coordination_bar_plot(
     """
     split_mode = CnSplitMode(split_mode)
     struct_dict = normalize_structures(structures)
-    if isinstance(strategy, str):
+    if isinstance(strategy, str) and strategy not in PYTHON_CN_STRATEGIES:
         if element_color_scheme is not None or annotate_bars:
             raise ValueError(
                 "element_color_scheme and annotate_bars need a Python strategy (cutoff "
-                f"radius or NearNeighbors), got {strategy=}"
+                f"radius, 'crystal_nn' or 'voronoi'), got {strategy=}"
             )
         labeled = str_labels(struct_dict)
         return CoordinationBarPlotWidget(
@@ -193,7 +190,7 @@ def coordination_vs_cutoff_line(
     | Sequence[AnyStructure]
     | pd.Series,
     *,
-    strategy: tuple[float, float] | NearNeighbors | type[NearNeighbors] = (1, 5),
+    cutoff_range: tuple[float, float] = (1, 5),
     num_points: int = 50,
     element_color_scheme: ElemColorScheme | dict[str, str] = ElemColorScheme.jmol,
     **kwargs: Any,
@@ -206,12 +203,8 @@ def coordination_vs_cutoff_line(
     Args:
         structures (AnyStructure | dict[str, AnyStructure] | Sequence[AnyStructure]): A
             single structure or a dictionary or sequence of structures.
-        strategy (tuple[float, float] | NearNeighbors | type[NearNeighbors]):
-            Neighbor-finding strategy. Can be one of:
-            - tuple[float, float]: (min_cutoff, max_cutoff) range in Angstroms.
-            - NearNeighbors: An instance of a NearNeighbors subclass.
-            - Type[NearNeighbors]: A NearNeighbors subclass (will be instantiated).
-            Defaults to (1, 5) Angstrom range.
+        cutoff_range (tuple[float, float]): (min_cutoff, max_cutoff) in Å. Defaults
+            to (1, 5).
         num_points (int): Number of points to calculate between min and max cutoff.
         element_color_scheme (ElemColorScheme | dict[str, str]): Color scheme for
             elements. Can be "jmol", "vesta", or a custom dict.
@@ -221,47 +214,22 @@ def coordination_vs_cutoff_line(
     Returns:
         ScatterPlotWidget: one line per structure and element.
     """
+    if len(cutoff_range) != 2 or not all(
+        isinstance(cutoff, int | float) and not isinstance(cutoff, bool)
+        for cutoff in cutoff_range
+    ):
+        raise TypeError(f"Invalid {cutoff_range=}, expected (min_cutoff, max_cutoff)")
     struct_dict = normalize_structures(structures)
-
-    if isinstance(strategy, tuple):
-        if len(strategy) != 2 or not all(
-            isinstance(cutoff, int | float) and not isinstance(cutoff, bool)
-            for cutoff in strategy
-        ):
-            raise TypeError(f"Invalid {strategy=}, expected (min_cutoff, max_cutoff)")
-        cutoff_range = (float(strategy[0]), float(strategy[1]))
-    elif is_near_neighbors(strategy):
-        # The strategy only sets the max cutoff (e.g. VoronoiNN.cutoff or the upper
-        # CrystalNN.distance_cutoffs), CNs are counted within each radial cutoff.
-        nn_instance = strategy() if isclass(strategy) else strategy
-        max_cutoff = getattr(nn_instance, "cutoff", None)
-        if max_cutoff is None:
-            max_cutoff = (getattr(nn_instance, "distance_cutoffs", None) or [None])[-1]
-        if not isinstance(max_cutoff, int | float):
-            raise TypeError(f"Could not determine cutoff for {nn_instance=}")
-        cutoff_range = (0.0, float(max_cutoff))
-    else:
-        raise TypeError(
-            f"Invalid {strategy=}. Expected tuple of floats, NearNeighbors instance, "
-            "or NearNeighbors subclass."
-        )
-
-    cutoffs = np.linspace(cutoff_range[0], cutoff_range[1], num_points)
+    cutoffs = np.linspace(float(cutoff_range[0]), float(cutoff_range[1]), num_points)
     elem_colors = _element_colors(element_color_scheme)
     multi_struct = len(struct_dict) > 1
+    # (n_sites, n_cutoffs) CNs per structure from one neighbor search each
+    all_site_cns = mk.coordination_numbers(list(struct_dict.values()), cutoffs)
 
     series: list[dict[str, Any]] = []
-    for struct_idx, (struct_name, structure) in enumerate(struct_dict.items()):
-        # One neighbor search for all sites at the largest cutoff instead of one per
-        # site and cutoff. A site's CN at a cutoff counts neighbors within it, up to
-        # pymatgen's get_neighbors tolerance, so boundary neighbors (e.g. periodic
-        # images at exactly the cutoff) count as they would for get_neighbors(r=...).
-        site_cns = np.array(
-            [
-                np.searchsorted(dists, cutoffs + NEIGHBOR_TOL, side="right")
-                for dists in site_neighbor_distances(structure, cutoffs.max())
-            ]
-        )
+    for struct_idx, ((struct_name, structure), site_cns) in enumerate(
+        zip(struct_dict.items(), all_site_cns, strict=True)
+    ):
         elements_per_site = site_elements(structure)
         dash = _STRUCT_DASHES[struct_idx % len(_STRUCT_DASHES)]
         for element in sorted(set().union(*elements_per_site)):

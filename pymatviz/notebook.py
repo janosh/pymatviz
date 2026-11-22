@@ -27,6 +27,11 @@ if TYPE_CHECKING:
 _DISPLAY_SPECS: tuple[tuple[str, tuple[str, ...], type[MatterVizWidget], str], ...] = (
     ("matscikit", ("Structure",), StructureWidget, "structure"),
     ("matscikit", ("Composition",), CompositionWidget, "composition"),
+    ("matscikit", ("PhononBands",), BandStructureWidget, "band_structs"),
+    ("matscikit", ("PhononDos",), DosWidget, "doses"),
+    ("matscikit", ("XrdPattern",), XrdWidget, "patterns"),
+    ("matscikit.electronic", ("ElectronicBands",), BandStructureWidget, "band_structs"),
+    ("matscikit.electronic", ("ElectronicDos",), DosWidget, "doses"),
     (
         "pymatgen.core.structure",
         ("Structure", "IStructure", "Molecule", "IMolecule"),
@@ -50,6 +55,12 @@ _DISPLAY_SPECS: tuple[tuple[str, tuple[str, ...], type[MatterVizWidget], str], .
     ("pymatgen.electronic_structure.dos", ("Dos", "CompleteDos"), DosWidget, "doses"),
     ("pymatgen.phonon.dos", ("PhononDos",), DosWidget, "doses"),
     ("phonopy.phonon.dos", ("TotalDos",), DosWidget, "doses"),
+    (
+        "phonopy.phonon.band_structure",
+        ("BandStructure",),
+        BandStructureWidget,
+        "band_structs",
+    ),
     (
         "pymatgen.analysis.diffraction.core",
         ("DiffractionPattern",),

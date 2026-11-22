@@ -93,42 +93,9 @@ def _as_dict(obj: Any) -> dict[str, Any]:
     return {key: val for key, val in view.as_dict().items() if key not in _UNREAD_KEYS}
 
 
-def _from_phonopy(obj: Any) -> Any:
-    """Phonopy BandStructure as pymatgen PhononBandStructureSymmLine (needs the
-    optional pymatgen dependency), other objects unchanged.
-    """
-    cls_name = f"{type(obj).__module__}.{type(obj).__qualname__}"
-    if cls_name == "phonopy.phonon.band_structure.BandStructure":
-        from pymatviz.phonons.helpers import phonopy_to_pymatgen_bands
-
-        return phonopy_to_pymatgen_bands(obj)
-    return obj
-
-
-def phonon_dos_dict(obj: Any) -> dict[str, Any] | None:
-    """Total phonon DOS as a pymatgen PhononDos dict (MatterViz's format) from a
-    matscikit PhononDos, phonopy TotalDos or pymatgen (Complete)PhononDos, None for
-    other objects.
-    """
-    import matscikit as mk
-    import numpy as np
-
-    from pymatviz.structures import is_instance_of
-
-    if isinstance(obj, mk.PhononDos):
-        freqs, densities = obj.frequency_points, obj.total_dos
-    elif is_instance_of(obj, "phonopy.phonon.dos.TotalDos"):
-        freqs, densities = obj.frequency_points, obj.dos
-    elif is_instance_of(obj, "pymatgen.phonon.dos.PhononDos"):
-        freqs, densities = obj.frequencies, obj.densities
-    else:
-        return None
-    return {
-        "@module": "pymatgen.phonon.dos",
-        "@class": "PhononDos",
-        "frequencies": np.asarray(freqs, dtype=float).tolist(),
-        "densities": np.asarray(densities, dtype=float).tolist(),
-    }
+# phonopy objects matscikit.interop converts to PhononBands / PhononDos
+_PHONOPY_BANDS = ("phonopy.phonon.band_structure.BandStructure",)
+_PHONOPY_DOS = ("phonopy.phonon.dos.TotalDos", "phonopy.api_phonopy.Phonopy")
 
 
 def labeled_keys(data: dict[str, Any] | None) -> set[str]:
@@ -164,18 +131,25 @@ def check_stack_grids(doses: dict[str, Any] | None) -> None:
 
 
 def _object_dict(obj: Any) -> dict[str, Any] | None:
-    """Dict of a structure-like, phonon DOS or MSONable object, None for others."""
+    """Dict of a structure-like, matscikit/phonopy phonon, matscikit electronic or
+    MSONable object (pymatgen's ``as_dict()`` layout), None for others.
+    """
     import matscikit as mk
+    from matscikit.electronic import ElectronicBands, ElectronicDos
+    from matscikit.interop import to_phonon_bands, to_phonon_dos
 
     from pymatviz.structures import is_instance_of, is_structure_like, structure_dict
 
     if is_structure_like(obj):
         return structure_dict(obj)
-    if is_instance_of(obj, "phonopy.phonon.dos.TotalDos") or isinstance(
-        obj, mk.PhononDos
-    ):
-        return phonon_dos_dict(obj)
-    obj = _from_phonopy(obj)
+    if is_instance_of(obj, *_PHONOPY_BANDS):
+        obj = to_phonon_bands(obj)
+    elif is_instance_of(obj, *_PHONOPY_DOS):
+        obj = to_phonon_dos(obj)
+    if isinstance(obj, (mk.PhononBands, mk.PhononDos, ElectronicBands, ElectronicDos)):
+        return {
+            key: val for key, val in obj.as_dict().items() if key not in _UNREAD_KEYS
+        }
     return _as_dict(obj) if callable(getattr(obj, "as_dict", None)) else None
 
 
@@ -185,9 +159,9 @@ def _to_dict(obj: Any, label: str) -> dict[str, Any] | None:
     Args:
         obj: None, a dict (MSONable values converted via ``as_dict``), or any
             object with .as_dict(). Structure-like objects (matscikit, pymatgen, ASE,
-            phonopy) become structure dicts, phonopy TotalDos a PhononDos dict and
-            phonopy BandStructure goes through pymatgen. Converted dicts drop
-            ``_UNREAD_KEYS``.
+            phonopy) become structure dicts, phonopy BandStructure, TotalDos and
+            Phonopy objects go through matscikit's PhononBands / PhononDos. Converted
+            dicts drop ``_UNREAD_KEYS``.
         label: Human-readable name for error messages (e.g. "band structure").
 
     Returns:

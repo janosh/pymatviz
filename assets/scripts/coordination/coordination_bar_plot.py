@@ -3,7 +3,6 @@
 # %%
 from glob import glob
 
-from pymatgen.analysis.local_env import CrystalNN, VoronoiNN
 from pymatgen.core import Structure
 
 import pymatviz as pmv
@@ -32,8 +31,8 @@ widget.to_img(
 )
 
 
-# %% pymatgen NearNeighbors strategies
-for strategy in (CrystalNN(), VoronoiNN()):
+# %% CrystalNN and Voronoi neighbors (as pymatgen's CrystalNN and VoronoiNN)
+for strategy in ("crystal_nn", "voronoi"):
     pmv.coordination_bar_plot(structures[key1], strategy=strategy).show()
 
 

@@ -31,7 +31,7 @@ A toolkit for visualizations in materials informatics.
 pip install pymatviz
 ```
 
-See `pyproject.toml` for available extras like `pip install 'pymatviz[export]'` for static image export. Structures, compositions, symmetry, RDFs, coordination numbers and XRD patterns are computed with [matscikit](https://github.com/janosh/matscikit). pymatgen, ASE and phonopy objects are accepted as inputs and converted on the way in. `pip install 'pymatviz[pymatgen]'` adds the pymatgen-only analyses: ChemEnv/CrystalNN environments (`chem_env_hierarchy`), `NearNeighbors` coordination strategies, pymatgen `Trajectory` JSON and phonopy band structures.
+See `pyproject.toml` for available extras like `pip install 'pymatviz[export]'` for static image export. Structures, compositions, symmetry, RDFs, coordination numbers, chemical environments and XRD patterns are computed with [matscikit](https://github.com/janosh/matscikit). pymatgen, ASE and phonopy objects are accepted as inputs and converted on the way in. So are ChemEnv and CrystalNN environments (`chem_env_hierarchy`), CrystalNN and Voronoi coordination numbers, and phonon band structures and DOS (from phonopy or pymatgen). `pip install 'pymatviz[pymatgen]'` adds what still needs pymatgen: pymatgen `Trajectory` JSON and matminer featurization.
 
 ## API Docs
 
@@ -259,7 +259,7 @@ Chemical-system and coordination-environment treemaps return MatterViz treemap w
 | [`chem_sys_hierarchy(formulas, group_by="formula", kind="treemap")`](pymatviz/hierarchy.py) [![fig-icon]](assets/scripts/treemap/chem_sys_treemap.py) | [`chem_sys_hierarchy(ward_compositions, kind="treemap")`](pymatviz/hierarchy.py) |
 | :----------------------------------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------: |
 |                                                           ![chem-sys-treemap-formula]                                                            |                                        ![chem-sys-treemap-ward-bmg]                                        |
-|           [`chem_env_hierarchy(structure, chem_env_settings="chemenv", kind="treemap")`](pymatviz/chem_env.py) [![fig-icon]](assets/scripts/treemap/chem_env_treemap.py)           |     [`chem_env_hierarchy(structures, max_coordination_numbers=3, max_environments=4, kind="treemap")`](pymatviz/chem_env.py)     |
+|           [`chem_env_hierarchy(structure, method="chemenv", kind="treemap")`](pymatviz/chem_env.py) [![fig-icon]](assets/scripts/treemap/chem_env_treemap.py)           |     [`chem_env_hierarchy(structures, max_coordination_numbers=3, max_environments=4, kind="treemap")`](pymatviz/chem_env.py)     |
 |                                                            ![chem-env-treemap-basic]                                                             |                                     ![chem-env-treemap-large-dataset]                                      |
 |             [`py_pkg_treemap("pymatviz")`](pymatviz/treemap/py_pkg.py#L392) [![fig-icon]](assets/scripts/treemap/py_pkg_treemap.py)              |           [`py_pkg_treemap(["pymatviz", "flame", "pymatgen"])`](pymatviz/treemap/py_pkg.py#L392)           |
 |                                                            ![py-pkg-treemap-pymatviz]                                                            |                                         ![py-pkg-treemap-multiple]                                         |

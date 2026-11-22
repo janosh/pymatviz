@@ -23,7 +23,7 @@ urls = { Homepage = "https://github.com/janosh/pymatviz" }
 requires-python = ">=3.12"
 dependencies = [
   "anywidget>=0.11",
-  "matscikit>=0.1.0b3",
+  "matscikit>=0.1.0b5",
   "moyopy>=0.21",
   "numpy>=2.5",
   "pandas>=2.3",
@@ -38,8 +38,8 @@ dependencies = [
 make-assets = ["pymatviz[export,pymatgen]", "lxml>=6", "matminer>=0.10.1", "moyopy[interface]>=0.21"]
 gh-pages = ["jupyter>=1.1.1", "nbconvert>=7.17"]
 phonons = ["phonopy>=4.8"] # only needed if user passes in phonopy objects
-# pymatgen-only analyses: ChemEnv/CrystalNN (chem_env_hierarchy), NearNeighbors
-# coordination strategies, XRD patterns, pymatgen Trajectory JSON, phonopy band structures
+# pymatgen-only features: pymatgen Trajectory JSON in TrajectoryWidget, matminer
+# featurization (cluster_compositions)
 pymatgen = ["pymatgen>=2026.9.24"]
 test = [
   "ase>=3.29",

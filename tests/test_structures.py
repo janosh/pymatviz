@@ -19,6 +19,7 @@ from pymatgen.core import (
     Lattice,
     Molecule,
     Species,
+    Structure,
 )
 
 from pymatviz.structures import (
@@ -270,22 +271,24 @@ def test_normalize_spacegroups_with_structures(
 
 def test_normalize_spacegroups_disordered() -> None:
     """Disordered structures get the space groups of pymatgen's SpacegroupAnalyzer."""
+    from matscikit.interop import structure_to_pymatgen_dict
     from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
-    from pymatviz.structures import to_pymatgen
     from pymatviz.utils.testing import disordered_demo_structures
 
     structs = list(disordered_demo_structures.values())
     expected = [
-        SpacegroupAnalyzer(to_pymatgen(struct)).get_space_group_number()
+        SpacegroupAnalyzer(
+            Structure.from_dict(structure_to_pymatgen_dict(struct))
+        ).get_space_group_number()
         for struct in structs
     ]
     assert normalize_spacegroups(structs).tolist() == expected == [221, 191, 221, 221]
 
 
 def test_core_features_without_pymatgen_or_ase() -> None:
-    """Base imports, symmetry, RDF, coordination, compositions, XRD and widgets need
-    neither pymatgen nor ASE.
+    """Base imports, symmetry, RDF, coordination, chemical environments, compositions,
+    XRD, phonon DOS and widgets need neither pymatgen nor ASE.
     """
     subprocess.run(
         [
@@ -305,6 +308,10 @@ assert pmv.spacegroup_sunburst([structure]).data[0]["children"][0]["label"] == "
 pmv.structure(structure=structure)
 pmv.rdf_plot(structure, mode="full")
 pmv.coordination_bar_plot(structure, strategy=3.0)
+pmv.coordination_bar_plot(structure, strategy="crystal_nn")
+for method in ("crystal_nn", "chemenv"):
+    pmv.chem_env_hierarchy(structure, method=method)
+pmv.phonon_dos(mk.PhononDos([0, 1, 2], [0, 1, 0]))
 pmv.xrd_plot(structure)
 pmv.ptable_heatmap(pmv.count_elements(["Fe2O3", mk.Composition("NaCl")]))
 """,

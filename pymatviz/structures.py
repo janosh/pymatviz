@@ -97,16 +97,6 @@ def to_structure(obj: Any) -> mk.Structure:
     )
 
 
-def to_pymatgen(struct: mk.Structure) -> Any:
-    """Pymatgen Structure of a matscikit one, for pymatgen-only analyses (ChemEnv,
-    NearNeighbors, XRDCalculator). Needs the optional pymatgen dependency.
-    """
-    from matscikit.interop import structure_to_pymatgen_dict
-    from pymatgen.core import Structure
-
-    return Structure.from_dict(structure_to_pymatgen_dict(struct))
-
-
 def structure_dict(obj: Any) -> dict[str, Any]:
     """Dict in pymatgen's format (MatterViz's JSON structure format) of a structure-like
     object. pymatgen objects keep their own ``as_dict()`` (oxidation states, labels,

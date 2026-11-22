@@ -12,7 +12,7 @@ from pymatviz.utils.testing import TEST_FILES
 structure_dir = f"{TEST_FILES}/structures"
 structure = Structure.from_file(f"{structure_dir}/mp-1183089-Ac4Mg2-monoclinic.json.gz")
 widget = pmv.chem_env_hierarchy(
-    structure, chem_env_settings="chemenv", style="height: 480px", kind="treemap"
+    structure, method="chemenv", style="height: 480px", kind="treemap"
 )
 widget.show()
 widget.to_img(

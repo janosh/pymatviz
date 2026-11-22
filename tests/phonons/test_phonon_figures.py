@@ -82,11 +82,11 @@ def test_phonon_dos(
         (
             dict(doses="invalid"),
             TypeError,
-            "Only matscikit PhononDos, phonopy TotalDos",
+            r"to_phonon_dos takes a matscikit, phonopy or pymatgen object.*key ''\)",
         ),
         (dict(normalize="invalid"), ValueError, "Invalid normalize='invalid'"),
         (dict(project="invalid"), ValueError, "Invalid project='invalid'"),
-        (dict(project="element"), TypeError, "project='element' requires Complete"),
+        (dict(project="element"), TypeError, "project='element' needs a DOS with site"),
         (
             dict(
                 doses={"a": GRID_012, "b": PhononDos([0, 2, 4], [1, 2, 1])}, stack=True
@@ -193,7 +193,7 @@ def test_bands_and_dos_widget_phonons(phonon_bands_doses_mp_2758: BandsDoses) ->
 
 @needs_phonopy
 def test_phonopy_inputs(phonopy_nacl: Phonopy) -> None:
-    """Phonopy band structures and TotalDos are converted to pymatgen objects."""
+    """Phonopy band structures, TotalDos and projected DOS go through matscikit."""
     phonopy_nacl.run_mesh([5, 5, 5])
     phonopy_nacl.run_total_dos(freq_pitch=1, use_tetrahedron_method=False)
     total_dos = phonopy_nacl.total_dos
@@ -214,6 +214,21 @@ def test_phonopy_inputs(phonopy_nacl: Phonopy) -> None:
     assert np.array(widget.band_structs["NaCl"]["bands"]).shape == (6, 11)
     widget = pmv.bands_and_dos(band_structs=band_structure, doses=total_dos)
     np.testing.assert_array_equal(widget.doses["densities"], total_dos.dos)
+    np.testing.assert_array_equal(  # exact frequencies, no YAML round trip
+        widget.band_structs["bands"], np.concatenate(band_structure.frequencies).T
+    )
+    assert widget.band_structs["labels_dict"] == {"Γ": [0, 0, 0], "X": [0.5, 0, 0]}
+
+    phonopy_nacl.run_mesh([5, 5, 5], with_eigenvectors=True, is_mesh_symmetry=False)
+    phonopy_nacl.run_total_dos(freq_pitch=1, use_tetrahedron_method=False)
+    phonopy_nacl.run_projected_dos(freq_pitch=1, use_tetrahedron_method=False)
+    widget = pmv.phonon_dos(phonopy_nacl, project="element")
+    projected = phonopy_nacl.projected_dos.projected_dos
+    np.testing.assert_allclose(
+        np.add(widget.doses["Na"]["densities"], widget.doses["Cl"]["densities"]),
+        projected.sum(axis=0),
+        rtol=1e-12,
+    )
 
 
 @pytest.mark.parametrize(

@@ -3,16 +3,11 @@ from __future__ import annotations
 from collections import Counter
 from typing import TYPE_CHECKING, Any
 
+import matscikit as mk
 import numpy as np
 import pandas as pd
 import pytest
 import traitlets as tl
-from pymatgen.analysis.local_env import (
-    CrystalNN,
-    CutOffDictNN,
-    NearNeighbors,
-    VoronoiNN,
-)
 from pymatgen.core import Lattice, Structure
 
 from pymatviz.coordination import coordination_bar_plot, coordination_vs_cutoff_line
@@ -112,11 +107,9 @@ def test_coordination_bar_plot_literal_counts(
     assert widget.x_axis["range"] == [3, 7]
 
 
-@pytest.mark.parametrize(
-    "strategy", [3.0, 2.5, CrystalNN, CrystalNN(), VoronoiNN(tol=0.5)]
-)
+@pytest.mark.parametrize("strategy", [3.0, 2.5, "crystal_nn", "voronoi"])
 def test_coordination_bar_plot_strategies(nacl: Structure, strategy: Any) -> None:
-    """Cutoffs and NearNeighbors are computed in Python; rocksalt is CN 6."""
+    """Cutoffs, CrystalNN and Voronoi are computed in Python; rocksalt is CN 6."""
     widget = coordination_bar_plot(nacl, strategy=strategy)
     assert isinstance(widget, BarPlotWidget)
     expected_cn = 0 if strategy == 2.5 else 6
@@ -213,24 +206,15 @@ def test_element_colors(scheme: ElemColorScheme | dict[str, str]) -> None:
             assert colors[elem] == f"rgb({expected})"
 
 
-@pytest.mark.parametrize(
-    ("strategy", "x_range"),
-    [
-        ((0, 3), (0, 3)),
-        ((1.0, 5.0), (1, 5)),
-        (CrystalNN, (0, 1)),
-        (CrystalNN(distance_cutoffs=(0.5, 2)), (0, 2)),
-    ],
-)
+@pytest.mark.parametrize("cutoff_range", [(0, 3), (1.0, 5.0)])
 def test_coordination_vs_cutoff_line(
     structures: Sequence[Structure],
-    strategy: tuple[float, float] | NearNeighbors | type[NearNeighbors],
-    x_range: tuple[float, float],
+    cutoff_range: tuple[float, float],
 ) -> None:
     """One line per structure and element, grouped and dashed per structure."""
     widget = coordination_vs_cutoff_line(
         structures[:2],
-        strategy=strategy,
+        cutoff_range=cutoff_range,
         num_points=7,
         element_color_scheme={"Si": "red"},
     )
@@ -249,7 +233,7 @@ def test_coordination_vs_cutoff_line(
     assert len(set(dashes.values())) == 2
     for srs in widget.series:
         assert srs["markers"] == "line"
-        assert (srs["x"][0], srs["x"][-1]) == pytest.approx(x_range)
+        assert (srs["x"][0], srs["x"][-1]) == pytest.approx(cutoff_range)
         assert len(srs["x"]) == len(srs["y"]) == 7
         assert srs["y"] == sorted(srs["y"])  # CN grows with cutoff
         if srs["label"] == "Si":
@@ -259,16 +243,15 @@ def test_coordination_vs_cutoff_line(
 
 def test_coordination_vs_cutoff_line_single_structure(nacl: Structure) -> None:
     """A single structure has no legend groups; rocksalt reaches CN 6 by 3 Å."""
-    widget = coordination_vs_cutoff_line(nacl, strategy=(2, 3), num_points=3)
+    widget = coordination_vs_cutoff_line(nacl, cutoff_range=(2, 3), num_points=3)
     assert all("legend_group" not in srs for srs in widget.series)
     assert [srs["y"] for srs in widget.series] == [[0, 0, 6], [0, 0, 6]]
-    # descending cutoffs query neighbors out to the largest one
-    widget = coordination_vs_cutoff_line(nacl, strategy=(3, 2), num_points=3)
+    widget = coordination_vs_cutoff_line(nacl, cutoff_range=(3, 2), num_points=3)
     assert [srs["y"] for srs in widget.series] == [[6, 0, 0], [6, 0, 0]]
 
 
 @pytest.mark.parametrize(
-    ("structure", "strategy", "num_points"),
+    ("structure", "cutoff_range", "num_points"),
     [
         # periodic self-images at exactly the 2 and 4 A cutoffs
         (Structure(Lattice.cubic(2.0), ["Si"], [[0, 0, 0]]), (1, 5), 5),
@@ -285,14 +268,14 @@ def test_coordination_vs_cutoff_line_single_structure(nacl: Structure) -> None:
 )
 def test_coordination_vs_cutoff_line_one_neighbor_search(
     structure: Structure,
-    strategy: tuple[float, float],
+    cutoff_range: tuple[float, float],
     num_points: int,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """One neighbor search for all sites gives the same mean CNs as one per site
     and cutoff.
     """
-    cutoffs = np.linspace(*strategy, num_points)
+    cutoffs = np.linspace(*cutoff_range, num_points)
     expected = {
         elem: [
             float(
@@ -309,19 +292,17 @@ def test_coordination_vs_cutoff_line_one_neighbor_search(
         for elem in sorted({site.specie.symbol for site in structure})
     }
     n_calls = 0
-    from pymatviz.coordination import figures
-
-    site_neighbor_distances = figures.site_neighbor_distances
+    coordination_numbers = mk.coordination_numbers
 
     def counting_search(*args: Any, **kwargs: Any) -> Any:
         """Count neighbor searches."""
         nonlocal n_calls
         n_calls += 1
-        return site_neighbor_distances(*args, **kwargs)
+        return coordination_numbers(*args, **kwargs)
 
-    monkeypatch.setattr(figures, "site_neighbor_distances", counting_search)
+    monkeypatch.setattr(mk, "coordination_numbers", counting_search)
     widget = coordination_vs_cutoff_line(
-        structure, strategy=strategy, num_points=num_points
+        structure, cutoff_range=cutoff_range, num_points=num_points
     )
     assert n_calls == 1
     assert {srs["label"]: srs["y"] for srs in widget.series} == expected
@@ -331,7 +312,7 @@ def test_coordination_vs_cutoff_line_disordered_structure() -> None:
     """A disordered Fe:C site contributes lines for both elements."""
     from pymatviz.utils.testing import fe3co4_disordered
 
-    widget = coordination_vs_cutoff_line(fe3co4_disordered, strategy=(1, 5))
+    widget = coordination_vs_cutoff_line(fe3co4_disordered, cutoff_range=(1, 5))
     assert {srs["label"] for srs in widget.series} == {"C", "Fe", "O"}
     assert all(min(srs["y"]) >= 0 for srs in widget.series)
 
@@ -341,37 +322,24 @@ def test_coordination_vs_cutoff_line_disordered_structure() -> None:
     [
         ([], {}, ValueError, "Cannot plot empty set of structures"),
         ("invalid input", {}, TypeError, "Input must be a matscikit or pymatgen"),
-        (
-            Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]]),
-            {"strategy": "invalid"},
-            TypeError,
-            "Invalid strategy=",
-        ),
         *(
             (
                 Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]]),
-                {"strategy": strategy},
+                {"cutoff_range": cutoff_range},
                 TypeError,
                 "expected \\(min_cutoff, max_cutoff\\)",
             )
-            for strategy in [(1, 2, 3), (True, 3), ("1", 3)]
-        ),
-        (
-            Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]]),
-            {"strategy": CutOffDictNN()},
-            TypeError,
-            "Could not determine cutoff",
+            for cutoff_range in [(1, 2, 3), (True, 3), ("1", 3)]
         ),
     ],
     ids=[
-        *("empty_list", "invalid_str", "invalid_strategy", "3_tuple", "bool", "str"),
-        "nn_without_cutoff",
+        *("empty_list", "invalid_str", "3_tuple", "bool", "str"),
     ],
 )
 def test_coordination_vs_cutoff_line_invalid_inputs(
     structs: Any, kwargs: dict[str, Any], err_cls: type[Exception], match: str
 ) -> None:
-    """coordination_vs_cutoff_line rejects invalid structures and strategies."""
+    """coordination_vs_cutoff_line rejects invalid structures and cutoff ranges."""
     with pytest.raises(err_cls, match=match):
         coordination_vs_cutoff_line(structs, **kwargs)
 
