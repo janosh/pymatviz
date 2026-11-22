@@ -1,5 +1,5 @@
-"""Coordination numbers and chemical environments of structures as hierarchies,
-classified with matscikit's ChemEnv or CrystalNN order parameters.
+"""Coordination numbers and ChemEnv chemical environments of structures as
+hierarchies, classified with matscikit's chemenv.
 """
 
 from __future__ import annotations
@@ -21,58 +21,31 @@ if TYPE_CHECKING:
     from pymatviz.widgets.sunburst import SunburstWidget
     from pymatviz.widgets.treemap import TreemapWidget
 
-type ChemEnvMethod = Literal["chemenv", "crystal_nn"]
-
-# Minimum order parameter for a CrystalNN geometry label, else the site is "CN:<n>"
-MIN_ORDER_PARAM = 0.5
-
 
 def site_environments(
-    structures: Sequence[mk.Structure], method: ChemEnvMethod
+    structures: Sequence[mk.Structure],
 ) -> list[list[tuple[int, str]]]:
-    """(coordination number, environment symbol) of each site of each structure.
-
-    "chemenv" gives ChemEnv symbols such as "O:6" (pymatgen's LocalGeometryFinder
-    with SimplestChemenvStrategy, on the input cell). "crystal_nn" gives the
-    best-matching CrystalNN order-parameter geometry such as "octahedral:6" when it
-    scores above MIN_ORDER_PARAM. Sites without a match are "CN:<n>".
+    """(coordination number, ChemEnv symbol such as "O:6") of each site of each
+    structure: pymatgen's LocalGeometryFinder with SimplestChemenvStrategy on the input
+    cell. Sites whose coordination number has no reference geometry are "CN:<n>".
 
     Raises:
-        ValueError: For an invalid method, or structures matscikit can't classify
-            (e.g. disordered ones with "crystal_nn").
+        ValueError: For structures matscikit can't classify (e.g. coincident sites).
     """
-    if method == "chemenv":
-        return [
-            [
-                (cn, symbol or f"CN:{cn}")
-                for cn, symbol in zip(
-                    result.coordination_numbers.tolist(), result.symbols, strict=True
-                )
-            ]
-            for result in mk.chemenv(structures)
+    return [
+        [
+            (cn, symbol or f"CN:{cn}")
+            for cn, symbol in zip(
+                result.coordination_numbers.tolist(), result.symbols, strict=True
+            )
         ]
-    if method == "crystal_nn":
-        return [
-            [
-                (cn, f"{geometry}:{cn}")
-                if geometry is not None and score > MIN_ORDER_PARAM
-                else (cn, f"CN:{cn}")
-                for cn, geometry, score in zip(
-                    result.coordination_numbers.tolist(),
-                    result.geometries,
-                    result.scores.tolist(),
-                    strict=True,
-                )
-            ]
-            for result in mk.local_environments(structures)
-        ]
-    raise ValueError(f"Invalid {method=}, expected 'chemenv' or 'crystal_nn'")
+        for result in mk.chemenv(structures)
+    ]
 
 
 def chem_env_nodes(
     structures: PeriodicStructure | Sequence[PeriodicStructure],
     *,
-    method: ChemEnvMethod,
     normalize: bool,
     max_coordination_numbers: int | None,
     max_environments: int | None,
@@ -84,15 +57,13 @@ def chem_env_nodes(
     per branch. Ties use coordination number and environment symbol respectively.
     """
     _validate_overflow(overflow)
-    if method not in ("chemenv", "crystal_nn"):
-        raise ValueError(f"Invalid {method=}, expected 'chemenv' or 'crystal_nn'")
     structs = [
         struct
         for struct in normalize_periodic_structures(structures).values()
         if len(struct)
     ]
     counts: defaultdict[tuple[int, str], list[float]] = defaultdict(list)
-    for envs in site_environments(structs, method):
+    for envs in site_environments(structs):
         for env in envs:
             counts[env].append(1 / len(envs) if normalize else 1)
 
@@ -124,7 +95,6 @@ def chem_env_hierarchy(
     structures: PeriodicStructure | Sequence[PeriodicStructure],
     *,
     kind: Literal["sunburst", "treemap"] = "sunburst",
-    method: ChemEnvMethod = "crystal_nn",
     normalize: bool = False,
     max_coordination_numbers: int | None = None,
     max_environments: int | None = None,
@@ -134,8 +104,7 @@ def chem_env_hierarchy(
     """Show coordination numbers and their chemical environments as a sunburst or
     treemap.
 
-    method "crystal_nn" (default) labels sites by CrystalNN order-parameter
-    geometry, "chemenv" by ChemEnv symbol (see site_environments). With
+    Sites are labeled by ChemEnv symbol (see site_environments). With
     normalize=True, each non-empty structure contributes one total count before
     pruning. Limit the most frequent coordination numbers and
     environments per coordination number with max_coordination_numbers and
@@ -144,7 +113,6 @@ def chem_env_hierarchy(
     """
     nodes = chem_env_nodes(
         structures,
-        method=method,
         normalize=normalize,
         max_coordination_numbers=max_coordination_numbers,
         max_environments=max_environments,

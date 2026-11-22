@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Literal
 from unittest.mock import MagicMock
 
 import pytest
@@ -16,11 +16,9 @@ if TYPE_CHECKING:
     from pymatgen.core import Structure
 
 
-@pytest.mark.parametrize("method", ["crystal_nn", "chemenv"])
 @pytest.mark.parametrize("chart", ["treemap", "sunburst"])
 @pytest.mark.parametrize("overflow", ["other", "drop"])
 def test_chem_env_hierarchy(
-    method: Literal["crystal_nn", "chemenv"],
     chart: Literal["treemap", "sunburst"],
     overflow: Literal["other", "drop"],
     structures: tuple[Structure, Structure],
@@ -39,7 +37,6 @@ def test_chem_env_hierarchy(
     widget = pmv.chem_env_hierarchy(
         structures,
         kind=chart,
-        method=method,
         normalize=True,
         max_coordination_numbers=1,
         max_environments=1,
@@ -48,7 +45,6 @@ def test_chem_env_hierarchy(
     )
     collect.assert_called_once()
     assert len(collect.call_args.args[0]) == 2
-    assert collect.call_args.args[1] == method
     assert widget.widget_type == chart
     assert widget.value_format == ".2f"
     root, *omitted = widget.data
@@ -65,34 +61,21 @@ def test_chem_env_hierarchy(
     )
 
 
-@pytest.mark.parametrize(
-    ("options", "message"),
-    [
-        ({"method": "unknown"}, "Invalid method"),
-        ({"overflow": "keep"}, "overflow"),
-    ],
-)
-def test_chem_env_treemap_invalid_options(
-    structures: tuple[Structure, Structure],
-    options: dict[str, Any],
-    message: str,
-    monkeypatch: pytest.MonkeyPatch,
+def test_chem_env_treemap_invalid_overflow(
+    structures: tuple[Structure, Structure], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Invalid methods or omission modes fail even for an empty hierarchy."""
+    """An invalid omission mode fails before any environment is classified."""
     collect = MagicMock()
     monkeypatch.setattr(chem_env, "site_environments", collect)
-    with pytest.raises(ValueError, match=message):
-        pmv.chem_env_hierarchy(structures, **options, kind="treemap")
+    with pytest.raises(ValueError, match="overflow"):
+        pmv.chem_env_hierarchy(structures, overflow="keep", kind="treemap")  # ty: ignore[invalid-argument-type]
     collect.assert_not_called()
 
 
-@pytest.mark.parametrize("method", ["crystal_nn", "chemenv"])
-def test_chem_env_requires_periodic_structure(
-    method: Literal["crystal_nn", "chemenv"],
-) -> None:
-    """Both strategies reject nonperiodic inputs before neighbor analysis."""
+def test_chem_env_requires_periodic_structure() -> None:
+    """Nonperiodic inputs are rejected before neighbor analysis."""
     molecule = Molecule(["H", "H"], [[0, 0, 0], [0.7, 0, 0]])
     with pytest.raises(
         TypeError, match=r"Expected structures periodic along a, b and c"
     ):
-        pmv.chem_env_hierarchy(molecule, method=method, kind="treemap")  # ty: ignore[invalid-argument-type]
+        pmv.chem_env_hierarchy(molecule, kind="treemap")  # ty: ignore[invalid-argument-type]

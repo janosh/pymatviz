@@ -171,7 +171,7 @@ def test_spacegroup_sunburst_invalid_limit_mode() -> None:
 
 @pytest.mark.parametrize("normalize", [False, True])
 def test_chem_env_sunburst_rock_salt(rock_salt: Structure, normalize: bool) -> None:
-    """CrystalNN classifies all eight rocksalt sites as CN 6 octahedra."""
+    """ChemEnv classifies all eight rocksalt sites as CN 6 octahedra (O:6)."""
     empty = Structure(rock_salt.lattice, [], [])
     widget = pmv.chem_env_hierarchy([empty, rock_salt], normalize=normalize)
     expected = 1 if normalize else len(rock_salt)
@@ -179,8 +179,6 @@ def test_chem_env_sunburst_rock_salt(rock_salt: Structure, normalize: bool) -> N
         dict(
             id="CN 6",
             label="CN 6",
-            children=[
-                dict(id="CN 6/octahedral:6", label="octahedral:6", value=expected)
-            ],
+            children=[dict(id="CN 6/O:6", label="O:6", value=expected)],
         )
     ]
