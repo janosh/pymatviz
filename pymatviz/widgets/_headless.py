@@ -335,10 +335,11 @@ async def _mounted_widget(
         else:
             _warm_pages.remove(warm)  # re-appended as most recently used
         _warm_pages.append(warm)
-        warm.users += 1
-        await _evict_idle()
+        warm.users += 1  # no await until the try below releases it in any case
     healthy = False
     try:
+        async with _get_browser_thread().pages_lock:
+            await _evict_idle()
         mount_args = [_widget_data_json(inputs.widget_data), _mount_options(inputs)]
         render_error = await asyncio.wait_for(
             warm.page.evaluate(_MOUNT_JS, mount_args), inputs.timeout + _STEP_GRACE
@@ -351,8 +352,9 @@ async def _mounted_widget(
             )
             healthy = render_error is None
     finally:
-        warm.users -= 1
+        # release and retire together, so no checkout picks up a page being retired
         async with _get_browser_thread().pages_lock:
+            warm.users -= 1
             if not healthy:
                 await _retire(warm)
             # overlapping exports may each have opened a page: trim them once idle

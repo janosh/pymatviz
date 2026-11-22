@@ -151,10 +151,12 @@ def histogram(
     if isinstance(values, pd.DataFrame):
         if x is None:
             raise ValueError("name the DataFrame column to bin with x=")
-        df_used = values[list(dict.fromkeys([x, color] if color else [x]))].dropna()
+        df_used = values[
+            list(dict.fromkeys([x, color] if color is not None else [x]))
+        ].dropna()
         groups = (
             df_used.groupby(color, sort=False, observed=True)
-            if color
+            if color is not None
             else [(x, df_used)]
         )
         # keys stay as grouped (1 and "1" are two groups), labels become str later
