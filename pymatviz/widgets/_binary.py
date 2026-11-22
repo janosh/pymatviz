@@ -237,9 +237,7 @@ def frame_input(item: Any) -> tuple[Any, Mapping[str, Any]]:
 def _frame(item: Any) -> _Frame | None:
     """Extract geometry, or select JSON for richer structures."""
     import matscikit as mk
-    from matscikit.interop import has_class
-
-    from pymatviz.structures import is_ase_atoms
+    from matscikit.interop import has_class, is_ase_atoms
 
     structure, props = frame_input(item)
     if isinstance(item, Mapping) and len(item) > 1 and object_metadata(structure):

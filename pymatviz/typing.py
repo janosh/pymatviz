@@ -11,24 +11,22 @@ import pandas as pd
 if TYPE_CHECKING:
     from ase.atoms import Atoms as AseAtoms
     from matscikit import Composition, Structure
-    from matscikit import PhononDos as MskPhononDos
-    from phonopy.api_phonopy import Phonopy
-    from phonopy.phonon.dos import TotalDos
+    from matscikit.interop import CompositionLike, PhononDosLike, StructureLike
     from phonopy.structure.atoms import PhonopyAtoms
     from pymatgen.core import Composition as PmgComposition
-    from pymatgen.core import IMolecule, IStructure
-    from pymatgen.phonon.dos import PhononDos
+    from pymatgen.core import IStructure
 
     from pymatviz.enums import ElemCountMode
 
 # Quoted unions: PEP 695 treats a bare `"Name"` as Literal, not a forward ref
-# structure-like inputs, converted to matscikit Structures by normalize_structures
-type AnyStructure = "Structure | IStructure | IMolecule | AseAtoms | PhonopyAtoms"
+# structure-like inputs (matscikit, pymatgen, ASE, phonopy), converted to matscikit
+# Structures by normalize_structures; matscikit's interop types
+type AnyStructure = "StructureLike"
 type PeriodicStructure = "Structure | IStructure | AseAtoms | PhonopyAtoms"
-type AnyDos = "MskPhononDos | PhononDos | TotalDos | Phonopy"
-# formula strings, {element: amount} mappings or Composition objects
-type CompositionLike = "str | Mapping[str, float] | Composition | PmgComposition"
-# also chemical system strings ("Fe-O") and structures, as count_formulas takes them
+type AnyDos = "PhononDosLike"
+# CompositionLike (matscikit): formula strings, {element: amount} mappings (pymatgen
+# Compositions among them) or matscikit Compositions. FormulaLike adds chemical system
+# strings ("Fe-O") and structures, as count_formulas takes them
 type FormulaLike = "CompositionLike | AnyStructure"
 # space group numbers, Hermann-Mauguin/Hall symbols or periodic structures
 type SpacegroupLike = "int | float | str | PeriodicStructure"

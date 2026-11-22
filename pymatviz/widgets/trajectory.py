@@ -364,9 +364,7 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
         if trajectory is None or is_binary_envelope(trajectory, "trajectory"):
             return trajectory
 
-        from matscikit.interop import has_class
-
-        from pymatviz.structures import is_structure_like
+        from matscikit.interop import has_class, is_structure_like
 
         is_pymatgen = has_class(trajectory, "pymatgen.core.trajectory.Trajectory")
         if is_pymatgen or (

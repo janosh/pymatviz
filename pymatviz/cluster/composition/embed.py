@@ -17,9 +17,8 @@ from pymatviz.composition import to_composition
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from matscikit.interop import CompositionLike
     from pymatgen.core import Element
-
-    from pymatviz.typing import CompositionLike
 
 
 MatminerElementPropertyPreset = Literal[

@@ -13,6 +13,7 @@ from pymatviz.widgets.dos import DosWidget
 
 
 if TYPE_CHECKING:
+    from matscikit.results import PhononDosDict
     from pymatgen.phonon.dos import CompletePhononDos
 
     from pymatviz.typing import AnyDos
@@ -42,7 +43,7 @@ def _labeled_doses(
     project: Literal["element", "site"] | None,
     *,
     show_total: bool,
-) -> dict[str, dict[str, Any]]:
+) -> dict[str, PhononDosDict]:
     """Map labels to total or (with project) element/site-projected phonon DOS."""
     if project not in (None, "element", "site"):
         raise ValueError(f"Invalid {project=}, must be 'element' or 'site'")
@@ -50,7 +51,7 @@ def _labeled_doses(
     if not raw_doses:
         raise ValueError("Empty DOS dict")
 
-    dos_dict: dict[str, dict[str, Any]] = {}
+    dos_dict: dict[str, PhononDosDict] = {}
     for label, raw_dos in raw_doses.items():
         ph_dos = _phonon_dos(label, raw_dos)
         freqs = ph_dos.frequency_points

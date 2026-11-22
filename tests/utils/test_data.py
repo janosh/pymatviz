@@ -48,7 +48,7 @@ def test_spg_to_crystal_sys(spg: int, crystal_sys: CrystalSystem) -> None:
     assert crystal_sys == pmv.utils.spg_to_crystal_sys(spg)
 
 
-@pytest.mark.parametrize("spg", [-1, 0, 231, 1.2, "3", "invalid", "P999", "X2/m"])
+@pytest.mark.parametrize("spg", [-1, 0, 231, 1.2, "invalid", "P999", "X2/m"])
 def test_spg_to_crystal_sys_invalid(spg: int) -> None:
     with pytest.raises(ValueError, match=f"Invalid space group {spg}"):
         pmv.utils.spg_to_crystal_sys(spg)
@@ -117,25 +117,6 @@ def test_html_tag(text: str, tag: str, title: str, style: str) -> None:
         pmv.utils.html_tag(text, tag=tag, title=title, style=orig_style)
         == f"<{tag}{attrs}>{text}</{tag}>"
     )
-
-
-def test_hm_symbol_to_spg_num_map() -> None:
-    """Test the hm_symbol_to_spg_num_map dictionary properties."""
-    from pymatviz.utils.data import hm_symbol_to_spg_num_map
-
-    # Map contains both dense and space separated format of Hermann-Mauguin symbols
-    assert len(hm_symbol_to_spg_num_map) == 636
-
-    # Test some specific mappings for common space groups
-    assert hm_symbol_to_spg_num_map["P1"] == 1
-    assert hm_symbol_to_spg_num_map["P-1"] == 2
-    assert hm_symbol_to_spg_num_map["Fm-3m"] == 225
-    assert hm_symbol_to_spg_num_map["Ia-3d"] == 230
-    assert hm_symbol_to_spg_num_map["P2_1/c"] == 14
-    assert hm_symbol_to_spg_num_map["P6_3/mmc"] == 194
-
-    # Test that all values are valid space group numbers
-    assert set(hm_symbol_to_spg_num_map.values()) == set(range(1, 230 + 1))
 
 
 def test_spg_num_to_from_symbol_roundtrip() -> None:

@@ -10,19 +10,8 @@ if TYPE_CHECKING:
     from typing import Self
 
     import matscikit as mk
-
-
-def _plain_json(value: Any) -> Any:
-    """Value with monty-encoded numpy arrays ({"@class": "array", "data": ...})
-    replaced by their nested-list data, recursively.
-    """
-    if isinstance(value, dict):
-        if value.get("@class") == "array" and "data" in value:
-            return value["data"]
-        return {key: _plain_json(item) for key, item in value.items()}
-    if isinstance(value, list):
-        return [_plain_json(item) for item in value]
-    return value
+    import numpy as np
+    from numpy.typing import NDArray
 
 
 @dataclass
@@ -42,7 +31,7 @@ class PhononDBDoc:
     # whether imaginary modes are present in the BS
     has_imaginary_modes: bool | None = None
     primitive: mk.Structure | None = None
-    supercell: list[list[int]] | None = None  # 3x3 matrix
+    supercell: NDArray[np.int64] | None = None  # 3x3 matrix
     # non-analytical corrections based on Born charges
     nac_params: dict[str, Any] | None = None
     thermal_displacement_data: dict[str, Any] | None = None
@@ -52,10 +41,15 @@ class PhononDBDoc:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Self:
         """Decode a pymatgen/monty JSON doc without pymatgen: structures and phonon
-        results become matscikit objects, monty arrays nested lists. Keys outside
-        this schema (database metadata) are ignored.
+        results become matscikit objects, monty arrays numpy arrays of their
+        dtype. Keys outside this schema (database metadata) are ignored.
         """
-        from matscikit.interop import to_phonon_bands, to_phonon_dos, to_structure
+        from matscikit.interop import (
+            decode_monty,
+            to_phonon_bands,
+            to_phonon_dos,
+            to_structure,
+        )
 
         decoders = {
             "structure": to_structure,
@@ -64,7 +58,7 @@ class PhononDBDoc:
             "phonon_dos": to_phonon_dos,
         }
         values = {
-            field.name: _plain_json(data[field.name])
+            field.name: decode_monty(data[field.name])
             for field in fields(cls)
             if field.init and field.name in data
         }

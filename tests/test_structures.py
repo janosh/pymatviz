@@ -23,8 +23,6 @@ from pymatgen.core import (
 )
 
 from pymatviz.structures import (
-    is_ase_atoms,
-    is_phonopy_atoms,
     normalize_spacegroups,
     normalize_structures,
     site_elements,
@@ -164,64 +162,6 @@ def test_normalize_structures_errors(
     """Reject unsupported and empty inputs."""
     with pytest.raises(err_cls, match=error_match):
         normalize_structures(invalid_input)
-
-
-class MockAseAtoms:
-    """Mock object whose type identity matches ASE Atoms."""
-
-    __module__ = "ase.atoms"
-    __qualname__ = "Atoms"
-
-
-class MockMsonAtoms(MockAseAtoms):
-    """Mock of pymatgen's MSONAtoms, an ASE Atoms subclass."""
-
-    __module__ = "pymatgen.io.ase"
-    __qualname__ = "MSONAtoms"
-
-
-class NotAse:
-    """Mock object whose type identity should not match ASE Atoms."""
-
-    __module__ = "some.other.module"
-    __qualname__ = "SomeClass"
-
-
-@pytest.mark.parametrize(
-    ("obj", "expected"),
-    [
-        (MockAseAtoms(), True),
-        (MockMsonAtoms(), True),
-        (SI_STRUCTS[0], False),
-        (NotAse(), False),
-        ("string", False),
-        (None, False),
-    ],
-)
-def test_is_ase_atoms(obj: object, expected: bool) -> None:
-    assert is_ase_atoms(obj) == expected
-
-
-@pytest.mark.parametrize(
-    ("obj", "expected"),
-    [
-        pytest.param("phonopy_atoms", True, id="phonopy_atoms"),
-        # Supercell/Primitive subclass PhonopyAtoms and must count as structures too
-        pytest.param("phonopy_supercell", True, id="phonopy_supercell"),
-        (SI_STRUCTS[0], False),
-        (None, False),
-    ],
-)
-def test_is_phonopy_atoms(obj: object, expected: bool) -> None:
-    if obj in ("phonopy_atoms", "phonopy_supercell"):
-        pytest.importorskip("phonopy")
-        from phonopy.structure.atoms import PhonopyAtoms
-        from phonopy.structure.cells import Supercell
-
-        unit_cell = PhonopyAtoms(symbols=["Si"], positions=[[0] * 3], cell=np.eye(3))
-        is_cell = obj == "phonopy_atoms"
-        obj = unit_cell if is_cell else Supercell(unit_cell, np.diag([2, 1, 1]))
-    assert is_phonopy_atoms(obj) is expected
 
 
 @pytest.mark.parametrize(

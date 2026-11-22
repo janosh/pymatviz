@@ -136,9 +136,14 @@ def _object_dict(obj: Any) -> dict[str, Any] | None:
     """
     import matscikit as mk
     from matscikit.electronic import ElectronicBands, ElectronicDos
-    from matscikit.interop import has_class, to_phonon_bands, to_phonon_dos
+    from matscikit.interop import (
+        has_class,
+        is_structure_like,
+        to_phonon_bands,
+        to_phonon_dos,
+    )
 
-    from pymatviz.structures import is_structure_like, structure_dict
+    from pymatviz.structures import structure_dict
 
     if is_structure_like(obj):
         return structure_dict(obj)
@@ -463,7 +468,9 @@ def structure_to_dict(
             )
         struct = structure
     else:
-        from pymatviz.structures import is_structure_like, structure_dict
+        from matscikit.interop import is_structure_like
+
+        from pymatviz.structures import structure_dict
 
         if not is_structure_like(structure):
             raise TypeError(

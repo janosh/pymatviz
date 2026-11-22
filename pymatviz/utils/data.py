@@ -5,9 +5,9 @@ from __future__ import annotations
 from functools import partial
 from typing import TYPE_CHECKING, Any
 
+import matscikit as mk
 import numpy as np
 import pandas as pd
-from moyopy import SpaceGroupType
 
 from pymatviz.utils import ROOT
 
@@ -27,54 +27,34 @@ element_symbols: dict[int, str] = {
 }
 
 
-# SpaceGroupType(number).hm_short is separated by a space like "F m -3 m"
-_spaced_hm_symbols = {
-    SpaceGroupType(number).hm_short: number for number in range(1, 230 + 1)
-} | {SpaceGroupType(number).hm_full: number for number in range(1, 230 + 1)}
-hm_symbol_to_spg_num_map = _spaced_hm_symbols | {
-    spg.replace(" ", ""): number for spg, number in _spaced_hm_symbols.items()
-}
-
-
 def spg_to_crystal_sys(spg: float | str) -> CrystalSystem:
-    """Get the crystal system for an international space group number."""
-    if isinstance(spg, str):
-        spg = hm_symbol_to_spg_num_map.get(spg, spg)
+    """Crystal system of a space group number or Hermann-Mauguin/Hall symbol.
 
-    if not isinstance(spg, int | float) or spg != int(spg):
-        raise ValueError(f"Invalid space group {spg}")
-
-    if not (1 <= spg <= 230):
-        raise ValueError(f"Invalid space group {spg}, must be 1 <= num <= 230")
-
-    crys_sys_max_spg: tuple[tuple[CrystalSystem, int], ...] = (
-        ("triclinic", 2),
-        ("monoclinic", 15),
-        ("orthorhombic", 74),
-        ("tetragonal", 142),
-        ("trigonal", 167),
-        ("hexagonal", 194),
-    )
-    return next((crys for crys, max_spg in crys_sys_max_spg if spg <= max_spg), "cubic")
+    Raises:
+        ValueError: For unknown symbols and non-integral or out-of-range numbers.
+    """
+    try:
+        number = mk.space_group_number(spg) if isinstance(spg, str) else spg
+        if number != int(number):
+            raise ValueError(f"{number} is not integral")  # noqa: TRY301
+        return mk.crystal_system(int(number))
+    except ValueError as exc:
+        raise ValueError(f"Invalid space group {spg}: {exc}") from exc
 
 
 def spg_num_to_from_symbol(spg: int | str) -> str | int:
-    """Get the Hermann-Mauguin short or full symbol for an international space group
-    number or vice versa.
+    """Short Hermann-Mauguin symbol (e.g. "Fm-3m") of a space group number, or the
+    number of a Hermann-Mauguin/Hall symbol (loose spellings and settings allowed).
 
-    Args:
-        spg (int | str): A space group number (int) or a Hermann-Mauguin symbol (str).
-
-    Returns:
-        int | str: str if input was a number, int if input was a str.
+    Raises:
+        ValueError: For unknown symbols or numbers outside 1-230.
     """
-    if isinstance(spg, str):  # Convert symbol to number
-        if spg_num := hm_symbol_to_spg_num_map.get(spg):
-            return spg_num
-
-        raise ValueError(f"Invalid space group symbol {spg}")
-
-    return SpaceGroupType(spg).hm_short.replace(" ", "")  # Convert number to symbol
+    if isinstance(spg, str):
+        try:
+            return mk.space_group_number(spg)
+        except ValueError as exc:
+            raise ValueError(f"Invalid space group symbol {spg}") from exc
+    return mk.space_group_symbol(spg)
 
 
 def html_tag(text: str, tag: str = "span", style: str = "", title: str = "") -> str:

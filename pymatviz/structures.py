@@ -11,49 +11,15 @@ from typing import TYPE_CHECKING, Any
 import matscikit as mk
 import pandas as pd
 from matscikit.interop import (
-    ASE_ATOMS,
-    PHONOPY_ATOMS,
-    PYMATGEN_STRUCTURES,
-    has_class,
+    is_pymatgen_structure,
+    is_structure_like,
     structure_to_pymatgen_dict,
     to_structure,
 )
 
 
 if TYPE_CHECKING:
-    from ase.atoms import Atoms
-    from phonopy.structure.atoms import PhonopyAtoms
-    from pymatgen.core import IMolecule, IStructure
-    from typing_extensions import TypeIs
-
     from pymatviz.typing import AnyStructure, PeriodicStructure, SpacegroupLike
-
-
-def is_ase_atoms(struct: Any) -> TypeIs[Atoms]:
-    """Check if the input is an ASE Atoms object without importing ase."""
-    return has_class(struct, ASE_ATOMS)  # also pymatgen's MSONAtoms subclass
-
-
-def is_phonopy_atoms(obj: Any) -> TypeIs[PhonopyAtoms]:
-    """Check if object is PhonopyAtoms or a subclass (Supercell, Primitive)."""
-    return has_class(obj, PHONOPY_ATOMS)
-
-
-def is_pymatgen_structure(obj: Any) -> TypeIs[IStructure | IMolecule]:
-    """Whether obj is a pymatgen Structure/Molecule (mutable or not), without
-    importing pymatgen.
-    """
-    return has_class(obj, *PYMATGEN_STRUCTURES)
-
-
-def is_structure_like(obj: Any) -> TypeIs[AnyStructure]:
-    """Whether obj is a matscikit or pymatgen structure, ASE Atoms or PhonopyAtoms."""
-    return (
-        isinstance(obj, mk.Structure)
-        or is_pymatgen_structure(obj)
-        or is_ase_atoms(obj)
-        or is_phonopy_atoms(obj)
-    )
 
 
 def structure_dict(obj: AnyStructure) -> dict[str, Any]:
@@ -140,7 +106,7 @@ def normalize_periodic_structures(
     """
     struct_dict = normalize_structures(systems)
     if non_periodic := {
-        key: val.pbc for key, val in struct_dict.items() if not all(val.pbc)
+        key: val.pbc for key, val in struct_dict.items() if not val.is_periodic
     }:
         raise TypeError(
             f"Expected structures periodic along a, b and c, got pbc {non_periodic} "
