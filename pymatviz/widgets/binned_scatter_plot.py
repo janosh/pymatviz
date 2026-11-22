@@ -7,7 +7,7 @@ from typing import Any
 import traitlets as tl
 
 from pymatviz.widgets._schema_traits import BinnedScatterPlotTraits
-from pymatviz.widgets._traits import color_bar_trait, optional_trait
+from pymatviz.widgets._traits import color_bar_trait, optional_trait, validator
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -55,7 +55,9 @@ class BinnedScatterPlotWidget(BinnedScatterPlotTraits, MatterVizWidget):
         """
         super().__init__(series=series, **kwargs)
 
-    @tl.validate("series")
+    _raw_json_traits = frozenset({"series"})  # _normalize_series converts them
+
+    @validator("series")
     def _validate_series(self, proposal: dict[str, Any]) -> list[dict[str, Any]] | None:
         """Normalize series on init and reassignment, binary when large."""
         return self._normalize_series(proposal["value"], "BinnedScatterPlot")

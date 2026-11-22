@@ -317,20 +317,27 @@ def test_ptable_hists_invalid_bins(bins: Any) -> None:
 
 
 @pytest.mark.parametrize(
-    ("data", "err_msg"),
+    ("data", "err_type", "err_msg"),
     [
-        ({"Fe": [[1, 2], [3, 4]]}, "ptable_hists: Fe must be a 1D numeric array"),
-        ({"Fe": 3}, "ptable_hists: Fe must be a 1D numeric array"),
-        ({"Xx": [1]}, "keys must be element symbols, got ['Xx']"),
+        (
+            {"Fe": [[1, 2], [3, 4]]},
+            ValueError,
+            "ptable_hists: Fe must be a 1D numeric array",
+        ),
+        ({"Fe": 3}, ValueError, "ptable_hists: Fe must be a 1D numeric array"),
+        ({"Xx": [1]}, tl.TraitError, "keys must be element symbols, got ['Xx']"),
         (
             pd.DataFrame([[1, 2], [3, 4]], columns=["Fe", "Fe"]),
+            ValueError,
             "element keys must be unique, got duplicates ['Fe']",
         ),
     ],
 )
-def test_ptable_hists_raises(data: Any, err_msg: str) -> None:
+def test_ptable_hists_raises(
+    data: Any, err_type: type[Exception], err_msg: str
+) -> None:
     """2D or scalar values and unknown elements raise instead of being coerced."""
-    with pytest.raises(ValueError, match=re.escape(err_msg)):
+    with pytest.raises(err_type, match=re.escape(err_msg)):
         pmv.ptable_hists(data)
 
 
@@ -437,9 +444,9 @@ def test_ptable_scatter_without_color_values() -> None:
     [
         ({"Fe": ([1], [2])}, dict(mode="lines"), tl.TraitError, "mode must be one of"),
         ({"Fe": ([1],)}, {}, ValueError, "must be an (x, y) or (x, y, color_values)"),
-        ({"fe": ([1], [2])}, {}, ValueError, "keys must be element symbols"),
-        ({"Fe": ([1], [2], ["red"])}, {}, ValueError, "must be a 1D numeric array:"),
-        ({"Fe": ([1, 2], [1])}, {}, ValueError, "array lengths differ"),
+        ({"fe": ([1], [2])}, {}, tl.TraitError, "keys must be element symbols"),
+        ({"Fe": ([1], [2], ["red"])}, {}, tl.TraitError, "must be a 1D numeric array:"),
+        ({"Fe": ([1, 2], [1])}, {}, tl.TraitError, "array lengths differ"),
     ],
 )
 def test_ptable_scatter_raises(

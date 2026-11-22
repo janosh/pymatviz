@@ -7,25 +7,31 @@ from typing import Any
 
 import traitlets as tl
 
+from pymatviz.utils import str_labels
 from pymatviz.widgets._normalize import normalize_plot_json, structure_to_dict
 from pymatviz.widgets._schema_traits import RdfPlotTraits
-from pymatviz.widgets._traits import PlotControlsTraits, normalized_trait
+from pymatviz.widgets._traits import (
+    JsonBool,
+    JsonFloat,
+    JsonInt,
+    PlotControlsTraits,
+    normalized_trait,
+    validator,
+)
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
-def _rdf_structures(structures: Any) -> dict[str, Any] | list[Any]:
+def _rdf_structures(structures: Any) -> dict[str, Any] | list[Any] | None:
     """Structure dict of one structure (object or dict), or a list or
-    ``{label: structure}`` dict of them as structure dicts.
+    ``{label: structure}`` dict of them as structure dicts. Labels that stringify
+    alike (e.g. 1 and "1") raise.
     """
     if isinstance(structures, list | tuple):
-        converted: Any = [structure_to_dict(struct) for struct in structures]
-    elif isinstance(structures, dict) and "sites" not in structures:
-        converted = {
-            str(key): structure_to_dict(val) for key, val in structures.items()
-        }
-    else:
-        converted = structure_to_dict(structures)
-    return normalize_plot_json(converted, "RdfPlot.structures")
+        return [structure_to_dict(struct) for struct in structures]
+    if isinstance(structures, dict) and "sites" not in structures:
+        labeled = str_labels(structures)
+        return {key: structure_to_dict(val) for key, val in labeled.items()}
+    return structure_to_dict(structures)
 
 
 class RdfPlotWidget(PlotControlsTraits, RdfPlotTraits, MatterVizWidget):
@@ -53,9 +59,9 @@ class RdfPlotWidget(PlotControlsTraits, RdfPlotTraits, MatterVizWidget):
     mode = tl.CaselessStrEnum(
         ["element_pairs", "full"], default_value="element_pairs"
     ).tag(sync=True)
-    show_reference_line = tl.Bool(default_value=True).tag(sync=True)
-    cutoff = tl.Float(default_value=15).tag(sync=True)
-    n_bins = tl.Int(default_value=75).tag(sync=True)
+    show_reference_line = JsonBool(default_value=True).tag(sync=True)
+    cutoff = JsonFloat(default_value=15).tag(sync=True)  # > 0, see _validate_cutoff
+    n_bins = JsonInt(default_value=75, min=1).tag(sync=True)
 
     def __init__(
         self,
@@ -74,10 +80,28 @@ class RdfPlotWidget(PlotControlsTraits, RdfPlotTraits, MatterVizWidget):
                 ``{label, pattern: {r, g_r}}`` dicts).
             **kwargs: Additional widget properties.
         """
-        if structures is not None and patterns is not None:
+        super().__init__(structures=structures, patterns=patterns, **kwargs)
+
+    @validator("structures", "patterns")
+    def _validate_one_source(self, proposal: tl.Bunch) -> Any:
+        """Reject setting structures and patterns both, on construction and
+        assignment, so the state (and its saved JSON) stays loadable. Inside
+        ``hold_trait_notifications()`` this checks the final state, so swapping
+        sources there works.
+        """
+        other = "patterns" if proposal["trait"].name == "structures" else "structures"
+        if proposal["value"] is not None and getattr(self, other) is not None:
             raise ValueError(
                 "RdfPlotWidget accepts either 'structures' (for on-the-fly RDF "
                 "computation) or 'patterns' (pre-computed), not both."
             )
+        return proposal["value"]
 
-        super().__init__(structures=structures, patterns=patterns, **kwargs)
+    @validator("cutoff")
+    def _validate_cutoff(self, proposal: tl.Bunch) -> float:
+        """Reject non-positive cutoffs, which leave no radial range to bin."""
+        if proposal["value"] <= 0:
+            raise ValueError(
+                f"RdfPlotWidget cutoff must be > 0, got {proposal['value']}"
+            )
+        return proposal["value"]

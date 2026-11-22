@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 import traitlets as tl
 
 from pymatviz.widgets._schema_traits import CompositionTraits
-from pymatviz.widgets._traits import ELEMENT_COLOR_SCHEMES, normalized_trait
+from pymatviz.widgets._traits import ELEMENT_COLOR_SCHEMES, JsonBool, normalized_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -48,7 +48,7 @@ class CompositionWidget(CompositionTraits, MatterVizWidget):
     mode = tl.CaselessStrEnum(["pie", "bar", "bubble"], default_value="pie").tag(
         sync=True
     )
-    show_percentages = tl.Bool(default_value=False).tag(sync=True)
+    show_percentages = JsonBool(default_value=False).tag(sync=True)
     color_scheme = tl.CaselessStrEnum(ELEMENT_COLOR_SCHEMES, default_value="Jmol").tag(
         sync=True
     )

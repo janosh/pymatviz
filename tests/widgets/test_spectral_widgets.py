@@ -66,17 +66,24 @@ H2_MOLECULE = kemio.Structure(
 @pytest.mark.parametrize(
     ("widget_cls", "kwargs", "err", "match"),
     [
+        # converted by the trait, not a TypeError from __init__ like before
+        (
+            BandsAndDosWidget,
+            {"band_structs": "invalid"},
+            tl.TraitError,
+            "Unsupported type for band structure",
+        ),
         # a Brillouin zone needs a lattice
         (
             BandsAndDosWidget,
             {"structure": H2_MOLECULE},
-            TypeError,
+            tl.TraitError,
             "periodic structure",
         ),
         (
             BrillouinZoneWidget,
             {"structure": H2_MOLECULE},
-            TypeError,
+            tl.TraitError,
             "periodic structure",
         ),
         (
@@ -85,23 +92,40 @@ H2_MOLECULE = kemio.Structure(
                 "structures": {"lattice": {}, "sites": []},
                 "patterns": [{"r": [1], "g_r": [1]}],
             },
-            ValueError,
+            tl.TraitError,
             "not both",
         ),
         (
             FermiSurfaceWidget,
             {"fermi_data": None, "band_data": None},
-            ValueError,
+            tl.TraitError,
             "exactly one of fermi_data or band_data",
         ),
         (
             FermiSurfaceWidget,
             {"fermi_data": {"isosurfaces": []}, "band_data": {"energies": []}},
-            ValueError,
+            tl.TraitError,
             "exactly one of fermi_data or band_data",
         ),
         # normalized values must still be the dict the frontend reads
-        (FermiSurfaceWidget, {"fermi_data": [1, 2]}, tl.TraitError, "'a dict'"),
+        (
+            FermiSurfaceWidget,
+            {"fermi_data": [1, 2]},
+            tl.TraitError,
+            r"'fermi_data' trait of a FermiSurfaceWidget .* dict or None, not the list",
+        ),
+        (
+            BrillouinZoneWidget,
+            {"bz_data": [1]},
+            tl.TraitError,
+            r"'bz_data' trait of a BrillouinZoneWidget .* dict or None, not the list",
+        ),
+        (
+            RdfPlotWidget,
+            {"patterns": "abc"},
+            tl.TraitError,
+            r"'patterns' trait of a RdfPlotWidget .* a list, not the str 'abc'",
+        ),
     ],
 )
 def test_widgets_reject_invalid_data_sources(
@@ -122,7 +146,7 @@ def test_xrd_widget_labeled_patterns() -> None:
     first_hkls = widget.patterns["computed"]["hkls"][0]
     assert first_hkls == [{"hkl": [1, 0, 0], "multiplicity": 6}]
     assert widget.patterns["scan"] == {"x": [5], "y": [1], "kind": "profile"}
-    with pytest.raises(ValueError, match="patterns mapping must not be empty"):
+    with pytest.raises(tl.TraitError, match="patterns mapping must not be empty"):
         XrdWidget(patterns={})
     # labels sync as strings (JSON object keys)
     assert list(XrdWidget(patterns={1: {"x": [5], "y": [1]}}).patterns) == ["1"]
@@ -159,12 +183,12 @@ def test_stack_checks_dos_grids_in_either_order(widget_cls: type) -> None:
         "b": kemio.PhononDos([0, 1, 3], [0, 1, 0]),
     }
     match = r"one grid, but \['b'\]"
-    with pytest.raises(ValueError, match=match):
+    with pytest.raises(tl.TraitError, match=match):
         widget_cls(doses=doses, stack=True)
-    with pytest.raises(ValueError, match=match):
+    with pytest.raises(tl.TraitError, match=match):
         widget_cls(doses=doses).stack = True
     widget = widget_cls(stack=True)
-    with pytest.raises(ValueError, match=match):
+    with pytest.raises(tl.TraitError, match=match):
         widget.doses = doses
     # a single (unlabeled) DOS and DOS on one grid stack fine
     widget.set_trait("doses", doses["a"])

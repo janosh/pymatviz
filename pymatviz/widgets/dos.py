@@ -12,6 +12,7 @@ from pymatviz.widgets._traits import (
     PlotControlsTraits,
     normalized_trait,
     optional_trait,
+    validator,
 )
 from pymatviz.widgets.matterviz import MatterVizWidget
 
@@ -24,9 +25,9 @@ class StackedDosCheck(tl.HasTraits):
     doses: Any  # traits of the widgets using this check
     stack: Any
 
-    @tl.validate("doses", "stack")
+    @validator("doses", "stack")
     def _check_stack_grids(self, proposal: tl.Bunch) -> Any:
-        """Raise ValueError for stacked DOS on different grids."""
+        """Reject stacked DOS on different grids."""
         is_doses = proposal["trait"].name == "doses"
         doses = proposal["value"] if is_doses else self.doses
         if doses and (self.stack if is_doses else proposal["value"]):
@@ -74,6 +75,6 @@ class DosWidget(StackedDosCheck, PlotControlsTraits, DosTraits, MatterVizWidget)
             **kwargs: Additional widget properties.
 
         Raises:
-            ValueError: If ``stack=True`` and the DOS have different grids.
+            TraitError: If ``stack=True`` and the DOS have different grids.
         """
         super().__init__(doses=doses, **kwargs)

@@ -71,7 +71,8 @@ class WidgetLink:
         """Link the given widgets on a shared selection index.
 
         Args:
-            widgets: Widgets to keep in sync (need at least two).
+            widgets: Widgets to keep in sync (need at least two distinct ones,
+                repeats are linked once).
             structures: Ordered structures indexed by the shared selection index.
                 Required if any widget is a ``StructureWidget`` (its ``structure``
                 is set to ``structures[index]`` on every change) or a
@@ -81,12 +82,16 @@ class WidgetLink:
                 series whose clicks broadcast. Defaults to 0 (the first series).
 
         Raises:
-            ValueError: If fewer than two widgets are given, or a ``StructureWidget``
-                or ``PeriodicTableWidget`` is included without ``structures``.
+            ValueError: If fewer than two distinct widgets are given, or a
+                ``StructureWidget`` or ``PeriodicTableWidget`` is included without
+                ``structures``.
         """
-        if len(widgets) < 2:
+        # a repeated widget would register its observer once but be unobserved twice
+        unique_widgets = list({id(widget): widget for widget in widgets}.values())
+        if len(unique_widgets) < 2:
             raise ValueError(
-                f"link_selection needs at least 2 widgets, got {len(widgets)}"
+                f"link_selection needs at least 2 distinct widgets, got "
+                f"{len(unique_widgets)}"
             )
 
         unsupported = [
@@ -100,7 +105,7 @@ class WidgetLink:
                 f"Supported: {supported}."
             )
 
-        self.widgets = list(widgets)
+        self.widgets = unique_widgets
         self._structures = None if structures is None else list(structures)
         self._series_idx = series_idx
         self._syncing = False

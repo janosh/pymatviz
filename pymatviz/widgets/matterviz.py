@@ -10,7 +10,9 @@ import json
 import os
 import re
 import shutil
+import unicodedata
 import urllib.request
+from collections import defaultdict
 from typing import TYPE_CHECKING, Any, ClassVar
 from urllib.parse import urljoin
 
@@ -347,6 +349,9 @@ class MatterVizWidget(AnyWidget):
     # The bundle's render() checks them against what its widget spec reads, so a
     # bundle older than this package names the traits it would silently drop.
     _synced_keys = tl.List(tl.Unicode(), read_only=True).tag(sync=True)
+    # Dict/List/Union traits whose @validator converts numpy values itself (e.g. to
+    # binary buffers) instead of the JSON normalization every other one gets first
+    _raw_json_traits: ClassVar[frozenset[str]] = frozenset()
 
     @tl.default("_synced_keys")
     def _default_synced_keys(self) -> list[str]:
@@ -439,7 +444,7 @@ class MatterVizWidget(AnyWidget):
         base64-encoded), which ``from_json`` turns back into an equal widget.
 
         Args:
-            filename: Optional path to also write the JSON to.
+            filename: Optional path to also write the JSON to (parent dirs created).
 
         Returns:
             The JSON text.
@@ -448,6 +453,7 @@ class MatterVizWidget(AnyWidget):
 
         text = json.dumps(self.to_dict(), default=json_default)
         if filename:
+            os.makedirs(os.path.dirname(filename) or ".", exist_ok=True)
             with open(filename, mode="w", encoding="utf-8") as file:
                 file.write(text)
         return text
@@ -600,17 +606,13 @@ class MatterVizWidget(AnyWidget):
         binary: bool = True,
     ) -> list[dict[str, Any]] | None:
         """normalize_plot_series for a ``series`` validator, sending large numeric
-        series as binary envelopes unless ``binary=False``. Raises TraitError, which
-        rolls back batched updates in hold_trait_notifications().
+        series as binary envelopes unless ``binary=False``.
         """
         from pymatviz.widgets._normalize import normalize_plot_series
 
-        try:
-            return normalize_plot_series(
-                value, component_name=component_name, keys=keys, binary=binary
-            )
-        except (TypeError, ValueError) as exc:
-            raise tl.TraitError(str(exc)) from exc
+        return normalize_plot_series(
+            value, component_name=component_name, keys=keys, binary=binary
+        )
 
     def describe(self) -> dict[str, Any]:
         """Return structured, machine-parseable facts about this widget's data.
@@ -819,9 +821,35 @@ def export_widgets(
 
     Returns:
         Map of the widget names to the written file paths.
+
+    Raises:
+        ValueError: For a name that isn't a plain file name (empty, ``.``, ``..`` or
+            with a path separator), checked before rendering since such a name
+            would write outside ``out_dir`` or into a missing subdirectory, or for
+            names differing only in case or Unicode normalization form, which
+            overwrite each other on case-insensitive filesystems.
     """
     from pymatviz.widgets._headless import render_widgets_headless
 
+    separators = [sep for sep in (os.sep, os.altsep) if sep]
+    if bad_names := [
+        name
+        for name in widgets
+        if str(name) in ("", ".", "..") or any(sep in str(name) for sep in separators)
+    ]:
+        raise ValueError(
+            f"export_widgets names must be plain file names, got {bad_names}"
+        )
+    # names differing only in case write the same file on case-insensitive
+    # filesystems (macOS, Windows default), so one would silently overwrite another.
+    # macOS also equates Unicode normalization forms (precomposed é and e + U+0301)
+    names_by_folded: defaultdict[str, list[str]] = defaultdict(list)
+    for name in widgets:
+        names_by_folded[unicodedata.normalize("NFD", str(name)).casefold()].append(name)
+    if clashes := [names for names in names_by_folded.values() if len(names) > 1]:
+        raise ValueError(
+            f"export_widgets names must differ in more than case, got {clashes}"
+        )
     jobs = [
         widget._render_job(fmt, dpi, timeout, quality, width, height, transparent)
         for widget in widgets.values()

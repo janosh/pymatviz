@@ -5,11 +5,9 @@ from __future__ import annotations
 import functools
 from typing import Any
 
-import traitlets as tl
-
 from pymatviz.widgets._normalize import normalize_plot_json, structure_to_dict
 from pymatviz.widgets._schema_traits import BrillouinZoneTraits
-from pymatviz.widgets._traits import normalized_trait
+from pymatviz.widgets._traits import JsonBool, normalized_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -43,7 +41,7 @@ class BrillouinZoneWidget(BrillouinZoneTraits, MatterVizWidget):
     bz_data = normalized_trait(
         functools.partial(normalize_plot_json, label="BrillouinZone.bz_data")
     )
-    default_k_path = tl.Bool(default_value=True).tag(sync=True)
+    default_k_path = JsonBool(default_value=True).tag(sync=True)
 
     def __init__(
         self,

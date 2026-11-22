@@ -200,9 +200,14 @@ def test_spacegroup_bar_data_inputs(monkeypatch: pytest.MonkeyPatch) -> None:
     assert (widget.data, n_calls) == ({"14": 2, "62": 3, "225": 1}, 1)
     widget.data = {225: 1, np.int64(62): 2, "225": 3, "Fm-3m": 4, "P 1 21/c 1": 5}
     assert (widget.data, n_calls) == ({"14": 5, "62": 2, "225": 8}, 3)
+    # integral float counts (e.g. from a float column) count like ints
+    widget.data = {225: 3.0, 62: np.float32(2)}
+    assert widget.data == {"62": 2, "225": 3}
     for bad_data, match in [
         ({225: -1}, "non-negative"),
-        ({225: 1.5}, "integers"),
+        ({225: 1.5}, r"integers \(or integral floats\), got 1.5"),
+        ({225: True}, r"integers \(or integral floats\), got True"),
+        ({225: float("nan")}, "got nan"),
         ({"not-a-spg": 1}, "Invalid"),
         (225, "must be a sequence, iterator or mapping, got int: 225"),
     ]:

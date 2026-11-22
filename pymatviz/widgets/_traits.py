@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import functools
+import math
 from typing import TYPE_CHECKING, Any
 
+import numpy as np
 import traitlets as tl
 
 from pymatviz.widgets._normalize import normalize_plot_json, with_defaults
@@ -33,17 +36,99 @@ EXPORT_FORMATS = ("png", "svg", "csv", "json", "md", "tex")
 CONTROLS_MODES = ("always", "hover", "never")  # svelte-widgets ControlsConfig.mode
 
 
+def as_trait_error(exc: Exception) -> tl.TraitError:
+    """TraitError naming exc's type and message, to raise ``from exc``."""
+    return tl.TraitError(f"{type(exc).__name__}: {exc}")
+
+
+def validator(*names: str) -> Callable[[Callable[..., Any]], Any]:
+    """``tl.validate`` re-raising any error of the validator as TraitError. Inside
+    ``hold_trait_notifications()`` (which widget constructors use) validators run
+    when the batch ends, and traitlets rolls the batch back only for a TraitError:
+    any other error (e.g. a KeyError or FileNotFoundError while converting the value)
+    left the invalid value set and synced.
+    """
+
+    def decorator(func: Callable[..., Any]) -> Any:
+        """Wrap func's errors in TraitError."""
+
+        @functools.wraps(func)
+        def checked(obj: Any, proposal: tl.Bunch) -> Any:
+            """Func's validated value, its errors as TraitError."""
+            try:
+                return func(obj, proposal)
+            except tl.TraitError:
+                raise
+            except Exception as exc:
+                raise as_trait_error(exc) from exc
+
+        return tl.validate(*names)(checked)
+
+    return decorator
+
+
+class JsonFloat(tl.Float):
+    """Float trait also taking numpy real scalars (e.g. ``np.float32``, ``np.int64``)
+    and rejecting NaN and infinities, which aren't JSON.
+    """
+
+    def validate(self, obj: Any, value: Any) -> float:
+        """Finite float of value."""
+        if isinstance(value, (np.floating, np.integer)):
+            value = value.item()
+        if isinstance(value, float) and not math.isfinite(value):
+            raise tl.TraitError(
+                f"The {self.name!r} trait of a {type(obj).__name__} instance must be "
+                f"finite, got {value!r}"
+            )
+        return super().validate(obj, value)
+
+
+class JsonInt(tl.Int):
+    """Int trait also taking numpy integer scalars (e.g. ``np.argmax`` results)."""
+
+    def validate(self, obj: Any, value: Any) -> int:
+        """Int of value."""
+        if isinstance(value, np.integer):
+            value = int(value)
+        return super().validate(obj, value)
+
+
+class JsonBool(tl.Bool):
+    """Bool trait also taking numpy booleans (e.g. ``(values > 0).any()``)."""
+
+    def validate(self, obj: Any, value: Any) -> bool:
+        """Bool of value."""
+        if isinstance(value, np.bool_):
+            value = bool(value)
+        return super().validate(obj, value)
+
+
+def _is_stored_value(trait: tl.TraitType, obj: Any, value: Any) -> bool:
+    """Whether value is the trait's already validated value being set again:
+    ``HasTraits.__init__`` re-sets every constructor kwarg after cross-validation,
+    which ran each conversion twice (e.g. 2x the structure dict walks).
+    """
+    stored = obj._trait_values.get(trait.name)
+    return obj._cross_validation_lock and value is stored
+
+
 class _JsonNormalized(tl.TraitType):
     """Mixin running every assigned value (in the constructor or later) through
     normalize_plot_json (numpy arrays/scalars to lists/floats/ints) before the
-    container check, unless the widget declares its own ``@tl.validate`` for the
-    trait (e.g. series sent as binary buffers), which then converts it instead.
+    container check and any ``@validator``, unless the widget lists the trait in its
+    ``_raw_json_traits`` (e.g. series its validator encodes as binary buffers).
     """
 
     def _validate(self, obj: Any, value: Any) -> Any:
         """JSON-normalized value, validated by the container trait."""
-        if self.name not in obj._trait_validators:
-            value = normalize_plot_json(value, f"{type(obj).__name__}.{self.name}")
+        if _is_stored_value(self, obj, value):
+            return value
+        if self.name not in getattr(obj, "_raw_json_traits", ()):  # plain HasTraits
+            try:
+                value = normalize_plot_json(value, f"{type(obj).__name__}.{self.name}")
+            except Exception as exc:
+                raise as_trait_error(exc) from exc
         return super()._validate(obj, value)
 
 
@@ -59,12 +144,20 @@ class JsonUnion(_JsonNormalized, tl.Union):
     """Union trait whose values are JSON-normalized on every assignment."""
 
 
-_JSON_TRAITS = {tl.Dict: JsonDict, tl.List: JsonList, tl.Union: JsonUnion}
+_JSON_TRAITS = {
+    tl.Dict: JsonDict,
+    tl.List: JsonList,
+    tl.Union: JsonUnion,
+    tl.Float: JsonFloat,
+    tl.Int: JsonInt,
+    tl.Bool: JsonBool,
+}
 
 
 def optional_trait(trait_cls: Any, **kwargs: Any) -> Any:
     """Synced trait defaulting to None so the frontend component default applies.
-    Dict, List and Union traits JSON-normalize every assigned value.
+    Dict, List and Union traits JSON-normalize every assigned value, Float, Int and
+    Bool traits take numpy scalars (Float rejects non-finite values).
     """
     trait_cls = _JSON_TRAITS.get(trait_cls, trait_cls)
     return trait_cls(allow_none=True, default_value=None, **kwargs).tag(sync=True)
@@ -83,11 +176,38 @@ class _Normalized(tl.Any):
     def __init__(self, normalize: Callable[[Any], Any], output: _OutputTrait) -> None:
         """Store the normalizer and output trait, defaulting the trait to None."""
         super().__init__(default_value=None, allow_none=True)
+        output.allow_none = True  # None skips it, but its errors say "or None"
         self.normalize, self.output = normalize, output
 
+    def class_init(self, cls: type[tl.HasTraits], name: str | None) -> None:
+        """Attach the output trait under this trait's name, so its errors name the
+        trait and widget instead of printing the bare trait object.
+        """
+        super().class_init(cls, name)
+        self.output.class_init(cls, name)
+
+    def _validate(self, obj: Any, value: Any) -> Any:
+        """Validated value. Unlike traitlets' default, None still runs the widget's
+        cross-trait validators (e.g. one-data-source checks), else clearing a trait
+        outside ``hold_trait_notifications()`` could leave an invalid state.
+        """
+        if value is None and not obj._cross_validation_lock:
+            return self._cross_validate(obj, value)
+        if _is_stored_value(self, obj, value):
+            return value
+        return super()._validate(obj, value)
+
     def validate(self, obj: Any, value: Any) -> Any:
-        """Normalized value, validated by the output trait."""
-        return self.output.validate(obj, self.normalize(value))
+        """Normalized value, validated by the output trait. The normalizer's errors
+        become TraitError, which rolls back ``hold_trait_notifications()`` batches.
+        """
+        try:
+            normalized = self.normalize(value)
+        except tl.TraitError:
+            raise
+        except Exception as exc:
+            raise as_trait_error(exc) from exc
+        return self.output.validate(obj, normalized)
 
 
 def normalized_trait(
@@ -128,12 +248,12 @@ def color_bar_trait() -> Any:
 class StructureVizTraits(tl.HasTraits):
     """Display options shared by structure-rendering widgets (synced to JS)."""
 
-    show_atoms = tl.Bool(default_value=True).tag(sync=True)
+    show_atoms = JsonBool(default_value=True).tag(sync=True)
 
     # Cell
-    cell_edge_opacity = tl.Float(0.1).tag(sync=True)
-    cell_surface_opacity = tl.Float(0.05).tag(sync=True)
-    cell_edge_width = tl.Float(1.5).tag(sync=True)
+    cell_edge_opacity = JsonFloat(0.1).tag(sync=True)
+    cell_surface_opacity = JsonFloat(0.05).tag(sync=True)
+    cell_edge_width = JsonFloat(1.5).tag(sync=True)
 
     # Appearance
     color_scheme = tl.CaselessStrEnum(
@@ -147,7 +267,7 @@ class StructureVizTraits(tl.HasTraits):
 class PlotControlsTraits(tl.HasTraits):
     """Two-way ``controls_open`` state of matterviz plot components' control pane."""
 
-    controls_open = tl.Bool(default_value=False).tag(sync=True)
+    controls_open = JsonBool(default_value=False).tag(sync=True)
 
 
 class HierarchyPlotTraits(PlotControlsTraits):
@@ -158,8 +278,10 @@ class HierarchyPlotTraits(PlotControlsTraits):
     max_children = optional_trait(tl.Int, min=0)
     # formats offered in the export pane ([] hides it; None = all) + their base filename
     export_formats = optional_trait(tl.List, trait=tl.Enum(EXPORT_FORMATS))
-    # two-way synced zoom state: id of the cell the view is rooted on
-    zoom_root_id = optional_trait(tl.Any)
+    # two-way synced zoom state: id (string or number) of the cell the view is rooted on
+    zoom_root_id = optional_trait(
+        tl.Union, trait_types=[tl.Int(), tl.Float(), tl.Unicode()]
+    )
 
     def __init__(
         self, data: dict[str, Any] | list[dict[str, Any]] | None = None, **kwargs: Any
@@ -167,7 +289,16 @@ class HierarchyPlotTraits(PlotControlsTraits):
         """Display labeled nodes with leaf values and optional children."""
         super().__init__(data=data, **kwargs)
 
-    @tl.validate("data")
+    @validator("zoom_root_id")
+    def _reject_bool_zoom_root_id(self, proposal: tl.Bunch) -> Any:
+        """Reject bools, which the Int and Float options would take as 1 and 0."""
+        if isinstance(proposal["value"], bool):
+            raise TypeError(
+                f"zoom_root_id must be a string or number, got {proposal['value']!r}"
+            )
+        return proposal["value"]
+
+    @validator("data")
     def _normalize_hierarchy_data(self, proposal: dict[str, Any]) -> Any:
         """Normalize data on construction and subsequent assignments. A standalone
         leaf is wrapped in a list: MatterViz hides a single node's depth-0 root,

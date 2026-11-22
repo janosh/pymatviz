@@ -7,7 +7,12 @@ from typing import Any
 import traitlets as tl
 
 from pymatviz.widgets._schema_traits import BoxPlotTraits
-from pymatviz.widgets._traits import PlotControlsTraits, df_series, optional_trait
+from pymatviz.widgets._traits import (
+    PlotControlsTraits,
+    df_series,
+    optional_trait,
+    validator,
+)
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -29,7 +34,9 @@ class BoxPlotWidget(PlotControlsTraits, BoxPlotTraits, MatterVizWidget):
         tl.Union, trait_types=[tl.Float(), tl.Enum(["silverman", "scott"])]
     )
 
-    @tl.validate("series")
+    _raw_json_traits = frozenset({"series"})  # _normalize_series converts them
+
+    @validator("series")
     def _validate_series(self, proposal: dict[str, Any]) -> list[dict[str, Any]] | None:
         """Normalize series (raw samples in ``y``, binary when large) before syncing."""
         return self._normalize_series(proposal["value"], "BoxPlot", keys=("y",))

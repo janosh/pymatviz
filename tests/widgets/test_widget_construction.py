@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 from typing import Any
+from unittest.mock import Mock
 
 import kemio
 import numpy as np
@@ -14,7 +15,9 @@ import pytest
 import traitlets as tl
 
 import pymatviz as pmv
-from pymatviz.widgets import matterviz
+from pymatviz.structures import structure_dict
+from pymatviz.widgets import _traits, matterviz
+from pymatviz.widgets._normalize import normalize_plot_json, structure_to_dict
 from pymatviz.widgets._schema_traits import StructureTraits
 from pymatviz.widgets._traits import ELEMENT_COLOR_SCHEMES
 from pymatviz.widgets.band_structure import BandStructureWidget
@@ -24,6 +27,7 @@ from pymatviz.widgets.brillouin_zone import BrillouinZoneWidget
 from pymatviz.widgets.chem_pot_diagram import ChemPotDiagramWidget
 from pymatviz.widgets.composition import CompositionWidget
 from pymatviz.widgets.convex_hull import ConvexHullWidget
+from pymatviz.widgets.coordination_bar_plot import CoordinationBarPlotWidget
 from pymatviz.widgets.dos import DosWidget
 from pymatviz.widgets.fermi_surface import FermiSurfaceWidget
 from pymatviz.widgets.heatmap_matrix import HeatmapMatrixWidget
@@ -44,6 +48,7 @@ from pymatviz.widgets.sunburst import SunburstWidget
 from pymatviz.widgets.trajectory import TrajectoryWidget
 from pymatviz.widgets.treemap import TreemapWidget
 from pymatviz.widgets.xrd import XrdWidget
+from tests.widgets.conftest import SI_STRUCT
 from tests.widgets.test_browser_render import WIDGET_CASES
 
 
@@ -474,11 +479,12 @@ def test_widget_json_round_trip(
     widget_cls: type[MatterVizWidget], request: pytest.FixtureRequest, tmp_path: Any
 ) -> None:
     """to_json/from_json restore every widget type with identical traits, binary
-    array buffers included, from JSON text or a file.
+    array buffers included, from JSON text or a file (in a new dir, like to_img).
     """
     widget = WIDGET_CASES[widget_cls][0](request)
-    text = widget.to_json(f"{tmp_path}/widget.json")
-    for source in (text, f"{tmp_path}/widget.json"):
+    json_path = f"{tmp_path}/new_dir/widget.json"
+    text = widget.to_json(json_path)
+    for source in (text, json_path):
         restored = from_json(source)
         # by name: other tests reload widget modules, which swaps the class objects
         assert type(restored).__name__ == widget_cls.__name__
@@ -526,6 +532,77 @@ def test_widgets_normalize_assigned_objects(
     assert as_json(getattr(widget, trait)) == as_json(expected)
 
 
+def test_constructor_converts_once_to_plain_json(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Constructor kwargs convert once (HasTraits.__init__ re-sets each validated
+    kwarg, which reran every conversion), and structure dicts become plain JSON
+    (numpy site properties used to sync as is).
+    """
+    struct_trait = StructureWidget.class_traits()["structure"]
+    struct_calls: list[Any] = []
+    monkeypatch.setattr(
+        struct_trait,
+        "normalize",
+        lambda value: struct_calls.append(value) or structure_to_dict(value),
+    )
+    json_labels: list[str] = []
+
+    def counting_normalize(value: Any, label: str) -> Any:
+        """normalize_plot_json recording its label."""
+        json_labels.append(label)
+        return normalize_plot_json(value, label)
+
+    monkeypatch.setattr(_traits, "normalize_plot_json", counting_normalize)
+    struct = structure_dict(SI_STRUCT)
+    struct["sites"][0]["properties"] = {"magmom": np.float32(1.5)}
+    widget = StructureWidget(struct, slice_settings={"thickness": np.float32(0.5)})
+    assert len(struct_calls) == 1
+    assert json_labels.count("StructureWidget.slice_settings") == 1
+    assert _is_plain_json(widget.get_state(["structure", "slice_settings"]))
+    assert widget.structure["sites"][0]["properties"] == {"magmom": 1.5}
+    # the skip holds only while constructing: reassigning the stored value after
+    # editing it in place converts it again
+    widget.structure["sites"][0]["properties"]["magmom"] = np.float32(2.5)
+    widget.slice_settings["thickness"] = np.float32(0.25)
+    widget.structure, widget.slice_settings = widget.structure, widget.slice_settings
+    assert len(struct_calls) == 2
+    assert json_labels.count("StructureWidget.slice_settings") == 2
+    assert _is_plain_json(widget.get_state(["structure", "slice_settings"]))
+
+
+@pytest.mark.parametrize(
+    ("error", "expected_msg"),
+    [
+        (tl.TraitError("bad value"), "bad value"),
+        (KeyError("key"), "KeyError: 'key'"),
+        (FileNotFoundError("missing.xyz"), "FileNotFoundError: missing.xyz"),
+    ],
+)
+def test_validator_raises_trait_errors(error: Exception, expected_msg: str) -> None:
+    """validator() re-raises a TraitError as is and any other error as a TraitError
+    naming its type, chained to the original.
+    """
+
+    class Checked(tl.HasTraits):
+        """HasTraits with an always failing validator."""
+
+        value = tl.Int()
+
+        @_traits.validator("value")
+        def _check_value(self, _proposal: tl.Bunch) -> Any:
+            """Raise the parametrized error."""
+            raise error
+
+    with pytest.raises(tl.TraitError) as exc_info:
+        Checked().value = 1
+    assert str(exc_info.value) == expected_msg
+    if isinstance(error, tl.TraitError):
+        assert exc_info.value is error
+    else:
+        assert exc_info.value.__cause__ is error
+
+
 def _is_plain_json(value: Any) -> bool:
     """Whether value holds only exact JSON types (no numpy scalars or arrays)."""
     if isinstance(value, dict):
@@ -540,17 +617,33 @@ def _is_plain_json(value: Any) -> bool:
 def test_config_traits_normalize_on_assignment(
     widget_cls: type[MatterVizWidget], request: pytest.FixtureRequest
 ) -> None:
-    """Every dict/list config trait without its own validator converts numpy values
-    assigned after construction to plain JSON before syncing.
+    """Every dict/list config trait, those with validators included, converts numpy
+    values assigned after construction to plain JSON before syncing, unless listed
+    in ``_raw_json_traits``. A validator returning its raw input used to skip the
+    conversion (e.g. ``StructureWidget.isosurface_settings``).
     """
     widget = WIDGET_CASES[widget_cls][0](request)
+    # values the validators of these traits accept
+    valid_values: dict[str, tuple[Any, Any]] = {
+        "tile_props": ({"data-count": np.int64(2)}, {"data-count": 2}),
+        "tile_plot_config": (
+            {"x_range": np.array([0.0, 1.5]), "bins": np.int64(2)},
+            {"x_range": [0.0, 1.5], "bins": 2},
+        ),
+        "data": (
+            {"nodes": [{"label": "a"}], "links": [{"value": np.float32(3)}]},
+            {"nodes": [{"label": "a"}], "links": [{"value": 3.0}]},
+        ),
+    }
     assigned: dict[str, Any] = {}
     for name in widget.public_trait_names():
         trait = widget.traits()[name]
         sub_traits = getattr(trait, "trait_types", [trait])
-        if name in widget._trait_validators or trait.read_only:
-            continue  # own validators (e.g. series, data) are tested per widget
-        if any(isinstance(sub, tl.Dict) for sub in sub_traits):
+        if name in widget._raw_json_traits or trait.read_only:
+            continue  # their validators convert them (e.g. series to binary)
+        if name in valid_values and isinstance(trait, tl.Dict):
+            value, expected = valid_values[name]
+        elif any(isinstance(sub, tl.Dict) for sub in sub_traits):
             value = {"range": np.array([0.0, 1.5]), "count": np.int64(2)}
             expected: Any = {"range": [0.0, 1.5], "count": 2}
         elif any(isinstance(sub, tl.List) and sub._trait is None for sub in sub_traits):
@@ -565,3 +658,170 @@ def test_config_traits_normalize_on_assignment(
     assert _is_plain_json(state), {
         key: val for key, val in state.items() if not _is_plain_json(val)
     }
+
+
+@pytest.mark.parametrize("widget_cls", WIDGET_CASES, ids=lambda cls: cls.__name__)
+def test_scalar_traits_take_numpy_reject_non_finite(
+    widget_cls: type[MatterVizWidget], request: pytest.FixtureRequest
+) -> None:
+    """Float, Int and Bool traits take numpy scalars as Python ones; Float traits
+    reject NaN and infinities (synced, they'd be invalid JSON).
+    """
+    widget = WIDGET_CASES[widget_cls][0](request)
+    traits = {
+        name: widget.traits()[name]
+        for name in widget.public_trait_names()
+        if name not in widget._raw_json_traits
+    }
+    floats = [name for name, trait in traits.items() if isinstance(trait, tl.Float)]
+    ints = [name for name, trait in traits.items() if isinstance(trait, tl.Int)]
+    bools = [name for name, trait in traits.items() if isinstance(trait, tl.Bool)]
+    for name in floats:
+        setattr(widget, name, np.float32(0.5))
+        assert type(getattr(widget, name)) is float
+        assert getattr(widget, name) == 0.5
+        for bad in (np.nan, -np.inf, np.float32("nan")):
+            with pytest.raises(
+                tl.TraitError, match=f"'{name}' trait .* must be finite"
+            ):
+                setattr(widget, name, bad)
+            assert getattr(widget, name) == 0.5
+    for name in ints:
+        setattr(widget, name, np.int64(2))
+        assert type(getattr(widget, name)) is int
+        assert getattr(widget, name) == 2
+    for name in bools:  # False passes validators like DosWidget's stack check
+        setattr(widget, name, np.bool_(0))
+        assert getattr(widget, name) is False
+
+
+@pytest.mark.parametrize(
+    ("make_widget", "trait", "bad_value", "match"),
+    [
+        (TrajectoryWidget, "trajectory", "bad", "Unsupported trajectory type"),
+        (TreemapWidget, "data", {"label": "a", "value": np.nan}, "non-finite"),
+        (HeatmapMatrixWidget, "values", [[np.inf]], "non-finite"),
+        (lambda: CompositionWidget("Fe2O3"), "composition", "Xx9", "unknown element"),
+        (ScatterPlotWidget, "y_axis", {"label": np.nan}, "non-finite"),
+        (lambda: XrdWidget({"x": [1], "y": [1]}), "patterns", {"x": [1], "y": []}, "x"),
+        (StructureWidget, "structure", 5, "structure must be a dict"),
+        (BandStructureWidget, "fermi_level", np.nan, "must be finite"),
+        (lambda: SpacegroupBarPlotWidget([225]), "data", [0], r"in \[1, 230\]"),
+        # counts and cutoffs need positive values (0 bins or radii used to sync)
+        (HistogramWidget, "bins", 0, "'bins' trait .* not be less than 1"),
+        (RdfPlotWidget, "n_bins", -5, "'n_bins' trait .* not be less than 1"),
+        (RdfPlotWidget, "cutoff", 0, "cutoff must be > 0, got 0"),
+        (RdfPlotWidget, "cutoff", np.float32(-1), "cutoff must be > 0, got -1"),
+        # a second data source made the state (and its saved JSON) unloadable
+        (
+            lambda: RdfPlotWidget(patterns=[{"r": [1], "g_r": [1]}]),
+            "structures",
+            {"lattice": {}, "sites": []},
+            "not both",
+        ),
+        (
+            lambda: FermiSurfaceWidget(fermi_data={"isosurfaces": []}),
+            "band_data",
+            {"energies": []},
+            "exactly one of fermi_data or band_data",
+        ),
+        (
+            lambda: FermiSurfaceWidget(fermi_data={"isosurfaces": []}),
+            "fermi_data",
+            None,
+            "exactly one of fermi_data or band_data",
+        ),
+        # errors other than TypeError/ValueError (KeyError, FileNotFoundError) in
+        # converters skipped the rollback and left the raw value synced
+        (TrajectoryWidget, "trajectory", {"foo": 1}, "need a 'frames' list"),
+        (
+            TrajectoryWidget,
+            "trajectory",
+            [kemio.Structure(np.eye(3) * 3, ["Fe"], [[0, 0, 0]]), "missing.xyz"],
+            "FileNotFoundError: .*missing.xyz",
+        ),
+        (DosWidget, "doses", "missing/vasprun.xml", "FileNotFoundError: .*missing"),
+        # band and DOS labels were checked in the constructor only
+        (
+            lambda: BandsAndDosWidget(
+                doses={"a": {"frequencies": [0], "densities": [1]}}
+            ),
+            "band_structs",
+            {"b": {"qpoints": [], "frequencies": []}},
+            r"band_keys=\{'b'\} and dos_keys=\{'a'\} must be identical",
+        ),
+        (
+            lambda: BandsAndDosWidget(
+                band_structs={"a": {"qpoints": [], "frequencies": []}}
+            ),
+            "doses",
+            {"b": {"frequencies": [0], "densities": [1]}},
+            r"band_keys=\{'a'\} and dos_keys=\{'b'\} must be identical",
+        ),
+        # labels equal as strings merged two structures into one
+        *(
+            (widget_cls, "structures", {1: SI_STRUCT, "1": SI_STRUCT}, "unique as str")
+            for widget_cls in (CoordinationBarPlotWidget, RdfPlotWidget)
+        ),
+        # None skipped the validator outside batches, then broke isosurface checks
+        (StructureWidget, "volumetric_data", None, "list of volumes or a {prefix"),
+        (TreemapWidget, "zoom_root_id", True, "string or number, got True"),
+    ],
+)
+def test_invalid_batched_assignment_rolls_back(
+    make_widget: Any, trait: str, bad_value: Any, match: str
+) -> None:
+    """An invalid value in a hold_trait_notifications() batch raises TraitError and
+    rolls the whole batch back without notifying. Other errors used to leave earlier
+    (or, for cross-validated traits, the invalid raw) values set and synced.
+    """
+    widget = make_widget()
+    old_state = widget.to_dict()
+    observer = Mock()
+    widget.observe(observer, names=["style", trait])
+
+    def assign_batch() -> None:
+        """Set a valid style, then the bad value, in one batch."""
+        with widget.hold_trait_notifications():
+            widget.style = "height: 123px;"
+            setattr(widget, trait, bad_value)
+
+    with pytest.raises(tl.TraitError, match=match):
+        assign_batch()
+    assert widget.to_dict() == old_state
+    observer.assert_not_called()
+    with pytest.raises(tl.TraitError, match=match):  # same outside a batch
+        setattr(widget, trait, bad_value)
+    assert widget.to_dict() == old_state
+
+
+@pytest.mark.parametrize(
+    ("make_widget", "old_source", "new_source", "new_value"),
+    [
+        (
+            lambda: RdfPlotWidget(patterns=[{"r": [1], "g_r": [1]}]),
+            "patterns",
+            "structures",
+            {"lattice": {}, "sites": []},
+        ),
+        (
+            lambda: FermiSurfaceWidget(fermi_data={"isosurfaces": []}),
+            "fermi_data",
+            "band_data",
+            {"energies": []},
+        ),
+    ],
+)
+def test_data_source_swap_in_batch(
+    make_widget: Any, old_source: str, new_source: str, new_value: Any
+) -> None:
+    """Swapping a widget's one data source inside hold_trait_notifications() passes
+    the cross-trait check, and the result round-trips through to_json/from_json.
+    """
+    widget = make_widget()
+    with widget.hold_trait_notifications():
+        setattr(widget, old_source, None)
+        setattr(widget, new_source, new_value)
+    assert getattr(widget, old_source) is None
+    assert getattr(widget, new_source) == new_value
+    assert from_json(widget.to_json()).to_dict() == widget.to_dict()

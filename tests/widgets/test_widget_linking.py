@@ -81,7 +81,7 @@ _NO_STRUCTS = "requires non-empty `structures`"
 @pytest.mark.parametrize(
     ("sink_classes", "kwargs", "err_cls", "match"),
     [
-        ([], {}, ValueError, "at least 2 widgets"),
+        ([], {}, ValueError, "at least 2 distinct widgets, got 1"),
         ([BarPlotWidget], {}, TypeError, r"unsupported widget type.*BarPlotWidget"),
         ([StructureWidget], {"structures": None}, ValueError, _NO_STRUCTS),
         ([StructureWidget], {"structures": []}, ValueError, _NO_STRUCTS),
@@ -106,14 +106,16 @@ def test_link_selection_rejects_invalid_args(
 def test_link_scatter_click_updates_structure() -> None:
     """Scatter clicks show the matching frame in the structure view; observers see
     only real clicks (no synthetic None), hover-off (null active_point) and clicks
-    after unlink() change nothing.
+    after unlink() change nothing. A repeated widget is linked once (its second
+    unobserve used to make unlink() raise).
     """
     frames = _frames()
     scatter = _scatter()
     structure = StructureWidget(structure=frames[0])
 
-    link = link_selection(scatter, structure, structures=frames)
+    link = link_selection(scatter, structure, scatter, structures=frames)
     assert isinstance(link, WidgetLink)
+    assert link.widgets == [scatter, structure]
     # initial sync shows frame 0
     assert structure.structure == structure_to_pymatgen_dict(frames[0])
 

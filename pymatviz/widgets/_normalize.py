@@ -413,17 +413,20 @@ def structure_to_dict(
 
     Args:
         structure: ``None`` (passed through), a structure dict with a ``sites`` list
-            (passed through unchanged, schema errors are reported by the renderer),
-            or a single pymatgen ``Structure``/``Molecule``, ASE ``Atoms`` or
-            ``PhonopyAtoms`` (converted via ``structure_dict``).
+            (schema errors are reported by the renderer), or a single pymatgen
+            ``Structure``/``Molecule``, ASE ``Atoms`` or ``PhonopyAtoms`` (converted
+            via ``structure_dict``).
         periodic: Require a lattice, for widgets drawing the Brillouin zone.
 
     Returns:
-        The structure dict, or None if structure is None.
+        The JSON-normalized structure dict (numpy values in site or structure
+        properties, e.g. ASE ``Atoms.info``, become lists and floats), or None if
+        structure is None.
 
     Raises:
         TypeError: If a dict has no ``sites`` list, for any other type (including
             sequences of structures), or for a lattice-less one when ``periodic``.
+        ValueError: For non-finite numbers.
     """
     if structure is None:
         return None
@@ -449,7 +452,7 @@ def structure_to_dict(
         raise TypeError(
             f"a periodic structure (with a lattice) is needed, got {sorted(struct)=}"
         )
-    return struct
+    return normalize_plot_json(struct, "structure")
 
 
 def _formula_dict(formula: str) -> dict[str, float]:

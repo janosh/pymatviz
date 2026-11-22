@@ -93,6 +93,14 @@ def test_hierarchy_widget_traits(
     # zoom_root_id is two-way synced: assignment after construction must work
     widget.zoom_root_id = None
     assert widget.zoom_root_id is None
+    # ids are strings or numbers (numpy ones as Python numbers); anything else, NaN
+    # included, used to be accepted and break syncing
+    widget.zoom_root_id = np.int64(3)
+    assert type(widget.zoom_root_id) is int
+    for bad_id in (np.nan, {"id": 1}, ["root"]):
+        with pytest.raises(tl.TraitError):
+            widget.zoom_root_id = bad_id
+    assert widget.zoom_root_id == 3
 
     for bad_key in ("value_mode", "label_text", enum_key):
         with pytest.raises(tl.TraitError, match=f"'{bad_key}' trait.*'not-an-option'"):

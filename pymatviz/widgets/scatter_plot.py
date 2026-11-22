@@ -14,6 +14,7 @@ from pymatviz.widgets._traits import (
     color_scale_trait,
     df_series,
     optional_trait,
+    validator,
 )
 from pymatviz.widgets.matterviz import MatterVizWidget
 
@@ -59,7 +60,9 @@ class ScatterPlotWidget(PlotControlsTraits, ScatterPlotTraits, MatterVizWidget):
         series = df_series(series, color, kwargs, x=x, y=y)
         super().__init__(series=series, **kwargs)
 
-    @tl.validate("series")
+    _raw_json_traits = frozenset({"series"})  # _normalize_series converts them
+
+    @validator("series")
     def _validate_series(self, proposal: dict[str, Any]) -> list[dict[str, Any]] | None:
         """Normalize series on init and reassignment, binary when large."""
         return self._normalize_series(proposal["value"], "ScatterPlot")

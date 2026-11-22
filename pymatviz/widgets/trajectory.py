@@ -17,7 +17,13 @@ from pymatviz.widgets._binary import (
     trajectory_to_envelope,
 )
 from pymatviz.widgets._schema_traits import TrajectoryTraits
-from pymatviz.widgets._traits import StructureVizTraits, optional_trait
+from pymatviz.widgets._traits import (
+    JsonBool,
+    JsonInt,
+    StructureVizTraits,
+    optional_trait,
+    validator,
+)
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -78,7 +84,7 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
     """
 
     trajectory = tl.Any(default_value=None, allow_none=True).tag(sync=True)
-    current_step_idx = tl.Int(0).tag(sync=True)
+    current_step_idx = JsonInt(0).tag(sync=True)
 
     # Layout
     layout = tl.CaselessStrEnum(
@@ -94,7 +100,7 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
     ).tag(sync=True)
     # Data inspector sidebar (frame attributes, per-frame and per-atom tables). Two-way
     # synced, so closing it in the viewer reads back as False.
-    data_inspector_open = tl.Bool(default_value=True).tag(sync=True)
+    data_inspector_open = JsonBool(default_value=True).tag(sync=True)
 
     step_labels = optional_trait(tl.Union, trait_types=[tl.Int(), tl.List()])
 
@@ -125,7 +131,7 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
         """
         super().__init__(trajectory=trajectory, **kwargs)
 
-    @tl.validate("trajectory")
+    @validator("trajectory")
     def _validate_trajectory(self, proposal: dict[str, Any]) -> dict[str, Any] | None:
         """Normalize constructor data and later assignments before syncing to JS."""
         from pymatviz.widgets._normalize import normalize_plot_json
@@ -233,10 +239,16 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
         plots) defaults to the frame index.
 
         Raises:
+            TypeError: If there is no ``frames`` list.
             ValueError: If a frame is not a dict with a ``structure`` key.
         """
+        if not isinstance(input_frames := trajectory_data.get("frames"), list | tuple):
+            raise TypeError(
+                "trajectory dicts need a 'frames' list, got keys="
+                f"{list(trajectory_data)}"
+            )
         frames = []
-        for frame_idx, frame in enumerate(trajectory_data["frames"]):
+        for frame_idx, frame in enumerate(input_frames):
             if not isinstance(frame, dict) or "structure" not in frame:
                 keys = list(frame) if isinstance(frame, dict) else type(frame).__name__
                 raise ValueError(

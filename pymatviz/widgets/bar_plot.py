@@ -7,7 +7,12 @@ from typing import Any
 import traitlets as tl
 
 from pymatviz.widgets._schema_traits import BarPlotTraits
-from pymatviz.widgets._traits import PlotControlsTraits, color_scale_trait, df_series
+from pymatviz.widgets._traits import (
+    PlotControlsTraits,
+    color_scale_trait,
+    df_series,
+    validator,
+)
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -34,7 +39,9 @@ class BarPlotWidget(PlotControlsTraits, BarPlotTraits, MatterVizWidget):
     ).tag(sync=True)
     color_scale = color_scale_trait()
 
-    @tl.validate("series")
+    _raw_json_traits = frozenset({"series"})  # _normalize_series converts them
+
+    @validator("series")
     def _validate_series(self, proposal: dict[str, Any]) -> list[dict[str, Any]] | None:
         """Normalize series on init and reassignment (arrays to lists, reject
         non-finite values) before syncing.

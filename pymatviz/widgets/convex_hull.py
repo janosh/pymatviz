@@ -8,7 +8,7 @@ import traitlets as tl
 
 from pymatviz.widgets._normalize import normalize_convex_hull_entries
 from pymatviz.widgets._schema_traits import ConvexHullTraits
-from pymatviz.widgets._traits import normalized_trait
+from pymatviz.widgets._traits import JsonBool, normalized_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -45,9 +45,9 @@ class ConvexHullWidget(ConvexHullTraits, MatterVizWidget):
 
     entries = normalized_trait(normalize_convex_hull_entries, tl.List())
     # Display options
-    show_stable = tl.Bool(default_value=True).tag(sync=True)
-    show_unstable = tl.Bool(default_value=True).tag(sync=True)
-    show_hull_faces = tl.Bool(default_value=True).tag(sync=True)
+    show_stable = JsonBool(default_value=True).tag(sync=True)
+    show_unstable = JsonBool(default_value=True).tag(sync=True)
+    show_hull_faces = JsonBool(default_value=True).tag(sync=True)
 
     def __init__(self, entries: Any | None = None, **kwargs: Any) -> None:
         """Initialize the ConvexHullWidget.

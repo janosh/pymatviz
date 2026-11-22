@@ -11,6 +11,7 @@ from pymatviz.widgets._traits import (
     CAMERA_PROJECTIONS,
     PlotControlsTraits,
     color_scale_trait,
+    validator,
 )
 from pymatviz.widgets.matterviz import MatterVizWidget
 
@@ -30,7 +31,9 @@ class ScatterPlot3DWidget(PlotControlsTraits, ScatterPlot3dTraits, MatterVizWidg
         CAMERA_PROJECTIONS, default_value="perspective"
     ).tag(sync=True)
 
-    @tl.validate("series")
+    _raw_json_traits = frozenset({"series"})  # _normalize_series converts them
+
+    @validator("series")
     def _validate_series(self, proposal: dict[str, Any]) -> list[dict[str, Any]] | None:
         """Normalize series (equal-length ``x``/``y``/``z``, binary when large) on
         init and reassignment.

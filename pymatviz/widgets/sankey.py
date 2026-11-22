@@ -6,9 +6,8 @@ from typing import Any
 
 import traitlets as tl
 
-from pymatviz.widgets._normalize import normalize_plot_json
 from pymatviz.widgets._schema_traits import SankeyTraits
-from pymatviz.widgets._traits import PlotControlsTraits, optional_trait
+from pymatviz.widgets._traits import PlotControlsTraits, optional_trait, validator
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -31,19 +30,16 @@ class SankeyWidget(PlotControlsTraits, SankeyTraits, MatterVizWidget):
     max_links = optional_trait(tl.Int, min=0)  # outgoing links per node (0 = all)
     iterations = optional_trait(tl.Int, min=0)  # d3-sankey relaxation passes
 
-    @tl.validate("data")
+    @validator("data")
     def _validate_data(self, proposal: dict[str, Any]) -> dict[str, Any] | None:
-        """Normalize numpy values (tuples to lists) and require ``nodes`` and
-        ``links`` lists.
+        """Require ``nodes`` and ``links`` lists (tuples are lists after JSON
+        normalization).
         """
-        try:
-            data = normalize_plot_json(proposal["value"], "Sankey.data")
-        except (TypeError, ValueError) as exc:
-            raise tl.TraitError(str(exc)) from exc
+        data = proposal["value"]
         if data is not None and not all(
             isinstance(data.get(key), list) for key in ("nodes", "links")
         ):
-            raise tl.TraitError(
+            raise ValueError(
                 f"Sankey data needs 'nodes' and 'links' lists, got keys={sorted(data)}"
             )
         return data

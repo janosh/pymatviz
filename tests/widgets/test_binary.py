@@ -67,7 +67,7 @@ def test_invalid_frame_arrays(key: str, value: float) -> None:
     properties = {"force": [[value, 0, 0]]} if key == "force" else {}
     struct = kemio.Structure(np.eye(3) * 2, ["H"], positions, info=properties)
     with pytest.raises(
-        ValueError, match=f"{key} (has non-finite value|beyond float32 range)"
+        tl.TraitError, match=f"{key} (has non-finite value|beyond float32 range)"
     ):
         TrajectoryWidget(trajectory=struct)
 
@@ -75,9 +75,9 @@ def test_invalid_frame_arrays(key: str, value: float) -> None:
 def test_envelope_kind_mismatch_raises() -> None:
     """A ready envelope of the wrong kind is rejected on assignment."""
     volume = volume_envelope(np.zeros((1, 1, 1)), id="v")
-    with pytest.raises(TypeError, match="kind must be 'trajectory', got 'volume'"):
+    with pytest.raises(tl.TraitError, match="kind must be 'trajectory', got 'volume'"):
         TrajectoryWidget(trajectory=volume)
-    with pytest.raises(TypeError, match="kind must be 'volume', got 'trajectory'"):
+    with pytest.raises(tl.TraitError, match="kind must be 'volume', got 'trajectory'"):
         StructureWidget(volumetric_data=[volume | {"kind": "trajectory"}])
 
 
@@ -311,7 +311,7 @@ def test_volume_envelope_round_trip() -> None:
     assert np.shares_memory(grid, values)
     np.testing.assert_array_equal(values, grid)
     assert json.loads(json.dumps(payload["origin"])) == [0, 0, 0]
-    with pytest.raises(ValueError, match=r"values must be .* \[\*, \*, \*\]"):
+    with pytest.raises(tl.TraitError, match=r"values must be .* \[\*, \*, \*\]"):
         widget.volumetric_data = [volume | {"grid": grid[0]}]
     widget.volumetric_data = [payload | {"extra": "x"}]
     assert widget.volumetric_data[0]["extra"] == "x"

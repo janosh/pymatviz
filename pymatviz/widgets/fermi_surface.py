@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import functools
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pymatviz.widgets._normalize import normalize_plot_json
 from pymatviz.widgets._schema_traits import FermiSurfaceTraits
@@ -11,8 +11,13 @@ from pymatviz.widgets._traits import (
     color_bar_trait,
     color_scale_trait,
     normalized_trait,
+    validator,
 )
 from pymatviz.widgets.matterviz import MatterVizWidget
+
+
+if TYPE_CHECKING:
+    import traitlets as tl
 
 
 class FermiSurfaceWidget(FermiSurfaceTraits, MatterVizWidget):
@@ -77,7 +82,20 @@ class FermiSurfaceWidget(FermiSurfaceTraits, MatterVizWidget):
                 reciprocal lattice info.
             band_data: Raw band grid data with energies on a k-grid.
             **kwargs: Additional widget properties.
+
+        Raises:
+            TraitError: Unless exactly one of fermi_data and band_data is given.
         """
-        if (fermi_data is None) == (band_data is None):
-            raise ValueError("Provide exactly one of fermi_data or band_data.")
         super().__init__(fermi_data=fermi_data, band_data=band_data, **kwargs)
+
+    @validator("fermi_data", "band_data")
+    def _validate_one_source(self, proposal: tl.Bunch) -> Any:
+        """Require exactly one of fermi_data and band_data, on construction and
+        assignment, so the state (and its saved JSON) stays loadable. Inside
+        ``hold_trait_notifications()`` this checks the final state, so swapping
+        sources there works.
+        """
+        other = "band_data" if proposal["trait"].name == "fermi_data" else "fermi_data"
+        if (proposal["value"] is None) == (getattr(self, other) is None):
+            raise ValueError("Provide exactly one of fermi_data or band_data.")
+        return proposal["value"]

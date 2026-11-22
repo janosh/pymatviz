@@ -7,7 +7,13 @@ from typing import Any
 import traitlets as tl
 
 from pymatviz.widgets._schema_traits import HistogramTraits
-from pymatviz.widgets._traits import PlotControlsTraits, df_series
+from pymatviz.widgets._traits import (
+    JsonBool,
+    JsonInt,
+    PlotControlsTraits,
+    df_series,
+    validator,
+)
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -19,15 +25,17 @@ class HistogramWidget(PlotControlsTraits, HistogramTraits, MatterVizWidget):
     lists; invalid updates raise ``traitlets.TraitError`` and preserve prior data.
     """
 
-    bins = tl.Int(default_value=100).tag(sync=True)
+    bins = JsonInt(default_value=100, min=1).tag(sync=True)
     mode = tl.CaselessStrEnum(values=["single", "overlay"], default_value="single").tag(
         sync=True
     )
     # Two-way synced index of the active series in single-mode controls
-    selected_series_idx = tl.Int(default_value=0).tag(sync=True)
-    show_legend = tl.Bool(default_value=True).tag(sync=True)
+    selected_series_idx = JsonInt(default_value=0).tag(sync=True)
+    show_legend = JsonBool(default_value=True).tag(sync=True)
 
-    @tl.validate("series")
+    _raw_json_traits = frozenset({"series"})  # _normalize_series converts them
+
+    @validator("series")
     def _validate_series(self, proposal: dict[str, Any]) -> list[dict[str, Any]] | None:
         """Normalize series on init and reassignment, including batched updates."""
         return self._normalize_series(

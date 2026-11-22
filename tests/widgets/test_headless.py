@@ -572,17 +572,19 @@ def test_build_interactive_html_requires_one_source_each(
 
 def test_widget_data_json_numpy_scalars_and_unknown_types() -> None:
     """Numpy scalars and arrays encode as Python values, buffers as base64 and
-    ``</`` is escaped; other objects raise, not stringify.
+    ``<`` is escaped (``<!--<script>`` in a label kept exported pages from
+    mounting); other objects raise, not stringify.
     """
     from pymatviz.widgets._headless import _widget_data_json
 
     data = {"idx": np.int64(141), "val": np.float32(0.5), "flag": np.bool_(1)}
     data |= {"arr": np.arange(2), "buf": memoryview(b"ab"), "tag": "</script>"}
+    data |= {"label": "<!--<script>"}
     assert json.loads(_widget_data_json(data)) == {
         "idx": 141, "val": 0.5, "flag": True, "arr": [0, 1], "buf": "YWI=",
-        "tag": "</script>",
+        "tag": "</script>", "label": "<!--<script>",
     }  # fmt: skip
-    assert "</" not in _widget_data_json(data)
+    assert "<" not in _widget_data_json(data)
     with pytest.raises(TypeError, match="object is not JSON serializable"):
         _widget_data_json({"bad": object()})
 

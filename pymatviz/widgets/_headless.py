@@ -398,15 +398,17 @@ async def _render_widget(inputs: _RenderInputs) -> bytes:
 
 
 def _widget_data_json(widget_data: Mapping[str, Any]) -> str:
-    """Widget data as JSON safe to embed in a ``<script>`` (``</`` escaped), with
-    binary arrays base64-encoded for ``_REVIVE_BUFFERS_JS`` (see ``json_default``).
+    """Widget data as JSON safe to embed in a ``<script>``, with binary arrays
+    base64-encoded for ``_REVIVE_BUFFERS_JS`` (see ``json_default``). Every ``<`` is
+    unicode-escaped: besides ``</script>``, a ``<!--<script>`` in a label puts the
+    HTML parser in a state where the real closing tag doesn't end the script.
 
     Raises:
         TypeError: For any other non-JSON value, instead of stringifying it.
     """
     from pymatviz.widgets._binary import json_default
 
-    return json.dumps(widget_data, default=json_default).replace("</", r"<\/")
+    return json.dumps(widget_data, default=json_default).replace("<", r"\u003c")
 
 
 @functools.lru_cache(maxsize=_MAX_WARM_PAGES)  # base64 of a multi-MB bundle is slow

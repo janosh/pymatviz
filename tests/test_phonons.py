@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any, Literal
 import kemio
 import numpy as np
 import pytest
+import traitlets as tl
 
 import pymatviz as pmv
 from pymatviz.data import TEST_FILES, load_nacl_phonons
@@ -81,7 +82,7 @@ def test_band_structure_widget_phonons(
     assert "eigendisplacements" in bands["DFT"].as_dict()
     assert "eigendisplacements" not in widget.band_structs
 
-    with pytest.raises(TypeError, match="Unsupported type for band structure"):
+    with pytest.raises(tl.TraitError, match="Unsupported type for band structure"):
         pmv.band_structure(band_structs="invalid")
 
 
@@ -130,7 +131,7 @@ def test_phonon_dos(
                 doses={"a": GRID_012, "b": kemio.PhononDos([0, 2, 4], [1, 2, 1])},
                 stack=True,
             ),
-            ValueError,
+            tl.TraitError,
             r"one grid, but \['b'\] differ from 'a'",
         ),
     ],
@@ -202,9 +203,9 @@ def test_bands_and_dos_widget_phonons(phonon_bands_doses_mp_2758: BandsDoses) ->
     assert set(widget.band_structs) == set(widget.doses) == {"DFT", "MACE"}
     assert (widget.sigma, widget.stack) == (0.1, False)
     # DFT and MACE DOS use different frequency grids, which MatterViz can't stack
-    with pytest.raises(ValueError, match=r"one grid, but \['MACE'\]"):
+    with pytest.raises(tl.TraitError, match=r"one grid, but \['MACE'\]"):
         pmv.bands_and_dos(band_structs=bands, doses=doses, stack=True)
-    with pytest.raises(ValueError, match=r"one grid, but \['MACE'\]"):
+    with pytest.raises(tl.TraitError, match=r"one grid, but \['MACE'\]"):
         pmv.dos(doses=doses, stack=True)
     list_and_tuple = {  # equal grids in different containers stack
         label: {"frequencies": grid, "densities": [1, 2]}
@@ -221,7 +222,7 @@ def test_bands_and_dos_widget_phonons(phonon_bands_doses_mp_2758: BandsDoses) ->
     assert "densities" in widget.doses
 
     for mismatched in ({"DFT": doses["DFT"]}, doses["DFT"]):
-        with pytest.raises(ValueError, match="must be identical"):
+        with pytest.raises(tl.TraitError, match="must be identical"):
             pmv.bands_and_dos(band_structs=bands, doses=mismatched)
 
 

@@ -311,10 +311,10 @@ def ptable_hists(
         PeriodicTableWidget: Interactive periodic table of histograms.
 
     Raises:
-        ValueError: For keys that aren't element symbols, values that aren't 1D
-            numeric arrays or an x_range that resolves to lo >= hi.
-        TraitError: For bins outside [1, 1000], an invalid color_scale, or numeric
-            heatmap_values beside a color_scale.
+        ValueError: For values that aren't 1D numeric arrays or an x_range that
+            resolves to lo >= hi.
+        TraitError: For keys that aren't element symbols, bins outside [1, 1000],
+            an invalid color_scale, or numeric heatmap_values beside a color_scale.
     """
     check_unique_labels(
         data.columns if isinstance(data, pd.DataFrame) else data, "element keys"
@@ -386,11 +386,11 @@ def ptable_scatter(
         PeriodicTableWidget: Interactive periodic table of scatter/line plots.
 
     Raises:
-        ValueError: For keys that aren't element symbols, series that aren't 2- or
-            3-tuples of numeric 1D arrays, arrays of differing lengths or ranges
-            that resolve to lo >= hi.
-        TraitError: For an unknown mode, an invalid color_scale, or numeric
-            heatmap_values beside color_values.
+        ValueError: For series that aren't 2- or 3-tuples or ranges that resolve
+            to lo >= hi.
+        TraitError: For keys that aren't element symbols, non-numeric or non-1D
+            arrays, arrays of differing lengths, an unknown mode, an invalid
+            color_scale, or numeric heatmap_values beside color_values.
     """
     series_names = sorted(  # key=str: names may mix types, e.g. 1 and "a"
         {name for elem in data.values() if isinstance(elem, Mapping) for name in elem},

@@ -14,6 +14,7 @@ from pymatviz.widgets._traits import (
     color_bar_trait,
     color_scale_trait,
     normalized_trait,
+    validator,
 )
 from pymatviz.widgets.matterviz import MatterVizWidget
 
@@ -115,7 +116,7 @@ class HeatmapMatrixWidget(HeatmapMatrixTraits, MatterVizWidget):
             **kwargs,
         )
 
-    @tl.validate("values")
+    @validator("values")
     def _validate_values(self, proposal: dict[str, Any]) -> Any:
         """JSON-normalize values (numpy arrays to lists) on every assignment."""
         return normalize_plot_json(proposal["value"], "HeatmapMatrix.values")

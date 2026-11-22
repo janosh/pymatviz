@@ -97,7 +97,7 @@ def test_widget_trajectory_updates(
     widget.trajectory = None
     assert widget.trajectory is None
     assert widget.current_step_idx == 2
-    with pytest.raises(TypeError, match="Unsupported trajectory type"):
+    with pytest.raises(tl.TraitError, match="Unsupported trajectory type"):
         widget.trajectory = "invalid trajectory"
     assert widget.trajectory is None
 
@@ -435,14 +435,14 @@ def test_trajectory_widget_normalization_regressions(
         ({"force": [0.1, 0.2, 0.3]}, r"frame 0 'force' must be per-atom.*\(3,\)"),
         ({"forces": forces, "force": forces}, "both 'force' and 'forces'"),
     ):
-        with pytest.raises(ValueError, match=match):
+        with pytest.raises(tl.TraitError, match=match):
             TrajectoryWidget(trajectory=[{"structure": fe3co4_disordered, **bad_frame}])
     # a frames dict takes structure objects too, and frames lacking one raise
     obj_frames = {"frames": [{"structure": fe3co4_disordered, "energy": -1.5}]}
     (obj_frame,) = TrajectoryWidget(trajectory=obj_frames).trajectory["frames"]
     assert len(obj_frame["structure"]["sites"]) == len(fe3co4_disordered)
     with pytest.raises(
-        ValueError, match=r"frame 0 must be .* 'structure' key, got \['sites'"
+        tl.TraitError, match=r"frame 0 must be .* 'structure' key, got \['sites'"
     ):
         TrajectoryWidget(trajectory={"frames": [{"sites": [], "lattice": {}}]})
     json.dumps(widget.trajectory)  # round-trips as standard JSON

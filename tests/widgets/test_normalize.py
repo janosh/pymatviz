@@ -50,8 +50,8 @@ class _MockMSONable:
     ],
 )
 def test_normalizers_pass_through(normalize: Any, value: Any) -> None:
-    """None and already-normalized dicts are returned as the same object."""
-    assert normalize(value) is value
+    """None and already-normalized dicts come back unchanged."""
+    assert normalize(value) == value
 
 
 @pytest.mark.parametrize(

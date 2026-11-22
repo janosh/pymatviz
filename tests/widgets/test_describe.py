@@ -155,6 +155,29 @@ from tests.conftest import SI2_STRUCT, cubic_structure
         ),
         (pmv.heatmap_matrix(), {"shape": [0, 0], "value_range": None}),
         (pmv.widgets.XrdWidget(), {"n_peaks": None, "two_theta_range": None}),
+        # types that used to report only their widget_type
+        (
+            pmv.widgets.BoxPlotWidget(series=[{"y": [3, 1, 2]}, {"y": [5]}]),
+            {"n_series": 2, "n_points": 4, "y_range": [1.0, 5.0], "x_range": None},
+        ),
+        (
+            pmv.widgets.BinnedScatterPlotWidget(series=[{"x": [0, 2], "y": [1, 3]}]),
+            {"n_series": 1, "n_points": 2, "x_range": [0.0, 2.0]},
+        ),
+        (
+            pmv.widgets.SankeyWidget(
+                {"nodes": [{"label": "a"}, {"label": "b"}], "links": [{}]}
+            ),
+            {"n_nodes": 2, "n_links": 1},
+        ),
+        (
+            pmv.widgets.CoordinationBarPlotWidget([SI2_STRUCT, SI2_STRUCT]),
+            {"n_structures": 2},
+        ),
+        (
+            pmv.widgets.CoordinationBarPlotWidget(SI2_STRUCT),
+            {"n_structures": 1, "formula": "Si2"},
+        ),
     ],
 )
 def test_describe_widget(widget: Any, expected: dict[str, Any]) -> None:
@@ -211,6 +234,10 @@ def test_describe_treemap_cyclic_data_and_unknown_widget_type() -> None:
             "periodic_table: 3 tile plots",
         ),
         ({"widget_type": "xrd"}, "xrd"),
+        (
+            {"widget_type": "coordination_bar_plot", "n_structures": 2},
+            "coordination_bar_plot: 2 structures",
+        ),
     ],
 )
 def test_short_summary(report: dict[str, Any], expected: str) -> None:
@@ -250,6 +277,14 @@ def test_short_summary(report: dict[str, Any], expected: str) -> None:
         (pmv.sunburst(), True),
         (pmv.treemap(), True),
         (pmv.treemap(data={"label": "root", "value": 1}), False),
+        # box plots summarize y samples
+        (pmv.widgets.BoxPlotWidget(), True),
+        (pmv.widgets.BoxPlotWidget(series=[{"y": []}]), True),
+        (pmv.widgets.BoxPlotWidget(series=[{"y": [1]}]), False),
+        (pmv.widgets.BinnedScatterPlotWidget(series=[{"x": [], "y": []}]), True),
+        (pmv.widgets.SankeyWidget(), True),
+        (pmv.widgets.CoordinationBarPlotWidget(), True),
+        (pmv.widgets.PhaseDiagramWidget(), True),
     ],
 )
 def test_check_inputs(widget: Any, expect_warning: bool) -> None:

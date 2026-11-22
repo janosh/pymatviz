@@ -14,6 +14,7 @@ import kemio
 import numpy as np
 import pandas as pd
 import pytest
+import traitlets as tl
 
 import pymatviz as pmv
 from pymatviz import hierarchy
@@ -776,7 +777,7 @@ def test_structure_widget_pymatgen_site_properties(
     fe3co4_disordered: Any,
 ) -> None:
     """Pymatgen structures (disordered, with magmom and force site properties) sync
-    as their as_dict().
+    as their as_dict() in plain JSON (tuples as lists).
     """
     pytest.importorskip("pymatgen.core")
     from kemio.interop import structure_to_pymatgen_dict
@@ -790,7 +791,7 @@ def test_structure_widget_pymatgen_site_properties(
         site_properties=site_props
     )
     widget = StructureWidget(structure=struct)
-    assert widget.structure == struct.as_dict()
+    assert widget.structure == json.loads(json.dumps(struct.as_dict()))
     sites = widget.structure["sites"]
     site_prop_keys = {key for site in sites for key in site["properties"]}
     assert site_prop_keys == {"magmom", "force"}
@@ -817,7 +818,7 @@ def test_widgets_accept_pymatgen_structure(widget_cls: type, trait: str) -> None
     as_json = json.loads(json.dumps(pmg_struct.as_dict()))
     assert json.loads(json.dumps(synced)) == as_json
     if widget_cls is not RdfPlotWidget:
-        with pytest.raises(TypeError, match="periodic structure"):
+        with pytest.raises(tl.TraitError, match="periodic structure"):
             widget_cls(structure=Molecule(["H", "H"], [[0, 0, 0], [0, 0, 0.74]]))
 
 
@@ -876,7 +877,7 @@ def test_widget_volumetric_data_from_pymatgen() -> None:
         ("initial/total", "initial/total"),
     ]
     assert payloads[0]["arrays"] == total["arrays"]
-    with pytest.raises(ValueError, match=r"duplicates \['total'\].*prefix: volume"):
+    with pytest.raises(tl.TraitError, match=r"duplicates \['total'\].*prefix: volume"):
         StructureWidget(volumetric_data=[Chgcar(struct, data), volume])
 
 
@@ -1008,7 +1009,7 @@ def test_invalid_ase_frame_arrays(key: str, value: float) -> None:
         f"{key} (has non-finite value|beyond float32 range)"
         f"|non-finite (coordinates|lattice)|singular lattice"
     )
-    with pytest.raises(ValueError, match=match):
+    with pytest.raises(tl.TraitError, match=match):
         TrajectoryWidget(trajectory=atoms)
 
 
@@ -1188,7 +1189,7 @@ def test_pymatgen_trajectory_per_frame_lattice(displacement: bool) -> None:
     traj.frame_properties = [
         {"forces": np.zeros((n_atoms, 3))} for n_atoms in (1, 2, 1)
     ]
-    with pytest.raises(ValueError, match=r"forces need shape \(1, 3\) for 1 sites"):
+    with pytest.raises(tl.TraitError, match=r"forces need shape \(1, 3\) for 1 sites"):
         TrajectoryWidget(trajectory=traj)
 
 
@@ -1200,7 +1201,9 @@ def test_invalid_pymatgen_time_step(step: Any) -> None:
 
     traj = Trajectory(["Si"], np.zeros((1, 1, 3)), lattice=CELL, time_step=step)
     for value in (traj, traj.as_dict()):
-        with pytest.raises(ValueError, match="time_step value must be finite and > 0"):
+        with pytest.raises(
+            tl.TraitError, match="time_step value must be finite and > 0"
+        ):
             TrajectoryWidget(trajectory=value)
 
 

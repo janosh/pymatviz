@@ -6,9 +6,10 @@ from typing import TYPE_CHECKING, Any
 
 import traitlets as tl
 
+from pymatviz.utils import str_labels
 from pymatviz.widgets._normalize import structure_to_dict
 from pymatviz.widgets._schema_traits import CoordinationBarPlotTraits
-from pymatviz.widgets._traits import PlotControlsTraits
+from pymatviz.widgets._traits import PlotControlsTraits, validator
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -43,29 +44,25 @@ class CoordinationBarPlotWidget(
         values=["overlay", "stacked", "grouped"], default_value="grouped"
     ).tag(sync=True)
 
-    @tl.validate("structures")
+    @validator("structures")
     def _validate_structures(self, proposal: dict[str, Any]) -> dict[str, Any] | None:
         """Convert structures to the bare structure dict or ``{label: dict}`` form
         MatterViz takes (sequences labeled ``Structure 1``, ...), on construction and
-        on later assignment.
+        on later assignment. Keys that stringify alike (e.g. 1 and "1") raise.
         """
         structures = proposal["value"]
         if structures is None:
             return None
-        try:
-            is_struct_dict = isinstance(structures, dict) and "sites" in structures
-            if hasattr(structures, "items") and not is_struct_dict:  # dict, Series
-                return {
-                    str(key): structure_to_dict(val) for key, val in structures.items()
-                }
-            if isinstance(structures, (list, tuple)):
-                return {
-                    f"Structure {idx}": structure_to_dict(struct)
-                    for idx, struct in enumerate(structures, start=1)
-                }
-            return structure_to_dict(structures)
-        except TypeError as exc:
-            raise tl.TraitError(str(exc)) from exc
+        is_struct_dict = isinstance(structures, dict) and "sites" in structures
+        if hasattr(structures, "items") and not is_struct_dict:  # dict, Series
+            labeled = str_labels(dict(structures.items()))
+            return {key: structure_to_dict(val) for key, val in labeled.items()}
+        if isinstance(structures, (list, tuple)):
+            return {
+                f"Structure {idx}": structure_to_dict(struct)
+                for idx, struct in enumerate(structures, start=1)
+            }
+        return structure_to_dict(structures)
 
     def __init__(
         self,

@@ -92,10 +92,12 @@ def _series_list(widget_data: Mapping[str, Any]) -> list[Mapping[str, Any]]:
 def _xy_facts(
     widget_data: Mapping[str, Any], axes: tuple[str, ...], *, histogram: bool = False
 ) -> dict[str, Any]:
-    """Series count, point count, per-axis ranges, and labels for plot widgets.
+    """Series count, point count (of the first axis), per-axis ranges, and labels
+    for plot widgets.
 
     Histograms bin their samples along x, so those set ``n_points``/``x_range``; bin
-    counts are computed in the renderer, so no ``y_range`` is reported.
+    counts are computed in the renderer, so no ``y_range`` is reported. Box plots
+    summarize their raw ``y`` samples.
     """
     series = _series_list(widget_data)
     samples = {
@@ -103,7 +105,8 @@ def _xy_facts(
         for axis in axes
     }
     facts: dict[str, Any] = {"n_series": len(series)}
-    facts["n_points"] = sum(0 if vals is None else len(vals) for vals in samples["x"])
+    point_samples = samples[axes[0]]
+    facts["n_points"] = sum(0 if vals is None else len(vals) for vals in point_samples)
     if labels := [s.get("label") for s in series if s.get("label")]:
         facts["series_labels"] = labels
     for axis, axis_samples in samples.items():
@@ -339,6 +342,24 @@ def _describe_hierarchy(data: Mapping[str, Any]) -> dict[str, Any]:
     return facts
 
 
+def _describe_sankey(data: Mapping[str, Any]) -> dict[str, Any]:
+    """Node and link counts of a Sankey diagram."""
+    flows = data.get("data") or {}
+    return {f"n_{key}": len(flows.get(key) or []) for key in ("nodes", "links")}
+
+
+def _describe_coordination_bar_plot(data: Mapping[str, Any]) -> dict[str, Any]:
+    """Structure count (a bare structure dict or ``{label: structure}``) plus the
+    facts of a single structure.
+    """
+    structures = data.get("structures")
+    if not isinstance(structures, Mapping):
+        return {"n_structures": 0}
+    if "sites" in structures:
+        return {"n_structures": 1, **_structure_facts(structures)}
+    return {"n_structures": len(structures)}
+
+
 def _describe_brillouin_zone(data: Mapping[str, Any]) -> dict[str, Any]:
     """Data source flags plus structure facts for a Brillouin zone."""
     return {
@@ -351,6 +372,7 @@ def _describe_brillouin_zone(data: Mapping[str, Any]) -> dict[str, Any]:
 _describe_xy = functools.partial(_xy_facts, axes=("x", "y"))
 _describe_xyz = functools.partial(_xy_facts, axes=("x", "y", "z"))
 _describe_histogram = functools.partial(_xy_facts, axes=("x",), histogram=True)
+_describe_box = functools.partial(_xy_facts, axes=("y",))
 
 # widget_type -> handler deriving structured facts from to_dict() output
 _HANDLERS: dict[str, Any] = {
@@ -358,6 +380,10 @@ _HANDLERS: dict[str, Any] = {
     "bar_plot": _describe_xy,
     "histogram": _describe_histogram,
     "scatter_plot_3d": _describe_xyz,
+    "binned_scatter_plot": _describe_xy,
+    "box_plot": _describe_box,
+    "sankey": _describe_sankey,
+    "coordination_bar_plot": _describe_coordination_bar_plot,
     "structure": _describe_structure,
     "trajectory": _describe_trajectory,
     "periodic_table": _describe_periodic_table,
@@ -384,6 +410,11 @@ _PRIMARY_DATA: dict[str, str | tuple[str, ...]] = {
     "bar_plot": "series",
     "histogram": "series",
     "scatter_plot_3d": "series",
+    "binned_scatter_plot": "series",
+    "box_plot": "series",
+    "sankey": "data",
+    "coordination_bar_plot": "structures",
+    "phase_diagram": "data",
     "structure": "structure",
     "trajectory": "trajectory",
     "periodic_table": ("heatmap_values", "tile_plots"),
@@ -436,10 +467,22 @@ def short_summary(report: Mapping[str, Any]) -> str:
         ("n_tile_plots", "tile plots"),
         ("n_elements", "elements"),
         ("n_nodes", "nodes"),
+        ("n_structures", "structures"),
     ):
         if key in report:
             return f"{widget_type}: {report[key]} {noun}"
     return str(widget_type)
+
+
+# plot widget_type -> the series key whose samples it draws
+_SAMPLE_KEYS = {
+    "scatter_plot": "x",
+    "bar_plot": "x",
+    "scatter_plot_3d": "x",
+    "binned_scatter_plot": "x",
+    "histogram": "values",
+    "box_plot": "y",
+}
 
 
 def check_inputs(widget_data: Mapping[str, Any]) -> list[str]:
@@ -464,15 +507,13 @@ def check_inputs(widget_data: Mapping[str, Any]) -> list[str]:
                 f"{widget_type}: {label} is empty or None; widget may render blank"
             )
 
-    if widget_type in ("scatter_plot", "bar_plot", "histogram", "scatter_plot_3d"):
-        # Histograms bin `values`; the other plots need `x`.
-        hist = widget_type == "histogram"
+    # histograms bin `values` and box plots summarize `y`; the other plots need `x`
+    if (sample_key := _SAMPLE_KEYS.get(widget_type)) is not None:
         series = _series_list(widget_data)
-        columns = (series_column(srs, "values" if hist else "x") for srs in series)
+        columns = (series_column(srs, sample_key) for srs in series)
         if series and not any(col is not None and len(col) for col in columns):
-            what = "samples ('values')" if hist else "'x'"
             warnings.append(
-                f"{widget_type}: all series have empty {what}; nothing to plot"
+                f"{widget_type}: all series have empty '{sample_key}'; nothing to plot"
             )
 
     has_rdf_input = widget_data.get("structures") or widget_data.get("patterns")

@@ -7,6 +7,7 @@ from typing import Any
 
 import kemio
 import pytest
+import traitlets as tl
 
 from pymatviz.widgets.composition import CompositionWidget
 from tests.widgets.conftest import assert_widget_property_sync
@@ -49,8 +50,8 @@ def test_widget_composition_inputs(
 @pytest.mark.parametrize(
     ("invalid_composition", "expected_error", "match"),
     [
-        ("InvalidComposition123", ValueError, 'unknown element "Invalid"'),
-        ({"invalid": "composition"}, TypeError, "must be real number, not str"),
+        ("InvalidComposition123", tl.TraitError, 'unknown element "Invalid"'),
+        ({"invalid": "composition"}, tl.TraitError, "must be real number, not str"),
     ],
 )
 def test_widget_invalid_composition_handling(

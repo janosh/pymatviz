@@ -78,10 +78,10 @@ def test_widget_structure_inputs(
 
 @pytest.mark.parametrize("invalid_structure", ["invalid_structure", 123, ["invalid"]])
 def test_widget_invalid_structure_handling(invalid_structure: Any) -> None:
-    """Widget rejects non-Structure, non-dict inputs with TypeError."""
+    """Widget rejects non-Structure, non-dict inputs with TraitError."""
     type_name = type(invalid_structure).__name__
     with pytest.raises(
-        TypeError, match=f"structure must be a dict, .* got {type_name}$"
+        tl.TraitError, match=f"structure must be a dict, .* got {type_name}$"
     ):
         StructureWidget(structure=invalid_structure)
 
@@ -191,35 +191,33 @@ def test_widget_volumetric_data_trait() -> None:
 
 
 @pytest.mark.parametrize(
-    ("bad_input", "err_cls", "match"),
+    ("bad_input", "match"),
     [
-        ("not_a_list", TypeError, "list of volumes or a {prefix: volume} mapping"),
-        (42, TypeError, "got int"),
-        (["not_a_dict"], TypeError, "volumetric_data entries"),
-        ([42], TypeError, "volumetric_data entries"),
-        ({"a": 42}, TypeError, "volumetric_data entries"),
-        ({"": _VOLUME}, TypeError, "nonempty strings"),
-        ({1: _VOLUME}, TypeError, "nonempty strings"),
-        ([_UNNAMED_VOLUME], ValueError, "'id' or"),
-        ([{**_VOLUME, "id": " "}], ValueError, "'id' or 'label'"),
-        ([{**_VOLUME, "id": 1, "label": "chg"}], ValueError, "'id' or 'label'"),
-        ([_VOLUME, {**_VOLUME, "label": "copy"}], ValueError, r"duplicates \['chg'\]"),
-        ([_VOLUME, {**_UNNAMED_VOLUME, "label": "chg"}], ValueError, "duplicates"),
-        ([{**_VOLUME, "dims": [3, 1, 1]}], ValueError, r"flat values \(2\) need dims"),
-        ([{**_VOLUME, "dims": [0.5, 4, 1]}], ValueError, "need dims"),
-        ([{**_VOLUME, "values": [0.1, np.nan]}], ValueError, "non-finite value at"),
-        ([{**_VOLUME, "values": [0.1, 1e39]}], ValueError, "beyond float32 range"),
+        ("not_a_list", "list of volumes or a {prefix: volume} mapping"),
+        (42, "got int"),
+        (["not_a_dict"], "volumetric_data entries"),
+        ([42], "volumetric_data entries"),
+        ({"a": 42}, "volumetric_data entries"),
+        ({"": _VOLUME}, "nonempty strings"),
+        ({1: _VOLUME}, "nonempty strings"),
+        ([_UNNAMED_VOLUME], "'id' or"),
+        ([{**_VOLUME, "id": " "}], "'id' or 'label'"),
+        ([{**_VOLUME, "id": 1, "label": "chg"}], "'id' or 'label'"),
+        ([_VOLUME, {**_VOLUME, "label": "copy"}], r"duplicates \['chg'\]"),
+        ([_VOLUME, {**_UNNAMED_VOLUME, "label": "chg"}], "duplicates"),
+        ([{**_VOLUME, "dims": [3, 1, 1]}], r"flat values \(2\) need dims"),
+        ([{**_VOLUME, "dims": [0.5, 4, 1]}], "need dims"),
+        ([{**_VOLUME, "values": [0.1, np.nan]}], "non-finite value at"),
+        ([{**_VOLUME, "values": [0.1, 1e39]}], "beyond float32 range"),
     ],
 )
-def test_widget_volumetric_data_rejects_invalid(
-    bad_input: Any, err_cls: type[Exception], match: str
-) -> None:
+def test_widget_volumetric_data_rejects_invalid(bad_input: Any, match: str) -> None:
     """volumetric_data rejects non-list/non-mapping values, entries that are neither
     dicts nor pymatgen VolumetricData, non-string mapping prefixes, and missing or
     duplicate volume ids (layers pick volumes by id), values not matching dims,
     non-finite or float32-overflowing grids and malformed geometry fields.
     """
-    with pytest.raises(err_cls, match=match):
+    with pytest.raises(tl.TraitError, match=match):
         StructureWidget(volumetric_data=bad_input)
 
 

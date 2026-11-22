@@ -13,10 +13,12 @@ from pymatviz.widgets._binary import is_binary_envelope, volume_envelope
 from pymatviz.widgets._normalize import normalize_plot_json, structure_to_dict
 from pymatviz.widgets._schema_traits import StructureTraits
 from pymatviz.widgets._traits import (
+    JsonBool,
     JsonDict,
     JsonList,
     StructureVizTraits,
     normalized_trait,
+    validator,
 )
 from pymatviz.widgets.matterviz import MatterVizWidget
 
@@ -208,7 +210,7 @@ class StructureWidget(StructureVizTraits, StructureTraits, MatterVizWidget):
     # display options shared with TrajectoryWidget live in StructureVizTraits
 
     structure = normalized_trait(structure_to_dict)
-    show_image_atoms = tl.Bool(default_value=True).tag(sync=True)
+    show_image_atoms = JsonBool(default_value=True).tag(sync=True)
     # Cell shown: the input cell or MatterViz's (moyo) conventional/primitive standard
     # cell, which carries site properties over with vectors rotated into its frame
     cell_type = tl.CaselessStrEnum(
@@ -223,6 +225,9 @@ class StructureWidget(StructureVizTraits, StructureTraits, MatterVizWidget):
     # isovalue, color, opacity, visible, show_negative, negative_color}], wireframe,
     # halo, display_range?}
     volumetric_data = tl.Any().tag(sync=True)
+    # [] means no volumes. None skipped the validator (Any ignores allow_none=False),
+    # so plain assignment synced it and broke isosurface_settings checks
+    volumetric_data.allow_none = False
     # "structure", "slice" (2D volume slice) or "split" (both side by side)
     display_mode = tl.CaselessStrEnum(
         ["structure", "slice", "split"], default_value="structure"
@@ -230,7 +235,7 @@ class StructureWidget(StructureVizTraits, StructureTraits, MatterVizWidget):
     slice_settings = JsonDict(default_value={}).tag(sync=True)
 
     # UI controls
-    enable_info_pane = tl.Bool(default_value=True).tag(sync=True)
+    enable_info_pane = JsonBool(default_value=True).tag(sync=True)
 
     # Interaction state (two-way synced with the frontend for ipywidgets linking).
     # selected_sites (clicked atoms) and hovered_site_idx (hovered atom) are
@@ -245,7 +250,7 @@ class StructureWidget(StructureVizTraits, StructureTraits, MatterVizWidget):
         """Fresh empty volume list per instance."""
         return []
 
-    @tl.validate("volumetric_data")
+    @validator("volumetric_data")
     def _normalize_volumetric_data(self, proposal: dict) -> list[dict[str, Any]]:
         """Flatten every volume (dict or pymatgen VolumetricData) on assignment.
 
@@ -291,7 +296,7 @@ class StructureWidget(StructureVizTraits, StructureTraits, MatterVizWidget):
         check_layer_volume_ids(self.isosurface_settings, payloads)
         return payloads
 
-    @tl.validate("isosurface_settings")
+    @validator("isosurface_settings")
     def _validate_isosurface_settings(
         self, proposal: dict[str, Any]
     ) -> dict[str, Any] | None:

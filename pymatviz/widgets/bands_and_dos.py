@@ -13,6 +13,7 @@ from pymatviz.widgets._traits import (
     PlotControlsTraits,
     normalized_trait,
     optional_trait,
+    validator,
 )
 from pymatviz.widgets.dos import StackedDosCheck
 from pymatviz.widgets.matterviz import MatterVizWidget
@@ -45,7 +46,7 @@ class BandsAndDosWidget(
         ... )
     """
 
-    # converted on every assignment (labels are checked in __init__)
+    # converted on every assignment, labels checked by _check_stack_grids
     band_structs = normalized_trait(
         functools.partial(_to_dict, label="band structure", vasprun="bands")
     )
@@ -80,15 +81,26 @@ class BandsAndDosWidget(
                 for the DOS panel.
 
         Raises:
-            ValueError: If band_structs and doses labels differ, or ``stack=True``
+            TraitError: If band_structs and doses labels differ, or ``stack=True``
                 and the DOS have different grids.
         """
-        bands_dict = _to_dict(band_structs, "band structure", vasprun="bands")
-        doses_dict = _to_dict(doses, "DOS", vasprun="dos")
-        if band_structs is not None and doses is not None:
-            band_keys, dos_keys = labeled_keys(bands_dict), labeled_keys(doses_dict)
-            if band_keys != dos_keys:
-                raise ValueError(f"{band_keys=} and {dos_keys=} must be identical")
         super().__init__(
-            band_structs=bands_dict, doses=doses_dict, structure=structure, **kwargs
+            band_structs=band_structs, doses=doses, structure=structure, **kwargs
         )
+
+    @validator("band_structs", "doses", "stack")
+    def _check_stack_grids(self, proposal: tl.Bunch) -> Any:
+        """Also require band structures and DOS to share labels, checked whichever
+        is set last (one validator per trait, so this extends StackedDosCheck's).
+        """
+        name, value = proposal["trait"].name, proposal["value"]
+        if name != "stack":
+            bands = value if name == "band_structs" else self.band_structs
+            doses = value if name == "doses" else self.doses
+            if bands is not None and doses is not None:
+                band_keys, dos_keys = labeled_keys(bands), labeled_keys(doses)
+                if band_keys != dos_keys:
+                    raise ValueError(f"{band_keys=} and {dos_keys=} must be identical")
+        if name == "band_structs":
+            return value
+        return super()._check_stack_grids(proposal)

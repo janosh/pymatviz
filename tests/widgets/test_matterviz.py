@@ -636,6 +636,26 @@ def test_export_widgets(fmt: str, ext: str, tmp_path: Any) -> None:
         ) as render,
     ):
         paths = pmv.export_widgets(widgets, out_dir, fmt=fmt, dpi=300)  # ty: ignore[invalid-argument-type]
+        # names that would escape out_dir or need a missing subdirectory fail before
+        # rendering (writing used to fail after rendering all, or land elsewhere)
+        for bad_name in ("../escaped", "sub/name", "", "..", "."):
+            with pytest.raises(ValueError, match=r"must be plain file names, got \["):
+                pmv.export_widgets(
+                    {"ok": widgets["a"], bad_name: widgets["b"]}, out_dir
+                )
+        # names differing only in case overwrote each other on case-insensitive
+        # filesystems (macOS, Windows)
+        with pytest.raises(ValueError, match=r"more than case, got \[\['A', 'a'\]\]"):
+            pmv.export_widgets(
+                {"A": widgets["a"], "b": widgets["b"], "a": widgets["b"]}, out_dir
+            )
+        # macOS also folds full case mappings (ß as SS) and Unicode normalization
+        # forms (precomposed é as e + combining acute), which used to pass the check
+        for name_pair in (("straße", "STRASSE"), ("café", "café")):
+            with pytest.raises(ValueError, match="must differ in more than case"):
+                pmv.export_widgets(dict.fromkeys(name_pair, widgets["a"]), out_dir)
+    assert render.call_count == 1
+    assert not os.path.isfile(f"{tmp_path}/escaped.png")
     assert paths == {name: f"{out_dir}/{name}.{ext}" for name in widgets}
     for path, widget_type in zip(
         paths.values(), ("bar_plot", "structure"), strict=True

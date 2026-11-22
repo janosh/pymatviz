@@ -11,7 +11,12 @@ import traitlets as tl
 from pymatviz.utils import df_ptable
 from pymatviz.widgets._normalize import normalize_plot_json
 from pymatviz.widgets._schema_traits import PeriodicTableTraits
-from pymatviz.widgets._traits import color_bar_trait, color_scale_trait, optional_trait
+from pymatviz.widgets._traits import (
+    color_bar_trait,
+    color_scale_trait,
+    optional_trait,
+    validator,
+)
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -273,10 +278,10 @@ class PeriodicTableWidget(PeriodicTableTraits, MatterVizWidget):
     # inset plot. A list (link_selection sets one): clicks toggle elements in it
     active_elements = optional_trait(tl.List, trait=tl.Unicode())
 
-    @tl.validate("tile_props")
+    @validator("tile_props")
     def _validate_tile_props(self, proposal: dict[str, Any]) -> Any:
         """Reject props the table sets on each tile itself and unknown props."""
-        props = normalize_plot_json(proposal["value"], "PeriodicTable.tile_props")
+        props = proposal["value"]
         keys = set(props or {})
         if clash := sorted(keys & _TABLE_TILE_PROPS):
             raise tl.TraitError(f"tile_props can't set {clash}, the table sets them")
@@ -291,19 +296,21 @@ class PeriodicTableWidget(PeriodicTableTraits, MatterVizWidget):
             )
         return props
 
-    @tl.validate("tile_plots")
+    _raw_json_traits = frozenset({"tile_plots"})  # NaN to None by normalize_tile_plots
+
+    @validator("tile_plots")
     def _validate_tile_plots(self, proposal: dict[str, Any]) -> Any:
         """Normalize tile_plots on every assignment (numpy arrays, NaN -> None)."""
         return normalize_tile_plots(proposal["value"])
 
-    @tl.validate("tile_plot_config")
+    @validator("tile_plot_config")
     def _validate_tile_plot_config(self, proposal: dict[str, Any]) -> Any:
         """Validate tile_plot_config, rejecting a color scale beside heat values."""
         config = normalize_tile_plot_config(proposal["value"])
         self._check_one_color_scale(self.heatmap_values, config)
         return config
 
-    @tl.validate("heatmap_values")
+    @validator("heatmap_values")
     def _validate_heatmap_values(self, proposal: dict[str, Any]) -> Any:
         """Normalize heat values to JSON on every assignment and reject numeric ones
         beside a tile plot color scale. A pandas Series keeps its element index
