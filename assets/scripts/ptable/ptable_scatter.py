@@ -17,14 +17,13 @@ np_rng = np.random.default_rng(seed=0)
 
 # sinusoidal waves with random frequencies, phases and noise
 xs = np.linspace(0, 10, 20)
-rand_sine_data = {
-    elem.symbol: (
-        xs,
-        np.sin(np_rng.uniform(0.5, 2) * xs + np_rng.uniform(0, 2 * np.pi))
-        + np_rng.normal(0, 0.2, len(xs)),
-    )
-    for elem in Element
-}
+rand_sine_data = {}
+for elem in Element:
+    freq = np_rng.uniform(0.5, 2)
+    phase = np_rng.uniform(0, 2 * np.pi)
+    noise = np_rng.normal(0, 0.2, len(xs))
+    rand_sine_data[elem.symbol] = (xs, np.sin(freq * xs + phase) + noise)
+
 # random parity data with y = x + noise, third entry colors the markers
 rand_parity_data = {
     elem.symbol: (

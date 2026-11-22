@@ -10,7 +10,7 @@ import pytest
 import traitlets as tl
 from kemio.interop import structure_to_pymatgen_dict
 
-from pymatviz.widgets import StructureWidget
+from pymatviz.widgets import StructureWidget, TrajectoryWidget
 from tests.widgets.conftest import assert_widget_property_sync, decode_envelope
 
 
@@ -64,9 +64,8 @@ def test_widget_structure_inputs(
         structure_dict = structure_to_pymatgen_dict(structure)
         assert widget.structure == structure_dict
         sites = widget.structure["sites"]
-        assert {key for site in sites for key in site.get("properties", {})} == (
-            prop_keys
-        )
+        site_prop_keys = {key for site in sites for key in site.get("properties", {})}
+        assert site_prop_keys == prop_keys
 
         widget = StructureWidget(structure=structure_dict)
         assert widget.structure == structure_dict
@@ -175,9 +174,8 @@ def test_widget_volumetric_data_trait() -> None:
     assert (labeled["id"], labeled["label"]) == ("charge density", "charge density")
     # an explicit id wins over the label
     widget.volumetric_data = ({**_VOLUME, "label": "rho"},)
-    assert [(pl["id"], pl["label"]) for pl in widget.volumetric_data] == [
-        ("chg", "rho")
-    ]
+    ids_labels = [(pl["id"], pl["label"]) for pl in widget.volumetric_data]
+    assert ids_labels == [("chg", "rho")]
     # {prefix: volume} mappings namespace ids (and labels if present)
     widget.set_trait(
         "volumetric_data", {"a": _VOLUME, "b": {**_UNNAMED_VOLUME, "label": "chg"}}
@@ -285,3 +283,45 @@ def test_widget_cell_type(cell_type: str) -> None:
     widget = StructureWidget(structure=struct, cell_type=cell_type)
     assert widget.cell_type == cell_type
     assert widget.structure == structure_to_pymatgen_dict(struct)
+
+
+def test_structure_widget_isosurface_settings() -> None:
+    """StructureWidget passes layers-only isosurface_settings through to_dict."""
+    layer = dict(isovalue=0.05, color="#3b82f6", opacity=0.6, visible=True)
+    layer |= dict(show_negative=False, negative_color="#ef4444", volume_id="total")
+    iso_settings = {"layers": [layer], "wireframe": False, "halo": 0}
+    state = StructureWidget(
+        isosurface_settings=iso_settings, active_volume_id="total"
+    ).to_dict()
+    assert state["isosurface_settings"] == iso_settings
+    assert state["active_volume_id"] == "total"
+    assert StructureWidget().active_volume_id is None
+    assert state["widget_type"] == "structure"
+
+
+@pytest.mark.parametrize("widget_cls", [StructureWidget, TrajectoryWidget])
+def test_structure_viz_vector_props(
+    widget_cls: type[StructureWidget | TrajectoryWidget],
+) -> None:
+    """Structure widgets sync vector_configs and all vector props; configs default to
+    None (frontend auto-detects from site properties) and update after construction.
+    """
+    configs = {
+        "force_DFT": {"visible": True, "color": "#e74c3c", "scale": None},
+        "force_MLFF": {"visible": True, "color": "#3498db", "scale": 1.5},
+    }
+    vector_props: dict[str, Any] = dict(
+        vector_configs=configs,
+        vector_scale=3.0,
+        vector_color="#00ff00",
+        vector_normalize=True,
+        vector_uniform_thickness=True,
+        vector_origin_gap=0.25,
+    )
+    widget = widget_cls(**vector_props)
+    assert {key: widget.to_dict()[key] for key in vector_props} == vector_props
+
+    widget.vector_configs = {**configs, "force_MLFF": {"visible": False}}
+    assert widget.to_dict()["vector_configs"]["force_MLFF"] == {"visible": False}
+    assert widget_cls().vector_configs is None
+    assert widget_cls(vector_configs={}).vector_configs == {}

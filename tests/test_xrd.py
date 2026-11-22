@@ -10,7 +10,7 @@ import pytest
 from kemio.io import read_structure
 
 import pymatviz as pmv
-from pymatviz.utils.testing import TEST_FILES
+from pymatviz.data import TEST_FILES
 from pymatviz.xrd import cu_k_alpha_wavelength
 
 
@@ -75,9 +75,8 @@ def test_xrd_pattern_mapping() -> None:
         widget.patterns["Structure"]["x"], BI2_ZR2_O7_XRD.two_theta
     )
     assert widget.patterns["Pattern"]["d_hkls"] == [2.5, 2.0, 1.8, 1.5, 1.3]
-    assert [peak[0]["hkl"] for peak in widget.patterns["Pattern"]["hkls"]] == [
-        list(hkl) for hkl in MOCK_HKLS
-    ]
+    first_hkls = [peak[0]["hkl"] for peak in widget.patterns["Pattern"]["hkls"]]
+    assert first_hkls == [list(hkl) for hkl in MOCK_HKLS]
 
 
 @pytest.mark.parametrize(

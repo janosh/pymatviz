@@ -6,6 +6,10 @@ import numpy as np
 import pytest
 
 from pymatviz.widgets.matterviz import MatterVizWidget
+from tests.conftest import cubic_structure
+
+
+SI_STRUCT = cubic_structure(3, ["Si"], [0, 0, 0])
 
 
 @pytest.fixture(scope="session", autouse=True)

@@ -79,7 +79,7 @@ def get_function_names_from_readme() -> dict[str, set[str]]:
                 category = file_path.split("/")[2]
                 source_path = f"pymatviz/{category}.py"
         else:
-            # strip optional line anchors like pymatviz/bar.py#L24
+            # strip optional line anchors like pymatviz/bar.py
             source_path = file_path.split("(")[0].strip().split("#")[0]
             if not source_path.startswith("pymatviz/"):
                 continue
@@ -95,9 +95,8 @@ def test_readme_function_names() -> None:
     py_files = {path for path in readme_funcs if path.endswith(".py")}
     assert len(py_files) > 10, f"too few readme source links found: {py_files}"
     for file_path in py_files:
-        missing_funcs = readme_funcs[file_path] - get_function_names_from_file(
-            file_path
-        )
+        file_funcs = get_function_names_from_file(file_path)
+        missing_funcs = readme_funcs[file_path] - file_funcs
         assert not missing_funcs, (
             f"Functions mentioned in readme but missing in {file_path}: {missing_funcs}"
         )

@@ -12,7 +12,7 @@ from glob import glob
 from pymatgen.core import Structure
 
 import pymatviz as pmv
-from pymatviz.utils.testing import TEST_FILES
+from pymatviz.data import TEST_FILES
 
 
 structure_dir = f"{TEST_FILES}/structures"

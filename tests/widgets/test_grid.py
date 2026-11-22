@@ -15,12 +15,11 @@ def test_widget_grid(n_widgets: int, n_cols: int, expected_cols: int) -> None:
     """Cells pair an escaped HTML title with their widget; columns cap at the count."""
     widgets = {f"<s>{idx}": ipw.Label(str(idx)) for idx in range(n_widgets)}
     grid = widget_grid(widgets, n_cols)
-    assert (
-        grid.layout.grid_template_columns == f"repeat({expected_cols}, minmax(0, 1fr))"
-    )
-    assert [cell.children[0].value for cell in grid.children] == [
-        f"<b>&lt;s&gt;{idx}</b>" for idx in range(n_widgets)
-    ]
+    expected_template = f"repeat({expected_cols}, minmax(0, 1fr))"
+    assert grid.layout.grid_template_columns == expected_template
+
+    titles = [cell.children[0].value for cell in grid.children]
+    assert titles == [f"<b>&lt;s&gt;{idx}</b>" for idx in range(n_widgets)]
     assert [cell.children[1] for cell in grid.children] == list(widgets.values())
 
     with pytest.raises(ValueError, match="n_cols=0 must be positive"):

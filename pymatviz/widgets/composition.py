@@ -53,7 +53,7 @@ class CompositionWidget(CompositionTraits, MatterVizWidget):
                 pymatgen Composition, or structure (negative amounts allowed).
             **kwargs: Additional widget properties
         """
-        from pymatviz.composition import to_composition
+        from pymatviz.compositions import to_composition
 
         comp_dict = (
             None

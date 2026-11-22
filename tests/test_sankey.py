@@ -73,9 +73,8 @@ def test_sankey_flow_data(
         pd.DataFrame(data), "src", "tgt", labels_with_counts=labels_with_counts
     )
     assert [node["label"] for node in flow["nodes"]] == expected_labels
-    assert [node["metadata"]["column"] for node in flow["nodes"]] == ["src"] * 2 + [
-        "tgt"
-    ] * 2
+    node_columns = [node["metadata"]["column"] for node in flow["nodes"]]
+    assert node_columns == ["src"] * 2 + ["tgt"] * 2
     if expected_links:
         links = [(lnk["source"], lnk["target"], lnk["value"]) for lnk in flow["links"]]
         assert links == expected_links

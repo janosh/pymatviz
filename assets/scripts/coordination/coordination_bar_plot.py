@@ -13,7 +13,8 @@ from pymatgen.core import Structure
 
 import pymatviz as pmv
 from pymatviz.coordination import CnSplitMode
-from pymatviz.utils.testing import TEST_FILES, formula_spg_str
+from pymatviz.data import TEST_FILES
+from pymatviz.structures import formula_spg_str
 
 
 # %%

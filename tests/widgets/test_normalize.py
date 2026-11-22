@@ -180,9 +180,8 @@ def test_normalize_convex_hull_entries_from_phase_diagram(source: str) -> None:
     }[source]
     result = normalize_convex_hull_entries(obj)
     assert result is not None
-    assert [entry["composition"] for entry in result] == [
-        comp.as_dict() for comp in compositions
-    ]
+    result_comps = [entry["composition"] for entry in result]
+    assert result_comps == [comp.as_dict() for comp in compositions]
     np.testing.assert_allclose(  # energy per atom x atoms
         [entry["energy"] for entry in result],
         [energy for _, energy in _HULL_ENTRIES],

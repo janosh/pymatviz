@@ -16,7 +16,7 @@ from typing import Any
 
 import numpy as np
 
-from pymatviz.utils.data import element_symbols
+from pymatviz.utils import element_symbols
 from pymatviz.widgets._binary import is_binary_envelope, series_column
 
 
@@ -466,19 +466,15 @@ def check_inputs(widget_data: Mapping[str, Any]) -> list[str]:
         # Histograms bin `values`; the other plots need `x`.
         hist = widget_type == "histogram"
         series = _series_list(widget_data)
-        if series and not any(
-            (col := series_column(s, "values" if hist else "x")) is not None
-            and len(col)
-            for s in series
-        ):
+        columns = (series_column(srs, "values" if hist else "x") for srs in series)
+        if series and not any(col is not None and len(col) for col in columns):
             what = "samples ('values')" if hist else "'x'"
             warnings.append(
                 f"{widget_type}: all series have empty {what}; nothing to plot"
             )
 
-    if widget_type == "rdf_plot" and not (
-        widget_data.get("structures") or widget_data.get("patterns")
-    ):
+    has_rdf_input = widget_data.get("structures") or widget_data.get("patterns")
+    if widget_type == "rdf_plot" and not has_rdf_input:
         warnings.append("rdf_plot: neither 'structures' nor 'patterns' provided")
 
     return warnings

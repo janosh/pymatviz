@@ -156,9 +156,8 @@ def test_widget_complete_lifecycle(
     expected_structure = json.loads(
         json.dumps(structure_to_pymatgen_dict(fe3co4_disordered))
     )
-    assert [frame["structure"] for frame in widget.trajectory["frames"]] == [
-        expected_structure
-    ] * 10
+    frame_structs = [frame["structure"] for frame in widget.trajectory["frames"]]
+    assert frame_structs == [expected_structure] * 10
 
     state = {
         "trajectory": widget.trajectory,
@@ -240,9 +239,8 @@ def test_trajectory_widget_property_extraction(
     if is_binary:
         arrays = decode_envelope(traj)
         assert arrays["positions"].shape == (n_frames, 2, 3)
-        assert {key: arrays[key][0] for key in expected_properties} == (
-            expected_properties
-        )
+        first_frame = {key: arrays[key][0] for key in expected_properties}
+        assert first_frame == expected_properties
         assert set(arrays) == {"positions", "numbers", "lattice", *expected_properties}
         return
     assert set(traj) == {"frames", "metadata"}

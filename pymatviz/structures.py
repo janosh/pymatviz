@@ -185,3 +185,16 @@ def normalize_spacegroups(data: Sequence[SpacegroupLike] | pd.Series) -> pd.Seri
         "Expected structures, space group numbers or symbols (one kind), got "
         f"{item_types}"
     )
+
+
+def formula_spg_str(struct: PeriodicStructure) -> str:
+    """Get a string with formula and space group number for a structure.
+
+    Args:
+        struct: A periodic structure (kemio, pymatgen, ASE, phonopy).
+
+    Returns:
+        String in format "Formula (spg_number)", e.g. "Na4 Cl4 (225)".
+    """
+    struct = to_structure(struct)
+    return f"{struct.composition.formula} ({kemio.symmetry_dataset(struct).number})"

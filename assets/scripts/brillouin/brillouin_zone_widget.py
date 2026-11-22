@@ -18,7 +18,7 @@ from pymatgen.core import Structure
 from pymatgen.io.ase import AseAtomsAdaptor
 
 import pymatviz as pmv
-from pymatviz.utils.testing import TEST_FILES
+from pymatviz.data import TEST_FILES
 
 
 # keys are (material ID, formula, crystal system) from the file names

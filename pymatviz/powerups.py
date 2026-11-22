@@ -203,11 +203,10 @@ def annotate_metrics[Widget: ScatterPlotWidget | BinnedScatterPlotWidget](
     xs_arr, ys_arr = _resolve_xy(widget, xs, ys, series)
     finite = np.isfinite(xs_arr) & np.isfinite(ys_arr)
     xs_arr, ys_arr = xs_arr[finite], ys_arr[finite]
-    lines = [
-        f"{PRETTY_METRIC_LABELS.get(label, label)} = "
-        f"{float(funcs[metric](xs_arr, ys_arr) if isinstance(metric, str) else metric):{fmt}}"  # noqa: E501
-        for label, metric in label_to_metric.items()
-    ]
+    lines = []
+    for label, metric in label_to_metric.items():
+        value = funcs[metric](xs_arr, ys_arr) if isinstance(metric, str) else metric
+        lines.append(f"{PRETTY_METRIC_LABELS.get(label, label)} = {float(value):{fmt}}")
     _append_annotation(widget, prefix + "\n".join(lines) + suffix)
     return widget
 

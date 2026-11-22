@@ -7,7 +7,7 @@ from __future__ import annotations
 import subprocess
 import sys
 
-from pymatviz.utils.testing import TEST_FILES
+from pymatviz.data import TEST_FILES
 
 
 OPTIONAL_DEPS = ("pymatgen", "ase", "phonopy", "matminer", "monty", "moyopy")
@@ -27,7 +27,7 @@ import numpy as np
 import pymatviz as pmv
 from pymatviz.notebook import create_widget
 from pymatviz.phonons import PhononDBDoc
-from pymatviz.utils.testing import fe3co4_disordered, load_nacl_phonons
+from pymatviz.data import fe3co4_disordered, load_nacl_phonons
 
 nacl = kemio.Structure(
     np.eye(3) * 5.64, ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]], fractional=True

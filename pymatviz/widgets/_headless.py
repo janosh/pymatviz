@@ -687,11 +687,10 @@ def _build_html(esm_content: str, css_content: str) -> str:
     """Warm-page HTML loading the bundle and defining the capture hooks.
     ``window.__matterviz_ready`` is true once loaded, else the load error.
     """
-    script = (
-        f"{_esm_blob_loader_js(esm_content)}\ntry {{\n{_MOUNT_FN_JS}"
-        f"{_CAPTURE_HOOKS_JS}window.__matterviz_ready = true;\n"
-        "} catch (err) {\n  window.__matterviz_ready = String(err);\n}"
-    )
+    esm_loader = _esm_blob_loader_js(esm_content)
+    on_error = "} catch (err) {\n  window.__matterviz_ready = String(err);\n}"
+    ready = f"{_CAPTURE_HOOKS_JS}window.__matterviz_ready = true;\n"
+    script = f"{esm_loader}\ntry {{\n{_MOUNT_FN_JS}{ready}{on_error}"
     # the bundle caps a mounted widget at its parent's width (inline max-width: 100%),
     # here the 1024px page: exports keep their requested width
     head = "<style>#widget-root { max-width: none !important }</style>"
@@ -734,10 +733,9 @@ def build_interactive_html(
     )
     if css_url is not None:
         head += f'\n<link rel="stylesheet" href="{html_mod.escape(css_url)}">'
-    script = (
-        f"{esm_loader}\n{_MOUNT_FN_JS}const el = document.getElementById("
-        f'"widget-root");\nmount({_widget_data_json(widget_data)}, el, {no_worker});'
-    )
+    get_root = 'const el = document.getElementById("widget-root");'
+    mount_call = f"mount({_widget_data_json(widget_data)}, el, {no_worker});"
+    script = f"{esm_loader}\n{_MOUNT_FN_JS}{get_root}\n{mount_call}"
     style = html_mod.escape(widget_data.get("style") or "width: 100%; height: 600px;")
     return _html_page(css_content or "", script, head, style)
 
@@ -776,19 +774,25 @@ def _png_to_pdf(png_bytes: bytes, scale: float = 1.0) -> bytes:
     page_w, page_h = f"{px_w / scale:.2f}", f"{px_h / scale:.2f}"
     pixels = zlib.compress(img.convert("RGB").tobytes(), 6)
     draw = zlib.compress(f"q {page_w} 0 0 {page_h} 0 0 cm /Im0 Do Q".encode())
+    page = (
+        f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {page_w} {page_h}] /Contents "
+        "5 0 R /Resources << /XObject << /Im0 4 0 R >> >> >>"
+    )
+    image_header = (
+        f"<< /Type /XObject /Subtype /Image /Width {px_w} /Height {px_h} /ColorSpace "
+        "/DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode /Length "
+        f"{len(pixels)} >>\nstream\n"
+    )
+    draw_header = f"<< /Length {len(draw)} /Filter /FlateDecode >>\nstream\n"
+
+    image = image_header.encode() + pixels + b"\nendstream"
+    contents = draw_header.encode() + draw + b"\nendstream"
     objects = [
         b"<< /Type /Catalog /Pages 2 0 R >>",
         b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-        f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {page_w} {page_h}] /Contents "
-        "5 0 R /Resources << /XObject << /Im0 4 0 R >> >> >>".encode(),
-        f"<< /Type /XObject /Subtype /Image /Width {px_w} /Height {px_h} /ColorSpace "
-        "/DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode /Length "
-        f"{len(pixels)} >>\nstream\n".encode()
-        + pixels
-        + b"\nendstream",
-        f"<< /Length {len(draw)} /Filter /FlateDecode >>\nstream\n".encode()
-        + draw
-        + b"\nendstream",
+        page.encode(),
+        image,
+        contents,
     ]
     pdf, offsets = bytearray(b"%PDF-1.4\n"), []
     for obj_num, obj in enumerate(objects, start=1):

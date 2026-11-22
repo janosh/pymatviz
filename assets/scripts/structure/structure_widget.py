@@ -14,7 +14,7 @@ from pymatgen.core import Lattice, Structure
 from pymatgen.core.periodic_table import Species
 
 import pymatviz as pmv
-from pymatviz.utils.testing import disordered_demo_structures
+from pymatviz.data import disordered_demo_structures
 
 
 df_phonons = load_dataset("matbench_phonons")
@@ -97,11 +97,12 @@ show_and_save(
 
 
 # %% 2H-MoS2 = https://materialsproject.org/materials/mp-2815, layers stacked along c
+layer_a = [(1 / 3, 2 / 3, frac_z) for frac_z in (0.25, 0.621, 0.879)]
+layer_b = [(2 / 3, 1 / 3, frac_z) for frac_z in (0.75, 0.121, 0.379)]
 mos2 = Structure(
     lattice=Lattice.hexagonal(3.16, 12.29),
     species=["Mo", "S", "S", "Mo", "S", "S"],
-    coords=[(1 / 3, 2 / 3, z) for z in (0.25, 0.621, 0.879)]
-    + [(2 / 3, 1 / 3, z) for z in (0.75, 0.121, 0.379)],
+    coords=layer_a + layer_b,
 ).make_supercell([3, 3, 1])
 show_and_save(pmv.structure(structure=mos2, show_bonds="always"), "mos2")
 

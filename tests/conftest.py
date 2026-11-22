@@ -10,8 +10,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from pymatviz.data import TEST_FILES
 from pymatviz.phonons import PhononDBDoc
-from pymatviz.utils.testing import TEST_FILES
 
 
 if TYPE_CHECKING:
@@ -137,7 +137,7 @@ def phonopy_nacl() -> Any:
 @pytest.fixture
 def fe3co4_disordered() -> kemio.Structure:
     """Disordered Fe3C-O2 structure (Fe:C 3:1 on the first site)."""
-    from pymatviz.utils.testing import fe3co4_disordered
+    from pymatviz.data import fe3co4_disordered
 
     return fe3co4_disordered
 

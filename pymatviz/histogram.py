@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from pymatviz.composition import count_elements
+from pymatviz.compositions import count_elements
 from pymatviz.enums import ElemCountMode
 from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.bar_plot import BarPlotWidget, bar_axis_defaults
@@ -81,17 +81,9 @@ def elements_hist(
 
     count_axis = {"label": "Element Count", "scale_type": "log" if log_y else "linear"}
     axes = bar_axis_defaults(kwargs, category={"label": "Element"}, value=count_axis)
-    return BarPlotWidget(
-        [series],
-        **with_defaults(
-            axes
-            | {
-                "bar": {"opacity": opacity, "stroke_width": 1, "stroke_color": "black"},
-                "show_legend": False,
-            },
-            kwargs,
-        ),
-    )
+    bar_style = {"opacity": opacity, "stroke_width": 1, "stroke_color": "black"}
+    defaults = axes | {"bar": bar_style, "show_legend": False}
+    return BarPlotWidget([series], **with_defaults(defaults, kwargs))
 
 
 # Above this many values in all distributions, histograms bin in Python and send only
@@ -210,7 +202,9 @@ def histogram(
             "y_axis": count_axis,
             "mode": "overlay" if len(data_arrays) > 1 else "single",
             "show_legend": len(data_arrays) > 1,
-        } | ({"x_range": [lo, hi]} if user_range else {})
+        }
+        if user_range:
+            defaults["x_range"] = [lo, hi]
         # like np.histogram, values outside x_range count toward no bin
         series = [
             {"values": vals[(vals >= lo) & (vals <= hi)], "label": str(label)}
@@ -245,15 +239,9 @@ def histogram(
     axes = bar_axis_defaults(
         kwargs, category={"label": str(x_axis_title)}, value=count_axis
     )
-    return BarPlotWidget(
-        series,
-        **with_defaults(
-            axes
-            | {
-                "bar": {"border_radius": 0},
-                "mode": "overlay",
-                "show_legend": len(series) > 1,
-            },
-            kwargs,
-        ),
-    )
+    defaults = axes | {
+        "bar": {"border_radius": 0},
+        "mode": "overlay",
+        "show_legend": len(series) > 1,
+    }
+    return BarPlotWidget(series, **with_defaults(defaults, kwargs))

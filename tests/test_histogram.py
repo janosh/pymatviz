@@ -281,10 +281,8 @@ def test_histogram_dataframe_groups(
 ) -> None:
     """A column may both supply values and groups; only observed groups plot."""
     widget = histogram(df_vals, x="v", color=color)
-    assert {
-        series_dict["label"]: list(series_dict["values"])
-        for series_dict in widget.series
-    } == expected
+    values_by_label = {srs["label"]: list(srs["values"]) for srs in widget.series}
+    assert values_by_label == expected
 
 
 def test_histogram_keeps_groups_equal_as_strings() -> None:

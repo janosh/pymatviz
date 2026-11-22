@@ -324,7 +324,7 @@ def _(pmv):
     from monty.io import zopen
     from monty.json import MontyDecoder
 
-    from pymatviz.utils.testing import TEST_FILES
+    from pymatviz.data import TEST_FILES
 
     _phonon_fixture_path = f"{TEST_FILES}/phonons/mp-2758-Sr4Se4-pbe.json.xz"
     with zopen(_phonon_fixture_path, mode="rt") as file:
@@ -381,14 +381,14 @@ def _(Composition, mo, pmv):
     )
     _modes = ("pie", "bar", "bubble")
     _size = 100
+    _widths = {mode: (1 + (mode == "bar")) * _size for mode in _modes}
     _h_stacks = [
         mo.hstack(
             [
                 pmv.composition(
                     composition=comp,
                     mode=mode,
-                    style=f"width: {(1 + (mode == 'bar')) * _size}px;"
-                    f" height: {_size}px;",
+                    style=f"width: {_widths[mode]}px; height: {_size}px;",
                 )
                 for mode in _modes
             ]

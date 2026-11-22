@@ -20,15 +20,12 @@ def with_defaults(defaults: dict[str, Any], kwargs: dict[str, Any]) -> dict[str,
     axis label instead of replacing the whole dict. Any other user value (including
     None) replaces its default.
     """
-    return (
-        defaults
-        | kwargs
-        | {
-            key: default | kwargs[key]
-            for key, default in defaults.items()
-            if isinstance(default, dict) and isinstance(kwargs.get(key), dict)
-        }
-    )
+    merged_dicts = {
+        key: default | kwargs[key]
+        for key, default in defaults.items()
+        if isinstance(default, dict) and isinstance(kwargs.get(key), dict)
+    }
+    return defaults | kwargs | merged_dicts
 
 
 # pymatgen as_dict() fields MatterViz never draws, up to ~100 MB on projected band
@@ -136,9 +133,8 @@ def _vasprun_part(obj: Any, part: Literal["bands", "dos"] | None) -> Any:
     """
     import os
 
-    is_path = isinstance(obj, os.PathLike) or (
-        isinstance(obj, str) and obj.endswith(_VASPRUN_SUFFIXES)
-    )
+    is_vasprun_str = isinstance(obj, str) and obj.endswith(_VASPRUN_SUFFIXES)
+    is_path = isinstance(obj, os.PathLike) or is_vasprun_str
     if part is None or not is_path:
         return obj
     from kemio.io import read_vasprun

@@ -46,14 +46,11 @@ def volume_to_envelopes(volume: Any) -> list[dict[str, Any]]:
         else:
             values = np.asarray(volume.get("values", []))
             dims = np.asarray(volume.get("dims"))
-            if (
-                dims.shape != (3,)
-                or dims.dtype.kind not in "iuf"
-                or not all(
-                    0 <= size <= 2**53 - 1 and int(size) == size for size in dims
-                )
-                or values.size != math.prod(map(int, dims))
-            ):
+            max_int = 2**53 - 1
+            dims_ok = dims.shape == (3,) and dims.dtype.kind in "iuf"
+            if dims_ok:  # range checks need numeric dims
+                dims_ok = all(0 <= dim <= max_int and int(dim) == dim for dim in dims)
+            if not dims_ok or values.size != math.prod(map(int, dims)):
                 raise ValueError(
                     f"volumetric_data {vol_id!r} flat values ({values.size}) need dims "
                     f"with that many points, got {dims=}"

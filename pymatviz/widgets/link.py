@@ -201,6 +201,7 @@ class WidgetLink:
 
     def _apply(self, widget: Any, index: int) -> None:
         """Reflect the shared ``index`` in a single widget (its sink)."""
+        in_table = 0 <= index < len(self._elements)
         if isinstance(widget, TrajectoryWidget):
             widget.current_step_idx = index
         elif isinstance(widget, ScatterPlotWidget):
@@ -211,14 +212,13 @@ class WidgetLink:
             if 0 <= index < len(self._structures):
                 widget.structure = self._structures[index]
             else:
+                n_structs = len(self._structures)
                 warnings.warn(
-                    f"link_selection: {index=} out of range for {len(self._structures)}"
-                    " structures; StructureWidget not updated.",
+                    f"link_selection: {index=} out of range for {n_structs} structures;"
+                    " StructureWidget not updated.",
                     stacklevel=2,
                 )
-        elif isinstance(widget, PeriodicTableWidget) and 0 <= index < len(
-            self._elements
-        ):
+        elif isinstance(widget, PeriodicTableWidget) and in_table:
             self._shown_elements[id(widget)] = self._elements[index]
             widget.active_elements = sorted(self._elements[index])
 

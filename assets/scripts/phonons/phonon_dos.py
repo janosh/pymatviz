@@ -15,8 +15,8 @@ from monty.io import zopen
 from monty.json import MontyDecoder
 
 import pymatviz as pmv
-from pymatviz.phonons.helpers import PhononDBDoc
-from pymatviz.utils.testing import TEST_FILES, load_nacl_phonons
+from pymatviz.data import TEST_FILES, load_nacl_phonons
+from pymatviz.phonons import PhononDBDoc
 
 
 # %% Overlay the total phonon DOS of DFT and ML force fields

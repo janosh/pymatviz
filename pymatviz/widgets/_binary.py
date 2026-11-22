@@ -46,16 +46,15 @@ def binary_array(
     arr = np.asarray(values)
     if arr.dtype.kind not in "iuf":
         raise ValueError(f"{name} must be a numeric array, got {arr.dtype}")
-    if shape is not None and (
-        arr.ndim != len(shape)
-        or any(
-            want not in (None, got) for want, got in zip(shape, arr.shape, strict=True)
-        )
-    ):
-        expected = ", ".join("*" if size is None else str(size) for size in shape)
-        raise ValueError(
-            f"{name} must be a numeric array of shape [{expected}], got {arr.shape}"
-        )
+    if shape is not None:
+        # strict=False is safe: a length mismatch already fails the ndim check
+        size_pairs = zip(shape, arr.shape, strict=False)
+        wrong_size = any(want not in (None, got) for want, got in size_pairs)
+        if arr.ndim != len(shape) or wrong_size:
+            expected = ", ".join("*" if size is None else str(size) for size in shape)
+            raise ValueError(
+                f"{name} must be a numeric array of shape [{expected}], got {arr.shape}"
+            )
     with np.errstate(over="ignore"):
         wire = np.ascontiguousarray(arr, dtype=np.dtype(dtype).newbyteorder("<"))
     if finite and wire.dtype.kind == "f" and not (valid := np.isfinite(wire)).all():
@@ -136,13 +135,11 @@ def series_column(series_item: Mapping[str, Any], key: str) -> Any:
     """A plot series' ``key`` column: a read-only float array decoded from a binary
     plot-series envelope, else the JSON value (None if absent).
     """
-    if is_binary_envelope(series_item, "plot-series") and key in (
-        arrays := series_item.get("arrays") or {}
-    ):
+    arrays = series_item.get("arrays") or {}
+    if is_binary_envelope(series_item, "plot-series") and key in arrays:
         arr = arrays[key]
-        return np.frombuffer(
-            arr["data"], dtype=np.dtype(arr["dtype"]).newbyteorder("<")
-        )
+        dtype = np.dtype(arr["dtype"]).newbyteorder("<")
+        return np.frombuffer(arr["data"], dtype=dtype)
     return series_item.get(key)
 
 
@@ -150,9 +147,8 @@ def _numbers_ok(numbers: np.ndarray) -> bool:
     """Whether atomic numbers are integers in 1..118, what matterviz can render (a
     DummySpecies' Z is a hash).
     """
-    return numbers.dtype.kind in "iu" and bool(
-        np.all((numbers >= 1) & (numbers <= MAX_ATOMIC_NUMBER))
-    )
+    in_range = (numbers >= 1) & (numbers <= MAX_ATOMIC_NUMBER)
+    return numbers.dtype.kind in "iu" and bool(np.all(in_range))
 
 
 def volume_envelope(values: Any, **fields: Any) -> dict[str, Any]:
@@ -197,9 +193,10 @@ def object_metadata(structure: Any) -> dict[str, Any]:
 
     if isinstance(structure, kemio.Structure):
         info = structure.info
-        return {
+        frame_info = {
             key: val for key, val in info.items() if key not in STRUCTURE_INFO_KEYS
-        } | dict(info.get("properties") or {})
+        }
+        return frame_info | dict(info.get("properties") or {})
     metadata = getattr(structure, "properties", None) or getattr(structure, "info", {})
     calc = getattr(structure, "calc", None)
     return {**(metadata or {}), **(getattr(calc, "results", None) or {})}
@@ -262,9 +259,9 @@ def _exact(values: np.ndarray) -> bool:
     """
     if values.dtype.kind == "f":
         return values.dtype.itemsize <= 8
-    return values.dtype.kind in "iu" and (
-        not values.size or int(np.abs(values).max()) <= 2**53
-    )
+    if values.dtype.kind not in "iu":
+        return False
+    return not values.size or int(np.abs(values).max()) <= 2**53
 
 
 def _channels(traj: Any) -> dict[str, Any] | None:
@@ -297,23 +294,28 @@ def _channels(traj: Any) -> dict[str, Any] | None:
     scalars = {"steps" if key == "step" else key: val for key, val in scalars.items()}
     stress = traj.stress
     per_frame = [*vectors.values(), *([stress] if stress is not None else [])]
-    if (
-        (vectors.keys() | scalars.keys()) & (TRAJECTORY_RESERVED - {"steps"})
-        or (stress is not None and "frame_stress" in scalars)
-        or (vectors.keys() & {"force_max", "force_norm"})
-        or not all(
-            _exact(val) and val.shape == (n_frames, n_sites, 3)
-            for val in vectors.values()
-        )
-        or not all(_exact(val) and val.shape == (n_frames,) for val in scalars.values())
-        or ("steps" in scalars and not np.isfinite(scalars["steps"]).all())
-        or (stress is not None and not _exact(stress))
-        # a frame without a vector or stress (all NaN) needs JSON, while non-finite
-        # values within a frame raise in binary_array
-        or any(
-            np.isnan(val.reshape(n_frames, -1)).all(axis=1).any() for val in per_frame
-        )
-    ):
+    reserved = TRAJECTORY_RESERVED - {"steps"}
+    reserved_clash = (vectors.keys() | scalars.keys()) & reserved
+    stress_clash = stress is not None and "frame_stress" in scalars
+    stats_clash = vectors.keys() & {"force_max", "force_norm"}
+    if reserved_clash or stress_clash or stats_clash:
+        return None
+
+    vectors_ok = {val.shape for val in vectors.values()} <= {(n_frames, n_sites, 3)}
+    scalars_ok = {val.shape for val in scalars.values()} <= {(n_frames,)}
+    exact_values = all(_exact(val) for val in [*vectors.values(), *scalars.values()])
+    if not (vectors_ok and scalars_ok and exact_values):
+        return None
+
+    # isfinite and the NaN-frame check below need the exact numeric dtypes checked above
+    steps_finite = "steps" not in scalars or np.isfinite(scalars["steps"]).all()
+    stress_ok = stress is None or _exact(stress)
+    if not (steps_finite and stress_ok):
+        return None
+
+    # a frame without a vector or stress (all NaN) needs JSON, while non-finite
+    # values within a frame raise in binary_array
+    if any(np.isnan(val.reshape(n_frames, -1)).all(axis=1).any() for val in per_frame):
         return None
     if (force := vectors.get("force")) is not None:
         for name, computed in force_stats(force).items():
@@ -357,16 +359,13 @@ def trajectory_to_envelope(
     traj.info.pop("time_step", None)  # the widget's time_step, not a frame series
     spin = traj.info.pop("spin_multiplicity", None)
     cells = traj.cells
-    if (
-        not len(numbers)
-        or not _numbers_ok(numbers)
-        or traj.charge.any()
-        or traj.site_data.keys() & _JSON_SITE_DATA
-        or (spin is not None and np.any(spin != 1 + numbers.sum() % 2))
-        or (
-            cells is not None and (np.abs(np.linalg.det(cells)) < MIN_CELL_VOLUME).any()
-        )
-    ):
+    bad_numbers = not len(numbers) or not _numbers_ok(numbers)
+    json_only_sites = traj.charge.any() or traj.site_data.keys() & _JSON_SITE_DATA
+    wrong_spin = spin is not None and np.any(spin != 1 + numbers.sum() % 2)
+    if bad_numbers or json_only_sites or wrong_spin:
+        return None
+
+    if cells is not None and (np.abs(np.linalg.det(cells)) < MIN_CELL_VOLUME).any():
         return None
     if (channels := _channels(traj)) is None:
         return None

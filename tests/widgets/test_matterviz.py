@@ -68,11 +68,14 @@ def _clean_asset_cache(monkeypatch: pytest.MonkeyPatch) -> Generator[None]:
     starts from the default remote bundle (no MATTERVIZ_ANYWIDGET_DIR).
     """
     monkeypatch.delenv("MATTERVIZ_ANYWIDGET_DIR", raising=False)
-    cls = matterviz.MatterVizWidget
-    saved = cls._asset_cache.copy(), cls._marimo_urls.copy(), cls._configured
-    cls._asset_cache.clear()
+    saved_cache = MatterVizWidget._asset_cache.copy()
+    saved_urls = MatterVizWidget._marimo_urls.copy()
+    saved_configured = MatterVizWidget._configured
+    MatterVizWidget._asset_cache.clear()
     yield
-    cls._asset_cache, cls._marimo_urls, cls._configured = saved
+    MatterVizWidget._asset_cache = saved_cache
+    MatterVizWidget._marimo_urls = saved_urls
+    MatterVizWidget._configured = saved_configured
 
 
 # === clear_widget_cache ===
@@ -220,10 +223,10 @@ def test_fetch_widget_asset_cached_file(cache_at_tmp: Path) -> None:
         cache_file.write_text("cached content")
 
     with patch(f"{DOTTED_PATH}.urllib.request.urlopen") as mock_dl:
-        assert (
-            matterviz.fetch_widget_asset("matterviz.js", version_override="0.10.1")
-            == "cached content"
+        content = matterviz.fetch_widget_asset(
+            "matterviz.js", version_override="0.10.1"
         )
+        assert content == "cached content"
     mock_dl.assert_not_called()
 
     main_dir = cache_at_tmp / "matterviz-anywidget" / "main"
@@ -424,12 +427,9 @@ def test_configure_assets_reset() -> None:
 
     configure_assets()
 
-    cls = matterviz.MatterVizWidget
-    assert (cls._asset_cache, cls._configured) == ({}, None)
-    assert (
-        cls()._esm
-        == matterviz._bundle_sources(matterviz.MATTERVIZ_ANYWIDGET_VERSION)[0]
-    )
+    assert (MatterVizWidget._asset_cache, MatterVizWidget._configured) == ({}, None)
+    pinned_esm = matterviz._bundle_sources(matterviz.MATTERVIZ_ANYWIDGET_VERSION)[0]
+    assert MatterVizWidget()._esm == pinned_esm
 
 
 @pytest.mark.parametrize(

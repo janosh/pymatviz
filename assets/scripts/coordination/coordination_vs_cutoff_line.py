@@ -14,7 +14,8 @@ from matminer.datasets import load_dataset
 from pymatgen.core import Structure
 
 import pymatviz as pmv
-from pymatviz.utils.testing import TEST_FILES, formula_spg_str
+from pymatviz.data import TEST_FILES
+from pymatviz.structures import formula_spg_str
 
 
 df_phonon = load_dataset(data_name := "matbench_phonons")

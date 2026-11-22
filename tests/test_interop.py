@@ -16,11 +16,12 @@ import pandas as pd
 import pytest
 
 import pymatviz as pmv
-from pymatviz import chem_env
-from pymatviz.composition import count_elements, count_formulas
+from pymatviz import hierarchy
+from pymatviz.compositions import count_elements, count_formulas
+from pymatviz.data import TEST_FILES
 from pymatviz.enums import ElemCountMode
-from pymatviz.rdf.figures import rdf_plot
-from pymatviz.rdf.helpers import calculate_rdf
+from pymatviz.hierarchy import spacegroup_sunburst
+from pymatviz.rdf import calculate_rdf, rdf_plot
 from pymatviz.structures import (
     normalize_spacegroups,
     normalize_structures,
@@ -28,8 +29,6 @@ from pymatviz.structures import (
     structure_dict,
     to_structure,
 )
-from pymatviz.sunburst import spacegroup_sunburst
-from pymatviz.utils.testing import TEST_FILES
 from pymatviz.widgets import (
     BandsAndDosWidget,
     BrillouinZoneWidget,
@@ -203,9 +202,8 @@ def test_structure_dict_pymatgen_ase(ase_atoms: tuple[Any, Any]) -> None:
     assert structure_dict(pmg_struct) == pmg_struct.as_dict()  # keeps Si4+
     periodic = structure_dict(ase_atoms[0])
     assert periodic["lattice"]["pbc"] == [True, True, True]
-    assert [site["species"] for site in periodic["sites"]] == [
-        [{"element": "Si", "occu": 1}]
-    ] * 2
+    site_species = [site["species"] for site in periodic["sites"]]
+    assert site_species == [[{"element": "Si", "occu": 1}]] * 2
     assert structure_to_dict(ase_atoms[0]) == periodic
 
 
@@ -245,7 +243,7 @@ def test_normalize_spacegroups_disordered_matches_pymatgen() -> None:
     pytest.importorskip("pymatgen")
     from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
-    from pymatviz.utils.testing import disordered_demo_structures
+    from pymatviz.data import disordered_demo_structures
 
     structs = list(disordered_demo_structures.values())
     expected = [
@@ -291,7 +289,7 @@ def test_site_environments_chemenv_matches_pymatgen() -> None:
         finder.compute_structure_environments(),
     )
     expected = [envs[0]["ce_symbol"] for envs in lse.coordination_environments or []]
-    (envs,) = chem_env.site_environments([to_structure(pmg_struct)])
+    (envs,) = hierarchy.site_environments([to_structure(pmg_struct)])
     assert [symbol for _, symbol in envs] == expected
     assert [cn for cn, _ in envs] == [int(sym.split(":")[1]) for sym in expected]
 
@@ -381,21 +379,18 @@ def test_coordination_vs_cutoff_line_matches_pymatgen(
         else np.random.default_rng(seed=0).random((n_sites, 3))
     )
     structure = Structure(Lattice.cubic(a_len), species, frac_coords)
-    expected = {
-        elem: [
-            float(
-                np.mean(
-                    [
-                        len(structure.get_neighbors(site, r=cutoff))
-                        for site in structure
-                        if site.specie.symbol == elem
-                    ]
-                )
-            )
-            for cutoff in np.linspace(*cutoff_range, num_points)
-        ]
-        for elem in sorted(set(species))
-    }
+    cutoffs = np.linspace(*cutoff_range, num_points)
+    expected: dict[str, list[float]] = {}
+    for elem in sorted(set(species)):
+        elem_sites = [site for site in structure if site.specie.symbol == elem]
+        mean_cns = []
+        for cutoff in cutoffs:
+            n_neighbors = [
+                len(structure.get_neighbors(site, r=cutoff)) for site in elem_sites
+            ]
+            mean_cns.append(float(np.mean(n_neighbors)))
+        expected[elem] = mean_cns
+
     widget = pmv.coordination_vs_cutoff_line(
         structure, cutoff_range=cutoff_range, num_points=num_points
     )
@@ -528,7 +523,7 @@ def test_pymatgen_phonon_db_doc() -> None:
     from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine
     from pymatgen.phonon.dos import PhononDos
 
-    from pymatviz.phonons.helpers import PhononDBDoc
+    from pymatviz.phonons import PhononDBDoc
 
     with lzma.open(SR_SE_DOC, mode="rt") as file:
         raw = json.load(file)
@@ -723,7 +718,7 @@ def test_one_hot_encode_pymatgen_compositions() -> None:
     pytest.importorskip("pymatgen")
     from pymatgen.core import Composition
 
-    from pymatviz.cluster.composition import one_hot_encode
+    from pymatviz.cluster import one_hot_encode
 
     formulas = ["H2O", "CO2", "NaCl"]
     np.testing.assert_array_equal(
@@ -744,7 +739,7 @@ def test_magpie_featurize_matches_matminer() -> None:
     from matminer.featurizers.composition import ElementProperty
     from pymatgen.core import Composition
 
-    from pymatviz.cluster.composition import magpie_featurize
+    from pymatviz.cluster import magpie_featurize
 
     formulas = ["H2O", "CO2", "NaCl", "Fe2O3"]
     featurizer = ElementProperty.from_preset("magpie")
@@ -789,9 +784,9 @@ def test_structure_widget_pymatgen_site_properties(
     )
     widget = StructureWidget(structure=struct)
     assert widget.structure == struct.as_dict()
-    assert {
-        key for site in widget.structure["sites"] for key in site["properties"]
-    } == {"magmom", "force"}
+    sites = widget.structure["sites"]
+    site_prop_keys = {key for site in sites for key in site["properties"]}
+    assert site_prop_keys == {"magmom", "force"}
 
 
 @pytest.mark.parametrize(
@@ -899,9 +894,8 @@ def test_normalize_convex_hull_entries_pymatgen(source: str) -> None:
     }[source]
     result = normalize_convex_hull_entries(obj)
     assert result is not None
-    assert [entry["composition"] for entry in result] == [
-        entry.composition.as_dict() for entry in entries
-    ]
+    result_comps = [entry["composition"] for entry in result]
+    assert result_comps == [entry.composition.as_dict() for entry in entries]
     assert {entry.get("entry_id") for entry in result} == {None, "mp-3"}
     # total energy = energy per atom x atoms, within round-off of pymatgen's
     np.testing.assert_allclose(
@@ -916,9 +910,8 @@ def test_normalize_convex_hull_entries_pymatgen(source: str) -> None:
         rtol=0,
         atol=1e-12,
     )
-    assert [entry["is_stable"] for entry in result] == [
-        entry in phase_diag.stable_entries for entry in entries
-    ]
+    is_stable = [entry["is_stable"] for entry in result]
+    assert is_stable == [entry in phase_diag.stable_entries for entry in entries]
 
 
 def test_normalize_xrd_pattern_diffraction_pattern() -> None:
@@ -958,9 +951,8 @@ def test_xrd_widget_labeled_diffraction_patterns() -> None:
     widget = XrdWidget(patterns={"computed": computed, "scan": {"x": [5], "y": [1]}})
     assert list(widget.patterns) == ["computed", "scan"]
     # kemio's XrdPattern defaults missing multiplicities to 1
-    assert widget.patterns["computed"]["hkls"][0] == [
-        {"hkl": [1, 0, 0], "multiplicity": 1}
-    ]
+    first_hkls = widget.patterns["computed"]["hkls"][0]
+    assert first_hkls == [{"hkl": [1, 0, 0], "multiplicity": 1}]
     assert widget.patterns["scan"] == {"x": [5], "y": [1], "kind": "profile"}
 
 
@@ -1102,21 +1094,13 @@ def test_disordered_pymatgen_trajectory_frames(source: str) -> None:
     traj.to_displacements()
     traj.charge = 2  # Explicit charge differs from the sum of oxidation states (3).
     serialized = traj.as_dict()
-    value = {
-        "object": traj,
-        "dict": serialized,
-        "json": json.loads(
-            json.dumps(
-                serialized
-                | {
-                    "coords": traj.coords,
-                    "lattice": CELL,
-                    "site_properties": traj.site_properties,
-                },
-                cls=MontyEncoder,
-            )
-        ),
-    }[source]
+    json_dict = serialized | {
+        "coords": traj.coords,
+        "lattice": CELL,
+        "site_properties": traj.site_properties,
+    }
+    round_tripped = json.loads(json.dumps(json_dict, cls=MontyEncoder))
+    value = {"object": traj, "dict": serialized, "json": round_tripped}[source]
     widget = TrajectoryWidget(trajectory=value)
     assert widget.describe() == {
         "widget_type": "trajectory",
@@ -1371,16 +1355,17 @@ def test_trajectory_widget_with_ase_atoms(
     simulation cell; calculator forces become site vectors, momenta velocities.
     A frame dict's extra keys add to (not replace) the calculator results.
     """
-    atoms_cls = pytest.importorskip("ase").Atoms
+    ase = pytest.importorskip("ase")
     from ase.calculators.singlepoint import SinglePointCalculator
 
+    pbc = cell is not None
     if mson_atoms:
         pytest.importorskip("pymatgen.core")
         from pymatgen.io.ase import MSONAtoms
 
-        atoms_cls = MSONAtoms
-
-    atoms = atoms_cls(symbols, positions=positions, cell=cell, pbc=cell is not None)
+        atoms = MSONAtoms(symbols, positions=positions, cell=cell, pbc=pbc)
+    else:
+        atoms = ase.Atoms(symbols, positions=positions, cell=cell, pbc=pbc)
     atoms.info = {"temperature": 300}
     forces = np.zeros((len(atoms), 3))
     forces[0] = [0.0, 0.0, 2.0]

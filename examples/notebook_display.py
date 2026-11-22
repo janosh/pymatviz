@@ -25,8 +25,8 @@ from pymatgen.analysis.diffraction.xrd import XRDCalculator
 from pymatgen.core import Lattice, Structure
 
 import pymatviz  # noqa: F401  # importing in a kernel enables auto-display
+from pymatviz.data import TEST_FILES, load_nacl_phonons
 from pymatviz.phonons import PhononDBDoc
-from pymatviz.utils.testing import TEST_FILES, load_nacl_phonons
 
 
 # %% Crystal structures auto-render as 3D plots

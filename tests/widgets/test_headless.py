@@ -11,7 +11,7 @@ import json
 import os
 import threading
 from typing import TYPE_CHECKING, Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import numpy as np
 import pytest
@@ -31,7 +31,11 @@ from pymatviz.widgets._headless import (
     render_widget_headless,
 )
 from pymatviz.widgets.chem_pot_diagram import ChemPotDiagramWidget
-from pymatviz.widgets.matterviz import MATTERVIZ_ANYWIDGET_VERSION, _bundle_sources
+from pymatviz.widgets.matterviz import (
+    MATTERVIZ_ANYWIDGET_VERSION,
+    MatterVizWidget,
+    _bundle_sources,
+)
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 
 
@@ -251,9 +255,8 @@ def test_failed_render_replaces_page() -> None:
     with patch(f"{HEADLESS_PATH}._get_browser", AsyncMock(return_value=browser)):
         with pytest.raises(RuntimeError, match="Widget render failed: boom"):
             render_widget_headless(DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS)
-        assert render_widget_headless(DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS) == (
-            b"PNGDATA"
-        )
+        png = render_widget_headless(DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS)
+        assert png == b"PNGDATA"
     broken.close.assert_awaited_once()
     fresh.close.assert_not_awaited()
 
@@ -337,14 +340,12 @@ def test_forked_child_starts_own_browser_thread() -> None:
     if pid == 0:  # child: exit code reports the outcome, never return into pytest
         patch(f"{HEADLESS_PATH}._call_budget", return_value=5.0).start()  # fail fast
         try:
-            ok = (
-                headless_mod._warm_pages == []
-                and headless_mod._get_browser_thread().thread is not parent_thread
-                and headless_mod._run_in_browser_thread(
-                    asyncio.sleep(0, result=42), timeout=1
-                )
-                == 42
-            )
+            pages_cleared = headless_mod._warm_pages == []
+            browser_thread = headless_mod._get_browser_thread().thread
+            ok = pages_cleared and browser_thread is not parent_thread
+            if ok:
+                coro = asyncio.sleep(0, result=42)
+                ok = headless_mod._run_in_browser_thread(coro, timeout=1) == 42
         except BaseException:  # noqa: BLE001
             ok = False
         os._exit(0 if ok else 1)
@@ -384,11 +385,10 @@ def test_batch_exports_render_concurrently_on_capped_pages() -> None:
     n_slots = headless_mod._MAX_WARM_PAGES
     pages = [_mock_page(on_mount=on_mount) for _ in range(n_slots)]
     browser = _mock_browser(*pages)
-    jobs = [
-        dict(
-            widget_data=DUMMY_WIDGET_DATA, esm_content=DUMMY_ESM, css_content=DUMMY_CSS
-        )
-    ] * (n_slots + 2)
+    job = dict(
+        widget_data=DUMMY_WIDGET_DATA, esm_content=DUMMY_ESM, css_content=DUMMY_CSS
+    )
+    jobs = [job] * (n_slots + 2)
     with patch(f"{HEADLESS_PATH}._get_browser", AsyncMock(return_value=browser)):
         results = headless_mod.render_widgets_headless(jobs)
     assert results == [b"PNGDATA"] * len(jobs)
@@ -764,3 +764,219 @@ def test_cancel_during_eviction_releases_page() -> None:
         render_widget_headless(DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS)
     assert headless_mod._warm_pages == []
     page.close.assert_awaited_once()
+
+
+# === to_img and mount options ===
+
+
+_FAKE_PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 50
+
+
+def _make_widget() -> MatterVizWidget:
+    """Create a bare scatter-plot MatterVizWidget for to_img tests."""
+    return MatterVizWidget(widget_type="scatter_plot")
+
+
+@pytest.fixture
+def mock_render() -> Iterator[Mock]:
+    """Patch the headless renderer to return fake PNG bytes."""
+    with patch(
+        f"{HEADLESS_PATH}.render_widget_headless", return_value=_FAKE_PNG
+    ) as mock:
+        yield mock
+
+
+@pytest.mark.parametrize(
+    ("filename", "explicit_fmt", "expected_capture_fmt"),
+    [
+        ("plot.png", None, "png"),
+        ("plot.svg", None, "svg"),
+        ("plot.pdf", None, "pdf"),
+        ("plot.jpg", None, "jpeg"),
+        ("plot.jpeg", None, "jpeg"),
+        (None, "png", "png"),
+        (None, "svg", "svg"),
+        (None, "jpeg", "jpeg"),
+        (None, "pdf", "pdf"),
+        (None, None, "png"),
+    ],
+)
+def test_to_img_format_inference(
+    filename: str | None,
+    explicit_fmt: str | None,
+    expected_capture_fmt: str,
+    tmp_path: Any,
+    mock_render: Mock,
+) -> None:
+    """to_img infers capture format from filename or explicit fmt argument."""
+    resolved = f"{tmp_path}/{filename}" if filename else None
+    _make_widget().to_img(filename=resolved, fmt=explicit_fmt)  # ty: ignore[invalid-argument-type]
+    assert mock_render.call_args.kwargs["fmt"] == expected_capture_fmt
+
+
+@pytest.mark.parametrize(
+    ("img_kwargs", "match"),
+    [
+        ({"filename": "plot.tiff"}, "Unsupported fmt='tiff'"),
+        ({"fmt": "tiff"}, "Unsupported fmt='tiff'"),
+        ({"filename": "plot"}, "Cannot infer format"),
+        ({"dpi": 0}, "dpi must be positive"),
+        ({"width": -1}, "width must be positive"),
+        ({"quality": 101}, "quality must be between 1 and 100"),
+    ],
+)
+def test_to_img_rejects_invalid_args(
+    tmp_path: Any, img_kwargs: dict[str, Any], match: str
+) -> None:
+    """to_img raises ValueError for bad formats and render settings."""
+    if filename := img_kwargs.get("filename"):
+        img_kwargs = {**img_kwargs, "filename": f"{tmp_path}/{filename}"}
+    with pytest.raises(ValueError, match=match):
+        _make_widget().to_img(**img_kwargs)
+
+
+@pytest.mark.parametrize("path_suffix", ["output.png", "sub/dir/output.png"])
+@pytest.mark.usefixtures("mock_render")
+def test_to_img_writes_file(tmp_path: Any, path_suffix: str) -> None:
+    """to_img writes bytes to disk, creating parent directories as needed."""
+    out_path = f"{tmp_path}/{path_suffix}"
+    assert _make_widget().to_img(filename=out_path) == _FAKE_PNG
+    with open(out_path, "rb") as fh:
+        assert fh.read() == _FAKE_PNG
+
+
+@pytest.mark.parametrize(
+    "img_kwargs",
+    [
+        {"fmt": "pdf", "dpi": 200},
+        {"fmt": "jpeg", "quality": 75},
+        {"fmt": "png", "width": 1200, "height": None},
+        {"fmt": "png", "width": None, "height": 900},
+        {"fmt": "png", "width": 1200, "height": 900},
+    ],
+    ids=["pdf-dpi", "jpeg-quality", "width", "height", "width-height"],
+)
+def test_to_img_forwards_render_kwargs(
+    img_kwargs: dict[str, Any], mock_render: Mock
+) -> None:
+    """to_img forwards fmt/dpi/quality/width/height to the renderer, returning its
+    bytes unchanged.
+    """
+    assert _make_widget().to_img(**img_kwargs) == _FAKE_PNG
+    for key, value in img_kwargs.items():
+        assert mock_render.call_args.kwargs[key] == value
+
+
+def test_to_img_falls_back_from_marimo_url(mock_render: Mock) -> None:
+    """to_img uses class assets when instance _esm is a marimo virtual-file URL."""
+    widget = _make_widget()
+    widget._esm = "./@file/virtual-esm-url.js"
+    widget.to_img(fmt="png")
+    esm_passed = mock_render.call_args.kwargs["esm_content"]
+    assert esm_passed != "./@file/virtual-esm-url.js"
+    assert isinstance(esm_passed, str)
+
+
+# === headless mount option unit tests ===
+
+
+_W8 = "width: 800px"
+_H6 = "height: 600px"
+
+
+@pytest.mark.parametrize(
+    ("style", "width", "height", "expect_in", "expect_not_in"),
+    [
+        (None, None, None, [_W8, _H6], []),
+        ("", None, None, [_W8, _H6], []),
+        (
+            "width: 500px; height: 300px;",
+            None,
+            None,
+            ["width: 500px", "height: 300px"],
+            ["800px", "600px"],
+        ),
+        ("height: 400px;", None, None, [_W8, "height: 400px"], ["600px"]),
+        ("width: 400px;", None, None, ["width: 400px", _H6], ["800px"]),
+        # explicit width/height override user style and defaults
+        ("width: 500px;", 1200, None, ["width: 1200px", _H6], []),
+        ("width: 500px;", None, 900, ["width: 500px", "height: 900px"], []),
+        ("width: 500px;", 1200, 900, ["width: 1200px", "height: 900px"], []),
+    ],
+)
+def test_container_style_dimensions(
+    style: str | None,
+    width: int | None,
+    height: int | None,
+    expect_in: list[str],
+    expect_not_in: list[str],
+) -> None:
+    """_container_style fills missing width/height defaults; explicit sizes win."""
+    data: dict[str, Any] = {"widget_type": "bar_plot"}
+    if style is not None:
+        data["style"] = style
+    html = headless_mod._container_style(data, width, height)
+    for substr in expect_in:
+        assert substr in html, f"expected {substr!r} in HTML"
+    for substr in expect_not_in:
+        assert substr not in html, f"unexpected {substr!r} in HTML"
+
+
+def test_shutdown_browser_tolerates_none() -> None:
+    """_shutdown_browser is a no-op when no browser thread was started."""
+    with patch.object(headless_mod, "_browser_thread", None):
+        headless_mod._shutdown_browser()
+
+
+def test_get_browser_import_error() -> None:
+    """_get_browser raises ImportError with install instructions."""
+    state = headless_mod._get_browser_thread()
+    blocked = {"playwright": None, "playwright.async_api": None}
+    with (
+        patch.object(state, "browser", None),
+        patch.dict("sys.modules", blocked),
+        pytest.raises(ImportError, match="playwright is required"),
+    ):
+        headless_mod._run_in_browser_thread(headless_mod._get_browser())
+
+
+@pytest.mark.parametrize(
+    ("widget_type", "expect_html_fallback", "expect_worker_shim"),
+    [
+        ("periodic_table", True, False),
+        ("heatmap_matrix", True, False),
+        ("scatter_plot", False, False),
+        ("structure", False, False),
+        ("chem_pot_diagram", False, True),
+    ],
+)
+def test_build_html_render_gates(
+    widget_type: str, expect_html_fallback: bool, expect_worker_shim: bool
+) -> None:
+    """_mount_options toggles HTML fallback and Worker shim per widget type."""
+    inputs = headless_mod._RenderInputs(
+        {"widget_type": widget_type}, "// esm", "/* css */"
+    )
+    options = headless_mod._mount_options(inputs)
+    assert options["allow_html"] is expect_html_fallback
+    assert options["no_worker"] is expect_worker_shim
+    # Spinner guard is always present so loading states are never captured
+    assert '.spinner[role="status"]' in headless_mod._build_html("// esm", "/* css */")
+
+
+def test_render_report_never_raises_on_asset_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """render_report honors its never-raises contract if asset resolution fails."""
+    widget = ScatterPlotWidget(series=[{"x": [0, 1], "y": [1, 2]}])
+
+    def _boom() -> tuple[str, str]:
+        raise FileNotFoundError("bundle unavailable offline")
+
+    monkeypatch.setattr(widget, "_resolve_assets", _boom)
+    report = widget.render_report(timeout=5, dpi=72)  # must not raise
+    assert report.ok is False
+    assert report.error is not None
+    assert "bundle unavailable offline" in report.error
+    # data-derived summary/warnings survive a render failure
+    assert report.summary["widget_type"] == "scatter_plot"

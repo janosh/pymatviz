@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from pymatviz.data import TEST_FILES, disordered_demo_structures, hea_disordered
 from pymatviz.structures import (
     normalize_spacegroups,
     normalize_structures,
@@ -16,11 +17,6 @@ from pymatviz.structures import (
     site_symbols,
     structure_dict,
     to_structure,
-)
-from pymatviz.utils.testing import (
-    TEST_FILES,
-    disordered_demo_structures,
-    hea_disordered,
 )
 from tests.conftest import SI2_STRUCT, SI_STRUCTS
 
@@ -81,9 +77,8 @@ def test_to_structure_and_site_helpers() -> None:
 
     periodic = structure_dict(SI2_STRUCT)
     assert periodic["lattice"]["pbc"] == [True, True, True]
-    assert [site["species"] for site in periodic["sites"]] == [
-        [{"element": "Si", "occu": 1}]
-    ] * 2
+    site_species = [site["species"] for site in periodic["sites"]]
+    assert site_species == [[{"element": "Si", "occu": 1}]] * 2
     mol = structure_dict(H2O)
     assert mol["@class"] == "Molecule"
     assert "lattice" not in mol

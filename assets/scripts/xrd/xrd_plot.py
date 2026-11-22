@@ -8,14 +8,16 @@ import numpy as np
 from kemio.io import read_structure
 
 import pymatviz as pmv
-from pymatviz.utils.testing import TEST_FILES, formula_spg_str
+from pymatviz.data import TEST_FILES
+from pymatviz.structures import formula_spg_str
 
 
 # %%
+cif_files = glob(f"{TEST_FILES}/xrd/*.cif")
+json_files = glob(f"{TEST_FILES}/structures/*.json.gz")
 structures = {
     formula_spg_str(struct := read_structure(file)): struct
-    for file in glob(f"{TEST_FILES}/xrd/*.cif")
-    + glob(f"{TEST_FILES}/structures/*.json.gz")
+    for file in cif_files + json_files
 }
 xrd_patterns = dict(
     zip(structures, kemio.xrd_patterns(list(structures.values())), strict=True)

@@ -14,8 +14,8 @@ from monty.io import zopen
 from monty.json import MontyDecoder
 
 import pymatviz as pmv
+from pymatviz.data import TEST_FILES
 from pymatviz.phonons import PhononDBDoc
-from pymatviz.utils.testing import TEST_FILES
 
 
 # %% Bands next to DOS sharing the frequency axis, with the Brillouin zone and k-path

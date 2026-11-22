@@ -593,10 +593,10 @@ class MatterVizWidget(AnyWidget):
         """Return ``(esm_content, css_content)`` of the bundle selected at
         construction, loading it on first use.
         """
-        self._asset_sources = self._asset_sources or (
-            _load_bundle(self._bundle, "js"),
-            _load_bundle(self._bundle, "css"),
-        )
+        if not self._asset_sources:
+            esm_content = _load_bundle(self._bundle, "js")
+            css_content = _load_bundle(self._bundle, "css")
+            self._asset_sources = (esm_content, css_content)
         return self._asset_sources
 
     def _binary_series(

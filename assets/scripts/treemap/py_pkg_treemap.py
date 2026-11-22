@@ -21,7 +21,7 @@ import numpy as np
 import pymatgen
 
 import pymatviz as pmv
-from pymatviz.treemap import py_pkg
+from pymatviz import py_pkg
 
 
 # %% Single packages with default settings

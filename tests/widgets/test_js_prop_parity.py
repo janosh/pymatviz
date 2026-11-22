@@ -166,10 +166,11 @@ def test_trait_types_match_js_schema(
             if key in key_schemas:
                 name = f"{cls.__name__}.{key}"
                 mismatches += _schema_mismatches(name, traits[key], key_schemas[key])
-    assert not mismatches, (
+    hint = (
         "Python trait types don't fit the JS widget model schema (fix the trait in "
-        "pymatviz/widgets or the prop type in matterviz):\n" + "\n".join(mismatches)
+        "pymatviz/widgets or the prop type in matterviz):\n"
     )
+    assert not mismatches, hint + "\n".join(mismatches)
 
 
 def test_python_traits_match_js_contract(js_contract: dict[str, list[str]]) -> None:
@@ -193,12 +194,12 @@ def test_python_traits_match_js_contract(js_contract: dict[str, list[str]]) -> N
             drift.append(
                 f"{cls.__name__}: JS reads keys Python can't set: {sorted(missing)}"
             )
-    assert not drift, (
+    hint = (
         "Python<->JS widget trait contract drift (regenerate pymatviz/widgets/"
         "_schema_traits.py with `uv run tests/widgets/test_js_prop_parity.py`, or fix "
         "matterviz/extensions/anywidget/anywidget.ts or the widget class):\n"
-        + "\n".join(drift)
     )
+    assert not drift, hint + "\n".join(drift)
 
 
 def test_public_trait_names_exclude_framework_traits() -> None:

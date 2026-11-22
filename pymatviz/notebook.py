@@ -105,9 +105,8 @@ def create_widget(obj: Any) -> MatterVizWidget:
             raise ValueError("Cannot create widget from empty sequence")
         first_spec = _display_spec(obj[0])
         is_struct = first_spec is not None and first_spec[0] is StructureWidget
-        is_frame = isinstance(obj[0], Frame) or (
-            isinstance(obj[0], dict) and "structure" in obj[0]
-        )
+        is_frame_dict = isinstance(obj[0], dict) and "structure" in obj[0]
+        is_frame = isinstance(obj[0], Frame) or is_frame_dict
         if is_struct or is_frame:
             return TrajectoryWidget(trajectory=obj)
     raise ValueError(

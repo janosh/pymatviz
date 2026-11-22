@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from pymatviz.powerups import enhance_parity_plot
-from pymatviz.utils.data import df_to_arrays
+from pymatviz.utils import df_to_arrays
 from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.binned_scatter_plot import BinnedScatterPlotWidget
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget

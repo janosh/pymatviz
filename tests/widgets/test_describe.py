@@ -275,6 +275,6 @@ def test_minmax_filters_non_finite(values: Any, expected: list[float] | None) ->
     result = _minmax(values)
     assert result == expected
     if result is not None and expected is not None:
-        assert [math.copysign(1, val) for val in result] == [
-            math.copysign(1, val) for val in expected
-        ]
+        result_signs = [math.copysign(1, val) for val in result]
+        expected_signs = [math.copysign(1, val) for val in expected]
+        assert result_signs == expected_signs

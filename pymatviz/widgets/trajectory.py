@@ -298,13 +298,12 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
         from kemio.interop import has_class, is_structure_like
 
         is_pymatgen = has_class(trajectory, "pymatgen.core.trajectory.Trajectory")
-        if is_pymatgen or (
-            isinstance(trajectory, dict) and trajectory.get("@class") == "Trajectory"
-        ):
+        is_dict = isinstance(trajectory, dict)
+        is_traj_dict = is_dict and trajectory.get("@class") == "Trajectory"
+        if is_pymatgen or is_traj_dict:
             step = trajectory.time_step if is_pymatgen else trajectory.get("time_step")
-            if step is not None and (
-                not _is_number(step) or not 0 < float(step) < np.inf
-            ):
+            valid_step = _is_number(step) and 0 < float(step) < np.inf
+            if step is not None and not valid_step:
                 raise ValueError(
                     f"time_step value must be finite and > 0, got {step!r}"
                 )

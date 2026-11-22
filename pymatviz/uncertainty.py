@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from pymatviz.powerups import add_identity_line
-from pymatviz.utils.data import df_to_arrays
+from pymatviz.utils import df_to_arrays
 from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 
@@ -30,11 +30,9 @@ def _load_regression_data(
     row_mask = None
     # a single df column is labeled by its name, a lone array as "std"
     std_name = y_std if isinstance(y_std, str) else "std"
-    if isinstance(y_std, str) or (
-        df is not None
-        and isinstance(y_std, Sequence | pd.Index)
-        and all(isinstance(column, str) for column in y_std)
-    ):
+    is_sequence = df is not None and isinstance(y_std, Sequence | pd.Index)
+    is_column_list = is_sequence and all(isinstance(col, str) for col in y_std)
+    if isinstance(y_std, str) or is_column_list:
         true_vals, pred_vals, y_std = df_to_arrays(df, y_true, y_pred, y_std)  # ty: ignore
     else:
         true_vals, pred_vals = df_to_arrays(df, y_true, y_pred)
