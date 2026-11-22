@@ -10,7 +10,7 @@ from pymatviz.widgets.spacegroup_bar import SpacegroupBarPlotWidget, spacegroup_
 
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Mapping, Sequence
     from typing import Any
 
     import pandas as pd
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 
 def spacegroup_bar_plot(
-    data: Sequence[SpacegroupLike] | pd.Series,
+    data: Sequence[SpacegroupLike] | Mapping[SpacegroupLike, int] | pd.Series,
     *,
     show_counts: bool = True,
     log_y: bool = False,

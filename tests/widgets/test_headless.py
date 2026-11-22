@@ -571,11 +571,18 @@ def test_build_interactive_html_requires_one_source_each(
 
 
 def test_widget_data_json_numpy_scalars_and_unknown_types() -> None:
-    """Numpy scalars encode as Python values; other objects raise, not stringify."""
+    """Numpy scalars and arrays encode as Python values, buffers as base64 and
+    ``</`` is escaped; other objects raise, not stringify.
+    """
     from pymatviz.widgets._headless import _widget_data_json
 
     data = {"idx": np.int64(141), "val": np.float32(0.5), "flag": np.bool_(1)}
-    assert json.loads(_widget_data_json(data)) == {"idx": 141, "val": 0.5, "flag": True}
+    data |= {"arr": np.arange(2), "buf": memoryview(b"ab"), "tag": "</script>"}
+    assert json.loads(_widget_data_json(data)) == {
+        "idx": 141, "val": 0.5, "flag": True, "arr": [0, 1], "buf": "YWI=",
+        "tag": "</script>",
+    }  # fmt: skip
+    assert "</" not in _widget_data_json(data)
     with pytest.raises(TypeError, match="object is not JSON serializable"):
         _widget_data_json({"bad": object()})
 
@@ -884,45 +891,40 @@ _W8 = "width: 800px"
 _H6 = "height: 600px"
 
 
+@pytest.mark.parametrize("transparent", [False, True])
 @pytest.mark.parametrize(
-    ("style", "width", "height", "expect_in", "expect_not_in"),
+    ("style", "width", "height", "expected"),
     [
-        (None, None, None, [_W8, _H6], []),
-        ("", None, None, [_W8, _H6], []),
-        (
-            "width: 500px; height: 300px;",
-            None,
-            None,
-            ["width: 500px", "height: 300px"],
-            ["800px", "600px"],
-        ),
-        ("height: 400px;", None, None, [_W8, "height: 400px"], ["600px"]),
-        ("width: 400px;", None, None, ["width: 400px", _H6], ["800px"]),
+        (None, None, None, f"{_W8}; {_H6}"),
+        ("", None, None, f"{_W8}; {_H6}"),
+        ("width: 500px; height: 300px;", None, None, "width: 500px; height: 300px;"),
+        ("height: 400px;", None, None, f"height: 400px;; {_W8}"),
+        ("width: 400px;", None, None, f"width: 400px;; {_H6}"),
         # whitespace before a declaration and uppercase property names still count
-        ("  width: 400px; HEIGHT:300px", None, None, [], ["800px", "600px"]),
-        ("min-width: 400px", None, None, [_W8, _H6], []),  # not a width
-        # explicit width/height override user style and defaults
-        ("width: 500px;", 1200, None, ["width: 1200px", _H6], []),
-        ("width: 500px;", None, 900, ["width: 500px", "height: 900px"], []),
-        ("width: 500px;", 1200, 900, ["width: 1200px", "height: 900px"], []),
+        ("  width: 400px; HEIGHT:300px", None, None, "  width: 400px; HEIGHT:300px"),
+        ("min-width: 400px", None, None, f"min-width: 400px; {_W8}; {_H6}"),
+        ("max-height: 1px", None, None, f"max-height: 1px; {_W8}; {_H6}"),
+        # explicit width/height follow the user style (later declarations win)
+        ("width: 500px;", 1200, None, f"width: 500px;; width: 1200px; {_H6}"),
+        ("width: 500px;", None, 900, "width: 500px;; height: 900px"),
+        ("width: 5px;", 1200, 900, "width: 5px;; width: 1200px; height: 900px"),
     ],
 )
 def test_container_style_dimensions(
     style: str | None,
     width: int | None,
     height: int | None,
-    expect_in: list[str],
-    expect_not_in: list[str],
+    expected: str,
+    transparent: bool,
 ) -> None:
-    """_container_style fills missing width/height defaults; explicit sizes win."""
+    """_container_style puts the transparent theme first, then the user style, then
+    explicit sizes and 800x600 defaults for dimensions the style lacks.
+    """
     data: dict[str, Any] = {"widget_type": "bar_plot"}
     if style is not None:
         data["style"] = style
-    html = headless_mod._container_style(data, width, height)
-    for substr in expect_in:
-        assert substr in html, f"expected {substr!r} in HTML"
-    for substr in expect_not_in:
-        assert substr not in html, f"unexpected {substr!r} in HTML"
+    css = headless_mod._container_style(data, width, height, transparent=transparent)
+    assert css == (f"{_TRANSPARENT_STYLE}; " if transparent else "") + expected
 
 
 def test_shutdown_browser_tolerates_none() -> None:
@@ -956,10 +958,13 @@ def test_get_browser_import_error() -> None:
 def test_build_html_render_gates(
     widget_type: str, expect_html_fallback: bool, expect_worker_shim: bool
 ) -> None:
-    """_mount_options toggles HTML fallback and Worker shim per widget type."""
-    inputs = headless_mod._RenderInputs(
-        {"widget_type": widget_type}, "// esm", "/* css */"
-    )
+    """_mount_options toggles HTML fallback and Worker shim per widget type, and
+    renders hide the controls without mutating the widget data.
+    """
+    widget_data = {"widget_type": widget_type, "show_controls": True}
+    inputs = headless_mod._RenderInputs(widget_data, "// esm", "/* css */")
+    assert inputs.widget_data == {"widget_type": widget_type, "show_controls": False}
+    assert widget_data["show_controls"] is True
     options = headless_mod._mount_options(inputs)
     assert options["allow_html"] is expect_html_fallback
     assert options["no_worker"] is expect_worker_shim

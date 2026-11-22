@@ -211,7 +211,11 @@ def _shutdown_browser() -> None:
 
 @dataclasses.dataclass(frozen=True)
 class _RenderInputs:
-    """Inputs of one headless render."""
+    """Inputs of one headless render (see render_widget_headless), controls hidden.
+
+    Raises:
+        ValueError: For transparent formats other than PNG and SVG.
+    """
 
     widget_data: dict[str, Any]
     esm_content: str
@@ -223,6 +227,13 @@ class _RenderInputs:
     height: int | None = None
     quality: int = 90
     transparent: bool = False
+
+    def __post_init__(self) -> None:
+        """Check the transparent format and hide the widget's controls."""
+        if self.transparent and (fmt := self.fmt) not in ("png", "svg"):
+            raise ValueError(f"transparent export supports png and svg, got {fmt=}")
+        hidden_controls = {**self.widget_data, "show_controls": False}
+        object.__setattr__(self, "widget_data", hidden_controls)
 
     @property
     def scale_factor(self) -> float:
@@ -388,23 +399,14 @@ async def _render_widget(inputs: _RenderInputs) -> bytes:
 
 def _widget_data_json(widget_data: Mapping[str, Any]) -> str:
     """Widget data as JSON safe to embed in a ``<script>`` (``</`` escaped), with
-    binary arrays base64-encoded for ``_REVIVE_BUFFERS_JS`` and numpy scalars as
-    their Python values (as Jupyter's comm serializer does).
+    binary arrays base64-encoded for ``_REVIVE_BUFFERS_JS`` (see ``json_default``).
 
     Raises:
         TypeError: For any other non-JSON value, instead of stringifying it.
     """
-    import numpy as np
+    from pymatviz.widgets._binary import json_default
 
-    def default(obj: Any) -> Any:
-        """Encode buffers and numpy scalars, reject anything else."""
-        if isinstance(obj, (bytes, bytearray, memoryview)):
-            return base64.b64encode(obj).decode("ascii")
-        if isinstance(obj, np.generic):
-            return obj.item()
-        raise TypeError(f"{type(obj).__name__} is not JSON serializable: {obj!r}")
-
-    return json.dumps(widget_data, default=default).replace("</", r"<\/")
+    return json.dumps(widget_data, default=json_default).replace("</", r"<\/")
 
 
 @functools.lru_cache(maxsize=_MAX_WARM_PAGES)  # base64 of a multi-MB bundle is slow
@@ -847,38 +849,11 @@ def render_widget_headless(
         RuntimeError: If the widget fails to render or has no vector form for SVG.
         TimeoutError: If the widget does not finish rendering in time.
     """
-    inputs = _render_inputs(
-        widget_data, esm_content, css_content, fmt, dpi, timeout, quality, width,
-        height, transparent=transparent,
-    )  # fmt: skip
-    return _run_in_browser_thread(_render_widget(inputs), timeout)
-
-
-def _render_inputs(
-    widget_data: dict[str, Any],
-    esm_content: str,
-    css_content: str,
-    fmt: str = "png",
-    dpi: int = 150,
-    timeout: float = 30.0,
-    quality: int = 90,
-    width: int | None = None,
-    height: int | None = None,
-    *,
-    transparent: bool = False,
-) -> _RenderInputs:
-    """Validated render inputs (see render_widget_headless), controls hidden.
-
-    Raises:
-        ValueError: For transparent formats other than PNG and SVG.
-    """
-    if transparent and fmt not in ("png", "svg"):
-        raise ValueError(f"transparent export supports png and svg, got {fmt=}")
-    widget_data = {**widget_data, "show_controls": False}
-    return _RenderInputs(
+    inputs = _RenderInputs(
         widget_data, esm_content, css_content, fmt, dpi, timeout, width, height,
         quality, transparent,
     )  # fmt: skip
+    return _run_in_browser_thread(_render_widget(inputs), timeout)
 
 
 def render_widgets_headless(jobs: Sequence[Mapping[str, Any]]) -> list[bytes]:
@@ -888,7 +863,7 @@ def render_widgets_headless(jobs: Sequence[Mapping[str, Any]]) -> list[bytes]:
     Returns:
         The image bytes in job order.
     """
-    inputs = [_render_inputs(**job) for job in jobs]
+    inputs = [_RenderInputs(**job) for job in jobs]
     slots = math.ceil(len(inputs) / _MAX_WARM_PAGES)
 
     async def render_all() -> list[bytes]:
@@ -1001,7 +976,6 @@ def render_diagnostics(
     are left for the caller), but the browser-thread call itself can raise
     ``TimeoutError`` past its budget or ``RuntimeError`` from the browser thread.
     """
-    widget_data = {**widget_data, "show_controls": False}
     inputs = _RenderInputs(
         widget_data, esm_content, css_content, dpi=dpi, timeout=timeout
     )

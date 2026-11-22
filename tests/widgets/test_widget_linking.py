@@ -260,3 +260,6 @@ def test_link_periodic_table_highlights_and_filters_scatter() -> None:
     # selecting a point after filtering shows that structure, so the filter clears
     scatter.active_point = {"series_idx": 0, "point_idx": 2}
     assert (ptable.active_elements, scatter.highlighted_ids) == (["Li"], None)
+    # a point past the last structure leaves the table as it was
+    scatter.active_point = {"series_idx": 0, "point_idx": 3}
+    assert (ptable.active_elements, scatter.highlighted_ids) == (["Li"], None)

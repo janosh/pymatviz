@@ -147,28 +147,24 @@ def _analyze_py_file(file_path: str, package_name: str) -> dict[str, int]:
         counts["line_count"] = _code_lines(source.split("\n"), ("#",))
         tree = ast.parse(source, filename=file_path)
 
-        # Pre-collect nodes needing special treatment since ast.walk is a flat
-        # iterator that would otherwise double-count them: imports inside
-        # `if TYPE_CHECKING:` blocks and function defs in class bodies (methods)
+        # Walk statements only (classes, defs, imports and ifs are statements and
+        # never nest inside expressions), skipping the ~10x more expression nodes.
+        # Parents are visited before their children, so imports inside
+        # `if TYPE_CHECKING:` blocks and function defs in class bodies (methods) are
+        # marked before they're counted
         type_checking_imports: set[int] = set()
         method_nodes: set[int] = set()
-        for node in ast.walk(tree):
-            if (
-                isinstance(node, ast.If)
-                and isinstance(node.test, ast.Name)
-                and node.test.id == "TYPE_CHECKING"
-            ):
-                for sub_node in node.body:
-                    if isinstance(sub_node, (ast.Import, ast.ImportFrom)):
-                        type_checking_imports.add(id(sub_node))
+        stack: list[ast.AST] = [tree]
+        while stack:
+            node = stack.pop()
+            for stmt_list in ("body", "orelse", "finalbody", "handlers", "cases"):
+                stack += getattr(node, stmt_list, ())
+            if isinstance(node, ast.If):
+                if isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING":
+                    type_checking_imports |= {id(sub_node) for sub_node in node.body}
             elif isinstance(node, ast.ClassDef):
-                for item in node.body:
-                    if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                        method_nodes.add(id(item))
-
-        for node in ast.walk(tree):
-            if isinstance(node, ast.ClassDef):
                 counts["n_classes"] += 1
+                method_nodes |= {id(item) for item in node.body}
             elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 if id(node) in method_nodes:
                     counts["n_methods"] += 1

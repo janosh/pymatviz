@@ -12,31 +12,21 @@ if TYPE_CHECKING:
     from typing import Any, Self
 
 
-class _PicklableStrEnum(StrEnum):
-    """StrEnum that pickles its members as plain strings."""
-
-    def __reduce_ex__(self, proto: object) -> tuple[type, tuple[str]]:
-        """Return as a string when pickling. Overrides Enum.__reduce_ex__ which returns
-        the tuple self.__class__, (self._value_,). self.__class can cause pickle
-        failures if the corresponding Enum was moved or renamed in the meantime.
-        """
-        return str, (self.value,)
-
-
-class LabelEnum(_PicklableStrEnum):
-    """StrEnum with optional label and description attributes plus dict() methods.
-
-    Simply add label and description as a tuple starting with the key's value.
+class LabelEnum(StrEnum):
+    """StrEnum with label and optional description attributes, given as a tuple
+    starting with the member's value. Members pickle as plain strings.
     """
 
     def __new__(cls, val: str, label: str, desc: str = "") -> Self:
-        """Create a new class from a value, label, and description. Label and
-        description are optional.
-        """
+        """Create a member from a value, label and optional description."""
         member = str.__new__(cls, val)
         member._value_ = val
         member.__dict__ |= dict(label=label, desc=desc)
         return member
+
+    def __reduce_ex__(self, proto: object) -> tuple[type, tuple[str]]:
+        """Pickle as a plain string, so unpickling survives renamed or moved enums."""
+        return str, (self.value,)
 
     def __repr__(self) -> str:
         """Return label if available, else type name and value."""
@@ -57,7 +47,6 @@ class LabelEnum(_PicklableStrEnum):
 class ElemCountMode(LabelEnum):
     """Mode of counting elements in a chemical formula."""
 
-    # key, label, color
     composition = (
         "composition",
         "Composition",
@@ -104,17 +93,15 @@ class MetaFiles(EnumType):
 
 
 class Files(StrEnum, metaclass=MetaFiles):
-    """Enum of data files with associated file directories and URLs."""
+    """Enum of data files (paths relative to base_dir) with the URLs to download
+    them from.
+    """
 
-    def __new__(
-        cls, file_path: str, url: str = "", label: str = "", desc: str = ""
-    ) -> Self:
-        """Create a new member of the FileUrls enum with a given URL where to load the
-        file from and directory where to save it to.
-        """
+    def __new__(cls, file_path: str, url: str = "") -> Self:
+        """Create a member from a file path and an optional download URL."""
         obj = str.__new__(cls)
         obj._value_ = file_path
-        obj.__dict__ |= dict(file_path=file_path, url=url, label=label, desc=desc)
+        obj.__dict__["url"] = url
         return obj
 
     def __repr__(self) -> str:
@@ -133,7 +120,7 @@ class Files(StrEnum, metaclass=MetaFiles):
     @property
     def file_path(self) -> str:
         """File path associated with the file."""
-        path = f"{type(self)._base_dir}/{self.__dict__['file_path']}"
+        path = f"{type(self)._base_dir}/{self.value}"
         if type(self)._auto_download and not os.path.isfile(path) and self.url:
             print(f"Downloading {self.url} to {path}")  # noqa: T201
             # read fully before opening path: a failed read must not leave a partial
@@ -144,32 +131,3 @@ class Files(StrEnum, metaclass=MetaFiles):
             with open(path, mode="wb") as file:
                 file.write(content)
         return path
-
-    @property
-    def label(self) -> str:
-        """Label associated with the file."""
-        return self.__dict__["label"]
-
-    @property
-    def description(self) -> str:
-        """Description associated with the file."""
-        return self.__dict__["desc"]
-
-    @property
-    def rel_path(self) -> str:
-        """Path of the file relative to the repo's ROOT directory."""
-        return self.__dict__["file_path"]
-
-    @classmethod
-    def from_label(cls, label: str) -> Self:
-        """Get enum member from pretty label."""
-        file = next((attr for attr in cls if attr.label == label), None)
-        if file is None:
-            import difflib
-
-            similar_labels = difflib.get_close_matches(label, [k.label for k in cls])
-            raise ValueError(
-                f"{label=} not found in {cls.__name__}. Did you mean one "
-                f"of {similar_labels}?"
-            )
-        return file

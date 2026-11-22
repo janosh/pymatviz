@@ -1,37 +1,31 @@
 """Periodic table of per-element scatter and line plots."""
 
-# /// script
-# dependencies = [
-#     "pymatgen>=2026.9.24",
-# ]
-# ///
-
 # %%
 import numpy as np
-from pymatgen.core import Element
 
 import pymatviz as pmv
 
 
 np_rng = np.random.default_rng(seed=0)
+atomic_numbers = pmv.utils.df_ptable["z"]
 
 # sinusoidal waves with random frequencies, phases and noise
 xs = np.linspace(0, 10, 20)
 rand_sine_data = {}
-for elem in Element:
+for symbol in atomic_numbers.index:
     freq = np_rng.uniform(0.5, 2)
     phase = np_rng.uniform(0, 2 * np.pi)
     noise = np_rng.normal(0, 0.2, len(xs))
-    rand_sine_data[elem.symbol] = (xs, np.sin(freq * xs + phase) + noise)
+    rand_sine_data[symbol] = (xs, np.sin(freq * xs + phase) + noise)
 
 # random parity data with y = x + noise, third entry colors the markers
 rand_parity_data = {
-    elem.symbol: (
+    symbol: (
         np.arange(10) + np_rng.normal(0, 1, 10),
         np.arange(10) + np_rng.normal(0, 1, 10),
         np.arange(10) + np_rng.normal(0, 3, 10),
     )
-    for elem in Element
+    for symbol in atomic_numbers.index
 }
 
 
@@ -40,7 +34,7 @@ widget = pmv.ptable_scatter(
     rand_parity_data,
     mode="markers",
     color_bar={"title": "Color value"},
-    labels={elem.symbol: str(elem.Z) for elem in Element},
+    labels={symbol: str(atomic_num) for symbol, atomic_num in atomic_numbers.items()},
 )
 widget.show()
 widget.to_img(

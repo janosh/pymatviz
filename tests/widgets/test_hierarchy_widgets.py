@@ -95,11 +95,12 @@ def test_hierarchy_widget_traits(
     assert widget.zoom_root_id is None
 
     for bad_key in ("value_mode", "label_text", enum_key):
-        with pytest.raises(tl.TraitError):
+        with pytest.raises(tl.TraitError, match=f"'{bad_key}' trait.*'not-an-option'"):
             widget_cls(data=data, **{bad_key: "not-an-option"})
-    with pytest.raises(tl.TraitError):
+    with pytest.raises(tl.TraitError, match=r"'max_children' trait.*less than 0"):
         widget_cls(data=data, max_children=-1)
-    with pytest.raises(tl.TraitError):  # not a matterviz ExportFormat
+    # not a matterviz ExportFormat
+    with pytest.raises(tl.TraitError, match=r"'export_formats' trait.*'pdf'"):
         widget_cls(data=data, export_formats=["pdf"])
     with pytest.raises(TypeError, match="show_counts"):
         widget_cls(data=data, show_counts="value")

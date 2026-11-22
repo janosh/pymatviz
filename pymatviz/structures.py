@@ -26,13 +26,15 @@ def structure_dict(obj: AnyStructure) -> dict[str, Any]:
     """Dict in pymatgen's format (MatterViz's JSON structure format) of a structure-like
     object: pymatgen's own ``as_dict()`` for pymatgen objects, else kemio's
     ``Structure.as_dict()``/``Molecule.as_dict()`` payload (molecules without lattice),
-    with ``Structure.info`` (e.g. ASE ``Atoms.info``) as ``properties`` like pymatgen.
+    with the rest of ``Structure.info`` (e.g. ASE ``Atoms.info``) added to the
+    ``properties`` kemio fills from ``info["properties"]`` (as pymatgen's ASE adaptor).
     """
     if is_pymatgen_structure(obj):
         return obj.as_dict()
     struct = to_structure(obj)
     struct_dict = structure_to_pymatgen_dict(struct)
-    struct_dict["properties"] = struct.info | struct_dict["properties"]
+    extra_info = {key: val for key, val in struct.info.items() if key != "properties"}
+    struct_dict["properties"] = extra_info | struct_dict["properties"]
     return struct_dict
 
 
@@ -52,7 +54,6 @@ def site_symbols(struct: kemio.Structure) -> list[str]:
 
 
 # structure file paths count as structures, alone or as sequence/mapping items
-_PATHS = (str, os.PathLike)
 type _StructureItem = AnyStructure | str | os.PathLike[str]
 type _StructureInputs = (
     _StructureItem | Sequence[_StructureItem] | pd.Series | Mapping[Any, _StructureItem]
@@ -71,7 +72,8 @@ def normalize_structures(systems: _StructureInputs) -> dict[Hashable, kemio.Stru
         FileNotFoundError: For a path that isn't a file.
     """
     is_single_dict = isinstance(systems, Mapping) and "sites" in systems
-    if is_structure_like(systems) or is_single_dict or isinstance(systems, _PATHS):
+    is_path = isinstance(systems, str | os.PathLike)
+    if is_structure_like(systems) or is_single_dict or is_path:
         struct = to_structure(systems)
         return {struct.composition.formula: struct}
 

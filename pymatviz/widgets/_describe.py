@@ -242,17 +242,6 @@ def _payload_sequences(
     return sequences or None
 
 
-def _describe_xrd(data: Mapping[str, Any]) -> dict[str, Any]:
-    """Peak count and 2-theta range for one XRD pattern or ``{label: pattern}``
-    overlays (peaks summed over patterns).
-    """
-    two_thetas = _payload_sequences(data.get("patterns"), "x") or []
-    facts: dict[str, Any] = {"n_peaks": sum(map(len, two_thetas))}
-    if (two_theta_range := _minmax(two_thetas)) is not None:
-        facts["two_theta_range"] = two_theta_range
-    return facts
-
-
 def _describe_spacegroup_bar(data: Mapping[str, Any]) -> dict[str, Any]:
     """Total and unique space-group entry counts."""
     counts = data.get("data") or {}
@@ -303,6 +292,16 @@ _describe_band_structure = functools.partial(
     value_key="bands",
     count_key="n_bands",
     spin_keyed=True,  # n_bands sums band lines over spin channels
+)
+
+
+# peaks summed over {label: pattern} overlays
+_describe_xrd = functools.partial(
+    _describe_spectral,
+    data_key="patterns",
+    value_key="x",
+    count_key="n_peaks",
+    range_key="two_theta_range",
 )
 
 

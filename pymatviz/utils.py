@@ -16,8 +16,7 @@ PKG_DIR: str = os.path.dirname(__file__)
 ROOT: str = os.path.dirname(PKG_DIR)
 
 # kemio's element properties (masses, radii, ...), one row per element in Z order
-element_columns = kemio.element_table().as_dict()
-df_ptable: pd.DataFrame = pd.DataFrame(element_columns).set_index("symbol")
+df_ptable = pd.DataFrame(kemio.element_table().as_dict()).set_index("symbol")
 
 
 atomic_numbers: dict[str, int] = {

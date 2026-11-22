@@ -103,14 +103,11 @@ def _resolve_xy(
             )
         return xs_arr, ys_arr
     picked = _selected_series(widget, series)
-    return (
-        np.concatenate(
-            [np.asarray(series_column(srs, "x"), dtype=float) for srs in picked]
-        ),
-        np.concatenate(
-            [np.asarray(series_column(srs, "y"), dtype=float) for srs in picked]
-        ),
+    xs_arr, ys_arr = (
+        np.concatenate([series_column(srs, axis) for srs in picked]).astype(float)
+        for axis in "xy"
     )
+    return xs_arr, ys_arr
 
 
 def _append_annotation(
@@ -440,15 +437,6 @@ def enhance_parity_plot[Widget: ScatterPlotWidget | BinnedScatterPlotWidget](
     return widget
 
 
-def _ecdf_xy(values: ArrayLike) -> tuple[np.ndarray, np.ndarray]:
-    """Empirical CDF vertices: sorted finite values and fractions <= each value."""
-    sorted_vals = np.sort(np.asarray(values, dtype=float).ravel())
-    sorted_vals = sorted_vals[np.isfinite(sorted_vals)]
-    if not sorted_vals.size:
-        raise ValueError("ECDF needs at least one finite value")
-    return sorted_vals, np.arange(1, sorted_vals.size + 1) / sorted_vals.size
-
-
 def add_ecdf_line(
     widget: ScatterPlotWidget,
     values: ArrayLike = (),
@@ -506,7 +494,11 @@ def add_ecdf_line(
         ]
     new_series = []
     for source, series_label, color in sources:
-        xs, fractions = _ecdf_xy(source)
+        xs = np.sort(np.asarray(source, dtype=float).ravel())
+        xs = xs[np.isfinite(xs)]
+        if not xs.size:
+            raise ValueError("ECDF needs at least one finite value")
+        fractions = np.arange(1, xs.size + 1) / xs.size  # share of values <= each x
         # explicit post-step (hv) vertices since matterviz' step curve steps midway
         style = {"width": 2} | ({"color": color} if color else {}) | (line_style or {})
         new_series.append(

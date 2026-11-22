@@ -32,7 +32,7 @@ class BoxPlotWidget(PlotControlsTraits, BoxPlotTraits, MatterVizWidget):
     @tl.validate("series")
     def _validate_series(self, proposal: dict[str, Any]) -> list[dict[str, Any]] | None:
         """Normalize series (raw samples in ``y``, binary when large) before syncing."""
-        return self._binary_series(proposal["value"], "BoxPlot", samples_key="y")
+        return self._normalize_series(proposal["value"], "BoxPlot", keys=("y",))
 
     def __init__(
         self,
@@ -55,7 +55,4 @@ class BoxPlotWidget(PlotControlsTraits, BoxPlotTraits, MatterVizWidget):
                 dicts, ``[min, max]`` ``x_range`` lists).
         """
         series = df_series(series, color, kwargs, y=y)
-        super().__init__(
-            series=series,
-            **kwargs,
-        )
+        super().__init__(series=series, **kwargs)

@@ -22,7 +22,6 @@ if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
     from typing import Any
 
-    import kemio
     import pandas as pd
 
     from pymatviz.typing import AnyStructure, PeriodicStructure
@@ -186,43 +185,6 @@ def _rdf_entry(
     return {"label": label, "pattern": pattern} | given
 
 
-def _pair_entries(
-    struct_dict: Mapping[str, kemio.Structure],
-    element_pairs: Sequence[tuple[str, str]] | None,
-    cutoff: float,
-    n_bins: int,
-    colors: Sequence[str] | None,
-) -> list[dict[str, Any]]:
-    """One curve per element pair of each structure, grouped by structure."""
-    struct_elems = {
-        label: set(struct.composition.elements) for label, struct in struct_dict.items()
-    }
-    all_elems = set.union(*struct_elems.values())
-    if element_pairs is None:
-        element_pairs = [(el1, el2) for el1 in all_elems for el2 in all_elems]
-    elif extra := {elem for pair in element_pairs for elem in pair} - all_elems:
-        raise ValueError(f"Elements {extra} in element_pairs not in any structure")
-    pairs = sorted({(min(el1, el2), max(el1, el2)) for el1, el2 in element_pairs})
-    entries: list[dict[str, Any]] = []
-    for label, struct in struct_dict.items():
-        # skip pairs with elements this structure lacks (all-zero curves)
-        struct_pairs = [pair for pair in pairs if set(pair) <= struct_elems[label]]
-        rdfs = partial_rdfs(struct, struct_pairs, cutoff=cutoff, n_bins=n_bins)
-        for pair, rdf in zip(struct_pairs, rdfs, strict=True):
-            entries.append(
-                _rdf_entry(
-                    "-".join(pair),
-                    rdf,
-                    color=colors[len(entries) % len(colors)] if colors else None,
-                    element_pair=pair,
-                    legend_group=label if len(struct_dict) > 1 else None,
-                )
-            )
-    if not entries:
-        raise ValueError(f"No structure contains any of the element pairs {pairs}")
-    return entries
-
-
 def rdf_plot(
     structures: AnyStructure
     | Sequence[AnyStructure]
@@ -302,7 +264,33 @@ def rdf_plot(
             )
             for idx, (key, struct) in enumerate(struct_dict.items())
         ]
-    else:
-        entries = _pair_entries(struct_dict, element_pairs, cutoff, bins, colors)
+    else:  # one curve per element pair of each structure, grouped by structure
+        struct_elems = {
+            label: set(struct.composition.elements)
+            for label, struct in struct_dict.items()
+        }
+        all_elems = set.union(*struct_elems.values())
+        if element_pairs is None:
+            element_pairs = [(el1, el2) for el1 in all_elems for el2 in all_elems]
+        elif extra := {elem for pair in element_pairs for elem in pair} - all_elems:
+            raise ValueError(f"Elements {extra} in element_pairs not in any structure")
+        pairs = sorted({(min(el1, el2), max(el1, el2)) for el1, el2 in element_pairs})
+        entries: list[dict[str, Any]] = []
+        for label, struct in struct_dict.items():
+            # skip pairs with elements this structure lacks (all-zero curves)
+            struct_pairs = [pair for pair in pairs if set(pair) <= struct_elems[label]]
+            rdfs = partial_rdfs(struct, struct_pairs, cutoff=cutoff, n_bins=bins)
+            for pair, rdf in zip(struct_pairs, rdfs, strict=True):
+                entries.append(
+                    _rdf_entry(
+                        "-".join(pair),
+                        rdf,
+                        color=colors[len(entries) % len(colors)] if colors else None,
+                        element_pair=pair,
+                        legend_group=label if len(struct_dict) > 1 else None,
+                    )
+                )
+        if not entries:
+            raise ValueError(f"No structure contains any of the element pairs {pairs}")
     # mode="full" keeps every precomputed curve visible (element_pairs shows 3)
     return RdfPlotWidget(patterns=entries, **{"mode": "full"} | kwargs)

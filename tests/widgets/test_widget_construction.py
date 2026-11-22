@@ -168,15 +168,13 @@ def test_widget_notebook_integration(widget_cls: type[MatterVizWidget]) -> None:
     assert mime is not None
     # accept dict or (data, metadata)
     mime_data, metadata = mime if isinstance(mime, tuple) else (mime, {})
-    assert isinstance(metadata, dict)
+    assert metadata == {}
     view = mime_data["application/vnd.jupyter.widget-view+json"]
-    assert isinstance(view["model_id"], str)
-    assert view["model_id"]
-    assert isinstance(view["version_major"], int)
+    assert view == {"version_major": 2, "version_minor": 1, "model_id": widget.model_id}
     assert widget_cls.__name__ in str(mime_data["text/plain"])
-
-    for attr_name in ("_model_name", "_view_name", "_model_module", "_view_module"):
-        assert hasattr(widget, attr_name)
+    model_view = ("AnyModel", "AnyView", "anywidget", "anywidget")
+    names = ("_model_name", "_view_name", "_model_module", "_view_module")
+    assert tuple(getattr(widget, name) for name in names) == model_view
     # the frontend loads remote bundles by URL, local builds as text
     esm, css = widget._resolve_assets()
     pinned_esm = matterviz._bundle_sources(MATTERVIZ_ANYWIDGET_VERSION)[0]
@@ -402,7 +400,7 @@ def test_matterviz_name_enums(
     """Scheme/strategy/pane/controls traits accept exactly matterviz's values."""
     widget = widget_cls()
     if isinstance(expected, type):
-        with pytest.raises(expected):
+        with pytest.raises(expected, match=f"'{trait_name}' trait"):
             setattr(widget, trait_name, value)
     else:
         setattr(widget, trait_name, value)
@@ -434,7 +432,7 @@ def test_color_scale_config_normalized_and_validated(widget_cls: type) -> None:
         "palette_range": [0.25, 1],
     }
     assert type(synced["value_range"][0]) is float
-    with pytest.raises(tl.TraitError):
+    with pytest.raises(tl.TraitError, match="'color_scale' trait"):
         widget_cls(color_scale=1)
 
 

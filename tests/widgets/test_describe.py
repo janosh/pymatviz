@@ -154,6 +154,7 @@ from tests.conftest import SI2_STRUCT, cubic_structure
             {"n_elements": 0, "n_tile_plots": 1, "value_range": None},
         ),
         (pmv.heatmap_matrix(), {"shape": [0, 0], "value_range": None}),
+        (pmv.widgets.XrdWidget(), {"n_peaks": None, "two_theta_range": None}),
     ],
 )
 def test_describe_widget(widget: Any, expected: dict[str, Any]) -> None:

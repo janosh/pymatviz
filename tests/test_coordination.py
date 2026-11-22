@@ -86,10 +86,12 @@ def test_coordination_bar_plot_literal_counts(
 ) -> None:
     """Rocksalt (CN 6) plus diamond Si (CN 4) at 3 Å, as hand-counted literals."""
     si = cubic_structure(5.43, ["Si"] * 8, [*FCC_SITES, *FCC_SITES + 0.25])
+    by_element = split_mode == "by_element"
     widget = coordination_bar_plot(
         {"NaCl": NACL, "Si": si},
         strategy=3.0,
         split_mode=split_mode,
+        annotate_bars=by_element,
         x_axis={"range": [3, 7]},
     )
     assert isinstance(widget, BarPlotWidget)
@@ -99,6 +101,14 @@ def test_coordination_bar_plot_literal_counts(
         label: [counts[0], 0, counts[1]] for label, counts in expected.items()
     }
     assert counts_by_label == expected_counts
+    assert [srs["bar_width"] for srs in widget.series] == [0.8] * len(expected)
+    if by_element:  # only non-empty bars get their element label
+        bar_labels = {srs["label"]: srs["labels"] for srs in widget.series}
+        assert bar_labels == {
+            "Cl": [None, None, "Cl"],
+            "Na": [None, None, "Na"],
+            "Si": ["Si", None, None],
+        }
     # element colors for by_element, else uncolored so MatterViz cycles its palette
     has_colors = [("color" in srs) for srs in widget.series]
     assert all(has_colors) if split_mode == "by_element" else not any(has_colors)

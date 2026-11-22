@@ -346,7 +346,4 @@ class PeriodicTableWidget(PeriodicTableTraits, MatterVizWidget):
         kwargs.setdefault(
             "style", "width: 100%; max-width: 900px; aspect-ratio: 18/10;"
         )
-        super().__init__(
-            heatmap_values=heatmap_values,
-            **kwargs,
-        )
+        super().__init__(heatmap_values=heatmap_values, **kwargs)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 from collections.abc import Collection, Mapping
 from typing import Any
 
@@ -67,6 +68,18 @@ def binary_array(
         "shape": list(wire.shape),
         "data": memoryview(wire.ravel()).cast("B"),
     }
+
+
+def json_default(obj: Any) -> Any:
+    """``json.dumps`` default encoding binary buffers as base64 and numpy arrays and
+    scalars as Python values (as Jupyter's comm serializer does), rejecting anything
+    else instead of stringifying it.
+    """
+    if isinstance(obj, (bytes, bytearray, memoryview)):
+        return base64.b64encode(obj).decode("ascii")
+    if isinstance(obj, np.generic | np.ndarray):
+        return obj.tolist()
+    raise TypeError(f"{type(obj).__name__} is not JSON serializable: {obj!r}")
 
 
 # Series with at least this many points sync as binary plot-series envelopes: as JSON

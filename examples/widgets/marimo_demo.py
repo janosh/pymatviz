@@ -115,7 +115,7 @@ def _(mo):
 
 @app.cell
 def _(Lattice, Structure, pmv):
-    _struct = Structure(
+    gan_struct = Structure(
         lattice=Lattice.hexagonal(3.19, 5.19),
         species=["Ga", "Ga", "N", "N"],
         coords=[
@@ -125,8 +125,8 @@ def _(Lattice, Structure, pmv):
             [2 / 3, 1 / 3, 0.875],
         ],
     )
-    pmv.structure(structure=_struct, show_bonds="always", style="height: 400px;")
-    return (_struct,)
+    pmv.structure(structure=gan_struct, show_bonds="always", style="height: 400px;")
+    return (gan_struct,)
 
 
 @app.cell
@@ -139,8 +139,8 @@ def _(mo):
 
 
 @app.cell
-def _(_struct, pmv):
-    _struct_multi_vec = _struct.copy(
+def _(gan_struct, pmv):
+    _struct_multi_vec = gan_struct.copy(
         site_properties={
             "force_DFT": [
                 [0.15, -0.08, 0.03],
@@ -177,8 +177,8 @@ def _(mo):
 
 
 @app.cell
-def _(_struct, pmv):
-    pmv.brillouin_zone(structure=_struct, show_vectors=True, style="height: 400px;")
+def _(gan_struct, pmv):
+    pmv.brillouin_zone(structure=gan_struct, show_vectors=True, style="height: 400px;")
 
 
 @app.cell
@@ -328,11 +328,11 @@ def _(pmv):
 
     _phonon_fixture_path = f"{TEST_FILES}/phonons/mp-2758-Sr4Se4-pbe.json.xz"
     with zopen(_phonon_fixture_path, mode="rt") as file:
-        _phonon_doc = json.loads(file.read(), cls=MontyDecoder)
+        phonon_doc = json.loads(file.read(), cls=MontyDecoder)
 
-    _band_data = _phonon_doc.phonon_bandstructure
-    pmv.band_structure(band_structs=_band_data, style="height: 400px;")
-    return (_band_data, _phonon_doc)
+    phonon_bands = phonon_doc.phonon_bandstructure
+    pmv.band_structure(band_structs=phonon_bands, style="height: 400px;")
+    return (phonon_bands, phonon_doc)
 
 
 @app.cell
@@ -344,10 +344,10 @@ def _(mo):
 
 
 @app.cell
-def _(_phonon_doc, pmv):
-    _dos_data = _phonon_doc.phonon_dos
-    pmv.dos(doses=_dos_data, style="height: 400px;")
-    return (_dos_data,)
+def _(phonon_doc, pmv):
+    phonon_dos = phonon_doc.phonon_dos
+    pmv.dos(doses=phonon_dos, style="height: 400px;")
+    return (phonon_dos,)
 
 
 @app.cell
@@ -359,8 +359,10 @@ def _(mo):
 
 
 @app.cell
-def _(_band_data, _dos_data, pmv):
-    pmv.bands_and_dos(band_structs=_band_data, doses=_dos_data, style="height: 500px;")
+def _(phonon_bands, phonon_dos, pmv):
+    pmv.bands_and_dos(
+        band_structs=phonon_bands, doses=phonon_dos, style="height: 500px;"
+    )
 
 
 @app.cell
@@ -650,9 +652,9 @@ def _(mo):
 
 
 @app.cell
-def _(_struct, pmv):
+def _(gan_struct, pmv):
     pmv.rdf_plot(
-        _struct,
+        gan_struct,
         cutoff=10,
         bins=80,
         style="height: 400px;",

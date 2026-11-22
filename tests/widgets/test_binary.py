@@ -173,10 +173,12 @@ def test_plot_series_metadata_frame() -> None:
         {"threshold": None, "name": "a", "measurement": None},
         {"threshold": 0.5, "name": None, "measurement": "unavailable"},
     ]
-    # non-numeric columns keep a large series' metadata as JSON records
-    labels = pd.DataFrame({"name": ["a"] * _N_BIG})
+    # a non-numeric column keeps all of a large series' metadata as JSON records
+    labels = pd.DataFrame({"name": ["a"] * _N_BIG, "score": xs})
     (mixed,) = ScatterPlotWidget(series=[{"x": xs, "y": xs, "metadata": labels}]).series
-    assert mixed["metadata"][0] == {"name": "a"}
+    first_records = [{"name": "a", "score": 0}, {"name": "a", "score": 1}]
+    assert mixed["metadata"][:2] == first_records
+    assert set(mixed["arrays"]) == {"x", "y"}
     assert "x" in mixed["arrays"]
     dupes = pd.DataFrame([[1.0, 2.0]] * _N_BIG, columns=pd.Index(["a", "a"]))
     for points, frame, match in [
@@ -247,6 +249,38 @@ def test_unsupported_frames_fall_back_to_json(frames: Any) -> None:
     traj = TrajectoryWidget(trajectory=frames).trajectory
     assert "format" not in traj
     assert "frames" in traj or traj.get("@class") == "Trajectory"
+
+
+def test_binary_trajectory_wire_dtypes_and_info_channels() -> None:
+    """Atomic numbers sync as uint8, positions as float32, scalars as float64; a
+    frame's time_step info (the widget's time axis unit) is no per-frame series.
+    """
+    struct = _FE2.replace(info={"time_step": 2.0, "temp": 3.0})
+    traj = TrajectoryWidget(trajectory=[struct, struct]).trajectory
+    dtypes = {name: spec["dtype"] for name, spec in traj["arrays"].items()}
+    assert dtypes == {
+        "positions": "float32",
+        "numbers": "uint8",
+        "lattice": "float64",
+        "temp": "float64",
+    }
+
+
+def test_binary_force_stats_keep_given_values() -> None:
+    """Per-frame force_max/force_norm given in metadata win; frames without them
+    get the max and RMS of their per-atom force norms.
+    """
+    forces = np.array([[3.0, 4.0, 0.0], [0.0, 0.0, 0.0]])  # norms 5 and 0
+    frames = [
+        {"structure": _FE2, "forces": forces, "force_max": 9.0, "force_norm": 8.0},
+        {"structure": _FE2, "forces": 2 * forces},
+    ]
+    arrays = decode_envelope(TrajectoryWidget(trajectory=frames).trajectory)
+    assert arrays["force_max"].tolist() == [9.0, 10.0]
+    np.testing.assert_allclose(
+        arrays["force_norm"], [8.0, 10 / np.sqrt(2)], rtol=1e-15, atol=0
+    )
+    np.testing.assert_array_equal(arrays["force"], [forces, 2 * forces])
 
 
 def test_binary_trajectory_describe_and_numpy_metadata() -> None:

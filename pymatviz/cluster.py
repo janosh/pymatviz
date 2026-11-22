@@ -28,8 +28,6 @@ if TYPE_CHECKING:
     from sklearn.decomposition import PCA, KernelPCA
     from sklearn.manifold import TSNE, Isomap
 
-    from pymatviz.typing import ColorType
-
 
 def magpie_featurize(
     compositions: Sequence[CompositionLike] | pd.Series,
@@ -131,7 +129,7 @@ def one_hot_encode(
 def project_vectors(
     data: ArrayLike,
     *,
-    method: ProjectionMethod | None = None,
+    method: ProjectionMethod | str = "pca",
     n_components: int = 2,
     random_state: int | None = 42,
     scale_data: bool = True,
@@ -142,7 +140,7 @@ def project_vectors(
     Args:
         data (ArrayLike): Input data of shape (n_samples, n_features)
         method ("pca" | "tsne" | "umap" | "isomap" | "kernel_pca"): Projection
-            method to use (see ProjectionMethod enum)
+            method to use (see ProjectionMethod enum, default: "pca")
         n_components (int): Projection dimensions (2 or 3) (default: 2)
         random_state (int | None): Random seed for reproducibility
         scale_data (bool): Whether to standardize input columns before projection
@@ -161,9 +159,6 @@ def project_vectors(
     """
     from sklearn.decomposition import PCA, KernelPCA
     from sklearn.manifold import TSNE, Isomap
-
-    if method is None:
-        method = ProjectionMethod.pca
 
     if n_components < 2:
         raise ValueError("n_components must be at least 2")
@@ -354,7 +349,7 @@ def cluster_compositions(
     n_components: int = 2,
     marker_size: float = 8,
     show_chem_sys: ShowChemSys | None = None,
-    color_discrete_map: Mapping[str, ColorType] | None = None,
+    color_discrete_map: Mapping[str, str] | None = None,
     embedding_kwargs: dict[str, Any] | None = None,
     projection_kwargs: dict[str, Any] | None = None,
     sort: bool | int | Callable[[np.ndarray], np.ndarray] = True,
@@ -416,9 +411,9 @@ def cluster_compositions(
             - "color+shape": Use both colors and shapes to distinguish chemical
               systems (2D only)
             (default: None)
-        color_discrete_map (dict[str, ColorType] | None): Optional mapping of
-            categorical property values (or chemical systems, without a categorical
-            property) to colors (default: None)
+        color_discrete_map (dict[str, str] | None): Optional mapping of categorical
+            property values (or chemical systems, without a categorical property) to
+            CSS colors (default: None)
         embedding_kwargs (dict[str, Any] | None): Additional keyword arguments for the
             embedding function (default: None)
         projection_kwargs (dict[str, Any] | None): Additional keyword arguments for the
@@ -482,13 +477,6 @@ def cluster_compositions(
     if prop_name is not None and prop_name not in df:
         raise ValueError(
             f"{prop_name=} not found in DataFrame columns: {df.columns.tolist()}"
-        )
-
-    if projection is None:
-        raise ValueError(
-            "projection must be specified. Choose from: "
-            f"{[method.value for method in ProjectionMethod]} or provide a custom "
-            "function or column name."
         )
 
     scale = {"scheme": color_scale} if isinstance(color_scale, str) else color_scale
@@ -739,7 +727,7 @@ def cluster_compositions(
         groups.items(), key=lambda item: (str(item[0][0]), str(item[0][1]))
     ):
         point_style: dict[str, Any] = {"radius": marker_size / 2}
-        if system is not None and "shape" in str(show_chem_sys):
+        if system is not None and shape_by_system:
             symbol_idx = ordered_systems.index(system) % len(CHEM_SYS_SYMBOLS)
             point_style["symbol_type"] = CHEM_SYS_SYMBOLS[symbol_idx]
 

@@ -180,7 +180,7 @@ def test_widget_complete_lifecycle(
     widget = TrajectoryWidget(data_url="https://example.com/dump.lammpstrj")
     widget.atom_type_mapping = {1: "Si", np.int64(2): "O"}
     assert widget.to_dict()["atom_type_mapping"] == {"1": "Si", "2": "O"}
-    with pytest.raises(tl.TraitError):
+    with pytest.raises(tl.TraitError, match="'atom_type_mapping' trait"):
         TrajectoryWidget(atom_type_mapping=["Si", "O"])
 
 
@@ -311,6 +311,7 @@ def test_trajectory_widget_structure_sequence(n_frames: int) -> None:
 
 
 _CUBIC = {"matrix": [[4, 0, 0], [0, 4, 0], [0, 0, 4]]}
+_ANGLES = ("alpha", "beta", "gamma")
 _SI = {"element": "Si", "occu": 1.0}
 
 
@@ -319,7 +320,7 @@ _SI = {"element": "Si", "occu": 1.0}
     [
         (_CUBIC, ["Si"], [_SI], "abc"),  # bare symbols become {element, occu}
         (
-            dict(a=4.0, b=5.0, c=6.0, alpha=90.0, beta=90.0, gamma=90.0),
+            dict(a=4.0, b=5.0, c=6.0, alpha=80.0, beta=85.0, gamma=95.0),
             [{"element": "Si"}],
             [_SI],
             "xyz",
@@ -354,10 +355,22 @@ def test_trajectory_widget_completes_only_non_derivable_fields(
     frame = widget.trajectory["frames"][0]
     lattice = frame["structure"]["lattice"]
     assert set(lattice) == {"matrix", *lattice_input}  # no a/b/c/.../volume/pbc added
-    if "matrix" not in lattice_input:
-        np.testing.assert_allclose(
-            lattice["matrix"], np.diag([4.0, 5.0, 6.0]), atol=1e-12
+    if "matrix" not in lattice_input:  # pymatgen's from_parameters: c along z
+        alpha, beta, gamma = np.radians([lattice_input[key] for key in _ANGLES])
+        cos_gamma_star = (np.cos(alpha) * np.cos(beta) - np.cos(gamma)) / (
+            np.sin(alpha) * np.sin(beta)
         )
+        gamma_star = np.arccos(cos_gamma_star)
+        expected_matrix = [
+            [4.0 * np.sin(beta), 0.0, 4.0 * np.cos(beta)],
+            [
+                -5.0 * np.sin(alpha) * np.cos(gamma_star),
+                5.0 * np.sin(alpha) * np.sin(gamma_star),
+                5.0 * np.cos(alpha),
+            ],
+            [0.0, 0.0, 6.0],
+        ]
+        np.testing.assert_allclose(lattice["matrix"], expected_matrix, atol=1e-12)
     assert frame["structure"]["sites"] == [
         {
             "species": expected_species or species,

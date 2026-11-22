@@ -47,14 +47,17 @@ def test_widget_composition_inputs(
 
 
 @pytest.mark.parametrize(
-    ("invalid_composition", "expected_error"),
-    [("InvalidComposition123", ValueError), ({"invalid": "composition"}, TypeError)],
+    ("invalid_composition", "expected_error", "match"),
+    [
+        ("InvalidComposition123", ValueError, 'unknown element "Invalid"'),
+        ({"invalid": "composition"}, TypeError, "must be real number, not str"),
+    ],
 )
 def test_widget_invalid_composition_handling(
-    invalid_composition: Any, expected_error: type[Exception]
+    invalid_composition: Any, expected_error: type[Exception], match: str
 ) -> None:
-    """Widget must handle invalid composition inputs gracefully."""
-    with pytest.raises(expected_error):
+    """Invalid formulas and non-numeric amounts raise naming the problem."""
+    with pytest.raises(expected_error, match=match):
         CompositionWidget(composition=invalid_composition)
 
 

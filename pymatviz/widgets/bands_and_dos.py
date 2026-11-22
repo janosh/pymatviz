@@ -7,22 +7,20 @@ from typing import Any
 
 import traitlets as tl
 
-from pymatviz.widgets._normalize import (
-    _to_dict,
-    check_stack_grids,
-    labeled_keys,
-    structure_to_dict,
-)
+from pymatviz.widgets._normalize import _to_dict, labeled_keys, structure_to_dict
 from pymatviz.widgets._schema_traits import BandsAndDosTraits
 from pymatviz.widgets._traits import (
     PlotControlsTraits,
     normalized_trait,
     optional_trait,
 )
+from pymatviz.widgets.dos import StackedDosCheck
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
-class BandsAndDosWidget(PlotControlsTraits, BandsAndDosTraits, MatterVizWidget):
+class BandsAndDosWidget(
+    StackedDosCheck, PlotControlsTraits, BandsAndDosTraits, MatterVizWidget
+):
     """MatterViz widget for combined band structure + DOS visualization.
 
     Renders bands on the left and DOS on the right with linked energy/frequency axes.
@@ -44,7 +42,7 @@ class BandsAndDosWidget(PlotControlsTraits, BandsAndDosTraits, MatterVizWidget):
         ... )
     """
 
-    # converted on every assignment (labels and stack grids are checked in __init__)
+    # converted on every assignment (labels are checked in __init__)
     band_structs = normalized_trait(
         functools.partial(_to_dict, label="band structure", vasprun="bands")
     )
@@ -88,8 +86,6 @@ class BandsAndDosWidget(PlotControlsTraits, BandsAndDosTraits, MatterVizWidget):
             band_keys, dos_keys = labeled_keys(bands_dict), labeled_keys(doses_dict)
             if band_keys != dos_keys:
                 raise ValueError(f"{band_keys=} and {dos_keys=} must be identical")
-        if kwargs.get("stack"):
-            check_stack_grids(doses_dict)
         super().__init__(
             band_structs=bands_dict, doses=doses_dict, structure=structure, **kwargs
         )

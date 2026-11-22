@@ -79,7 +79,10 @@ def test_widget_structure_inputs(
 @pytest.mark.parametrize("invalid_structure", ["invalid_structure", 123, ["invalid"]])
 def test_widget_invalid_structure_handling(invalid_structure: Any) -> None:
     """Widget rejects non-Structure, non-dict inputs with TypeError."""
-    with pytest.raises(TypeError):
+    type_name = type(invalid_structure).__name__
+    with pytest.raises(
+        TypeError, match=f"structure must be a dict, .* got {type_name}$"
+    ):
         StructureWidget(structure=invalid_structure)
 
 

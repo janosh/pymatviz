@@ -41,8 +41,7 @@ def test_phonon_db_doc_deserialization() -> None:
     np.testing.assert_array_equal(
         doc.phonon_dos.total_dos, raw["phonon_dos"]["densities"]
     )
-    assert doc.supercell is not None
-    assert np.shape(doc.supercell) == (3, 3)
+    np.testing.assert_array_equal(doc.supercell, 2 * np.eye(3, dtype=int))
     assert doc.free_energies == raw["free_energies"]
     assert not hasattr(doc, "builder_meta")
     assert replace(doc, formula="SrSe").formula == "SrSe"

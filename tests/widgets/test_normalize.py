@@ -291,9 +291,37 @@ def test_structure_to_dict_objects(pbc: tuple[bool, bool, bool]) -> None:
     """
     lattice = np.eye(3) * 3 if any(pbc) else None
     result = structure_to_dict(kemio.Structure(lattice, ["Si"], [[0, 0, 0]], pbc=pbc))
-    assert isinstance(result, dict)
-    assert ("lattice" in result) is any(pbc)
-    assert len(result["sites"]) == 1
+    site = {
+        "species": [{"element": "Si", "occu": 1}],
+        "xyz": [0.0, 0.0, 0.0],
+        "label": "Si",
+        "properties": {},
+    }
+    if any(pbc):
+        cell: dict[str, Any] = dict.fromkeys(("a", "b", "c"), 3.0)
+        cell |= dict.fromkeys(("alpha", "beta", "gamma"), 90.0)
+        cell |= {"volume": 27.0, "pbc": [True] * 3}
+        assert result == {
+            "@module": "pymatgen.core.structure",
+            "@class": "Structure",
+            "charge": 0.0,
+            "lattice": {"matrix": (np.eye(3) * 3).tolist(), **cell},
+            "properties": {},
+            "sites": [{**site, "abc": [0.0, 0.0, 0.0]}],
+        }
+    else:
+        assert result == {
+            "@module": "pymatgen.core.structure",
+            "@class": "Molecule",
+            "charge": 0.0,
+            "spin_multiplicity": 1,
+            "properties": {},
+            "sites": [{"name": "Si", **site}],
+        }
+    # periodic=True (Brillouin zone widgets) rejects lattice-less molecules
+    if not any(pbc):
+        with pytest.raises(TypeError, match=r"a periodic structure .* is needed"):
+            structure_to_dict(result, periodic=True)
 
 
 @pytest.mark.parametrize(
@@ -338,10 +366,12 @@ def test_normalize_plot_series_from_array_like_inputs(
         [{"x": x_values, "y": y_values, "label": "A"}],
         component_name="ScatterPlot",
     )
+    assert normalized is not None
     n_pts = len(x_values)
     assert normalized == [
         {"x": [0.0, 1.0, 2.0][:n_pts], "y": [0.1, 0.2, 0.3][:n_pts], "label": "A"}
     ]
+    assert {type(val) for val in normalized[0]["x"]} == {float}  # ints widened
 
 
 class _MockIntEnum(IntEnum):
@@ -351,10 +381,15 @@ class _MockIntEnum(IntEnum):
 
 
 @pytest.mark.parametrize(
-    ("value", "expected"), [(np.float64(4.5), 4.5), (_MockIntEnum.VALUE, 42)]
+    ("value", "expected"),
+    [
+        (np.float64(4.5), 4.5),
+        (_MockIntEnum.VALUE, 42),
+        ({"obj": _MockMSONable()}, {"obj": _MOCK_DICT}),  # nested as_dict()
+    ],
 )
 def test_normalize_plot_json_scalar_subclasses(value: Any, expected: Any) -> None:
-    """Scalar subclasses normalize to JSON-safe Python primitives."""
+    """Scalar subclasses and MSONable objects normalize to JSON-safe primitives."""
     normalized = normalize_plot_json(value, "test")
     assert normalized == expected
     assert type(normalized) is type(expected)
@@ -378,41 +413,53 @@ def test_normalize_plot_json_errors(
 
 
 @pytest.mark.parametrize(
-    ("series_data", "samples_key", "error_cls", "match"),
+    ("series_data", "keys", "error_cls", "match"),
     [
-        ("bad", None, TypeError, "must be a list/tuple"),
-        ([{"x": [0, 1]}], None, ValueError, "must include keys 'x' and 'y'"),
-        ([{"x": [0], "y": [0, 1]}], None, ValueError, "lengths must match"),
-        ([{"x": [0, float("nan")], "y": [1, 2]}], None, ValueError, "non-finite"),
-        # Histograms require samples in `values`, including when x/y are present.
-        ([[1, 2]], "values", TypeError, "entries must be dicts"),
-        ([{"label": "no samples"}], "values", ValueError, "must include key 'values'"),
-        ([{"y": [1, 2]}], "values", ValueError, "must include key 'values'"),
+        ("bad", ("x", "y"), TypeError, "must be a list/tuple"),
+        ([{"x": [0, 1]}], ("x", "y"), ValueError, "must include keys 'x' and 'y'"),
+        ([{"x": [0], "y": [0, 1]}], ("x", "y"), ValueError, "lengths must match"),
+        ([{"x": [0, float("nan")], "y": [1, 2]}], ("x", "y"), ValueError, "non-finite"),
         (
-            [{"x": [0, 1], "y": [0, 1]}],
-            "values",
+            [{"x": ["a", 1], "y": [1, 2]}],
+            ("x", "y"),
+            TypeError,
+            r"x values must be all strings \(categorical\) or all numeric, got mixed",
+        ),
+        # only x may be categorical
+        ([{"x": [0, 1], "y": ["a", "b"]}], ("x", "y"), TypeError, r"y\[0\]='a'"),
+        # Histograms require samples in `values`, including when x/y are present.
+        ([[1, 2]], ("values",), TypeError, "entries must be dicts"),
+        (
+            [{"label": "no samples"}],
+            ("values",),
             ValueError,
             "must include key 'values'",
         ),
-        ([{"values": 3}], "values", TypeError, "values must be list-like"),
-        ([{"values": [1, "two"]}], "values", TypeError, "must be numeric"),
-        ([{"values": [1, float("inf")]}], "values", ValueError, "finite"),
+        ([{"y": [1, 2]}], ("values",), ValueError, "must include key 'values'"),
+        ([{"x": [0, 1], "y": [0, 1]}], ("values",), ValueError, "key 'values'"),
+        ([{"values": 3}], ("values",), TypeError, "values must be list-like"),
+        ([{"values": [1, "two"]}], ("values",), TypeError, "must be numeric"),
+        (
+            [{"x": [0], "y": [1], "z": [2, 3]}],
+            tuple("xyz"),
+            ValueError,
+            "x/y/z lengths",
+        ),
+        ([{"values": [1, float("inf")]}], ("values",), ValueError, "finite"),
     ],
 )
 def test_normalize_plot_series_validation_errors(
-    series_data: Any, samples_key: str | None, error_cls: type[Exception], match: str
+    series_data: Any, keys: tuple[str, ...], error_cls: type[Exception], match: str
 ) -> None:
-    """Invalid plot/histogram series payloads fail with helpful messages."""
+    """Invalid plot/histogram/3D series payloads fail with helpful messages."""
     with pytest.raises(error_cls, match=match):
-        normalize_plot_series(
-            series_data, component_name="Plot", samples_key=samples_key
-        )
+        normalize_plot_series(series_data, component_name="Plot", keys=keys)
 
 
 def test_normalize_histogram_series_values() -> None:
     """Histogram sample arrays and metadata are JSON-normalized."""
     hist = functools.partial(
-        normalize_plot_series, component_name="Histogram", samples_key="values"
+        normalize_plot_series, component_name="Histogram", keys=("values",)
     )
     assert hist(None) is None
     assert hist(

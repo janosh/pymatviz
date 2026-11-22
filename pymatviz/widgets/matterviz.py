@@ -444,17 +444,9 @@ class MatterVizWidget(AnyWidget):
         Returns:
             The JSON text.
         """
-        import numpy as np
+        from pymatviz.widgets._binary import json_default
 
-        def default(obj: Any) -> Any:
-            """Encode binary buffers and numpy values, reject anything else."""
-            if isinstance(obj, (bytes, bytearray, memoryview)):
-                return base64.b64encode(obj).decode("ascii")
-            if isinstance(obj, np.generic | np.ndarray):
-                return obj.tolist()
-            raise TypeError(f"{type(obj).__name__} is not JSON serializable: {obj!r}")
-
-        text = json.dumps(self.to_dict(), default=default)
+        text = json.dumps(self.to_dict(), default=json_default)
         if filename:
             with open(filename, mode="w", encoding="utf-8") as file:
                 file.write(text)
@@ -599,22 +591,23 @@ class MatterVizWidget(AnyWidget):
             self._asset_sources = (esm_content, css_content)
         return self._asset_sources
 
-    def _binary_series(
-        self, value: Any, component_name: str, samples_key: str | None = None
+    @staticmethod
+    def _normalize_series(
+        value: Any,
+        component_name: str,
+        keys: tuple[str, ...] = ("x", "y"),
+        *,
+        binary: bool = True,
     ) -> list[dict[str, Any]] | None:
-        """Normalize plot series, sending large numeric ones as binary envelopes.
-
-        Raises:
-            tl.TraitError: For invalid series.
+        """normalize_plot_series for a ``series`` validator, sending large numeric
+        series as binary envelopes unless ``binary=False``. Raises TraitError, which
+        rolls back batched updates in hold_trait_notifications().
         """
         from pymatviz.widgets._normalize import normalize_plot_series
 
         try:
             return normalize_plot_series(
-                value,
-                component_name=component_name,
-                samples_key=samples_key,
-                binary=True,
+                value, component_name=component_name, keys=keys, binary=binary
             )
         except (TypeError, ValueError) as exc:
             raise tl.TraitError(str(exc)) from exc

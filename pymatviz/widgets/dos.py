@@ -16,7 +16,25 @@ from pymatviz.widgets._traits import (
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
-class DosWidget(PlotControlsTraits, DosTraits, MatterVizWidget):
+class StackedDosCheck(tl.HasTraits):
+    """Stacked DOS (``stack=True``) need a shared grid, checked whichever of
+    ``doses`` and ``stack`` is set last.
+    """
+
+    doses: Any  # traits of the widgets using this check
+    stack: Any
+
+    @tl.validate("doses", "stack")
+    def _check_stack_grids(self, proposal: tl.Bunch) -> Any:
+        """Raise ValueError for stacked DOS on different grids."""
+        is_doses = proposal["trait"].name == "doses"
+        doses = proposal["value"] if is_doses else self.doses
+        if doses and (self.stack if is_doses else proposal["value"]):
+            check_stack_grids(doses)
+        return proposal["value"]
+
+
+class DosWidget(StackedDosCheck, PlotControlsTraits, DosTraits, MatterVizWidget):
     """MatterViz widget for visualizing electronic and phonon density of states.
 
     Accepts kemio PhononDos and ElectronicDos, pymatgen Dos, CompleteDos and
@@ -58,12 +76,3 @@ class DosWidget(PlotControlsTraits, DosTraits, MatterVizWidget):
             ValueError: If ``stack=True`` and the DOS have different grids.
         """
         super().__init__(doses=doses, **kwargs)
-
-    @tl.validate("doses", "stack")
-    def _check_stack_grids(self, proposal: tl.Bunch) -> Any:
-        """Stacked DOS need a shared grid, whichever of doses and stack is set last."""
-        is_doses = proposal["trait"].name == "doses"
-        doses = proposal["value"] if is_doses else self.doses
-        if doses and (self.stack if is_doses else proposal["value"]):
-            check_stack_grids(doses)
-        return proposal["value"]

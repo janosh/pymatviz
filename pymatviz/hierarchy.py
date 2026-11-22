@@ -65,46 +65,6 @@ def _limit_nodes(
     return kept
 
 
-def _chem_sys_nodes(
-    data: Sequence[FormulaLike],
-    group_by: FormulaGroupBy,
-    max_systems: int | None,
-    overflow: Literal["other", "drop"],
-) -> list[dict[str, Any]]:
-    """Group systems and formulas by arity with stable path IDs and counts."""
-    _validate_overflow(overflow)
-    counts = count_formulas(data, group_by=group_by)
-    roots = []
-    for arity, group in counts.groupby("arity_name", sort=False):
-        # count_formulas orders systems alphabetically, providing a stable tiebreaker.
-        totals = group.groupby("chem_sys", sort=False)["count"].sum()
-        systems = [
-            {"id": f"{arity}/{system}", "label": system, "value": count}
-            for system, count in totals.items()
-        ]
-        children = _limit_nodes(systems, max_systems, overflow, parent_id=str(arity))
-        if group_by != "chem_sys":
-            by_system = {node["label"]: node for node in children}
-            for system, formula, count in zip(
-                group["chem_sys"], group["formula"], group["count"], strict=True
-            ):
-                if (node := by_system.get(system)) is not None:
-                    node.setdefault("children", []).append(
-                        {
-                            "id": f"{node['id']}/{formula}",
-                            "label": formula,
-                            "value": count,
-                        }
-                    )
-            # All native value modes sum leaves. An explicit branch value would
-            # double count its formulas when the widget uses remainder mode.
-            for node in children:
-                if "children" in node:
-                    del node["value"]
-        roots.append({"id": arity, "label": arity, "children": children})
-    return roots
-
-
 def hierarchy_widget(
     kind: Literal["sunburst", "treemap"], nodes: list[dict[str, Any]], **kwargs: Any
 ) -> SunburstWidget | TreemapWidget:
@@ -137,8 +97,37 @@ def chem_sys_hierarchy(
     in one leaf per arity; ``"drop"`` excludes their counts. Additional options,
     such as ``label_text`` and ``max_depth``, go to the widget.
     """
-    nodes = _chem_sys_nodes(data, group_by, max_systems, overflow)
-    return hierarchy_widget(kind, nodes, **kwargs)
+    _validate_overflow(overflow)
+    counts = count_formulas(data, group_by=group_by)
+    roots = []
+    for arity, group in counts.groupby("arity_name", sort=False):
+        # count_formulas orders systems alphabetically, providing a stable tiebreaker.
+        totals = group.groupby("chem_sys", sort=False)["count"].sum()
+        systems = [
+            {"id": f"{arity}/{system}", "label": system, "value": count}
+            for system, count in totals.items()
+        ]
+        children = _limit_nodes(systems, max_systems, overflow, parent_id=str(arity))
+        if group_by != "chem_sys":
+            by_system = {node["label"]: node for node in children}
+            for system, formula, count in zip(
+                group["chem_sys"], group["formula"], group["count"], strict=True
+            ):
+                if (node := by_system.get(system)) is not None:
+                    node.setdefault("children", []).append(
+                        {
+                            "id": f"{node['id']}/{formula}",
+                            "label": formula,
+                            "value": count,
+                        }
+                    )
+            # All native value modes sum leaves. An explicit branch value would
+            # double count its formulas when the widget uses remainder mode.
+            for node in children:
+                if "children" in node:
+                    del node["value"]
+        roots.append({"id": arity, "label": arity, "children": children})
+    return hierarchy_widget(kind, roots, **kwargs)
 
 
 def site_environments(
@@ -162,18 +151,26 @@ def site_environments(
     ]
 
 
-def chem_env_nodes(
+def chem_env_hierarchy(
     structures: PeriodicStructure | Sequence[PeriodicStructure],
     *,
-    normalize: bool,
-    max_coordination_numbers: int | None,
-    max_environments: int | None,
-    overflow: Literal["other", "drop"],
-) -> list[dict[str, Any]]:
-    """Build coordination-number branches with environment counts as leaves.
+    kind: Literal["sunburst", "treemap"] = "sunburst",
+    normalize: bool = False,
+    max_coordination_numbers: int | None = None,
+    max_environments: int | None = None,
+    overflow: Literal["other", "drop"] = "other",
+    **kwargs: Any,
+) -> SunburstWidget | TreemapWidget:
+    """Show coordination numbers and their chemical environments as a sunburst or
+    treemap.
 
-    Rank coordination numbers by their full counts before limiting environments
-    per branch. Ties use coordination number and environment symbol respectively.
+    Sites are labeled by ChemEnv symbol (see site_environments). With
+    normalize=True, each non-empty structure contributes one total count before
+    pruning. Limit the most frequent coordination numbers and
+    environments per coordination number with max_coordination_numbers and
+    max_environments (coordination numbers ranked by their full counts, ties by
+    coordination number and environment symbol). Mode "other" combines omitted counts
+    into one leaf per group; "drop" omits them. Additional options go to the widget.
     """
     _validate_overflow(overflow)
     structs = [
@@ -207,37 +204,7 @@ def chem_env_nodes(
                 children, max_environments, overflow, parent_id=root["id"]
             )
             del root["value"]  # The renderer derives branch totals from visible leaves.
-    return roots
-
-
-def chem_env_hierarchy(
-    structures: PeriodicStructure | Sequence[PeriodicStructure],
-    *,
-    kind: Literal["sunburst", "treemap"] = "sunburst",
-    normalize: bool = False,
-    max_coordination_numbers: int | None = None,
-    max_environments: int | None = None,
-    overflow: Literal["other", "drop"] = "other",
-    **kwargs: Any,
-) -> SunburstWidget | TreemapWidget:
-    """Show coordination numbers and their chemical environments as a sunburst or
-    treemap.
-
-    Sites are labeled by ChemEnv symbol (see site_environments). With
-    normalize=True, each non-empty structure contributes one total count before
-    pruning. Limit the most frequent coordination numbers and
-    environments per coordination number with max_coordination_numbers and
-    max_environments. Mode "other" combines omitted counts into one leaf per
-    group; "drop" omits them. Additional options go to the widget.
-    """
-    nodes = chem_env_nodes(
-        structures,
-        normalize=normalize,
-        max_coordination_numbers=max_coordination_numbers,
-        max_environments=max_environments,
-        overflow=overflow,
-    )
-    return hierarchy_widget(kind, nodes, **kwargs)
+    return hierarchy_widget(kind, roots, **kwargs)
 
 
 def spacegroup_sunburst(

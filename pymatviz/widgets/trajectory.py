@@ -267,18 +267,6 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
             frames.append(self._attach_forces(frame, step_idx))
         return {"frames": frames, "metadata": metadata}
 
-    @staticmethod
-    def _pymatgen_frames(trajectory: Any) -> list[dict[str, Any]]:
-        """``{"structure", **frame properties, **results}`` items of a pymatgen
-        ``Trajectory`` or its ``as_dict()``, read by kemio (no pymatgen needed).
-        """
-        from kemio.interop import to_trajectory
-
-        return [
-            frame_item(frame, drop=("time_step",))
-            for frame in to_trajectory(trajectory)
-        ]
-
     def _normalize_trajectory(self, trajectory: Any) -> dict[str, Any] | None:
         """Convert trajectory to a ``matterviz-binary-v1`` envelope when the binary
         format can hold it (fixed species and order, numeric per-frame scalars,
@@ -288,7 +276,7 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
         if trajectory is None or is_binary_envelope(trajectory, "trajectory"):
             return trajectory
 
-        from kemio.interop import has_class, is_structure_like
+        from kemio.interop import has_class, is_structure_like, to_trajectory
 
         is_pymatgen = has_class(trajectory, "pymatgen.core.trajectory.Trajectory")
         is_dict = isinstance(trajectory, dict)
@@ -300,7 +288,12 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
                 raise ValueError(
                     f"time_step value must be finite and > 0, got {step!r}"
                 )
-            result = self._normalize_frames(self._pymatgen_frames(trajectory), {})
+            # kemio reads a pymatgen Trajectory or its as_dict() (no pymatgen needed)
+            items = [
+                frame_item(frame, drop=("time_step",))
+                for frame in to_trajectory(trajectory)
+            ]
+            result = self._normalize_frames(items, {})
             if step is not None:
                 result["time_step"] = {"value": float(step), "unit": "fs"}
             return result

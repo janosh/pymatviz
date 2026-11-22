@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 
     # (dataset_name, target_key, target_label, target_symbol, embed_method,
     #  proj_method, n_components)
-    type PlotConfig = tuple[str, str, str, str, Embed, Project, int]
+    type PlotConfig = tuple[str, str, str, str, Embed | str, Project, int]
 
 
 module_dir = os.path.dirname(__file__)
@@ -107,6 +107,9 @@ def process_dataset(
             from pymatgen.core import Composition
 
             featurizer = ElementProperty.from_preset("matscholar_el")
+            # matminer's default multiprocessing crashes under spawn (macOS) as
+            # this module has no __main__ guard
+            featurizer.set_n_jobs(1)
             comps = [Composition(comp) for comp in compositions]
             embeddings = np.nan_to_num(featurizer.featurize_many(comps))
         else:
@@ -137,6 +140,11 @@ def process_dataset(
         text = f"{comp_str.replace(' ', '')} {target_symbol}={row[target_label]:.2f}"
         return dict(text=text, font_size="11px", auto_placement=True)
 
+    if n_components == 2:  # thousands of markers leave no free spot: keep labels
+        # apart, not off markers
+        label_weights = {"marker": 1, "overlap": 100}
+        kwargs.setdefault("label_placement_config", {"weights": label_weights})
+
     embed_col = "embeddings"
     if embed_col not in df_plot:
         df_plot[embed_col] = [embeddings_dict[comp] for comp in compositions]
@@ -152,12 +160,6 @@ def process_dataset(
         if len(compositions) < 1000 and n_components == 2
         else None,
         annotate_points=annotate_top_points if n_components == 2 else None,
-        # thousands of markers leave no free spot: keep labels apart, not off markers
-        **(
-            dict(label_placement_config={"weights": {"marker": 1, "overlap": 100}})
-            if n_components == 2
-            else {}
-        ),
         # point labels sit on dense markers: a light halo keeps them readable (the halo
         # variable needs a MatterViz build newer than 0.10.0)
         style="height: 600px; --scatter-point-label-fill: #333; "

@@ -52,41 +52,26 @@ def test_label_enum_attributes_read_only(
 
 
 def test_files_enum(tmp_path: Path) -> None:
-    """Files members expose paths, URLs, labels and lookups relative to base_dir."""
+    """Files members expose paths and URLs relative to base_dir."""
     # The main Files enum from pymatviz.enums has "" as its _base_dir by default
     assert Files._base_dir == ""
 
     class TestDataFiles(Files, base_dir=str(tmp_path), auto_download=False):
-        # member = "path_relative_to_base_dir", "url", "label", "description"
+        # member = "path_relative_to_base_dir", "url"
         mp_energies = (
             "mp/2025-02-01-mp-energies.csv.gz",
             "https://figshare.com/files/789012",
-            "MP Energies Test",
-            "Test description for MP energies",
         )
-        wbm_summary = (
-            "wbm/2023-12-13-wbm-summary.csv.gz",
-            "https://figshare.com/files/345678",
-            "WBM Summary Test",
-        )
+        no_url = "wbm/2023-12-13-wbm-summary.csv.gz"
 
     mp_file = TestDataFiles.mp_energies
     assert TestDataFiles._base_dir == str(tmp_path)
-    assert mp_file.value == mp_file.rel_path == "mp/2025-02-01-mp-energies.csv.gz"
+    assert mp_file.value == "mp/2025-02-01-mp-energies.csv.gz"
     assert mp_file.file_path == f"{tmp_path}/mp/2025-02-01-mp-energies.csv.gz"
     assert mp_file.url == "https://figshare.com/files/789012"
-    assert (mp_file.label, mp_file.description) == (
-        "MP Energies Test",
-        "Test description for MP energies",
-    )
+    assert TestDataFiles.no_url.url == ""
     assert repr(mp_file) == "TestDataFiles.mp_energies"
     assert str(mp_file) == mp_file.name == "mp_energies"
-    assert TestDataFiles.wbm_summary.description == ""
-    assert TestDataFiles.from_label("WBM Summary Test") is TestDataFiles.wbm_summary
-
-    invalid_label = "this-label-does-not-exist-for-sure"
-    with pytest.raises(ValueError, match=f"label='{invalid_label}' not found"):
-        Files.from_label(invalid_label)
 
 
 EXAMPLE_URL = "https://example.com/file.txt"
@@ -115,7 +100,7 @@ def test_files_enum_auto_download(
     """file_path downloads missing files only when enabled and a URL is set."""
 
     class TestFiles(Files, base_dir=str(tmp_path), auto_download=auto_download):
-        test_file = "data/file.txt", url, "Test File"
+        test_file = "data/file.txt", url
 
     path = f"{tmp_path}/data/file.txt"
     if pre_existing:  # else the download creates the missing data/ dir
@@ -158,7 +143,7 @@ def test_files_enum_failed_read_leaves_no_file(tmp_path: Path) -> None:
     """A download failing mid-read leaves no partial file to skip re-downloading."""
 
     class TestFiles(Files, base_dir=str(tmp_path), auto_download=True):
-        test_file = "file.txt", EXAMPLE_URL, "Test File"
+        test_file = "file.txt", EXAMPLE_URL
 
     response = MagicMock()
     response.__enter__.return_value.read.side_effect = OSError("connection reset")

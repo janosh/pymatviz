@@ -77,6 +77,10 @@ def test_density_plots_use_series_names_and_drop_nan(
         {"label": "Actual"},
         {"label": "Predicted"},
     )
+    # integer df column labels name the axes too
+    df_int_cols = pd.DataFrame({0: x_vals, 1: y_vals})
+    int_cols = plot_func(0, 1, df=df_int_cols, stats=False)
+    assert (int_cols.x_axis, int_cols.y_axis) == ({"label": "0"}, {"label": "1"})
 
 
 @pytest.mark.parametrize(

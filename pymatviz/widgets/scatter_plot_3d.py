@@ -6,8 +6,6 @@ from typing import Any
 
 import traitlets as tl
 
-from pymatviz.widgets._binary import is_binary_envelope, plot_series_envelope
-from pymatviz.widgets._normalize import normalize_plot_json
 from pymatviz.widgets._schema_traits import ScatterPlot3dTraits
 from pymatviz.widgets._traits import (
     CAMERA_PROJECTIONS,
@@ -34,48 +32,12 @@ class ScatterPlot3DWidget(PlotControlsTraits, ScatterPlot3dTraits, MatterVizWidg
 
     @tl.validate("series")
     def _validate_series(self, proposal: dict[str, Any]) -> list[dict[str, Any]] | None:
-        """Check series on init and reassignment: dicts with string keys and equal
-        length ``x``/``y``/``z``. Large numeric series sync as binary plot-series
-        envelopes (``z`` included), others as finite JSON.
-
-        Raises:
-            tl.TraitError: For invalid series (prior data is kept).
+        """Normalize series (equal-length ``x``/``y``/``z``, binary when large) on
+        init and reassignment.
         """
-        if (series := proposal["value"]) is None:
-            return None
-        try:
-            return [
-                self._normalize_entry(entry, idx) for idx, entry in enumerate(series)
-            ]
-        except (TypeError, ValueError) as exc:
-            raise tl.TraitError(str(exc)) from exc
-
-    @staticmethod
-    def _normalize_entry(entry: Any, idx: int) -> dict[str, Any]:
-        """Validate one 3D series and encode it as a binary envelope or JSON dict.
-
-        Raises:
-            TypeError: For non-dict entries or non-string keys.
-            ValueError: For missing or mismatched x/y/z or non-finite values.
-        """
-        if is_binary_envelope(entry, "plot-series"):
-            return entry
-        prefix = f"ScatterPlot3D series entry at index {idx}"
-        if not isinstance(entry, dict):
-            raise TypeError(f"{prefix} must be a dict, got {type(entry).__name__}")
-        if not all(isinstance(key, str) for key in entry):
-            raise TypeError(f"{prefix} has non-string keys: {list(entry)}")
-        if missing := {"x", "y", "z"} - entry.keys():
-            raise ValueError(
-                f"{prefix} is missing required key(s): {sorted(missing)}. "
-                f"Got keys: {sorted(entry)}"
-            )
-        lengths = {axis: len(entry[axis]) for axis in "xyz"}
-        if len(set(lengths.values())) > 1:
-            raise ValueError(f"{prefix} has mismatched x/y/z lengths: {lengths}")
-        name = f"ScatterPlot3D.series[{idx}]"
-        envelope = plot_series_envelope(entry, name, ("x", "y", "z"))
-        return envelope or normalize_plot_json(entry, name)
+        return self._normalize_series(
+            proposal["value"], "ScatterPlot3D", ("x", "y", "z")
+        )
 
     def __init__(
         self,

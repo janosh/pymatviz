@@ -53,12 +53,9 @@ class BinnedScatterPlotWidget(BinnedScatterPlotTraits, MatterVizWidget):
             **kwargs: Widget traits, e.g. ``density`` (``{"bin_px": 4}``),
                 ``marginals``, ``overlays``, ``annotation``, ``x_axis``/``y_axis``.
         """
-        super().__init__(
-            series=series,
-            **kwargs,
-        )
+        super().__init__(series=series, **kwargs)
 
     @tl.validate("series")
     def _validate_series(self, proposal: dict[str, Any]) -> list[dict[str, Any]] | None:
         """Normalize series on init and reassignment, binary when large."""
-        return self._binary_series(proposal["value"], "BinnedScatterPlot")
+        return self._normalize_series(proposal["value"], "BinnedScatterPlot")

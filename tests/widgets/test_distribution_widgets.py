@@ -78,7 +78,7 @@ def test_box_plot_enum_traits(trait: str, valid: Any, invalid: Any) -> None:
     """Enum traits accept MatterViz names and reject others."""
     widget = BoxPlotWidget(**{trait: valid})
     assert getattr(widget, trait) == valid
-    with pytest.raises(tl.TraitError):
+    with pytest.raises(tl.TraitError, match=f"The '{trait}' trait of a BoxPlotWidget"):
         setattr(widget, trait, invalid)
 
 
@@ -97,7 +97,7 @@ def test_sankey_data() -> None:
         widget.data = {"nodes": []}
     with pytest.raises(tl.TraitError, match="finite"):
         widget.data = {"nodes": [], "links": [{"value": float("nan")}]}
-    with pytest.raises(tl.TraitError):
+    with pytest.raises(tl.TraitError, match=r"'link_color_mode' trait.*'rainbow'"):
         widget.link_color_mode = "rainbow"
 
 
@@ -119,7 +119,7 @@ def test_coordination_structure_inputs() -> None:
     assert widget.mode == "grouped"
     for split_mode in CnSplitMode:  # pymatviz and MatterViz share split mode names
         widget.split_mode = split_mode.value
-    with pytest.raises(tl.TraitError):
+    with pytest.raises(tl.TraitError, match="'split_mode' trait"):
         widget.split_mode = "by_structure_and_element"
     widget.structures = si_struct  # assignment converts too, keeping JSON syncable
     assert widget.structures == as_dict

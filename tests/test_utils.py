@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -20,21 +21,31 @@ def test_dir_globals() -> None:
     assert set(os.listdir(ROOT)) >= {"examples", "pymatviz", "tests", "assets"}
 
 
+DF_REGR = pd.DataFrame({"x": y_true, "y": y_pred})
+
+
 def test_df_to_arrays() -> None:
-    """Columns or arrays give the same data, and bad df or column names raise."""
-    df_regr = pd.DataFrame({"x": y_true, "y": y_pred})
-    for arrays in (df_to_arrays(None, y_true, y_pred), df_to_arrays(df_regr, "x", "y")):
-        np.testing.assert_allclose(arrays, [y_true, y_pred], rtol=0, atol=0)
-    with pytest.raises(TypeError, match="df should be pandas DataFrame or None"):
-        df_to_arrays("foo", y_true, y_pred)  # ty: ignore[invalid-argument-type]
-    with pytest.raises(KeyError, match="not-a-col"):
-        df_to_arrays(df_regr, "not-a-col", "x")
-    with pytest.raises(ValueError, match="got column names but no df"):
-        df_to_arrays(None, "x", y_pred)
-    with pytest.raises(ValueError, match="with a df, pass column names"):
-        df_to_arrays(df_regr, "x", y_pred)
-    with pytest.raises(ValueError, match="with a df, pass column names"):
-        df_to_arrays(df_regr, "x", [y_pred])
-    _, y_cols = df_to_arrays(df_regr, "x", ["y", "x"])
+    """Columns or arrays give the same data, a list of columns gives a DataFrame."""
+    for arrays in (df_to_arrays(None, y_true, y_pred), df_to_arrays(DF_REGR, "x", "y")):
+        np.testing.assert_array_equal(arrays, [y_true, y_pred])
+    _, y_cols = df_to_arrays(DF_REGR, "x", ["y", "x"])
     assert list(y_cols) == ["y", "x"]
     np.testing.assert_array_equal(y_cols["y"], y_pred)
+
+
+@pytest.mark.parametrize(
+    ("df", "args", "err_cls", "match"),
+    [
+        ("foo", (y_true, y_pred), TypeError, "df should be pandas DataFrame or None"),
+        (DF_REGR, ("not-a-col", "x"), KeyError, "not-a-col"),
+        (None, ("x", y_pred), ValueError, "got column names but no df"),
+        (DF_REGR, ("x", y_pred), ValueError, "with a df, pass column names"),
+        (DF_REGR, ("x", [y_pred]), ValueError, "with a df, pass column names"),
+    ],
+)
+def test_df_to_arrays_raises(
+    df: Any, args: tuple[Any, ...], err_cls: type[Exception], match: str
+) -> None:
+    """Non-DataFrame df, unknown columns and mixing names with arrays raise."""
+    with pytest.raises(err_cls, match=match):
+        df_to_arrays(df, *args)

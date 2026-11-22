@@ -6,7 +6,6 @@ from typing import Any
 
 import traitlets as tl
 
-from pymatviz.widgets._normalize import normalize_plot_series
 from pymatviz.widgets._schema_traits import BarPlotTraits
 from pymatviz.widgets._traits import PlotControlsTraits, color_scale_trait, df_series
 from pymatviz.widgets.matterviz import MatterVizWidget
@@ -40,10 +39,7 @@ class BarPlotWidget(PlotControlsTraits, BarPlotTraits, MatterVizWidget):
         """Normalize series on init and reassignment (arrays to lists, reject
         non-finite values) before syncing.
         """
-        try:
-            return normalize_plot_series(proposal["value"], component_name="BarPlot")
-        except (TypeError, ValueError) as exc:
-            raise tl.TraitError(str(exc)) from exc
+        return self._normalize_series(proposal["value"], "BarPlot", binary=False)
 
     def __init__(
         self,

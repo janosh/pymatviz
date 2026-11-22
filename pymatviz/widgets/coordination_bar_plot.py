@@ -78,7 +78,4 @@ class CoordinationBarPlotWidget(
             **kwargs: Widget traits, e.g. ``strategy``, ``split_mode``, ``mode``,
                 ``orientation``, ``x_axis``, ``y_axis``.
         """
-        super().__init__(
-            structures=structures,
-            **kwargs,
-        )
+        super().__init__(structures=structures, **kwargs)

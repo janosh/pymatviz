@@ -13,34 +13,28 @@ within 20 meV of the hull and ~1k of which are on the hull. They organized all o
 campaigns by chemical system.
 """
 
-# /// script
-# dependencies = [
-#     "pymatgen>=2026.9.24",
-# ]
-# ///
-
 # %%
 import os
 
 import pandas as pd
 import requests
-from pymatgen.core import Structure
+from kemio.interop import to_structure
 
 import pymatviz as pmv
 
 
-# %% Download data (if needed)
-if os.path.isfile("camd-2022-wo-features.csv.bz2"):
+# %% Download data (if needed), cached as JSON since CSV would stringify the
+# structure dicts
+cache_path = "camd-2022-wo-features.json.gz"
+if os.path.isfile(cache_path):
     print("Loading local data...")
-    df_camd = pd.read_csv("camd-2022-wo-features.csv.bz2")
+    df_camd = pd.read_json(cache_path, orient="records")
 else:
     print("Fetching data from AWS...")
     base_url = "https://s3.amazonaws.com/publications.matr.io/7/deployment/data/files"
-    with_feat_str = "w" if (with_feat := False) else "wo"
-    dataset_url = f"{base_url}/camd_data_to_release_{with_feat_str}features.json"
-    data = requests.get(dataset_url, timeout=10).json()
-    df_camd = pd.DataFrame(data)
-    df_camd.to_csv(f"camd-2022-{with_feat_str}-features.csv.bz2")
+    dataset_url = f"{base_url}/camd_data_to_release_wofeatures.json"
+    df_camd = pd.DataFrame(requests.get(dataset_url, timeout=60).json())
+    df_camd.to_json(cache_path, orient="records")
 
 
 # %%
@@ -48,8 +42,10 @@ df_camd.hist(bins=50)
 
 
 # %%
-df_camd["structure"] = df_camd["structure"].map(Structure.from_dict)
-df_camd["formula"] = [struct.reduced_formula for struct in df_camd["structure"]]
+df_camd["structure"] = df_camd["structure"].map(to_structure)
+df_camd["formula"] = [
+    struct.composition.reduced_formula for struct in df_camd["structure"]
+]
 elem_counts = pmv.count_elements(df_camd["formula"])
 title = "Elements in CAMD 2022 dataset"
 pmv.ptable_heatmap(elem_counts, log=True, color_bar={"title": title}).show()

@@ -6,7 +6,6 @@ from typing import Any
 
 import traitlets as tl
 
-from pymatviz.widgets._normalize import normalize_plot_series
 from pymatviz.widgets._schema_traits import HistogramTraits
 from pymatviz.widgets._traits import PlotControlsTraits, df_series
 from pymatviz.widgets.matterviz import MatterVizWidget
@@ -31,13 +30,9 @@ class HistogramWidget(PlotControlsTraits, HistogramTraits, MatterVizWidget):
     @tl.validate("series")
     def _validate_series(self, proposal: dict[str, Any]) -> list[dict[str, Any]] | None:
         """Normalize series on init and reassignment, including batched updates."""
-        try:
-            return normalize_plot_series(
-                proposal["value"], component_name="Histogram", samples_key="values"
-            )
-        except (TypeError, ValueError) as exc:
-            # TraitError triggers rollback inside hold_trait_notifications().
-            raise tl.TraitError(str(exc)) from exc
+        return self._normalize_series(
+            proposal["value"], "Histogram", keys=("values",), binary=False
+        )
 
     def __init__(
         self,

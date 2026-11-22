@@ -314,18 +314,18 @@ def normalize_plot_series(
     series_data: Any,
     *,
     component_name: str,
-    samples_key: str | None = None,
+    keys: tuple[str, ...] = ("x", "y"),
     binary: bool = False,
 ) -> list[dict[str, Any]] | None:
     """Normalize and validate plot series payloads (``None`` passes through).
 
-    Entries are dicts with ``x`` and ``y`` lists of equal length (``x`` all strings
-    for categorical axes or all numeric, ``y`` numeric, both finite). Per-point
-    ``metadata`` may be a pandas DataFrame with one row per point (columnar, so
-    binary series send numeric columns as arrays). With
-    ``samples_key`` (histograms bin ``values``), entries must instead hold raw
-    samples under that key. Raises TypeError for wrong container/entry/sample types and
-    ValueError for missing keys, length mismatches and non-finite numbers.
+    Entries are dicts with finite, equal-length lists under ``keys``: ``x``/``y``
+    by default (``x`` all strings for categorical axes or all numeric), ``x``/``y``/
+    ``z`` for 3D scatter, or the raw samples of histograms (``values``) and box plots
+    (``y``). Per-point ``metadata`` may be a pandas DataFrame with one row per point
+    (columnar, so binary series send numeric columns as arrays). Raises TypeError for
+    wrong container/entry/sample types and ValueError for missing keys, length
+    mismatches and non-finite numbers.
     """
     if series_data is None:
         return None
@@ -340,7 +340,6 @@ def normalize_plot_series(
     from pymatviz.widgets._binary import is_binary_envelope, plot_series_envelope
 
     normalized_series: list[dict[str, Any]] = []
-    keys = (samples_key,) if samples_key else ("x", "y")
     for series_index, series_entry in enumerate(series_data):
         # with binary=True, large numeric series (and already encoded ones) skip the
         # per-value JSON conversion
@@ -367,7 +366,8 @@ def normalize_plot_series(
             raw_entry = {**series_entry, "metadata": records}
         entry = normalize_plot_json(raw_entry, f"{component_name}.series")
         if not all(key in entry for key in keys):
-            what = f"key '{samples_key}'" if samples_key else "keys 'x' and 'y'"
+            quoted = " and ".join(f"'{key}'" for key in keys)
+            what = f"key{'s' * (len(keys) > 1)} {quoted}"
             raise ValueError(
                 f"{component_name} series entry must include {what}. "
                 f"Got keys at index {series_index}: {sorted(entry)}."
@@ -378,11 +378,11 @@ def normalize_plot_series(
                     f"{component_name} series {key} must be list-like after "
                     f"normalization. Got {type(entry[key])} at index {series_index}."
                 )
-        if len(keys) == 2 and len(entry["x"]) != len(entry["y"]):
+        if len({len(entry[key]) for key in keys}) > 1:
+            lengths = {key: len(entry[key]) for key in keys}
             raise ValueError(
-                f"{component_name} series x/y lengths must match at index "
-                f"{series_index}, got len(x)={len(entry['x'])} and "
-                f"len(y)={len(entry['y'])}."
+                f"{component_name} series {'/'.join(keys)} lengths must match at "
+                f"index {series_index}, got {lengths}."
             )
         for key in keys:
             values = entry[key]
@@ -550,32 +550,12 @@ def normalize_xrd_pattern(obj: Any) -> dict[str, Any] | None:
         or None.
 
     Raises:
+        TypeError: For other types.
         ValueError: For missing or mismatched x/y, non-finite values or an unknown
             kind.
     """
     if obj is None:
         return None
-    pattern = normalize_plot_json(_xrd_pattern_to_dict(obj), "XRD pattern")
-    if "kind" not in pattern:
-        return pattern if pattern.get("hkls") else {**pattern, "kind": "profile"}
-    if pattern["kind"] not in XRD_PATTERN_KINDS:
-        raise ValueError(
-            f"XRD pattern kind={pattern['kind']!r} must be one of "
-            f"{list(XRD_PATTERN_KINDS)}."
-        )
-    return pattern
-
-
-def _xrd_pattern_to_dict(obj: Any) -> dict[str, Any]:
-    """Convert an ``{x, y, hkls?, d_hkls?, kind?}`` dict, kemio XrdPattern or
-    pymatgen DiffractionPattern to a dict.
-
-    Args:
-        obj: A kemio XrdPattern, pymatgen DiffractionPattern or a dict.
-
-    Returns:
-        XRD pattern dict with x, y, and optional hkls, d_hkls keys.
-    """
     if isinstance(obj, dict):
         if missing := [key for key in ("x", "y") if key not in obj]:
             raise ValueError(
@@ -587,17 +567,25 @@ def _xrd_pattern_to_dict(obj: Any) -> dict[str, Any]:
                 "XRD pattern dict has mismatched lengths: "
                 f"len(x)={len(obj['x'])}, len(y)={len(obj['y'])}."
             )
-        return obj
+        raw = obj
+    else:
+        import kemio
+        from kemio.interop import has_class, to_xrd_pattern
 
-    import kemio
-    from kemio.interop import has_class, to_xrd_pattern
-
-    if has_class(obj, "pymatgen.analysis.diffraction.core.DiffractionPattern"):
-        obj = to_xrd_pattern(obj)
-    if isinstance(obj, kemio.XrdPattern):
-        return dict(obj.as_dict())  # matterviz's layout
-
-    raise TypeError(
-        f"Unsupported type for XRD pattern: {type(obj)}. "
-        "Expected dict, kemio XrdPattern or pymatgen DiffractionPattern."
-    )
+        if has_class(obj, "pymatgen.analysis.diffraction.core.DiffractionPattern"):
+            obj = to_xrd_pattern(obj)
+        if not isinstance(obj, kemio.XrdPattern):
+            raise TypeError(
+                f"Unsupported type for XRD pattern: {type(obj)}. "
+                "Expected dict, kemio XrdPattern or pymatgen DiffractionPattern."
+            )
+        raw = dict(obj.as_dict())  # matterviz's layout
+    pattern = normalize_plot_json(raw, "XRD pattern")
+    if "kind" not in pattern:
+        return pattern if pattern.get("hkls") else {**pattern, "kind": "profile"}
+    if pattern["kind"] not in XRD_PATTERN_KINDS:
+        raise ValueError(
+            f"XRD pattern kind={pattern['kind']!r} must be one of "
+            f"{list(XRD_PATTERN_KINDS)}."
+        )
+    return pattern

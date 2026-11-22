@@ -45,6 +45,17 @@ def test_histogram_bins_in_browser_unless_python_needed(
             [5, 6],
         ]
         assert widget.y_axis == {"label": "Count", "scale_type": "linear"}
+    else:  # NumPy bins hold all 3 + 2 values (unit area with density)
+        totals = []
+        for srs in widget.series:
+            widths = np.asarray(srs["bar_width"]) / opts.get("bin_width", 1)
+            heights = np.asarray(srs["y"])
+            totals.append(
+                np.sum(heights * widths) if "density" in opts else sum(heights)
+            )
+        np.testing.assert_allclose(
+            totals, [1, 1] if "density" in opts else [3, 2], rtol=1e-12, atol=0
+        )
 
 
 def test_histogram_browser_x_range_and_dataframe() -> None:

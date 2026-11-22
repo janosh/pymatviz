@@ -145,9 +145,7 @@ class StructureVizTraits(tl.HasTraits):
 
 
 class PlotControlsTraits(tl.HasTraits):
-    """Control-pane traits shared by matterviz plot components: two-way
-    ``controls_open`` plus HTML attribute dicts for the toggle button and the pane.
-    """
+    """Two-way ``controls_open`` state of matterviz plot components' control pane."""
 
     controls_open = tl.Bool(default_value=False).tag(sync=True)
 

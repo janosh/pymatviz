@@ -57,12 +57,9 @@ class ScatterPlotWidget(PlotControlsTraits, ScatterPlotTraits, MatterVizWidget):
                 ``active_point`` to react to clicks).
         """
         series = df_series(series, color, kwargs, x=x, y=y)
-        super().__init__(
-            series=series,
-            **kwargs,
-        )
+        super().__init__(series=series, **kwargs)
 
     @tl.validate("series")
     def _validate_series(self, proposal: dict[str, Any]) -> list[dict[str, Any]] | None:
         """Normalize series on init and reassignment, binary when large."""
-        return self._binary_series(proposal["value"], "ScatterPlot")
+        return self._normalize_series(proposal["value"], "ScatterPlot")

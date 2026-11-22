@@ -24,15 +24,12 @@ https://ml.materialsproject.org/projects/matbench_expt_gap
 # /// script
 # dependencies = [
 #     "matminer>=0.10.1",
-#     "pymatgen>=2026.9.24",
 # ]
 # ///
 
 # %%
-from __future__ import annotations
-
+import kemio
 from matminer.datasets import load_dataset
-from pymatgen.core import Composition
 
 import pymatviz as pmv
 
@@ -41,22 +38,10 @@ import pymatviz as pmv
 df_gap = load_dataset("matbench_expt_gap")
 gap_expt_key = "gap expt"
 
-df_gap["pmg_comp"] = df_gap["composition"].map(Composition)
-df_gap["n_atoms"] = [x.num_atoms for x in df_gap.pmg_comp]
-df_gap["n_elements"] = df_gap.pmg_comp.map(len)
-
-
-def mean_atomic_prop(comp: Composition, prop: str) -> float | None:
-    """Get the mean value of an atomic property for a given pymatgen composition."""
-    try:
-        return sum(getattr(el, prop) * amt for el, amt in comp.items()) / comp.num_atoms
-    except (ZeroDivisionError, TypeError):
-        print(f"Could not compute mean {prop} for {comp}")
-        return None
-
-
-df_gap["mean_mass"] = [mean_atomic_prop(x, "atomic_mass") for x in df_gap.pmg_comp]
-df_gap["mean_radius"] = [mean_atomic_prop(x, "atomic_radius") for x in df_gap.pmg_comp]
+compositions = df_gap["composition"].map(kemio.Composition)
+df_gap["n_atoms"] = [comp.num_atoms for comp in compositions]
+df_gap["n_elements"] = compositions.map(len)
+df_gap["mean_mass"] = [comp.weight / comp.num_atoms for comp in compositions]
 
 
 # %%
@@ -68,14 +53,13 @@ pmv.ptable_heatmap(elem_counts, log=True, color_bar={"title": title}).show()
 
 
 # %% marker size = mean atomic mass, color = number of elements
-df_plot = df_gap.dropna(subset="mean_mass")  # mean_atomic_prop returns None on error
 widget = pmv.scatter_plot(
     series=[
         {
-            "x": df_plot["n_atoms"],
-            "y": df_plot[gap_expt_key],
-            "color_values": df_plot["n_elements"],
-            "size_values": df_plot["mean_mass"],
+            "x": df_gap["n_atoms"],
+            "y": df_gap[gap_expt_key],
+            "color_values": df_gap["n_elements"],
+            "size_values": df_gap["mean_mass"],
             "markers": "points",
         }
     ],

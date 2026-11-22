@@ -47,15 +47,25 @@ def test_one_hot_encode(
     compositions: list[str | kemio.Composition] | pd.Series,
 ) -> None:
     """Encode supported inputs with all elements or a selected subset."""
+    elements = ["H", "C", "O", "Na", "Cl"]
+    # unit-norm element fractions: H2O and CO2 are (2, 1)/sqrt(5), NaCl (1, 1)/sqrt(2)
+    two_one, one_one = np.array([2, 1]) / np.sqrt(5), np.array([1, 1]) / np.sqrt(2)
+    expected = np.zeros((3, 5))
+    expected[0, [0, 2]] = two_one  # H, O
+    expected[1, [2, 1]] = two_one  # O, C
+    expected[2, [3, 4]] = one_one  # Na, Cl
+    result_custom = one_hot_encode(compositions, elements=elements)
+    np.testing.assert_allclose(result_custom, expected, rtol=1e-14, atol=0)
+
+    # all 118 elements by default, the same nonzero entries in Z-order columns
     result = one_hot_encode(compositions)
     assert result.shape == (3, 118)
-    np.testing.assert_allclose(np.linalg.norm(result, axis=1), 1.0, rtol=1e-14, atol=0)
-
-    elements = ["H", "C", "O", "Na", "Cl"]
-    result_custom = one_hot_encode(compositions, elements=elements)
-    assert result_custom.shape == (len(compositions), len(elements))
-    assert result_custom[0, elements.index("H")] > 0
-    assert result_custom[0, elements.index("O")] > 0
+    z_columns = [0, 5, 7, 10, 16]  # H, C, O, Na, Cl
+    # 118-wide L2 norms sum in another order: observed rel. diff 1.2e-16 (< f64 eps)
+    np.testing.assert_allclose(
+        result[:, z_columns], result_custom, rtol=4.4e-16, atol=0
+    )
+    assert np.count_nonzero(result) == 6
 
 
 @pytest.mark.parametrize("normalize", [False, True])
@@ -117,7 +127,13 @@ def sample_data() -> np.ndarray:
 @pytest.mark.parametrize(
     ("method", "kwargs", "expected_obj_type", "obj_attrs"),
     [
-        ("pca", {"whiten": True}, PCA, {"n_components_": 2, "whiten": True}),
+        (
+            "pca",
+            {"whiten": True},
+            PCA,
+            {"n_components_": 2, "whiten": True, "svd_solver": "full"},
+        ),
+        ("pca", {"svd_solver": "arpack"}, PCA, {"svd_solver": "arpack"}),
         (
             "tsne",
             {"perplexity": 10.0, "learning_rate": 100.0, "max_iter": 500},
@@ -178,20 +194,12 @@ def test_project_vectors_methods(
     for attr, value in obj_attrs.items():
         assert getattr(proj_obj, attr) == value
 
-    # Check that result is not degenerate
-    assert not np.allclose(result, 0, atol=1e-10)
-    assert not np.any(np.isnan(result))
-    assert not np.any(np.isinf(result))
-
-    # Check that result has reasonable scale (not zero or infinite)
-    assert 0.01 < np.std(result) < 100
-
-    if method in ("pca", "isomap", "kernel_pca"):
-        # These methods should preserve some linear structure
-        assert np.linalg.matrix_rank(result) == 2
-    else:
-        # Non-linear methods should spread out the points
-        assert np.std(result) > 0.1
+    # scale_data=True centers the projection and scales it to unit RMS (t-SNE
+    # returns float32: eps 1.2e-7, observed mean ~4e-8)
+    tol = 1e-12 if result.dtype == np.float64 else 1e-6
+    np.testing.assert_allclose(result.mean(axis=0), 0, rtol=0, atol=tol)
+    assert np.sqrt(np.mean(result**2)) == pytest.approx(1, rel=tol)
+    assert np.linalg.matrix_rank(result) == 2
 
 
 @pytest.mark.parametrize("n_components", [2, 3])
@@ -207,15 +215,11 @@ def test_project_vectors_components(sample_data: np.ndarray, n_components: int) 
     list_result, _ = project_vectors(sample_data.tolist(), n_components=n_components)
     np.testing.assert_array_equal(list_result, result)
 
-    # Check that result is not degenerate
-    assert not np.allclose(result, 0, atol=1e-10)
-    assert not np.any(np.isnan(result))
-    assert not np.any(np.isinf(result))
-
-    assert np.std(result) == pytest.approx(1.0, rel=0.5)
-    assert np.mean(result) == pytest.approx(0.0, abs=1e-10)
-
-    assert np.linalg.matrix_rank(result) == n_components
+    # centered, unit overall RMS, components ordered by decreasing spread
+    np.testing.assert_allclose(result.mean(axis=0), 0, rtol=0, atol=1e-12)
+    assert np.sqrt(np.mean(result**2)) == pytest.approx(1, rel=1e-12)
+    spread = result.std(axis=0)
+    assert np.all(np.diff(spread) < 0), f"{spread=}"
 
 
 def test_project_vectors_with_scaling(sample_data: np.ndarray) -> None:
@@ -226,19 +230,21 @@ def test_project_vectors_with_scaling(sample_data: np.ndarray) -> None:
     # Without scaling
     result_without_scaling, proj_obj2 = project_vectors(sample_data, scale_data=False)
 
-    # Results should be different
-    assert not np.allclose(result_with_scaling, result_without_scaling, atol=1e-10)
-
-    # Both projection objects should be PCA instances
     assert isinstance(proj_obj1, PCA)
     assert isinstance(proj_obj2, PCA)
     assert proj_obj1.n_components_ == proj_obj2.n_components_ == 2
     assert proj_obj1.explained_variance_ratio_.mean() == pytest.approx(0.4348426)
     assert proj_obj2.explained_variance_ratio_.mean() == pytest.approx(0.4691580)
 
-    # Check that both results have reasonable scale (not zero or infinite)
-    assert 0.01 < np.std(result_with_scaling) < 100
-    assert 0.01 < np.std(result_without_scaling) < 100
+    # scale_data=False returns raw PCA scores (sklearn centers, nothing rescales)
+    raw = PCA(n_components=2, svd_solver="full").fit_transform(sample_data)
+    np.testing.assert_allclose(
+        np.abs(result_without_scaling), np.abs(raw), rtol=0, atol=1e-10
+    )
+    assert not np.allclose(
+        np.abs(result_with_scaling), np.abs(result_without_scaling), atol=1e-3
+    )
+    assert np.sqrt(np.mean(result_with_scaling**2)) == pytest.approx(1, rel=1e-12)
 
 
 def test_project_vectors_random_state(sample_data: np.ndarray) -> None:
@@ -317,12 +323,21 @@ def test_project_vectors_small_dataset(
     assert np.std(result) == pytest.approx(1.0, rel=0.5)
 
 
-def test_project_vectors_zero_variance_no_nan() -> None:
-    """Degenerate data must not yield NaN coords (regression: post-projection
-    standardization divided by a zero std).
+@pytest.mark.parametrize(
+    "data",
+    [
+        np.array([[1.0, 2.0, 3.0]] * 4),
+        np.array([[1.0, 2.0], [np.nan, 0.5], [3.0, -1.0], [0.0, 4.0]]),
+    ],
+    ids=["zero-variance", "nan-entry"],
+)
+def test_project_vectors_degenerate_data_stays_finite(data: np.ndarray) -> None:
+    """Constant columns and NaN entries give finite coords (regression: the
+    post-projection standardization divided by a zero std).
     """
-    projected, _ = project_vectors(np.array([[1.0, 2.0, 3.0]] * 4), n_components=2)
-    assert not np.isnan(projected).any()
+    projected, _ = project_vectors(data, n_components=2)
+    assert projected.shape == (4, 2)
+    assert np.isfinite(projected).all()
 
 
 def test_project_vectors_pca_is_exact_and_keeps_aspect_ratio() -> None:

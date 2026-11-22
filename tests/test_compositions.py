@@ -95,8 +95,8 @@ def test_count_elements_by_atomic_nums(index_type: type) -> None:
         ({1.5: 4}, {}, "Atomic numbers must be integers"),
         ({1.5: 4, "2": 3}, {}, "Atomic numbers must be integers"),
         *[
-            (values, {}, "assumed to represent atomic numbers")
-            for start, stop in [(-1, 10), (100, 200)]
+            (values, {}, f"values range from {start} to {stop - 1}, expected range")
+            for start, stop in [(-1, 10), (0, 5), (100, 200)]
             for values in (
                 dict.fromkeys(range(start, stop), 0),
                 {str(idx): 0 for idx in range(start, stop)},

@@ -16,6 +16,7 @@ from pymatviz.structures import (
     site_symbols,
     str_labels,
 )
+from pymatviz.utils import df_ptable
 from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.bar_plot import BarPlotWidget, bar_axis_defaults
 from pymatviz.widgets.coordination_bar_plot import CoordinationBarPlotWidget
@@ -24,7 +25,6 @@ from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
-    from typing import Any
 
     import pandas as pd
     from typing_extensions import TypeIs
@@ -57,11 +57,7 @@ class CnSplitMode(LabelEnum):
 # Jmol CSS colors of the elements that have one, for bars and lines colored here
 ELEM_COLORS_JMOL: dict[str, str] = {
     symbol: f"rgb({red}, {green}, {blue})"
-    for symbol, (red, green, blue) in zip(
-        kemio.element_table().symbol[1:],  # row 0 is a placeholder
-        kemio.element_table().jmol_color[1:].tolist(),
-        strict=True,
-    )
+    for symbol, (red, green, blue) in df_ptable["jmol_color"].items()
     if red >= 0  # -1 marks a missing color
 }
 # Line dash per structure in coordination_vs_cutoff_line (colors encode elements)

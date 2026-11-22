@@ -39,13 +39,4 @@ type ElemValues = (
     | pd.Series
     | Sequence["CompositionLike"]
 )
-
-type RgbColorType = tuple[float, float, float] | str  # normalized to [0, 1]
-type RgbAColorType = (  # normalized to [0, 1] with alpha
-    str  # "none" or "#RRGGBBAA"/"#RGBA" hex strings
-    | tuple[float, float, float, float]
-    | tuple[RgbColorType, float]
-    | tuple[tuple[float, float, float, float], float]
-)
-type ColorType = RgbColorType | RgbAColorType
 FormulaGroupBy = Literal["formula", "reduced_formula", "chem_sys"]

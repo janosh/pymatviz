@@ -275,8 +275,16 @@ def test_df_input(
         ([0, 1], [[0.1, 0.2], [0.3, 0.4]], r"shape \(2, 2\), expected one"),
         (np.array([0, 1, 1]), "not_an_array", "could not convert string to float"),
         (np.array([0, 1, 2]), np.array([0.1, 0.2, 0.3]), "targets must be binary"),
+        (
+            [0, 1],
+            {"ok": [0.1, 0.9], "bad": {"color": "red"}},
+            r"probs_positive key is required .* missing for \['bad'\]",
+        ),
     ],
-    ids=["empty", "mismatched-lengths", "2d-probs", "invalid-type", "non-binary"],
+    ids=[
+        *("empty", "mismatched-lengths", "2d-probs", "invalid-type", "non-binary"),
+        "dict-missing-probs",
+    ],
 )
 @pytest.mark.parametrize("curve_func", [precision_recall_curve, roc_curve])
 def test_invalid_inputs(

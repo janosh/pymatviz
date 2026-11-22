@@ -135,11 +135,12 @@ def test_histogram_series_updates_clear(series: Any) -> None:
 @pytest.mark.parametrize(
     ("series", "match"),
     [
-        ([{"x": [1], "y": [2], "label": "no-z"}], "missing required key"),
-        (["not-a-dict"], "must be a dict"),
-        ([{1: [0], "y": [1], "z": [2]}], "non-string keys"),
-        ([{"x": [1, 2], "y": [2], "z": [3]}], "mismatched x/y/z lengths"),
+        ([{"x": [1], "y": [2], "label": "no-z"}], "keys 'x' and 'y' and 'z'"),
+        (["not-a-dict"], "entries must be dicts"),
+        ([{1: [0], "y": [1], "z": [2]}], "keys 'x' and 'y' and 'z'"),
+        ([{"x": [1, 2], "y": [2], "z": [3]}], "x/y/z lengths must match"),
         ([{"x": np.array([1, np.nan]), "y": [2, 3], "z": [3, 4]}], "non-finite"),
+        ([{"x": [1], "y": [2], "z": ["a"]}], "must be numeric"),
     ],
 )
 def test_scatter_plot_3d_rejects_invalid_series(series: list[Any], match: str) -> None:
@@ -281,7 +282,7 @@ def test_heatmap_matrix_takes_dataframe() -> None:
     widget.show_values = np.False_  # syncs a plain bool
     assert widget.get_state(["show_values"]) == {"show_values": False}
     assert type(widget.show_values) is bool
-    with pytest.raises(tl.TraitError):
+    with pytest.raises(tl.TraitError, match="'show_values' trait"):
         widget.show_values = [1]
 
 

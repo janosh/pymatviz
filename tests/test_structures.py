@@ -161,19 +161,22 @@ def test_normalize_spacegroups_invalid_number_raises(
 
 
 @pytest.mark.parametrize(
-    ("data", "match"),
+    ("data", "err_cls", "match"),
     [
-        ([], "Cannot normalize empty spacegroup data"),
-        (["Fm-3m", "InvalidSymbol", "P1"], "InvalidSymbol"),
-        (["P2_1/c", "Fm-3m", "P1_bad"], "P1_bad"),
-        ([225, "Fm-3m"], r"one kind\), got \['int', 'str'\]"),
-        (["Fm-3m", 225], r"one kind\), got \['int', 'str'\]"),
-        ([[225]], r"got \['list'\]"),
-        ([SI2_STRUCT, 225], r"one kind\), got \['Structure', 'int'\]"),
+        ([], ValueError, "Cannot normalize empty spacegroup data"),
+        (["Fm-3m", "InvalidSymbol", "P1"], ValueError, r"symbols: \['InvalidSymbol'\]"),
+        (["P2_1/c", "Fm-3m", "P1_bad"], ValueError, r"symbols: \['P1_bad'\]"),
+        ([225, "Fm-3m"], TypeError, r"one kind\), got \['int', 'str'\]"),
+        (["Fm-3m", 225], TypeError, r"one kind\), got \['int', 'str'\]"),
+        ([[225]], TypeError, r"one kind\), got \['list'\]"),
+        ([SI2_STRUCT, 225], TypeError, r"one kind\), got \['Structure', 'int'\]"),
+        # bools are no space group numbers although True == 1
+        ([True, True], TypeError, r"one kind\), got \['bool'\]"),
     ],
 )
-def test_normalize_spacegroups_raises(data: list[Any], match: str) -> None:
+def test_normalize_spacegroups_raises(
+    data: list[Any], err_cls: type[Exception], match: str
+) -> None:
     """Reject empty input, unknown symbols and mixed or unsupported item types."""
-    err_cls = TypeError if "one kind" in match or "list" in match else ValueError
     with pytest.raises(err_cls, match=match):
         normalize_spacegroups(data)

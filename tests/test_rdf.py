@@ -71,6 +71,27 @@ def test_calculate_rdf_normalization(composition: list[str], n_atoms: int) -> No
 
 
 @pytest.mark.parametrize(
+    ("species", "frac_coords"),
+    [(["Si"], [[0, 0, 0]]), (["Si", "Si"], [[0, 0, 0], [0, 0, 0]])],
+    ids=["single-atom", "coincident-atoms"],
+)
+def test_calculate_rdf_simple_cubic_analytic(
+    species: list[str], frac_coords: list[list[float]]
+) -> None:
+    """Simple cubic (a=2.9 Å) has 6 neighbors at a in bin [2.5, 3) and none within
+    4 Å otherwise: g = 6 V / (4 pi r_outer^2 dr). Coincident atoms (distance 0)
+    don't count as neighbors.
+    """
+    a_len, cutoff, n_bins = 2.9, 4, 8
+    structure = cubic_structure(a_len, species, frac_coords)
+    radii, rdf = calculate_rdf(structure, cutoff=cutoff, n_bins=n_bins)
+    np.testing.assert_array_equal(radii, np.arange(1, n_bins + 1) * 0.5)
+    expected = np.zeros(n_bins)
+    expected[5] = 6 * a_len**3 / (4 * np.pi * 3.0**2 * 0.5)  # 2.5877532713788
+    assert_allclose(rdf, expected, rtol=1e-12, atol=0)
+
+
+@pytest.mark.parametrize(
     ("pbc", "expected_peak"),
     [
         ((1, 1, 1), (4.33, 1.0)),  # (peak_position, min_height)

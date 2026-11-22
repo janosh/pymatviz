@@ -170,64 +170,6 @@ def confusion_matrix(
 type Predictions = ArrayLike | str | Mapping[str, ArrayLike | dict[str, Any]]
 
 
-def _standardize_input(
-    targets: ArrayLike | str,
-    probs_positive: Predictions,
-    df: Any = None,
-) -> tuple[ArrayLike, dict[str, dict[str, Any]]]:
-    """Standardize input into tuple of (targets, {name: {probs_positive,
-    **series_kwargs}}).
-
-    Args:
-        targets (ArrayLike | str): Ground truth binary labels
-        probs_positive (Predictions): Either:
-            - Predicted probabilities for positive class, or
-            - dict of form {"name": probabilities}, or
-            - dict of form {"name": {"probs_positive": np.array, **series_kwargs}}
-        df (pd.DataFrame | None): Optional DataFrame containing targets and
-            probs_positive columns
-
-    Returns:
-        tuple[ArrayLike, dict[str, dict[str, Any]]]: targets, curves_dict
-    """
-    if df is not None:
-        if not isinstance(targets, str):
-            raise ValueError(
-                f"when passing a DataFrame, targets must be a column name, got "
-                f"{type(targets).__name__}"
-            )
-        # column labels (str or int), or a list of them for several models; arrays
-        # could misalign with the rows dropped for NaN
-        is_label = lambda val: isinstance(val, str | int) and not isinstance(val, bool)
-        is_list = isinstance(probs_positive, list)
-        is_label_list = is_list and all(map(is_label, probs_positive))
-        if not (is_label(probs_positive) or is_label_list):
-            raise TypeError(
-                "when passing a DataFrame, probs_positive must be a column name or "
-                f"list of them, got {type(probs_positive).__name__}. Pass df=None to "
-                "use arrays or a dict of predictions."
-            )
-        targets, probs_positive = df_to_arrays(df, targets, probs_positive)
-
-    curves_dict: dict[str, dict[str, Any]]
-    if isinstance(probs_positive, Mapping):
-        # array values become {"probs_positive": array} dicts
-        curves_dict = {
-            name: probs if isinstance(probs, dict) else {"probs_positive": probs}
-            for name, probs in probs_positive.items()
-        }
-        for name, trace_dict in curves_dict.items():
-            if "probs_positive" not in trace_dict:
-                raise ValueError(
-                    f"probs_positive key is required for all classifiers when passing "
-                    f"a dict of dicts, but missing for {name}"
-                )
-    else:
-        curves_dict = {"": {"probs_positive": probs_positive}}
-
-    return targets, curves_dict
-
-
 # SVG stroke-dasharrays cycled over classifiers to tell overlapping curves apart
 LINE_DASHES = ("", "6 4", "2 3", "8 3 2 3", "12 4", "2 6")
 
@@ -255,7 +197,39 @@ def _classifier_series(
         ValueError: If targets hold more than 2 classes, a classifier's probabilities
             don't match targets in shape or its targets lack any of required_classes.
     """
-    targets, curves_dict = _standardize_input(targets, probs_positive, df)
+    if df is not None:
+        if not isinstance(targets, str):
+            raise ValueError(
+                f"when passing a DataFrame, targets must be a column name, got "
+                f"{type(targets).__name__}"
+            )
+        # column labels (str or int), or a list of them for several models; arrays
+        # could misalign with the rows dropped for NaN
+        is_label = lambda val: isinstance(val, str | int) and not isinstance(val, bool)
+        is_list = isinstance(probs_positive, list)
+        is_label_list = is_list and all(map(is_label, probs_positive))
+        if not (is_label(probs_positive) or is_label_list):
+            raise TypeError(
+                "when passing a DataFrame, probs_positive must be a column name or "
+                f"list of them, got {type(probs_positive).__name__}. Pass df=None to "
+                "use arrays or a dict of predictions."
+            )
+        targets, probs_positive = df_to_arrays(df, targets, probs_positive)
+
+    # {name: {"probs_positive": array, **series_kwargs}}, a lone array named ""
+    curves_dict: dict[str, dict[str, Any]] = {"": {"probs_positive": probs_positive}}
+    if isinstance(probs_positive, Mapping):
+        curves_dict = {
+            name: probs if isinstance(probs, dict) else {"probs_positive": probs}
+            for name, probs in probs_positive.items()
+        }
+        if missing := [
+            name for name, cfg in curves_dict.items() if "probs_positive" not in cfg
+        ]:
+            raise ValueError(
+                f"probs_positive key is required for all classifiers when passing "
+                f"a dict of dicts, but missing for {missing}"
+            )
     targets = np.asarray(targets, dtype=float)
     if (n_classes := len(np.unique(targets[~np.isnan(targets)]))) > 2:
         raise ValueError(f"targets must be binary, got {n_classes} classes")
@@ -278,6 +252,8 @@ def _classifier_series(
                 f"{' and '.join(missing)} (after dropping NaN rows, got classes "
                 f"{sorted(present)}), so its curve is undefined"
             )
+        # metadata DataFrame columns (e.g. thresholds, whose first ROC one is inf)
+        # sync as binary arrays, non-finite values as None
         series, score = build_series(name, targets[no_nan], curve_probs[no_nan])
         # undefined rates (e.g. FPR without negative samples) are NaN: not plottable
         finite = np.isfinite(series["x"]) & np.isfinite(series["y"])
@@ -288,16 +264,6 @@ def _classifier_series(
         scored_series.append((score, series))
     scored_series.sort(key=lambda pair: pair[0], reverse=True)
     return [series for _, series in scored_series]
-
-
-def _point_metadata(**columns: ArrayLike) -> pd.DataFrame:
-    """Per-point metadata as columns (one row per curve point). Widgets turn
-    non-finite values (e.g. sklearn's inf first ROC threshold) into None, and send
-    large curves' columns as binary arrays instead of per-point JSON dicts.
-    """
-    return pd.DataFrame(
-        {key: np.asarray(vals, dtype=float) for key, vals in columns.items()}
-    )
 
 
 def roc_curve(
@@ -344,7 +310,7 @@ def roc_curve(
             "x": fpr,
             "y": tpr,
             "label": label,
-            "metadata": _point_metadata(threshold=thresholds),
+            "metadata": pd.DataFrame({"threshold": thresholds}),
         }
         return series, roc_auc
 
@@ -446,7 +412,7 @@ def precision_recall_curve(
             "x": recall_curve,
             "y": prec_curve,
             "label": label,
-            "metadata": _point_metadata(threshold=thresholds, f1=f1_curve),
+            "metadata": pd.DataFrame({"threshold": thresholds, "f1": f1_curve}),
         }
         return series, f1_score
 

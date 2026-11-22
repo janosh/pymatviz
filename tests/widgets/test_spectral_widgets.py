@@ -10,6 +10,7 @@ import kemio
 import numpy as np
 import pytest
 import traitlets as tl
+from kemio.interop import structure_to_pymatgen_dict
 
 import pymatviz as pmv
 from pymatviz.widgets.bands_and_dos import BandsAndDosWidget
@@ -36,7 +37,7 @@ def test_dos_sigma_in_data_unit(
 ) -> None:
     """DOS sigma syncs unconverted (THz/eV data unit) and rejects negatives."""
     if isinstance(expected, type):
-        with pytest.raises(expected):
+        with pytest.raises(expected, match=r"sigma.*not be less than 0\.0"):
             widget_cls(sigma=sigma)
     else:
         assert widget_cls(sigma=sigma).to_dict()["sigma"] == expected
@@ -54,8 +55,7 @@ def test_widgets_accept_structure(widget_cls: type, trait: str) -> None:
     """Structure traits sync a kemio Structure as a dict."""
     struct = SI_STRUCT
     synced = getattr(widget_cls(**{trait: struct}), trait)
-    assert isinstance(synced, dict)
-    assert "lattice" in synced
+    assert synced == structure_to_pymatgen_dict(struct)
 
 
 H2_MOLECULE = kemio.Structure(
@@ -100,6 +100,8 @@ H2_MOLECULE = kemio.Structure(
             ValueError,
             "exactly one of fermi_data or band_data",
         ),
+        # normalized values must still be the dict the frontend reads
+        (FermiSurfaceWidget, {"fermi_data": [1, 2]}, tl.TraitError, "'a dict'"),
     ],
 )
 def test_widgets_reject_invalid_data_sources(
@@ -122,6 +124,8 @@ def test_xrd_widget_labeled_patterns() -> None:
     assert widget.patterns["scan"] == {"x": [5], "y": [1], "kind": "profile"}
     with pytest.raises(ValueError, match="patterns mapping must not be empty"):
         XrdWidget(patterns={})
+    # labels sync as strings (JSON object keys)
+    assert list(XrdWidget(patterns={1: {"x": [5], "y": [1]}}).patterns) == ["1"]
 
 
 @pytest.mark.parametrize("labeled", [False, True])
@@ -147,14 +151,25 @@ def test_vasprun_paths(labeled: bool) -> None:
     assert pmv.band_structure(band_structs=path).band_structs["bands"] == bands["bands"]
 
 
-def test_dos_widget_stack_checks_grids_in_either_order() -> None:
+@pytest.mark.parametrize("widget_cls", [DosWidget, BandsAndDosWidget])
+def test_stack_checks_dos_grids_in_either_order(widget_cls: type) -> None:
     """stack=True rejects DOS on different grids whether doses or stack comes last."""
     doses = {
         "a": kemio.PhononDos([0, 1, 2], [0, 1, 0]),
         "b": kemio.PhononDos([0, 1, 3], [0, 1, 0]),
     }
-    with pytest.raises(ValueError, match=r"one grid, but \['b'\]"):
-        DosWidget(doses).stack = True
-    widget = DosWidget(stack=True)
-    with pytest.raises(ValueError, match=r"one grid, but \['b'\]"):
+    match = r"one grid, but \['b'\]"
+    with pytest.raises(ValueError, match=match):
+        widget_cls(doses=doses, stack=True)
+    with pytest.raises(ValueError, match=match):
+        widget_cls(doses=doses).stack = True
+    widget = widget_cls(stack=True)
+    with pytest.raises(ValueError, match=match):
         widget.doses = doses
+    # a single (unlabeled) DOS and DOS on one grid stack fine
+    widget.set_trait("doses", doses["a"])
+    assert widget.doses["frequencies"] == [0, 1, 2]
+    widget.set_trait(
+        "doses", {"a": doses["a"], "c": kemio.PhononDos([0, 1, 2], [1, 1, 1])}
+    )
+    assert list(widget.doses) == ["a", "c"]

@@ -21,25 +21,6 @@ if TYPE_CHECKING:
     import pandas as pd
     from numpy.typing import ArrayLike
 
-DENSITY_COL = "Point density"
-
-
-def _get_axis_labels(
-    x: ArrayLike | str, y: ArrayLike | str, df: pd.DataFrame | None = None
-) -> tuple[str, str]:
-    """Axis labels from column names, array names (e.g. pd.Series) or defaults."""
-    if df is not None:
-        return str(x), str(y)
-
-    def label(arr: ArrayLike | str, default: str) -> str:
-        """Column name, array name (unnamed pd.Series: default) or default."""
-        if isinstance(arr, str):
-            return arr
-        name = getattr(arr, "name", None)
-        return default if name is None else str(name)
-
-    return label(x, "Actual"), label(y, "Predicted")
-
 
 def _parity_data(
     x: ArrayLike | str,
@@ -48,7 +29,9 @@ def _parity_data(
     xlabel: str | None,
     ylabel: str | None,
 ) -> tuple[np.ndarray, np.ndarray, str, str]:
-    """Finite 1D x/y float arrays (NaN rows dropped) and axis labels."""
+    """Finite 1D x/y float arrays (NaN rows dropped) and axis labels (given ones,
+    else column names, array names like a pd.Series' or Actual/Predicted).
+    """
     xs, ys = (np.asarray(arr, dtype=float) for arr in df_to_arrays(df, x, y))
     if xs.ndim != 1 or ys.shape != xs.shape:
         raise ValueError(
@@ -57,29 +40,22 @@ def _parity_data(
     finite = np.isfinite(xs) & np.isfinite(ys)
     if not finite.any():
         raise ValueError("Parity plots need at least one finite (x, y) point")
-    auto_xlabel, auto_ylabel = _get_axis_labels(x, y, df)
-    return xs[finite], ys[finite], xlabel or auto_xlabel, ylabel or auto_ylabel
+
+    def auto_label(arr: ArrayLike | str, default: str) -> str:
+        """Column name, array name (unnamed pd.Series: default) or default."""
+        if df is not None or isinstance(arr, str):
+            return str(arr)
+        name = getattr(arr, "name", None)
+        return default if name is None else str(name)
+
+    xlabel = xlabel or auto_label(x, "Actual")
+    ylabel = ylabel or auto_label(y, "Predicted")
+    return xs[finite], ys[finite], xlabel, ylabel
 
 
 # Gaussian KDE costs O(n^2): beyond this many points, density_hexbin bins in the
 # browser instead
 MAX_KDE_POINTS = 10_000
-
-
-def _kde_density(xs: np.ndarray, ys: np.ndarray) -> np.ndarray:
-    """Gaussian kernel density estimate at each point, or uniform ones (with a
-    warning) when it doesn't exist (fewer than 2 points or all on one line).
-    """
-    import scipy.stats
-
-    try:
-        return scipy.stats.gaussian_kde(np.vstack([xs, ys]))(np.vstack([xs, ys]))
-    except (ValueError, np.linalg.LinAlgError) as exc:
-        warnings.warn(
-            f"KDE impossible for {len(xs)} point(s) ({exc}), using uniform colors",
-            stacklevel=3,
-        )
-        return np.ones(len(xs))
 
 
 def density_scatter(
@@ -129,7 +105,16 @@ def density_scatter(
             f"density_scatter estimates densities for up to {MAX_KDE_POINTS:,} "
             f"points, got {len(xs):,}: use density_hexbin, which bins in the browser"
         )
-    density = _kde_density(xs, ys)
+    import scipy.stats
+
+    try:  # no KDE for fewer than 2 points or all on one line
+        density = scipy.stats.gaussian_kde(np.vstack([xs, ys]))(np.vstack([xs, ys]))
+    except (ValueError, np.linalg.LinAlgError) as exc:
+        warnings.warn(
+            f"KDE impossible for {len(xs)} point(s) ({exc}), using uniform colors",
+            stacklevel=2,
+        )
+        density = np.ones(len(xs))
     order = np.argsort(density, kind="stable")  # densest points drawn last
     plot_x, plot_y, point_density = xs[order], ys[order], density[order]
     if log is None:
@@ -155,7 +140,7 @@ def density_scatter(
                 "x_axis": {"label": xlabel},
                 "y_axis": {"label": ylabel},
                 "color_scale": color_scale,
-                "color_bar": {"title": DENSITY_COL},
+                "color_bar": {"title": "Point density"},
             },
             kwargs,
         ),

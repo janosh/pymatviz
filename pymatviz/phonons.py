@@ -86,56 +86,6 @@ class PhononDBDoc:
 type DosInput = AnyDos | Mapping[str, AnyDos]
 
 
-def _labeled_doses(
-    doses: DosInput,
-    project: Literal["element", "site"] | None,
-    *,
-    show_total: bool,
-) -> dict[str, PhononDosDict]:
-    """Map labels to total or (with project) element/site-projected phonon DOS."""
-    if project not in (None, "element", "site"):
-        raise ValueError(f"Invalid {project=}, must be 'element' or 'site'")
-    raw_doses = dict(doses) if isinstance(doses, Mapping) else {"": doses}
-    if not raw_doses:
-        raise ValueError("Empty DOS dict")
-
-    dos_dict: dict[str, PhononDosDict] = {}
-    for label, raw_dos in raw_doses.items():
-        try:
-            ph_dos = to_phonon_dos(raw_dos)
-        except TypeError as exc:
-            raise TypeError(f"{exc} (key {label!r})") from exc
-        freqs = ph_dos.frequency_points
-        total = kemio.PhononDos(freqs, ph_dos.total_dos).as_dict()
-        if project is None:
-            dos_dict[label] = total
-            continue
-        if ph_dos.projected_dos is None or ph_dos.structure is None:
-            raise TypeError(
-                f"project={project!r} needs a DOS with site projections (pymatgen "
-                "CompletePhononDos, kemio Phonons.projected_dos, phonopy after "
-                "run_total_dos and run_projected_dos on one mesh), got "
-                f"{type(raw_dos).__name__} for key {label!r}"
-            )
-        symbols = site_symbols(ph_dos.structure)
-        if project == "element":
-            projected = ph_dos.element_dos()
-        else:
-            site_doses = zip(symbols, ph_dos.projected_dos, strict=True)
-            projected = {
-                f"{symbol}{site_idx}": densities
-                for site_idx, (symbol, densities) in enumerate(site_doses, start=1)
-            }
-        prefix = f"{label} - " if label else ""
-        dos_dict |= {
-            f"{prefix}{key}": kemio.PhononDos(freqs, densities).as_dict()
-            for key, densities in projected.items()
-        }
-        if show_total:
-            dos_dict[f"{prefix}Total"] = total
-    return dos_dict
-
-
 def phonon_dos(
     doses: DosInput,
     *,
@@ -182,14 +132,52 @@ def phonon_dos(
     valid_normalize = (None, "max", "sum", "integral")
     if normalize not in valid_normalize:
         raise ValueError(f"Invalid {normalize=}, must be one of {valid_normalize}.")
-    n_labels = len(doses) if isinstance(doses, Mapping) else 1
-    if stack and project and (show_total or n_labels > 1):
+    if project not in (None, "element", "site"):
+        raise ValueError(f"Invalid {project=}, must be 'element' or 'site'")
+    raw_doses = dict(doses) if isinstance(doses, Mapping) else {"": doses}
+    if not raw_doses:
+        raise ValueError("Empty DOS dict")
+    if stack and project and (show_total or len(raw_doses) > 1):
         # MatterViz stacks every curve onto one running sum
         raise ValueError(
             f"stack=True with {project=} needs show_total=False and a single DOS, "
-            f"got {show_total=} and {n_labels} DOS"
+            f"got {show_total=} and {len(raw_doses)} DOS"
         )
-    dos_dict = _labeled_doses(doses, project, show_total=show_total)
+
+    dos_dict: dict[str, PhononDosDict] = {}
+    for label, raw_dos in raw_doses.items():
+        try:
+            ph_dos = to_phonon_dos(raw_dos)
+        except TypeError as exc:
+            raise TypeError(f"{exc} (key {label!r})") from exc
+        freqs = ph_dos.frequency_points
+        total = kemio.PhononDos(freqs, ph_dos.total_dos).as_dict()
+        if project is None:
+            dos_dict[label] = total
+            continue
+        if ph_dos.projected_dos is None or ph_dos.structure is None:
+            raise TypeError(
+                f"project={project!r} needs a DOS with site projections (pymatgen "
+                "CompletePhononDos, kemio Phonons.projected_dos, phonopy after "
+                "run_total_dos and run_projected_dos on one mesh), got "
+                f"{type(raw_dos).__name__} for key {label!r}"
+            )
+        if project == "element":
+            projected = ph_dos.element_dos()
+        else:
+            symbols = site_symbols(ph_dos.structure)
+            site_doses = zip(symbols, ph_dos.projected_dos, strict=True)
+            projected = {
+                f"{symbol}{site_idx}": densities
+                for site_idx, (symbol, densities) in enumerate(site_doses, start=1)
+            }
+        prefix = f"{label} - " if label else ""
+        dos_dict |= {
+            f"{prefix}{key}": kemio.PhononDos(freqs, densities).as_dict()
+            for key, densities in projected.items()
+        }
+        if show_total:
+            dos_dict[f"{prefix}Total"] = total
     # an unlabeled single DOS is passed as itself so MatterViz shows no legend entry
     return DosWidget(
         doses=dos_dict[""] if list(dos_dict) == [""] else dos_dict,

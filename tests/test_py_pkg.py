@@ -857,6 +857,13 @@ def test_python_file_metrics(
         "class MyClass:\n    def method1(self): pass\n"
         "    async def method2(self): pass\n"
         "def standalone(): pass\n"
+        # statements nested in every kind of statement list
+        "try:\n    import json\nexcept ImportError:\n    import os\n"
+        "else:\n    import re\nfinally:\n    import io\n"
+        "for _ in []:\n    pass\nelse:\n    import csv\n"
+        "match sys.argv:\n    case _:\n        def in_match(): pass\n"
+        "with open(__file__):\n    class InWith:\n        def method3(self):\n"
+        "            def nested(): pass\n"
     )
     pkg = tmp_path / "metrics_pkg"
     pkg.mkdir()
@@ -870,12 +877,13 @@ def test_python_file_metrics(
             modules = py_pkg.collect_package_modules([pkg.name])
     assert sum(call.args[0] == str(py_file) for call in file_open.call_args_list) == 1
     expected = {
-        "line_count": 9,
-        "n_classes": 1,
-        "n_functions": 1,
-        "n_methods": 2,
+        "line_count": 28,
+        "n_classes": 2,
+        "n_functions": 3,  # standalone, in_match, nested (in a method, not one)
+        "n_methods": 3,
         "n_internal_imports": 0,
-        "n_external_imports": 2,  # typing + sys, NOT the TYPE_CHECKING ones
+        # typing, sys, json, os, re, io, csv, NOT the TYPE_CHECKING ones
+        "n_external_imports": 7,
         "n_type_checking_imports": 2,
     }
     assert (

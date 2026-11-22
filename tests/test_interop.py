@@ -811,9 +811,11 @@ def test_widgets_accept_pymatgen_structure(widget_cls: type, trait: str) -> None
     pytest.importorskip("pymatgen.core")
     from pymatgen.core import Molecule
 
-    synced = getattr(widget_cls(**{trait: pmg_cubic(["Si"])}), trait)
-    assert isinstance(synced, dict)
-    assert "lattice" in synced
+    pmg_struct = pmg_cubic(["Si"])
+    synced = getattr(widget_cls(**{trait: pmg_struct}), trait)
+    # as JSON (RdfPlotWidget syncs pbc as a list, pymatgen's as_dict() a tuple)
+    as_json = json.loads(json.dumps(pmg_struct.as_dict()))
+    assert json.loads(json.dumps(synced)) == as_json
     if widget_cls is not RdfPlotWidget:
         with pytest.raises(TypeError, match="periodic structure"):
             widget_cls(structure=Molecule(["H", "H"], [[0, 0, 0], [0, 0, 0.74]]))

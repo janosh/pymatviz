@@ -70,6 +70,13 @@ def test_annotate_metrics(
     assert widget.annotation.startswith(f"{expected}\nMAE = ")
 
 
+def test_annotate_metrics_drops_nonfinite_pairs() -> None:
+    """Metrics use only pairs where both x and y are finite."""
+    xs, ys = [1, 2, np.nan, 4, 5], [1, 4, 5, np.inf, 5]
+    widget = powerups.annotate_metrics(make_widget(), xs, ys, metrics=["MAE", "MSE"])
+    assert widget.annotation == "MAE = 0.667\nMSE = 1.33"  # pairs (1,1) (2,4) (5,5)
+
+
 @pytest.mark.parametrize(
     ("kwargs", "err_type", "match"),
     [
@@ -366,6 +373,16 @@ def test_add_ecdf_line(values: Sequence[float], n_series: int) -> None:
         assert [srs["line_style"]["color"] for srs in new_series] == ["c0", "c1"]
     assert widget.y2_axis == {"label": "Cumulative"}
     assert widget.y2_range == [0, 1]
+
+
+def test_add_ecdf_line_non_finite() -> None:
+    """ECDFs skip non-finite values and raise when none are finite."""
+    widget = make_widget(1)
+    powerups.add_ecdf_line(widget, [[2, np.nan], [np.inf, 1]])  # 2D raveled
+    np.testing.assert_array_equal(widget.series[-1]["x"], [1, 2, 2])
+    np.testing.assert_array_equal(widget.series[-1]["y"], [0.5, 0.5, 1])
+    with pytest.raises(ValueError, match="ECDF needs at least one finite value"):
+        powerups.add_ecdf_line(widget, [np.nan, -np.inf])
 
 
 def test_add_ecdf_line_ignores_own_ecdf_series() -> None:
