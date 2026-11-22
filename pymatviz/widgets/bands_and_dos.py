@@ -22,7 +22,8 @@ class BandsAndDosWidget(PlotControlsTraits, BandsAndDosTraits, MatterVizWidget):
     """MatterViz widget for combined band structure + DOS visualization.
 
     Renders bands on the left and DOS on the right with linked energy/frequency axes.
-    Accepts pymatgen band structure and DOS objects, or pre-computed dicts. Pass
+    Accepts matscikit, pymatgen and phonopy band structure and DOS objects, vasprun.xml
+    paths, or pre-computed dicts. Pass
     ``{label: obj}`` dicts to overlay several band structures / DOS curves.
 
     Examples:

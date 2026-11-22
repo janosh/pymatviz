@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from typing import Literal
 
-    from pymatviz.typing import AnyStructure
+    from pymatviz.typing import AnyStructure, PeriodicStructure
 
 
 def partial_rdfs(
@@ -112,7 +112,7 @@ def partial_rdfs(
 
 
 def calculate_rdf(
-    structure: AnyStructure,
+    structure: PeriodicStructure,
     center_species: str | None = None,
     neighbor_species: str | None = None,
     cutoff: float = 15,
@@ -125,8 +125,8 @@ def calculate_rdf(
     for the specified element pair. Otherwise, calculates the full RDF.
 
     Args:
-        structure (AnyStructure): A periodic pymatgen Structure/IStructure, ASE Atoms,
-            or PhonopyAtoms object (or mapping/sequence thereof).
+        structure (PeriodicStructure): A periodic structure (matscikit, pymatgen,
+            ASE, phonopy; disordered sites allowed).
         center_species (str, optional): Symbol of the central species. If None, all
             species are considered.
         neighbor_species (str, optional): Symbol of the neighbor species. If None, all
@@ -143,8 +143,12 @@ def calculate_rdf(
     Raises:
         ValueError: If cutoff is not positive and finite, n_bins is not a positive
             integer, or pbc does not contain three 0/1 flags.
-        TypeError: If structure is unsupported or not periodic (e.g. a Molecule).
+        TypeError: If structure is unsupported, not periodic (e.g. a Molecule) or
+            several structures.
     """
-    struct = next(iter(normalize_periodic_structures(structure).values()))
+    struct_dict = normalize_periodic_structures(structure)
+    if len(struct_dict) != 1:
+        raise TypeError(f"calculate_rdf takes one structure, got {len(struct_dict)}")
+    (struct,) = struct_dict.values()
     pair = (center_species, neighbor_species)
     return partial_rdfs(struct, [pair], cutoff=cutoff, n_bins=n_bins, pbc=pbc)[0]

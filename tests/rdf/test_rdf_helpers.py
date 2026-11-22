@@ -400,3 +400,9 @@ def test_calculate_rdf_coordination_numbers(
     mask = radii < first_shell_max  # integrate g(r) over the first shell
     coord_num = np.sum(rdf[mask] * rho * 4 * np.pi * radii[mask] ** 2 * bin_width)
     assert coord_num == pytest.approx(expected_cn, rel=1e-6)
+
+
+def test_calculate_rdf_rejects_several_structures() -> None:
+    """A sequence of structures raises instead of silently using the first."""
+    with pytest.raises(TypeError, match="takes one structure, got 2"):
+        calculate_rdf(SI_STRUCTS[:2])  # ty: ignore[invalid-argument-type]

@@ -20,21 +20,6 @@ from pymatviz.widgets._traits import StructureVizTraits
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
-def _unwrap_monty_arrays(value: Any, *, nested: bool = False) -> Any:
-    """Read Monty ndarray data without copying plain coordinate or lattice arrays."""
-    if isinstance(value, dict):
-        if value.get("@class") == "array" and "data" in value:
-            return value["data"]
-        if nested:
-            return {
-                key: _unwrap_monty_arrays(item, nested=True)
-                for key, item in value.items()
-            }
-    if nested and isinstance(value, list):
-        return [_unwrap_monty_arrays(item, nested=True) for item in value]
-    return value
-
-
 class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
     """MatterViz widget for visualizing molecular dynamics and geometry optimization
     trajectories in Python notebooks.
@@ -277,6 +262,7 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
         """Expand occupancy mappings into the renderer's per-site species lists.
         Needs the optional pymatgen dependency.
         """
+        from matscikit.interop import decode_monty
         from pymatgen.core import DummySpecies, Molecule, Species, Structure
         from pymatgen.core.periodic_table import get_el_sp
 
@@ -312,23 +298,17 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
                 species[idx] = {
                     key: val for key, val in entry.items() if not key.startswith("@")
                 }
-        coords = np.asarray(_unwrap_monty_arrays(data["coords"]), dtype=float)
+        coords = np.asarray(decode_monty(data["coords"]), dtype=float)
         if data.get("coords_are_displacement"):
-            coords = np.cumsum(coords, axis=0) + _unwrap_monty_arrays(
-                data["base_positions"]
-            )
-        lattice = _unwrap_monty_arrays(data.get("lattice"))
+            coords = np.cumsum(coords, axis=0) + decode_monty(data["base_positions"])
+        lattice = decode_monty(data.get("lattice"))
         cells = (
             None if lattice is None else np.broadcast_to(lattice, (len(coords), 3, 3))
         )
-        site_props = (
-            _unwrap_monty_arrays(data.get("site_properties"), nested=True) or {}
-        )
+        site_props = decode_monty(data.get("site_properties")) or {}
         if isinstance(site_props, list) and len(site_props) == 1:
             (site_props,) = site_props  # The renderer broadcasts a single property map.
-        frame_props = _unwrap_monty_arrays(
-            data.get("frame_properties"), nested=True
-        ) or [{}] * len(coords)
+        frame_props = decode_monty(data.get("frame_properties")) or [{}] * len(coords)
         frames = []
         for idx, (positions, props) in enumerate(zip(coords, frame_props, strict=True)):
             per_site = site_props[idx] if isinstance(site_props, list) else site_props

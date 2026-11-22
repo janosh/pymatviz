@@ -13,9 +13,9 @@ from pymatviz.widgets.matterviz import MatterVizWidget
 class ConvexHullWidget(ConvexHullTraits, MatterVizWidget):
     """MatterViz widget for visualizing convex hull phase stability diagrams.
 
-    Supports binary, ternary, and quaternary convex hulls. Accepts either a
-    pymatgen PhaseDiagram object or a list of entry dicts with composition and
-    energy data.
+    Supports binary, ternary, and quaternary convex hulls. Accepts a matscikit or
+    pymatgen PhaseDiagram, pymatgen entries, or a list of entry dicts with
+    composition and energy data.
 
     Examples:
         From a pymatgen PhaseDiagram:
