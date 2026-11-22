@@ -662,7 +662,7 @@ def cluster_compositions(
                     f"sort callable must return a permutation of indices, got "
                     f"{plot_order.tolist()}"
                 )
-        elif isinstance(sort, int | np.integer):  # True included, False skipped
+        elif isinstance(sort, int | np.integer | np.bool_):  # False skipped above
             plot_order = np.argsort(numeric_props, kind="stable")
             if sort < 0:
                 plot_order = plot_order[::-1]

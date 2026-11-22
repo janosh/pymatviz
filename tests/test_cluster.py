@@ -398,7 +398,7 @@ def points(widget: ClusterScatterPlot | ClusterScatterPlot3D) -> pd.DataFrame:
 
 
 @pytest.mark.parametrize("n_components", [2, 3])
-@pytest.mark.parametrize("sort", [True, False, -1, np.int64(-1)])
+@pytest.mark.parametrize("sort", [True, False, -1, np.int64(-1), np.True_, np.False_])
 def test_cluster_compositions_property(
     df_prop: pd.DataFrame, n_components: int, sort: bool | int
 ) -> None:

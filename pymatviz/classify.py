@@ -120,11 +120,16 @@ def confusion_matrix(
             f"conf_mat shape {conf_mat_arr.shape} doesn't match "
             f"{len(y_labels)} y_labels x {len(x_labels)} x_labels"
         )
-    if conf_mat_arr.sum() <= 0:
-        raise ValueError(f"conf_mat must contain samples, got {conf_mat_arr.tolist()}")
+    if conf_mat_arr.sum() <= 0 or (conf_mat_arr < 0).any():
+        raise ValueError(
+            f"conf_mat must hold non-negative counts of at least one sample, got "
+            f"{conf_mat_arr.tolist()}"
+        )
     if normalize:
         conf_mat_arr = conf_mat_arr / conf_mat_arr.sum()
 
+    if isinstance(metrics, str):  # one metric name, not a sequence of letters
+        metrics = (metrics,)
     metric_fmts: Mapping[str, str | None] = (
         metrics if isinstance(metrics, Mapping) else dict.fromkeys(metrics)
     )
@@ -149,21 +154,19 @@ def confusion_matrix(
         f"{name}={available[name]:{fmt or '.1%'}}" for name, fmt in metric_fmts.items()
     )
     x_title = f"Predicted ({metrics_text})" if metrics_text else "Predicted"
+    defaults = {
+        "show_values": float_fmt,
+        "color_scale": "interpolateBlues",
+        "x_axis": {"label": x_title},
+        "y_axis": {"label": "Actual"},
+        "gap": "4px",
+        "color_bar": None,  # cells print their values
+    }
     return HeatmapMatrixWidget(
         x_items=list(x_labels),
         y_items=list(y_labels),
         values=conf_mat_arr.tolist(),
-        **with_defaults(
-            {
-                "show_values": float_fmt,
-                "color_scale": "interpolateBlues",
-                "x_axis": {"label": x_title},
-                "y_axis": {"label": "Actual"},
-                "gap": "4px",
-                "color_bar": None,  # cells print their values
-            },
-            kwargs,
-        ),
+        **with_defaults(defaults, kwargs),
     )
 
 
@@ -230,11 +233,11 @@ def _classifier_series(
                 f"probs_positive key is required for all classifiers when passing "
                 f"a dict of dicts, but missing for {missing}"
             )
-    targets = np.asarray(targets, dtype=float)
-    if (n_classes := len(np.unique(targets[~np.isnan(targets)]))) > 2:
+    raw_targets = np.asarray(targets, dtype=float)
+    if (n_classes := len(np.unique(raw_targets[~np.isnan(raw_targets)]))) > 2:
         raise ValueError(f"targets must be binary, got {n_classes} classes")
     # 1 is the positive class, the other (e.g. 0 or -1) negative, NaN stays NaN
-    targets = np.where(np.isnan(targets), np.nan, targets == 1)
+    targets = np.where(np.isnan(raw_targets), np.nan, raw_targets == 1)
     scored_series = []
     for idx, (name, curve_cfg) in enumerate(curves_dict.items()):
         series_kwargs = dict(curve_cfg)  # don't mutate caller-supplied dicts
@@ -247,10 +250,13 @@ def _classifier_series(
         no_nan = ~np.isnan(targets) & ~np.isnan(curve_probs)
         present = set(np.unique(targets[no_nan]).tolist())
         if missing := [f"{cls:g}" for cls in required_classes if cls not in present]:
+            # report the given labels (e.g. -1 or 2), not the 0/1 classes they map to
+            labels = [f"{label:g}" for label in np.unique(raw_targets[no_nan])]
             raise ValueError(
                 f"Classifier {name or 'probs_positive'!r} has no targets of class "
-                f"{' and '.join(missing)} (after dropping NaN rows, got classes "
-                f"{sorted(present)}), so its curve is undefined"
+                f"{' and '.join(missing)} (label 1 is positive, any other negative; "
+                f"after dropping NaN rows, got labels {labels}), so its curve is "
+                "undefined"
             )
         # metadata DataFrame columns (e.g. thresholds, whose first ROC one is inf)
         # sync as binary arrays, non-finite values as None
@@ -299,12 +305,13 @@ def roc_curve(
     """
 
     def build_series(
-        name: str, tgt: np.ndarray, probs: np.ndarray
+        name: str, binary_targets: np.ndarray, probs: np.ndarray
     ) -> tuple[dict[str, Any], float]:
+        """ROC curve series of one classifier and its AUC."""
         import sklearn.metrics as skm
 
-        fpr, tpr, thresholds = skm.roc_curve(tgt, probs)
-        roc_auc = float(skm.roc_auc_score(tgt, probs))
+        fpr, tpr, thresholds = skm.roc_curve(binary_targets, probs)
+        roc_auc = float(skm.roc_auc_score(binary_targets, probs))
         label = f"{name} · AUC={roc_auc:.2f}" if name else f"AUC={roc_auc:.2f}"
         series = {
             "x": fpr,
@@ -324,36 +331,23 @@ def roc_curve(
     )
     ref_lines = []
     if no_skill is not False:
-        ref_lines.append(
-            with_defaults(
-                {
-                    "type": "segment",
-                    "p1": [0, 0],
-                    "p2": [1, 1],
-                    "style": {"color": "gray", "dash": "6 4"},
-                    "label": "No skill",
-                    "annotation": {
-                        "text": "No skill",
-                        "position": "center",
-                        "color": "gray",
-                    },
-                },
-                no_skill or {},
-            )
-        )
-    return ScatterPlotWidget(
-        series=series,
-        **with_defaults(
-            {
-                "ref_lines": ref_lines,
-                "x_axis": {"label": "False Positive Rate"},
-                "y_axis": {"label": "True Positive Rate"},
-                "x_range": [0, 1.05],
-                "y_range": [0, 1.05],
-            },
-            kwargs,
-        ),
-    )
+        diagonal = {
+            "type": "segment",
+            "p1": [0, 0],
+            "p2": [1, 1],
+            "style": {"color": "gray", "dash": "6 4"},
+            "label": "No skill",
+            "annotation": {"text": "No skill", "position": "center", "color": "gray"},
+        }
+        ref_lines.append(with_defaults(diagonal, no_skill or {}))
+    defaults = {
+        "ref_lines": ref_lines,
+        "x_axis": {"label": "False Positive Rate"},
+        "y_axis": {"label": "True Positive Rate"},
+        "x_range": [0, 1.05],
+        "y_range": [0, 1.05],
+    }
+    return ScatterPlotWidget(series=series, **with_defaults(defaults, kwargs))
 
 
 def precision_recall_curve(
@@ -391,26 +385,30 @@ def precision_recall_curve(
     baselines: dict[float, list[str]] = {}
 
     def build_series(
-        name: str, tgt: np.ndarray, probs: np.ndarray
+        name: str, binary_targets: np.ndarray, probs: np.ndarray
     ) -> tuple[dict[str, Any], float]:
+        """PR curve series of one classifier and its F1 score, recording its
+        positive-class prevalence for the no-skill baseline.
+        """
         import sklearn.metrics as skm
 
         # drop thresholds that don't change the plotted step curve (like roc_curve
         # does by default): 200k samples otherwise sync ~200k points of metadata
-        prec_curve, recall_curve, thresholds = skm.precision_recall_curve(
-            tgt, probs, drop_intermediate=True
+        precision_curve, recall_curve, thresholds = skm.precision_recall_curve(
+            binary_targets, probs, drop_intermediate=True
         )
-        baselines.setdefault(float(np.mean(tgt == 1)), []).append(name)
+        baselines.setdefault(float(np.mean(binary_targets == 1)), []).append(name)
+        product = precision_curve * recall_curve
         with np.errstate(divide="ignore", invalid="ignore"):
-            f1_curve = 2 * (prec_curve * recall_curve) / (prec_curve + recall_curve)
+            f1_curve = 2 * product / (precision_curve + recall_curve)
         f1_curve = np.nan_to_num(f1_curve)  # 0/0 where precision = recall = 0
-        f1_score = float(skm.f1_score(tgt, (probs >= 0.5).astype(float)))
+        f1_score = float(skm.f1_score(binary_targets, (probs >= 0.5).astype(float)))
         # the last PR point (recall 0, precision 1) has no threshold
         thresholds = np.append(thresholds, np.nan)
         label = f"{name} · F1={f1_score:.2f}" if name else f"F1={f1_score:.2f}"
         series = {
             "x": recall_curve,
-            "y": prec_curve,
+            "y": precision_curve,
             "label": label,
             "metadata": pd.DataFrame({"threshold": thresholds, "f1": f1_curve}),
         }
@@ -426,30 +424,17 @@ def precision_recall_curve(
             label = (
                 f"No skill ({', '.join(names)})" if len(baselines) > 1 else "No skill"
             )
-            ref_lines.append(
-                with_defaults(
-                    {
-                        "type": "horizontal",
-                        "y": prevalence,
-                        "style": {"color": "gray", "dash": "6 4"},
-                        "label": label,
-                        "annotation": {
-                            "text": label,
-                            "position": "end",
-                            "color": "gray",
-                        },
-                    },
-                    no_skill or {},
-                )
-            )
-    return ScatterPlotWidget(
-        series=series,
-        **with_defaults(
-            {
-                "ref_lines": ref_lines,
-                "x_axis": {"label": "Recall"},
-                "y_axis": {"label": "Precision"},
-            },
-            kwargs,
-        ),
-    )
+            baseline = {
+                "type": "horizontal",
+                "y": prevalence,
+                "style": {"color": "gray", "dash": "6 4"},
+                "label": label,
+                "annotation": {"text": label, "position": "end", "color": "gray"},
+            }
+            ref_lines.append(with_defaults(baseline, no_skill or {}))
+    defaults = {
+        "ref_lines": ref_lines,
+        "x_axis": {"label": "Recall"},
+        "y_axis": {"label": "Precision"},
+    }
+    return ScatterPlotWidget(series=series, **with_defaults(defaults, kwargs))

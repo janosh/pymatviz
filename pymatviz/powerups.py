@@ -409,30 +409,32 @@ def enhance_parity_plot[Widget: ScatterPlotWidget | BinnedScatterPlotWidget](
     ):
         if not isinstance(opt, (bool, dict, type(None))):
             raise TypeError(f"{name} must be bool or dict, got {type(opt).__name__}")
-    if identity_line:
-        add_identity_line(
-            widget, **identity_line if isinstance(identity_line, dict) else {}
-        )
-    if not best_fit_line and not stats and best_fit_line is not None:
+    # True enables a powerup with default kwargs, any dict (even {}) with its kwargs
+    identity_kwargs, fit_kwargs, stats_kwargs = (
+        {} if opt is True else opt if isinstance(opt, dict) else None
+        for opt in (identity_line, best_fit_line, stats)
+    )
+    if identity_kwargs is not None:
+        add_identity_line(widget, **identity_kwargs)
+    if fit_kwargs is None and stats_kwargs is None and best_fit_line is not None:
         return widget
 
     data_kwargs: dict[str, Any] = {"xs": xs, "ys": ys, "series": series}
     if best_fit_line is None:
         xs_arr, ys_arr = _resolve_xy(widget, xs, ys, series)
         finite = np.isfinite(xs_arr) & np.isfinite(ys_arr)
-        best_fit_line = bool(
+        auto_fit = bool(
             finite.sum() > 1
             and BUILTIN_METRICS["R2"](xs_arr[finite], ys_arr[finite]) > 0.3
         )
-        if best_fit_line:  # skip, rather than fail, fits the axes leave ill-posed
+        if auto_fit:  # skip, rather than fail, fits the axes leave ill-posed
             log_x, log_y = _log_axes(widget)
             fit_xs = xs_arr[_fit_mask(xs_arr, ys_arr, log_x=log_x, log_y=log_y)]
-            best_fit_line = fit_xs.size > 1 and bool(np.ptp(fit_xs) > 0)
-    if best_fit_line:
-        fit_kwargs = best_fit_line if isinstance(best_fit_line, dict) else {}
+            auto_fit = fit_xs.size > 1 and bool(np.ptp(fit_xs) > 0)
+        fit_kwargs = {} if auto_fit else None
+    if fit_kwargs is not None:
         add_best_fit_line(widget, **data_kwargs | fit_kwargs)
-    if stats:
-        stats_kwargs = stats if isinstance(stats, dict) else {}
+    if stats_kwargs is not None:
         annotate_metrics(widget, **data_kwargs | stats_kwargs)
     return widget
 

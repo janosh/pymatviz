@@ -94,6 +94,11 @@ def test_count_elements_by_atomic_nums(index_type: type) -> None:
         ({"Fe": 1, "Zz": 2}, {}, r"Unexpected element symbol\(s\): Zz"),
         ({1.5: 4}, {}, "Atomic numbers must be integers"),
         ({1.5: 4, "2": 3}, {}, "Atomic numbers must be integers"),
+        (
+            pd.Series([1, 2], index=["Fe", "Fe"]),
+            {},
+            r"element keys must be unique, got duplicates \['Fe'\]",
+        ),
         *[
             (values, {}, f"values range from {start} to {stop - 1}, expected range")
             for start, stop in [(-1, 10), (0, 5), (100, 200)]
@@ -115,7 +120,9 @@ def test_count_elements_by_atomic_nums(index_type: type) -> None:
     ],
 )
 def test_count_elements_raises(values: Any, kwargs: dict[str, Any], match: str) -> None:
-    """Reject unknown symbols, non-integral or out-of-range atomic numbers."""
+    """Reject unknown or repeated symbols, non-integral or out-of-range atomic
+    numbers.
+    """
     with pytest.raises(ValueError, match=match):
         count_elements(values, **kwargs)
 

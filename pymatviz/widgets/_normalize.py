@@ -42,7 +42,7 @@ _UNREAD_ATTRS = {
 }
 
 
-def _as_dict(obj: Any) -> dict[str, Any]:
+def _slim_as_dict(obj: Any) -> dict[str, Any]:
     """``obj.as_dict()`` without the fields MatterViz never reads, serialized from a
     shallow copy with those fields emptied (the input is not mutated). Emptying them
     also drops what pymatgen derives from them: ``atom_dos``/``spd_dos`` of a
@@ -121,7 +121,7 @@ def _object_dict(obj: Any) -> dict[str, Any] | None:
         return {
             key: val for key, val in obj.as_dict().items() if key not in _UNREAD_KEYS
         }
-    return _as_dict(obj) if callable(getattr(obj, "as_dict", None)) else None
+    return _slim_as_dict(obj) if callable(getattr(obj, "as_dict", None)) else None
 
 
 _VASPRUN_SUFFIXES = (".xml", ".xml.gz", ".xml.xz", ".xml.bz2")

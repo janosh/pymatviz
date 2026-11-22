@@ -5,7 +5,14 @@ structure viewers backed by a frame sequence and periodic tables (which highligh
 the selected structure's elements and, when clicked, dim scatter points lacking them).
 
 Example:
+    >>> import numpy as np
+    >>> import kemio
     >>> import pymatviz as pmv
+    >>> frames = [
+    ...     kemio.Structure(np.eye(3) * a_len, ["Cu"], [[0, 0, 0]])
+    ...     for a_len in (2.5, 2.6)
+    ... ]
+    >>> steps, energies = [0, 1], [-3.2, -3.5]
     >>> scatter = pmv.scatter_plot(series=[{"x": steps, "y": energies}])
     >>> structure = pmv.structure(structure=frames[0])
     >>> link = pmv.widgets.link_selection(scatter, structure, structures=frames)
@@ -114,7 +121,9 @@ class WidgetLink:
         # per periodic table (by id), the elements the last index broadcast showed
         self._shown_elements: dict[int, set[str]] = {}
         if any(isinstance(widget, PeriodicTableWidget) for widget in self.widgets):
-            self._elements = [_element_symbols(st) for st in self._structures or ()]
+            self._elements = [
+                _element_symbols(struct) for struct in self._structures or ()
+            ]
             # tile clicks dim scatter points by id, and points without one never dim
             for widget in self.widgets:
                 if isinstance(widget, ScatterPlotWidget) and not all(

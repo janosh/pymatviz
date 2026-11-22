@@ -1,4 +1,4 @@
-"""Typing related: TypeAlias, generic types and so on."""
+"""Type aliases for pymatviz function inputs."""
 
 from __future__ import annotations
 
@@ -13,10 +13,10 @@ if TYPE_CHECKING:
 
     from pymatviz.enums import ElemCountMode
 
-# Quoted unions: PEP 695 treats a bare `"Name"` as Literal, not a forward ref
-# structure-like inputs (kemio, pymatgen, ASE, phonopy), converted to kemio
-# Structures by normalize_structures; kemio's interop types
-# (periodic ones checked at runtime)
+# Quoted unions: PEP 695 treats a bare `"Name"` as Literal, not a forward ref.
+# Structure-like inputs (kemio, pymatgen, ASE, phonopy) are kemio's interop types,
+# converted to kemio Structures by normalize_structures (periodicity of
+# PeriodicStructure inputs is checked at runtime)
 type AnyStructure = "StructureLike"
 type PeriodicStructure = "StructureLike"
 type AnyDos = "PhononDosLike"

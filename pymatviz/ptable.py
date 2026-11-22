@@ -11,7 +11,7 @@ from pandas.api.types import is_numeric_dtype
 
 from pymatviz.compositions import count_elements
 from pymatviz.enums import ElemCountMode
-from pymatviz.utils import df_ptable
+from pymatviz.utils import check_unique_labels, df_ptable
 from pymatviz.widgets.periodic_table import (
     SPLIT_LAYOUTS,
     PeriodicTableWidget,
@@ -237,6 +237,9 @@ def ptable_heatmap_splits(
             all elements have the same number (2, 3 or 4) of values, or
             split_layout doesn't support that number.
     """
+    check_unique_labels(
+        data.index if isinstance(data, pd.DataFrame) else data, "element keys"
+    )
     rows = data.T.to_dict("list") if isinstance(data, pd.DataFrame) else dict(data)
     if not rows:
         raise ValueError(f"ptable_heatmap_splits: {data=} must not be empty")
@@ -313,6 +316,9 @@ def ptable_hists(
         TraitError: For bins outside [1, 1000], an invalid color_scale, or numeric
             heatmap_values beside a color_scale.
     """
+    check_unique_labels(
+        data.columns if isinstance(data, pd.DataFrame) else data, "element keys"
+    )
     columns = data.to_dict("list") if isinstance(data, pd.DataFrame) else dict(data)
     elem_values = {  # finite values only, so labels callables get clean arrays
         str(symbol): (arr := float_array(vals, f"ptable_hists: {symbol}"))[

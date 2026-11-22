@@ -5,11 +5,15 @@ extraction.
 from __future__ import annotations
 
 import os
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import kemio
 import numpy as np
 import pandas as pd
+
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
 PKG_DIR: str = os.path.dirname(__file__)
@@ -25,6 +29,28 @@ atomic_numbers: dict[str, int] = {
 element_symbols: dict[int, str] = {
     atomic_num: symbol for symbol, atomic_num in atomic_numbers.items()
 }
+
+
+def check_unique_labels(labels: Any, name: str) -> None:
+    """Raise ValueError naming the repeated labels of a pd.Index or a Series' index,
+    which dict conversion would silently drop. Other types pass unchecked.
+    """
+    index = labels.index if isinstance(labels, pd.Series) else labels
+    if isinstance(index, pd.Index) and index.has_duplicates:
+        dupes = index[index.duplicated()].unique().tolist()
+        raise ValueError(f"{name} must be unique, got duplicates {dupes}")
+
+
+def str_labels[T](labeled: Mapping[Any, T]) -> dict[str, T]:
+    """Mapping with its keys as strings.
+
+    Raises:
+        ValueError: If distinct keys share a string form (e.g. 1 and "1").
+    """
+    as_str = {str(key): val for key, val in labeled.items()}
+    if len(as_str) < len(labeled):
+        raise ValueError(f"labels must be unique as strings, got {list(labeled)}")
+    return as_str
 
 
 def df_to_arrays(df: pd.DataFrame | None, *args: Any) -> list[Any]:
@@ -43,13 +69,14 @@ def df_to_arrays(df: pd.DataFrame | None, *args: Any) -> list[Any]:
     if not isinstance(df, pd.DataFrame):
         raise TypeError(f"df should be pandas DataFrame or None, got {type(df)}")
     is_col = [isinstance(arg, str | int) for arg in args]
+    is_col_list = [
+        isinstance(arg, list | tuple) and all(isinstance(col, str | int) for col in arg)
+        for arg in args
+    ]
     if bad := [
         arg
-        for arg, single in zip(args, is_col, strict=True)
-        if not single
-        and not (
-            isinstance(arg, list | tuple) and all(isinstance(c, str | int) for c in arg)
-        )
+        for arg, single, multi in zip(args, is_col, is_col_list, strict=True)
+        if not (single or multi)
     ]:
         raise ValueError(
             f"with a df, pass column names (or lists of them), not data, got {bad}"

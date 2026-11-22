@@ -19,7 +19,7 @@ from pandas.api.types import is_numeric_dtype, is_string_dtype
 
 from pymatviz.enums import ElemCountMode
 from pymatviz.structures import is_structure_like, to_structure
-from pymatviz.utils import df_ptable, element_symbols
+from pymatviz.utils import check_unique_labels, df_ptable, element_symbols
 
 
 if TYPE_CHECKING:
@@ -150,6 +150,7 @@ def count_elements(
             )
         srs.index = atomic_numbers.map(element_symbols)
 
+    check_unique_labels(srs, "element keys")  # reindex would fail on duplicates
     bad_symbols = srs.index.difference(df_ptable.index)
     if len(bad_symbols) > 0:
         raise ValueError(

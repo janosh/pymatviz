@@ -449,15 +449,15 @@ def test_py_pkg_treemap_cell_size_fn(
     assert leaves == expected
 
 
-def test_normalize_package_input() -> None:
-    """Test _normalize_package_input function with various inputs."""
-    assert py_pkg._normalize_package_input("numpy") == "numpy"
+def test_top_package_name() -> None:
+    """Test _top_package_name function with various inputs."""
+    assert py_pkg._top_package_name("numpy") == "numpy"
 
-    assert py_pkg._normalize_package_input(np) == "numpy"
+    assert py_pkg._top_package_name(np) == "numpy"
 
     import numpy.random
 
-    assert py_pkg._normalize_package_input(numpy.random) == "numpy"
+    assert py_pkg._top_package_name(numpy.random) == "numpy"
 
 
 def _write_package_files(pkg_dir: Path, files: dict[str, int]) -> None:
@@ -853,7 +853,10 @@ def test_python_file_metrics(
     code = (
         "from typing import TYPE_CHECKING\n"
         "if TYPE_CHECKING:\n    import pandas as pd\n    import numpy as np\n"
-        "import sys\n"
+        "import sys, typing\n"
+        # attribute form and imports nested in a try block of the TYPE_CHECKING body
+        "if typing.TYPE_CHECKING:\n    try:\n        from pathlib import Path\n"
+        "    except ImportError:\n        pass\n"
         "class MyClass:\n    def method1(self): pass\n"
         "    async def method2(self): pass\n"
         "def standalone(): pass\n"
@@ -877,14 +880,14 @@ def test_python_file_metrics(
             modules = py_pkg.collect_package_modules([pkg.name])
     assert sum(call.args[0] == str(py_file) for call in file_open.call_args_list) == 1
     expected = {
-        "line_count": 28,
+        "line_count": 33,
         "n_classes": 2,
         "n_functions": 3,  # standalone, in_match, nested (in a method, not one)
         "n_methods": 3,
         "n_internal_imports": 0,
-        # typing, sys, json, os, re, io, csv, NOT the TYPE_CHECKING ones
-        "n_external_imports": 7,
-        "n_type_checking_imports": 2,
+        # typing, sys, typing, json, os, re, io, csv, NOT the TYPE_CHECKING ones
+        "n_external_imports": 8,
+        "n_type_checking_imports": 3,
     }
     assert (
         modules.set_index("filename").loc["mod", list(expected)].to_dict() == expected

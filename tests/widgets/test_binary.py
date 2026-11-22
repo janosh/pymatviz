@@ -65,9 +65,7 @@ def test_invalid_frame_arrays(key: str, value: float) -> None:
     """
     positions = [[value if key == "positions" else 0, 0, 0]]
     properties = {"force": [[value, 0, 0]]} if key == "force" else {}
-    struct = kemio.Structure(
-        np.eye(3) * 2, ["H"], positions, info={"properties": properties}
-    )
+    struct = kemio.Structure(np.eye(3) * 2, ["H"], positions, info=properties)
     with pytest.raises(
         ValueError, match=f"{key} (has non-finite value|beyond float32 range)"
     ):
@@ -216,7 +214,7 @@ def _fallback_cases() -> list[Any]:
     """Frame lists the binary format can't hold."""
     coords = [[0, 0, 0], [0.5] * 3]
     fe2_phase = kemio.Structure(
-        _FE2.lattice, ["Fe"] * 2, _FE2.positions, info={"properties": {"phase": "a"}}
+        _FE2.lattice, ["Fe"] * 2, _FE2.positions, info={"phase": "a"}
     )
     h2_pos = [[0, 0, 0], [0, 0, 0.7]]
     h2_bulk = kemio.Structure(np.eye(3) * 5, ["H", "H"], h2_pos)

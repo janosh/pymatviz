@@ -315,10 +315,12 @@ def python_rdfs(monkeypatch: pytest.MonkeyPatch) -> None:
             ValueError,
             "labels must be unique as strings",
         ),
+        # Python-computed RDFs (colors) used to ignore the typo and plot pairs
+        (NACL, {"mode": "ful", "colors": ["red"]}, ValueError, "Invalid mode='ful'"),
     ],
     ids=[
         *("empty", "empty_in_dict", "invalid_type", "neither", "both", "bad_pair"),
-        "colliding_labels",
+        *("colliding_labels", "bad_mode"),
     ],
 )
 def test_rdf_plot_invalid_input(

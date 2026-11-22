@@ -33,10 +33,9 @@ def spacegroup_bar_plot(
     order.
 
     Args:
-        data (Sequence[SpacegroupLike] | pd.Series | Mapping): Space
-            group symbols, integral numbers (1-230), structures (kemio, pymatgen,
-            ASE, phonopy),
-            or a ``{spacegroup: count}`` mapping.
+        data (Sequence[SpacegroupLike] | pd.Series | Mapping): Space group
+            symbols, integral numbers (1-230), structures (kemio, pymatgen, ASE,
+            phonopy), or a ``{spacegroup: count}`` mapping.
         show_counts (bool, optional): Whether to annotate each crystal system region
             with its total count. Defaults to True.
         log_y (bool): Whether to log scale the count axis. Defaults to False.

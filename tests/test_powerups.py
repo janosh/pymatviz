@@ -270,6 +270,7 @@ def test_add_best_fit_line_options_and_errors() -> None:
             ["diagonal", "segment"],
             True,
         ),
+        ({}, {}, {}, ["diagonal", "segment"], True),  # empty dicts enable defaults
     ],
 )
 def test_enhance_parity_plot(
@@ -288,11 +289,11 @@ def test_enhance_parity_plot(
     )
     assert [line["type"] for line in widget.ref_lines or []] == expected_lines
     assert bool(widget.annotation) == has_stats
-    if isinstance(stats, dict):
+    if isinstance(stats, dict) and stats:
         assert widget.annotation == "MAE = 0.1\nR² = 0.8"
-    if isinstance(identity_line, dict):
+    if isinstance(identity_line, dict) and identity_line:
         assert widget.ref_lines[0]["style"]["color"] == "red"
-    if isinstance(best_fit_line, dict):
+    if isinstance(best_fit_line, dict) and best_fit_line:
         assert "annotation" not in widget.ref_lines[1]
 
 

@@ -42,16 +42,17 @@ class DosWidget(StackedDosCheck, PlotControlsTraits, DosTraits, MatterVizWidget)
     pre-computed dict. Pass a ``{label: dos}`` dict to overlay several DOS curves.
 
     Examples:
-        From a pymatgen CompleteDos:
+        From a kemio site-projected phonon DOS (NaCl demo data):
         >>> import pymatviz as pmv
-        >>> widget = pmv.dos(doses=complete_dos)
+        >>> from pymatviz.data import load_nacl_phonons
+        >>> phonons = load_nacl_phonons()
+        >>> widget = pmv.dos(doses=phonons.projected_dos([10, 10, 10]))
         >>> widget
 
-        With custom options:
+        Several DOS curves overlaid, with custom options:
         >>> widget = pmv.dos(
-        ...     doses={"PBE": dos_pbe, "HSE": dos_hse},
+        ...     doses={f"{n_k}^3": phonons.total_dos([n_k] * 3) for n_k in (4, 10)},
         ...     sigma=0.05,
-        ...     spin_mode="overlay",
         ...     style="height: 500px;",
         ... )
     """

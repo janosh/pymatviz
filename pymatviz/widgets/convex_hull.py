@@ -20,23 +20,23 @@ class ConvexHullWidget(ConvexHullTraits, MatterVizWidget):
     composition and energy data.
 
     Examples:
-        From a pymatgen PhaseDiagram:
-        >>> import pymatviz as pmv
-        >>> from pymatgen.analysis.phase_diagram import PhaseDiagram
-        >>> pd = PhaseDiagram(entries)
-        >>> widget = pmv.convex_hull(entries=pd)
-        >>> widget
-
         From a list of entry dicts:
+        >>> import pymatviz as pmv
         >>> entries = [
-        ...     {"composition": {"Li": 1}, "energy_per_atom": -1.5},
-        ...     {"composition": {"Li": 1, "O": 2}, "energy_per_atom": -3.2},
+        ...     {"composition": {"Li": 1}, "energy_per_atom": -1.9},
+        ...     {"composition": {"O": 1}, "energy_per_atom": -4.9},
+        ...     {"composition": {"Li": 2, "O": 1}, "energy_per_atom": -4.8},
+        ...     {"composition": {"Li": 1, "O": 1}, "energy_per_atom": -4.2},
         ... ]
         >>> widget = pmv.convex_hull(entries=entries)
+        >>> widget
+
+        A kemio or pymatgen ``PhaseDiagram`` works the same way, e.g.
+        ``pmv.convex_hull(entries=PhaseDiagram(pmg_entries))``.
 
         With custom visualization options:
         >>> widget = pmv.convex_hull(
-        ...     entries=pd,
+        ...     entries=entries,
         ...     show_unstable_labels=True,
         ...     temperature=300,
         ...     style="height: 600px;",

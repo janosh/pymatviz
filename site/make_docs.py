@@ -7,6 +7,7 @@ language class to the <pre> tag so that syntax highlighting works.
 from __future__ import annotations
 
 import ast
+import doctest
 import json
 import os
 import re
@@ -22,17 +23,42 @@ with open(f"{pmv.utils.ROOT}/site/package.json") as file:
 route = "site/api-docs"
 
 
-def docstring_to_md(node: ast.FunctionDef | ast.ClassDef) -> str:
-    """Convert a Google-style docstring to markdown."""
-    doc = ast.get_docstring(node) or ""
+def prose_to_md(doc: str) -> str:
+    """Convert the prose of a Google-style docstring (no doctest lines) to markdown."""
     # turn `name (type): desc` and `name: desc` entries into bullets
     doc = re.sub(
         r"^ {4}(\*{0,2}\w+) \((.+?)\):", r"- `\1` (`\2`):", doc, flags=re.MULTILINE
     )
     doc = re.sub(r"^ {4}(\*{0,2}\w+):", r"- `\1`:", doc, flags=re.MULTILINE)
-    doc = re.sub(r"(?<![`*])\*\*(\w+)", r"`**\1`", doc)  # bare **kwargs breaks bold
+    # bare **kwargs breaks bold (not powers like x**2)
+    doc = re.sub(r"(?<![\w`*])\*\*([a-zA-Z_]\w*)", r"`**\1`", doc)
     doc = re.sub(r"\n {6,}", " ", doc)  # join each entry's continuation lines
     return re.sub(r"^(\w+):$", r"**\1**", doc, flags=re.MULTILINE)
+
+
+def docstring_to_md(node: ast.FunctionDef | ast.ClassDef) -> str:
+    """Convert a Google-style docstring to markdown. Each run of doctest examples
+    becomes a fenced Python code block (prompts stripped, expected output as
+    ``# `` comments), and prose after an example is dedented so markdown doesn't
+    render it as an indented code block.
+    """
+    parts, code_lines, seen_example = [], [], False
+    for piece in doctest.DocTestParser().parse(ast.get_docstring(node) or ""):
+        if isinstance(piece, doctest.Example):
+            code_lines += piece.source.splitlines()
+            code_lines += [f"# {line}" for line in piece.want.splitlines()]
+            seen_example = True
+        elif piece.strip() or not code_lines:  # blank strings separate examples
+            if code_lines:
+                parts.append("\n```python\n" + "\n".join(code_lines) + "\n```\n\n")
+                code_lines = []
+            prose = prose_to_md(piece)
+            if seen_example:
+                prose = re.sub(r"^ +", "", prose, flags=re.MULTILINE)
+            parts.append(prose)
+    if code_lines:
+        parts.append("\n```python\n" + "\n".join(code_lines) + "\n```\n")
+    return "".join(parts)
 
 
 def signature(func: ast.FunctionDef) -> str:

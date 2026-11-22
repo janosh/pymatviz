@@ -89,7 +89,9 @@ def test_error_decay_random_band_exact(abs_err: list[float]) -> None:
 
 
 @pytest.mark.parametrize("y_std", [xs, {"foo": xs, "bar": 0.1 * xs}])
-@pytest.mark.parametrize("identity_line", [True, False, {"style": {"color": "blue"}}])
+@pytest.mark.parametrize(
+    "identity_line", [True, False, {}, {"style": {"color": "blue"}}]
+)
 def test_qq_gaussian(
     df_or_arrays: DfOrArrays,
     y_std: ArrayLike | dict[str, ArrayLike],
@@ -111,10 +113,10 @@ def test_qq_gaussian(
         assert "miscal:" in srs["label"]
         assert fill["upper"] == {"type": "series", "series_idx": idx}
         assert fill["lower"]["values"] == srs["x"]
-    if identity_line:
+    if identity_line is not False:  # True or a dict, even an empty one
         (line,) = widget.ref_lines
         assert (line["type"], line["slope"], line["intercept"]) == ("diagonal", 1, 0)
-        expected_color = "blue" if isinstance(identity_line, dict) else "red"
+        expected_color = "blue" if identity_line not in (True, {}) else "red"
         assert line["style"]["color"] == expected_color
     else:
         assert widget.ref_lines is None
@@ -150,7 +152,10 @@ def test_qq_gaussian_multiple_uncertainties() -> None:
 
 
 @pytest.mark.parametrize("plot", [qq_gaussian, error_decay_with_uncert])
-@pytest.mark.parametrize("std_kind", ["array", "list", "mapping", "column", "columns"])
+@pytest.mark.parametrize(
+    "std_kind",
+    ["array", "list", "mapping", "column", "columns", "index", "int_column"],
+)
 def test_uncertainty_dataframe_alignment(plot: Callable, std_kind: str) -> None:
     """Filter external uncertainties with the same row mask as DataFrame targets."""
     frame = pd.DataFrame(
@@ -163,10 +168,18 @@ def test_uncertainty_dataframe_alignment(plot: Callable, std_kind: str) -> None:
         "mapping": {"std": frame["std"].to_numpy()},
         "column": "std",
         "columns": ["std"],
+        "index": pd.Index(["std"]),  # e.g. df.columns[2:]
+        "int_column": 2,
     }[std_kind]
-    actual = plot("true", "pred", uncertainties, df=frame)
+    if std_kind == "int_column":  # all-int column labels, as in df_to_arrays
+        frame.columns = pd.RangeIndex(3)
+        actual = plot(0, 1, uncertainties, df=frame)
+    else:
+        actual = plot("true", "pred", uncertainties, df=frame)
     expected = plot([0, 0], [3, 1], [2, 1])
-    assert actual.series == expected.series
+    assert [srs["y"] for srs in actual.series] == [srs["y"] for srs in expected.series]
+    if std_kind != "int_column":  # column 2 labels its curve "2", not "std"
+        assert actual.series == expected.series
 
 
 @pytest.mark.parametrize("plot", [qq_gaussian, error_decay_with_uncert])

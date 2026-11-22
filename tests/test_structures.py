@@ -42,10 +42,13 @@ H2O = kemio.Structure(
         ([f"{TEST_FILES}/structures/mp-12712.json"], ["1 Zr18 Pd24"]),  # file path
         (f"{TEST_FILES}/structures/mp-12712.json", ["Zr18 Pd24"]),  # single path
         (structure_dict(SI2_STRUCT), ["Si2"]),  # single pymatgen-format dict
+        # a structure labeled "sites" isn't a pymatgen dict's list of site dicts
+        ({"sites": SI_STRUCTS[0], "bulk": H2O}, ["sites", "bulk"]),
+        (np.array([SI_STRUCTS[0], H2O], dtype=object), ["1 Si2", "2 H2 O1"]),
     ],
     ids=[
         *("structure", "molecule", "list", "dict", "series", "path", "single_path"),
-        "structure_dict",
+        *("structure_dict", "label_named_sites", "object_array"),
     ],
 )
 def test_normalize_structures(input_raw: Any, expected_keys: list[Hashable]) -> None:

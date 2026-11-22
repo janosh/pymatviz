@@ -64,6 +64,7 @@ def test_confusion_matrix_basic(
         ({"Acc": ".2f", "MCC": None}, "Predicted (Acc=0.85, MCC=69.8%)"),
         (("Prec", "Rec", "F1"), "Predicted (Prec=77.8%, Rec=87.5%, F1=82.4%)"),
         ((), "Predicted"),
+        ("MCC", "Predicted (MCC=69.8%)"),  # one name, not its letters
     ],
 )
 def test_confusion_matrix_metrics(
@@ -122,7 +123,11 @@ def test_confusion_matrix_multi_class() -> None:
         ({"y_true": [0, 1], "y_pred": [1, 1], "x_labels": ("0", "2")}, "must name"),
         (
             {"conf_mat": np.zeros((2, 2)), "x_labels": ("A", "B")},
-            "must contain samples",
+            "must hold non-negative counts of at least one sample",
+        ),
+        (
+            {"conf_mat": [[3, -1], [0, 2]], "x_labels": ("A", "B")},
+            "must hold non-negative counts",
         ),
         (
             {"y_true": [0, 1], "y_pred": [1, 1], "y_labels": ("1", "0")},
@@ -299,21 +304,28 @@ def test_invalid_inputs(
 
 
 @pytest.mark.parametrize(
-    ("curve_func", "targets", "missing"),
+    ("curve_func", "targets", "missing", "labels"),
     [
-        (roc_curve, np.ones(4), "0"),
-        (roc_curve, [0, 0, np.nan, 0], "1"),
-        (roc_curve, [-1, -1, -1, -1], "1"),
-        (precision_recall_curve, np.zeros(4), "1"),
+        (roc_curve, np.ones(4), "0", "'1'"),
+        (roc_curve, [0, 0, np.nan, 0], "1", "'0'"),
+        (roc_curve, [-1, -1, -1, -1], "1", "'-1'"),  # given labels, not mapped 0
+        (roc_curve, [0, 2, 2, 0], "1", "'0', '2'"),  # 2 is negative, not positive
+        (precision_recall_curve, np.zeros(4), "1", "'0'"),
     ],
 )
 def test_single_class_targets_raise(
-    curve_func: Callable[..., ScatterPlotWidget], targets: ArrayLike, missing: str
+    curve_func: Callable[..., ScatterPlotWidget],
+    targets: ArrayLike,
+    missing: str,
+    labels: str,
 ) -> None:
-    """Curves undefined for single-class targets raise naming the classifier."""
+    """Curves undefined for single-class targets raise naming the classifier and
+    the labels it got.
+    """
     probs = {"Model A": [0.1, 0.9, 0.8, 0.2]}
     with pytest.raises(
-        ValueError, match=rf"'Model A' has no targets of class {missing} \("
+        ValueError,
+        match=rf"'Model A' has no targets of class {missing} \(.* labels \[{labels}\]",
     ):
         curve_func(targets, probs)
 

@@ -143,13 +143,17 @@ class StructureWidget(StructureVizTraits, StructureTraits, MatterVizWidget):
 
     Examples:
         Basic usage:
+        >>> import numpy as np
+        >>> import kemio
+        >>> nacl = kemio.Structure(
+        ...     np.eye(3) * 5.64, ["Na", "Cl"], [[0] * 3, [0.5] * 3], fractional=True
+        ... )
         >>> import pymatviz as pmv
-        >>> structure_data = {...}  # Structure dictionary from pymatgen/ASE
-        >>> widget = pmv.structure(structure=structure_data)
+        >>> widget = pmv.structure(structure=nacl)
 
         With custom visualization options:
         >>> widget = pmv.structure(
-        ...     structure=structure_data,
+        ...     structure=nacl,
         ...     atom_radius=0.8,
         ...     show_bonds="always",
         ...     color_scheme="Jmol",
@@ -159,27 +163,45 @@ class StructureWidget(StructureVizTraits, StructureTraits, MatterVizWidget):
         Site vectors (force/magmom/spin) are auto-detected from site properties.
         Single vector keys use element-colored arrows; multiple keys get palette
         colors with per-key toggles, scale sliders, and origin gap control:
-        >>> pmv.structure(structure=struct_with_forces)  # auto-detected
-        >>> pmv.structure(structure=struct, vector_origin_gap=0.3)  # multi-method
-        >>> pmv.structure(structure=struct, vector_normalize=True)  # direction only
+        >>> forces = {
+        ...     "force_DFT": [[0.1, 0, 0], [-0.1, 0, 0]],
+        ...     "force_MLIP": [[0.12, 0.01, 0], [-0.12, -0.01, 0]],
+        ... }
+        >>> struct_with_forces = kemio.Structure(
+        ...     nacl.lattice,
+        ...     ["Na", "Cl"],
+        ...     nacl.frac_coords,
+        ...     fractional=True,
+        ...     site_data=forces,
+        ... )
+        >>> widget = pmv.structure(structure=struct_with_forces)  # auto-detected
+        >>> widget = pmv.structure(structure=struct_with_forces, vector_origin_gap=0.3)
+        >>> widget = pmv.structure(structure=struct_with_forces, vector_normalize=True)
 
-        Isosurfaces: pymatgen ``VolumetricData`` objects or dicts plus explicit layers
-        (``isovalue`` in the volume's units, e/Å³ for CHGCAR) that pick their volume by
-        ``volume_id`` (a pymatgen ``data`` key, or a dict's ``id``/``label``):
-        >>> layer = dict(isovalue=0.05, color="#3b82f6", opacity=0.6, visible=True)
+        Isosurfaces: pymatgen ``VolumetricData`` objects (e.g.
+        ``Chgcar.from_file("CHGCAR")``) or dicts plus explicit layers (``isovalue`` in
+        the volume's units, e/Å³ for CHGCAR) that pick their volume by ``volume_id``
+        (a pymatgen ``data`` key, or a dict's ``id``/``label``):
+        >>> grid = np.random.default_rng(seed=0).random((8, 8, 8))
+        >>> density = {"id": "total", "grid": grid, "lattice": np.eye(3) * 5.64}
+        >>> density |= {"origin": [0, 0, 0], "periodic": True}
+        >>> layer = dict(isovalue=0.5, color="#3b82f6", opacity=0.6, visible=True)
         >>> layer |= dict(volume_id="total")
-        >>> pmv.structure(
-        ...     volumetric_data=[Chgcar.from_file("CHGCAR")],
+        >>> widget = pmv.structure(
+        ...     structure=nacl,
+        ...     volumetric_data=[density],
         ...     isosurface_settings={"layers": [layer], "wireframe": False, "halo": 0},
         ... )
 
         Several pymatgen volumes share ``data`` keys (every ``Chgcar`` has ``"total"``),
         so pass a ``{prefix: volume}`` mapping to namespace ids (and labels) as
         ``"prefix/key"``:
-        >>> volumes = {"relaxed": chgcar_relaxed, "initial": chgcar_initial}
+        >>> volumes = {"relaxed": density, "initial": density}
         >>> layer |= dict(volume_id="relaxed/total")
-        >>> pmv.structure(
-        ...     volumetric_data=volumes, isosurface_settings={"layers": [layer]}
+        >>> widget = pmv.structure(
+        ...     structure=nacl,
+        ...     volumetric_data=volumes,
+        ...     isosurface_settings={"layers": [layer]},
         ... )
     """
 
@@ -250,7 +272,9 @@ class StructureWidget(StructureVizTraits, StructureTraits, MatterVizWidget):
                         payload["label"] = f"{prefix}/{payload['label']}"
                     payloads.append(payload)
         elif isinstance(value, (list, tuple)):
-            payloads = [pl for vol in value for pl in volume_to_envelopes(vol)]
+            payloads = [
+                payload for vol in value for payload in volume_to_envelopes(vol)
+            ]
         else:
             raise TypeError(
                 "volumetric_data must be a list of volumes or a {prefix: volume} "
@@ -274,7 +298,12 @@ class StructureWidget(StructureVizTraits, StructureTraits, MatterVizWidget):
         """Check that layers reference loaded volumes (cross-validated at the end of
         __init__/hold_trait_notifications, so trait order doesn't matter).
         """
-        check_layer_volume_ids(proposal["value"], self.volumetric_data)
+        volumes = self.volumetric_data
+        # while volumetric_data still holds the raw input (a {prefix: volume} mapping,
+        # pymatgen volumes, label-only dicts), its own validator checks the layers
+        # once it has normalized the volumes and their ids
+        if all(is_binary_envelope(volume, "volume") for volume in volumes):
+            check_layer_volume_ids(proposal["value"], volumes)
         return proposal["value"]
 
     def __init__(

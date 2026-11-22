@@ -32,22 +32,29 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
     JSON (``json.dumps`` needs a ``default`` for them).
 
     Examples:
-        Basic usage with list of structures:
+        Basic usage with a list of structures (here NaCl under strain):
+        >>> import numpy as np
+        >>> import kemio
         >>> import pymatviz as pmv
-        >>> trajectory_data = [...]  # List of structures
+        >>> species, coords = ["Na", "Cl"], [[0] * 3, [0.5] * 3]
+        >>> trajectory_data = [
+        ...     kemio.Structure(np.eye(3) * a_len, species, coords, fractional=True)
+        ...     for a_len in (5.5, 5.6, 5.7)
+        ... ]
         >>> widget = pmv.trajectory(trajectory=trajectory_data)
         >>> widget
 
         With per-frame properties (scalars are plotted; per-atom ``forces`` of shape
         (n_sites, 3) are drawn as vectors with their max/RMS norms plotted):
+        >>> forces = np.array([[0.1, 0, 0], [-0.1, 0, 0]])
         >>> trajectory_with_props = [
-        ...     {"structure": struct1, "energy": -1.23, "forces": forces1},
-        ...     {"structure": struct2, "energy": -1.25, "forces": forces2},
+        ...     {"structure": trajectory_data[0], "energy": -1.23, "forces": forces},
+        ...     {"structure": trajectory_data[1], "energy": -1.25, "forces": -forces},
         ... ]
         >>> widget = pmv.trajectory(trajectory=trajectory_with_props)
 
-        A pymatgen ``Trajectory`` syncs as binary arrays (its ``as_dict()`` as JSON):
-        >>> widget = pmv.trajectory(trajectory=Trajectory.from_file("XDATCAR"))
+        A pymatgen ``Trajectory`` (e.g. ``Trajectory.from_file("XDATCAR")``) syncs as
+        binary arrays, its ``as_dict()`` as JSON.
 
         With custom visualization options:
         >>> widget = pmv.trajectory(
@@ -203,10 +210,10 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
         sites = []
         for site_idx, site in enumerate(structure.get("sites", [])):
             species = [
-                {"element": sp, "occu": 1.0}
-                if isinstance(sp, str)
-                else {"occu": 1.0, **sp}
-                for sp in site.get("species", [])
+                {"element": specie, "occu": 1.0}
+                if isinstance(specie, str)
+                else {"occu": 1.0, **specie}
+                for specie in site.get("species", [])
             ]
             coords = {
                 key: [float(coord) for coord in site[key]]

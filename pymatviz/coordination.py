@@ -10,13 +10,8 @@ import kemio
 import numpy as np
 
 from pymatviz.enums import LabelEnum
-from pymatviz.structures import (
-    normalize_structures,
-    site_elements,
-    site_symbols,
-    str_labels,
-)
-from pymatviz.utils import df_ptable
+from pymatviz.structures import normalize_structures, site_elements, site_symbols
+from pymatviz.utils import df_ptable, str_labels
 from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.bar_plot import BarPlotWidget, bar_axis_defaults
 from pymatviz.widgets.coordination_bar_plot import CoordinationBarPlotWidget
@@ -125,8 +120,8 @@ def coordination_bar_plot(
             annotate_bars without split_mode="by_element".
     """
     split_mode = CnSplitMode(split_mode)
-    struct_dict = normalize_structures(structures)
-    labeled = str_labels(struct_dict)  # by_structure series are keyed by label
+    # by_structure series are keyed by label
+    labeled = str_labels(normalize_structures(structures))
     if is_browser_strategy(strategy):
         if element_colors is not None or annotate_bars:
             raise ValueError(
@@ -144,8 +139,8 @@ def coordination_bar_plot(
     # {series label: CN counts} from one neighbor search over all structures;
     # by_element sums each element (majority one on disordered sites) over them
     groups: dict[str, Counter[int]] = {}
-    all_cns = kemio.coordination_numbers(list(labeled.values()), strategy)
-    for (label, struct), cns in zip(labeled.items(), all_cns, strict=True):
+    site_cns = kemio.coordination_numbers(list(labeled.values()), strategy)
+    for (label, struct), cns in zip(labeled.items(), site_cns, strict=True):
         if split_mode == CnSplitMode.by_element:
             for symbol, cn in zip(site_symbols(struct), cns.tolist(), strict=True):
                 groups.setdefault(symbol, Counter())[cn] += 1
@@ -156,10 +151,10 @@ def coordination_bar_plot(
     if split_mode == CnSplitMode.by_element:
         groups = dict(sorted(groups.items()))
 
-    all_cns = {cn for counts in groups.values() for cn in counts}
-    if not all_cns:
+    observed_cns = {cn for counts in groups.values() for cn in counts}
+    if not observed_cns:
         raise ValueError("structures have no sites to count coordination numbers of")
-    cn_values = list(range(min(all_cns), max(all_cns) + 1))
+    cn_values = list(range(min(observed_cns), max(observed_cns) + 1))
     elem_colors = _element_colors(element_colors)
     series: list[dict[str, Any]] = []
     for label, counts in groups.items():
@@ -224,7 +219,7 @@ def coordination_vs_cutoff_line(
         raise TypeError(f"Invalid {cutoff_range=}, expected (min_cutoff, max_cutoff)")
     if num_points < 1:
         raise ValueError(f"{num_points=} must be positive")
-    struct_dict = normalize_structures(structures)
+    struct_dict = str_labels(normalize_structures(structures))
     cutoffs = np.linspace(float(cutoff_range[0]), float(cutoff_range[1]), num_points)
     elem_colors = _element_colors(element_colors)
     multi_struct = len(struct_dict) > 1
@@ -247,16 +242,11 @@ def coordination_vs_cutoff_line(
                 "line_style": {"color": elem_colors.get(element), "dash": dash},
             }
             if multi_struct:
-                entry["legend_group"] = str(struct_name)
+                entry["legend_group"] = struct_name
             series.append(entry)
 
-    return ScatterPlotWidget(
-        series,
-        **with_defaults(
-            {
-                "x_axis": {"label": "Cutoff Distance (Å)"},
-                "y_axis": {"label": "Coordination Number"},
-            },
-            kwargs,
-        ),
-    )
+    defaults = {
+        "x_axis": {"label": "Cutoff Distance (Å)"},
+        "y_axis": {"label": "Coordination Number"},
+    }
+    return ScatterPlotWidget(series, **with_defaults(defaults, kwargs))

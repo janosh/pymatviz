@@ -16,17 +16,18 @@ from pymatviz.widgets.matterviz import MatterVizWidget
 class BrillouinZoneWidget(BrillouinZoneTraits, MatterVizWidget):
     """MatterViz widget for visualizing Brillouin zones.
 
-    Accepts a pymatgen Structure (BZ is computed by the matterviz frontend) or
-    pre-computed BZ data with vertices, faces, and edges.
+    Accepts a kemio or pymatgen Structure, ASE Atoms or PhonopyAtoms (the BZ is
+    computed by the matterviz frontend), or pre-computed ``bz_data`` with vertices,
+    faces, and edges.
 
     Examples:
-        From a pymatgen Structure:
+        From a kemio Structure:
+        >>> import numpy as np
+        >>> import kemio
         >>> import pymatviz as pmv
+        >>> struct = kemio.Structure(np.eye(3) * 4, ["Fe"], [[0, 0, 0]])
         >>> widget = pmv.brillouin_zone(structure=struct)
         >>> widget
-
-        With pre-computed BZ data:
-        >>> widget = pmv.brillouin_zone(bz_data=bz_dict)
 
         With custom options:
         >>> widget = pmv.brillouin_zone(

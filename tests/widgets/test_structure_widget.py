@@ -237,10 +237,17 @@ def test_widget_volumetric_data_rejects_invalid(
         ({"isovalue": 0.1}, [], "needs a nonempty string volume_id"),
         # data_url volumes are parsed in the browser: ids can't be checked
         ({"volume_id": "charge density"}, [], None),
+        # raw inputs whose ids only exist after normalizing: label-only dicts and
+        # {prefix: volume} mappings (layers are checked once volumes are normalized)
+        ({"volume_id": "rho"}, [{**_UNNAMED_VOLUME, "label": "rho"}], None),
+        ({"volume_id": "run/chg"}, {"run": _VOLUME}, None),
+        ({"volume_id": "chg"}, {"run": _VOLUME}, r"volume_id='chg' matches no"),
     ],
 )
 def test_widget_isosurface_layer_volume_ids(
-    layer: dict[str, Any], volumes: list[dict[str, Any]], match: str | None
+    layer: dict[str, Any],
+    volumes: list[dict[str, Any]] | dict[str, dict[str, Any]],
+    match: str | None,
 ) -> None:
     """Isosurface layers must name a volume_id that matches a loaded volume."""
     settings = {"layers": [layer]}

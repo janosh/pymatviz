@@ -25,17 +25,26 @@ class FermiSurfaceWidget(FermiSurfaceTraits, MatterVizWidget):
     ``{energies: [spin][band][kx][ky][kz], k_grid, k_lattice, fermi_energy}``.
 
     Examples:
-        From pre-computed Fermi surface data:
+        From raw band grid data (one free-electron band, cut into a sphere):
+        >>> import numpy as np
         >>> import pymatviz as pmv
-        >>> widget = pmv.fermi_surface(fermi_data=fermi_dict)
+        >>> k_axis = np.linspace(-0.5, 0.5, 8)
+        >>> kx, ky, kz = np.meshgrid(k_axis, k_axis, k_axis, indexing="ij")
+        >>> band_grid = {
+        ...     "energies": [[kx**2 + ky**2 + kz**2]],  # [spin][band][kx][ky][kz]
+        ...     "k_grid": [8, 8, 8],
+        ...     "k_lattice": np.eye(3),
+        ...     "fermi_energy": 0.15,
+        ... }
+        >>> widget = pmv.fermi_surface(band_data=band_grid)
         >>> widget
 
-        From raw band grid data:
-        >>> widget = pmv.fermi_surface(band_data=band_grid_dict)
+        Pre-computed isosurfaces go in ``fermi_data``, e.g.
+        ``pmv.fermi_surface(fermi_data=ifermi_surface.as_dict())``.
 
         With custom options:
         >>> widget = pmv.fermi_surface(
-        ...     fermi_data=fermi_dict,
+        ...     band_data=band_grid,
         ...     surface_opacity=0.8,
         ...     show_bz=True,
         ...     color_property="property",

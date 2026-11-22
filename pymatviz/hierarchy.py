@@ -1,5 +1,5 @@
-"""Chemical systems as sunburst or treemap hierarchies, and the node pruning they share
-with chemical environment hierarchies.
+"""Chemical system, chemical environment and space group hierarchies as sunburst or
+treemap widgets.
 """
 
 from __future__ import annotations
@@ -183,9 +183,9 @@ def chem_env_hierarchy(
         for env in envs:
             counts[env].append(1 / len(envs) if normalize else 1)
 
-    by_cn: defaultdict[int, list[dict[str, Any]]] = defaultdict(list)
+    by_coord_num: defaultdict[int, list[dict[str, Any]]] = defaultdict(list)
     for (coord_num, symbol), weights in sorted(counts.items()):
-        by_cn[coord_num].append(
+        by_coord_num[coord_num].append(
             dict(id=f"CN {coord_num}/{symbol}", label=symbol, value=fsum(weights))
         )
     nodes = [
@@ -195,7 +195,7 @@ def chem_env_hierarchy(
             children=children,
             value=fsum(child["value"] for child in children),
         )
-        for coord_num, children in by_cn.items()
+        for coord_num, children in by_coord_num.items()
     ]
     roots = _limit_nodes(nodes, max_coordination_numbers, overflow)
     for root in roots:

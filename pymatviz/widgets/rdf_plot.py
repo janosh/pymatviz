@@ -35,11 +35,14 @@ class RdfPlotWidget(PlotControlsTraits, RdfPlotTraits, MatterVizWidget):
     Provide either ``structures`` or ``patterns``, not both.
 
     Examples:
-        From a pymatgen Structure dict:
-        >>> import pymatviz as pmv
-        >>> widget = pmv.rdf_plot(
-        ...     structures={"lattice": {...}, "sites": [...]}, cutoff=10
+        From a kemio Structure (or pymatgen Structure, ASE Atoms, structure dict):
+        >>> import numpy as np
+        >>> import kemio
+        >>> nacl = kemio.Structure(
+        ...     np.eye(3) * 5.64, ["Na", "Cl"], [[0] * 3, [0.5] * 3], fractional=True
         ... )
+        >>> import pymatviz as pmv
+        >>> widget = pmv.rdf_plot(structures=nacl, cutoff=10)
     """
 
     patterns = normalized_trait(
@@ -67,7 +70,8 @@ class RdfPlotWidget(PlotControlsTraits, RdfPlotTraits, MatterVizWidget):
             structures: A structure (kemio, pymatgen, ASE, phonopy or structure
                 dict), or a list or ``{label: structure}`` dict of them, for
                 on-the-fly RDF computation.
-            patterns: Pre-computed RDF data (list of ``{r, g_r, label}`` dicts).
+            patterns: Pre-computed RDF entries (list of
+                ``{label, pattern: {r, g_r}}`` dicts).
             **kwargs: Additional widget properties.
         """
         if structures is not None and patterns is not None:

@@ -9,6 +9,7 @@ from collections.abc import Hashable, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
 import kemio
+import numpy as np
 import pandas as pd
 from kemio.interop import (
     is_pymatgen_structure,
@@ -16,6 +17,8 @@ from kemio.interop import (
     structure_to_pymatgen_dict,
     to_structure,
 )
+
+from pymatviz.utils import check_unique_labels
 
 
 if TYPE_CHECKING:
@@ -25,17 +28,12 @@ if TYPE_CHECKING:
 def structure_dict(obj: AnyStructure) -> dict[str, Any]:
     """Dict in pymatgen's format (MatterViz's JSON structure format) of a structure-like
     object: pymatgen's own ``as_dict()`` for pymatgen objects, else kemio's
-    ``Structure.as_dict()``/``Molecule.as_dict()`` payload (molecules without lattice),
-    with the rest of ``Structure.info`` (e.g. ASE ``Atoms.info``) added to the
-    ``properties`` kemio fills from ``info["properties"]`` (as pymatgen's ASE adaptor).
+    ``Structure.as_dict()``/``Molecule.as_dict()`` payload (molecules without lattice,
+    ``Structure.info``, e.g. ASE ``Atoms.info``, as ``properties``).
     """
     if is_pymatgen_structure(obj):
         return obj.as_dict()
-    struct = to_structure(obj)
-    struct_dict = structure_to_pymatgen_dict(struct)
-    extra_info = {key: val for key, val in struct.info.items() if key != "properties"}
-    struct_dict["properties"] = extra_info | struct_dict["properties"]
-    return struct_dict
+    return structure_to_pymatgen_dict(to_structure(obj))
 
 
 def site_elements(struct: kemio.Structure) -> list[set[str]]:
@@ -64,14 +62,18 @@ def normalize_structures(systems: _StructureInputs) -> dict[Hashable, kemio.Stru
     """Map structure-like inputs (single, sequence or mapping) to kemio
     Structures, keyed by formula for a single input, by "{index} {formula}" for
     sequences, and by the given keys for mappings/Series. A structure file path or
-    pymatgen-format structure dict (with "sites") counts as a single input.
+    pymatgen-format structure dict (with a "sites" list) counts as a single input.
 
     Raises:
         ValueError: If systems is empty.
         TypeError: For unsupported input or item types.
         FileNotFoundError: For a path that isn't a file.
     """
-    is_single_dict = isinstance(systems, Mapping) and "sites" in systems
+    # a structure dict holds a list of site dicts, a mapping of labeled structures
+    # may well name one "sites"
+    is_single_dict = isinstance(systems, Mapping) and isinstance(
+        systems.get("sites"), list | tuple
+    )
     is_path = isinstance(systems, str | os.PathLike)
     if is_structure_like(systems) or is_single_dict or is_path:
         struct = to_structure(systems)
@@ -81,12 +83,10 @@ def normalize_structures(systems: _StructureInputs) -> dict[Hashable, kemio.Stru
         raise ValueError("Cannot plot empty set of structures")
 
     if isinstance(systems, (pd.Series, Mapping)):  # keep original keys/index
-        if isinstance(systems, pd.Series) and systems.index.has_duplicates:
-            dupes = systems.index[systems.index.duplicated()].unique().tolist()
-            raise ValueError(f"structure labels must be unique, got duplicates {dupes}")
+        check_unique_labels(systems, "structure labels")
         return {key: to_structure(val) for key, val in systems.items()}
 
-    if isinstance(systems, Sequence):
+    if isinstance(systems, Sequence | np.ndarray):
         return {
             f"{idx} {(struct := to_structure(item)).composition.formula}": struct
             for idx, item in enumerate(systems, start=1)
@@ -94,21 +94,9 @@ def normalize_structures(systems: _StructureInputs) -> dict[Hashable, kemio.Stru
 
     raise TypeError(
         "Input must be a kemio or pymatgen Structure/Molecule, ASE Atoms or "
-        "PhonopyAtoms, a sequence (list, tuple, pd.Series) or a mapping of them. "
-        f"Got {type(systems)=}"
+        "PhonopyAtoms, a sequence (list, tuple, 1D array, pd.Series) or a mapping "
+        f"of them. Got {type(systems)=}"
     )
-
-
-def str_labels[T](labeled: Mapping[Any, T]) -> dict[str, T]:
-    """Mapping with its keys as strings.
-
-    Raises:
-        ValueError: If distinct keys share a string form (e.g. 1 and "1").
-    """
-    as_str = {str(key): val for key, val in labeled.items()}
-    if len(as_str) < len(labeled):
-        raise ValueError(f"labels must be unique as strings, got {list(labeled)}")
-    return as_str
 
 
 def normalize_periodic_structures(

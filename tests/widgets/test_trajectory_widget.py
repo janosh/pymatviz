@@ -65,7 +65,7 @@ def test_widget_trajectory_updates(
     widget.current_step_idx = 2
     # Test trajectory update (step doesn't reset automatically)
     updated_structure = fe3co4_disordered.copy()
-    updated_structure.info = {"properties": {"energy": -1.5}}
+    updated_structure.info = {"energy": -1.5}
     new_trajectory = {
         "frames": [updated_structure, updated_structure],
         "metadata": {"temperature": np.int64(300)},
@@ -260,7 +260,7 @@ def test_trajectory_widget_kemio_frames_and_info() -> None:
         for struct in _fe2_frames(2)
     ]
     for idx, struct in enumerate(structures):
-        struct.info = {"temperature": 300.0 + idx, "properties": {"density": 3.0}}
+        struct.info = {"temperature": 300.0 + idx, "density": 3.0}
     frames = [Frame(struct, energy=-1.0 - idx) for idx, struct in enumerate(structures)]
     for traj, energies in ((frames, [-1, -2]), (structures, None)):
         widget = create_widget(traj)
@@ -393,7 +393,7 @@ def test_trajectory_widget_completes_only_non_derivable_fields(
 def test_trajectory_widget_with_structure_metadata(properties: dict[str, Any]) -> None:
     """Structure properties become frame metadata, per-atom forces site vectors."""
     (structure,) = _fe2_frames(1)
-    structure.info = {"properties": properties}
+    structure.info = properties
 
     arrays = decode_envelope(TrajectoryWidget(trajectory=structure).trajectory)
     scalars = {key: arr.tolist() for key, arr in arrays.items() if arr.ndim == 1}

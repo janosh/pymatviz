@@ -34,12 +34,12 @@ class LabelEnum(StrEnum):
 
     @property
     def label(self) -> str:
-        """Make label read-only."""
+        """Display label of the member."""
         return self.__dict__["label"]
 
     @property
     def description(self) -> str:
-        """Make description read-only."""
+        """Description of the member ("" if none given)."""
         return self.__dict__["desc"]
 
 
@@ -70,7 +70,9 @@ class ElemCountMode(LabelEnum):
 
 
 class MetaFiles(EnumType):
-    """Metaclass of Files enum that adds base_dir class kwarg."""
+    """Metaclass of Files enums that adds the base_dir and auto_download class
+    kwargs.
+    """
 
     _base_dir: str
     _auto_download: bool
@@ -105,11 +107,11 @@ class Files(StrEnum, metaclass=MetaFiles):
         return obj
 
     def __repr__(self) -> str:
-        """String representation of the file."""
+        """Enum class and member name, e.g. Files.my_file."""
         return f"{type(self).__name__}.{self.name}"
 
     def __str__(self) -> str:
-        """String representation of the file."""
+        """Member name (not the file path value)."""
         return self.name
 
     @property

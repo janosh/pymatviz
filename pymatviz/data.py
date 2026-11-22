@@ -34,33 +34,26 @@ def regression(
 ) -> RegressionData:
     """Generate dummy regression data for testing and prototyping.
 
-    This function creates synthetic data to simulate a regression task:
-    - `y_true`: Sampled from a normal distribution with mean 5 and
-        standard deviation 4.
-    - `y_pred`: Linearly related to `y_true` with a slope of 1.2 and
-        additional Gaussian noise.
-    - `y_std`: Residuals scaled by random noise, representing variability
-        in predictions.
-
-    Parameters:
-        n_samples (int): Number of samples to generate. Default is 500.
+    Args:
+        n_samples (int): Number of samples to generate. Defaults to 500.
+        true_mean (float): Mean of the normally distributed y_true. Defaults to 5.
+        true_std (float): Standard deviation of y_true. Defaults to 4.
+        pred_slope (float): Slope of y_pred vs y_true. Defaults to 1.2.
+        pred_intercept (float): Intercept of y_pred vs y_true. Defaults to -2.
+        seed (int): Random seed. Defaults to 0.
 
     Returns:
-        RegressionData: A named tuple containing y_true, y_pred, and y_std.
+        RegressionData: y_true, y_pred (linear in y_true plus unit Gaussian noise)
+            and positive y_std that grows with the absolute residuals.
     """
-    np_rng = np.random.default_rng(seed=seed)
-
-    y_true = np_rng.normal(loc=true_mean, scale=true_std, size=n_samples)
-
-    noise = np_rng.normal(loc=0, scale=1, size=n_samples)
+    rng = np.random.default_rng(seed=seed)
+    y_true = rng.normal(loc=true_mean, scale=true_std, size=n_samples)
+    noise = rng.normal(loc=0, scale=1, size=n_samples)
     y_pred = pred_slope * y_true + pred_intercept + noise
 
-    # Generate realistic positive uncertainties
-    # Base uncertainty that's correlated with absolute residuals but always positive
     abs_residuals = np.abs(y_true - y_pred)
-    y_std = (
-        0.5 + 0.3 * abs_residuals + 0.8 * np_rng.exponential(scale=1, size=n_samples)
-    )
+    random_spread = 0.8 * rng.exponential(scale=1, size=n_samples)
+    y_std = 0.5 + 0.3 * abs_residuals + random_spread
 
     return RegressionData(y_true=y_true, y_pred=y_pred, y_std=y_std)
 
@@ -140,6 +133,8 @@ def load_nacl_phonons() -> kemio.Phonons:
     from the test phonopy files, read by kemio, for tests and examples.
 
     Example:
+        >>> import pymatviz as pmv
+        >>> from pymatviz.data import load_nacl_phonons
         >>> phonons = load_nacl_phonons()
         >>> pmv.phonon_dos(phonons.projected_dos([10, 10, 10]), project="element")
     """

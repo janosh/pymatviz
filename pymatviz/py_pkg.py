@@ -91,7 +91,7 @@ def default_module_formatter(module: str, count: int, total: int) -> str:
     return f"{module} ({count:,} lines{percent_str})"
 
 
-def _normalize_package_input(package: str | ModuleType) -> str:
+def _top_package_name(package: str | ModuleType) -> str:
     """Top-level package name of a package name or module object."""
     return package if isinstance(package, str) else package.__name__.split(".")[0]
 
@@ -160,8 +160,15 @@ def _analyze_py_file(file_path: str, package_name: str) -> dict[str, int]:
             for stmt_list in ("body", "orelse", "finalbody", "handlers", "cases"):
                 stack += getattr(node, stmt_list, ())
             if isinstance(node, ast.If):
-                if isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING":
-                    type_checking_imports |= {id(sub_node) for sub_node in node.body}
+                test = node.test  # `if TYPE_CHECKING:` or `if typing.TYPE_CHECKING:`
+                name = test.id if isinstance(test, ast.Name) else None
+                name = test.attr if isinstance(test, ast.Attribute) else name
+                if name == "TYPE_CHECKING":  # incl. imports nested in e.g. try blocks
+                    type_checking_imports |= {
+                        id(sub_node)
+                        for stmt in node.body
+                        for sub_node in ast.walk(stmt)
+                    }
             elif isinstance(node, ast.ClassDef):
                 counts["n_classes"] += 1
                 method_nodes |= {id(item) for item in node.body}
@@ -220,7 +227,7 @@ def collect_package_modules(
     """
     pkg_frames = []
     for pkg_input in package_names:
-        package_name = _normalize_package_input(pkg_input)
+        package_name = _top_package_name(pkg_input)
         pkg_path = find_package_path(package_name)
         if not pkg_path:
             raise ValueError(f"Could not find package path for {package_name!r}")
@@ -425,10 +432,10 @@ def py_pkg_treemap(
         >>> # Analyze a single package
         >>> fig1 = pmv.py_pkg_treemap("pymatviz")
         >>> # Compare multiple packages, coloring cells by function count
-        >>> fig2 = pmv.py_pkg_treemap(["pymatviz", "pymatgen"], color_by="n_functions")
-        >>> # Rust crate treemap (language-agnostic mode)
+        >>> fig2 = pmv.py_pkg_treemap(["pymatviz", "kemio"], color_by="n_functions")
+        >>> # Rust crate treemap (language-agnostic mode, needs that crate's src dir)
         >>> fig3 = pmv.py_pkg_treemap(
-        ...     "my_rust_crate", source_dir="src", file_extensions=(".rs",)
+        ...     "my_crate", source_dir="path/to/my_crate/src", file_extensions=(".rs",)
         ... )
     """
     if max_module_depth is not None and max_module_depth < 0:
@@ -445,7 +452,7 @@ def py_pkg_treemap(
         raise ValueError("color_by dict must map file paths to values, got empty dict")
 
     pkg_list = [packages] if isinstance(packages, str | ModuleType) else packages
-    package_names = [_normalize_package_input(pkg) for pkg in pkg_list]
+    package_names = [_top_package_name(pkg) for pkg in pkg_list]
 
     if source_dir:
         if len(package_names) != 1:
@@ -474,7 +481,7 @@ def py_pkg_treemap(
             axis=1,
         )
 
-    # Filter out cells where cell_value is 0
+    # cell_size_fn returning 0 omits a module
     df_modules = df_modules[df_modules["cell_value"] > 0]
 
     if df_modules.empty:
@@ -542,14 +549,13 @@ def py_pkg_treemap(
                     else min(min_lines_for_split, 500)
                 )
                 significant = child_line_counts[child_line_counts >= effective_min]
-                n_sig = len(significant)
-                max_kids = max_children_for_split if is_deepest_level else None
-                if n_sig >= 1 and (max_kids is None or n_sig <= max_kids):
+                n_significant = len(significant)
+                max_children = max_children_for_split if is_deepest_level else None
+                if n_significant >= 1 and (
+                    max_children is None or n_significant <= max_children
+                ):
                     # EXPAND: keep significant children, merge the rest
-                    sig_set = set(significant.index)
-                    small_mask = group[child_col].map(
-                        lambda val, sig=sig_set: pd.isna(val) or val not in sig
-                    )
+                    small_mask = ~group[child_col].isin(significant.index)
                     merge_rows = group[small_mask]
                     if merge_rows.empty:
                         continue
@@ -559,20 +565,20 @@ def py_pkg_treemap(
                     merge_rows = group
                     clear_start, is_expand = prune_depth, False
 
-                rep = merge_rows.iloc[0].copy()
-                rep["cell_value"] = merge_rows["cell_value"].sum()
-                rep["line_count"] = merge_rows["line_count"].sum()
+                merged_row = merge_rows.iloc[0].copy()
+                merged_value = merged_row["cell_value"] = merge_rows["cell_value"].sum()
+                merged_row["line_count"] = merge_rows["line_count"].sum()
                 if has_color_mode:
                     weighted = merge_rows["color_value"] * merge_rows["cell_value"]
-                    rep["color_value"] = weighted.sum() / rep["cell_value"]
+                    merged_row["color_value"] = weighted.sum() / merged_value
                 if is_expand:
-                    rep[child_col] = OTHER_BUCKET
+                    merged_row[child_col] = OTHER_BUCKET
                 else:
-                    rep["depth"] = prune_depth
+                    merged_row["depth"] = prune_depth
                 for deeper in range(clear_start, effective_depth):
-                    rep[f"level_{deeper}"] = None
+                    merged_row[f"level_{deeper}"] = None
                 rows_to_drop.extend(merge_rows.index)
-                rows_to_add.append(rep.to_dict())
+                rows_to_add.append(merged_row.to_dict())
 
             if rows_to_drop:
                 df_treemap = pd.concat(

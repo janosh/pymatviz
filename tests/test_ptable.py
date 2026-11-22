@@ -248,9 +248,18 @@ def test_ptable_heatmap_splits_dataframe_and_series() -> None:
         ({"Fe": [1, 2], "O": [1, 2, 3]}, "O: got 3 values, expected 2"),
         ({"Fe": [1, 2], "Xx": [1, 2]}, "keys must be elements, got ['Xx']"),
         ({"Fe": [[1, 2]]}, "ptable_heatmap_splits: Fe must be a 1D numeric array"),
+        # repeated keys were silently dropped by dict conversion
+        (
+            pd.DataFrame([[1, 2], [3, 4]], index=["Fe", "Fe"]),
+            "element keys must be unique, got duplicates ['Fe']",
+        ),
+        (
+            pd.Series([[1, 2], [3, 4]], index=["O", "O"]),
+            "element keys must be unique, got duplicates ['O']",
+        ),
     ],
 )
-def test_ptable_heatmap_splits_raises(data: dict[str, Any], err_msg: str) -> None:
+def test_ptable_heatmap_splits_raises(data: Any, err_msg: str) -> None:
     """Empty data, bad split counts and unknown elements raise ValueError."""
     with pytest.raises(ValueError, match=re.escape(err_msg)):
         pmv.ptable_heatmap_splits(data)
@@ -313,9 +322,13 @@ def test_ptable_hists_invalid_bins(bins: Any) -> None:
         ({"Fe": [[1, 2], [3, 4]]}, "ptable_hists: Fe must be a 1D numeric array"),
         ({"Fe": 3}, "ptable_hists: Fe must be a 1D numeric array"),
         ({"Xx": [1]}, "keys must be element symbols, got ['Xx']"),
+        (
+            pd.DataFrame([[1, 2], [3, 4]], columns=["Fe", "Fe"]),
+            "element keys must be unique, got duplicates ['Fe']",
+        ),
     ],
 )
-def test_ptable_hists_raises(data: dict[str, Any], err_msg: str) -> None:
+def test_ptable_hists_raises(data: Any, err_msg: str) -> None:
     """2D or scalar values and unknown elements raise instead of being coerced."""
     with pytest.raises(ValueError, match=re.escape(err_msg)):
         pmv.ptable_hists(data)

@@ -94,7 +94,7 @@ See [`pymatviz/ptable.py`](pymatviz/ptable.py). The module supports heatmaps, he
 
 Visualize 2D or 3D relationships between compositions and properties using multiple embedding and dimensionality reduction techniques:
 
-Embedding methods: **One-hot** encoding of element fractions, **Magpie** features (elemental properties), **Matscholar** element embeddings, **MEGNet** element embeddings
+Embedding methods: **One-hot** encoding of element fractions, **Magpie** features (elemental properties), a DataFrame column of pre-computed embeddings, or any callable mapping compositions to vectors (e.g. matminer featurizers)
 
 Dimensionality reduction methods: **PCA** (linear), **t-SNE** (non-linear), **UMAP** (non-linear), **Isomap** (non-linear), **Kernel PCA** (non-linear)
 

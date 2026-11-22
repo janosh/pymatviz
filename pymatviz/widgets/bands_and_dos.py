@@ -29,14 +29,17 @@ class BandsAndDosWidget(
     ``{label: obj}`` dicts to overlay several band structures / DOS curves.
 
     Examples:
-        From pymatgen objects:
+        From kemio phonon bands and DOS (NaCl demo data):
         >>> import pymatviz as pmv
-        >>> widget = pmv.bands_and_dos(band_structs=bs, doses=dos)
+        >>> from pymatviz.data import load_nacl_phonons
+        >>> phonons = load_nacl_phonons()
+        >>> bands, dos = phonons.bands(), phonons.total_dos([10, 10, 10])
+        >>> widget = pmv.bands_and_dos(band_structs=bands, doses=dos)
         >>> widget
 
         With custom options:
         >>> widget = pmv.bands_and_dos(
-        ...     band_structs=bs,
+        ...     band_structs=bands,
         ...     doses=dos,
         ...     style="height: 600px;",
         ... )

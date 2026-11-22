@@ -107,8 +107,9 @@ def density_scatter(
         )
     import scipy.stats
 
+    points = np.vstack([xs, ys])
     try:  # no KDE for fewer than 2 points or all on one line
-        density = scipy.stats.gaussian_kde(np.vstack([xs, ys]))(np.vstack([xs, ys]))
+        density = scipy.stats.gaussian_kde(points)(points)
     except (ValueError, np.linalg.LinAlgError) as exc:
         warnings.warn(
             f"KDE impossible for {len(xs)} point(s) ({exc}), using uniform colors",
@@ -126,24 +127,15 @@ def density_scatter(
     }
     if isinstance(kwargs.get("color_scale"), str):  # bare scheme keeps the log type
         kwargs["color_scale"] = {"scheme": kwargs["color_scale"]}
+    series = {"x": plot_x, "y": plot_y, "color_values": point_density}
+    defaults = {
+        "x_axis": {"label": xlabel},
+        "y_axis": {"label": ylabel},
+        "color_scale": color_scale,
+        "color_bar": {"title": "Point density"},
+    }
     widget = ScatterPlotWidget(
-        series=[
-            {
-                "x": plot_x,
-                "y": plot_y,
-                "color_values": point_density,
-                "markers": "points",
-            }
-        ],
-        **with_defaults(
-            {
-                "x_axis": {"label": xlabel},
-                "y_axis": {"label": ylabel},
-                "color_scale": color_scale,
-                "color_bar": {"title": "Point density"},
-            },
-            kwargs,
-        ),
+        series=[series | {"markers": "points"}], **with_defaults(defaults, kwargs)
     )
     return enhance_parity_plot(
         widget,
@@ -209,18 +201,15 @@ def density_hexbin(
             side: {"type": "histogram", "bins": int(marginal_bins)}
             for side in ("top", "right")
         }
+    defaults = {
+        "x_axis": {"label": xlabel},
+        "y_axis": {"label": ylabel},
+        "color_bar": {"title": "Count"},
+        "density": {"bin_px": bin_px} if bin_px is not None else {},
+        **({"marginals": marginals} if marginals else {}),
+    }
     widget = BinnedScatterPlotWidget(
-        series=[{"x": xs, "y": ys}],
-        **with_defaults(
-            {
-                "x_axis": {"label": xlabel},
-                "y_axis": {"label": ylabel},
-                "color_bar": {"title": "Count"},
-                "density": {"bin_px": bin_px} if bin_px is not None else {},
-                **({"marginals": marginals} if marginals else {}),
-            },
-            kwargs,
-        ),
+        series=[{"x": xs, "y": ys}], **with_defaults(defaults, kwargs)
     )
     return enhance_parity_plot(
         widget,

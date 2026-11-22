@@ -58,7 +58,7 @@ def _composition_facts(amounts: Mapping[str, float]) -> dict[str, Any]:
     elements = sorted(amounts)
     return {
         "elements": elements,
-        "formula": "".join(f"{el}{_fmt_amount(amounts[el])}" for el in elements),
+        "formula": "".join(f"{elem}{_fmt_amount(amounts[elem])}" for elem in elements),
     }
 
 
@@ -99,7 +99,7 @@ def _xy_facts(
     """
     series = _series_list(widget_data)
     samples = {
-        axis: [series_column(s, "values" if histogram else axis) for s in series]
+        axis: [series_column(srs, "values" if histogram else axis) for srs in series]
         for axis in axes
     }
     facts: dict[str, Any] = {"n_series": len(series)}
@@ -202,7 +202,9 @@ def _describe_composition(data: Mapping[str, Any]) -> dict[str, Any]:
     if not isinstance(comp, Mapping):
         return {}
     amounts = {
-        str(el): amt for el, amt in comp.items() if isinstance(amt, (int, float))
+        str(elem): amount
+        for elem, amount in comp.items()
+        if isinstance(amount, (int, float))
     }
     return _composition_facts(amounts) if amounts else {}
 
@@ -453,10 +455,11 @@ def check_inputs(widget_data: Mapping[str, Any]) -> list[str]:
         keys = key if isinstance(key, tuple) else (key,)
 
         def is_empty(value: Any) -> bool:
+            """Whether value is None or has length 0."""
             return value is None or (hasattr(value, "__len__") and len(value) == 0)
 
-        if all(is_empty(widget_data.get(k)) for k in keys):
-            label = "/".join(f"'{k}'" for k in keys)
+        if all(is_empty(widget_data.get(name)) for name in keys):
+            label = "/".join(f"'{name}'" for name in keys)
             warnings.append(
                 f"{widget_type}: {label} is empty or None; widget may render blank"
             )

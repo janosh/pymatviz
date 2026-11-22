@@ -1,4 +1,6 @@
-"""Load MatterViz widget assets from npm, cache, or a local build."""
+"""MatterVizWidget base class with image/HTML/JSON export, and loading of the
+MatterViz bundle from npm, the disk cache or a local build.
+"""
 
 from __future__ import annotations
 
@@ -186,7 +188,7 @@ def configure_assets(
     Call with no arguments to reset to default (``MATTERVIZ_ANYWIDGET_VERSION``).
 
     Args:
-        version: ``matterviz-anywidget`` npm version to fetch (e.g. ``"0.4.0"``),
+        version: ``matterviz-anywidget`` npm version to fetch (e.g. ``"0.10.0"``),
             or ``"main"`` for the bundle built from matterviz main.
             Mutually exclusive with ``esm_src``/``css_src``.
         esm_src: URL or local file path for the ESM JavaScript bundle.
@@ -226,8 +228,7 @@ def fetch_widget_asset(filename: str, version_override: str | None = None) -> st
     source text.
 
     The bundle lives in the ``matterviz-anywidget`` npm package (built from
-    ``matterviz/extensions/anywidget``); this repo no longer builds it. Resolution
-    order:
+    ``matterviz/extensions/anywidget``). Resolution order:
 
     1. ``MATTERVIZ_ANYWIDGET_DIR`` env var -- a local ``build/`` dir, for
        developing against an unpublished bundle.
@@ -291,7 +292,6 @@ def clear_widget_cache(version_override: str | None = None) -> None:
         version_cache_dir = _cache_dir(version_override)
         if os.path.isdir(version_cache_dir):
             shutil.rmtree(version_cache_dir)
-    # Clear entire cache
     elif os.path.isdir(cache_root := os.path.expanduser(_CACHE_ROOT)):
         shutil.rmtree(cache_root)
 
@@ -543,8 +543,8 @@ class MatterVizWidget(AnyWidget):
 
         if filename:
             os.makedirs(os.path.dirname(filename) or ".", exist_ok=True)
-            with open(filename, "wb") as fh:
-                fh.write(img_bytes)
+            with open(filename, "wb") as file:
+                file.write(img_bytes)
 
         return img_bytes
 
@@ -620,6 +620,7 @@ class MatterVizWidget(AnyWidget):
         Useful for agents to reason about output and as image alt-text.
 
         Examples:
+            >>> import pymatviz as pmv
             >>> pmv.periodic_table(heatmap_values={"Fe": 42}).describe()["n_elements"]
             1
         """
@@ -698,8 +699,8 @@ class MatterVizWidget(AnyWidget):
 
         if filename:
             os.makedirs(os.path.dirname(filename) or ".", exist_ok=True)
-            with open(filename, "w", encoding="utf-8") as fh:
-                fh.write(html)
+            with open(filename, "w", encoding="utf-8") as file:
+                file.write(html)
 
         return html
 
@@ -724,9 +725,11 @@ class MatterVizWidget(AnyWidget):
         from pymatviz.widgets._headless import RenderReport, render_diagnostics
 
         data = self.to_dict()
-        try:  # asset resolution (cache miss + offline fetch) can fail before the
-            esm_content, css_content = self._resolve_assets()  # never-raising render
-            diag = render_diagnostics(
+        # asset resolution (cache miss + offline fetch) can fail before the
+        # never-raising render
+        try:
+            esm_content, css_content = self._resolve_assets()
+            report = render_diagnostics(
                 self._frontend_state(),
                 esm_content,
                 css_content,
@@ -734,9 +737,9 @@ class MatterVizWidget(AnyWidget):
                 dpi=dpi,
             )
         except Exception as exc:  # noqa: BLE001 -- documented never-raises contract
-            diag = RenderReport(ok=False, error=f"render_report failed: {exc}")
+            report = RenderReport(ok=False, error=f"render_report failed: {exc}")
         return dataclasses.replace(
-            diag, summary=describe_widget(data), warnings=tuple(check_inputs(data))
+            report, summary=describe_widget(data), warnings=tuple(check_inputs(data))
         )
 
 

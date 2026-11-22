@@ -27,9 +27,12 @@ class CoordinationBarPlotWidget(
     structures), per structure, or one for all sites (``"none"``).
 
     Examples:
-        >>> from pymatgen.core import Lattice, Structure
+        >>> import numpy as np
+        >>> import kemio
+        >>> nacl = kemio.Structure(
+        ...     np.eye(3) * 5.6, ["Na", "Cl"], [[0] * 3, [0.5] * 3], fractional=True
+        ... )
         >>> import pymatviz as pmv
-        >>> nacl = Structure(Lattice.cubic(5.6), ["Na", "Cl"], [[0] * 3, [0.5] * 3])
         >>> pmv.coordination_bar_plot({"NaCl": nacl}, split_mode="by_element")
     """
 

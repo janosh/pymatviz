@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pandas as pd
 
+from pymatviz.utils import str_labels
 from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.box_plot import BoxPlotWidget
 
@@ -67,8 +68,9 @@ def rainclouds(
         BoxPlotWidget: one series per dataset.
 
     Raises:
-        ValueError: If data is empty, neither violin nor box is shown, or a dataset
-            is empty or holds non-finite values.
+        ValueError: If data is empty, neither violin nor box is shown, labels share
+            a string form (1 and "1") or a dataset is empty or holds non-finite
+            values.
     """
     if not data:
         raise ValueError("rainclouds needs at least one dataset")
@@ -76,7 +78,7 @@ def rainclouds(
         raise ValueError("rainclouds needs show_violin or show_box (or both)")
 
     series: list[dict[str, Any]] = []
-    for label, data_itm in data.items():
+    for label, data_itm in str_labels(data).items():
         match data_itm:
             case (pd.DataFrame() as df_i, col):
                 values = np.asarray(df_i[col], dtype=float)
@@ -91,7 +93,7 @@ def rainclouds(
             raise ValueError(f"rainclouds data for {label!r} holds non-finite values")
         entry: dict[str, Any] = {
             "y": values,
-            "label": str(label),
+            "label": label,
             "box_width": width_box,
         }
         # scipy's scalar bw_method scales the sample std; MatterViz takes value units

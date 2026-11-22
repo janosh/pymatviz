@@ -19,14 +19,17 @@ class BandStructureWidget(PlotControlsTraits, BandStructureTraits, MatterVizWidg
     dict to overlay several band structures.
 
     Examples:
-        From a pymatgen BandStructureSymmLine:
+        From kemio phonon bands (NaCl demo data):
         >>> import pymatviz as pmv
-        >>> widget = pmv.band_structure(band_structs=bs)
+        >>> from pymatviz.data import load_nacl_phonons
+        >>> phonons = load_nacl_phonons()
+        >>> bands = phonons.bands()
+        >>> widget = pmv.band_structure(band_structs=bands)
         >>> widget
 
-        With custom options:
+        Several band structures overlaid, with custom options:
         >>> widget = pmv.band_structure(
-        ...     band_structs={"PBE": bs_pbe, "HSE": bs_hse},
+        ...     band_structs={"51 pts": bands, "11 pts": phonons.bands(n_points=11)},
         ...     show_legend=True,
         ...     fermi_level=0.0,
         ...     style="height: 500px;",

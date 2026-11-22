@@ -11,7 +11,7 @@ from dataclasses import dataclass, fields
 from typing import TYPE_CHECKING, Any, Literal
 
 import kemio
-from kemio.interop import to_phonon_dos
+from kemio.interop import decode_monty, to_phonon_bands, to_phonon_dos, to_structure
 
 from pymatviz.structures import site_symbols
 from pymatviz.widgets.dos import DosWidget
@@ -40,7 +40,7 @@ class PhononDBDoc:
     internal_energies: list[float]  # vibrational part of internal energies per f.u.
     heat_capacities: list[float]
     entropies: list[float]
-    temps: list[float] | None = None  # temperatures
+    temps: list[float] | None = None
     # whether imaginary modes are present in the BS
     has_imaginary_modes: bool | None = None
     primitive: kemio.Structure | None = None
@@ -57,13 +57,6 @@ class PhononDBDoc:
         results become kemio objects, monty arrays numpy arrays of their
         dtype. Keys outside this schema (database metadata) are ignored.
         """
-        from kemio.interop import (
-            decode_monty,
-            to_phonon_bands,
-            to_phonon_dos,
-            to_structure,
-        )
-
         decoders = {
             "structure": to_structure,
             "primitive": to_structure,
@@ -75,12 +68,11 @@ class PhononDBDoc:
             for field in fields(cls)
             if field.init and field.name in data
         }
-        return cls(
-            **{
-                key: val if val is None else decoders.get(key, lambda obj: obj)(val)
-                for key, val in values.items()
-            }
-        )
+        decoded: dict[str, Any] = {
+            key: val if val is None or key not in decoders else decoders[key](val)
+            for key, val in values.items()
+        }
+        return cls(**decoded)
 
 
 type DosInput = AnyDos | Mapping[str, AnyDos]

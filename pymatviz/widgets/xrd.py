@@ -48,13 +48,21 @@ class XrdWidget(PlotControlsTraits, XrdTraits, MatterVizWidget):
     Pass a ``{label: pattern}`` mapping to overlay several patterns with a legend.
 
     Examples:
-        From a pymatgen DiffractionPattern:
+        From a kemio XrdPattern (pymatgen DiffractionPattern works the same way):
+        >>> import numpy as np
+        >>> import kemio
+        >>> nacl = kemio.Structure(
+        ...     np.eye(3) * 5.64, ["Na", "Cl"], [[0] * 3, [0.5] * 3], fractional=True
+        ... )
         >>> from pymatviz.widgets import XrdWidget
-        >>> widget = XrdWidget(patterns=diffraction_pattern)
+        >>> pattern = kemio.xrd_patterns([nacl])[0]
+        >>> widget = XrdWidget(patterns=pattern)
         >>> widget
 
-        From a dict:
-        >>> data = {"x": two_theta, "y": intensities, "hkls": hkl_list}
+        From a dict of a measured scan (no hkls, so drawn as a line):
+        >>> two_theta = np.linspace(20, 80, 601)
+        >>> intensities = 100 * np.exp(-(((two_theta - 31.7) / 0.2) ** 2))
+        >>> data = {"x": two_theta, "y": intensities}
         >>> widget = XrdWidget(patterns=data)
 
         Several overlaid patterns:
@@ -62,7 +70,7 @@ class XrdWidget(PlotControlsTraits, XrdTraits, MatterVizWidget):
 
         With custom options:
         >>> widget = XrdWidget(
-        ...     patterns=diffraction_pattern,
+        ...     patterns=pattern,
         ...     style="height: 400px;",
         ... )
     """
@@ -73,10 +81,9 @@ class XrdWidget(PlotControlsTraits, XrdTraits, MatterVizWidget):
         """Initialize the XrdWidget.
 
         Args:
-            patterns: XRD pattern data -- a kemio XrdPattern, pymatgen
-                DiffractionPattern, a dict with
-                x (2-theta angles) and y (intensities) keys, or a ``{label: pattern}``
-                mapping of those.
+            patterns: XRD pattern data: a kemio XrdPattern, pymatgen
+                DiffractionPattern, a dict with x (2-theta angles) and y
+                (intensities) keys, or a ``{label: pattern}`` mapping of those.
             **kwargs: Additional widget properties (e.g. ``controls_open`` to
                 start with the control pane expanded).
         """

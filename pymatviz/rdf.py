@@ -11,10 +11,10 @@ import numpy as np
 from pymatviz.structures import (
     normalize_periodic_structures,
     site_elements,
-    str_labels,
     structure_dict,
     to_structure,
 )
+from pymatviz.utils import str_labels
 from pymatviz.widgets.rdf_plot import RdfPlotWidget
 
 
@@ -230,9 +230,12 @@ def rdf_plot(
         RdfPlotWidget: The RDF plot.
 
     Raises:
-        ValueError: If neither or both of structures and patterns are given, a
-            structure has no sites, or no structure has any of element_pairs.
+        ValueError: If mode is invalid, neither or both of structures and patterns
+            are given, a structure has no sites, or no structure has any of
+            element_pairs.
     """
+    if mode not in ("element_pairs", "full"):  # Python-computed RDFs ignore the trait
+        raise ValueError(f"Invalid {mode=}, must be 'element_pairs' or 'full'")
     if patterns is not None:
         if structures is not None:
             raise ValueError("pass structures or patterns, not both")
@@ -271,10 +274,12 @@ def rdf_plot(
         }
         all_elems = set.union(*struct_elems.values())
         if element_pairs is None:
-            element_pairs = [(el1, el2) for el1 in all_elems for el2 in all_elems]
+            element_pairs = [
+                (elem_a, elem_b) for elem_a in all_elems for elem_b in all_elems
+            ]
         elif extra := {elem for pair in element_pairs for elem in pair} - all_elems:
             raise ValueError(f"Elements {extra} in element_pairs not in any structure")
-        pairs = sorted({(min(el1, el2), max(el1, el2)) for el1, el2 in element_pairs})
+        pairs = sorted({(min(pair), max(pair)) for pair in element_pairs})
         entries: list[dict[str, Any]] = []
         for label, struct in struct_dict.items():
             # skip pairs with elements this structure lacks (all-zero curves)

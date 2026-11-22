@@ -7,9 +7,11 @@ from numbers import Integral
 from typing import TYPE_CHECKING
 
 import numpy as np
+import pandas as pd
 
 from pymatviz.compositions import count_elements
 from pymatviz.enums import ElemCountMode
+from pymatviz.utils import str_labels
 from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.bar_plot import BarPlotWidget, bar_axis_defaults
 from pymatviz.widgets.histogram import HistogramWidget
@@ -19,7 +21,6 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from typing import Any, Literal
 
-    import pandas as pd
     from numpy.typing import ArrayLike
 
     from pymatviz.typing import ElemCountModeLike, ElemValues
@@ -57,10 +58,17 @@ def elements_hist(
 
     Returns:
         BarPlotWidget: one bar per element.
+
+    Raises:
+        ValueError: For max_elements < 1, negative element counts or an invalid
+            show_values.
     """
     if max_elements is not None and max_elements < 1:  # head(-n) drops the last n
         raise ValueError(f"{max_elements=} must be a positive integer or None")
     elem_counts = count_elements(values, count_mode)
+    negative = elem_counts[elem_counts < 0]
+    if len(negative) > 0:
+        raise ValueError(f"element counts must be >= 0, got {negative.to_dict()}")
     non_zero = elem_counts[elem_counts > 0].sort_values(ascending=False)
     total_count = non_zero.sum()  # percent labels are shares of all elements
     if max_elements is not None:
@@ -138,13 +146,11 @@ def histogram(
             Python (one overlaid bar series per distribution).
 
     Raises:
-        ValueError: For empty or non-finite values, a DataFrame without ``x``, an
-            x_range resolving to lo > hi, or density in an x_range holding no values
-            of a distribution.
+        ValueError: For empty or non-finite values, labels sharing a string form
+            (1 and "1"), a DataFrame without ``x``, an x_range resolving to
+            lo > hi, or density in an x_range holding no values of a distribution.
         TypeError: If x or color name columns but values is no DataFrame.
     """
-    import pandas as pd
-
     if isinstance(values, pd.DataFrame):
         if x is None:
             raise ValueError("name the DataFrame column to bin with x=")
@@ -156,7 +162,7 @@ def histogram(
             if color is not None
             else [(x, df_used)]
         )
-        # keys stay as grouped (1 and "1" are two groups), labels become str later
+        # grouped keys 1 and "1" would share a legend label: str_labels raises
         x_axis_title, data = x, {key: grp[x] for key, grp in groups}
     elif x is not None or color is not None:
         raise TypeError(f"x={x!r} and color={color!r} need a DataFrame")
@@ -164,7 +170,9 @@ def histogram(
         name = getattr(values, "name", None)
         x_axis_title = "Value" if name is None else name
         data = values if isinstance(values, Mapping) else {x_axis_title: values}
-    data_arrays = {label: np.asarray(vals, dtype=float) for label, vals in data.items()}
+    data_arrays = {
+        label: np.asarray(vals, dtype=float) for label, vals in str_labels(data).items()
+    }
     if not data_arrays:
         raise ValueError("histogram values must not be empty.")
     for label, vals in data_arrays.items():
@@ -216,7 +224,7 @@ def histogram(
             defaults["x_range"] = [lo, hi]
         # like np.histogram, values outside x_range count toward no bin
         series = [
-            {"values": vals[(vals >= lo) & (vals <= hi)], "label": str(label)}
+            {"values": vals[(vals >= lo) & (vals <= hi)], "label": label}
             for label, vals in data_arrays.items()
         ]
         return HistogramWidget(
@@ -239,7 +247,7 @@ def histogram(
         {
             "x": centers,
             "y": cnt / (cnt.sum() * widths) if density else cnt,
-            "label": str(label),
+            "label": label,
             "bar_width": bin_width * widths,
         }
         for label, cnt in counts.items()

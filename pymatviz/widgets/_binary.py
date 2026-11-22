@@ -14,7 +14,7 @@ from pymatviz.widgets._normalize import normalize_plot_json
 BINARY_FORMAT = "matterviz-binary-v1"
 TRAJECTORY_RESERVED = {"positions", "numbers", "lattice", "steps"}
 # kemio Structure info keys describing the structure, not frame metadata
-STRUCTURE_INFO_KEYS = ("properties", "spin_multiplicity")
+STRUCTURE_INFO_KEYS = ("spin_multiplicity",)
 MAX_ATOMIC_NUMBER = 118
 
 
@@ -191,17 +191,14 @@ def _is_number(value: Any) -> bool:
 
 def object_metadata(structure: Any) -> dict[str, Any]:
     """Metadata of a structure-like object: a kemio Structure's info (extxyz frame
-    keys, ``info["properties"]`` merged in) or ASE info, plus ASE calculator results
+    keys, pymatgen properties) or ASE info, plus ASE calculator results
     (energy, forces, stress, ...) which pymatgen's ``AseAtomsAdaptor`` drops.
     """
     import kemio
 
     if isinstance(structure, kemio.Structure):
         info = structure.info
-        frame_info = {
-            key: val for key, val in info.items() if key not in STRUCTURE_INFO_KEYS
-        }
-        return frame_info | dict(info.get("properties") or {})
+        return {key: val for key, val in info.items() if key not in STRUCTURE_INFO_KEYS}
     metadata = getattr(structure, "properties", None) or getattr(structure, "info", {})
     calc = getattr(structure, "calc", None)
     return {**(metadata or {}), **(getattr(calc, "results", None) or {})}

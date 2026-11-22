@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import re
 from typing import Any
 
 import numpy as np
@@ -138,12 +139,17 @@ def test_elements_hist(
         # head(-1) would silently drop the least common element
         ({"max_elements": -1}, "max_elements=-1 must be a positive integer"),
         ({"max_elements": 0}, "max_elements=0 must be a positive integer"),
+        # negative precomputed counts were silently dropped with the zeros
+        (
+            {"values": {"Fe": 3, "O": -2}},
+            re.escape("element counts must be >= 0, got {'O': -2.0}"),
+        ),
     ],
 )
 def test_elements_hist_invalid_args(kwargs: dict[str, Any], match: str) -> None:
-    """Unknown show_values and non-positive max_elements raise."""
+    """Unknown show_values, non-positive max_elements and negative counts raise."""
     with pytest.raises(ValueError, match=match):
-        elements_hist(["Fe2O3", "NaCl"], **kwargs)
+        elements_hist(**{"values": ["Fe2O3", "NaCl"]} | kwargs)
 
 
 @pytest.mark.usefixtures("python_bins")
@@ -202,6 +208,8 @@ def test_python_histogram_dict_shares_bin_edges() -> None:
         ([[1, 2], [3, 4]], "non-empty 1D"),
         ([1, np.nan, 3], r"'Value' contain 1 non-finite"),
         ({"ok": [1, 2], "bad": [np.inf, -np.inf]}, r"'bad' contain 2 non-finite"),
+        # 1 and "1" would show as two legend entries both labeled "1"
+        ({1: [1, 2], "1": [3, 4]}, "labels must be unique as strings"),
     ],
 )
 def test_python_histogram_rejects_invalid_values(values: Any, match: str) -> None:
@@ -315,11 +323,8 @@ def test_histogram_dataframe_groups(
     assert values_by_label == expected
 
 
-def test_histogram_keeps_groups_equal_as_strings() -> None:
-    """Groups 1 and "1" stay two distributions instead of one overwriting the other."""
+def test_histogram_rejects_groups_equal_as_strings() -> None:
+    """Groups 1 and "1" raise instead of showing two legend entries labeled "1"."""
     df_vals = pd.DataFrame({"v": [0.0, 10.0], "g": pd.Series([1, "1"], dtype=object)})
-    widget = histogram(df_vals, x="v", color="g")
-    assert sorted(list(series_dict["values"]) for series_dict in widget.series) == [
-        [0.0],
-        [10.0],
-    ]
+    with pytest.raises(ValueError, match="labels must be unique as strings"):
+        histogram(df_vals, x="v", color="g")
