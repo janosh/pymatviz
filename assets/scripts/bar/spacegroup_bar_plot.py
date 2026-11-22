@@ -7,6 +7,7 @@
 # ///
 
 # %%
+import matscikit as mk
 import pandas as pd
 from matminer.datasets import load_dataset
 
@@ -21,7 +22,7 @@ df_sym = pd.DataFrame(
     for struct in df_phonons["structure"]
 )
 df_phonons["spg_num"] = df_sym["number"]
-df_phonons["spg_symbol"] = df_sym["number"].map(pmv.utils.spg_num_to_from_symbol)
+df_phonons["spg_symbol"] = df_sym["number"].map(mk.space_group_symbol)
 
 
 # %% Spacegroup histograms from numbers and symbols

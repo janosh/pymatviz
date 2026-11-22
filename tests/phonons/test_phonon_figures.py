@@ -110,9 +110,9 @@ def test_phonon_dos_raises(
     ("project", "show_total", "labeled", "expected_names"),
     [
         ("element", True, False, {"Na", "Cl", "Total"}),
-        ("site", False, False, {"Na0", "Cl1"}),
+        ("site", False, False, {"Na1", "Cl2"}),
         ("element", True, True, {"Na", "Cl", "Total"}),  # prefixed with "A - " etc.
-        ("site", False, True, {"Na0", "Cl1"}),
+        ("site", False, True, {"Na1", "Cl2"}),
         (None, True, False, None),  # total DOS only, passed unlabeled
     ],
 )
@@ -144,7 +144,7 @@ def test_phonon_dos_projection(
     expected = (
         complete_phonon_dos.element_dos()
         if project == "element"
-        else {"Na0": site_densities[0], "Cl1": site_densities[1]}
+        else {"Na1": site_densities[0], "Cl2": site_densities[1]}
     ) | {"Total": complete_phonon_dos.total_dos}
     for name, doc in widget.doses.items():
         np.testing.assert_array_equal(doc["densities"], expected[name.split(" - ")[-1]])

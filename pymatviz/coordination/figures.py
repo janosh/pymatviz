@@ -15,7 +15,6 @@ from pymatviz.coordination.helpers import (
     CnStrategy,
     is_browser_strategy,
 )
-from pymatviz.enums import ElemColorScheme
 from pymatviz.structures import (
     normalize_structures,
     site_elements,
@@ -40,38 +39,19 @@ if TYPE_CHECKING:
 _STRUCT_DASHES = ("none", "6 3", "2 3", "8 3 2 3", "12 4")
 
 
-def _element_colors(
-    element_color_scheme: ElemColorScheme | dict[str, str],
-) -> dict[str, str]:
-    """Map element symbols to CSS colors from a scheme enum or a custom dict
-    (merged over Jmol). RGB tuples of fractions in [0, 1] become ``rgb(r, g, b)``;
-    any other non-string color raises ValueError.
+def _element_colors(element_colors: Mapping[str, str] | None) -> dict[str, str]:
+    """Jmol element CSS colors with custom ``{element: CSS color}`` ones on top.
+
+    Raises:
+        TypeError: If a custom color is not a CSS color string.
     """
-    if isinstance(element_color_scheme, dict):
-        color_map = ELEM_COLORS_JMOL | element_color_scheme
-    elif isinstance(element_color_scheme, ElemColorScheme):
-        color_map = element_color_scheme.color_map
-    else:
-        raise TypeError(
-            f"Invalid {element_color_scheme=}. Must be {', '.join(ElemColorScheme)} "
-            "or a custom dict."
-        )
-
-    def to_css(color: Any) -> str:
-        """Format an RGB fraction tuple as ``rgb(r, g, b)``, pass strings through."""
-        if isinstance(color, str):
-            return color
-        if not (isinstance(color, tuple) and len(color) == 3) or not all(
-            0 <= chan <= 1 for chan in color
-        ):
-            raise ValueError(
-                f"{color=} must be a CSS color string or an (r, g, b) tuple of "
-                "fractions in [0, 1]"
-            )
-        red, green, blue = np.rint(np.multiply(color, 255)).astype(int)
-        return f"rgb({red}, {green}, {blue})"
-
-    return {elem: to_css(color) for elem, color in color_map.items()}
+    if bad := {
+        elem: color
+        for elem, color in (element_colors or {}).items()
+        if not isinstance(color, str)
+    }:
+        raise TypeError(f"element_colors must map to CSS color strings, got {bad}")
+    return ELEM_COLORS_JMOL | dict(element_colors or {})
 
 
 def coordination_bar_plot(
@@ -82,7 +62,7 @@ def coordination_bar_plot(
     *,
     strategy: BrowserCnStrategy | CnStrategy = "electroneg_ratio",
     split_mode: CnSplitMode | str = CnSplitMode.by_element,
-    element_color_scheme: ElemColorScheme | dict[str, str] | None = None,
+    element_colors: Mapping[str, str] | None = None,
     annotate_bars: bool = False,
     **kwargs: Any,
 ) -> BarPlotWidget | CoordinationBarPlotWidget:
@@ -103,9 +83,8 @@ def coordination_bar_plot(
             "by_element": one series per element, summed over all structures.
             "by_structure": one series per structure.
             "none": one series holding all sites of all structures.
-        element_color_scheme (ElemColorScheme | dict[str, str]): Bar colors in
-            "by_element" mode (Python strategies only), a scheme or a custom
-            ``{element: color}`` dict merged over Jmol colors. Defaults to pastel.
+        element_colors (dict[str, str]): ``{element: CSS color}`` bar colors in
+            "by_element" mode (Python strategies only), merged over Jmol colors.
         annotate_bars (bool): Label each non-empty bar with its element symbol.
             Only valid with split_mode="by_element" and a Python strategy.
         **kwargs: Widget traits, e.g. ``mode`` (``"stacked"`` default in Python,
@@ -124,9 +103,9 @@ def coordination_bar_plot(
     struct_dict = normalize_structures(structures)
     labeled = str_labels(struct_dict)  # by_structure series are keyed by label
     if is_browser_strategy(strategy):
-        if element_color_scheme is not None or annotate_bars:
+        if element_colors is not None or annotate_bars:
             raise ValueError(
-                "element_color_scheme and annotate_bars need a Python strategy (cutoff "
+                "element_colors and annotate_bars need a Python strategy (cutoff "
                 f"radius, 'crystal_nn' or 'voronoi'), got {strategy=}"
             )
         return CoordinationBarPlotWidget(
@@ -156,7 +135,7 @@ def coordination_bar_plot(
     if not all_cns:
         raise ValueError("structures have no sites to count coordination numbers of")
     cn_values = list(range(min(all_cns), max(all_cns) + 1))
-    elem_colors = _element_colors(element_color_scheme or ElemColorScheme.pastel)
+    elem_colors = _element_colors(element_colors)
     series: list[dict[str, Any]] = []
     for label, counts in groups.items():
         entry: dict[str, Any] = {
@@ -166,7 +145,7 @@ def coordination_bar_plot(
             "bar_width": 0.8,
         }
         if split_mode == CnSplitMode.by_element:
-            # elements missing from the scheme (e.g. dummy species) take the palette
+            # elements without a color (e.g. dummy species) take the palette
             if color := elem_colors.get(label):
                 entry["color"] = color
             if annotate_bars:
@@ -191,7 +170,7 @@ def coordination_vs_cutoff_line(
     *,
     cutoff_range: tuple[float, float] = (1, 5),
     num_points: int = 50,
-    element_color_scheme: ElemColorScheme | dict[str, str] = ElemColorScheme.jmol,
+    element_colors: Mapping[str, str] | None = None,
     **kwargs: Any,
 ) -> ScatterPlotWidget:
     """Line plot of each element's average coordination number vs cutoff distance.
@@ -205,8 +184,8 @@ def coordination_vs_cutoff_line(
         cutoff_range (tuple[float, float]): (min_cutoff, max_cutoff) in Å. Defaults
             to (1, 5).
         num_points (int): Number of points to calculate between min and max cutoff.
-        element_color_scheme (ElemColorScheme | dict[str, str]): Color scheme for
-            elements. Can be "jmol", "vesta", or a custom dict.
+        element_colors (dict[str, str]): ``{element: CSS color}`` line colors,
+            merged over Jmol colors.
         **kwargs: ScatterPlotWidget traits, e.g. ``x_axis``, ``y_axis`` (merged over
             the defaults set here), ``legend``, ``style``.
 
@@ -220,7 +199,7 @@ def coordination_vs_cutoff_line(
         raise TypeError(f"Invalid {cutoff_range=}, expected (min_cutoff, max_cutoff)")
     struct_dict = normalize_structures(structures)
     cutoffs = np.linspace(float(cutoff_range[0]), float(cutoff_range[1]), num_points)
-    elem_colors = _element_colors(element_color_scheme)
+    elem_colors = _element_colors(element_colors)
     multi_struct = len(struct_dict) > 1
     # (n_sites, n_cutoffs) CNs per structure from one neighbor search each
     all_site_cns = mk.coordination_numbers(list(struct_dict.values()), cutoffs)

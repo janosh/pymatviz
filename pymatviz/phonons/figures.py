@@ -63,7 +63,7 @@ def _labeled_doses(
             else {
                 f"{symbol}{site_idx}": densities
                 for site_idx, (symbol, densities) in enumerate(
-                    zip(symbols, ph_dos.projected_dos, strict=True)
+                    zip(symbols, ph_dos.projected_dos, strict=True), start=1
                 )
             }
         )
@@ -102,7 +102,9 @@ def phonon_dos(
         project ("element" | "site" | None): Decompose each site-projected DOS
             (pymatgen CompletePhononDos, matscikit PhononDos with projections,
             phonopy after run_total_dos and run_projected_dos on one mesh) into
-            per-element or per-site partial DOS. Defaults to None (total DOS only).
+            per-element or per-site partial DOS (sites labeled by symbol and 1-based
+            index, e.g. ``Na1``, like coordination plots). Defaults to None (total
+            DOS only).
         show_total (bool): When projecting, also plot each total DOS (labeled
             ``Total``). Defaults to True.
         **kwargs: Passed to DosWidget, e.g. ``orientation``, ``show_legend`` or

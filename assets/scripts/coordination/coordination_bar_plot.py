@@ -67,5 +67,5 @@ pmv.coordination_bar_plot(
 pmv.coordination_bar_plot(
     three_structs,
     strategy=3.0,
-    element_color_scheme={"Fe": "red", "O": "blue", "H": "green"},
+    element_colors={"Fe": "red", "O": "blue", "H": "green"},
 ).show()

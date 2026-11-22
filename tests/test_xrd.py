@@ -130,18 +130,11 @@ def test_xrd_pattern_wavelength() -> None:
     assert d_spacings[0] == pytest.approx(d_spacings[1], rel=1e-12)
 
 
-@pytest.mark.parametrize(
-    "pattern",
-    [
-        {"x": [10.0, 20.0], "y": [50.0, 100.0]},
-        {"two_theta": [10.0, 20.0], "intensities": [50.0, 100.0]},
-    ],
-    ids=["canonical", "ferrox"],
-)
-def test_xrd_plot_pattern_dict(pattern: dict[str, list[float]]) -> None:
-    """A bare pattern dict (canonical or Ferrox keys) is one unlabeled pattern,
-    also when holding pandas Series, which serialize as arrays.
+def test_xrd_plot_pattern_dict() -> None:
+    """A bare x/y pattern dict is one unlabeled pattern, also when holding pandas
+    Series, which serialize as arrays.
     """
+    pattern = {"x": [10.0, 20.0], "y": [50.0, 100.0]}
     widget = pmv.xrd_plot(pattern)
     assert (widget.patterns["x"], widget.patterns["y"]) == ([10, 20], [50, 100])
     series_widget = pmv.xrd_plot({key: pd.Series(val) for key, val in pattern.items()})

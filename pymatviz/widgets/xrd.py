@@ -40,9 +40,8 @@ def _normalize_patterns(patterns: Any) -> dict[str, Any] | None:
 class XrdWidget(PlotControlsTraits, XrdTraits, MatterVizWidget):
     """MatterViz widget for visualizing X-ray diffraction patterns.
 
-    Accepts a matscikit XrdPattern, pymatgen DiffractionPattern or a dict with either:
-    - canonical keys: x (2-theta), y (intensity), optional hkls/d_hkls/kind
-    - Ferrox keys: two_theta, intensities, optional hkls/d_spacings/kind
+    Accepts a matscikit XrdPattern, pymatgen DiffractionPattern or a dict with keys
+    x (2-theta), y (intensity) and optional hkls/d_hkls/kind.
 
     Patterns without hkls are treated as measured scans (``kind="profile"``): drawn
     as a line and never broadened. Pass ``kind="sticks"`` to force bar rendering.

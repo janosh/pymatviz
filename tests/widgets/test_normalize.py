@@ -212,17 +212,11 @@ def test_normalize_convex_hull_entries_from_phase_diagram(source: str) -> None:
         # measured scans: no Miller indices -> continuous profile
         ({"x": [10.0, 10.02], "y": [5.0, 7.0]}, "profile"),
         ({"x": [10.0, 10.02], "y": [5.0, 7.0], "hkls": []}, "profile"),
-        ({"two_theta": [10.0, 10.02], "intensities": [5.0, 7.0]}, "profile"),
         # computed patterns carry hkls and stay untagged (matterviz sticks default)
         ({"x": [10.0, 20.0], "y": [100.0, 50.0], "hkls": _HKLS}, None),
-        (
-            {"two_theta": [10.0, 20.0], "intensities": [1.0, 2.0], "hkls": _HKLS},
-            None,
-        ),
-        # explicit kind wins in both schemas
+        # explicit kind wins
         ({"x": [10.0, 20.0], "y": [100.0, 50.0], "kind": "sticks"}, "sticks"),
         ({"x": [10.0], "y": [1.0], "hkls": _HKLS[:1], "kind": "profile"}, "profile"),
-        ({"two_theta": [10.0], "intensities": [1.0], "kind": "sticks"}, "sticks"),
     ],
 )
 def test_normalize_xrd_pattern_kind(
@@ -246,62 +240,20 @@ def test_normalize_xrd_pattern_rejects_bad_kind(bad_kind: str | None) -> None:
 @pytest.mark.parametrize(
     ("xrd_dict", "match"),
     [
-        ({"x": [1.0, 2.0]}, r"Expected keys: \['x', 'y'\]"),
-        ({"x": [1.0], "y": [2.0, 3.0]}, "mismatched canonical lengths"),
-        ({"two_theta": [1.0, 2.0]}, r"Expected keys: \['two_theta', 'intensities'\]"),
-        ({"two_theta": [1.0], "intensities": [2.0, 3.0]}, "mismatched Ferrox lengths"),
-        ({"q": [1.0], "intensity": [2.0]}, "Unsupported XRD dict schema"),
+        ({"x": [1.0, 2.0]}, r"missing \['y'\] in keys \['x'\]"),
+        ({"x": [1.0], "y": [2.0, 3.0]}, "mismatched lengths"),
+        (  # the old Ferrox keys are no longer read
+            {"two_theta": [1.0], "intensities": [2.0]},
+            r"missing \['x', 'y'\] in keys \['intensities', 'two_theta'\]",
+        ),
     ],
 )
 def test_normalize_xrd_pattern_dict_validation_errors(
     xrd_dict: dict[str, list[float]], match: str
 ) -> None:
-    """Test canonical/Ferrox dict validation raises descriptive errors."""
+    """Pattern dicts without x and y or of mismatched lengths raise."""
     with pytest.raises(ValueError, match=match):
         normalize_xrd_pattern(xrd_dict)
-
-
-@pytest.mark.parametrize(
-    ("hkls_in", "expected"),
-    [
-        ([[1, 0, 0], [1, 1, 0]], _HKLS),
-        ([[[1, 0, 0]], [[1, 1, 0]]], _HKLS),
-        (_HKLS, _HKLS),
-        (  # every equivalent reflection of a group is kept
-            [[[1, 0, 0], [0, 1, 0]], [[1, 1, 0]]],
-            [[{"hkl": [1, 0, 0]}, {"hkl": [0, 1, 0]}], [{"hkl": [1, 1, 0]}]],
-        ),
-    ],
-)
-def test_normalize_xrd_pattern_ferrox_hkls_shapes(
-    hkls_in: list[Any], expected: list[Any]
-) -> None:
-    """Ferrox hkls normalize from flat, grouped and passthrough forms."""
-    ferrox_dict = {
-        "two_theta": [10.0, 20.0],
-        "intensities": [100.0, 50.0],
-        "d_spacings": [2.5, 2.0],
-        "hkls": hkls_in,
-    }
-    result = normalize_xrd_pattern(ferrox_dict)
-    assert result is not None
-    assert result["x"] == [10.0, 20.0]
-    assert result["y"] == [100.0, 50.0]
-    assert result["d_hkls"] == [2.5, 2.0]
-    assert result["hkls"] == expected
-
-
-def test_normalize_xrd_pattern_mixed_schema_prefers_complete_ferrox() -> None:
-    """Test mixed-key dict uses Ferrox schema when canonical is incomplete."""
-    mixed_dict = {
-        "y": [10.0, 20.0],
-        "two_theta": [30.0, 40.0],
-        "intensities": [1.0, 2.0],
-    }
-    result = normalize_xrd_pattern(mixed_dict)
-    assert result is not None
-    assert result["x"] == [30.0, 40.0]
-    assert result["y"] == [1.0, 2.0]
 
 
 def test_normalize_xrd_pattern_from_xrd_pattern() -> None:

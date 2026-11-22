@@ -811,9 +811,7 @@ def test_xrd_widget_labeled_patterns() -> None:
     computed = mk.XrdPattern(
         [10, 20], [100, 50], d_spacings=[2, 1], hkls=[[([1, 0, 0], 6)]] * 2
     )
-    widget = XrdWidget(
-        patterns={"computed": computed, "scan": {"two_theta": [5], "intensities": [1]}}
-    )
+    widget = XrdWidget(patterns={"computed": computed, "scan": {"x": [5], "y": [1]}})
     assert list(widget.patterns) == ["computed", "scan"]
     assert widget.patterns["computed"]["hkls"][0] == [
         {"hkl": [1, 0, 0], "multiplicity": 6}

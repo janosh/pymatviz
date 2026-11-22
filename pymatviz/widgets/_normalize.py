@@ -32,38 +32,6 @@ def with_defaults(defaults: dict[str, Any], kwargs: dict[str, Any]) -> dict[str,
     )
 
 
-def _normalize_ferrox_hkls(hkls_data: Any) -> Any:
-    """Normalize Ferrox HKL payload into widget-compatible shape.
-
-    Args:
-        hkls_data: HKL payload from Ferrox-style dict input.
-
-    Returns:
-        Normalized HKL payload where flat or grouped Miller indices are converted
-        to `[[{"hkl": [h, k, l]}], ...]`. Unrecognized structures are returned
-        unchanged.
-    """
-    if not isinstance(hkls_data, list) or not hkls_data:
-        return hkls_data
-
-    def is_miller(value: Any) -> bool:
-        """Whether value is a ``[h, k, l]`` list of ints."""
-        return (
-            isinstance(value, list)
-            and len(value) == 3
-            and all(isinstance(idx, int) for idx in value)
-        )
-
-    if all(is_miller(hkl_entry) for hkl_entry in hkls_data):
-        return [[{"hkl": hkl_entry}] for hkl_entry in hkls_data]
-    if all(
-        isinstance(hkl_group, list) and hkl_group and all(map(is_miller, hkl_group))
-        for hkl_group in hkls_data
-    ):  # one group of symmetry-equivalent reflections per peak
-        return [[{"hkl": hkl} for hkl in hkl_group] for hkl_group in hkls_data]
-    return hkls_data
-
-
 # pymatgen as_dict() fields MatterViz never draws, up to ~100 MB on projected band
 # structures: band projections, CompleteDos.pdos, phonon eigendisplacements
 _UNREAD_KEYS = frozenset({"projections", "pdos", "eigendisplacements"})
@@ -582,7 +550,7 @@ def _with_xrd_kind(pattern: dict[str, Any]) -> dict[str, Any]:
 
     matterviz draws ``profile`` patterns as a line and never broadens them, while
     ``sticks`` (its default) are discrete reflections drawn as bars. Computed patterns
-    (pymatgen, Ferrox) carry ``hkls`` and stay untagged; an explicit ``kind`` wins.
+    (matscikit, pymatgen) carry ``hkls`` and stay untagged; an explicit ``kind`` wins.
 
     Raises:
         ValueError: If ``pattern["kind"]`` is not one of ``XRD_PATTERN_KINDS``.
@@ -616,21 +584,9 @@ def normalize_xrd_pattern(obj: Any) -> dict[str, Any] | None:
     return _with_xrd_kind(_xrd_pattern_to_dict(obj))
 
 
-def _is_series(values: Any) -> bool:
-    """Whether values is a pandas Series (or Index), which widget JSON can't hold."""
-    return hasattr(values, "to_numpy")
-
-
-def _unwrap(arrays: dict[str, Any]) -> dict[str, Any]:
-    """Values with pandas Series swapped for their NumPy arrays."""
-    return {
-        key: val.to_numpy() if _is_series(val) else val for key, val in arrays.items()
-    }
-
-
 def _xrd_pattern_to_dict(obj: Any) -> dict[str, Any]:
-    """Convert a canonical/Ferrox dict, matscikit XrdPattern or pymatgen
-    DiffractionPattern to a dict.
+    """Convert an ``{x, y, hkls?, d_hkls?, kind?}`` dict, matscikit XrdPattern or
+    pymatgen DiffractionPattern to a dict.
 
     Args:
         obj: A matscikit XrdPattern, pymatgen DiffractionPattern or a dict.
@@ -639,53 +595,22 @@ def _xrd_pattern_to_dict(obj: Any) -> dict[str, Any]:
         XRD pattern dict with x, y, and optional hkls, d_hkls keys.
     """
     if isinstance(obj, dict):
-        if all(key in obj for key in ("x", "y")):
-            if len(obj["x"]) != len(obj["y"]):
-                raise ValueError(
-                    "XRD pattern dict has mismatched canonical lengths: "
-                    f"len(x)={len(obj['x'])}, len(y)={len(obj['y'])}."
-                )
-            arrays = {key: obj[key] for key in ("x", "y") if _is_series(obj[key])}
-            return {**obj, **_unwrap(arrays)} if arrays else obj
-
-        if all(key in obj for key in ("two_theta", "intensities")):
-            if len(obj["two_theta"]) != len(obj["intensities"]):
-                raise ValueError(
-                    "XRD pattern dict has mismatched Ferrox lengths: "
-                    f"len(two_theta)={len(obj['two_theta'])}, "
-                    f"len(intensities)={len(obj['intensities'])}."
-                )
-
-            normalized: dict[str, Any] = {
-                **_unwrap({"x": obj["two_theta"], "y": obj["intensities"]}),
-            }
-            if "d_spacings" in obj:
-                normalized["d_hkls"] = obj["d_spacings"]
-
-            if "hkls" in obj:
-                normalized["hkls"] = _normalize_ferrox_hkls(obj["hkls"])
-            if "kind" in obj:
-                normalized["kind"] = obj["kind"]
-
-            return normalized
-
-        for schema, keys in (
-            ("canonical", ["x", "y"]),
-            ("Ferrox", ["two_theta", "intensities"]),
-        ):
-            if any(key in obj for key in keys):
-                missing_keys = [key for key in keys if key not in obj]
-                raise ValueError(
-                    f"XRD pattern dict missing required key(s) for {schema} schema: "
-                    f"{missing_keys}. Expected keys: {keys}."
-                )
-
-        available_keys = sorted(str(key) for key in obj)
-        raise ValueError(
-            "Unsupported XRD dict schema. Expected either canonical keys "
-            "['x', 'y'] or Ferrox keys ['two_theta', 'intensities'], but got "
-            f"keys: {available_keys}."
-        )
+        if missing := [key for key in ("x", "y") if key not in obj]:
+            raise ValueError(
+                f"XRD pattern dicts need 'x' (2θ) and 'y' (intensity) keys, missing "
+                f"{missing} in keys {sorted(map(str, obj))}"
+            )
+        if len(obj["x"]) != len(obj["y"]):
+            raise ValueError(
+                "XRD pattern dict has mismatched lengths: "
+                f"len(x)={len(obj['x'])}, len(y)={len(obj['y'])}."
+            )
+        series = {  # pandas Series aren't JSON-able, their arrays are
+            key: obj[key].to_numpy()
+            for key in ("x", "y")
+            if hasattr(obj[key], "to_numpy")
+        }
+        return {**obj, **series} if series else obj
 
     import matscikit as mk
     from matscikit.interop import has_class, to_xrd_pattern

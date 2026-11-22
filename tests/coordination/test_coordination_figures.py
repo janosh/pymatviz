@@ -8,10 +8,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from pymatviz.colors import ELEM_COLORS_JMOL
 from pymatviz.coordination import coordination_bar_plot, coordination_vs_cutoff_line
-from pymatviz.coordination.figures import _element_colors
-from pymatviz.coordination.helpers import CnSplitMode, coordination_nums_in_structure
-from pymatviz.enums import ElemColorScheme
+from pymatviz.coordination.helpers import CnSplitMode
+from pymatviz.structures import site_symbols
 from pymatviz.widgets.bar_plot import BarPlotWidget
 from pymatviz.widgets.coordination_bar_plot import CoordinationBarPlotWidget
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
@@ -34,10 +34,11 @@ def test_coordination_bar_plot_split_modes(
     widget = coordination_bar_plot(struct_dict, strategy=3.0, split_mode=split_mode)
     assert isinstance(widget, BarPlotWidget)
 
-    site_cns = {
-        key: coordination_nums_in_structure(struct, strategy=3.0)
-        for key, struct in struct_dict.items()
-    }
+    site_cns: dict[str, dict[str, list[int]]] = {}
+    for key, struct in struct_dict.items():
+        (cns,) = mk.coordination_numbers([struct], 3.0)
+        for symbol, cn in zip(site_symbols(struct), cns.tolist(), strict=True):
+            site_cns.setdefault(key, {}).setdefault(symbol, []).append(cn)
     if split_mode == CnSplitMode.by_element:
         expected = {}
         for elem_cns in site_cns.values():
@@ -116,7 +117,7 @@ def test_coordination_bar_plot_style_options() -> None:
     widget = coordination_bar_plot(
         NACL,
         strategy=3.0,
-        element_color_scheme={"Na": "red"},
+        element_colors={"Na": "red"},
         annotate_bars=True,
         mode="grouped",
         y_axis={"label": "Sites"},
@@ -125,7 +126,7 @@ def test_coordination_bar_plot_style_options() -> None:
     assert isinstance(widget, BarPlotWidget)
     cl_srs, na_srs = widget.series
     assert na_srs["color"] == "red"
-    assert cl_srs["color"] == _element_colors(ElemColorScheme.jmol)["Cl"]
+    assert cl_srs["color"] == ELEM_COLORS_JMOL["Cl"] == "rgb(31, 240, 31)"
     assert na_srs["labels"] == ["Na"]
     assert widget.mode == "grouped"
     assert widget.orientation == "horizontal"
@@ -159,12 +160,11 @@ def test_coordination_bar_plot_style_options() -> None:
             ValueError,
             "annotate_bars needs",
         ),
-        (NACL, {"strategy": 3, "element_color_scheme": "pastel"}, TypeError, "scheme"),
         (
             NACL,
-            {"strategy": 3, "element_color_scheme": {"Na": (255, 0, 0)}},
-            ValueError,
-            "fractions",
+            {"strategy": 3, "element_colors": {"Na": (255, 0, 0)}},
+            TypeError,
+            r"CSS color strings, got \{'Na': \(255, 0, 0\)\}",
         ),
         # labels equal as strings (1 and "1") raise instead of merging two structures'
         # histograms, in the browser and Python paths
@@ -206,20 +206,6 @@ def test_coordination_bar_plot_in_browser(split_mode: CnSplitMode) -> None:
     assert widget.strategy == "explicit_only"
 
 
-@pytest.mark.parametrize("scheme", [*ElemColorScheme, {"Na": "red", "Cl": "#00ff00"}])
-def test_element_colors(scheme: ElemColorScheme | dict[str, str]) -> None:
-    """Scheme RGB fractions become 0-255 CSS colors; custom colors pass through."""
-    colors = _element_colors(scheme)
-    if isinstance(scheme, dict):
-        assert colors["Na"] == "red"
-        assert colors["Cl"] == "#00ff00"
-        assert colors["O"].startswith("rgb(")  # Jmol fills the rest
-    else:
-        for elem, color in scheme.color_map.items():
-            expected = ", ".join(f"{255 * chan:.0f}" for chan in color)
-            assert colors[elem] == f"rgb({expected})"
-
-
 @pytest.mark.parametrize("cutoff_range", [(0, 3), (1.0, 5.0)])
 def test_coordination_vs_cutoff_line(
     structures: Sequence[mk.Structure],
@@ -230,7 +216,7 @@ def test_coordination_vs_cutoff_line(
         structures[:2],
         cutoff_range=cutoff_range,
         num_points=7,
-        element_color_scheme={"Si": "red"},
+        element_colors={"Si": "red"},
     )
     assert isinstance(widget, ScatterPlotWidget)
     elems = [sorted(set(struct.symbols)) for struct in structures[:2]]

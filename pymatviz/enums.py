@@ -7,13 +7,9 @@ from enum import EnumType, StrEnum, _EnumDict, unique
 from typing import TYPE_CHECKING
 from urllib.request import urlopen
 
-from pymatviz.utils import html_tag
-
 
 if TYPE_CHECKING:
     from typing import Any, Self
-
-    from pymatviz.typing import ColorType
 
 
 class _PicklableStrEnum(StrEnum):
@@ -57,11 +53,6 @@ class LabelEnum(_PicklableStrEnum):
         return self.__dict__["desc"]
 
 
-eV = html_tag("(eV)", style="small")  # noqa: N816
-angstrom_per_atom = html_tag("(Å/atom)", style="small")
-cubic_angstrom = html_tag("(Å<sup>3</sup>)", style="small")
-
-
 @unique
 class ElemCountMode(LabelEnum):
     """Mode of counting elements in a chemical formula."""
@@ -87,30 +78,6 @@ class ElemCountMode(LabelEnum):
         "Occurrence",
         "Count elements by occurrence in composition, ignoring their amount",
     )
-
-
-@unique
-class ElemColorScheme(LabelEnum):
-    """Names of element color palettes.
-
-    Used e.g. in structure visualizations and periodic table plots.
-    """
-
-    # key, label, color
-    # from https://en.wikipedia.org/wiki/Jmol
-    jmol = "jmol", "Jmol", "Java-based molecular visualization"
-    # from https://www.jp-minerals.org/vesta/en/
-    vesta = "vesta", "VESTA", "Visualization for Electronic Structural Analysis"
-    # custom made for pymatviz
-    alloy = "alloy", "Alloy", "High-contrast color scheme optimized for metal alloys"
-    pastel = "pastel", "Pastel", "Pastel color scheme"
-
-    @property
-    def color_map(self) -> dict[str, ColorType]:
-        """Return map from element symbol to color."""
-        import pymatviz.colors as pmv_colors
-
-        return getattr(pmv_colors, f"ELEM_COLORS_{self.value.upper()}")
 
 
 class MetaFiles(EnumType):

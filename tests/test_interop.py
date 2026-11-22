@@ -18,7 +18,6 @@ import pytest
 import pymatviz as pmv
 from pymatviz import chem_env
 from pymatviz.composition import count_elements, count_formulas
-from pymatviz.coordination.helpers import coordination_nums_in_structure
 from pymatviz.enums import ElemCountMode
 from pymatviz.rdf.figures import rdf_plot
 from pymatviz.rdf.helpers import calculate_rdf
@@ -344,7 +343,9 @@ def test_rdf_plot_full_ase(ase_atoms: tuple[Any, Any]) -> None:
 def test_coordination_nums_match_pymatgen(
     strategy: float | Literal["crystal_nn", "voronoi"], as_molecule: bool
 ) -> None:
-    """Per-site CNs equal pymatgen's get_neighbors / CrystalNN / VoronoiNN."""
+    """Matscikit CNs of converted pymatgen systems equal pymatgen's get_neighbors /
+    CrystalNN / VoronoiNN.
+    """
     pytest.importorskip("pymatgen")
     from pymatgen.analysis.local_env import CrystalNN, VoronoiNN
     from pymatgen.core import Lattice, Molecule, Structure
@@ -352,13 +353,13 @@ def test_coordination_nums_match_pymatgen(
     rng = np.random.default_rng(seed=0)
     struct = Structure(Lattice.cubic(6.0), ["Na", "Cl"] * 10, rng.uniform(size=(20, 3)))
     system = Molecule.from_sites(struct) if as_molecule else struct
-    cns = coordination_nums_in_structure(system, strategy=strategy, group_by="site")
+    (cns,) = mk.coordination_numbers([to_structure(system)], strategy)
     if isinstance(strategy, float):
         expected = [len(system.get_neighbors(site, r=strategy)) for site in system]  # ty: ignore[invalid-argument-type]
     else:
         nn = CrystalNN() if strategy == "crystal_nn" else VoronoiNN()
         expected = [len(nn.get_nn_info(struct, idx)) for idx in range(len(struct))]
-    assert [cn for (cn,) in cns.values()] == expected
+    assert cns.tolist() == expected
     assert sum(expected) > 0
 
 
@@ -511,7 +512,7 @@ def test_pymatgen_phonon_dos(
         np.testing.assert_array_equal(
             doc["densities"], expected.doses[name]["densities"]
         )
-    expected_names = {"Na", "Cl"} if project == "element" else {"Na0", "Cl1"}
+    expected_names = {"Na", "Cl"} if project == "element" else {"Na1", "Cl2"}
     assert set(widget.doses) == expected_names | {"Total"}
 
 
@@ -955,9 +956,7 @@ def test_xrd_widget_labeled_diffraction_patterns() -> None:
     computed = pmg_diffraction_pattern(2)
     widget = pmv.xrd_plot({"pmg": computed, "mk": mk.XrdPattern([10], [1])})
     assert widget.patterns["pmg"]["d_hkls"] == [2.5, 2.0]
-    widget = XrdWidget(
-        patterns={"computed": computed, "scan": {"two_theta": [5], "intensities": [1]}}
-    )
+    widget = XrdWidget(patterns={"computed": computed, "scan": {"x": [5], "y": [1]}})
     assert list(widget.patterns) == ["computed", "scan"]
     # matscikit's XrdPattern defaults missing multiplicities to 1
     assert widget.patterns["computed"]["hkls"][0] == [

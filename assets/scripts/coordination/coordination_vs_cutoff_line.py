@@ -56,7 +56,7 @@ widget.to_img(
 
 # %% Custom element colors
 pmv.coordination_vs_cutoff_line(
-    structures[key1], element_color_scheme={"Pd": "red", "Zr": "blue"}
+    structures[key1], element_colors={"Pd": "red", "Zr": "blue"}
 ).show()
 
 
