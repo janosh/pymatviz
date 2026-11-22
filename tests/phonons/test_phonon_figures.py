@@ -20,7 +20,9 @@ GRID_012 = mk.PhononDos([0, 1, 2], [1, 2, 1])
 def test_band_structure_widget_phonons(
     phonon_bands_doses_mp_2758: BandsDoses, labeled: bool
 ) -> None:
-    """Single band structures pass unlabeled, dicts keep their labels and bands."""
+    """Single band structures pass unlabeled, dicts keep their labels and bands,
+    eigendisplacements (unused by the plot) are not sent.
+    """
     bands = phonon_bands_doses_mp_2758["bands"]
     widget = pmv.band_structure(
         band_structs=bands if labeled else bands["DFT"], fermi_level=None
@@ -34,6 +36,8 @@ def test_band_structure_widget_phonons(
         band_structs=bands["DFT"], reference_frequency=1.5, style="height:9em"
     )
     assert (widget.reference_frequency, widget.style) == (1.5, "height:9em")
+    assert "eigendisplacements" in bands["DFT"].as_dict()
+    assert "eigendisplacements" not in widget.band_structs
 
     with pytest.raises(TypeError, match="Unsupported type for band structure"):
         pmv.band_structure(band_structs="invalid")
@@ -107,13 +111,8 @@ def test_phonon_dos_raises(
     [
         ("element", True, False, {"Na", "Cl", "Total"}),
         ("site", False, False, {"Na0", "Cl1"}),
-        (
-            "element",
-            True,
-            True,
-            {f"{m} - {e}" for m in "AB" for e in ("Na", "Cl", "Total")},
-        ),
-        ("site", False, True, {f"{m} - {s}" for m in "AB" for s in ("Na0", "Cl1")}),
+        ("element", True, True, {"Na", "Cl", "Total"}),  # prefixed with "A - " etc.
+        ("site", False, True, {"Na0", "Cl1"}),
         (None, True, False, None),  # total DOS only, passed unlabeled
     ],
 )
@@ -137,6 +136,8 @@ def test_phonon_dos_projection(
         )
         assert "pdos" not in widget.doses  # projected DOS reduced to its total
         return
+    if labeled:
+        expected_names = {f"{lbl} - {name}" for lbl in "AB" for name in expected_names}
     assert set(widget.doses) == expected_names
     site_densities = complete_phonon_dos.projected_dos
     assert site_densities is not None
@@ -150,8 +151,8 @@ def test_phonon_dos_projection(
 
 
 def test_bands_and_dos_widget_phonons(phonon_bands_doses_mp_2758: BandsDoses) -> None:
-    """Bands and DOS share labels, single inputs pass unlabeled, stacked DOS need
-    one grid.
+    """Bands and DOS share labels, single inputs pass unlabeled (without
+    eigendisplacements), stacked DOS need one grid.
     """
     bands = phonon_bands_doses_mp_2758["bands"]
     doses = phonon_bands_doses_mp_2758["doses"]
@@ -174,6 +175,7 @@ def test_bands_and_dos_widget_phonons(phonon_bands_doses_mp_2758: BandsDoses) ->
 
     widget = pmv.bands_and_dos(band_structs=bands["DFT"], doses=doses["DFT"])
     assert "bands" in widget.band_structs
+    assert "eigendisplacements" not in widget.band_structs
     assert "densities" in widget.doses
 
     for mismatched in ({"DFT": doses["DFT"]}, doses["DFT"]):
@@ -237,17 +239,3 @@ def test_phonon_dos_stack_projection_raises(
         complete_phonon_dos, project="element", stack=True, show_total=False
     )
     assert set(widget.doses) == {"Na", "Cl"}
-
-
-def test_band_widgets_drop_eigendisplacements(
-    phonon_bands_doses_mp_2758: BandsDoses,
-) -> None:
-    """Eigendisplacements, unused by the band plot, are not sent to the widget."""
-    bands = phonon_bands_doses_mp_2758["bands"]["DFT"]
-    assert "eigendisplacements" in bands.as_dict()
-    widget = pmv.band_structure(band_structs=bands)
-    assert "eigendisplacements" not in widget.band_structs
-    combined = pmv.bands_and_dos(
-        band_structs=bands, doses=phonon_bands_doses_mp_2758["doses"]["DFT"]
-    )
-    assert "eigendisplacements" not in combined.band_structs

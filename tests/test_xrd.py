@@ -55,7 +55,7 @@ def test_xrd_pattern_single(input_data: Any, expected: mk.XrdPattern) -> None:
 
 def test_xrd_pattern_mapping() -> None:
     """Mappings keep label order, compute structures and pass patterns (objects or
-    dicts) through.
+    dicts) through. An all-zero pattern is fine when another has positive intensity.
     """
     pattern_dict = {"x": [10, 20], "y": [100, 50], "hkls": [[{"hkl": (1, 0, 0)}]] * 2}
     patterns = OrderedDict(
@@ -63,11 +63,13 @@ def test_xrd_pattern_mapping() -> None:
             ("Structure", BI2_ZR2_O7_STRUCT),
             ("Pattern", MOCK_XRD_PATTERN),
             ("Dict", pattern_dict),
+            ("Zero", single_peak_pattern(0)),
         ]
     )
     widget = pmv.xrd_plot(patterns)
-    assert list(widget.patterns) == ["Structure", "Pattern", "Dict"]
+    assert list(widget.patterns) == ["Structure", "Pattern", "Dict", "Zero"]
     assert widget.patterns["Dict"]["y"] == [100, 50]
+    assert widget.patterns["Zero"]["y"] == [0]
     np.testing.assert_array_equal(
         widget.patterns["Structure"]["x"], BI2_ZR2_O7_XRD.two_theta
     )
@@ -93,20 +95,19 @@ def test_xrd_pattern_mapping() -> None:
                 (np.inf, (ValueError, "must be finite and non-negative")),
             ]
         ],
+        (  # labels colliding as strings raise instead of dropping a pattern
+            {1: MOCK_XRD_PATTERN, "1": MOCK_XRD_PATTERN},
+            ValueError,
+            "Labels must be unique as strings",
+        ),
     ],
 )
 def test_xrd_pattern_raises(
     patterns: Any, err_type: type[Exception], match: str
 ) -> None:
-    """Reject empty, unsupported and invalid-intensity inputs."""
+    """Reject empty, unsupported, invalid-intensity and colliding-label inputs."""
     with pytest.raises(err_type, match=match):
         pmv.xrd_plot(patterns)
-
-
-def test_xrd_pattern_zero_and_positive() -> None:
-    """An all-zero pattern is fine when another pattern has a positive intensity."""
-    widget = pmv.xrd_plot({"zero": single_peak_pattern(0), "pos": MOCK_XRD_PATTERN})
-    assert widget.patterns["zero"]["y"] == [0]
 
 
 def test_xrd_pattern_wavelength() -> None:
@@ -143,12 +144,7 @@ def test_xrd_plot_pattern_dict(pattern: dict[str, list[float]]) -> None:
 
 
 def test_xrd_pattern_labels() -> None:
-    """Labels named like pattern keys stay labels, labels colliding as strings raise
-    instead of dropping a pattern.
-    """
+    """Labels named like pattern keys stay labels."""
     widget = pmv.xrd_plot({"x": MOCK_XRD_PATTERN, "y": BI2_ZR2_O7_STRUCT})
     assert list(widget.patterns) == ["x", "y"]
     assert widget.patterns["x"]["y"] == MOCK_XRD_PATTERN.intensities.tolist()
-
-    with pytest.raises(ValueError, match="Labels must be unique as strings"):
-        pmv.xrd_plot({1: MOCK_XRD_PATTERN, "1": MOCK_XRD_PATTERN})

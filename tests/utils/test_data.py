@@ -15,46 +15,39 @@ if TYPE_CHECKING:
     from pymatviz.typing import CrystalSystem
 
 
+SPG_BY_CRYSTAL_SYS = {
+    "triclinic": (1, "P1", "P-1"),
+    "monoclinic": (15, "P2/m", "C2/c", "P2_1/c", "P12_1/c1", "C12/c1"),
+    "orthorhombic": (16, "Pnma", "Cmcm"),
+    "tetragonal": (75, "P4/mmm", "I4/mcm"),
+    "trigonal": (143, "R-3m", "R3c"),
+    "hexagonal": (168, "P6/mmm", "P6_3/mmc"),
+    "cubic": (230, "Fm-3m", "Ia-3d"),
+}
+
+
 @pytest.mark.parametrize(
     ("spg", "crystal_sys"),
     [
-        (1, "triclinic"),
-        (15, "monoclinic"),
-        (16, "orthorhombic"),
-        (75, "tetragonal"),
-        (143, "trigonal"),
-        (168, "hexagonal"),
-        (230, "cubic"),
-        ("P1", "triclinic"),
-        ("P-1", "triclinic"),
-        ("P2/m", "monoclinic"),
-        ("C2/c", "monoclinic"),
-        ("Pnma", "orthorhombic"),
-        ("Cmcm", "orthorhombic"),
-        ("P4/mmm", "tetragonal"),
-        ("I4/mcm", "tetragonal"),
-        ("R-3m", "trigonal"),
-        ("R3c", "trigonal"),
-        ("P6/mmm", "hexagonal"),
-        ("P6_3/mmc", "hexagonal"),
-        ("Fm-3m", "cubic"),
-        ("Ia-3d", "cubic"),
-        ("P2_1/c", "monoclinic"),
-        ("P12_1/c1", "monoclinic"),
-        ("C12/c1", "monoclinic"),
+        (spg, crystal_sys)
+        for crystal_sys, spgs in SPG_BY_CRYSTAL_SYS.items()
+        for spg in spgs
     ],
 )
-def test_spg_to_crystal_sys(spg: int, crystal_sys: CrystalSystem) -> None:
+def test_spg_to_crystal_sys(spg: int | str, crystal_sys: CrystalSystem) -> None:
+    """Space group numbers and symbols map to their crystal system."""
     assert crystal_sys == pmv.utils.spg_to_crystal_sys(spg)
 
 
 @pytest.mark.parametrize("spg", [-1, 0, 231, 1.2, "invalid", "P999", "X2/m"])
-def test_spg_to_crystal_sys_invalid(spg: int) -> None:
+def test_spg_to_crystal_sys_invalid(spg: float | str) -> None:
+    """Out-of-range numbers and unknown symbols raise."""
     with pytest.raises(ValueError, match=f"Invalid space group {spg}"):
         pmv.utils.spg_to_crystal_sys(spg)
 
 
 def test_si_fmt() -> None:
+    """Format floats with SI prefixes, custom formats, separators and thresholds."""
     assert pmv.utils.si_fmt(0) == "0.0"
     assert pmv.utils.si_fmt(123) == "123.0"
     assert pmv.utils.si_fmt(1234) == "1.2k"
@@ -62,9 +55,7 @@ def test_si_fmt() -> None:
     assert pmv.utils.si_fmt(12345678, fmt=">6.2f", sep=" ") == " 12.35 M"
     assert pmv.utils.si_fmt(-0.00123, fmt=".3g", binary=False) == "-1.23m"
     assert pmv.utils.si_fmt(0.00000123, fmt="5.1f", sep="\t", binary=True) == "  1.3\tμ"
-    assert (
-        pmv.utils.si_fmt(0.00000123, fmt="5.1f", sep="\t", binary=False) == "  1.2\tμ"
-    )
+    assert pmv.utils.si_fmt(1.23e-6, fmt="5.1f", sep="\t", binary=False) == "  1.2\tμ"
     assert pmv.utils.si_fmt(0.321, fmt=".2f") == "0.32"
     assert pmv.utils.si_fmt(-0.93) == "-0.9"
     assert pmv.utils.si_fmt(-0.93, fmt=".2f") == "-0.93"
@@ -89,6 +80,7 @@ def test_si_fmt_extreme_scales(binary: bool, sign: int) -> None:
 
 
 def test_si_fmt_int() -> None:
+    """Format integers with SI prefixes."""
     assert pmv.utils.si_fmt_int(0) == "0"
     assert pmv.utils.si_fmt_int(123) == "123"
     assert pmv.utils.si_fmt_int(1234) == "1k"
@@ -109,6 +101,7 @@ def test_si_fmt_int() -> None:
     ],
 )
 def test_html_tag(text: str, tag: str, title: str, style: str) -> None:
+    """Wrap text in a tag with title and style (or the "small" style preset)."""
     orig_style = style
     style = {"small": "font-size: 0.8em; font-weight: lighter;"}.get(style, style)
     attrs = f" {title=} " if title else ""
@@ -120,11 +113,10 @@ def test_html_tag(text: str, tag: str, title: str, style: str) -> None:
 
 
 def test_spg_num_to_from_symbol_roundtrip() -> None:
-    """Test that converting from number to symbol and back gives the original number."""
-    for num in range(1, 230 + 1):
+    """Number -> symbol -> number roundtrips for all 230 space groups."""
+    for num in range(1, 231):
         symbol = pmv.utils.spg_num_to_from_symbol(num)
-        num_back = pmv.utils.spg_num_to_from_symbol(symbol)
-        assert num == num_back, f"Roundtrip failed for {num} -> {symbol} -> {num_back}"
+        assert pmv.utils.spg_num_to_from_symbol(symbol) == num, f"{num=}, {symbol=}"
 
 
 def test_df_to_arrays() -> None:

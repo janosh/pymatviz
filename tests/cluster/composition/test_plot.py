@@ -203,30 +203,31 @@ def test_categorical_property(df_prop: pd.DataFrame, dtype: Any, missing: Any) -
 
 
 @pytest.mark.parametrize(
-    ("projection", "expected_stats"),
+    ("projection", "projection_kwargs", "expected_stats"),
     [
-        ("tsne", "perplexity = 2\nlearning_rate = 50"),
-        ("isomap", "n_neighbors = 3\nmetric = 'minkowski'"),
-        ("kernel_pca", "kernel = 'rbf'\ngamma = 0.1"),
+        (
+            "tsne",
+            dict(perplexity=2, learning_rate=50),
+            "perplexity = 2\nlearning_rate = 50",
+        ),
+        ("isomap", dict(n_neighbors=3), "n_neighbors = 3\nmetric = 'minkowski'"),
+        ("kernel_pca", dict(gamma=0.1), "kernel = 'rbf'\ngamma = 0.1"),
     ],
 )
 def test_projection_stats(
-    df_prop: pd.DataFrame, projection: str, expected_stats: str
+    df_prop: pd.DataFrame,
+    projection: str,
+    projection_kwargs: dict[str, Any],
+    expected_stats: str,
 ) -> None:
     """Non-PCA projection parameters show in the 2D annotation badge."""
-    projection_kwargs = {
-        "tsne": dict(perplexity=2, learning_rate=50),
-        "isomap": dict(n_neighbors=3),
-        "kernel_pca": dict(gamma=0.1),
-    }[projection]
-    kwargs: dict[str, Any] = dict(
-        embedding_method="one-hot",
-        projection=projection,
-        projection_kwargs=projection_kwargs,
-    )
     for show_stats, expected in ((True, expected_stats), (False, None)):
         widget = pmv.cluster_compositions(
-            df_prop, show_projection_stats=show_stats, **kwargs
+            df_prop,
+            embedding_method="one-hot",
+            projection=projection,
+            projection_kwargs=projection_kwargs,
+            show_projection_stats=show_stats,
         )
         assert isinstance(widget, ClusterScatterPlot)
         assert widget.annotation == expected

@@ -68,8 +68,10 @@ def test_chem_env_treemap_invalid_overflow(
     collect.assert_not_called()
 
 
-def test_chem_env_requires_periodic_structure() -> None:
+def test_chem_env_requires_periodic_structure(monkeypatch: pytest.MonkeyPatch) -> None:
     """Nonperiodic inputs are rejected before neighbor analysis."""
+    collect = MagicMock()
+    monkeypatch.setattr(chem_env, "site_environments", collect)
     molecule = mk.Structure(
         None, ["H", "H"], [[0, 0, 0], [0.7, 0, 0]], pbc=(False,) * 3
     )
@@ -77,3 +79,4 @@ def test_chem_env_requires_periodic_structure() -> None:
         TypeError, match=r"Expected structures periodic along a, b and c"
     ):
         pmv.chem_env_hierarchy(molecule, kind="treemap")  # ty: ignore[invalid-argument-type]
+    collect.assert_not_called()

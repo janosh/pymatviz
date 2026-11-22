@@ -5,7 +5,6 @@ from __future__ import annotations
 import math
 from typing import Any
 
-import matscikit as mk
 import numpy as np
 import pytest
 
@@ -16,11 +15,7 @@ from pymatviz.widgets._describe import (
     describe_widget,
     short_summary,
 )
-
-
-_STRUCT = mk.Structure(
-    np.eye(3) * 3, ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5]], fractional=True
-)
+from tests.conftest import SI2_STRUCT, cubic_structure
 
 
 @pytest.mark.parametrize(
@@ -39,10 +34,7 @@ _STRUCT = mk.Structure(
         # Histogram samples use `values` (binned on x); counts are not a y_range.
         (
             pmv.widgets.HistogramWidget(
-                series=[
-                    {"values": [1, 5, 3], "label": "a"},
-                    {"values": [7, 2]},
-                ]
+                series=[{"values": [1, 5, 3], "label": "a"}, {"values": [7, 2]}]
             ),
             {"n_series": 2, "n_points": 5, "series_labels": ["a"]}
             | {"x_range": [1.0, 7.0], "y_range": None},
@@ -52,14 +44,12 @@ _STRUCT = mk.Structure(
             {"n_series": 1, "z_range": [3.0, 4.0]},
         ),
         (
-            pmv.structure(structure=_STRUCT),
+            pmv.structure(structure=SI2_STRUCT),
             {"n_sites": 2, "formula": "Si2", "elements": ["Si"]},
         ),
         (
             pmv.structure(
-                structure=mk.Structure(
-                    np.eye(3) * 3, [{"Fe": 0.1}] * 10, [[0, 0, 0]] * 10, fractional=True
-                )
+                structure=cubic_structure(3, [{"Fe": 0.1}] * 10, [[0, 0, 0]] * 10)
             ),
             {"n_sites": 10, "formula": "Fe", "elements": ["Fe"]},
         ),
@@ -103,18 +93,10 @@ _STRUCT = mk.Structure(
             {"n_peaks": 5, "two_theta_range": [10.0, 60.0]},
         ),
         (
-            pmv.dos(
-                doses={
-                    "energies": [-1, 0, 1],
-                    "extra": {"energies": [-2, 2]},
-                }
-            ),
+            pmv.dos(doses={"energies": [-1, 0, 1], "extra": {"energies": [-2, 2]}}),
             {"n_energies": 3, "energy_range": [-1.0, 1.0]},
         ),
-        (
-            pmv.band_structure(band_structs={"bands": [[-1, 0, 1]]}),
-            {"n_bands": 1},
-        ),
+        (pmv.band_structure(band_structs={"bands": [[-1, 0, 1]]}), {"n_bands": 1}),
         (
             pmv.bands_and_dos(
                 band_structs={
@@ -150,14 +132,8 @@ _STRUCT = mk.Structure(
             ),
             {"n_bands": 4},
         ),
-        (
-            pmv.band_structure(band_structs={"bands": {"1": "bad"}}),
-            {"n_bands": None},
-        ),
-        (
-            pmv.dos(doses={"energies": {"up": [-1], "down": [0]}}),
-            {"n_energies": None},
-        ),
+        (pmv.band_structure(band_structs={"bands": {"1": "bad"}}), {"n_bands": None}),
+        (pmv.dos(doses={"energies": {"up": [-1], "down": [0]}}), {"n_energies": None}),
         # binary series (>= 10k points) are decoded
         (
             pmv.scatter_plot(
@@ -204,15 +180,13 @@ def test_describe_treemap_malformed_data(
     assert (report["n_nodes"], report["n_leaves"]) == (n_nodes, n_leaves)
 
 
-def test_describe_treemap_cyclic_data_terminates() -> None:
-    """_describe_treemap does not hang on cyclic node dicts (post-init mutation)."""
+def test_describe_treemap_cyclic_data_and_unknown_widget_type() -> None:
+    """Cyclic node dicts (post-init mutation) don't hang; unknown widget types fall
+    back to just the type.
+    """
     node: dict[str, Any] = {"label": "root"}
     node["children"] = [node]
     assert describe_widget({"widget_type": "treemap", "data": node})["n_nodes"] == 1
-
-
-def test_describe_unknown_widget_type() -> None:
-    """Unknown widget types fall back to just the type."""
     assert describe_widget({"widget_type": "mystery"}) == {"widget_type": "mystery"}
 
 
@@ -243,10 +217,7 @@ def test_short_summary(report: dict[str, Any], expected: str) -> None:
     [
         (pmv.scatter_plot(), True),
         (pmv.scatter_plot(series=[{"x": [0, 1], "y": [1, 2]}]), False),
-        (
-            pmv.scatter_plot(series=[{"x": np.ones(10**4), "y": np.ones(10**4)}]),
-            False,
-        ),
+        (pmv.scatter_plot(series=[{"x": np.ones(10**4), "y": np.ones(10**4)}]), False),
         # Histogram blank-state detection uses sample arrays.
         (pmv.widgets.HistogramWidget(), True),
         (pmv.widgets.HistogramWidget(series=[{"values": [1, 2, 3]}]), False),

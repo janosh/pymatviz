@@ -56,7 +56,7 @@ from pymatviz.widgets import (
     XrdWidget,
 )
 from pymatviz.widgets.matterviz import MATTERVIZ_ANYWIDGET_VERSION, _cdn_url
-from tests.conftest import rocksalt
+from tests.conftest import cubic_structure, rocksalt
 
 
 if TYPE_CHECKING:
@@ -72,9 +72,7 @@ pytestmark = pytest.mark.skipif(
 
 
 NACL = rocksalt(5.6)
-FE_O = mk.Structure(
-    np.eye(3) * 3, ["Fe", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]], fractional=True
-)
+FE_O = cubic_structure(3, ["Fe", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
 RNG = np.random.default_rng(seed=0)
 XS, YS = RNG.normal(size=(2, 300))
 HULL_ENTRIES = [
@@ -142,8 +140,7 @@ WIDGET_CASES: dict[
     ),
     BandsAndDosWidget: (
         lambda req: BandsAndDosWidget(
-            band_structs=_phonons(req, "bands"),
-            doses=_phonons(req, "doses"),
+            band_structs=_phonons(req, "bands"), doses=_phonons(req, "doses")
         ),
         True,
     ),
@@ -230,10 +227,7 @@ WIDGET_CASES: dict[
         lambda _: pmv.chem_sys_hierarchy(["Fe2O3", "NaCl", "Fe"], kind="treemap"),
         True,
     ),
-    XrdWidget: (
-        lambda _: XrdWidget(patterns=mk.xrd_patterns([NACL])[0]),
-        True,
-    ),
+    XrdWidget: (lambda _: XrdWidget(patterns=mk.xrd_patterns([NACL])[0]), True),
 }
 
 

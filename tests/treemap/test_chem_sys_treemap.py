@@ -9,6 +9,7 @@ import matscikit as mk
 import pytest
 
 import pymatviz as pmv
+from tests.conftest import cubic_structure
 
 
 if TYPE_CHECKING:
@@ -84,12 +85,7 @@ def test_system_limit(
 @pytest.mark.parametrize("limit", [None, 99])
 def test_mixed_inputs(chart: ChemicalChart, limit: int | None) -> None:
     """Mixed inputs produce nodes only for arities present in the data."""
-    structure = mk.Structure(
-        [[3, 0, 0], [0, 3, 0], [0, 0, 3]],
-        ["Fe", "O"],
-        [[0, 0, 0], [0.5] * 3],
-        fractional=True,
-    )
+    structure = cubic_structure(3, ["Fe", "O"], [[0, 0, 0], [0.5] * 3])
     inputs = [
         "Fe-O",
         " Fe2O3 ",

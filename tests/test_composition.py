@@ -44,19 +44,19 @@ def test_count_elements(
     count_mode: ElemCountMode,
     counts: dict[str, float],
 ) -> None:
-    series = count_elements(inputs, count_mode=count_mode)
+    """Count elements per mode, passed as ElemCountMode or its ElemCountModeName
+    (identical results, dtype included).
+    """
     expected = pd.Series(counts, index=pmv.utils.df_ptable.index, name="count")
+    series = count_elements(inputs, count_mode=count_mode)
     pd.testing.assert_series_equal(series, expected, check_dtype=False)
+    by_name = count_elements(inputs, count_mode=str(count_mode))  # ty: ignore[invalid-argument-type]
+    pd.testing.assert_series_equal(by_name, series)
 
 
-def test_count_elements_accepts_count_mode_names() -> None:
-    """Every ElemCountMode value is an ElemCountModeName and counts like its member."""
+def test_elem_count_mode_names() -> None:
+    """ElemCountModeName lists exactly the ElemCountMode values."""
     assert set(get_args(ElemCountModeName)) == {str(mode) for mode in ElemCountMode}
-    for name in get_args(ElemCountModeName):
-        pd.testing.assert_series_equal(
-            count_elements(FE_P_O_COMPS, count_mode=name),
-            count_elements(FE_P_O_COMPS, count_mode=ElemCountMode(name)),
-        )
 
 
 @pytest.mark.parametrize(
@@ -84,10 +84,8 @@ def test_count_elements_exact_sums(count_mode: ElemCountMode) -> None:
 def test_count_elements_by_atomic_nums(index_type: type) -> None:
     """Accept integer atomic numbers without changing counts."""
     series_in = pd.Series(1, index=list(map(index_type, range(1, 119))))
-    el_cts = count_elements(series_in)
     expected = pd.Series(1, index=pmv.utils.df_ptable.index, name="count")
-
-    pd.testing.assert_series_equal(expected, el_cts)
+    pd.testing.assert_series_equal(expected, count_elements(series_in))
 
 
 @pytest.mark.parametrize(

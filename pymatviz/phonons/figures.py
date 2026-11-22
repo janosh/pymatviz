@@ -25,18 +25,6 @@ def _unwrap_single[T](labeled: dict[str, T]) -> T | dict[str, T]:
     return labeled[""] if list(labeled) == [""] else labeled
 
 
-def _phonon_dos(label: str, dos: AnyDos) -> mk.PhononDos:
-    """PhononDos (matscikit) of a matscikit, phonopy or pymatgen phonon DOS.
-
-    Raises:
-        TypeError: For other objects, naming the label.
-    """
-    try:
-        return to_phonon_dos(dos)
-    except TypeError as exc:
-        raise TypeError(f"{exc} (key {label!r})") from exc
-
-
 def _labeled_doses(
     doses: DosInput,
     project: Literal["element", "site"] | None,
@@ -52,7 +40,10 @@ def _labeled_doses(
 
     dos_dict: dict[str, PhononDosDict] = {}
     for label, raw_dos in raw_doses.items():
-        ph_dos = _phonon_dos(label, raw_dos)
+        try:
+            ph_dos = to_phonon_dos(raw_dos)
+        except TypeError as exc:
+            raise TypeError(f"{exc} (key {label!r})") from exc
         freqs = ph_dos.frequency_points
         total = mk.PhononDos(freqs, ph_dos.total_dos).as_dict()
         if project is None:

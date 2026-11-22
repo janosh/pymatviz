@@ -56,11 +56,12 @@ if TYPE_CHECKING:
     from typing import Literal
 
 
-# === Structures, compositions, symmetry, RDF, coordination, chemical environments ===
-
-
 H2O_SPECIES = ["H", "H", "O"]
 H2O_COORDS = [[0, 0, 0], [0, 0, 1.5], [0, 0, 0.75]]
+BCC_COORDS = [[0, 0, 0], [0.5, 0.5, 0.5]]
+CELL = np.eye(3) * 10
+WIDGET_MIME = "application/vnd.jupyter.widget-view+json"
+SR_SE_DOC = f"{TEST_FILES}/phonons/mp-2758-Sr4Se4-pbe.json.xz"
 
 
 def pmg_structure(struct: mk.Structure) -> Any:
@@ -70,6 +71,46 @@ def pmg_structure(struct: mk.Structure) -> Any:
     from pymatgen.core import Structure
 
     return Structure.from_dict(structure_to_pymatgen_dict(struct))
+
+
+def pmg_cubic(species: list[Any], a_len: float = 3.0, **kwargs: Any) -> Any:
+    """Pymatgen Structure in a cubic cell with sites at the origin and body center."""
+    pymatgen_core = pytest.importorskip("pymatgen.core")
+    lattice = pymatgen_core.Lattice.cubic(a_len)
+    coords = BCC_COORDS[: len(species)]
+    return pymatgen_core.Structure(lattice, species, coords, **kwargs)
+
+
+def pmg_diffraction_pattern(n_peaks: int = 5) -> Any:
+    """Mock pymatgen DiffractionPattern with float64 arrays and n_peaks hkls."""
+    xrd = pytest.importorskip("pymatgen.analysis.diffraction.xrd")
+    hkls = [(1, 0, 0), (1, 1, 0), (1, 1, 1), (2, 0, 0), (2, 1, 0)][:n_peaks]
+    return xrd.DiffractionPattern(
+        x=np.array([10.0, 20.0, 30.0, 40.0, 50.0][:n_peaks]),
+        y=np.array([100.0, 50.0, 75.0, 25.0, 60.0][:n_peaks]),
+        hkls=[[{"hkl": hkl}] for hkl in hkls],
+        d_hkls=np.array([2.5, 2.0, 1.8, 1.5, 1.3][:n_peaks]),
+    )
+
+
+def pmg_li_o_entries() -> list[Any]:
+    """Li-O pymatgen PDEntries plus a ComputedEntry with an energy correction."""
+    pytest.importorskip("pymatgen")
+    from pymatgen.analysis.phase_diagram import PDEntry
+    from pymatgen.core import Composition
+    from pymatgen.entries.computed_entries import ComputedEntry
+
+    formula_energies = [("Li", -1.9), ("O", -4.2), ("Li2O", -14.3), ("Li2O2", -16.0)]
+    return [
+        *(
+            PDEntry(Composition(formula), energy)
+            for formula, energy in formula_energies
+        ),
+        ComputedEntry("Li3O", -16.0, correction=-0.3),
+    ]
+
+
+# === Structures, compositions, symmetry, RDF, coordination, chemical environments ===
 
 
 @pytest.mark.parametrize(
@@ -157,7 +198,7 @@ def test_to_structure_pymatgen_species_and_molecules() -> None:
 
 def test_structure_dict_pymatgen_ase(ase_atoms: tuple[Any, Any]) -> None:
     """Pymatgen objects keep their as_dict (oxidation states included), ASE Atoms
-    become periodic pymatgen-style dicts.
+    become periodic pymatgen-style dicts (also via the widgets' structure_to_dict).
     """
     pmg_struct = pmg_structure(SI_STRUCTS[0]).add_oxidation_state_by_element({"Si": 4})
     assert structure_dict(pmg_struct) == pmg_struct.as_dict()  # keeps Si4+
@@ -166,6 +207,7 @@ def test_structure_dict_pymatgen_ase(ase_atoms: tuple[Any, Any]) -> None:
     assert [site["species"] for site in periodic["sites"]] == [
         [{"element": "Si", "occu": 1}]
     ] * 2
+    assert structure_to_dict(ase_atoms[0]) == periodic
 
 
 @pytest.mark.parametrize("kind", ["pymatgen", "ase", "ase_subclass"])
@@ -381,33 +423,19 @@ def test_count_formulas_and_chem_sys_hierarchy_pymatgen() -> None:
     and chem_sys_hierarchy.
     """
     pytest.importorskip("pymatgen")
-    from pymatgen.core import Composition, Lattice, Structure
+    from pymatgen.core import Composition
 
     df_out = count_formulas(["Fe2O3", Composition("Fe4O6"), Composition("FeO")])
     assert list(df_out.itertuples(index=False, name=None)) == [("binary", "Fe-O", 3)]
     df_out = count_formulas([Composition("Fe2O3")], group_by="formula")
     assert df_out["formula"].tolist() == ["Fe2 O3"]  # str(Composition) has amounts
 
-    structure = Structure(Lattice.cubic(3), ["Fe", "O"], [[0, 0, 0], [0.5] * 3])
+    structure = pmg_cubic(["Fe", "O"])
     widget = pmv.chem_sys_hierarchy([structure, Composition("LiPO4"), "FeO"])
     assert [(root["label"], root["children"]) for root in widget.data] == [
         ("binary", [{"id": "binary/Fe-O", "label": "Fe-O", "value": 2}]),
         ("ternary", [{"id": "ternary/Li-O-P", "label": "Li-O-P", "value": 1}]),
     ]
-
-
-# === Phonons, XRD, notebook display and composition embeddings ===
-
-
-WIDGET_MIME = "application/vnd.jupyter.widget-view+json"
-SR_SE_DOC = f"{TEST_FILES}/phonons/mp-2758-Sr4Se4-pbe.json.xz"
-BI2_ZR2_O7_CIF = f"{TEST_FILES}/xrd/Bi2Zr2O7-Fm3m-experimental-sqs.cif"
-
-
-def load_raw_doc(path: str = SR_SE_DOC) -> dict[str, Any]:
-    """Raw (pymatgen/monty JSON) phonon DB doc."""
-    with lzma.open(path, mode="rt") as file:
-        return json.load(file)
 
 
 # === Phonons ===
@@ -460,15 +488,12 @@ def test_pymatgen_phonon_dos(
     site like the equivalent matscikit PhononDos.
     """
     pytest.importorskip("pymatgen")
-    from pymatgen.core import Lattice, Structure
     from pymatgen.phonon.dos import CompletePhononDos, PhononDos
 
     freqs, total = complete_phonon_dos.frequency_points, complete_phonon_dos.total_dos
     site_densities = complete_phonon_dos.projected_dos
     assert site_densities is not None
-    pmg_struct = Structure(
-        Lattice.cubic(5.64), ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]]
-    )
+    pmg_struct = pmg_cubic(["Na", "Cl"], a_len=5.64)
     pmg_dos = CompletePhononDos(
         pmg_struct,
         PhononDos(freqs, total),
@@ -490,16 +515,34 @@ def test_pymatgen_phonon_dos(
     assert set(widget.doses) == expected_names | {"Total"}
 
 
-def test_pymatgen_band_widgets_drop_eigendisplacements() -> None:
-    """Pymatgen band structures convert without serializing eigendisplacements and
+def test_pymatgen_phonon_db_doc() -> None:
+    """MontyDecoder builds PhononDBDoc with matscikit fields equal to pymatgen's,
+    pymatgen band structures convert without serializing eigendisplacements and
     without mutating the input.
     """
+    pytest.importorskip("monty")
     pytest.importorskip("pymatgen")
+    from monty.json import MontyDecoder
+    from pymatgen.core import Structure
     from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine
     from pymatgen.phonon.dos import PhononDos
 
-    raw = load_raw_doc()
+    from pymatviz.phonons.helpers import PhononDBDoc
+
+    with lzma.open(SR_SE_DOC, mode="rt") as file:
+        raw = json.load(file)
+    doc = MontyDecoder().process_decoded(raw)
+    assert isinstance(doc, PhononDBDoc)
+    assert isinstance(doc.structure, mk.Structure)
+    assert isinstance(doc.phonon_bandstructure, mk.PhononBands)
+    assert isinstance(doc.phonon_dos, mk.PhononDos)
+    pmg_struct = Structure.from_dict(raw["structure"])
+    np.testing.assert_array_equal(doc.structure.positions, pmg_struct.cart_coords)
     bands = PhononBandStructureSymmLine.from_dict(raw["phonon_bandstructure"])
+    np.testing.assert_array_equal(doc.phonon_bandstructure.frequencies.T, bands.bands)
+    pmg_dos = PhononDos.from_dict(raw["phonon_dos"])
+    np.testing.assert_array_equal(doc.phonon_dos.total_dos, pmg_dos.densities)
+
     bands.eigendisplacements = np.ones((*bands.bands.shape, bands.nb_bands // 3, 3))
     assert "eigendisplacements" in bands.as_dict()
 
@@ -516,63 +559,23 @@ def test_pymatgen_band_widgets_drop_eigendisplacements() -> None:
     assert "eigendisplacements" not in widget.band_structs
     np.testing.assert_array_equal(widget.band_structs["bands"], bands.bands)
     assert bands.eigendisplacements is sentinel  # input not mutated
-    combined = pmv.bands_and_dos(
-        band_structs=bands, doses=PhononDos.from_dict(raw["phonon_dos"])
-    )
+    combined = pmv.bands_and_dos(band_structs=bands, doses=pmg_dos)
     assert "eigendisplacements" not in combined.band_structs
-
-
-def test_phonon_db_doc_via_monty() -> None:
-    """MontyDecoder builds PhononDBDoc with matscikit fields equal to pymatgen's."""
-    pytest.importorskip("monty")
-    pytest.importorskip("pymatgen")
-    from monty.json import MontyDecoder
-    from pymatgen.core import Structure
-    from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine
-    from pymatgen.phonon.dos import PhononDos
-
-    from pymatviz.phonons.helpers import PhononDBDoc
-
-    raw = load_raw_doc()
-    doc = MontyDecoder().process_decoded(raw)
-    assert isinstance(doc, PhononDBDoc)
-    assert isinstance(doc.structure, mk.Structure)
-    assert isinstance(doc.phonon_bandstructure, mk.PhononBands)
-    assert isinstance(doc.phonon_dos, mk.PhononDos)
-    pmg_struct = Structure.from_dict(raw["structure"])
-    np.testing.assert_array_equal(doc.structure.positions, pmg_struct.cart_coords)
-    pmg_bands = PhononBandStructureSymmLine.from_dict(raw["phonon_bandstructure"])
-    np.testing.assert_array_equal(
-        doc.phonon_bandstructure.frequencies.T, pmg_bands.bands
-    )
-    np.testing.assert_array_equal(
-        doc.phonon_dos.total_dos, PhononDos.from_dict(raw["phonon_dos"]).densities
-    )
 
 
 # === XRD ===
 
 
+@pytest.fixture(scope="module")
 def pymatgen_xrd_inputs() -> dict[str, Any]:
     """Pymatgen Bi2Zr2O7 structure, its XRDCalculator pattern and a mock pattern."""
     pytest.importorskip("pymatgen")
-    from pymatgen.analysis.diffraction.xrd import DiffractionPattern, XRDCalculator
+    from pymatgen.analysis.diffraction.xrd import XRDCalculator
     from pymatgen.core import Structure
 
-    struct = Structure.from_file(BI2_ZR2_O7_CIF)
-    mock = DiffractionPattern(
-        x=[10, 20, 30, 40, 50],
-        y=[100, 50, 75, 25, 60],
-        hkls=[
-            [{"hkl": (1, 0, 0)}],
-            [{"hkl": (1, 1, 0)}],
-            [{"hkl": (1, 1, 1)}],
-            [{"hkl": (2, 0, 0)}],
-            [{"hkl": (2, 1, 0)}],
-        ],
-        d_hkls=[2.5, 2.0, 1.8, 1.5, 1.3],
-    )
-    return {"struct": struct, "xrd": XRDCalculator().get_pattern(struct), "mock": mock}
+    struct = Structure.from_file(f"{TEST_FILES}/xrd/Bi2Zr2O7-Fm3m-experimental-sqs.cif")
+    xrd = XRDCalculator().get_pattern(struct)
+    return {"struct": struct, "xrd": xrd, "mock": pmg_diffraction_pattern()}
 
 
 @pytest.mark.parametrize(
@@ -597,12 +600,14 @@ def pymatgen_xrd_inputs() -> dict[str, Any]:
     ids=["pattern", "xrd_calculator", "structure", "istructure", "ase"],
 )
 def test_pymatgen_xrd_inputs(
-    make_input: Callable[[dict[str, Any]], Any], expected_key: str
+    make_input: Callable[[dict[str, Any]], Any],
+    expected_key: str,
+    pymatgen_xrd_inputs: dict[str, Any],
 ) -> None:
     """Pymatgen DiffractionPatterns pass through, pymatgen/ASE structures match
     pymatgen's XRDCalculator.
     """
-    inputs = pymatgen_xrd_inputs()
+    inputs = pymatgen_xrd_inputs
     expected = inputs[expected_key]
     widget = pmv.xrd_plot(make_input(inputs), style="height: 300px")
     assert isinstance(widget, pmv.widgets.XrdWidget)
@@ -614,9 +619,6 @@ def test_pymatgen_xrd_inputs(
             widget.patterns[key], getattr(expected, key), rtol=1e-12, atol=0
         )
     assert len(widget.patterns["hkls"]) == len(expected.hkls)
-
-    widget = pmv.xrd_plot({"pmg": inputs["mock"], "mk": mk.XrdPattern([10], [1])})
-    assert widget.patterns["pmg"]["d_hkls"] == inputs["mock"].d_hkls
 
 
 def test_pymatgen_xrd_raises() -> None:
@@ -642,64 +644,28 @@ def notebook_shell() -> Any:
     pmv.notebook_mode(on=False)
 
 
-def make_pmg_structure() -> Any:
-    """Simple cubic Fe pymatgen Structure."""
-    pymatgen_core = pytest.importorskip("pymatgen.core")
-    return pymatgen_core.Structure(pymatgen_core.Lattice.cubic(3), ["Fe"], [[0, 0, 0]])
-
-
-def make_diffraction_pattern() -> Any:
-    """Three-peak pymatgen DiffractionPattern."""
-    xrd = pytest.importorskip("pymatgen.analysis.diffraction.xrd")
-    return xrd.DiffractionPattern(
-        x=[10, 20, 30],
-        y=[100, 50, 75],
-        hkls=[[{"hkl": (1, 0, 0)}], [{"hkl": (1, 1, 0)}], [{"hkl": (1, 1, 1)}]],
-        d_hkls=[2.5, 2.0, 1.8],
-    )
-
-
-def make_phonopy_total_dos(phonopy_nacl: Any) -> Any:
-    """Phonopy TotalDos of NaCl on a 10x10x10 mesh."""
-    phonopy_nacl.run_mesh([10, 10, 10])
-    phonopy_nacl.run_total_dos()
-    return phonopy_nacl.total_dos
-
-
 @pytest.mark.parametrize("obj_name", ["structure", "ase_atoms", "pattern", "dos"])
 def test_notebook_mode_formats_third_party_objects(
     notebook_shell: Any, obj_name: str, request: pytest.FixtureRequest
 ) -> None:
     """With notebook_mode on, pymatgen/ASE/phonopy objects format as widgets."""
     if obj_name == "structure":
-        obj = make_pmg_structure()
+        obj = pmg_cubic(["Fe"])
     elif obj_name == "ase_atoms":
         obj = request.getfixturevalue("ase_atoms")[0]
     elif obj_name == "pattern":
-        obj = make_diffraction_pattern()
+        obj = pmg_diffraction_pattern(3)
     else:
-        obj = make_phonopy_total_dos(request.getfixturevalue("phonopy_nacl"))
+        phonopy_nacl = request.getfixturevalue("phonopy_nacl")
+        phonopy_nacl.run_mesh([10, 10, 10])
+        phonopy_nacl.run_total_dos()
+        obj = phonopy_nacl.total_dos
     pmv.notebook_mode(on=True)
     data, _metadata = notebook_shell.display_formatter.format(obj)
     assert WIDGET_MIME in data
     pmv.notebook_mode(on=False)
     data, _metadata = notebook_shell.display_formatter.format(obj)
     assert WIDGET_MIME not in data
-
-
-def make_pmg_phase_diagram() -> Any:
-    """Li-O pymatgen PhaseDiagram."""
-    pytest.importorskip("pymatgen")
-    from pymatgen.analysis.phase_diagram import PDEntry, PhaseDiagram
-    from pymatgen.core import Composition
-
-    return PhaseDiagram(
-        [
-            PDEntry(Composition("Li"), -1.9),
-            PDEntry(Composition("O"), -4.2),
-            PDEntry(Composition("Li2O"), -14.3),
-        ]
-    )
 
 
 def make_pmg_structure_subclass() -> Any:
@@ -720,17 +686,17 @@ def make_pmg_structure_subclass() -> Any:
             "CompositionWidget",
             "composition",
         ),
+        (lambda: pmg_diffraction_pattern(1), "XrdWidget", "xrd"),
         (
-            lambda: pytest.importorskip(
-                "pymatgen.analysis.diffraction.xrd"
-            ).DiffractionPattern(x=[10], y=[100], hkls=[], d_hkls=[]),
-            "XrdWidget",
-            "xrd",
+            lambda: pytest.importorskip("pymatgen.analysis.phase_diagram").PhaseDiagram(
+                pmg_li_o_entries()
+            ),
+            "ConvexHullWidget",
+            "convex_hull",
         ),
-        (make_pmg_phase_diagram, "ConvexHullWidget", "convex_hull"),
         (make_pmg_structure_subclass, "StructureWidget", "structure"),
         (
-            lambda: [{"structure": make_pmg_structure(), "energy": -1.0}] * 2,
+            lambda: [{"structure": pmg_cubic(["Fe"]), "energy": -1.0}] * 2,
             "TrajectoryWidget",
             "trajectory",
         ),
@@ -782,27 +748,13 @@ def test_magpie_featurize_matches_matminer() -> None:
     formulas = ["H2O", "CO2", "NaCl", "Fe2O3"]
     featurizer = ElementProperty.from_preset("magpie")
     assert featurizer.feature_labels() == mk.composition_feature_labels()
-    expected = [featurizer.featurize(Composition(formula)) for formula in formulas]
-    np.testing.assert_array_equal(magpie_featurize(formulas), np.nan_to_num(expected))
-    np.testing.assert_array_equal(
-        magpie_featurize([Composition(formula) for formula in formulas]),
-        np.nan_to_num(expected),
-    )
+    compositions = [Composition(formula) for formula in formulas]
+    expected = np.nan_to_num(list(map(featurizer.featurize, compositions)))
+    for inputs in (formulas, compositions):
+        np.testing.assert_array_equal(magpie_featurize(inputs), expected)
 
 
-# === Widgets and trajectories ===
-
-
-_CELL = np.eye(3) * 10
-_HKLS = [[{"hkl": [1, 0, 0]}], [{"hkl": [1, 1, 0]}]]
-
-
-def _meta(payload: dict[str, Any]) -> dict[str, Any]:
-    """Envelope JSON fields (everything but the binary arrays and tags)."""
-    return {k: v for k, v in payload.items() if k not in ("format", "kind", "arrays")}
-
-
-# === structures and compositions ===
+# === Widgets ===
 
 
 def test_composition_widget_pymatgen_composition() -> None:
@@ -854,10 +806,9 @@ def test_widgets_accept_pymatgen_structure(widget_cls: type, trait: str) -> None
     reject a pymatgen Molecule.
     """
     pytest.importorskip("pymatgen.core")
-    from pymatgen.core import Lattice, Molecule, Structure
+    from pymatgen.core import Molecule
 
-    struct = Structure(Lattice.cubic(3), ["Si"], [[0, 0, 0]])
-    synced = getattr(widget_cls(**{trait: struct}), trait)
+    synced = getattr(widget_cls(**{trait: pmg_cubic(["Si"])}), trait)
     assert isinstance(synced, dict)
     assert "lattice" in synced
     if widget_cls is not RdfPlotWidget:
@@ -865,26 +816,9 @@ def test_widgets_accept_pymatgen_structure(widget_cls: type, trait: str) -> None
             widget_cls(structure=Molecule(["H", "H"], [[0, 0, 0], [0, 0, 0.74]]))
 
 
-def test_structure_to_dict_ase_atoms() -> None:
-    """ASE Atoms convert to structure dicts with lattice and sites."""
-    pytest.importorskip("ase")
-    from ase.build import bulk
-
-    result = structure_to_dict(bulk("Si", "diamond", a=5.43))
-    assert isinstance(result, dict)
-    assert "lattice" in result
-    assert "sites" in result
-
-
 def test_link_selection_pymatgen_structures() -> None:
     """Scatter clicks highlight the elements of linked pymatgen structures."""
-    pytest.importorskip("pymatgen.core")
-    from pymatgen.core import Lattice, Structure
-
-    frames = [
-        Structure(Lattice.cubic(3), species, ((0, 0, 0), (0.5,) * 3))
-        for species in (("Fe", "O"), ("Li", "O"))
-    ]
+    frames = [pmg_cubic(["Fe", "O"]), pmg_cubic(["Li", "O"])]
     scatter = ScatterPlotWidget(
         series=[{"x": [0, 1], "y": [0, 1], "point_ids": [0, 1]}]
     )
@@ -900,17 +834,17 @@ def test_widget_volumetric_data_from_pymatgen() -> None:
     values are divided by the cell volume like matterviz's CHGCAR parser.
     """
     pytest.importorskip("pymatgen.core")
-    from pymatgen.core import Lattice, Structure
     from pymatgen.io.vasp.outputs import Chgcar, VolumetricData
 
-    struct = Structure(Lattice.cubic(2.0), ["Na"], [[0, 0, 0]])
+    struct = pmg_cubic(["Na"], a_len=2.0)
     rng = np.random.default_rng(seed=0)
     data = {"total": rng.random((2, 2, 3)), "diff": rng.random((2, 2, 3))}
     total, diff = StructureWidget(
         volumetric_data=[Chgcar(struct, data)]
     ).volumetric_data
     assert (diff["id"], diff["label"]) == ("diff", "diff")
-    assert _meta(total) == {
+    envelope_keys = ("format", "kind", "arrays")  # binary arrays and tags
+    assert {key: val for key, val in total.items() if key not in envelope_keys} == {
         "id": "total",
         "lattice": struct.lattice.matrix.tolist(),
         "origin": [0.0, 0.0, 0.0],
@@ -941,7 +875,7 @@ def test_widget_volumetric_data_from_pymatgen() -> None:
         StructureWidget(volumetric_data=[Chgcar(struct, data), volume])
 
 
-# === phase diagrams, XRD, vasprun ===
+# === Phase diagrams, XRD, vasprun ===
 
 
 @pytest.mark.parametrize("source", ["pymatgen", "entries", "generator", "matscikit"])
@@ -949,19 +883,10 @@ def test_normalize_convex_hull_entries_pymatgen(source: str) -> None:
     """Phase diagrams (pymatgen, matscikit), entry lists and generators give
     pymatgen's energies above hull and stability (computed by matscikit).
     """
-    pytest.importorskip("pymatgen.core")
+    entries = pmg_li_o_entries()
     from matscikit.interop import to_phase_diagram
-    from pymatgen.analysis.phase_diagram import PDEntry, PhaseDiagram
-    from pymatgen.core import Composition
-    from pymatgen.entries.computed_entries import ComputedEntry
+    from pymatgen.analysis.phase_diagram import PhaseDiagram
 
-    entries = [
-        PDEntry(Composition("Li"), -1.9),
-        PDEntry(Composition("O"), -4.2),
-        PDEntry(Composition("Li2O"), -14.3),
-        PDEntry(Composition("Li2O2"), -16.0),
-        ComputedEntry("Li3O", -16.0, correction=-0.3),
-    ]
     phase_diag = PhaseDiagram(entries)
     if source == "pymatgen":  # in PhaseDiagram.all_entries order
         entries = phase_diag.all_entries
@@ -996,29 +921,25 @@ def test_normalize_convex_hull_entries_pymatgen(source: str) -> None:
 
 def test_normalize_xrd_pattern_diffraction_pattern() -> None:
     """DiffractionPatterns are sticks with hkls (plain floats/ints), profiles
-    without.
+    without (None or empty hkls).
     """
-    pytest.importorskip("pymatgen.core")
+    pattern = pmg_diffraction_pattern(3)
     from pymatgen.analysis.diffraction.xrd import DiffractionPattern
 
-    x_vals, y_vals = np.array([10.0, 20.0]), np.array([100.0, 50.0])
-    computed = normalize_xrd_pattern(DiffractionPattern(x_vals, y_vals, _HKLS, None))
-    measured = normalize_xrd_pattern(DiffractionPattern(x_vals, y_vals, None, None))
+    x_vals, y_vals, hkls = pattern.x, pattern.y, pattern.hkls
+    computed = normalize_xrd_pattern(DiffractionPattern(x_vals, y_vals, hkls, None))
+    profile = {"x": [10, 20, 30], "y": [100, 50, 75], "kind": "profile"}
+    for no_hkls in (None, []):
+        measured = DiffractionPattern(x_vals, y_vals, no_hkls, no_hkls)
+        assert normalize_xrd_pattern(measured) == profile
     assert computed is not None
     assert "kind" not in computed
-    assert measured == {"x": [10.0, 20.0], "y": [100.0, 50.0], "kind": "profile"}
 
-    result = normalize_xrd_pattern(
-        DiffractionPattern(
-            x=np.array([10.0, 20.0, 30.0]),
-            y=np.array([100.0, 50.0, 25.0]),
-            hkls=[[{"hkl": (1, 0, 0)}], [{"hkl": (1, 1, 0)}], [{"hkl": (1, 1, 1)}]],
-            d_hkls=np.array([2.5, 2.0, 1.5]),
-        )
-    )
+    result = normalize_xrd_pattern(pattern)
     assert result is not None
+    assert "kind" not in result
     assert result["x"] == [10.0, 20.0, 30.0]
-    assert result["d_hkls"] == [2.5, 2.0, 1.5]
+    assert result["d_hkls"] == [2.5, 2.0, 1.8]
     assert type(result["x"][0]) is float
     assert type(result["d_hkls"][0]) is float
     assert result["hkls"][0][0]["hkl"] == [1, 0, 0]
@@ -1026,15 +947,12 @@ def test_normalize_xrd_pattern_diffraction_pattern() -> None:
 
 
 def test_xrd_widget_labeled_diffraction_patterns() -> None:
-    """A {label: pattern} mapping normalizes pymatgen DiffractionPatterns, keeping
-    label order.
+    """A {label: pattern} mapping normalizes pymatgen DiffractionPatterns (next to
+    matscikit patterns and dicts), keeping label order and d_hkls.
     """
-    pytest.importorskip("pymatgen.core")
-    from pymatgen.analysis.diffraction.xrd import DiffractionPattern
-
-    computed = DiffractionPattern(
-        [10, 20], [100, 50], [[{"hkl": (1, 0, 0)}]] * 2, [2, 1]
-    )
+    computed = pmg_diffraction_pattern(2)
+    widget = pmv.xrd_plot({"pmg": computed, "mk": mk.XrdPattern([10], [1])})
+    assert widget.patterns["pmg"]["d_hkls"] == [2.5, 2.0]
     widget = XrdWidget(
         patterns={"computed": computed, "scan": {"two_theta": [5], "intensities": [1]}}
     )
@@ -1052,8 +970,6 @@ def test_vasprun_paths_match_pymatgen(labeled: bool) -> None:
     pytest.importorskip("pymatgen.core")
     from pymatgen.electronic_structure.core import Spin
     from pymatgen.io.vasp import Vasprun
-
-    from pymatviz.utils.testing import TEST_FILES
 
     path = f"{TEST_FILES}/vasprun/MgO.vasprun.xml.xz"
     vasprun = Vasprun(path, parse_projected_eigen=False)
@@ -1102,50 +1018,41 @@ def _fallback_cases() -> list[Any]:
     """
     from ase import Atoms
     from ase.constraints import FixAtoms
-    from pymatgen.core import DummySpecies, Lattice, Molecule, Species, Structure
+    from pymatgen.core import DummySpecies, Molecule, Species
     from pymatgen.core.trajectory import Trajectory
 
-    from pymatviz.structures import to_structure
-
-    lattice = Lattice.cubic(3)
-    coords = [[0, 0, 0], [0.5, 0.5, 0.5]]
-    fe2 = Structure(lattice, ["Fe", "Fe"], coords)
-    dummy = Structure(lattice, [DummySpecies("X"), "Si"], coords)
+    fe2 = pmg_cubic(["Fe", "Fe"])
+    dummy = pmg_cubic([DummySpecies("X"), "Si"])
+    fe_o_oxidized = pmg_cubic([Species("Fe", 2), Species("O", -2)])
     zeros = np.zeros((2, 3))
-    with_force = Structure(
-        lattice, ["Fe", "Fe"], coords, site_properties={"force": zeros}
-    )
+    with_force = pmg_cubic(["Fe", "Fe"], site_properties={"force": zeros})
     h2_pos = [[0, 0, 0], [0, 0, 0.7]]
     h2_bulk = Atoms("H2", h2_pos, cell=np.eye(3) * 5, pbc=True)
     return [
-        [fe2, Structure(lattice, ["Fe", "Co"], coords)],  # varying species
+        [fe2, pmg_cubic(["Fe", "Co"])],  # varying species
         [{"structure": fe2, "label": "relaxed"}],  # string frame property
-        [Structure(lattice, [{"Fe": 0.5, "Co": 0.5}], [[0, 0, 0]])],  # disordered
+        [pmg_cubic([{"Fe": 0.5, "Co": 0.5}])],  # disordered
         [fe2.copy(site_properties={"aux": [[0, 1, 2], [3, 4]]})],
         [with_force.copy(site_properties={"force_max": zeros})],
         [Atoms("H2", h2_pos, cell=[5, 5, 5], constraint=FixAtoms(indices=[0]))],
         [Atoms("H2", h2_pos, cell=[5, 5, 5], magmoms=[[0, 0, 1], [0, 0, 2]])],
         [
             {
-                "structure": Structure(
-                    lattice, ["Fe", "Fe"], coords, properties={"phase": "alpha"}
-                ),
+                "structure": pmg_cubic(["Fe", "Fe"], properties={"phase": "alpha"}),
                 "energy": -1,
             }
         ],
         [dummy, dummy],
         Trajectory.from_structures([dummy, dummy]),
-        [Structure(lattice, [], [])] * 2,  # zero atoms
-        [Structure(lattice, [Species("Fe", 2), Species("O", -2)], coords)],
+        [pmg_cubic([])] * 2,  # zero atoms
+        [fe_o_oxidized],
         # matscikit keeps oxidation states in info["pymatgen"]
-        [to_structure(Structure(lattice, [Species("Fe", 2), "O"], coords))],
-        Trajectory.from_structures(
-            [Structure(lattice, [Species("Fe", 2), Species("O", -2)], coords)] * 2
-        ),
-        [Structure(lattice, ["Fe", "Fe"], coords, labels=["Fe1", "Fe2"])],
-        [Molecule(["H", "H"], [[0, 0, 0], [0, 0, 0.7]], charge=1, spin_multiplicity=2)],
-        [Molecule(["H", "H"], [[0, 0, 0], [0, 0, 0.7]], spin_multiplicity=3)],
-        [Structure(lattice, ["Fe", "Fe"], coords, charge=1)],
+        [to_structure(pmg_cubic([Species("Fe", 2), "O"]))],
+        Trajectory.from_structures([fe_o_oxidized] * 2),
+        [pmg_cubic(["Fe", "Fe"], labels=["Fe1", "Fe2"])],
+        [Molecule(["H", "H"], h2_pos, charge=1, spin_multiplicity=2)],
+        [Molecule(["H", "H"], h2_pos, spin_multiplicity=3)],
+        [pmg_cubic(["Fe", "Fe"], charge=1)],
         # singular cell (2D slab without c): the JSON path pads it with vacuum
         [Atoms("H2", h2_pos, cell=[0.009] * 3, pbc=True)],
         [Atoms("H2", h2_pos, cell=[5, 5, 0], pbc=[1, 1, 0])] * 2,
@@ -1177,19 +1084,6 @@ def test_unsupported_pymatgen_ase_frames_fall_back_to_json(case_idx: int) -> Non
     assert "frames" in traj
 
 
-def test_pymatgen_trajectory_ragged_forces_raise() -> None:
-    """Per-frame forces of the wrong shape raise instead of syncing."""
-    pytest.importorskip("pymatgen.core")
-    from pymatgen.core import Lattice, Structure
-    from pymatgen.core.trajectory import Trajectory
-
-    fe2 = Structure(Lattice.cubic(3), ["Fe", "Fe"], [[0, 0, 0], [0.5, 0.5, 0.5]])
-    forces = [{"forces": np.zeros((2, 3))}, {"forces": np.zeros((3, 3))}]
-    traj = Trajectory.from_structures([fe2, fe2], frame_properties=forces)
-    with pytest.raises(ValueError, match="'forces' must be per-atom"):
-        TrajectoryWidget(trajectory=traj)
-
-
 @pytest.mark.parametrize("source", ["object", "dict", "json"])
 def test_disordered_pymatgen_trajectory_frames(source: str) -> None:
     """Mixed sites of pymatgen Trajectories retain occupancies, unwrapped coordinates
@@ -1205,7 +1099,7 @@ def test_disordered_pymatgen_trajectory_frames(source: str) -> None:
     traj = Trajectory(
         [Composition({"Fe": 0.5, "Co": 0.5}), Species("Fe", 3)],
         frac,
-        lattice=_CELL,
+        lattice=CELL,
         time_step=2,
         site_properties={"moment": [np.array(1), np.array(2)]},
         frame_properties=[{}, {"energy": -1, "forces": np.full((2, 3), [0, 3, 4])}],
@@ -1221,7 +1115,7 @@ def test_disordered_pymatgen_trajectory_frames(source: str) -> None:
                 serialized
                 | {
                     "coords": traj.coords,
-                    "lattice": _CELL,
+                    "lattice": CELL,
                     "site_properties": traj.site_properties,
                 },
                 cls=MontyEncoder,
@@ -1260,14 +1154,14 @@ def test_disordered_pymatgen_trajectory_frames(source: str) -> None:
         ]
         assert site["properties"]["moment"] == 1
         np.testing.assert_array_equal(site["abc"], pos)
-        np.testing.assert_array_equal(site["xyz"], pos @ _CELL)
+        np.testing.assert_array_equal(site["xyz"], pos @ CELL)
 
 
 @pytest.mark.parametrize("displacement", [False, True])
 def test_pymatgen_trajectory_per_frame_lattice(displacement: bool) -> None:
     """Displacement coords are summed back to unwrapped positions in each frame's
     cell, per-frame lattices ship as [n_frames, 3, 3], frame_properties become
-    scalar and force channels.
+    scalar and force channels, ragged forces raise.
     """
     pytest.importorskip("pymatgen.core")
     from pymatgen.core.trajectory import Trajectory
@@ -1302,6 +1196,12 @@ def test_pymatgen_trajectory_per_frame_lattice(displacement: bool) -> None:
         decode_envelope(TrajectoryWidget(trajectory=traj).trajectory)["energy"],
         [np.nan, -2.0, np.nan],
     )
+    # per-frame forces of the wrong shape raise instead of syncing
+    traj.frame_properties = [
+        {"forces": np.zeros((n_atoms, 3))} for n_atoms in (1, 2, 1)
+    ]
+    with pytest.raises(ValueError, match="'forces' must be per-atom"):
+        TrajectoryWidget(trajectory=traj)
 
 
 @pytest.mark.parametrize("step", [0, -1, np.nan, np.inf, True, "2"])
@@ -1310,7 +1210,7 @@ def test_invalid_pymatgen_time_step(step: Any) -> None:
     pytest.importorskip("pymatgen.core")
     from pymatgen.core.trajectory import Trajectory
 
-    traj = Trajectory(["Si"], np.zeros((1, 1, 3)), lattice=_CELL, time_step=step)
+    traj = Trajectory(["Si"], np.zeros((1, 1, 3)), lattice=CELL, time_step=step)
     for value in (traj, traj.as_dict()):
         with pytest.raises(ValueError, match="time_step value must be finite and > 0"):
             TrajectoryWidget(trajectory=value)
@@ -1378,18 +1278,9 @@ def test_serialized_pymatgen_molecule_trajectory() -> None:
 @pytest.mark.parametrize("n_frames", [1, 3])
 def test_pymatgen_structure_sequence_trajectory(n_frames: int) -> None:
     """Lists of pymatgen structures and pymatgen Trajectories sync as binary frames."""
-    pytest.importorskip("pymatgen.core")
-    from pymatgen.core import Lattice, Structure
+    structures = [pmg_cubic(["Fe", "Fe"], 3.0 + idx * 0.1) for idx in range(n_frames)]
     from pymatgen.core.trajectory import Trajectory
 
-    structures = [
-        Structure(
-            lattice=Lattice.cubic(3.0 + idx * 0.1),
-            species=("Fe", "Fe"),
-            coords=((0, 0, 0), (0.5, 0.5, 0.5)),
-        )
-        for idx in range(n_frames)
-    ]
     arrays = decode_envelope(TrajectoryWidget(trajectory=structures).trajectory)
     expected_pos = np.array([struct.cart_coords for struct in structures])
     np.testing.assert_allclose(arrays["positions"], expected_pos, rtol=0, atol=1e-6)
@@ -1420,14 +1311,7 @@ def test_trajectory_widget_with_pymatgen_structure_metadata(
     """TrajectoryWidget forwards pymatgen structure properties/info to frame metadata,
     per-atom forces to the sites.
     """
-    pytest.importorskip("pymatgen.core")
-    from pymatgen.core import Lattice, Structure
-
-    structure = Structure(
-        lattice=Lattice.cubic(3.0),
-        species=("Fe", "Fe"),
-        coords=((0, 0, 0), (0.5, 0.5, 0.5)),
-    )
+    structure = pmg_cubic(["Fe", "Fe"])
     if metadata_field == "properties":
         structure.properties = metadata_value
     else:

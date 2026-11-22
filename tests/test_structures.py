@@ -17,7 +17,11 @@ from pymatviz.structures import (
     structure_dict,
     to_structure,
 )
-from pymatviz.utils.testing import TEST_FILES
+from pymatviz.utils.testing import (
+    TEST_FILES,
+    disordered_demo_structures,
+    hea_disordered,
+)
 from tests.conftest import SI2_STRUCT, SI_STRUCTS
 
 
@@ -55,9 +59,10 @@ def test_normalize_structures(input_raw: Any, expected_keys: list[Hashable]) -> 
     assert all(isinstance(struct, mk.Structure) for struct in struct_dict.values())
 
 
-def test_to_structure_and_structure_dict() -> None:
-    """Matscikit Structures pass through, vacant sites keep their index, molecules
-    become pymatgen-style dicts without lattice or fractional coordinates.
+def test_to_structure_and_site_helpers() -> None:
+    """Matscikit Structures pass through, vacant sites keep their index, disordered
+    sites give element sets and majority symbols, molecules become pymatgen-style
+    dicts without lattice or fractional coordinates.
     """
     assert to_structure(SI2_STRUCT) is SI2_STRUCT
     with pytest.raises(TypeError, match="expected a matscikit or pymatgen"):
@@ -71,6 +76,8 @@ def test_to_structure_and_structure_dict() -> None:
     assert vacant.site_occupancies == [{}, {"Fe": 1.0}]
     assert site_symbols(vacant) == ["X", "Fe"]
     assert structure_dict(vacant)["sites"][0]["label"] == "X0+"
+    assert site_elements(hea_disordered) == [{"Fe", "Ni", "Cr"}, {"Al"}]
+    assert site_symbols(hea_disordered) == ["Fe", "Al"]
 
     periodic = structure_dict(SI2_STRUCT)
     assert periodic["lattice"]["pbc"] == [True, True, True]
@@ -81,14 +88,6 @@ def test_to_structure_and_structure_dict() -> None:
     assert mol["@class"] == "Molecule"
     assert "lattice" not in mol
     assert all("abc" not in site and "xyz" in site for site in mol["sites"])
-
-
-def test_site_elements_and_symbols() -> None:
-    """Element sets and majority symbols of ordered and disordered sites."""
-    from pymatviz.utils.testing import hea_disordered
-
-    assert site_elements(hea_disordered) == [{"Fe", "Ni", "Cr"}, {"Al"}]
-    assert site_symbols(hea_disordered) == ["Fe", "Al"]
 
 
 @pytest.mark.parametrize(
@@ -127,39 +126,22 @@ def test_normalize_structures_errors(
             ["P 1 2_1/c 1", "P4/m2_1/nc", "P2_1/c", "R-3m:H", "P2_1/c", "F m -3 m"],
             [14, 128, 14, 166, 14, 225],
         ),
+        (SI_STRUCTS, [12, 129]),  # symmetry detected from structures
+        # disordered structures are told apart by species and occupancy
+        (list(disordered_demo_structures.values()), [221, 191, 221, 221]),
     ],
 )
 @pytest.mark.parametrize("as_series", [False, True])
 def test_normalize_spacegroups(
-    data: list | pd.Series, expected: list, as_series: bool
+    data: list | tuple | pd.Series, expected: list, as_series: bool
 ) -> None:
-    """Numbers and symbols map to ints, keeping a Series' index and name."""
+    """Numbers, symbols and structures map to ints, keeping a Series' index and name."""
     expected_series = pd.Series(expected)
     if as_series:
         index = pd.Index([f"sample-{idx}" for idx in range(len(data))], name="sample")
         data = pd.Series(list(data), index=index, name="spacegroup")
         expected_series = pd.Series(expected, index=index, name="spacegroup")
     pd.testing.assert_series_equal(normalize_spacegroups(data), expected_series)
-
-
-@pytest.mark.parametrize("as_series", [False, True])
-def test_normalize_spacegroups_with_structures(as_series: bool) -> None:
-    """Preserve identifiers when extracting symmetry from structures."""
-    expected = pd.Series([12, 129])
-    data: tuple | pd.Series = SI_STRUCTS
-    if as_series:
-        index = pd.Index(["sample-a", "sample-b"], name="sample")
-        data = pd.Series(list(SI_STRUCTS), index=index, name="spacegroup")
-        expected.index, expected.name = index, "spacegroup"
-    pd.testing.assert_series_equal(normalize_spacegroups(data), expected)
-
-
-def test_normalize_spacegroups_disordered() -> None:
-    """Disordered structures are told apart by species and occupancy."""
-    from pymatviz.utils.testing import disordered_demo_structures
-
-    structs = list(disordered_demo_structures.values())
-    assert normalize_spacegroups(structs).tolist() == [221, 191, 221, 221]
 
 
 @pytest.mark.parametrize("invalid_val", [0, -1, 231, 500, 2.5, float("nan"), pd.NA])

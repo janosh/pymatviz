@@ -14,7 +14,6 @@ import pandas as pd
 import pytest
 
 from pymatviz.widgets._normalize import (
-    _normalize_entry_compositions,
     _parse_formula_to_dict,
     _to_dict,
     normalize_convex_hull_entries,
@@ -26,14 +25,50 @@ from pymatviz.widgets._normalize import (
 )
 
 
+_MOCK_DICT = {"@class": "Mock", "value": 42}
+_HKLS = [[{"hkl": [1, 0, 0]}], [{"hkl": [1, 1, 0]}]]
+
+
 class _MockMSONable:
     """Mock object with .as_dict() method."""
 
     def as_dict(self) -> dict[str, Any]:
-        return {"@class": "Mock", "value": 42}
+        """Return a fresh copy of the mock dict."""
+        return dict(_MOCK_DICT)
 
 
-_MOCK_DICT = {"@class": "Mock", "value": 42}
+# === Passthrough and unsupported types ===
+
+
+@pytest.mark.parametrize(
+    ("normalize", "value"),
+    [
+        (normalize_xrd_pattern, None),
+        (normalize_xrd_pattern, {"x": [1, 2], "y": [3, 4], "hkls": [_HKLS[0]] * 2}),
+        (structure_to_dict, None),
+        (structure_to_dict, {"sites": [], "lattice": {}}),
+    ],
+)
+def test_normalizers_pass_through(normalize: Any, value: Any) -> None:
+    """None and already-normalized dicts are returned as the same object."""
+    assert normalize(value) is value
+
+
+@pytest.mark.parametrize(
+    ("normalize", "bad_input", "match"),
+    [
+        (functools.partial(_to_dict, label="band structure"), 42, "band structure"),
+        (functools.partial(_to_dict, label="DOS"), 42, "DOS"),
+        (normalize_convex_hull_entries, "not_valid", "convex hull"),
+        (normalize_xrd_pattern, 42, "XRD"),
+    ],
+)
+def test_normalizers_reject_unsupported_types(
+    normalize: Any, bad_input: Any, match: str
+) -> None:
+    """Normalizers raise TypeError naming the data kind for unsupported inputs."""
+    with pytest.raises(TypeError, match=f"Unsupported type for {match}"):
+        normalize(bad_input)
 
 
 # === _to_dict ===
@@ -69,13 +104,6 @@ def test_to_dict_drops_unread_fields() -> None:
     assert _to_dict(big, "band structure") is big
 
 
-@pytest.mark.parametrize("label", ["band structure", "DOS"])
-def test_to_dict_raises_for_unsupported_type(label: str) -> None:
-    """Test _to_dict raises TypeError with descriptive label."""
-    with pytest.raises(TypeError, match=f"Unsupported type for {label}"):
-        _to_dict(42, label)
-
-
 # === _parse_formula_to_dict ===
 
 
@@ -101,41 +129,28 @@ def test_parse_formula_to_dict_rejects_malformed(formula: str) -> None:
         _parse_formula_to_dict(formula)
 
 
-# === _normalize_entry_compositions ===
+# === normalize_convex_hull_entries ===
 
 
-def test_normalize_entry_compositions_parses_strings() -> None:
-    """String compositions are parsed to dicts, dict compositions pass through."""
+@pytest.mark.parametrize("container", [list, tuple])
+def test_normalize_convex_hull_entry_dicts(container: type) -> None:
+    """None passes through; entry dicts keep dict compositions (same object) and
+    parse formula strings, returning a list.
+    """
+    assert normalize_convex_hull_entries(None) is None
     entries = [
         {"composition": "Li2O", "energy": -14.3},
         {"composition": {"Fe": 1}, "energy": -8.3},
         {"composition": "O", "energy": -4.9},
     ]
-    result = _normalize_entry_compositions(entries)
-    assert result[0]["composition"] == {"Li": 2.0, "O": 1.0}
-    assert result[1]["composition"] == {"Fe": 1}
-    assert result[2]["composition"] == {"O": 1.0}
-    assert result[1] is entries[1]
-
-
-# === normalize_convex_hull_entries ===
-
-
-def test_normalize_convex_hull_entries_passthrough() -> None:
-    """Test None, list passthrough, and tuple formula parsing."""
-    assert normalize_convex_hull_entries(None) is None
-    entries = [{"composition": {"Li": 1}, "energy": -1.5}]
-    assert normalize_convex_hull_entries(entries) == entries
-    tuple_entries = (
-        {"composition": "Li2O", "energy": -14.3},
-        {"composition": "Fe", "energy": -8.3},
-    )
-    normalized_entries = normalize_convex_hull_entries(tuple_entries)
-    assert isinstance(normalized_entries, list)
-    assert normalized_entries == [
+    result = normalize_convex_hull_entries(container(entries))
+    assert result is not None
+    assert result == [
         {"composition": {"Li": 2.0, "O": 1.0}, "energy": -14.3},
-        {"composition": {"Fe": 1.0}, "energy": -8.3},
+        {"composition": {"Fe": 1}, "energy": -8.3},
+        {"composition": {"O": 1.0}, "energy": -4.9},
     ]
+    assert result[1] is entries[1]
 
 
 _HULL_ENTRIES = (("Li", -1.9), ("O", -4.2), ("Li2O", -14.3), ("Li2O2", -16.0))
@@ -184,23 +199,7 @@ def test_normalize_convex_hull_entries_from_phase_diagram(source: str) -> None:
     assert [entry["is_stable"] for entry in result] == [True] * 3 + [False, True]
 
 
-def test_normalize_convex_hull_entries_unsupported_type() -> None:
-    """Test TypeError for unsupported types."""
-    with pytest.raises(TypeError, match="Unsupported type for convex hull"):
-        normalize_convex_hull_entries("not_valid")
-
-
 # === normalize_xrd_pattern ===
-
-
-def test_normalize_xrd_pattern_passthrough() -> None:
-    """Test None and dict-with-hkls passthrough."""
-    assert normalize_xrd_pattern(None) is None
-    test_dict = {"x": [1, 2], "y": [3, 4], "hkls": [[{"hkl": [1, 0, 0]}]] * 2}
-    assert normalize_xrd_pattern(test_dict) is test_dict
-
-
-_HKLS = [[{"hkl": [1, 0, 0]}], [{"hkl": [1, 1, 0]}]]
 
 
 @pytest.mark.parametrize(
@@ -240,40 +239,14 @@ def test_normalize_xrd_pattern_rejects_bad_kind(bad_kind: str | None) -> None:
         normalize_xrd_pattern({"x": [1.0], "y": [2.0], "kind": bad_kind})
 
 
-def test_normalize_xrd_pattern_xrd_pattern_kind() -> None:
-    """XrdPatterns are sticks with hkls, profiles without."""
-    two_theta, intensities = [10.0, 20.0], [100.0, 50.0]
-    hkls = [[([1, 0, 0], 6)], [([1, 1, 0], 12)]]
-    computed = normalize_xrd_pattern(mk.XrdPattern(two_theta, intensities, hkls=hkls))
-    measured = normalize_xrd_pattern(mk.XrdPattern(two_theta, intensities))
-    assert computed is not None
-    assert "kind" not in computed
-    assert measured == {"x": [10.0, 20.0], "y": [100.0, 50.0], "kind": "profile"}
-
-
 @pytest.mark.parametrize(
     ("xrd_dict", "match"),
     [
-        (
-            {"x": [1.0, 2.0]},
-            "Expected keys: \\['x', 'y'\\]",
-        ),
-        (
-            {"x": [1.0], "y": [2.0, 3.0]},
-            "mismatched canonical lengths",
-        ),
-        (
-            {"two_theta": [1.0, 2.0]},
-            "Expected keys: \\['two_theta', 'intensities'\\]",
-        ),
-        (
-            {"two_theta": [1.0], "intensities": [2.0, 3.0]},
-            "mismatched Ferrox lengths",
-        ),
-        (
-            {"q": [1.0], "intensity": [2.0]},
-            "Unsupported XRD dict schema",
-        ),
+        ({"x": [1.0, 2.0]}, r"Expected keys: \['x', 'y'\]"),
+        ({"x": [1.0], "y": [2.0, 3.0]}, "mismatched canonical lengths"),
+        ({"two_theta": [1.0, 2.0]}, r"Expected keys: \['two_theta', 'intensities'\]"),
+        ({"two_theta": [1.0], "intensities": [2.0, 3.0]}, "mismatched Ferrox lengths"),
+        ({"q": [1.0], "intensity": [2.0]}, "Unsupported XRD dict schema"),
     ],
 )
 def test_normalize_xrd_pattern_dict_validation_errors(
@@ -285,25 +258,9 @@ def test_normalize_xrd_pattern_dict_validation_errors(
 
 
 @pytest.mark.parametrize(
-    ("hkls_in", "expected_hkls"),
-    [
-        (
-            [[1, 0, 0], [1, 1, 0]],
-            [[{"hkl": [1, 0, 0]}], [{"hkl": [1, 1, 0]}]],
-        ),
-        (
-            [[[1, 0, 0]], [[1, 1, 0]]],
-            [[{"hkl": [1, 0, 0]}], [{"hkl": [1, 1, 0]}]],
-        ),
-        (
-            [[{"hkl": [1, 0, 0]}], [{"hkl": [1, 1, 0]}]],
-            [[{"hkl": [1, 0, 0]}], [{"hkl": [1, 1, 0]}]],
-        ),
-    ],
+    "hkls_in", [[[1, 0, 0], [1, 1, 0]], [[[1, 0, 0]], [[1, 1, 0]]], _HKLS]
 )
-def test_normalize_xrd_pattern_ferrox_hkls_shapes(
-    hkls_in: list[Any], expected_hkls: list[list[dict[str, list[int]]]]
-) -> None:
+def test_normalize_xrd_pattern_ferrox_hkls_shapes(hkls_in: list[Any]) -> None:
     """Test Ferrox hkls normalization for flat, nested, and passthrough forms."""
     ferrox_dict = {
         "two_theta": [10.0, 20.0],
@@ -316,7 +273,7 @@ def test_normalize_xrd_pattern_ferrox_hkls_shapes(
     assert result["x"] == [10.0, 20.0]
     assert result["y"] == [100.0, 50.0]
     assert result["d_hkls"] == [2.5, 2.0]
-    assert result["hkls"] == expected_hkls
+    assert result["hkls"] == _HKLS
 
 
 def test_normalize_xrd_pattern_mixed_schema_prefers_complete_ferrox() -> None:
@@ -333,17 +290,20 @@ def test_normalize_xrd_pattern_mixed_schema_prefers_complete_ferrox() -> None:
 
 
 def test_normalize_xrd_pattern_from_xrd_pattern() -> None:
-    """XrdPattern conversion produces plain floats/ints."""
+    """XrdPatterns give plain floats/ints, sticks with hkls and profiles without."""
+    two_theta, intensities = np.array([10.0, 20.0, 30.0]), np.array([100.0, 50, 25])
     result = normalize_xrd_pattern(
         mk.XrdPattern(
-            np.array([10.0, 20.0, 30.0]),
-            np.array([100.0, 50.0, 25.0]),
+            two_theta,
+            intensities,
             d_spacings=np.array([2.5, 2.0, 1.5]),
             hkls=[[([1, 0, 0], 6)], [([1, 1, 0], 12)], [([1, 1, 1], 8)]],
         )
     )
     assert result is not None
-
+    assert "kind" not in result
+    measured = normalize_xrd_pattern(mk.XrdPattern(two_theta, intensities))
+    assert measured == {"x": [10.0, 20, 30], "y": [100.0, 50, 25], "kind": "profile"}
     assert result["x"] == [10.0, 20.0, 30.0]
     assert result["d_hkls"] == [2.5, 2.0, 1.5]
     assert type(result["x"][0]) is float
@@ -352,20 +312,7 @@ def test_normalize_xrd_pattern_from_xrd_pattern() -> None:
     assert type(result["hkls"][0][0]["hkl"][0]) is int
 
 
-def test_normalize_xrd_pattern_unsupported_type() -> None:
-    """Test TypeError for unsupported types."""
-    with pytest.raises(TypeError, match="Unsupported type for XRD"):
-        normalize_xrd_pattern(42)
-
-
 # === structure_to_dict ===
-
-
-def test_structure_to_dict_passthrough() -> None:
-    """None and dicts with a sites list pass through unchanged."""
-    assert structure_to_dict(None) is None
-    test_dict = {"sites": [], "lattice": {}}
-    assert structure_to_dict(test_dict) is test_dict
 
 
 @pytest.mark.parametrize("pbc", [(True,) * 3, (False,) * 3])
@@ -428,21 +375,20 @@ def test_normalize_plot_series_from_array_like_inputs(
     ]
 
 
-def test_normalize_plot_json_scalar_subclasses() -> None:
+class _MockIntEnum(IntEnum):
+    """Mock integer enum for JSON-safe int subclass normalization."""
+
+    VALUE = 42
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"), [(np.float64(4.5), 4.5), (_MockIntEnum.VALUE, 42)]
+)
+def test_normalize_plot_json_scalar_subclasses(value: Any, expected: Any) -> None:
     """Scalar subclasses normalize to JSON-safe Python primitives."""
-
-    class MockIntEnum(IntEnum):
-        """Mock integer enum for JSON-safe int subclass normalization."""
-
-        VALUE = 42
-
-    for value, expected, expected_type in [
-        (np.float64(4.5), 4.5, float),
-        (MockIntEnum.VALUE, 42, int),
-    ]:
-        normalized = normalize_plot_json(value, "test")
-        assert normalized == expected
-        assert type(normalized) is expected_type
+    normalized = normalize_plot_json(value, "test")
+    assert normalized == expected
+    assert type(normalized) is type(expected)
 
 
 @pytest.mark.parametrize(

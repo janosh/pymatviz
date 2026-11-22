@@ -11,13 +11,7 @@ import pytest
 
 import pymatviz as pmv
 from pymatviz.sunburst import spacegroup_sunburst
-from tests.conftest import rocksalt
-
-
-@pytest.fixture
-def rock_salt() -> mk.Structure:
-    """Conventional rocksalt NaCl cell with eight octahedrally coordinated sites."""
-    return rocksalt()
+from tests.conftest import SI_STRUCTS, rocksalt
 
 
 def spg_leaves(widget: pmv.widgets.SunburstWidget) -> dict[str, tuple[str, int]]:
@@ -64,10 +58,11 @@ def test_spacegroup_sunburst_invalid_data(invalid: Any) -> None:
                 "triclinic/1": ("1", 3),
             },
         ),
+        (SI_STRUCTS, {"monoclinic/12": ("12", 1), "tetragonal/129": ("129", 1)}),
     ],
 )
 def test_spacegroup_sunburst_counts(data: Any, expected: dict[str, Any]) -> None:
-    """Numbers, symbols and Series are counted per space group."""
+    """Numbers, symbols, Series and structures are counted per space group."""
     assert spg_leaves(spacegroup_sunburst(data)) == expected
 
 
@@ -82,16 +77,6 @@ def test_spacegroup_sunburst_symbol_counts(spg_symbols: list[str]) -> None:
     leaves = spg_leaves(widget)
     assert leaves["monoclinic/C2/m"][0] == "C2/m"
     assert leaves["cubic/P-43m"][0] == "P-43m"
-
-
-def test_spacegroup_sunburst_structure_counts(
-    structures: tuple[mk.Structure, mk.Structure],
-) -> None:
-    """Structure inputs are converted to space group counts via moyopy."""
-    assert spg_leaves(spacegroup_sunburst(structures)) == {
-        "monoclinic/12": ("12", 1),
-        "tetragonal/129": ("129", 1),
-    }
 
 
 @pytest.mark.parametrize("pbc", [(False,) * 3, (True, True, False)])
@@ -135,16 +120,11 @@ def test_spacegroup_sunburst_max_spacegroups(
     expected_systems: int,
     expected_others: list[tuple[str, int]] | None,
 ) -> None:
-    """Test spacegroup_sunburst with max_spacegroups functionality and edge cases.
-
-    max_spacegroups limits space groups shown *per crystal system* (regression: the
-    limit used to be applied globally, silently dropping entire crystal systems).
+    """max_spacegroups limits space groups shown *per crystal system* (regression:
+    the limit used to be applied globally, silently dropping entire crystal systems).
     """
-    # Create a dataset with multiple space groups per crystal system
-    spg_numbers = (1, 2, 3, 4, 5, 6, 7)
-
     widget = pmv.spacegroup_sunburst(
-        spg_numbers, max_spacegroups=max_spacegroups, overflow=overflow
+        range(1, 8), max_spacegroups=max_spacegroups, overflow=overflow
     )
     space_groups = dict(spg_leaves(widget).values())
     assert len(space_groups) == expected_systems
@@ -154,24 +134,26 @@ def test_spacegroup_sunburst_max_spacegroups(
     assert others == sorted(expected_others or [])
 
 
-@pytest.mark.parametrize("max_spacegroups", [0, -1])
-def test_spacegroup_sunburst_rejects_limit_below_one(max_spacegroups: int) -> None:
-    """max_spacegroups below 1 raises instead of silently meaning no limit."""
-    with pytest.raises(
-        ValueError, match=f"at least 1 or None, got limit={max_spacegroups}"
-    ):
-        pmv.spacegroup_sunburst([1, 2], max_spacegroups=max_spacegroups)
-
-
-def test_spacegroup_sunburst_invalid_limit_mode() -> None:
-    """Invalid overflow raises."""
-    with pytest.raises(ValueError, match="Invalid overflow="):
-        pmv.spacegroup_sunburst([1, 2, 3], max_spacegroups=1, overflow="invalid")  # ty: ignore[invalid-argument-type]
+@pytest.mark.parametrize(
+    ("kwargs", "match"),
+    [
+        ({"max_spacegroups": 0}, "at least 1 or None, got limit=0"),
+        ({"max_spacegroups": -1}, "at least 1 or None, got limit=-1"),
+        ({"max_spacegroups": 1, "overflow": "invalid"}, "Invalid overflow="),
+    ],
+)
+def test_spacegroup_sunburst_invalid_limits(kwargs: dict[str, Any], match: str) -> None:
+    """max_spacegroups below 1 (instead of silently meaning no limit) and unknown
+    overflow modes raise.
+    """
+    with pytest.raises(ValueError, match=match):
+        pmv.spacegroup_sunburst([1, 2, 3], **kwargs)
 
 
 @pytest.mark.parametrize("normalize", [False, True])
-def test_chem_env_sunburst_rock_salt(rock_salt: mk.Structure, normalize: bool) -> None:
+def test_chem_env_sunburst_rock_salt(normalize: bool) -> None:
     """ChemEnv classifies all eight rocksalt sites as CN 6 octahedra (O:6)."""
+    rock_salt = rocksalt()
     empty = mk.Structure(rock_salt.lattice, [], np.zeros((0, 3)))
     widget = pmv.chem_env_hierarchy([empty, rock_salt], normalize=normalize)
     expected = 1 if normalize else len(rock_salt)

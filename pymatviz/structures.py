@@ -77,7 +77,7 @@ def normalize_structures(systems: _StructureInputs) -> dict[Hashable, mk.Structu
     if isinstance(systems, (pd.Series, Mapping)):  # keep original keys/index
         return {key: to_structure(val) for key, val in systems.items()}
 
-    if isinstance(systems, Sequence) and not isinstance(systems, str):
+    if isinstance(systems, Sequence):
         return {
             f"{idx} {(struct := to_structure(item)).composition.formula}": struct
             for idx, item in enumerate(systems, start=1)

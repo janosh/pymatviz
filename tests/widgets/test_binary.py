@@ -28,12 +28,11 @@ from pymatviz.widgets._binary import (
     volume_envelope,
 )
 from pymatviz.widgets._headless import _REVIVE_BUFFERS_JS, _widget_data_json
+from tests.conftest import cubic_structure
 from tests.widgets.conftest import decode_envelope
 
 
-_POSITIONS = np.random.default_rng(seed=0).random((4, 3, 3)) * 10
-_NUMBERS = [8, 1, 1]
-_CELL = np.eye(3) * 10
+_FE2 = cubic_structure(3, ["Fe"] * 2, [[0, 0, 0], [0.5] * 3])
 
 
 @pytest.mark.parametrize(
@@ -213,41 +212,30 @@ def test_invalid_large_plot_series(series: dict[str, Any], match: str) -> None:
 
 def _fallback_cases() -> list[Any]:
     """Frame lists the binary format can't hold."""
-    cell = np.eye(3) * 3
-    coords = [[0, 0, 0], [0.5, 0.5, 0.5]]
-
-    def struct(species: list[Any], **kwargs: Any) -> mk.Structure:
-        """Two-site cubic structure (one site if species has one entry)."""
-        return mk.Structure(
-            cell, species, coords[: len(species)], fractional=True, **kwargs
-        )
-
-    fe2 = struct(["Fe", "Fe"])
+    coords = [[0, 0, 0], [0.5] * 3]
+    fe2_phase = mk.Structure(
+        _FE2.lattice, ["Fe"] * 2, _FE2.positions, info={"properties": {"phase": "a"}}
+    )
     h2_pos = [[0, 0, 0], [0, 0, 0.7]]
     h2_bulk = mk.Structure(np.eye(3) * 5, ["H", "H"], h2_pos)
     h2_mol = mk.Structure(None, ["H", "H"], h2_pos, pbc=(False,) * 3)
     return [
-        [fe2, struct(["Fe", "Co"])],  # varying species
-        [{"structure": fe2, "label": "relaxed"}],  # string frame property
-        [struct([{"Fe": 0.5, "Co": 0.5}])],  # disordered
-        [
-            {
-                "structure": struct(["Fe", "Fe"], info={"properties": {"phase": "a"}}),
-                "energy": -1,
-            }
-        ],
-        [mk.Structure(cell, [], np.zeros((0, 3)))] * 2,  # zero atoms
+        [_FE2, cubic_structure(3, ["Fe", "Co"], coords)],  # varying species
+        [{"structure": _FE2, "label": "relaxed"}],  # string frame property
+        [cubic_structure(3, [{"Fe": 0.5, "Co": 0.5}], coords[0])],  # disordered
+        [{"structure": fe2_phase, "energy": -1}],
+        [cubic_structure(3, [], np.zeros((0, 3)))] * 2,  # zero atoms
         # oxidation states, site labels and properties, molecule charge, tiny cell
-        [struct(["Fe2+", "O2-"])],
-        [struct(["Fe", "Fe"], site_data={"labels": ["Fe1", "Fe2"]})],
-        [struct(["Fe", "Fe"], site_data={"magmoms": np.array([1.0, -1.0])})],
+        [cubic_structure(3, ["Fe2+", "O2-"], coords)],
+        [_FE2.replace(site_data={"labels": ["Fe1", "Fe2"]})],
+        [_FE2.replace(site_data={"magmoms": np.array([1.0, -1.0])})],
         [mk.Structure(None, ["H", "H"], h2_pos, pbc=(False,) * 3, charge=1)],
         [mk.Structure(np.eye(3) * 0.009, ["H", "H"], h2_pos)],  # 7e-7 A^3 cell
-        [{"structure": fe2, "n_evals": 2**53 + 1}],  # float64 would round it
+        [{"structure": _FE2, "n_evals": 2**53 + 1}],  # float64 would round it
         [h2_bulk, h2_bulk.replace(pbc=(True, True, False))],  # pbc
         [h2_mol, h2_bulk],  # cell in only some frames
-        [{"structure": fe2, "force": np.zeros((2, 3))}, fe2],  # vector keys differ
-        [{"structure": fe2, "steps": 1.0}],  # reserved name
+        [{"structure": _FE2, "force": np.zeros((2, 3))}, _FE2],  # vector keys differ
+        [{"structure": _FE2, "steps": 1.0}],  # reserved name
     ]
 
 
@@ -263,10 +251,7 @@ def test_unsupported_frames_fall_back_to_json(frames: Any) -> None:
 
 def test_binary_trajectory_describe_and_numpy_metadata() -> None:
     """describe() reads binary envelopes; numpy metadata/time_step become JSON-safe."""
-    struct = mk.Structure(
-        np.eye(3) * 3, ["Fe", "Fe"], [[0, 0, 0], [0.5, 0.5, 0.5]], fractional=True
-    )
-    facts = TrajectoryWidget(trajectory=[struct] * 3).describe()
+    facts = TrajectoryWidget(trajectory=[_FE2] * 3).describe()
     assert {key: facts[key] for key in ("n_frames", "n_sites", "formula")} == {
         "n_frames": 3,
         "n_sites": 2,
@@ -274,10 +259,10 @@ def test_binary_trajectory_describe_and_numpy_metadata() -> None:
     }
     metadata = {"T": np.float64(300), "arr": np.arange(2)}
     traj = TrajectoryWidget(
-        trajectory={"frames": [struct, struct], "metadata": metadata}
+        trajectory={"frames": [_FE2, _FE2], "metadata": metadata}
     ).trajectory
     assert traj["pbc"] == [True] * 3
-    np.testing.assert_array_equal(decode_envelope(traj)["lattice"], struct.lattice)
+    np.testing.assert_array_equal(decode_envelope(traj)["lattice"], _FE2.lattice)
     assert json.dumps(traj["metadata"]) == '{"T": 300.0, "arr": [0, 1]}'
     no_positions = {"format": BINARY_FORMAT, "kind": "trajectory", "arrays": {}}
     with pytest.raises(ValueError, match=r"lacks arrays \['numbers', 'positions'\]"):
@@ -287,7 +272,7 @@ def test_binary_trajectory_describe_and_numpy_metadata() -> None:
 def test_volume_envelope_round_trip() -> None:
     """A volume encodes its grid as float32 [nx, ny, nz] beside the JSON fields."""
     grid = np.arange(24, dtype="<f4").reshape(2, 3, 4)
-    volume = {"id": "v", "grid": grid, "lattice": _CELL, "origin": np.zeros(3)}
+    volume = {"id": "v", "grid": grid, "lattice": np.eye(3), "origin": np.zeros(3)}
     widget = StructureWidget(volumetric_data=[volume])
     (payload,) = widget.volumetric_data
     values = decode_envelope(payload)["values"]
@@ -311,10 +296,11 @@ def _run_node(script: str) -> str:
 @pytest.mark.skipif(shutil.which("node") is None, reason="needs node")
 def test_headless_json_embeds_buffers_as_base64() -> None:
     """Headless exports revive only binary array data as DataViews."""
-    molecule = mk.Structure(None, _NUMBERS, _POSITIONS[0], pbc=(False,) * 3)
+    positions = np.random.default_rng(seed=0).random((4, 3, 3)) * 10
+    molecule = mk.Structure(None, [8, 1, 1], positions[0], pbc=(False,) * 3)
     payload = TrajectoryWidget(trajectory=molecule).trajectory
     marker = {"__matterviz_buffer_b64__": "ordinary metadata"}
-    volume = volume_envelope(_POSITIONS, id="grid")
+    volume = volume_envelope(positions, id="grid")
     xs = np.arange(_N_BIG)
     (series,) = ScatterPlotWidget(series=[{"x": xs, "y": xs}]).series
     data_json = _widget_data_json(
@@ -336,11 +322,8 @@ console.log(JSON.stringify([data instanceof DataView,
   widget_data.series[0].arrays.y.data instanceof DataView,
   widget_data.metadata, Array.from(new Float32Array(data.buffer))]));"""
     traj_view, vol_view, series_view, metadata, floats = json.loads(_run_node(script))
-    assert traj_view
-    assert vol_view
-    assert series_view
-    assert metadata == marker
-    np.testing.assert_array_equal(floats, _POSITIONS[:1].astype(np.float32).ravel())
+    assert [traj_view, vol_view, series_view, metadata] == [True, True, True, marker]
+    np.testing.assert_array_equal(floats, positions[0].astype(np.float32).ravel())
     # unset traits sync as null and must not break the revive loop
     nulls = {"trajectory": None, "volumetric_data": None, "series": None}
     null_script = f"const widget_data = {_widget_data_json(nulls)};\n"

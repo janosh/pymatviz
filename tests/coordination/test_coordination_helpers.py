@@ -31,13 +31,12 @@ def test_coordination_nums_invalid_input(
 def test_coordination_nums_in_structure_group_by(
     group_by: Literal["element", "site"], expected: dict[str, list[int]]
 ) -> None:
-    """Test different group_by options."""
+    """CNs group by element symbol or by 1-based site index."""
     struct = cubic_structure(
         4.0,
         ["Na", "Na", "Cl", "Cl"],
         [[0, 0, 0], [0.5, 0, 0], [0.5, 0.5, 0.5], [0, 0.5, 0.5]],
     )
-
     cns = coordination_nums_in_structure(struct, strategy=3.0, group_by=group_by)
     assert cns == expected
 

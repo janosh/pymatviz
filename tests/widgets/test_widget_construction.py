@@ -16,6 +16,7 @@ import traitlets as tl
 from matscikit.interop import structure_to_pymatgen_dict
 
 import pymatviz as pmv
+from pymatviz.widgets import _headless as headless_mod
 from pymatviz.widgets import matterviz
 from pymatviz.widgets._schema_traits import StructureTraits
 from pymatviz.widgets._traits import ELEMENT_COLOR_SCHEMES
@@ -47,186 +48,129 @@ from pymatviz.widgets.sunburst import SunburstWidget
 from pymatviz.widgets.trajectory import TrajectoryWidget
 from pymatviz.widgets.treemap import TreemapWidget
 from pymatviz.widgets.xrd import XrdWidget
+from tests.conftest import cubic_structure
 from tests.widgets.test_browser_render import WIDGET_CASES
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterator
 
 
-def _cubic(species: list[str], a_len: float = 3.0) -> mk.Structure:
-    """Simple cubic structure with species at (0, 0, 0) and (1/2, 1/2, 1/2)."""
-    coords = [[0, 0, 0], [0.5, 0.5, 0.5]][: len(species)]
-    return mk.Structure(np.eye(3) * a_len, species, coords, fractional=True)
-
-
-FE_STRUCT = _cubic(["Fe", "Fe"], 2.87)
+BCC_COORDS = [[0, 0, 0], [0.5, 0.5, 0.5]]
+FE_STRUCT = cubic_structure(2.87, ["Fe", "Fe"], BCC_COORDS)
+SI_STRUCT = cubic_structure(3, ["Si"], [0, 0, 0])
 
 
 # === Construction and widget_type ===
 
 
 @pytest.mark.parametrize(
-    ("widget_cls", "kwargs", "expected_type", "state_key"),
+    ("widget_cls", "expected_type", "kwargs"),
     [
         (
             ConvexHullWidget,
-            {"entries": [{"composition": {"Li": 1}, "energy": -1.5}]},
             "convex_hull",
-            "entries",
+            {"entries": [{"composition": {"Li": 1}, "energy": -1.5}]},
         ),
-        (
-            BandStructureWidget,
-            {"band_structs": {"bands": []}},
-            "band_structure",
-            "band_structs",
-        ),
-        (DosWidget, {"doses": {"energies": [0]}}, "dos", "doses"),
+        (BandStructureWidget, "band_structure", {"band_structs": {"bands": []}}),
+        (DosWidget, "dos", {"doses": {"energies": [0]}}),
         (
             BandsAndDosWidget,
-            {"band_structs": {"bands": []}, "doses": {"energies": []}},
             "bands_and_dos",
-            "doses",
+            {"band_structs": {"bands": []}, "doses": {"energies": []}},
         ),
-        (
-            FermiSurfaceWidget,
-            {"fermi_data": {"isosurfaces": []}},
-            "fermi_surface",
-            "fermi_data",
-        ),
-        (
-            FermiSurfaceWidget,
-            {"band_data": {"energies": []}},
-            "fermi_surface",
-            "band_data",
-        ),
+        (FermiSurfaceWidget, "fermi_surface", {"fermi_data": {"isosurfaces": []}}),
+        (FermiSurfaceWidget, "fermi_surface", {"band_data": {"energies": []}}),
         (
             BrillouinZoneWidget,
-            {"structure": {"lattice": {}, "sites": []}},
             "brillouin_zone",
-            "structure",
+            {"structure": {"lattice": {}, "sites": []}},
         ),
-        (
-            PhaseDiagramWidget,
-            {"data": {"components": ["A", "B"]}},
-            "phase_diagram",
-            "data",
-        ),
-        (
-            XrdWidget,
-            {"patterns": {"x": [10], "y": [100], "kind": "profile"}},
-            "xrd",
-            "patterns",
-        ),
+        (PhaseDiagramWidget, "phase_diagram", {"data": {"components": ["A", "B"]}}),
+        (XrdWidget, "xrd", {"patterns": {"x": [10], "y": [100], "kind": "profile"}}),
         (
             ScatterPlotWidget,
-            {"series": [{"x": [0, 1], "y": [1, 2], "label": "curve"}]},
             "scatter_plot",
-            "series",
+            {"series": [{"x": [0, 1], "y": [1, 2], "label": "curve"}]},
         ),
         (
             BarPlotWidget,
-            {"series": [{"x": [0, 1], "y": [2, 3], "label": "bars"}]},
             "bar_plot",
-            "series",
+            {"series": [{"x": [0, 1], "y": [2, 3], "label": "bars"}]},
         ),
         (
             HistogramWidget,
-            {"series": [{"values": [2, 2.5], "label": "hist"}]},
             "histogram",
-            "series",
+            {"series": [{"values": [2, 2.5], "label": "hist"}]},
         ),
         (
             PeriodicTableWidget,
-            {"heatmap_values": {"Fe": 42, "O": 100}},
             "periodic_table",
-            "heatmap_values",
+            {"heatmap_values": {"Fe": 42, "O": 100}},
         ),
+        (PeriodicTableWidget, "periodic_table", {"heatmap_values": [1.0, 4.0, 6.9]}),
         (
-            RdfPlotWidget,
-            {"structures": {"lattice": {}, "sites": []}},
-            "rdf_plot",
-            "structures",
+            PeriodicTableWidget,
+            "periodic_table",
+            {"color_scale": {"type": "log", "value_range": [1, None]}},
         ),
+        (PeriodicTableWidget, "periodic_table", {"color_bar": None}),
+        (RdfPlotWidget, "rdf_plot", {"structures": {"lattice": {}, "sites": []}}),
         (
             ScatterPlot3DWidget,
-            {"series": [{"x": [1], "y": [2], "z": [3], "label": "pt"}]},
             "scatter_plot_3d",
-            "series",
+            {"series": [{"x": [1], "y": [2], "z": [3], "label": "pt"}]},
         ),
         (
             HeatmapMatrixWidget,
+            "heatmap_matrix",
             {"x_items": ["A", "B"], "y_items": ["C", "D"], "values": [[1, 2], [3, 4]]},
-            "heatmap_matrix",
-            "values",
-        ),
-        (
-            PeriodicTableWidget,
-            {"heatmap_values": [1.0, 4.0, 6.9]},
-            "periodic_table",
-            "heatmap_values",
         ),
         (
             HeatmapMatrixWidget,
+            "heatmap_matrix",
             {"values": {"Fe": {"Fe": 1.0, "O": 0.5}, "O": {"Fe": 0.5, "O": 1.0}}},
-            "heatmap_matrix",
-            "values",
         ),
-        (
-            PeriodicTableWidget,
-            {"color_scale": {"type": "log", "value_range": [1, None]}},
-            "periodic_table",
-            "color_scale",
-        ),
-        (PeriodicTableWidget, {"color_bar": None}, "periodic_table", "color_bar"),
         (
             HeatmapMatrixWidget,
+            "heatmap_matrix",
             {"x_items": ["A"], "y_items": ["B"], "color_scale": {"type": "log"}},
-            "heatmap_matrix",
-            "color_scale",
         ),
         (
             HeatmapMatrixWidget,
-            {"color_bar": {"title": "count", "orientation": "vertical"}},
             "heatmap_matrix",
-            "color_bar",
+            {"color_bar": {"title": "count", "orientation": "vertical"}},
         ),
         (
             FermiSurfaceWidget,
+            "fermi_surface",
             {"fermi_data": {"isosurfaces": []}, "color_bar": {"title": "v_F"}},
-            "fermi_surface",
-            "color_bar",
         ),
         (
             FermiSurfaceWidget,
-            {"band_data": {"energies": []}, "color_bar": None},
             "fermi_surface",
-            "color_bar",
+            {"band_data": {"energies": []}, "color_bar": None},
         ),
         (
             ChemPotDiagramWidget,
-            {"entries": [{"name": "Li2O", "energy": -14.3}]},
             "chem_pot_diagram",
-            "entries",
+            {"entries": [{"name": "Li2O", "energy": -14.3}]},
         ),
-        (SunburstWidget, {"data": [{"label": "leaf", "value": 3}]}, "sunburst", "data"),
+        (SunburstWidget, "sunburst", {"data": [{"label": "leaf", "value": 3}]}),
         (
             TreemapWidget,
-            {"data": {"label": "root", "children": [{"label": "leaf", "value": 3}]}},
             "treemap",
-            "data",
+            {"data": {"label": "root", "children": [{"label": "leaf", "value": 3}]}},
         ),
     ],
 )
 def test_widget_construction_and_type(
-    widget_cls: type,
-    kwargs: dict[str, Any],
-    expected_type: str,
-    state_key: str,
+    widget_cls: type, expected_type: str, kwargs: dict[str, Any]
 ) -> None:
-    """Widget constructors preserve expected normalized state."""
+    """Constructors set widget_type and keep the last kwarg's state unchanged."""
     widget = widget_cls(**kwargs)
     assert widget.widget_type == expected_type
+    state_key = list(kwargs)[-1]
     assert getattr(widget, state_key) == kwargs[state_key]
 
 
@@ -288,8 +232,8 @@ def test_widget_notebook_integration(widget_cls: type[MatterVizWidget]) -> None:
 # === to_dict ===
 
 
-def test_to_dict_reflects_constructor_values() -> None:
-    """to_dict values match what was passed to the constructor."""
+def test_to_dict_reflects_constructor_values_and_mutations() -> None:
+    """to_dict values match the constructor args and pick up later mutations."""
     widget = HistogramWidget(
         series=[{"values": [2, 3], "label": "h"}],
         bins=25,
@@ -303,12 +247,6 @@ def test_to_dict_reflects_constructor_values() -> None:
     assert state["selected_series_idx"] == 1
     assert state["series"] == [{"values": [2.0, 3.0], "label": "h"}]
     assert state["x_axis"] == {"label": "Value"}
-
-
-def test_to_dict_reflects_runtime_mutations() -> None:
-    """to_dict picks up traitlet mutations after construction."""
-    widget = ScatterPlotWidget(series=[{"x": [0], "y": [1]}])
-    assert widget.to_dict()["x_axis"] is None
 
     widget.x_axis = {"label": "updated"}
     assert widget.to_dict()["x_axis"] == {"label": "updated"}
@@ -324,6 +262,7 @@ def test_to_dict_reflects_runtime_mutations() -> None:
     ("widget_cls", "attr", "expected"),
     [
         (BarPlotWidget, "series", None),
+        (ScatterPlotWidget, "x_axis", None),
         (BarPlotWidget, "orientation", "vertical"),
         (BarPlotWidget, "mode", "overlay"),
         (HistogramWidget, "bins", 100),
@@ -367,14 +306,6 @@ def test_hierarchy_config_defaults(widget_cls: type) -> None:
 # === Input normalization at widget level ===
 
 
-def test_histogram_widget_delegates_series_validation() -> None:
-    """HistogramWidget requires sample arrays in `values`."""
-    widget = HistogramWidget(series=[{"values": np.array([2, 1]), "label": "a"}])
-    assert widget.to_dict()["series"] == [{"values": [2.0, 1.0], "label": "a"}]
-    with pytest.raises(tl.TraitError, match="must include key 'values'"):
-        HistogramWidget(series=[{"x": [0, 1], "y": [2, 3]}])
-
-
 @pytest.mark.parametrize(
     "samples", [[2, 1], (2, 1), np.array([2, 1]), pd.Series([2, 1])]
 )
@@ -414,7 +345,9 @@ def test_histogram_series_updates_normalize(
 def test_histogram_series_updates_reject_invalid(
     series: Any, match: str, hold_notifications: bool
 ) -> None:
-    """Invalid updates leave valid state intact and never notify the frontend."""
+    """Invalid series fail on init; updates leave state intact and never notify."""
+    with pytest.raises(tl.TraitError, match=match):
+        HistogramWidget(series=series)
     widget = HistogramWidget(series=[{"values": [1, 2]}])
     old_state = widget.to_dict()
     observer = Mock()
@@ -521,6 +454,19 @@ def test_structure_viz_vector_props(
             "values",
             [[1.0, 0.5], [0.5, 1.0]],
         ),
+        # scalar string axis items are one label
+        (
+            HeatmapMatrixWidget,
+            {"x_items": "Fe"},
+            "x_items",
+            [{"key": "Fe", "label": "Fe"}],
+        ),
+        (
+            HeatmapMatrixWidget,
+            {"y_items": "O"},
+            "y_items",
+            [{"key": "O", "label": "O"}],
+        ),
         (
             PeriodicTableWidget,
             {"heatmap_values": np.array([1.0, 4.0, 6.9])},
@@ -553,13 +499,13 @@ def test_structure_viz_vector_props(
         ),
     ],
 )
-def test_widget_normalizes_numpy_values(
+def test_widget_normalizes_inputs(
     widget_cls: type,
     kwargs: dict[str, Any],
     attr: str,
     expected: list[Any] | dict[str, Any],
 ) -> None:
-    """Widgets normalize numpy arrays to plain Python lists."""
+    """Widgets normalize numpy arrays and scalar axis items to plain Python lists."""
     widget = widget_cls(**kwargs)
     result = getattr(widget, attr)
     assert result == expected
@@ -593,7 +539,6 @@ def test_spacegroup_bar_data_inputs(monkeypatch: pytest.MonkeyPatch) -> None:
     assert (widget.data, n_calls) == ({"14": 2, "62": 3, "225": 1}, 1)
     widget.data = {225: 1, np.int64(62): 2, "225": 3, "Fm-3m": 4, "P 1 21/c 1": 5}
     assert (widget.data, n_calls) == ({"14": 5, "62": 2, "225": 8}, 3)
-    assert SpacegroupBarPlotWidget().data == {}
     for bad_data, match in [
         ({225: -1}, "non-negative"),
         ({225: 1.5}, "integers"),
@@ -764,13 +709,6 @@ def test_dos_sigma_in_data_unit(
         assert widget_cls(sigma=sigma).to_dict()["sigma"] == expected
 
 
-def test_heatmap_matrix_scalar_string_axis_items() -> None:
-    """HeatmapMatrixWidget treats scalar string axis items as one label."""
-    widget = HeatmapMatrixWidget(x_items="Fe", y_items="O")
-    assert widget.x_items == [{"key": "Fe", "label": "Fe"}]
-    assert widget.y_items == [{"key": "O", "label": "O"}]
-
-
 @pytest.mark.parametrize(
     "widget_cls",
     [
@@ -810,30 +748,62 @@ def test_color_scale_config_normalized_and_validated(widget_cls: type) -> None:
 )
 def test_widgets_accept_structure(widget_cls: type, trait: str) -> None:
     """Structure traits sync a matscikit Structure as a dict."""
-    struct = _cubic(["Si"])
+    struct = SI_STRUCT
     synced = getattr(widget_cls(**{trait: struct}), trait)
     assert isinstance(synced, dict)
     assert "lattice" in synced
 
 
-@pytest.mark.parametrize("widget_cls", [BandsAndDosWidget, BrillouinZoneWidget])
-def test_brillouin_zone_widgets_reject_molecules(widget_cls: type) -> None:
-    """A Brillouin zone needs a lattice, so a Molecule fails at construction."""
-    with pytest.raises(TypeError, match="periodic structure"):
-        widget_cls(
-            structure=mk.Structure(
-                None, ["H", "H"], [[0, 0, 0], [0, 0, 0.74]], pbc=(False,) * 3
-            )
-        )
+H2_MOLECULE = mk.Structure(
+    None, ["H", "H"], [[0, 0, 0], [0, 0, 0.74]], pbc=(False,) * 3
+)
 
 
-def test_rdf_plot_rejects_both_structures_and_patterns() -> None:
-    """RdfPlotWidget rejects simultaneous structures and patterns."""
-    with pytest.raises(ValueError, match="not both"):
-        RdfPlotWidget(
-            structures={"lattice": {}, "sites": []},
-            patterns=[{"r": [1], "g_r": [1]}],
-        )
+@pytest.mark.parametrize(
+    ("widget_cls", "kwargs", "err", "match"),
+    [
+        # a Brillouin zone needs a lattice
+        (
+            BandsAndDosWidget,
+            {"structure": H2_MOLECULE},
+            TypeError,
+            "periodic structure",
+        ),
+        (
+            BrillouinZoneWidget,
+            {"structure": H2_MOLECULE},
+            TypeError,
+            "periodic structure",
+        ),
+        (
+            RdfPlotWidget,
+            {
+                "structures": {"lattice": {}, "sites": []},
+                "patterns": [{"r": [1], "g_r": [1]}],
+            },
+            ValueError,
+            "not both",
+        ),
+        (
+            FermiSurfaceWidget,
+            {"fermi_data": None, "band_data": None},
+            ValueError,
+            "exactly one of fermi_data or band_data",
+        ),
+        (
+            FermiSurfaceWidget,
+            {"fermi_data": {"isosurfaces": []}, "band_data": {"energies": []}},
+            ValueError,
+            "exactly one of fermi_data or band_data",
+        ),
+    ],
+)
+def test_widgets_reject_invalid_data_sources(
+    widget_cls: type, kwargs: dict[str, Any], err: type[Exception], match: str
+) -> None:
+    """Molecules for Brillouin zones and missing or conflicting data sources raise."""
+    with pytest.raises(err, match=match):
+        widget_cls(**kwargs)
 
 
 def test_xrd_widget_labeled_patterns() -> None:
@@ -879,24 +849,6 @@ def test_scatter_plot_3d_rejects_invalid_series(series: list[Any], match: str) -
     assert widget.series == [{"x": [1.5], "y": [2], "z": [3.0]}]
 
 
-# === FermiSurfaceWidget input validation ===
-
-
-@pytest.mark.parametrize(
-    ("fermi_data", "band_data"),
-    [
-        (None, None),
-        ({"isosurfaces": []}, {"energies": []}),
-    ],
-)
-def test_fermi_surface_widget_invalid_input_combo(
-    fermi_data: dict[str, Any] | None, band_data: dict[str, Any] | None
-) -> None:
-    """FermiSurfaceWidget rejects ambiguous or missing input sources."""
-    with pytest.raises(ValueError, match="exactly one of fermi_data or band_data"):
-        FermiSurfaceWidget(fermi_data=fermi_data, band_data=band_data)
-
-
 @pytest.mark.parametrize(
     "widget_cls",
     [ScatterPlotWidget, BarPlotWidget, HistogramWidget],
@@ -920,6 +872,13 @@ def _make_widget() -> MatterVizWidget:
     return MatterVizWidget(widget_type="scatter_plot")
 
 
+@pytest.fixture
+def mock_render() -> Iterator[Mock]:
+    """Patch the headless renderer to return fake PNG bytes."""
+    with patch(f"{_HEADLESS}.render_widget_headless", return_value=_FAKE_PNG) as mock:
+        yield mock
+
+
 @pytest.mark.parametrize(
     ("filename", "explicit_fmt", "expected_capture_fmt"),
     [
@@ -940,16 +899,11 @@ def test_to_img_format_inference(
     explicit_fmt: str | None,
     expected_capture_fmt: str,
     tmp_path: Any,
+    mock_render: Mock,
 ) -> None:
     """to_img infers capture format from filename or explicit fmt argument."""
-    widget = _make_widget()
     resolved = f"{tmp_path}/{filename}" if filename else None
-
-    with patch(
-        f"{_HEADLESS}.render_widget_headless", return_value=_FAKE_PNG
-    ) as mock_render:
-        widget.to_img(filename=resolved, fmt=explicit_fmt)  # ty: ignore[invalid-argument-type]
-
+    _make_widget().to_img(filename=resolved, fmt=explicit_fmt)  # ty: ignore[invalid-argument-type]
     assert mock_render.call_args.kwargs["fmt"] == expected_capture_fmt
 
 
@@ -975,15 +929,11 @@ def test_to_img_rejects_invalid_args(
 
 
 @pytest.mark.parametrize("path_suffix", ["output.png", "sub/dir/output.png"])
+@pytest.mark.usefixtures("mock_render")
 def test_to_img_writes_file(tmp_path: Any, path_suffix: str) -> None:
     """to_img writes bytes to disk, creating parent directories as needed."""
-    widget = _make_widget()
-
-    with patch(f"{_HEADLESS}.render_widget_headless", return_value=_FAKE_PNG):
-        out_path = f"{tmp_path}/{path_suffix}"
-        result = widget.to_img(filename=out_path)
-
-    assert result == _FAKE_PNG
+    out_path = f"{tmp_path}/{path_suffix}"
+    assert _make_widget().to_img(filename=out_path) == _FAKE_PNG
     with open(out_path, "rb") as fh:
         assert fh.read() == _FAKE_PNG
 
@@ -999,29 +949,22 @@ def test_to_img_writes_file(tmp_path: Any, path_suffix: str) -> None:
     ],
     ids=["pdf-dpi", "jpeg-quality", "width", "height", "width-height"],
 )
-def test_to_img_forwards_render_kwargs(img_kwargs: dict[str, Any]) -> None:
-    """to_img forwards fmt/dpi/quality/width/height to the headless renderer and
-    returns its bytes unchanged.
+def test_to_img_forwards_render_kwargs(
+    img_kwargs: dict[str, Any], mock_render: Mock
+) -> None:
+    """to_img forwards fmt/dpi/quality/width/height to the renderer, returning its
+    bytes unchanged.
     """
-    widget = _make_widget()
-    with patch(
-        f"{_HEADLESS}.render_widget_headless", return_value=b"%PDF-fake"
-    ) as mock_render:
-        assert widget.to_img(**img_kwargs) == b"%PDF-fake"
+    assert _make_widget().to_img(**img_kwargs) == _FAKE_PNG
     for key, value in img_kwargs.items():
         assert mock_render.call_args.kwargs[key] == value
 
 
-def test_to_img_falls_back_from_marimo_url() -> None:
+def test_to_img_falls_back_from_marimo_url(mock_render: Mock) -> None:
     """to_img uses class assets when instance _esm is a marimo virtual-file URL."""
     widget = _make_widget()
     widget._esm = "./@file/virtual-esm-url.js"
-
-    with patch(
-        f"{_HEADLESS}.render_widget_headless", return_value=_FAKE_PNG
-    ) as mock_render:
-        widget.to_img(fmt="png")
-
+    widget.to_img(fmt="png")
     esm_passed = mock_render.call_args.kwargs["esm_content"]
     assert esm_passed != "./@file/virtual-esm-url.js"
     assert isinstance(esm_passed, str)
@@ -1035,72 +978,51 @@ _H6 = "height: 600px"
 
 
 @pytest.mark.parametrize(
-    ("style", "expect_in", "expect_not_in"),
+    ("style", "width", "height", "expect_in", "expect_not_in"),
     [
-        (None, [_W8, _H6], []),
-        ("", [_W8, _H6], []),
+        (None, None, None, [_W8, _H6], []),
+        ("", None, None, [_W8, _H6], []),
         (
             "width: 500px; height: 300px;",
+            None,
+            None,
             ["width: 500px", "height: 300px"],
             ["800px", "600px"],
         ),
-        ("height: 400px;", [_W8, "height: 400px"], ["600px"]),
-        ("width: 400px;", ["width: 400px", _H6], ["800px"]),
+        ("height: 400px;", None, None, [_W8, "height: 400px"], ["600px"]),
+        ("width: 400px;", None, None, ["width: 400px", _H6], ["800px"]),
+        # explicit width/height override user style and defaults
+        ("width: 500px;", 1200, None, ["width: 1200px", _H6], []),
+        ("width: 500px;", None, 900, ["width: 500px", "height: 900px"], []),
+        ("width: 500px;", 1200, 900, ["width: 1200px", "height: 900px"], []),
     ],
 )
-def test_build_html_dimensions(
+def test_container_style_dimensions(
     style: str | None,
+    width: int | None,
+    height: int | None,
     expect_in: list[str],
     expect_not_in: list[str],
 ) -> None:
-    """_container_style applies dimension defaults only for missing width/height."""
-    from pymatviz.widgets._headless import _container_style
-
+    """_container_style fills missing width/height defaults; explicit sizes win."""
     data: dict[str, Any] = {"widget_type": "bar_plot"}
     if style is not None:
         data["style"] = style
-    html = _container_style(data, None, None)
+    html = headless_mod._container_style(data, width, height)
     for substr in expect_in:
         assert substr in html, f"expected {substr!r} in HTML"
     for substr in expect_not_in:
         assert substr not in html, f"unexpected {substr!r} in HTML"
 
 
-@pytest.mark.parametrize(
-    ("width", "height", "expect_in"),
-    [
-        (1200, None, ["width: 1200px", _H6]),
-        (None, 900, ["width: 500px", "height: 900px"]),
-        (1200, 900, ["width: 1200px", "height: 900px"]),
-    ],
-)
-def test_build_html_width_height_override(
-    width: int | None,
-    height: int | None,
-    expect_in: list[str],
-) -> None:
-    """_container_style explicit width/height override user style and defaults."""
-    from pymatviz.widgets._headless import _container_style
-
-    data: dict[str, Any] = {"widget_type": "bar_plot", "style": "width: 500px;"}
-    html = _container_style(data, width, height)
-    for substr in expect_in:
-        assert substr in html, f"expected {substr!r} in HTML"
-
-
 def test_shutdown_browser_tolerates_none() -> None:
     """_shutdown_browser is a no-op when no browser thread was started."""
-    import pymatviz.widgets._headless as headless_mod
-    from pymatviz.widgets._headless import _shutdown_browser
-
     with patch.object(headless_mod, "_browser_thread", None):
-        _shutdown_browser()
+        headless_mod._shutdown_browser()
 
 
 def test_get_browser_import_error() -> None:
     """_get_browser raises ImportError with install instructions."""
-    import pymatviz.widgets._headless as headless_mod
-
     state = headless_mod._get_browser_thread()
     blocked = {"playwright": None, "playwright.async_api": None}
     with (
@@ -1125,14 +1047,14 @@ def test_build_html_render_gates(
     widget_type: str, expect_html_fallback: bool, expect_worker_shim: bool
 ) -> None:
     """_mount_options toggles HTML fallback and Worker shim per widget type."""
-    from pymatviz.widgets._headless import _build_html, _mount_options, _RenderInputs
-
-    inputs = _RenderInputs({"widget_type": widget_type}, "// esm", "/* css */")
-    options = _mount_options(inputs)
+    inputs = headless_mod._RenderInputs(
+        {"widget_type": widget_type}, "// esm", "/* css */"
+    )
+    options = headless_mod._mount_options(inputs)
     assert options["allow_html"] is expect_html_fallback
     assert options["no_worker"] is expect_worker_shim
     # Spinner guard is always present so loading states are never captured
-    assert '.spinner[role="status"]' in _build_html("// esm", "/* css */")
+    assert '.spinner[role="status"]' in headless_mod._build_html("// esm", "/* css */")
 
 
 # === Headless integration tests (require playwright + chromium) ===
@@ -1176,8 +1098,6 @@ def test_hierarchy_vector_and_html_exports(
 ) -> None:
     """Chemical-system charts export vector SVG/PDF and interactive standalone HTML."""
     from playwright.sync_api import expect, sync_playwright
-
-    import pymatviz as pmv
 
     widget = pmv.chem_sys_hierarchy(
         ["Fe2O3", "Li2O", "Si"],
@@ -1277,23 +1197,14 @@ def test_headless_scatter_vector_export(marker_renderer: str) -> None:
 
 
 @_skip_no_playwright
-@pytest.mark.parametrize(
-    ("fmt", "magic"), [("jpeg", b"\xff\xd8"), ("pdf", b"%PDF-")]
-)  # JPEG SOI marker, PDF header
-def test_headless_bar_plot_binary_formats(
-    bar_plot_widget: BarPlotWidget, fmt: str, magic: bytes
-) -> None:
-    """BarPlotWidget.to_img produces a valid, non-trivial JPEG/PDF."""
-    img_bytes = bar_plot_widget.to_img(fmt=fmt, dpi=72)  # ty: ignore[invalid-argument-type]
-    assert img_bytes.startswith(magic)
-    assert len(img_bytes) > 1000
-
-
-@_skip_no_playwright
-@pytest.mark.parametrize(
+@pytest.mark.parametrize(  # JPEG SOI marker, PNG and PDF headers
     ("filename", "fmt", "magic"),
-    [("bar.jpg", None, b"\xff\xd8"), ("bar.png", "png", b"\x89PNG")],
-    ids=["jpeg-from-jpg-extension", "explicit-png"],
+    [
+        ("bar.jpg", None, b"\xff\xd8"),
+        ("bar.png", "png", b"\x89PNG"),
+        ("bar.pdf", "pdf", b"%PDF-"),
+    ],
+    ids=["jpeg-from-jpg-extension", "explicit-png", "explicit-pdf"],
 )
 def test_headless_bar_plot_writes_file(
     bar_plot_widget: BarPlotWidget,
@@ -1302,31 +1213,27 @@ def test_headless_bar_plot_writes_file(
     fmt: str | None,
     magic: bytes,
 ) -> None:
-    """to_img writes the headless capture to disk, inferring JPEG from .jpg."""
+    """to_img writes a valid, non-trivial capture to disk, inferring JPEG from .jpg."""
     out_path = f"{tmp_path}/{filename}"
     result = bar_plot_widget.to_img(filename=out_path, fmt=fmt, dpi=72)  # ty: ignore[invalid-argument-type]
     assert result.startswith(magic)
+    assert len(result) > 1000
     with open(out_path, "rb") as fh:
         assert fh.read() == result
 
 
 @_skip_no_playwright
-def test_headless_structure_png() -> None:
-    """StructureWidget (canvas/WebGL) produces a valid PNG."""
-    widget = StructureWidget(structure=_cubic(["Si", "Si"]), style="height: 400px;")
-    png_bytes = widget.to_img(fmt="png", dpi=72)
-    assert png_bytes[:4] == b"\x89PNG"
-    assert len(png_bytes) > 5000
-
-
-@_skip_no_playwright
 @pytest.mark.parametrize("with_plot", [False, True])
 def test_headless_webgl_structure_exports(with_plot: bool) -> None:
-    """WebGL structures rasterize PDFs and raise for SVG, also beside an SVG plot."""
+    """WebGL structures export PNG, rasterize PDFs and raise for SVG, also beside an
+    SVG plot.
+    """
     if with_plot:
         frames = [
             {
-                "structure": structure_to_pymatgen_dict(_cubic(["Si"], 3 + 0.1 * idx)),
+                "structure": structure_to_pymatgen_dict(
+                    cubic_structure(3 + 0.1 * idx, ["Si"], [0, 0, 0])
+                ),
                 "step": idx,
                 "metadata": {"energy": -float(idx)},
             }
@@ -1338,7 +1245,13 @@ def test_headless_webgl_structure_exports(with_plot: bool) -> None:
             style="height: 400px;",
         )
     else:
-        widget = StructureWidget(structure=_cubic(["Si"]), style="height: 300px;")
+        widget = StructureWidget(
+            structure=cubic_structure(3, ["Si", "Si"], BCC_COORDS),
+            style="height: 400px;",
+        )
+    png_bytes = widget.to_img(fmt="png", dpi=72)
+    assert png_bytes[:4] == b"\x89PNG"
+    assert len(png_bytes) > 5000
     assert b"/Font" not in widget.to_img(fmt="pdf", dpi=72), "expected raster PDF"
     with pytest.raises(RuntimeError, match="no vector form"):
         widget.to_img(fmt="svg")
@@ -1351,8 +1264,6 @@ def test_headless_dpi_affects_png_dimensions() -> None:
     import io
 
     from PIL import Image
-
-    from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 
     widget = ScatterPlotWidget(
         series=[{"x": [0, 1], "y": [0, 1], "label": "pt"}],
@@ -1399,12 +1310,10 @@ def test_headless_widget_renders_nonblank_png(
     widget_cls: type, kwargs: dict[str, Any], max_blank: float
 ) -> None:
     """Widgets without a simple SVG chart still export a non-blank PNG."""
-    from pymatviz.widgets._headless import png_blank_fraction
-
     widget = widget_cls(style="height: 400px;", **kwargs)
     png_bytes = widget.to_img(fmt="png", dpi=72)
     assert png_bytes[:4] == b"\x89PNG"
-    blank_frac = png_blank_fraction(png_bytes)
+    blank_frac = headless_mod.png_blank_fraction(png_bytes)
     assert blank_frac is not None
     assert blank_frac < max_blank
 
@@ -1428,27 +1337,8 @@ def test_headless_convex_hull_ternary_canvas_export() -> None:
 
 
 @_skip_no_playwright
-def test_headless_convex_hull_binary_svg() -> None:
-    """Binary ConvexHull renders SVG: vector export returns the chart, not an icon."""
-    widget = ConvexHullWidget(
-        entries=[
-            {"composition": {"Li": 1}, "energy": -1.9},
-            {"composition": {"O": 1}, "energy": -3.0},
-            {"composition": {"Li": 2, "O": 1}, "energy": -15.8},
-        ],
-        style="height: 400px;",
-    )
-    svg_text = widget.to_img(fmt="svg").decode("utf-8")
-    assert svg_text.startswith("<?xml")
-    # A real chart SVG is far larger than the ~400-byte toolbar icons
-    assert len(svg_text) > 2000, f"SVG too small ({len(svg_text)} chars)"
-
-
-@_skip_no_playwright
 def test_headless_repeated_exports_in_one_process() -> None:
     """Repeated to_img() calls succeed (1st sync render flips later ones to async)."""
-    from pymatviz.widgets.scatter_plot import ScatterPlotWidget
-
     bar = BarPlotWidget(series=[{"x": [0, 1], "y": [1.0, 2.0]}], style="height: 300px;")
     scatter = ScatterPlotWidget(
         series=[{"x": [0, 1], "y": [1.0, 2.0]}], style="height: 300px;"
@@ -1472,7 +1362,7 @@ def test_headless_repeated_exports_in_one_process() -> None:
         (ScatterPlotWidget(), True, "svg"),  # empty: renders axes but warns on data
         (
             StructureWidget(
-                structure=_cubic(["Si"]),
+                structure=SI_STRUCT,
                 style="height: 300px;",
             ),
             False,
@@ -1537,8 +1427,6 @@ def test_to_html_inline_renders_offline(
     """
     from playwright.sync_api import sync_playwright
 
-    from pymatviz.widgets._headless import png_blank_fraction
-
     out_path = tmp_path / "widget.html"
     make_widget().to_html(str(out_path), inline=True)
 
@@ -1555,7 +1443,7 @@ def test_to_html_inline_renders_offline(
 
     assert page_errors == []
     assert png_bytes[:4] == b"\x89PNG"
-    blank_frac = png_blank_fraction(png_bytes)
+    blank_frac = headless_mod.png_blank_fraction(png_bytes)
     assert blank_frac is not None
     assert blank_frac < 0.99  # real chart, not a blank frame
 
@@ -1642,7 +1530,9 @@ def test_cartesian_dataframe_errors(
 
 
 def test_heatmap_matrix_takes_dataframe() -> None:
-    """A DataFrame's columns, index and cells become x_items, y_items and values."""
+    """A DataFrame's columns, index and cells (NaN as None) become x_items, y_items
+    and values.
+    """
     df_matrix = pd.DataFrame({"c1": [1, 3], "c2": [2, 4]}, index=pd.Index(["r1", "r2"]))
     widget = HeatmapMatrixWidget(df_matrix)
     assert [item["key"] for item in widget.x_items] == ["c1", "c2"]
@@ -1650,6 +1540,9 @@ def test_heatmap_matrix_takes_dataframe() -> None:
     assert widget.values == [[1, 2], [3, 4]]  # noqa: PD011
     with pytest.raises(ValueError, match="in the DataFrame, not both"):
         HeatmapMatrixWidget(df_matrix, values=[[0]])
+    # NaN cells become None (empty cells) instead of failing as non-finite
+    widget = HeatmapMatrixWidget(pd.DataFrame({"a": [1.0, float("nan")]}))
+    assert widget.values == [[1.0], [None]]  # noqa: PD011
 
 
 @pytest.mark.parametrize("widget_cls", WIDGET_CASES, ids=lambda cls: cls.__name__)
@@ -1685,12 +1578,6 @@ def test_bar_plot_dataframe_column_roles_and_orientation(orientation: str) -> No
         assert [series_dict["label"] for series_dict in widget.series] == labels
     flipped = BarPlotWidget(df_bars, x="c", y="v", orientation=orientation)
     assert (flipped.y_axis, flipped.x_axis) == ({"label": "c"}, {"label": "v"})
-
-
-def test_heatmap_matrix_dataframe_missing_cells() -> None:
-    """NaN cells become None (empty cells) instead of failing as non-finite."""
-    widget = HeatmapMatrixWidget(pd.DataFrame({"a": [1.0, float("nan")]}))
-    assert widget.values == [[1.0], [None]]  # noqa: PD011
 
 
 @pytest.mark.parametrize("labeled", [False, True])

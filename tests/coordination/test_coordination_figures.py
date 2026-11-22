@@ -22,10 +22,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 
-@pytest.fixture
-def nacl() -> mk.Structure:
-    """Conventional rocksalt NaCl: every site octahedral (CN 6 within 3 Å)."""
-    return rocksalt()
+NACL = rocksalt()  # every site octahedral (CN 6 within 3 Å)
 
 
 @pytest.mark.parametrize("split_mode", list(CnSplitMode))
@@ -82,12 +79,12 @@ def test_coordination_bar_plot_split_modes(
     ],
 )
 def test_coordination_bar_plot_literal_counts(
-    nacl: mk.Structure, split_mode: str, expected: dict[str, list[int]]
+    split_mode: str, expected: dict[str, list[int]]
 ) -> None:
     """Rocksalt (CN 6) plus diamond Si (CN 4) at 3 Å, as hand-counted literals."""
     si = cubic_structure(5.43, ["Si"] * 8, [*FCC_SITES, *FCC_SITES + 0.25])
     widget = coordination_bar_plot(
-        {"NaCl": nacl, "Si": si},
+        {"NaCl": NACL, "Si": si},
         strategy=3.0,
         split_mode=split_mode,
         x_axis={"range": [3, 7]},
@@ -105,19 +102,19 @@ def test_coordination_bar_plot_literal_counts(
 
 
 @pytest.mark.parametrize("strategy", [3.0, 2.5, "crystal_nn", "voronoi"])
-def test_coordination_bar_plot_strategies(nacl: mk.Structure, strategy: Any) -> None:
+def test_coordination_bar_plot_strategies(strategy: Any) -> None:
     """Cutoffs, CrystalNN and Voronoi are computed in Python; rocksalt is CN 6."""
-    widget = coordination_bar_plot(nacl, strategy=strategy)
+    widget = coordination_bar_plot(NACL, strategy=strategy)
     assert isinstance(widget, BarPlotWidget)
     expected_cn = 0 if strategy == 2.5 else 6
     for srs in widget.series:
         assert dict(zip(srs["x"], srs["y"], strict=True)) == {expected_cn: 4}
 
 
-def test_coordination_bar_plot_style_options(nacl: mk.Structure) -> None:
+def test_coordination_bar_plot_style_options() -> None:
     """Colors, bar labels, bar mode and axis options reach the BarPlotWidget."""
     widget = coordination_bar_plot(
-        nacl,
+        NACL,
         strategy=3.0,
         element_color_scheme={"Na": "red"},
         annotate_bars=True,
@@ -147,49 +144,58 @@ def test_coordination_bar_plot_style_options(nacl: mk.Structure) -> None:
             FileNotFoundError,
             "no structure file at 'invalid input'",
         ),
-        (None, {"strategy": "nope"}, ValueError, "unknown coordination strategy"),
-        (None, {"annotate_bars": True}, ValueError, "need a Python strategy"),
-        (None, {"split_mode": "by_structure_and_element"}, ValueError, "not a valid"),
+        (NACL, {"strategy": "nope"}, ValueError, "unknown coordination strategy"),
+        (NACL, {"annotate_bars": True}, ValueError, "need a Python strategy"),
+        (NACL, {"split_mode": "by_structure_and_element"}, ValueError, "not a valid"),
         (
-            None,
+            NACL,
             {"strategy": 3.0, "split_mode": "by_structure", "annotate_bars": True},
             ValueError,
             "annotate_bars needs",
         ),
-        (None, {"strategy": 3, "element_color_scheme": "pastel"}, TypeError, "scheme"),
+        (NACL, {"strategy": 3, "element_color_scheme": "pastel"}, TypeError, "scheme"),
         (
-            None,
+            NACL,
             {"strategy": 3, "element_color_scheme": {"Na": (255, 0, 0)}},
             ValueError,
             "fractions",
         ),
+        # labels equal as strings (1 and "1") raise instead of merging two structures'
+        # histograms, in the browser and Python paths
+        *(
+            (
+                pd.Series([NACL, NACL], index=[1, "1"]),
+                {"strategy": strategy, "split_mode": split_mode},
+                ValueError,
+                "labels must be unique as strings",
+            )
+            for strategy, split_mode in [
+                ("electroneg_ratio", "by_structure"),
+                (3.0, "by_structure"),
+                (3.0, "none"),
+            ]
+        ),
     ],
 )
 def test_coordination_bar_plot_invalid_inputs(
-    nacl: mk.Structure,
-    structs: Any,
-    kwargs: dict[str, Any],
-    err_cls: type[Exception],
-    match: str,
+    structs: Any, kwargs: dict[str, Any], err_cls: type[Exception], match: str
 ) -> None:
-    """coordination_bar_plot rejects invalid structures and options."""
+    """Reject invalid structures, options and colliding labels."""
     with pytest.raises(err_cls, match=match):
-        coordination_bar_plot(nacl if structs is None else structs, **kwargs)
+        coordination_bar_plot(structs, **kwargs)
 
 
 @pytest.mark.parametrize("split_mode", list(CnSplitMode))
-def test_coordination_bar_plot_in_browser(
-    nacl: mk.Structure, split_mode: CnSplitMode
-) -> None:
+def test_coordination_bar_plot_in_browser(split_mode: CnSplitMode) -> None:
     """MatterViz strategy names bond in the browser, the default included."""
-    widget = coordination_bar_plot({"NaCl": nacl}, split_mode=split_mode)
+    widget = coordination_bar_plot({"NaCl": NACL}, split_mode=split_mode)
     assert isinstance(widget, CoordinationBarPlotWidget)
     assert (widget.strategy, widget.split_mode) == (
         "electroneg_ratio",
         split_mode.value,
     )
     assert list(widget.structures) == ["NaCl"]
-    widget = coordination_bar_plot(nacl, strategy="explicit_only")
+    widget = coordination_bar_plot(NACL, strategy="explicit_only")
     assert isinstance(widget, CoordinationBarPlotWidget)
     assert widget.strategy == "explicit_only"
 
@@ -241,12 +247,12 @@ def test_coordination_vs_cutoff_line(
     assert widget.y_axis["label"] == "Coordination Number"
 
 
-def test_coordination_vs_cutoff_line_single_structure(nacl: mk.Structure) -> None:
+def test_coordination_vs_cutoff_line_single_structure() -> None:
     """A single structure has no legend groups; rocksalt reaches CN 6 by 3 Å."""
-    widget = coordination_vs_cutoff_line(nacl, cutoff_range=(2, 3), num_points=3)
+    widget = coordination_vs_cutoff_line(NACL, cutoff_range=(2, 3), num_points=3)
     assert all("legend_group" not in srs for srs in widget.series)
     assert [srs["y"] for srs in widget.series] == [[0, 0, 6], [0, 0, 6]]
-    widget = coordination_vs_cutoff_line(nacl, cutoff_range=(3, 2), num_points=3)
+    widget = coordination_vs_cutoff_line(NACL, cutoff_range=(3, 2), num_points=3)
     assert [srs["y"] for srs in widget.series] == [[6, 0, 0], [6, 0, 0]]
 
 
@@ -277,19 +283,16 @@ def test_coordination_vs_cutoff_line_one_neighbor_search(
     """
     cutoffs = np.linspace(*cutoff_range, num_points)
     symbols = structure.symbols
+
+    def mean_cn(elem: str, cutoff: float) -> float:
+        """Mean neighbor count of elem's sites within cutoff, searched per site."""
+        sites = [idx for idx, sym in enumerate(symbols) if sym == elem]
+        return float(
+            np.mean([len(structure.neighbors(idx, cutoff)[0]) for idx in sites])
+        )
+
     expected = {
-        elem: [
-            float(
-                np.mean(
-                    [
-                        len(structure.neighbors(idx, cutoff)[0])
-                        for idx, symbol in enumerate(symbols)
-                        if symbol == elem
-                    ]
-                )
-            )
-            for cutoff in cutoffs
-        ]
+        elem: [mean_cn(elem, cutoff) for cutoff in cutoffs]
         for elem in sorted(set(symbols))
     }
     n_calls = 0
@@ -309,10 +312,10 @@ def test_coordination_vs_cutoff_line_one_neighbor_search(
     assert {srs["label"]: srs["y"] for srs in widget.series} == expected
 
 
-def test_coordination_vs_cutoff_line_disordered_structure() -> None:
+def test_coordination_vs_cutoff_line_disordered_structure(
+    fe3co4_disordered: mk.Structure,
+) -> None:
     """A disordered Fe:C site contributes lines for both elements."""
-    from pymatviz.utils.testing import fe3co4_disordered
-
     widget = coordination_vs_cutoff_line(fe3co4_disordered, cutoff_range=(1, 5))
     assert {srs["label"] for srs in widget.series} == {"C", "Fe", "O"}
     assert all(min(srs["y"]) >= 0 for srs in widget.series)
@@ -338,9 +341,7 @@ def test_coordination_vs_cutoff_line_disordered_structure() -> None:
             for cutoff_range in [(1, 2, 3), (True, 3), ("1", 3)]
         ),
     ],
-    ids=[
-        *("empty_list", "invalid_str", "3_tuple", "bool", "str"),
-    ],
+    ids=["empty_list", "invalid_str", "3_tuple", "bool", "str"],
 )
 def test_coordination_vs_cutoff_line_invalid_inputs(
     structs: Any, kwargs: dict[str, Any], err_cls: type[Exception], match: str
@@ -348,21 +349,3 @@ def test_coordination_vs_cutoff_line_invalid_inputs(
     """coordination_vs_cutoff_line rejects invalid structures and cutoff ranges."""
     with pytest.raises(err_cls, match=match):
         coordination_vs_cutoff_line(structs, **kwargs)
-
-
-@pytest.mark.parametrize(
-    ("strategy", "split_mode"),
-    [("electroneg_ratio", "by_structure"), (3.0, "by_structure"), (3.0, "none")],
-)
-def test_coordination_bar_plot_rejects_colliding_labels(
-    nacl: mk.Structure, strategy: str | float, split_mode: str
-) -> None:
-    """Labels equal as strings (1 and "1") raise instead of merging two structures'
-    histograms, in the browser and Python paths.
-    """
-    with pytest.raises(ValueError, match="labels must be unique as strings"):
-        coordination_bar_plot(
-            pd.Series([nacl, nacl], index=[1, "1"]),
-            strategy=strategy,  # ty: ignore[invalid-argument-type]
-            split_mode=split_mode,
-        )

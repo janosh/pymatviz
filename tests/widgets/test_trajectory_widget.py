@@ -12,6 +12,7 @@ import traitlets as tl
 from matscikit.interop import structure_to_pymatgen_dict
 
 from pymatviz.widgets import TrajectoryWidget
+from tests.conftest import cubic_structure
 from tests.widgets.conftest import decode_envelope
 
 
@@ -19,23 +20,18 @@ if TYPE_CHECKING:
     from typing import Any
 
 
-# Defined here, not in tests/widgets/conftest.py: pytest 9.1 binds conftest fixtures
-# to the first Dir node collected for their directory, so they go missing when CLI
-# args revisit tests/widgets after another directory, e.g.
-# `pytest tests/widgets/a.py tests/b.py tests/widgets/c.py`.
 def _fe2_frames(n_frames: int) -> list[mk.Structure]:
     """Cubic Fe2 structures whose lattice grows by 0.1 A per frame."""
     return [
-        mk.Structure(
-            np.eye(3) * (3.0 + idx * 0.1),
-            ["Fe", "Fe"],
-            [[0, 0, 0], [0.5, 0.5, 0.5]],
-            fractional=True,
-        )
+        cubic_structure(3.0 + idx * 0.1, ["Fe"] * 2, [[0, 0, 0], [0.5] * 3])
         for idx in range(n_frames)
     ]
 
 
+# Defined here, not in tests/widgets/conftest.py: pytest 9.1 binds conftest fixtures
+# to the first Dir node collected for their directory, so they go missing when CLI
+# args revisit tests/widgets after another directory, e.g.
+# `pytest tests/widgets/a.py tests/b.py tests/widgets/c.py`.
 @pytest.fixture
 def multi_frame_trajectory(fe3co4_disordered: mk.Structure) -> dict[str, Any]:
     """Five-frame trajectory dict of the same disordered structure."""
@@ -48,36 +44,6 @@ def multi_frame_trajectory(fe3co4_disordered: mk.Structure) -> dict[str, Any]:
         for idx in range(5)
     ]
     return {"frames": frames}
-
-
-def test_widget_creates_view_model(multi_frame_trajectory: dict[str, Any]) -> None:
-    """Widget must create proper view model for frontend."""
-    widget = TrajectoryWidget(trajectory=multi_frame_trajectory)
-    assert widget.widget_type == "trajectory"
-
-    # Synced traits expose the widget state contract used by the frontend.
-    class_traits = widget.class_traits()
-    for trait_name in (
-        "trajectory",
-        "current_step_idx",
-        "layout",
-        "display_mode",
-        "plot_type",
-        "distribution_property",
-        "show_controls",
-    ):
-        trait = class_traits[trait_name]
-        assert trait.metadata.get("sync") is True
-
-    assert widget.trajectory == json.loads(json.dumps(multi_frame_trajectory))
-    assert widget.current_step_idx == 0
-    assert widget.layout == "auto"
-    assert widget.display_mode == "auto"
-    assert widget.plot_type == "time-series"
-    assert widget.distribution_property is None
-    # None keeps the component default (controls pinned for trajectories)
-    assert widget.show_controls is None
-    assert widget.data_inspector_open is True
 
 
 @pytest.mark.parametrize("input_format", ["dict", "list", "tuple", "structure"])
@@ -95,8 +61,6 @@ def test_widget_trajectory_updates(
     assert widget.trajectory == json.loads(json.dumps(multi_frame_trajectory))
 
     widget.current_step_idx = 2
-    assert widget.current_step_idx == 2
-
     # Test trajectory update (step doesn't reset automatically)
     updated_structure = fe3co4_disordered.copy()
     updated_structure.info = {"properties": {"energy": -1.5}}
@@ -139,7 +103,33 @@ def test_widget_trajectory_updates(
 def test_widget_complete_lifecycle(
     multi_frame_trajectory: dict[str, Any], fe3co4_disordered: mk.Structure
 ) -> None:
-    """Test complete widget lifecycle including state persistence."""
+    """Synced trait defaults, non-default construction and state restoration."""
+    widget = TrajectoryWidget(trajectory=multi_frame_trajectory)
+    assert widget.widget_type == "trajectory"
+    synced = (
+        "trajectory",
+        "current_step_idx",
+        "layout",
+        "display_mode",
+        "plot_type",
+        "distribution_property",
+        "show_controls",
+    )
+    traits = widget.class_traits()
+    assert all(traits[name].metadata.get("sync") is True for name in synced)
+    # show_controls=None keeps the component default (controls pinned for trajectories)
+    defaults = dict(
+        current_step_idx=0,
+        layout="auto",
+        display_mode="auto",
+        plot_type="time-series",
+        distribution_property=None,
+        show_controls=None,
+        data_inspector_open=True,
+        atom_type_mapping=None,
+    )
+    assert {key: getattr(widget, key) for key in defaults} == defaults
+
     widget = TrajectoryWidget(
         trajectory=multi_frame_trajectory,
         style="width: 800px; height: 600px",
@@ -160,8 +150,6 @@ def test_widget_complete_lifecycle(
     assert widget.distribution_property == "energy"
 
     widget.current_step_idx = 2
-    assert widget.current_step_idx == 2
-
     widget.set_trait("trajectory", {"frames": [fe3co4_disordered] * 10})
     expected_structure = json.loads(
         json.dumps(structure_to_pymatgen_dict(fe3co4_disordered))
@@ -185,6 +173,14 @@ def test_widget_complete_lifecycle(
 
     for key, value in state.items():
         assert getattr(restored_widget, key) == value
+
+    # atom_type_mapping (LAMMPS type -> element) syncs as given, rejects non-dicts
+    mapping = {1: "Si", "2": "O"}
+    widget = TrajectoryWidget(data_url="https://example.com/dump.lammpstrj")
+    widget.atom_type_mapping = mapping
+    assert widget.to_dict()["atom_type_mapping"] == mapping
+    with pytest.raises(tl.TraitError):
+        TrajectoryWidget(atom_type_mapping=["Si", "O"])
 
 
 @pytest.mark.parametrize(
@@ -352,9 +348,7 @@ def test_trajectory_widget_completes_only_non_derivable_fields(
     ],
 )
 def test_trajectory_widget_with_structure_metadata(properties: dict[str, Any]) -> None:
-    """TrajectoryWidget forwards structure properties to frame metadata, per-atom
-    forces to the sites.
-    """
+    """Structure properties become frame metadata, per-atom forces site vectors."""
     (structure,) = _fe2_frames(1)
     structure.info = {"properties": properties}
 
@@ -373,19 +367,6 @@ def test_trajectory_widget_with_structure_metadata(properties: dict[str, Any]) -
         )
     else:
         assert scalars == {key: [val] for key, val in properties.items()}
-
-
-def test_trajectory_widget_atom_type_mapping_trait() -> None:
-    """atom_type_mapping (LAMMPS type -> element) is None by default, syncs as given
-    and rejects non-dicts.
-    """
-    assert TrajectoryWidget().atom_type_mapping is None
-    mapping = {1: "Si", "2": "O"}
-    widget = TrajectoryWidget(data_url="https://example.com/dump.lammpstrj")
-    widget.atom_type_mapping = mapping
-    assert widget.to_dict()["atom_type_mapping"] == mapping
-    with pytest.raises(tl.TraitError):
-        TrajectoryWidget(atom_type_mapping=["Si", "O"])
 
 
 def test_trajectory_widget_normalization_regressions(

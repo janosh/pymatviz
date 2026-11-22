@@ -18,12 +18,10 @@ _SITE_PROPS = {  # typed magmoms plus a custom site property
     "magmoms": np.array([[0, 0, 1], [0, 0, -1]]),
     "force": np.array([[1.0, 1.0, 1.0], [-1.0, -1.0, -1.0]]),
 }
-
-
-def _with_site_data(struct: mk.Structure, site_data: dict[str, Any]) -> mk.Structure:
-    """Copy of struct carrying per-site data (one array entry per site)."""
-    return struct.replace(site_data=site_data)
-
+_MULTI_VECTOR_PROPS = {
+    "force_DFT": np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]),
+    "force_MLFF": np.array([[0.9, 0.1, 0.0], [0.1, 0.9, 0.0]]),
+}
 
 # minimal flat matterviz VolumetricData payload (2x1x1 grid)
 _VOLUME: dict[str, Any] = {
@@ -34,34 +32,41 @@ _VOLUME: dict[str, Any] = {
     "origin": [0.0, 0.0, 0.0],
     "periodic": True,
 }
+_UNNAMED_VOLUME = {key: val for key, val in _VOLUME.items() if key != "id"}
 
 
 @pytest.mark.parametrize(
-    ("structure_fixture", "site_data"),
+    ("structure_fixture", "site_data", "prop_keys"),
     [
-        ("structures", None),
-        ("fe3co4_disordered", None),
-        ("fe3co4_disordered", _SITE_PROPS),
+        ("structures", None, set()),
+        ("fe3co4_disordered", None, set()),
+        ("fe3co4_disordered", _SITE_PROPS, {"magmom", "force"}),
+        ("fe3co4_disordered", _MULTI_VECTOR_PROPS, {"force_DFT", "force_MLFF"}),
     ],
 )
 def test_widget_structure_inputs(
     structure_fixture: str,
     site_data: dict[str, Any] | None,
+    prop_keys: set[str],
     request: pytest.FixtureRequest,
 ) -> None:
-    """Widget must handle different structure input types and formats."""
+    """Structures and their dicts sync via init or assignment, site properties
+    (incl. several vector keys on a disordered structure) included.
+    """
     fixture_value = request.getfixturevalue(structure_fixture)
-
-    # Handle both single structures and tuples of structures
     structures = fixture_value if isinstance(fixture_value, tuple) else (fixture_value,)
 
     for structure in structures:
         if site_data:
-            structure = _with_site_data(structure, site_data)  # noqa: PLW2901
+            structure = structure.replace(site_data=site_data)  # noqa: PLW2901
         widget = StructureWidget(structure=structure)
         assert widget.widget_type == "structure"
         structure_dict = structure_to_pymatgen_dict(structure)
         assert widget.structure == structure_dict
+        sites = widget.structure["sites"]
+        assert {key for site in sites for key in site.get("properties", {})} == (
+            prop_keys
+        )
 
         widget = StructureWidget(structure=structure_dict)
         assert widget.structure == structure_dict
@@ -109,36 +114,6 @@ def test_widget_handles_large_structures(
     """Widget preserves all sites in a 2000-atom supercell."""
     widget = StructureWidget(structure=structures[0].make_supercell(10))
     assert len(widget.structure["sites"]) == 2000
-
-
-_MULTI_VECTOR_PROPS = {
-    "force_DFT": np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]),
-    "force_MLFF": np.array([[0.9, 0.1, 0.0], [0.1, 0.9, 0.0]]),
-}
-
-
-@pytest.mark.parametrize(
-    ("site_data", "expected_keys"),
-    [
-        (_SITE_PROPS, {"magmom", "force"}),
-        (_MULTI_VECTOR_PROPS, {"force_DFT", "force_MLFF"}),
-    ],
-    ids=["magmom-force", "multi-vector"],
-)
-def test_widget_preserves_site_properties(
-    site_data: dict[str, Any],
-    expected_keys: set[str],
-    fe3co4_disordered: mk.Structure,
-) -> None:
-    """Disordered-structure site properties (incl. multiple vector keys) survive
-    serialization.
-    """
-    struct = _with_site_data(fe3co4_disordered, site_data)
-    widget = StructureWidget(structure=struct)
-    uniq_prop_keys = {
-        key for site in widget.structure["sites"] for key in site.get("properties", {})
-    }
-    assert uniq_prop_keys == expected_keys
 
 
 def _meta(payload: dict[str, Any]) -> dict[str, Any]:
@@ -194,9 +169,8 @@ def test_widget_volumetric_data_trait() -> None:
     np.testing.assert_allclose(values, grid, rtol=6e-8, atol=0)  # float32 ulp / 2
 
     # id defaults to label (like matterviz's parsers name volumes by block label)
-    unnamed = {key: val for key, val in _VOLUME.items() if key != "id"}
     (labeled,) = StructureWidget(
-        volumetric_data=[{**unnamed, "label": "charge density"}]
+        volumetric_data=[{**_UNNAMED_VOLUME, "label": "charge density"}]
     ).volumetric_data
     assert (labeled["id"], labeled["label"]) == ("charge density", "charge density")
     # an explicit id wins over the label
@@ -206,7 +180,7 @@ def test_widget_volumetric_data_trait() -> None:
     ]
     # {prefix: volume} mappings namespace ids (and labels if present)
     widget.set_trait(
-        "volumetric_data", {"a": _VOLUME, "b": {**unnamed, "label": "chg"}}
+        "volumetric_data", {"a": _VOLUME, "b": {**_UNNAMED_VOLUME, "label": "chg"}}
     )
     assert [(pl["id"], pl.get("label")) for pl in widget.volumetric_data] == [
         ("a/chg", None),
@@ -225,18 +199,11 @@ def test_widget_volumetric_data_trait() -> None:
         ({"a": 42}, TypeError, "volumetric_data entries"),
         ({"": _VOLUME}, TypeError, "nonempty strings"),
         ({1: _VOLUME}, TypeError, "nonempty strings"),
-        ([{k: v for k, v in _VOLUME.items() if k != "id"}], ValueError, "'id' or"),
+        ([_UNNAMED_VOLUME], ValueError, "'id' or"),
         ([{**_VOLUME, "id": " "}], ValueError, "'id' or 'label'"),
         ([{**_VOLUME, "id": 1, "label": "chg"}], ValueError, "'id' or 'label'"),
         ([_VOLUME, {**_VOLUME, "label": "copy"}], ValueError, r"duplicates \['chg'\]"),
-        (
-            [
-                _VOLUME,
-                {**{k: v for k, v in _VOLUME.items() if k != "id"}, "label": "chg"},
-            ],
-            ValueError,
-            "duplicates",
-        ),
+        ([_VOLUME, {**_UNNAMED_VOLUME, "label": "chg"}], ValueError, "duplicates"),
         ([{**_VOLUME, "dims": [3, 1, 1]}], ValueError, r"flat values \(2\) need dims"),
         ([{**_VOLUME, "dims": [0.5, 4, 1]}], ValueError, "need dims"),
         ([{**_VOLUME, "values": [0.1, np.nan]}], ValueError, "non-finite value at"),

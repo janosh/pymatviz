@@ -15,6 +15,7 @@ from tests.conftest import SI_STRUCTS, cubic_structure
 
 EMPTY_STRUCT = cubic_structure(1, [], [])
 NACL = cubic_structure(5.64, ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+KBR = cubic_structure(6.6, ["K", "Br"], [[0, 0, 0], [0.5, 0.5, 0.5]])
 
 
 @pytest.fixture
@@ -32,13 +33,24 @@ def python_rdfs(monkeypatch: pytest.MonkeyPatch) -> None:
         (None, {}, ValueError, "pass structures or patterns"),
         (NACL, {"patterns": []}, ValueError, "pass structures or patterns"),
         (NACL, {"element_pairs": [("Zn", "Zn")]}, ValueError, "not in any structure"),
+        (
+            pd.Series([NACL, NACL], index=[1, "1"]),
+            {},
+            ValueError,
+            "labels must be unique as strings",
+        ),
     ],
-    ids=["empty", "empty_in_dict", "invalid_type", "neither", "both", "bad_pair"],
+    ids=[
+        *("empty", "empty_in_dict", "invalid_type", "neither", "both", "bad_pair"),
+        "colliding_labels",
+    ],
 )
 def test_rdf_plot_invalid_input(
     structs: Any, kwargs: dict[str, Any], err_cls: type[Exception], match: str
 ) -> None:
-    """Reject empty/invalid structures, structures plus patterns and absent elements."""
+    """Reject empty/invalid structures, structures plus patterns, absent elements and
+    labels equal as strings (1 and "1") instead of dropping a structure.
+    """
     with pytest.raises(err_cls, match=match):
         rdf_plot(structs, **kwargs)
 
@@ -193,8 +205,7 @@ def test_rdf_plot_widget_kwargs(element_pairs: list[tuple[str, str]] | None) -> 
 @pytest.mark.usefixtures("python_rdfs")
 def test_rdf_plot_skips_absent_pairs() -> None:
     """Pairs a structure lacks get no all-zero curve, and pairs are deduplicated."""
-    kbr = cubic_structure(6.6, ["K", "Br"], [[0, 0, 0], [0.5, 0.5, 0.5]])
-    widget = rdf_plot({"NaCl": NACL, "KBr": kbr}, cutoff=5)
+    widget = rdf_plot({"NaCl": NACL, "KBr": KBR}, cutoff=5)
     assert [(entry["legend_group"], entry["label"]) for entry in widget.patterns] == [
         ("NaCl", "Cl-Cl"),
         ("NaCl", "Cl-Na"),
@@ -205,12 +216,5 @@ def test_rdf_plot_skips_absent_pairs() -> None:
     ]
     widget = rdf_plot(NACL, element_pairs=[("Na", "Cl"), ("Cl", "Na")])
     assert [entry["label"] for entry in widget.patterns] == ["Cl-Na"]
-
     with pytest.raises(ValueError, match="No structure contains any of the element"):
-        rdf_plot({"NaCl": NACL, "KBr": kbr}, element_pairs=[("Na", "K")])
-
-
-def test_rdf_plot_rejects_colliding_labels() -> None:
-    """Labels equal as strings (1 and "1") raise instead of dropping a structure."""
-    with pytest.raises(ValueError, match="labels must be unique as strings"):
-        rdf_plot(pd.Series([NACL, NACL], index=[1, "1"]))
+        rdf_plot({"NaCl": NACL, "KBr": KBR}, element_pairs=[("Na", "K")])

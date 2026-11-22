@@ -14,6 +14,7 @@ from matscikit.electronic import ElectronicDos
 import pymatviz as pmv
 from pymatviz import notebook
 from pymatviz.notebook import create_widget
+from tests.conftest import cubic_structure
 
 
 @pytest.fixture
@@ -108,6 +109,15 @@ class UnknownType:
     """Type without a registered MatterViz widget."""
 
 
+class SubclassDos(ElectronicDos):
+    """ElectronicDos subclass, which displays like its registered base class."""
+
+
+def electronic_dos(cls: type[ElectronicDos] = ElectronicDos) -> ElectronicDos:
+    """Three-point electronic DOS of the given class."""
+    return cls(np.array([-1, 0, 1]), np.array([[0, 1, 0]]), 0.0)
+
+
 def test_widget_mime_bundle(structures: tuple[mk.Structure, mk.Structure]) -> None:
     """Registered types get widget MIME; others raise instead of a silent repr."""
     bundle = notebook._widget_mime_bundle(structures[0])
@@ -135,20 +145,11 @@ def test_widget_mime_bundle(structures: tuple[mk.Structure, mk.Structure]) -> No
             "BandStructureWidget",
             "band_structure",
         ),
-        (
-            lambda: ElectronicDos(np.array([-1, 0, 1]), np.array([[0, 1, 0]]), 0.0),
-            "DosWidget",
-            "dos",
-        ),
-        # trajectory fallback for a list of frame dicts
-        (
+        (electronic_dos, "DosWidget", "dos"),
+        (lambda: electronic_dos(SubclassDos), "DosWidget", "dos"),
+        (  # trajectory fallback for a list of frame dicts
             lambda: (
-                [
-                    {
-                        "structure": mk.Structure(np.eye(3) * 3, ["Fe"], [[0, 0, 0]]),
-                        "energy": -1.0,
-                    }
-                ]
+                [{"structure": cubic_structure(3, ["Fe"], [0, 0, 0]), "energy": -1.0}]
                 * 2
             ),
             "TrajectoryWidget",
@@ -157,13 +158,13 @@ def test_widget_mime_bundle(structures: tuple[mk.Structure, mk.Structure]) -> No
     ],
     ids=[
         *("composition", "xrd", "phase_diagram", "mk_phonon_dos", "mk_phonon_bands"),
-        *("mk_electronic_dos", "trajectory_dicts"),
+        *("mk_electronic_dos", "electronic_dos_subclass", "trajectory_dicts"),
     ],
 )
 def test_create_widget(
     obj_factory: Any, expected_widget: str, expected_type: str
 ) -> None:
-    """create_widget produces correct widget for registered types."""
+    """create_widget picks the widget registered for a type or its base class."""
     widget = create_widget(obj_factory())
     assert type(widget).__name__ == expected_widget
     assert widget.widget_type == expected_type
@@ -177,16 +178,6 @@ def test_create_widget_unknown_type_raises(bad_input: Any, match: str) -> None:
     """create_widget raises ValueError for unregistered/empty types."""
     with pytest.raises(ValueError, match=match):
         create_widget(bad_input)
-
-
-def test_create_widget_matches_subclasses() -> None:
-    """Subclasses of registered types display like their base class."""
-
-    class MyDos(ElectronicDos):
-        """A matscikit ElectronicDos subclass."""
-
-    widget = create_widget(MyDos(np.array([-1, 0, 1]), np.array([[0, 1, 0]]), 0.0))
-    assert widget.widget_type == "dos"
 
 
 def test_notebook_mode_in_marimo(monkeypatch: pytest.MonkeyPatch) -> None:
