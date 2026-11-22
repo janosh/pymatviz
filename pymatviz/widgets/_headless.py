@@ -340,7 +340,10 @@ async def _mounted_widget(
     try:
         async with _get_browser_thread().pages_lock:
             await _evict_idle()
-        mount_args = [_widget_data_json(inputs.widget_data), _mount_options(inputs)]
+        mount_args = [
+            _widget_data_json(_filling_root(inputs.widget_data)),
+            _mount_options(inputs),
+        ]
         render_error = await asyncio.wait_for(
             warm.page.evaluate(_MOUNT_JS, mount_args), inputs.timeout + _STEP_GRACE
         )
@@ -636,6 +639,15 @@ def _container_style(
         elif not re.search(rf"(?:^|;\s*){name}\s*:", user_style):
             parts.append(f"{name}: {default}px")
     return "; ".join(parts)
+
+
+def _filling_root(widget_data: Mapping[str, Any]) -> dict[str, Any]:
+    """Widget data whose ``style`` (which MatterViz applies to the widget's own
+    wrapper) fills the export root: the root carries the export size, and a wrapper
+    without one shrinks charts to their 300 px minimum height.
+    """
+    user_style = widget_data.get("style") or ""
+    return {**widget_data, "style": f"{user_style}; width: 100%; height: 100%"}
 
 
 def _mount_options(inputs: _RenderInputs) -> dict[str, Any]:

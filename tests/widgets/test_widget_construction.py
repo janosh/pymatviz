@@ -1146,7 +1146,7 @@ def test_headless_bar_plot_svg(bar_plot_widget: BarPlotWidget) -> None:
     """BarPlotWidget.to_img(fmt='svg') returns a standalone-sized chart SVG."""
     import re
 
-    svg_text = bar_plot_widget.to_img(fmt="svg", width=600).decode("utf-8")
+    svg_text = bar_plot_widget.to_img(fmt="svg", width=600, height=450).decode()
     assert svg_text.startswith("<?xml")
     assert len(svg_text) > 2000, f"SVG too small ({len(svg_text)} chars)"
     assert "<g" in svg_text, "No <g> groups -- likely an icon"
@@ -1155,7 +1155,10 @@ def test_headless_bar_plot_svg(bar_plot_widget: BarPlotWidget) -> None:
     assert root is not None
     size = dict(re.findall(r' (width|height|viewBox)="([^"]+)"', root.group()))
     # the viewBox is padded by half the widest stroke so edge strokes aren't clipped
+    # the chart fills the requested height too (it used to shrink to its 300 px
+    # minimum when only the export root was sized)
     assert 600 <= float(size["width"]) <= 602
+    assert 450 <= float(size["height"]) <= 452
     assert size["viewBox"].split()[2:] == [size["width"], size["height"]]
     assert "<title>" in svg_text  # the chart's aria-label as the file's name
 

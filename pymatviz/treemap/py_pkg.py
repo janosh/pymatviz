@@ -409,8 +409,9 @@ def py_pkg_treemap(
     Works with any language when ``source_dir`` is provided. Without it,
     defaults to Python package introspection via importlib.
 
-    The first level shows the distribution by package, and the second level
-    shows modules or files, with cell sizes typically indicating code size.
+    The first level shows the distribution by package (by top-level module for a
+    single package), the next ones modules or files, with cell sizes typically
+    indicating code size.
 
     Args:
         packages (str | ModuleType | Sequence[str | ModuleType]): Single package
@@ -470,7 +471,8 @@ def py_pkg_treemap(
             color scale, e.g. (0, 100) for coverage percentages. Values outside are
             clamped. If None, uses the data's min/max.
         **kwargs (Any): Passed to TreemapWidget, e.g. ``label_text`` (default
-            ``"label+percent"``), ``max_depth`` or ``style``.
+            ``"label+value"``), ``value_format`` (default ``".3~s"``, e.g. 54.3k
+            lines), ``max_depth`` or ``style``.
 
     Returns:
         TreemapWidget: The MatterViz treemap.
@@ -660,7 +662,11 @@ def py_pkg_treemap(
     )
     if has_color_mode:
         _color_tree(roots, color_range)
-    return TreemapWidget(roots, **{"label_text": "label+percent"} | kwargs)
+    if len(roots) == 1 and "children" in roots[0]:
+        # one package: its modules are the top level, each in its own color
+        roots = roots[0]["children"]
+    defaults = {"label_text": "label+value", "value_format": ".3~s"}  # e.g. 54.3k
+    return TreemapWidget(roots, **defaults | kwargs)
 
 
 # viridis at 9 evenly spaced stops (matplotlib's colormap)

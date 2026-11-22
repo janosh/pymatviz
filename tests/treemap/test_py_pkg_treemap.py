@@ -307,8 +307,12 @@ def test_analyze_unicode_error(
 
 
 def test_py_pkg_treemap_label_text() -> None:
-    """Cells show label and percent by default, other label_text values pass on."""
-    assert pmv.py_pkg_treemap("my_pkg").label_text == "label+percent"
+    """Cells show label and compact line count by default (e.g. 54.3k), a single
+    package's modules are the top level, other label_text values pass on.
+    """
+    widget = pmv.py_pkg_treemap("my_pkg")
+    assert (widget.label_text, widget.value_format) == ("label+value", ".3~s")
+    assert all(root["id"].startswith("my_pkg/") for root in widget.data)
     widget = pmv.py_pkg_treemap("my_pkg", label_text="label+value", max_depth=2)
     assert (widget.label_text, widget.max_depth) == ("label+value", 2)
 
@@ -483,13 +487,7 @@ def test_mapped_colors(
     expected: dict[str, float] = {"color_pkg/shorter/mod": 0, "color_pkg/shorter": 0}
     if not min_lines:
         expected |= {"color_pkg/longer/mod": 100, "color_pkg/longer/other": 50}
-    expected |= dict(
-        zip(
-            ["color_pkg/longer", "color_pkg"],
-            [75, 50] if equal_area else [60, 1200 / 23],
-            strict=True,
-        )
-    )
+    expected["color_pkg/longer"] = 75 if equal_area else 60
     assert {key: colors[key] for key in expected} == {
         key: _viridis_hex(val / 100) for key, val in expected.items()
     }
