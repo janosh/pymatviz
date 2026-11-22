@@ -136,15 +136,15 @@ def _object_dict(obj: Any) -> dict[str, Any] | None:
     """
     import matscikit as mk
     from matscikit.electronic import ElectronicBands, ElectronicDos
-    from matscikit.interop import to_phonon_bands, to_phonon_dos
+    from matscikit.interop import has_class, to_phonon_bands, to_phonon_dos
 
-    from pymatviz.structures import is_instance_of, is_structure_like, structure_dict
+    from pymatviz.structures import is_structure_like, structure_dict
 
     if is_structure_like(obj):
         return structure_dict(obj)
-    if is_instance_of(obj, *_PHONOPY_BANDS):
+    if has_class(obj, *_PHONOPY_BANDS):
         obj = to_phonon_bands(obj)
-    elif is_instance_of(obj, *_PHONOPY_DOS):
+    elif has_class(obj, *_PHONOPY_DOS):
         obj = to_phonon_dos(obj)
     if isinstance(obj, (mk.PhononBands, mk.PhononDos, ElectronicBands, ElectronicDos)):
         return {
@@ -501,38 +501,51 @@ def _normalize_entry_compositions(
 
 
 def normalize_convex_hull_entries(obj: Any) -> list[dict[str, Any]] | None:
-    """Convert a pymatgen PhaseDiagram or list of entry dicts to convex hull entries.
+    """Convex hull entries (composition, energy, stability) of entry dicts, a pymatgen
+    PhaseDiagram or a sequence of entry objects (pymatgen ComputedEntry, PDEntry);
+    energies above hull and stability from matscikit's PhaseDiagram.
 
     Args:
-        obj: A pymatgen PhaseDiagram, a list of dicts, or None.
+        obj: Entry dicts (passed through, formula strings parsed), a pymatgen
+            PhaseDiagram, a sequence of entries, or None.
 
     Returns:
         List of entry dicts with composition, energy, and stability info, or None.
+
+    Raises:
+        TypeError: For other objects or entries without composition and energy.
     """
     if obj is None:
         return None
-    if isinstance(obj, (list, tuple)):
+    if isinstance(obj, (list, tuple)) and all(isinstance(entry, dict) for entry in obj):
         return _normalize_entry_compositions(obj)
+    from matscikit.interop import to_phase_diagram
 
-    from pymatviz.structures import is_instance_of
-
-    if is_instance_of(obj, "pymatgen.analysis.phase_diagram.PhaseDiagram"):
-        entries = []
-        for entry in obj.all_entries:
-            entry_dict: dict[str, Any] = {
-                "composition": entry.composition.as_dict(),
-                "energy": entry.energy,
-                "energy_per_atom": entry.energy_per_atom,
-            }
-            entry_dict["e_above_hull"] = obj.get_e_above_hull(entry)
-            entry_dict["is_stable"] = entry in obj.stable_entries
-            entries.append(entry_dict)
-        return entries
-
-    raise TypeError(
-        f"Unsupported type for convex hull entries: {type(obj)}. "
-        "Expected list of dicts or pymatgen PhaseDiagram."
-    )
+    try:
+        phase_diagram = to_phase_diagram(obj)
+    except TypeError as exc:
+        raise TypeError(
+            f"Unsupported type for convex hull entries: {type(obj)}. Expected list of "
+            f"dicts, pymatgen PhaseDiagram or entry objects ({exc})."
+        ) from exc
+    entries = obj.all_entries if hasattr(obj, "all_entries") else obj
+    return [
+        {
+            "composition": composition.as_dict(),
+            "energy": entry.energy,
+            "energy_per_atom": energy_per_atom,
+            "e_above_hull": e_above_hull,
+            "is_stable": is_stable,
+        }
+        for entry, composition, energy_per_atom, e_above_hull, is_stable in zip(
+            entries,
+            phase_diagram.compositions,
+            phase_diagram.energies_per_atom.tolist(),
+            phase_diagram.e_above_hull().tolist(),
+            phase_diagram.is_stable(),
+            strict=True,
+        )
+    ]
 
 
 XRD_PATTERN_KINDS = ("sticks", "profile")
@@ -637,38 +650,22 @@ def _xrd_pattern_to_dict(obj: Any) -> dict[str, Any]:
         )
 
     import matscikit as mk
+    from matscikit.interop import has_class, to_xrd_pattern
 
-    from pymatviz.structures import is_instance_of
-
+    if has_class(obj, "pymatgen.analysis.diffraction.core.DiffractionPattern"):
+        obj = to_xrd_pattern(obj)
     if isinstance(obj, mk.XrdPattern):
-        return {
+        result: dict[str, Any] = {
             "x": obj.two_theta.tolist(),
             "y": obj.intensities.tolist(),
-            "hkls": [
-                [{"hkl": list(hkl), "multiplicity": mult} for hkl, mult in family]
-                for family in obj.hkls
-            ],
-            "d_hkls": obj.d_spacings.tolist(),
         }
-    if is_instance_of(obj, "pymatgen.analysis.diffraction.core.DiffractionPattern"):
-        result: dict[str, Any] = {"x": obj.x.tolist(), "y": obj.y.tolist()}
         if obj.hkls is not None:
             result["hkls"] = [
-                [
-                    {
-                        key: list(val) if key == "hkl" else val
-                        for key, val in hkl_entry.items()
-                    }
-                    for hkl_entry in hkl_list
-                ]
-                for hkl_list in obj.hkls
+                [{"hkl": list(hkl), "multiplicity": mult} for hkl, mult in family]
+                for family in obj.hkls
             ]
-        if obj.d_hkls is not None:
-            result["d_hkls"] = (
-                obj.d_hkls.tolist()
-                if hasattr(obj.d_hkls, "tolist")
-                else list(obj.d_hkls)
-            )
+        if obj.d_spacings is not None:
+            result["d_hkls"] = obj.d_spacings.tolist()
         return result
 
     raise TypeError(

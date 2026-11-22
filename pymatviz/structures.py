@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 import matscikit as mk
 import pandas as pd
+from matscikit.interop import has_class, structure_to_pymatgen_dict, to_structure
 
 
 if TYPE_CHECKING:
@@ -20,30 +21,21 @@ if TYPE_CHECKING:
     from pymatviz.typing import AnyStructure
 
 
-def is_instance_of(obj: Any, *qualnames: str) -> bool:
-    """Whether obj's class or a base has one of these dotted names, so optional
-    packages (pymatgen, ASE, phonopy) need not be importable to check.
-    """
-    return any(
-        f"{cls.__module__}.{cls.__qualname__}" in qualnames for cls in type(obj).__mro__
-    )
-
-
 def is_ase_atoms(struct: Any) -> TypeIs[Atoms]:
     """Check if the input is an ASE Atoms object without importing ase."""
-    return is_instance_of(struct, "ase.atoms.Atoms", "pymatgen.io.ase.MSONAtoms")
+    return has_class(struct, "ase.atoms.Atoms", "pymatgen.io.ase.MSONAtoms")
 
 
 def is_phonopy_atoms(obj: Any) -> TypeIs[PhonopyAtoms]:
     """Check if object is PhonopyAtoms or a subclass (Supercell, Primitive)."""
-    return is_instance_of(obj, "phonopy.structure.atoms.PhonopyAtoms")
+    return has_class(obj, "phonopy.structure.atoms.PhonopyAtoms")
 
 
 def is_pymatgen_structure(obj: Any) -> TypeIs[IStructure | IMolecule]:
     """Whether obj is a pymatgen Structure/Molecule (mutable or not), without
     importing pymatgen.
     """
-    return is_instance_of(
+    return has_class(
         obj, "pymatgen.core.structure.IStructure", "pymatgen.core.structure.IMolecule"
     )
 
@@ -58,45 +50,6 @@ def is_structure_like(obj: Any) -> bool:
     )
 
 
-def to_structure(obj: Any) -> mk.Structure:
-    """Convert a matscikit/pymatgen structure or molecule, ASE Atoms or PhonopyAtoms
-    to a matscikit Structure. Disordered pymatgen sites become {element: occupancy}
-    sites; pymatgen oxidation states are dropped. Molecules get an identity
-    placeholder cell with periodic boundaries off; matscikit completes missing ASE
-    cell vectors along non-periodic axes (slabs, wires).
-
-    Raises:
-        TypeError: For any other type.
-    """
-    if isinstance(obj, mk.Structure):
-        return obj
-    if is_pymatgen_structure(obj):
-        pmg: Any = obj  # IStructure or IMolecule
-        # Composition sums an element's oxidation states and drops vacancies (X)
-        species = [mk.Composition(site.species).as_dict() for site in pmg]
-        if is_instance_of(pmg, "pymatgen.core.structure.IStructure"):
-            return mk.Structure(
-                pmg.lattice.matrix,
-                species,
-                pmg.frac_coords,
-                fractional=True,
-                pbc=pmg.lattice.pbc,
-            )
-        return mk.Structure(None, species, pmg.cart_coords, pbc=(False,) * 3)
-    if is_ase_atoms(obj):
-        from matscikit.interop import structure_from_ase
-
-        return structure_from_ase(obj)
-    if is_phonopy_atoms(obj):
-        return mk.Structure(
-            obj.cell, obj.symbols, obj.scaled_positions, fractional=True
-        )
-    raise TypeError(
-        "Expected a matscikit or pymatgen Structure/Molecule, ASE Atoms or "
-        f"PhonopyAtoms, got {type(obj).__name__}"
-    )
-
-
 def structure_dict(obj: Any) -> dict[str, Any]:
     """Dict in pymatgen's format (MatterViz's JSON structure format) of a structure-like
     object. pymatgen objects keep their own ``as_dict()`` (oxidation states, labels,
@@ -104,14 +57,15 @@ def structure_dict(obj: Any) -> dict[str, Any]:
     """
     if is_pymatgen_structure(obj):
         return obj.as_dict()
-    from matscikit.interop import structure_to_pymatgen_dict
-
     struct = to_structure(obj)
     dct = structure_to_pymatgen_dict(struct)
     if not any(struct.pbc):
+        info = struct.info
         dct = {key: val for key, val in dct.items() if key != "lattice"}
         dct |= {
             "@class": "Molecule",
+            "charge": info.get("charge", 0),
+            "spin_multiplicity": info.get("spin_multiplicity"),
             "sites": [
                 {key: val for key, val in site.items() if key != "abc"}
                 for site in dct["sites"]

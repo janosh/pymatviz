@@ -835,7 +835,10 @@ def test_xrd_widget_labeled_patterns() -> None:
         patterns={"computed": computed, "scan": {"two_theta": [5], "intensities": [1]}}
     )
     assert list(widget.patterns) == ["computed", "scan"]
-    assert widget.patterns["computed"]["hkls"][0] == [{"hkl": [1, 0, 0]}]
+    # matscikit's XrdPattern defaults missing multiplicities to 1
+    assert widget.patterns["computed"]["hkls"][0] == [
+        {"hkl": [1, 0, 0], "multiplicity": 1}
+    ]
     assert widget.patterns["scan"] == {"x": [5], "y": [1], "kind": "profile"}
     with pytest.raises(ValueError, match="patterns mapping must not be empty"):
         XrdWidget(patterns={})

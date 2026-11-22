@@ -138,32 +138,39 @@ def test_normalize_convex_hull_entries_passthrough() -> None:
     ]
 
 
-def test_normalize_convex_hull_entries_from_phase_diagram() -> None:
-    """Test conversion from pymatgen PhaseDiagram extracts correct fields."""
+@pytest.mark.parametrize("as_entry_list", [False, True])
+def test_normalize_convex_hull_entries_from_phase_diagram(as_entry_list: bool) -> None:
+    """A pymatgen PhaseDiagram or its entries give pymatgen's energies above hull
+    and stability (computed by matscikit).
+    """
     from pymatgen.analysis.phase_diagram import PDEntry, PhaseDiagram
+    from pymatgen.entries.computed_entries import ComputedEntry
 
-    phase_diag = PhaseDiagram(
-        [
-            PDEntry(Composition("Li"), -1.9),
-            PDEntry(Composition("O"), -4.2),
-            PDEntry(Composition("Li2O"), -14.3),
-        ]
-    )
-    result = normalize_convex_hull_entries(phase_diag)
+    entries = [
+        PDEntry(Composition("Li"), -1.9),
+        PDEntry(Composition("O"), -4.2),
+        PDEntry(Composition("Li2O"), -14.3),
+        PDEntry(Composition("Li2O2"), -16.0),
+        ComputedEntry("Li3O", -16.0, correction=-0.3),
+    ]
+    phase_diag = PhaseDiagram(entries)
+    result = normalize_convex_hull_entries(entries if as_entry_list else phase_diag)
     assert result is not None
-
-    assert len(result) == 3
-    for entry in result:
-        assert set(entry) >= {
-            "composition",
-            "energy",
-            "energy_per_atom",
-            "e_above_hull",
-            "is_stable",
-        }
-        assert isinstance(entry["composition"], dict)
-        assert isinstance(entry["is_stable"], bool)
-    assert any(entry["is_stable"] for entry in result)
+    if not as_entry_list:  # in PhaseDiagram.all_entries order
+        entries = phase_diag.all_entries
+    assert [entry["composition"] for entry in result] == [
+        entry.composition.as_dict() for entry in entries
+    ]
+    assert [entry["energy"] for entry in result] == [entry.energy for entry in entries]
+    np.testing.assert_allclose(
+        [entry["e_above_hull"] for entry in result],
+        [phase_diag.get_e_above_hull(entry) for entry in entries],
+        rtol=0,
+        atol=1e-12,
+    )
+    assert [entry["is_stable"] for entry in result] == [
+        entry in phase_diag.stable_entries for entry in entries
+    ]
 
 
 def test_normalize_convex_hull_entries_unsupported_type() -> None:

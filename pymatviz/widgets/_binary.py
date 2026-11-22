@@ -232,8 +232,9 @@ def frame_input(item: Any) -> tuple[Any, Mapping[str, Any]]:
 def _frame(item: Any) -> _Frame | None:
     """Extract geometry, or select JSON for richer structures."""
     import matscikit as mk
+    from matscikit.interop import has_class
 
-    from pymatviz.structures import is_ase_atoms, is_instance_of
+    from pymatviz.structures import is_ase_atoms
 
     structure, props = frame_input(item)
     if isinstance(item, Mapping) and len(item) > 1 and object_metadata(structure):
@@ -250,7 +251,7 @@ def _frame(item: Any) -> _Frame | None:
             {},
             props,
         )
-    if is_instance_of(structure, "pymatgen.core.structure.SiteCollection"):
+    if has_class(structure, "pymatgen.core.structure.SiteCollection"):
         if not structure.is_ordered or any(
             site.label != site.species_string for site in structure
         ):
@@ -383,13 +384,13 @@ def trajectory_to_envelope(
     metadata: Mapping[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Encode supported trajectories, or return None for JSON-only data."""
-    from pymatviz.structures import is_instance_of
+    from matscikit.interop import has_class
 
     fields: dict[str, Any] = {}
     if metadata:
         fields["metadata"] = normalize_plot_json(dict(metadata), "trajectory metadata")
 
-    if is_instance_of(trajectory, "pymatgen.core.trajectory.Trajectory"):
+    if has_class(trajectory, "pymatgen.core.trajectory.Trajectory"):
         from pymatgen.core.periodic_table import get_el_sp
 
         if (step := trajectory.time_step) is not None:

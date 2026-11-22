@@ -53,17 +53,15 @@ class XrdWidget(PlotControlsTraits, XrdTraits, MatterVizWidget):
                 start with the control pane expanded).
         """
         import matscikit as mk
+        from matscikit.interop import has_class
 
-        from pymatviz.structures import is_instance_of
         from pymatviz.widgets._normalize import normalize_xrd_pattern
 
         # a mapping of patterns (pattern objects or dicts) is labeled, a dict of
         # arrays is one pattern
         is_labeled = isinstance(patterns, Mapping) and all(
             isinstance(val, mk.XrdPattern | Mapping)
-            or is_instance_of(
-                val, "pymatgen.analysis.diffraction.core.DiffractionPattern"
-            )
+            or has_class(val, "pymatgen.analysis.diffraction.core.DiffractionPattern")
             for val in patterns.values()
         )
         if is_labeled and not patterns:

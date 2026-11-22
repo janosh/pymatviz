@@ -107,8 +107,13 @@ def test_to_structure_species_and_molecules() -> None:
     assert mol.pbc == (False, False, False)
     np.testing.assert_allclose(mol.positions, H2O.cart_coords)
 
-    with pytest.raises(TypeError, match="Expected a matscikit or pymatgen"):
-        to_structure("Si")
+    with pytest.raises(TypeError, match="expected a matscikit or pymatgen"):
+        to_structure(42)
+    with pytest.raises(ValueError, match="unknown structure file format"):
+        to_structure("Si")  # strings are file paths
+    vacancy_only = IStructure(Lattice.cubic(3), [DummySpecies("X")], [[0, 0, 0]])
+    with pytest.raises(ValueError, match="only vacancies"):
+        to_structure(vacancy_only)
 
 
 def test_structure_dict() -> None:
@@ -140,7 +145,7 @@ def test_site_elements_and_symbols() -> None:
     [
         ("not a structure", TypeError, "Input must be a matscikit or pymatgen"),
         (12345, TypeError, "Input must be a matscikit or pymatgen"),
-        ([SI_STRUCTS[0], "invalid"], TypeError, "Expected a matscikit or pymatgen"),
+        ([SI_STRUCTS[0], "invalid"], ValueError, "unknown structure file format"),
         ([], ValueError, "Cannot plot empty set of structures"),
         ({}, ValueError, "Cannot plot empty set of structures"),
     ],

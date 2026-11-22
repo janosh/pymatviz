@@ -12,10 +12,11 @@ from typing import TYPE_CHECKING, Any
 
 import matscikit as mk
 import pandas as pd
+from matscikit.interop import has_class
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 
 from pymatviz.enums import ElemCountMode
-from pymatviz.structures import is_instance_of, is_structure_like, to_structure
+from pymatviz.structures import is_structure_like, to_structure
 from pymatviz.utils import df_ptable
 
 
@@ -27,7 +28,7 @@ if TYPE_CHECKING:
 
 def is_composition_like(obj: Any) -> bool:
     """Whether obj is a formula string, a matscikit or pymatgen Composition."""
-    return isinstance(obj, str | mk.Composition) or is_instance_of(
+    return isinstance(obj, str | mk.Composition) or has_class(
         obj, "pymatgen.core.composition.Composition"
     )
 
