@@ -38,8 +38,12 @@ def test_widget_composition_inputs(
     """Widget must handle different composition input types and formats."""
     widget = CompositionWidget(composition=composition_input)
     assert widget.widget_type == "composition"
-    assert widget.composition == kemio.Composition(composition_input).as_dict()
+    expected = kemio.Composition(composition_input).as_dict()
+    assert widget.composition == expected
     json.dumps(widget.composition)
+    widget = CompositionWidget()  # later assignments convert too
+    widget.composition = composition_input
+    assert widget.composition == expected
 
 
 @pytest.mark.parametrize(

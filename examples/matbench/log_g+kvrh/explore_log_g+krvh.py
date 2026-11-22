@@ -25,13 +25,13 @@ from typing import get_args
 import kemio
 import numpy as np
 import pandas as pd
+from kemio.options import CrystalSystem
 from matbench_discovery.structure import prototype
 from matminer.datasets import load_dataset
 from pymatgen.core import Structure
 from tqdm import tqdm
 
 import pymatviz as pmv
-from pymatviz.typing import CrystalSystem
 
 
 crystal_systems = get_args(CrystalSystem)  # ordered triclinic to cubic

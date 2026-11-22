@@ -54,6 +54,14 @@ def test_xrd_pattern_single(input_data: Any, expected: kemio.XrdPattern) -> None
     assert len(widget.patterns["hkls"]) == len(expected.hkls or [])
 
 
+def test_xrd_pattern_series() -> None:
+    """A pd.Series (e.g. a DataFrame column) is labeled by its index."""
+    patterns = pd.Series([BI2_ZR2_O7_STRUCT, MOCK_XRD_PATTERN], index=[3, "mock"])
+    widget = pmv.xrd_plot(patterns)
+    assert list(widget.patterns) == ["3", "mock"]
+    np.testing.assert_array_equal(widget.patterns["3"]["x"], BI2_ZR2_O7_XRD.two_theta)
+
+
 def test_xrd_pattern_mapping() -> None:
     """Mappings keep label order, compute structures and pass patterns (objects or
     dicts) through. An all-zero pattern is fine when another has positive intensity.
@@ -91,8 +99,8 @@ def test_xrd_pattern_mapping() -> None:
             for val, err in [
                 (0, (ValueError, "At least one diffraction intensity")),
                 (-1, (ValueError, "must be finite and non-negative")),
-                (np.nan, (ValueError, "must be finite and non-negative")),
-                (np.inf, (ValueError, "must be finite and non-negative")),
+                (np.nan, (ValueError, "non-finite|must be finite")),
+                (np.inf, (ValueError, "non-finite|must be finite")),
             ]
         ],
         (  # labels colliding as strings raise instead of dropping a pattern
@@ -100,6 +108,12 @@ def test_xrd_pattern_mapping() -> None:
             ValueError,
             "Labels must be unique as strings",
         ),
+        (
+            pd.Series([MOCK_XRD_PATTERN] * 2, index=["a", "a"]),
+            ValueError,
+            r"Labels must be unique as strings, got \['a', 'a'\]",
+        ),
+        (pd.Series([], dtype=object), ValueError, "patterns must not be empty"),
     ],
 )
 def test_xrd_pattern_raises(

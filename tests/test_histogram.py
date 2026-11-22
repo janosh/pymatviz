@@ -120,10 +120,19 @@ def test_elements_hist(
     assert widget.show_legend is False
 
 
-def test_elements_hist_invalid_show_values() -> None:
-    """Unknown show_values raise instead of silently showing count labels."""
-    with pytest.raises(ValueError, match="Invalid show_values"):
-        elements_hist(["Fe2O3"], show_values="fraction")  # ty: ignore[invalid-argument-type]
+@pytest.mark.parametrize(
+    ("kwargs", "match"),
+    [
+        ({"show_values": "fraction"}, "Invalid show_values"),
+        # head(-1) would silently drop the least common element
+        ({"max_elements": -1}, "max_elements=-1 must be a positive integer"),
+        ({"max_elements": 0}, "max_elements=0 must be a positive integer"),
+    ],
+)
+def test_elements_hist_invalid_args(kwargs: dict[str, Any], match: str) -> None:
+    """Unknown show_values and non-positive max_elements raise."""
+    with pytest.raises(ValueError, match=match):
+        elements_hist(["Fe2O3", "NaCl"], **kwargs)
 
 
 @pytest.mark.usefixtures("python_bins")
@@ -188,6 +197,16 @@ def test_python_histogram_rejects_invalid_values(values: Any, match: str) -> Non
     """Histogram rejects empty, non-1D and non-finite inputs, naming the series."""
     with pytest.raises(ValueError, match=match):
         histogram(values)
+
+
+@pytest.mark.parametrize("bins", [3, "auto"])  # binned in the browser or Python
+@pytest.mark.parametrize("x_range", [(3, 1), (5, None), (None, 0)])
+def test_histogram_rejects_inverted_x_range(
+    x_range: tuple[float | None, float | None], bins: int | str
+) -> None:
+    """An x_range resolving to lo > hi raises instead of binning no values."""
+    with pytest.raises(ValueError, match="need lo <= hi"):
+        histogram([1, 2, 3], x_range=x_range, bins=bins)
 
 
 @pytest.mark.usefixtures("python_bins")

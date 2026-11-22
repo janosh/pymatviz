@@ -25,11 +25,15 @@ if TYPE_CHECKING:
 def structure_dict(obj: AnyStructure) -> dict[str, Any]:
     """Dict in pymatgen's format (MatterViz's JSON structure format) of a structure-like
     object: pymatgen's own ``as_dict()`` for pymatgen objects, else kemio's
-    ``Structure.as_dict()``/``Molecule.as_dict()`` payload (molecules without lattice).
+    ``Structure.as_dict()``/``Molecule.as_dict()`` payload (molecules without lattice),
+    with ``Structure.info`` (e.g. ASE ``Atoms.info``) as ``properties`` like pymatgen.
     """
     if is_pymatgen_structure(obj):
         return obj.as_dict()
-    return structure_to_pymatgen_dict(to_structure(obj))
+    struct = to_structure(obj)
+    struct_dict = structure_to_pymatgen_dict(struct)
+    struct_dict["properties"] = struct.info | struct_dict["properties"]
+    return struct_dict
 
 
 def site_elements(struct: kemio.Structure) -> list[set[str]]:
@@ -155,7 +159,8 @@ def normalize_spacegroups(data: Sequence[SpacegroupLike] | pd.Series) -> pd.Seri
     if result.isna().any():
         raise ValueError("Space group data must not contain missing values")
 
-    if is_structure_like(result.iloc[0]):
+    # first item short-circuits number/symbol inputs, mixed ones fall to the TypeError
+    if is_structure_like(result.iloc[0]) and all(map(is_structure_like, result)):
         numbers = spacegroup_numbers(result.tolist())
         return pd.Series(numbers, index=result.index, name=result.name)
 

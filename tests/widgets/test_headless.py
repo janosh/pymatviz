@@ -898,6 +898,9 @@ _H6 = "height: 600px"
         ),
         ("height: 400px;", None, None, [_W8, "height: 400px"], ["600px"]),
         ("width: 400px;", None, None, ["width: 400px", _H6], ["800px"]),
+        # whitespace before a declaration and uppercase property names still count
+        ("  width: 400px; HEIGHT:300px", None, None, [], ["800px", "600px"]),
+        ("min-width: 400px", None, None, [_W8, _H6], []),  # not a width
         # explicit width/height override user style and defaults
         ("width: 500px;", 1200, None, ["width: 1200px", _H6], []),
         ("width: 500px;", None, 900, ["width: 500px", "height: 900px"], []),

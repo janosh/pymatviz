@@ -31,7 +31,7 @@ A toolkit for visualizations in materials informatics.
 pip install pymatviz
 ```
 
-See `pyproject.toml` for available extras like `pip install 'pymatviz[export]'` for static image export. Structures, compositions, symmetry, RDFs, coordination numbers, chemical environments and XRD patterns are computed with [kemio](https://github.com/janosh/kemio). pymatgen, ASE and phonopy objects are accepted as inputs and converted on the way in. So are ChemEnv environments (`chem_env_hierarchy`), CrystalNN and Voronoi coordination numbers, and phonon band structures and DOS (from phonopy or pymatgen). `pip install 'pymatviz[pymatgen]'` adds what still needs pymatgen: pymatgen `Trajectory` JSON and matminer's non-Magpie featurization presets (Magpie features come from kemio).
+See `pyproject.toml` for available extras like `pip install 'pymatviz[export]'` for static image export. Structures, compositions, symmetry, RDFs, coordination numbers, chemical environments and XRD patterns are computed with [kemio](https://github.com/janosh/kemio). pymatgen, ASE and phonopy objects are accepted as inputs and converted on the way in. So are ChemEnv environments (`chem_env_hierarchy`), CrystalNN and Voronoi coordination numbers, and phonon band structures and DOS (from phonopy or pymatgen). None of them is a dependency: pymatviz never imports pymatgen, ASE or phonopy itself.
 
 ## API Docs
 
@@ -110,7 +110,7 @@ df_comp = pd.DataFrame(
 widget = pmv.cluster_compositions(
     df_comp,
     prop_name="property",  # optional property to color points by
-    embedding_method="one-hot",  # or "magpie", "matscholar_el", "megnet_el", etc.
+    embedding_method="one-hot",  # or "magpie", or a callable returning embeddings
     projection="pca",  # or "tsne", "umap", "isomap", "kernel_pca", etc.
     show_chem_sys="shape",  # "color" | "shape" | "color+shape" | None
     n_components=2,  # or 3 for 3D plots

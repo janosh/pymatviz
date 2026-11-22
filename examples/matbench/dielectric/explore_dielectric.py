@@ -24,12 +24,12 @@ https://ml.materialsproject.org/projects/matbench_dielectric
 from typing import get_args
 
 import kemio
+from kemio.options import CrystalSystem
 from matbench_discovery.structure import prototype
 from matminer.datasets import load_dataset
 from tqdm import tqdm
 
 import pymatviz as pmv
-from pymatviz.typing import CrystalSystem
 
 
 crystal_systems = get_args(CrystalSystem)  # ordered triclinic to cubic

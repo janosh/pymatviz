@@ -147,7 +147,7 @@ def annotate_metrics[Widget: ScatterPlotWidget | BinnedScatterPlotWidget](
     metrics: Mapping[str, float | str] | Sequence[str] = ("MAE", "R2"),
     prefix: str = "",
     suffix: str = "",
-    fmt: str = ".3",
+    fmt: str = ".3g",
 ) -> Widget:
     """Show regression metrics of ys vs xs in the widget's annotation badge.
 
@@ -160,12 +160,13 @@ def annotate_metrics[Widget: ScatterPlotWidget | BinnedScatterPlotWidget](
         metrics (Mapping[str, float | str] | Sequence[str]): Metrics to show. A
             sequence of metric names (built-in MAE, RMSE, MSE, MAPE, R2, R2_adj or
             any sklearn.metrics function name) computed from xs and ys and labeled
-            by name. A mapping of labels to either precomputed numbers (shown as is)
-            or metric names (computed), e.g. {"Mean abs. error": "MAE", "Custom":
+            by name. A mapping of labels to either precomputed numbers or metric
+            names (computed), e.g. {"Mean abs. error": "MAE", "Custom":
             1.23}. Defaults to ("MAE", "R2").
         prefix (str): Text before the metrics, e.g. a title line ending in a newline.
         suffix (str): Text after the metrics.
-        fmt (str): Format spec for metric values. Defaults to ".3".
+        fmt (str): Format spec for metric values, precomputed ones included.
+            Defaults to ".3g" (".3" would show e.g. 123 as 1.23e+02).
 
     Returns:
         ScatterPlotWidget | BinnedScatterPlotWidget: The annotated widget.
@@ -203,6 +204,9 @@ def annotate_metrics[Widget: ScatterPlotWidget | BinnedScatterPlotWidget](
     xs_arr, ys_arr = _resolve_xy(widget, xs, ys, series)
     finite = np.isfinite(xs_arr) & np.isfinite(ys_arr)
     xs_arr, ys_arr = xs_arr[finite], ys_arr[finite]
+    computes_metrics = any(isinstance(val, str) for val in label_to_metric.values())
+    if computes_metrics and not finite.any():
+        raise ValueError(f"Metrics need finite (x, y) pairs, got none of {finite.size}")
     lines = []
     for label, metric in label_to_metric.items():
         value = funcs[metric](xs_arr, ys_arr) if isinstance(metric, str) else metric

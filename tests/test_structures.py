@@ -169,6 +169,7 @@ def test_normalize_spacegroups_invalid_number_raises(
         ([225, "Fm-3m"], r"one kind\), got \['int', 'str'\]"),
         (["Fm-3m", 225], r"one kind\), got \['int', 'str'\]"),
         ([[225]], r"got \['list'\]"),
+        ([SI2_STRUCT, 225], r"one kind\), got \['Structure', 'int'\]"),
     ],
 )
 def test_normalize_spacegroups_raises(data: list[Any], match: str) -> None:

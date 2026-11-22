@@ -9,7 +9,7 @@ import numpy as np
 import traitlets as tl
 
 from pymatviz.utils import df_ptable
-from pymatviz.widgets._normalize import normalize_json_kwargs, normalize_plot_json
+from pymatviz.widgets._normalize import normalize_plot_json
 from pymatviz.widgets._schema_traits import PeriodicTableTraits
 from pymatviz.widgets._traits import color_bar_trait, color_scale_trait, optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
@@ -306,9 +306,15 @@ class PeriodicTableWidget(PeriodicTableTraits, MatterVizWidget):
     @tl.validate("heatmap_values")
     def _validate_heatmap_values(self, proposal: dict[str, Any]) -> Any:
         """Normalize heat values to JSON on every assignment and reject numeric ones
-        beside a tile plot color scale.
+        beside a tile plot color scale. A pandas Series keeps its element index
+        (its ``tolist()`` would map values to elements by position).
         """
-        values = normalize_plot_json(proposal["value"], "PeriodicTable.heatmap_values")
+        import pandas as pd
+
+        value = proposal["value"]
+        if isinstance(value, pd.Series):
+            value = value.to_dict()
+        values = normalize_plot_json(value, "PeriodicTable.heatmap_values")
         self._check_one_color_scale(values, self.tile_plot_config)
         return values
 
@@ -340,7 +346,6 @@ class PeriodicTableWidget(PeriodicTableTraits, MatterVizWidget):
         kwargs.setdefault(
             "style", "width: 100%; max-width: 900px; aspect-ratio: 18/10;"
         )
-        normalize_json_kwargs(kwargs, ("color_scale", "color_bar"), "PeriodicTable")
         super().__init__(
             heatmap_values=heatmap_values,
             **kwargs,

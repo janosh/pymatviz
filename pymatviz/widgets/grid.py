@@ -58,10 +58,12 @@ def widget_grid(widgets: Mapping[Any, ipw.DOMWidget], n_cols: int = 3) -> Widget
         WidgetGrid: An ipywidgets GridBox of titled cells.
 
     Raises:
-        ValueError: If n_cols is not positive.
+        ValueError: If n_cols is not positive or widgets is empty.
     """
     if n_cols < 1:
         raise ValueError(f"{n_cols=} must be positive")
+    if not widgets:  # repeat(0, ...) is invalid CSS
+        raise ValueError("widget_grid needs at least one widget")
     cells = [
         ipw.VBox([ipw.HTML(f"<b>{html.escape(str(label))}</b>"), widget])
         for label, widget in widgets.items()

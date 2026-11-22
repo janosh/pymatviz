@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, get_args
 
 import pandas as pd
 import pytest
-from kemio import Composition
+from kemio import Composition, Structure
 
 import pymatviz as pmv
 from pymatviz.compositions import count_elements, count_formulas
@@ -103,6 +103,11 @@ def test_count_elements_by_atomic_nums(index_type: type) -> None:
             )
         ],
         (
+            ["Fe2O3"],
+            {"count_mode": "elements"},
+            re.escape("must be one of ['composition', 'fractional_composition', "),
+        ),
+        (
             ["Fe2O3", "Fe4P4O16"],
             {"exclude_elements": ["Fe", "P", "Zz"]},
             re.escape("Unexpected symbol(s) Zz in excluded_elements=['Fe', 'P', 'Zz']"),
@@ -127,8 +132,22 @@ def test_count_elements_raises(values: Any, kwargs: dict[str, Any], match: str) 
         (FE_P_O_COMPS, {"exclude_elements": ["Fe", "P"]}, {"O": 63}, ["Fe", "P"]),
         (FE_P_O_COMPS, {"exclude_elements": "Fe"}, {"O": 63, "P": 12}, ["Fe"]),
         ([{"Fe": 2, "O": 3}, {"Fe": 1}], {}, {"Fe": 3, "O": 3}, []),
+        (
+            [
+                Structure(
+                    [[3, 0, 0], [0, 3, 0], [0, 0, 3]],
+                    ["Na", "Cl"],
+                    [[0] * 3, [0.5] * 3],
+                )
+            ]
+            * 2
+            + ["NaCl"],
+            {},
+            {"Na": 3, "Cl": 3},
+            [],
+        ),
     ],
-    ids=["mixed-input", "exclude-list", "exclude-str", "dicts"],
+    ids=["mixed-input", "exclude-list", "exclude-str", "dicts", "structures"],
 )
 @pytest.mark.parametrize("fill_value", [None, 0])
 def test_count_elements_options(

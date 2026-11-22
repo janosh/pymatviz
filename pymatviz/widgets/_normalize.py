@@ -158,10 +158,11 @@ def _to_dict(
             run, "bands" or "dos". None leaves paths unconverted.
 
     Returns:
-        The dict, or None if obj is None.
+        The JSON-normalized dict, or None if obj is None.
 
     Raises:
-        TypeError: If obj has no .as_dict() method.
+        TypeError: If obj has no .as_dict() method or holds non-JSON values.
+        ValueError: For non-finite numbers.
     """
     if obj is None:
         return None
@@ -172,29 +173,18 @@ def _to_dict(
             if not isinstance(val, dict)
             and (dct := _object_dict(_vasprun_part(val, vasprun))) is not None
         }
-        return {**obj, **converted} if converted else obj
-    if (dct := _object_dict(_vasprun_part(obj, vasprun))) is not None:
-        return dct
-    raise TypeError(
-        f"Unsupported type for {label}: {type(obj)}. "
-        "Expected dict, vasprun.xml path or object with .as_dict()."
-    )
+        dct = {**obj, **converted}
+    elif (dct := _object_dict(_vasprun_part(obj, vasprun))) is None:
+        raise TypeError(
+            f"Unsupported type for {label}: {type(obj)}. "
+            "Expected dict, vasprun.xml path or object with .as_dict()."
+        )
+    return normalize_plot_json(dct, label)  # e.g. numpy arrays in dict inputs
 
 
-def _normalize_numeric_sequence(
-    values: list[Any], field_label: str, *, series_index: int
-) -> list[float]:
-    """Convert JSON-normalized series values to floats, rejecting non-numeric items."""
-    normalized_values: list[float] = []
-    for value_index, value in enumerate(values):
-        if not isinstance(value, (int, float)):
-            raise TypeError(
-                "Plot series values must be numeric. "
-                f"Got {field_label}[{value_index}]={value!r} in series index "
-                f"{series_index}."
-            )
-        normalized_values.append(float(value))
-    return normalized_values
+# exact types normalize_plot_json returns unchanged (bool, str and int subclasses
+# such as enums take the slow path, which converts IntEnum to int)
+_JSON_SCALARS = frozenset({type(None), bool, str, int})
 
 
 def normalize_plot_json(value: Any, label: str) -> Any:
@@ -209,8 +199,34 @@ def normalize_plot_json(value: Any, label: str) -> Any:
 
     Raises:
         TypeError: If value cannot be serialized to JSON-safe primitives.
-        ValueError: If value contains non-finite numbers.
+        ValueError: If value contains non-finite numbers or dict keys that collide
+            as strings (e.g. 1 and "1").
     """
+    value_type = type(value)
+    # exact-type fast paths: plain lists/dicts of plain scalars (JSON trajectories,
+    # structure dicts) skip a recursive call per element
+    if value_type is list or value_type is tuple:
+        return [
+            entry
+            if type(entry) in _JSON_SCALARS
+            or (type(entry) is float and math.isfinite(entry))
+            else normalize_plot_json(entry, label)
+            for entry in value
+        ]
+    if value_type is dict:
+        normalized = {
+            str(key): entry
+            if type(entry) in _JSON_SCALARS
+            or (type(entry) is float and math.isfinite(entry))
+            else normalize_plot_json(entry, f"{label}.{key}")
+            for key, entry in value.items()
+        }
+        if len(normalized) < len(value):  # e.g. 1 and "1" would merge silently
+            str_keys = [str(key) for key in value]
+            clashes = [key for key in value if str_keys.count(str(key)) > 1]
+            raise ValueError(f"{label} has keys that collide as strings: {clashes}")
+        return normalized
+
     if value is None or isinstance(value, (bool, str)):
         return value
 
@@ -235,14 +251,11 @@ def normalize_plot_json(value: Any, label: str) -> Any:
             continue
         return normalize_plot_json(converted, label)
 
-    if isinstance(value, dict):
-        return {
-            str(key): normalize_plot_json(entry, f"{label}.{key}")
-            for key, entry in value.items()
-        }
+    if isinstance(value, dict):  # subclasses, e.g. OrderedDict
+        return normalize_plot_json(dict(value), label)
 
-    if isinstance(value, (list, tuple)):
-        return [normalize_plot_json(entry, label) for entry in value]
+    if isinstance(value, (list, tuple)):  # subclasses, e.g. namedtuples
+        return normalize_plot_json(list(value), label)
 
     if hasattr(value, "as_dict") and callable(value.as_dict):
         return normalize_plot_json(value.as_dict(), label)
@@ -252,21 +265,6 @@ def normalize_plot_json(value: Any, label: str) -> Any:
         "Expected JSON-serializable primitives, lists, dicts, numpy arrays, or "
         "MSONable objects."
     )
-
-
-def normalize_json_kwargs(
-    kwargs: dict[str, Any], keys: Sequence[str], component: str
-) -> None:
-    """In place, run normalize_plot_json on each of ``keys`` present in ``kwargs``.
-
-    Args:
-        kwargs: Widget constructor keyword arguments, modified in place.
-        keys: Names of the config kwargs to normalize (e.g. numpy bounds in dicts).
-        component: MatterViz component name used to label error messages.
-    """
-    for key in keys:
-        if key in kwargs:
-            kwargs[key] = normalize_plot_json(kwargs[key], f"{component}.{key}")
 
 
 def check_metadata_frame(frame: pd.DataFrame, n_points: int, label: str) -> None:
@@ -397,9 +395,13 @@ def normalize_plot_series(
                     f"(categorical) or all numeric, got mixed types at index "
                     f"{series_index}."
                 )
-            entry[key] = _normalize_numeric_sequence(
-                values, key, series_index=series_index
-            )
+            for value_idx, value in enumerate(values):
+                if not isinstance(value, (int, float)):
+                    raise TypeError(
+                        f"Plot series values must be numeric. Got {key}[{value_idx}]="
+                        f"{value!r} in series index {series_index}."
+                    )
+            entry[key] = [float(value) for value in values]
         normalized_series.append(entry)
     return normalized_series
 
@@ -531,43 +533,37 @@ def normalize_convex_hull_entries(obj: Any) -> list[dict[str, Any]] | None:
 XRD_PATTERN_KINDS = ("sticks", "profile")
 
 
-def _with_xrd_kind(pattern: dict[str, Any]) -> dict[str, Any]:
-    """Tag a pattern without Miller indices as a measured ``kind="profile"`` scan.
-
-    matterviz draws ``profile`` patterns as a line and never broadens them, while
-    ``sticks`` (its default) are discrete reflections drawn as bars. Computed patterns
-    (kemio, pymatgen) carry ``hkls`` and stay untagged; an explicit ``kind`` wins.
-
-    Raises:
-        ValueError: If ``pattern["kind"]`` is not one of ``XRD_PATTERN_KINDS``.
-    """
-    if "kind" in pattern:
-        if pattern["kind"] not in XRD_PATTERN_KINDS:
-            raise ValueError(
-                f"XRD pattern kind={pattern['kind']!r} must be one of "
-                f"{list(XRD_PATTERN_KINDS)}."
-            )
-        return pattern
-    if pattern.get("hkls"):
-        return pattern
-    return {**pattern, "kind": "profile"}
-
-
 def normalize_xrd_pattern(obj: Any) -> dict[str, Any] | None:
     """Convert an XRD pattern to a JSON-serializable dict for matterviz.
 
-    Patterns without ``hkls`` (measured scans) get ``kind="profile"`` so matterviz
-    draws them as a continuous line and skips peak broadening.
+    Patterns without ``hkls`` (measured scans) get ``kind="profile"``: matterviz draws
+    those as a line and never broadens them, while ``sticks`` (its default) are
+    discrete reflections drawn as bars. Computed patterns (kemio, pymatgen) carry
+    ``hkls`` and stay untagged; an explicit ``kind`` wins.
 
     Args:
-        obj: A pymatgen DiffractionPattern, a dict, or None.
+        obj: A kemio XrdPattern, pymatgen DiffractionPattern, a dict (numpy or
+            pandas values allowed), or None.
 
     Returns:
-        XRD pattern dict with x, y, and optional hkls, d_hkls, kind keys, or None.
+        JSON-safe XRD pattern dict with x, y, and optional hkls, d_hkls, kind keys,
+        or None.
+
+    Raises:
+        ValueError: For missing or mismatched x/y, non-finite values or an unknown
+            kind.
     """
     if obj is None:
         return None
-    return _with_xrd_kind(_xrd_pattern_to_dict(obj))
+    pattern = normalize_plot_json(_xrd_pattern_to_dict(obj), "XRD pattern")
+    if "kind" not in pattern:
+        return pattern if pattern.get("hkls") else {**pattern, "kind": "profile"}
+    if pattern["kind"] not in XRD_PATTERN_KINDS:
+        raise ValueError(
+            f"XRD pattern kind={pattern['kind']!r} must be one of "
+            f"{list(XRD_PATTERN_KINDS)}."
+        )
+    return pattern
 
 
 def _xrd_pattern_to_dict(obj: Any) -> dict[str, Any]:
@@ -591,12 +587,7 @@ def _xrd_pattern_to_dict(obj: Any) -> dict[str, Any]:
                 "XRD pattern dict has mismatched lengths: "
                 f"len(x)={len(obj['x'])}, len(y)={len(obj['y'])}."
             )
-        series = {  # pandas Series aren't JSON-able, their arrays are
-            key: obj[key].to_numpy()
-            for key in ("x", "y")
-            if hasattr(obj[key], "to_numpy")
-        }
-        return {**obj, **series} if series else obj
+        return obj
 
     import kemio
     from kemio.interop import has_class, to_xrd_pattern

@@ -21,11 +21,14 @@ from pymatviz.widgets.scatter_plot_3d import ScatterPlot3DWidget
 
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Iterable, Mapping, Sequence
 
     from kemio.interop import CompositionLike
+    from numpy.typing import ArrayLike
     from sklearn.decomposition import PCA, KernelPCA
     from sklearn.manifold import TSNE, Isomap
+
+    from pymatviz.typing import ColorType
 
 
 def magpie_featurize(
@@ -126,7 +129,7 @@ def one_hot_encode(
 
 
 def project_vectors(
-    data: np.ndarray,
+    data: ArrayLike,
     *,
     method: ProjectionMethod | None = None,
     n_components: int = 2,
@@ -137,7 +140,7 @@ def project_vectors(
     """Project high-dimensional data to lower dimensions using various methods.
 
     Args:
-        data (NDArray): Input data array of shape (n_samples, n_features)
+        data (ArrayLike): Input data of shape (n_samples, n_features)
         method ("pca" | "tsne" | "umap" | "isomap" | "kernel_pca"): Projection
             method to use (see ProjectionMethod enum)
         n_components (int): Projection dimensions (2 or 3) (default: 2)
@@ -164,6 +167,7 @@ def project_vectors(
 
     if n_components < 2:
         raise ValueError("n_components must be at least 2")
+    data = np.asarray(data, dtype=float)
 
     n_samples = data.shape[0]
     if n_samples < n_components:
@@ -258,15 +262,6 @@ CHEM_SYS_SYMBOLS = (
     "Circle", "Square", "Triangle", "Diamond", "Cross", "Star", "Wye", "Plus",
     "Times", "Triangle2", "Asterisk", "Square2", "Diamond2",
 )  # fmt: skip
-
-
-if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Mapping, Sequence
-
-    from sklearn.decomposition import PCA, KernelPCA
-    from sklearn.manifold import TSNE, Isomap
-
-    from pymatviz.typing import ColorType
 
 type Projector = PCA | TSNE | Isomap | KernelPCA | None
 
@@ -481,6 +476,8 @@ def cluster_compositions(
     if composition_col not in df:
         columns = df.columns.tolist()
         raise ValueError(f"{composition_col=} not found in DataFrame {columns=}")
+    if df.empty:
+        raise ValueError("df has no rows to cluster")
 
     if prop_name is not None and prop_name not in df:
         raise ValueError(
@@ -516,17 +513,18 @@ def cluster_compositions(
         )
     using_precomputed_coords = not is_method_name and projection in df
 
-    if using_precomputed_coords:
-        first_coords = df[projection].iloc[0]
-        if not isinstance(first_coords, (list, np.ndarray)):
-            raise ValueError(
-                f"Column {projection} must contain arrays or lists of coordinates"
-            )
-        if len(first_coords) != n_components:
-            raise ValueError(
-                f"Coordinates in {projection} column must have length {n_components}, "
-                f"got {len(first_coords)}"
-            )
+    if using_precomputed_coords and (
+        bad_coords := [
+            coords
+            for coords in df[projection]
+            if not isinstance(coords, list | tuple | np.ndarray)
+            or len(coords) != n_components
+        ]
+    ):
+        raise ValueError(
+            f"Column {projection!r} must hold a list or array of {n_components} "
+            f"coordinates per row, got {len(bad_coords)} rows like {bad_coords[0]!r}"
+        )
 
     projection_kwargs = projection_kwargs or {}
     embedding_kwargs = embedding_kwargs or {}
@@ -676,7 +674,7 @@ def cluster_compositions(
                     f"sort callable must return a permutation of indices, got "
                     f"{plot_order.tolist()}"
                 )
-        elif isinstance(sort, int):  # Includes True; False is handled above.
+        elif isinstance(sort, int | np.integer):  # True included, False skipped
             plot_order = np.argsort(numeric_props, kind="stable")
             if sort < 0:
                 plot_order = plot_order[::-1]

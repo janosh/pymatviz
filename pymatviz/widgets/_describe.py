@@ -26,9 +26,9 @@ def _minmax(values: Any) -> list[float] | None:
     stack = [values]
     while stack:
         item = stack.pop()
-        if isinstance(item, bool):
+        if isinstance(item, (bool, np.bool_)):
             continue
-        if isinstance(item, (int, float)):
+        if isinstance(item, (int, float, np.integer, np.floating)):
             try:  # a huge int overflows float(); skip rather than raise
                 num = float(item)
             except OverflowError:

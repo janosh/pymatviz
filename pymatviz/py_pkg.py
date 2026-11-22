@@ -208,7 +208,8 @@ def collect_package_modules(
     package_names: Sequence[str | ModuleType],
     ignored_dirs: tuple[str, ...] = (".venv", ".git", "node_modules"),
 ) -> pd.DataFrame:
-    """Collect information about all modules in the given packages.
+    """Collect information about the public modules of installed Python packages
+    (files starting with an underscore like __init__.py are left out).
 
     Args:
         package_names (Sequence[str | ModuleType]): Names of packages to analyze or
@@ -216,74 +217,31 @@ def collect_package_modules(
         ignored_dirs (tuple[str, ...]): Directories to ignore when scanning packages.
 
     Returns:
-        pd.DataFrame: with package structure info
-    """
-    all_modules = []
+        pd.DataFrame: One row per module with the ModuleStats columns.
 
+    Raises:
+        ValueError: If a package can't be found.
+    """
+    pkg_frames = []
     for pkg_input in package_names:
         package_name = _normalize_package_input(pkg_input)
         pkg_path = find_package_path(package_name)
         if not pkg_path:
             raise ValueError(f"Could not find package path for {package_name!r}")
-
-        # Repo path prefix: pkg_name dir at repo root or src-layout (.../src/pkg_name)
-        path_parts = pkg_path.split(os.sep)
-        is_src_layout = (
-            len(path_parts) >= 2
-            and path_parts[-2] == "src"
-            and path_parts[-1] == package_name
+        df_pkg = collect_source_modules_from_dir(
+            pkg_path, package_name, ignored_dirs=ignored_dirs
         )
-        repo_path_prefix = f"src/{package_name}" if is_src_layout else package_name
-
-        python_files = []
-        for root, dirs, files in os.walk(pkg_path):
-            dirs[:] = [folder for folder in dirs if folder not in ignored_dirs]
-            python_files += [
-                os.path.normpath(f"{root}/{filename}")
-                for filename in files
-                if filename.endswith(".py") and not filename.startswith("_")
-            ]
-
-        for file_path in python_files:
-            rel_path = os.path.relpath(file_path, os.path.dirname(pkg_path))
-            module_name = (
-                rel_path.replace(".py", "").replace(os.sep, ".").replace("\\", ".")
-            )
-            # module path components, e.g. pymatviz.utils.io -> ['utils', 'io']
-            relative_module_name = module_name.removeprefix(f"{package_name}.")
-            module_parts = (
-                relative_module_name.split(".") if relative_module_name else []
-            )
-            directory_parts = rel_path.split(os.sep)
-            filename = os.path.basename(rel_path).replace(".py", "")
-            pkg_rel_path = os.path.relpath(file_path, pkg_path).replace(os.sep, "/")
-
-            all_modules.append(
-                {
-                    "package": package_name,
-                    "full_module": module_name,
-                    "filename": filename,
-                    "directory": directory_parts[0]
-                    if len(directory_parts) > 1
-                    else "root",
-                    "top_module": module_parts[0] if module_parts else "root",
-                    "file_path": file_path,
-                    "repo_path_segment": f"{repo_path_prefix}/{pkg_rel_path}",
-                    "leaf_label": module_parts[-1]
-                    if module_parts
-                    else (filename or package_name),
-                    "module_parts": module_parts,
-                    "depth": len(module_parts),
-                    **_analyze_py_file(file_path, package_name),
-                }
-            )
-
-    return pd.DataFrame(all_modules)
+        df_pkg = df_pkg[~df_pkg["filename"].str.startswith("_")].copy()
+        # repo paths of src-layout packages (repo/src/pkg_name) start at src/
+        if os.path.basename(os.path.dirname(pkg_path)) == "src":
+            df_pkg["repo_path_segment"] = "src/" + df_pkg["repo_path_segment"]
+        pkg_frames.append(df_pkg)
+    return pd.concat(pkg_frames, ignore_index=True)
 
 
 def collect_source_modules_from_dir(
     source_dir: str,
-    project_names: list[str],
+    project_name: str,
     file_extensions: tuple[str, ...] = (".py",),
     ignored_dirs: tuple[str, ...] = (
         ".git",
@@ -297,39 +255,40 @@ def collect_source_modules_from_dir(
 ) -> pd.DataFrame:
     """Collect information about source files in a directory tree.
 
-    Language-agnostic alternative to :func:`collect_package_modules`. Walks
-    the given source directory and builds a module hierarchy from the file
-    system structure. Works for any language (Rust, TypeScript, Go, ...).
+    Walks the given source directory and builds a module hierarchy from the file
+    system structure. Works for any language (Python, Rust, TypeScript, Go, ...).
 
     Args:
         source_dir: Root directory to scan for source files.
-        project_names: Display name(s) for the project. Files are attributed
-            to the first name.
+        project_name: Display name of the project (the package column).
         file_extensions: File extensions to include, e.g. ``(".rs",)`` for
             Rust or ``(".ts", ".tsx")`` for TypeScript.
         ignored_dirs: Directory names to skip during traversal.
 
     Returns:
-        pd.DataFrame with the same schema as :func:`collect_package_modules`.
+        pd.DataFrame: One row per source file (sorted by path) with the ModuleStats
+            columns.
+
+    Raises:
+        FileNotFoundError: If source_dir is not a directory.
     """
     source_dir = os.path.abspath(source_dir)
     if not os.path.isdir(source_dir):
         raise FileNotFoundError(f"Source directory not found: {source_dir}")
 
-    project_name = project_names[0]
     source_dir_name = os.path.basename(source_dir)
     # Python import root for internal-import counts, independent of the display
     # label: the outermost enclosing package if the source dir is one (so a
     # subpackage counts `import demo.subpkg` as internal), else each file's top dir
     is_py_package = os.path.isfile(f"{source_dir}/__init__.py")
-    package_root = os.path.abspath(source_dir)
+    package_root = source_dir
     while os.path.isfile(f"{os.path.dirname(package_root)}/__init__.py"):
         package_root = os.path.dirname(package_root)
 
     ignored = set(ignored_dirs)
     all_modules: list[dict[str, Any]] = []
     for root, dirs, files in os.walk(source_dir):
-        dirs[:] = sorted(d for d in dirs if d not in ignored)
+        dirs[:] = sorted(dirname for dirname in dirs if dirname not in ignored)
 
         for filename in sorted(files):
             ext = os.path.splitext(filename)[1]
@@ -337,56 +296,43 @@ def collect_source_modules_from_dir(
                 continue
 
             file_path = os.path.normpath(f"{root}/{filename}")
-            rel_path = os.path.relpath(file_path, source_dir)
-            rel_parts = rel_path.replace(os.sep, "/").split("/")
+            rel_path = os.path.relpath(file_path, source_dir).replace(os.sep, "/")
+            rel_parts = rel_path.split("/")
             stem = os.path.splitext(rel_parts[-1])[0]
             import_root = (
                 os.path.basename(package_root) if is_py_package else rel_parts[0]
             )
-            stats = (
-                _analyze_py_file(file_path, os.path.splitext(import_root)[0])
-                if ext in (".py", ".pyi")
-                else {
-                    "line_count": count_lines(
-                        file_path, (_COMMENT_PREFIXES.get(ext, "#"),)
-                    ),
-                    **dict.fromkeys(_ANALYSIS_COLS, 0),
-                }
-            )
-
-            # Every file gets a unique leaf in the hierarchy.
-            # When a file shares its stem with a sibling directory (Rust
-            # new-style module roots like burnside.rs + burnside/), nest it
-            # inside the directory namespace to avoid non-leaf collisions.
-            sibling_dir = f"{root}/{stem}"
-            if os.path.isdir(sibling_dir):
-                module_parts = [*rel_parts[:-1], stem, stem]
+            if ext in (".py", ".pyi"):
+                stats = _analyze_py_file(file_path, os.path.splitext(import_root)[0])
             else:
-                module_parts = [*rel_parts[:-1], stem]
+                comment_prefixes = (_COMMENT_PREFIXES.get(ext, "#"),)
+                line_count = count_lines(file_path, comment_prefixes)
+                stats = {"line_count": line_count} | dict.fromkeys(_ANALYSIS_COLS, 0)
 
-            full_module = f"{project_name}.{'.'.join(module_parts)}"
-            top_module = module_parts[0]
-            directory = rel_parts[0] if len(rel_parts) > 1 else "root"
-            leaf_label = module_parts[-1]
-            repo_path_segment = f"{source_dir_name}/{rel_path.replace(os.sep, '/')}"
+            # Every file gets a unique leaf in the hierarchy. A file sharing its stem
+            # with a sibling directory (Rust new-style module roots like burnside.rs
+            # + burnside/) nests inside the directory to avoid leaf/branch collisions.
+            module_parts = [*rel_parts[:-1], stem]
+            if os.path.isdir(f"{root}/{stem}"):
+                module_parts.append(stem)
 
             all_modules.append(
                 {
                     "package": project_name,
-                    "full_module": full_module,
+                    "full_module": f"{project_name}.{'.'.join(module_parts)}",
                     "filename": stem,
-                    "directory": directory,
-                    "top_module": top_module,
+                    "directory": rel_parts[0] if len(rel_parts) > 1 else "root",
+                    "top_module": module_parts[0],
                     "file_path": file_path,
-                    "repo_path_segment": repo_path_segment,
-                    "leaf_label": leaf_label,
+                    "repo_path_segment": f"{source_dir_name}/{rel_path}",
+                    "leaf_label": module_parts[-1],
                     "module_parts": module_parts,
                     "depth": len(module_parts),
                     **stats,
                 }
             )
 
-    return pd.DataFrame(all_modules)
+    return pd.DataFrame(all_modules, columns=list(ModuleStats._fields))
 
 
 def py_pkg_treemap(
@@ -416,7 +362,7 @@ def py_pkg_treemap(
     Args:
         packages (str | ModuleType | Sequence[str | ModuleType]): Single package
             name/module or list of package names/modules to analyze. When
-            ``source_dir`` is provided, this is used only as a display label.
+            ``source_dir`` is provided, a single name used only as display label.
         source_dir (str | None): Path to a source directory to scan instead of
             using Python importlib. Enables language-agnostic usage — e.g. point
             at a Rust ``src/`` or TypeScript ``src/`` folder. When provided,
@@ -506,8 +452,13 @@ def py_pkg_treemap(
     package_names = [_normalize_package_input(pkg) for pkg in pkg_list]
 
     if source_dir:
+        if len(package_names) != 1:
+            raise ValueError(
+                f"source_dir scans one project, got {len(package_names)} names "
+                f"{package_names}"
+            )
         df_modules = collect_source_modules_from_dir(
-            source_dir, package_names, file_extensions
+            source_dir, package_names[0], file_extensions
         )
     else:
         df_modules = collect_package_modules(package_names)
@@ -563,18 +514,18 @@ def py_pkg_treemap(
 
     # Create columns for each level of the hierarchy from 'module_parts'
     for level_idx, col_name in enumerate(level_columns):
-        df_treemap[col_name] = df_treemap["module_parts"].map(
-            lambda parts, current_idx=level_idx: (
-                parts[current_idx] if current_idx < len(parts) else None
-            )
-        )
+        df_treemap[col_name] = [
+            parts[level_idx] if level_idx < len(parts) else None
+            for parts in df_treemap["module_parts"]
+        ]
 
     # Adaptive depth pruning from the deepest level upward. A parent with
     # 1..max_children children >= min_lines_for_split is expanded (small children merge
     # into "other"), with no significant children it collapses to one cell.
     # max_children_for_split and the full line threshold only apply at the deepest
     # level, so large modules like io/analysis always show their sub-packages.
-    if group_by == "module" and (min_lines_for_split > 0 or max_children_for_split):
+    is_pruning = min_lines_for_split > 0 or max_children_for_split is not None
+    if group_by == "module" and is_pruning:
         for prune_depth in range(effective_depth - 1, 0, -1):
             is_deepest_level = prune_depth == effective_depth - 1
             child_col = f"level_{prune_depth}"

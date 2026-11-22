@@ -6,7 +6,6 @@ from typing import Any
 
 import traitlets as tl
 
-from pymatviz.widgets._normalize import normalize_json_kwargs
 from pymatviz.widgets._schema_traits import BinnedScatterPlotTraits
 from pymatviz.widgets._traits import color_bar_trait, optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
@@ -41,11 +40,6 @@ class BinnedScatterPlotWidget(BinnedScatterPlotTraits, MatterVizWidget):
     ).tag(sync=True)
     color_bar = color_bar_trait()
 
-    _JSON_KWARGS = (
-        "x_axis", "y_axis", "x_range", "y_range", "size_scale", "density", "overlays",
-        "padding", "point_labels", "marginals", "color_bar",
-    )  # fmt: skip
-
     def __init__(
         self,
         series: list[dict[str, Any]] | tuple[dict[str, Any], ...] | None = None,
@@ -59,7 +53,6 @@ class BinnedScatterPlotWidget(BinnedScatterPlotTraits, MatterVizWidget):
             **kwargs: Widget traits, e.g. ``density`` (``{"bin_px": 4}``),
                 ``marginals``, ``overlays``, ``annotation``, ``x_axis``/``y_axis``.
         """
-        normalize_json_kwargs(kwargs, self._JSON_KWARGS, "BinnedScatterPlot")
         super().__init__(
             series=series,
             **kwargs,

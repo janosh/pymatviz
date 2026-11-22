@@ -74,6 +74,10 @@ def sankey_flow_data(
         labels_with_counts (bool | "percent"): Whether to append counts to labels.
             If "percent", shows percentages of linked rows instead. Defaults to True.
 
+    Raises:
+        ValueError: If source and target name the same column or
+            labels_with_counts is invalid.
+
     Returns:
         dict[str, list[dict]]: SankeyWidget data with keys
             - "nodes": ``{"id", "label", "metadata": {"column"}}`` per distinct value,
@@ -81,6 +85,10 @@ def sankey_flow_data(
               side, so no link is a self-loop.
             - "links": ``{"source", "target", "value"}`` with node ids and row counts.
     """
+    if source == target:
+        raise ValueError(f"source and target must be different columns, got {source=}")
+    if labels_with_counts not in (True, False, "percent"):
+        raise ValueError(f"{labels_with_counts=} must be True, False or 'percent'")
     # rows with NaN drop out, index levels keep each column's dtype (to_numpy would
     # not), and observed=True skips unused category pairs (zero-count links)
     flows = (
@@ -91,6 +99,7 @@ def sankey_flow_data(
         .sort_values(ascending=False, kind="stable")
     )
     pairs = [(*key, count) for key, count in flows.items()]
+    n_linked_rows = flows.sum()
 
     # one node per value per side (a value in both columns gets two)
     node_ids: list[dict[Any, int]] = [{}, {}]
@@ -103,7 +112,7 @@ def sankey_flow_data(
         for val, count in counts.items():
             suffix = ""
             if labels_with_counts == "percent":
-                suffix = f": {count / flows.sum():.1%}"
+                suffix = f": {count / n_linked_rows:.1%}"
             elif labels_with_counts:
                 suffix = f": {count:d}"
             ids[val] = len(nodes)

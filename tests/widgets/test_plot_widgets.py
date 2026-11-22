@@ -176,6 +176,8 @@ def test_spacegroup_bar_data_inputs(monkeypatch: pytest.MonkeyPatch) -> None:
 
     widget = SpacegroupBarPlotWidget(data=pd.Series([225, 166, 62, 225]))
     assert widget.data == {"62": 1, "166": 1, "225": 2}
+    widget.data = (num for num in (225, 62, 225))  # iterators have no len()
+    assert widget.data == {"62": 1, "225": 2}
     # number, symbol and synced digit-string keys of one group merge; zeros drop
     widget.data = {225: np.int64(2), "Fm-3m": 1, "225": 1, 166: 0, "P2_1/c": 1}
     assert widget.data == {"14": 1, "225": 4}
@@ -201,6 +203,7 @@ def test_spacegroup_bar_data_inputs(monkeypatch: pytest.MonkeyPatch) -> None:
         ({225: -1}, "non-negative"),
         ({225: 1.5}, "integers"),
         ({"not-a-spg": 1}, "Invalid"),
+        (225, "must be a sequence, iterator or mapping, got int: 225"),
     ]:
         with pytest.raises(tl.TraitError, match=match):
             SpacegroupBarPlotWidget(data=bad_data)
@@ -268,6 +271,18 @@ def test_heatmap_matrix_takes_dataframe() -> None:
     # NaN cells become None (empty cells) instead of failing as non-finite
     widget = HeatmapMatrixWidget(pd.DataFrame({"a": [1.0, float("nan")]}))
     assert widget.values == [[1.0], [None]]  # noqa: PD011
+    # reassigned items and values normalize like constructor ones
+    widget.x_items, widget.y_items = "Fe", np.array(["O", "Li"])
+    widget.values = np.eye(2)
+    assert widget.x_items == [{"key": "Fe", "label": "Fe"}]
+    assert [item["key"] for item in widget.y_items] == ["O", "Li"]
+    assert widget.values == [[1.0, 0.0], [0.0, 1.0]]  # noqa: PD011
+    assert type(widget.values) is list
+    widget.show_values = np.False_  # syncs a plain bool
+    assert widget.get_state(["show_values"]) == {"show_values": False}
+    assert type(widget.show_values) is bool
+    with pytest.raises(tl.TraitError):
+        widget.show_values = [1]
 
 
 @pytest.mark.parametrize("orientation", ["horizontal", "HORIZONTAL"])

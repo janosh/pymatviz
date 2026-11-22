@@ -7,6 +7,7 @@ from typing import Any
 import numpy as np
 import traitlets as tl
 
+from pymatviz.structures import structure_dict
 from pymatviz.widgets._binary import (
     _is_number,
     force_stats,
@@ -16,7 +17,7 @@ from pymatviz.widgets._binary import (
     trajectory_to_envelope,
 )
 from pymatviz.widgets._schema_traits import TrajectoryTraits
-from pymatviz.widgets._traits import StructureVizTraits
+from pymatviz.widgets._traits import StructureVizTraits, optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -88,9 +89,7 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
     # synced, so closing it in the viewer reads back as False.
     data_inspector_open = tl.Bool(default_value=True).tag(sync=True)
 
-    step_labels = tl.Union(
-        [tl.Int(), tl.List()], allow_none=True, default_value=None
-    ).tag(sync=True)
+    step_labels = optional_trait(tl.Union, trait_types=[tl.Int(), tl.List()])
 
     def __init__(self, trajectory: Any = None, **kwargs: Any) -> None:
         """Initialize the TrajectoryWidget.
@@ -128,12 +127,6 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
         if normalized is not None and is_binary_envelope(normalized, "trajectory"):
             return normalized
         return normalize_plot_json(normalized, "trajectory")
-
-    def _to_structure_dict(self, structure_input: Any) -> dict[str, Any]:
-        """Convert a structure-like frame to its JSON representation."""
-        from pymatviz.structures import structure_dict
-
-        return structure_dict(structure_input)
 
     @staticmethod
     def _attach_forces(frame: dict[str, Any], frame_idx: int) -> dict[str, Any]:
@@ -245,7 +238,7 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
                 )
             structure = frame["structure"]
             if not isinstance(structure, dict):
-                structure = self._to_structure_dict(structure)
+                structure = structure_dict(structure)
             completed = {
                 **frame,
                 "step": frame.get("step", frame_idx),
@@ -266,7 +259,7 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
         for step_idx, item in enumerate(items):
             structure, properties = frame_input(item)
             frame = {
-                "structure": self._to_structure_dict(structure),
+                "structure": structure_dict(structure),
                 "step": properties.get("step", step_idx),
             }
             if properties:

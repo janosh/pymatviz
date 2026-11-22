@@ -45,7 +45,8 @@ def elements_hist(
             Reduce or normalize compositions before counting. See `count_elements` for
             details. Only used when values is a list of composition strings/objects.
         log_y (bool, optional): Whether y-axis is log or linear. Default = False.
-        max_elements (int | None): Display only the top n elements by prevalence.
+        max_elements (int | None): Display only the top n >= 1 elements by
+            prevalence.
         show_values ("percent"|"count"|None): "percent" (default) labels bars with
             their share of the total count (incl. elements dropped by max_elements),
             "count" with the count, None hides labels.
@@ -57,6 +58,8 @@ def elements_hist(
     Returns:
         BarPlotWidget: one bar per element.
     """
+    if max_elements is not None and max_elements < 1:  # head(-n) drops the last n
+        raise ValueError(f"{max_elements=} must be a positive integer or None")
     elem_counts = count_elements(values, count_mode)
     non_zero = elem_counts[elem_counts > 0].sort_values(ascending=False)
     total_count = non_zero.sum()  # percent labels are shares of all elements
@@ -135,8 +138,9 @@ def histogram(
             Python (one overlaid bar series per distribution).
 
     Raises:
-        ValueError: For empty or non-finite values, a DataFrame without ``x``, or
-            density in an x_range holding no values of a distribution.
+        ValueError: For empty or non-finite values, a DataFrame without ``x``, an
+            x_range resolving to lo > hi, or density in an x_range holding no values
+            of a distribution.
         TypeError: If x or color name columns but values is no DataFrame.
     """
     import pandas as pd
@@ -182,6 +186,11 @@ def histogram(
         np.min(all_values) if x_min is None else x_min,
         np.max(all_values) if x_max is None else x_max,
     )
+    if x_range[0] > x_range[1]:  # would bin no values in the browser
+        raise ValueError(
+            f"x_range={(x_min, x_max)} resolves to {x_range} with None ends taken "
+            "from the data, need lo <= hi"
+        )
 
     count_axis = {
         "label": "Density" if density else "Count",

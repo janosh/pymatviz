@@ -43,12 +43,14 @@ def make_widget(n_series: int = 1) -> ScatterPlotWidget:
             "Mean err = 0.1\nFixed = 1.5\nn=100",
         ),
         (["max_error", "R2_adj"], ".2f", "", "", "max_error = 0.47\nR²_adj = 0.78"),
+        # default ".3g" keeps 3-digit values out of scientific notation (".3": 1.23e+02)
+        ({"Count": 123, "Big": 1234.5}, None, "", "", "Count = 123\nBig = 1.23e+03"),
     ],
 )
 @pytest.mark.parametrize("widget_cls", [ScatterPlotWidget, BinnedScatterPlotWidget])
 def test_annotate_metrics(
     metrics: Mapping[str, float | str] | Sequence[str] | str,
-    fmt: str,
+    fmt: str | None,
     prefix: str,
     suffix: str,
     expected: str,
@@ -56,9 +58,9 @@ def test_annotate_metrics(
 ) -> None:
     """Metrics of the series data (or explicit xs/ys) go in the annotation badge."""
     widget = widget_cls(series=make_series(2))
-    kwargs: dict[str, Any] = dict(
-        metrics=metrics, fmt=fmt, prefix=prefix, suffix=suffix
-    )
+    kwargs: dict[str, Any] = dict(metrics=metrics, prefix=prefix, suffix=suffix)
+    if fmt is not None:
+        kwargs["fmt"] = fmt
     assert powerups.annotate_metrics(widget, **kwargs) is widget
     assert widget.annotation == expected
     explicit = powerups.annotate_metrics(make_widget(), y_true, y_pred, **kwargs)
@@ -78,6 +80,12 @@ def test_annotate_metrics(
         ({"series": [True]}, IndexError, r"series indices \[True\] out of range"),
         ({"series": True}, IndexError, r"series indices \[True\] out of range"),
         ({"xs": [1, 2], "ys": [1]}, ValueError, "equal length"),
+        # metrics of no points would show MAE = nan (with RuntimeWarnings)
+        (
+            {"xs": [np.nan, 1], "ys": [1, np.inf]},
+            ValueError,
+            r"need finite \(x, y\) pairs, got none of 2",
+        ),
     ],
 )
 def test_annotate_metrics_raises(

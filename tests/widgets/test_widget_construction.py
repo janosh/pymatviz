@@ -9,6 +9,7 @@ from typing import Any
 
 import kemio
 import numpy as np
+import pandas as pd
 import pytest
 import traitlets as tl
 
@@ -254,6 +255,39 @@ def test_widget_traitlet_defaults(widget_cls: type, attr: str, expected: Any) ->
             "heatmap_values",
             [1.0, 4.0, 6.9],
         ),
+        (  # an element-indexed Series keeps its labels (tolist() would map by Z)
+            PeriodicTableWidget,
+            {"heatmap_values": pd.Series({"Fe": 1.5, "O": np.int64(2)})},
+            "heatmap_values",
+            {"Fe": 1.5, "O": 2},
+        ),
+        (
+            RdfPlotWidget,
+            {"patterns": [{"r": np.array([1.0, 2.0]), "g_r": np.ones(2)}]},
+            "patterns",
+            [{"r": [1.0, 2.0], "g_r": [1.0, 1.0]}],
+        ),
+        (
+            ChemPotDiagramWidget,
+            {"entries": [{"composition": "Li2O", "energy": np.float64(-14.3)}]},
+            "entries",
+            [{"composition": {"Li": 2.0, "O": 1.0}, "energy": -14.3}],
+        ),
+        *[  # numpy DOS dicts sync as JSON lists (to_img's encoder rejects arrays)
+            (
+                widget_cls,
+                {"doses": {"energies": np.array([0.0, 1.0]), "densities": np.ones(2)}},
+                "doses",
+                {"energies": [0.0, 1.0], "densities": [1.0, 1.0]},
+            )
+            for widget_cls in (DosWidget, BandsAndDosWidget)
+        ],
+        (  # numpy and pandas pattern dicts sync as JSON lists
+            XrdWidget,
+            {"patterns": {"x": pd.Series([10.0, 20.0]), "y": np.array([1, 2])}},
+            "patterns",
+            {"x": [10.0, 20.0], "y": [1, 2], "kind": "profile"},
+        ),
         (
             SpacegroupBarPlotWidget,
             {"data": np.array([225, 166, 62])},
@@ -286,11 +320,15 @@ def test_widget_normalizes_inputs(
     attr: str,
     expected: list[Any] | dict[str, Any],
 ) -> None:
-    """Widgets normalize numpy arrays and scalar axis items to plain Python lists."""
+    """Widgets normalize numpy arrays and scalar axis items to plain Python lists, on
+    construction and on later assignment.
+    """
     widget = widget_cls(**kwargs)
     result = getattr(widget, attr)
     assert result == expected
     assert type(result) is type(expected)
+    setattr(widget, attr, kwargs[attr])
+    assert getattr(widget, attr) == expected
 
 
 _COLOR_SCHEME_CASES = [
@@ -300,7 +338,7 @@ _COLOR_SCHEME_CASES = [
     ("", tl.TraitError),
 ]
 _BONDING_STRATEGY_CASES = [
-    *[(name, name) for name in StructureTraits.bonding_strategy.values],
+    *[(name, name) for name in StructureTraits.bonding_strategy.values],  # noqa: PD011
     (None, None),
     ("solid_angle", tl.TraitError),  # removed from matterviz
 ]
@@ -488,3 +526,44 @@ def test_widgets_normalize_assigned_objects(
     as_json = lambda val: json.dumps(val, default=np.ndarray.tolist, sort_keys=True)
     expected = getattr(widget_cls(**{trait: make_value()}), trait)
     assert as_json(getattr(widget, trait)) == as_json(expected)
+
+
+def _is_plain_json(value: Any) -> bool:
+    """Whether value holds only exact JSON types (no numpy scalars or arrays)."""
+    if isinstance(value, dict):
+        keys_ok = all(type(key) is str for key in value)
+        return keys_ok and all(map(_is_plain_json, value.values()))
+    if type(value) is list:
+        return all(map(_is_plain_json, value))
+    return type(value) in (type(None), bool, int, float, str)
+
+
+@pytest.mark.parametrize("widget_cls", WIDGET_CASES, ids=lambda cls: cls.__name__)
+def test_config_traits_normalize_on_assignment(
+    widget_cls: type[MatterVizWidget], request: pytest.FixtureRequest
+) -> None:
+    """Every dict/list config trait without its own validator converts numpy values
+    assigned after construction to plain JSON before syncing.
+    """
+    widget = WIDGET_CASES[widget_cls][0](request)
+    assigned: dict[str, Any] = {}
+    for name in widget.public_trait_names():
+        trait = widget.traits()[name]
+        sub_traits = getattr(trait, "trait_types", [trait])
+        if name in widget._trait_validators or trait.read_only:
+            continue  # own validators (e.g. series, data) are tested per widget
+        if any(isinstance(sub, tl.Dict) for sub in sub_traits):
+            value = {"range": np.array([0.0, 1.5]), "count": np.int64(2)}
+            expected: Any = {"range": [0.0, 1.5], "count": 2}
+        elif any(isinstance(sub, tl.List) and sub._trait is None for sub in sub_traits):
+            value, expected = np.array([0.5, 1.0]), [0.5, 1.0]
+        else:
+            continue
+        setattr(widget, name, value)
+        assigned[name] = expected
+    assert assigned  # every widget has config dicts
+    state = widget.get_state(list(assigned))
+    assert state == assigned
+    assert _is_plain_json(state), {
+        key: val for key, val in state.items() if not _is_plain_json(val)
+    }

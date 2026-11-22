@@ -268,29 +268,25 @@ def test_df_input(
 
 
 @pytest.mark.parametrize(
-    "invalid_case",
+    ("targets", "probs", "match"),
     [
-        pytest.param(([], []), id="empty-lists"),
-        pytest.param((np.array([]), np.array([])), id="empty-arrays"),
-        pytest.param(
-            (np.array([1, 2, 3]), np.array([0.1, 0.2])), id="mismatched-lengths"
-        ),
-        pytest.param((np.array([1, 2, 3]), "not_an_array"), id="invalid-type"),
-        pytest.param(
-            (np.array([0, 1, 2]), np.array([0.1, 0.2, 0.3])), id="non-binary-targets"
-        ),
+        ([], [], "has no targets of class"),
+        (np.array([0, 1, 1]), np.array([0.1, 0.2]), r"shape \(2,\), expected one"),
+        ([0, 1], [[0.1, 0.2], [0.3, 0.4]], r"shape \(2, 2\), expected one"),
+        (np.array([0, 1, 1]), "not_an_array", "could not convert string to float"),
+        (np.array([0, 1, 2]), np.array([0.1, 0.2, 0.3]), "targets must be binary"),
     ],
+    ids=["empty", "mismatched-lengths", "2d-probs", "invalid-type", "non-binary"],
 )
 @pytest.mark.parametrize("curve_func", [precision_recall_curve, roc_curve])
 def test_invalid_inputs(
-    invalid_case: tuple[list[Any], list[Any]]
-    | tuple[np.ndarray, np.ndarray]
-    | tuple[np.ndarray, Literal["not_an_array"]],
+    targets: ArrayLike,
+    probs: ArrayLike,
+    match: str,
     curve_func: Callable[..., ScatterPlotWidget],
 ) -> None:
-    """Test error handling for various invalid inputs."""
-    targets, probs = invalid_case
-    with pytest.raises((ValueError, TypeError)):
+    """Invalid targets or probabilities raise errors naming the problem."""
+    with pytest.raises(ValueError, match=match):
         curve_func(targets, probs)
 
 

@@ -7,12 +7,19 @@ from typing import TYPE_CHECKING, Any
 import traitlets as tl
 
 from pymatviz.widgets._schema_traits import CompositionTraits
-from pymatviz.widgets._traits import ELEMENT_COLOR_SCHEMES
+from pymatviz.widgets._traits import ELEMENT_COLOR_SCHEMES, normalized_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
 if TYPE_CHECKING:
     from pymatviz.typing import FormulaLike
+
+
+def _composition_dict(composition: FormulaLike) -> dict[str, float]:
+    """``{element: amount}`` of a formula, mapping, Composition or structure."""
+    from pymatviz.compositions import to_composition
+
+    return to_composition(composition, allow_negative=True).as_dict()
 
 
 class CompositionWidget(CompositionTraits, MatterVizWidget):
@@ -36,6 +43,7 @@ class CompositionWidget(CompositionTraits, MatterVizWidget):
         ... )
     """
 
+    composition = normalized_trait(_composition_dict)  # on every assignment
     # Visualization options
     mode = tl.CaselessStrEnum(["pie", "bar", "bubble"], default_value="pie").tag(
         sync=True
@@ -53,11 +61,4 @@ class CompositionWidget(CompositionTraits, MatterVizWidget):
                 pymatgen Composition, or structure (negative amounts allowed).
             **kwargs: Additional widget properties
         """
-        from pymatviz.compositions import to_composition
-
-        comp_dict = (
-            None
-            if composition is None
-            else to_composition(composition, allow_negative=True).as_dict()
-        )
-        super().__init__(composition=comp_dict, **kwargs)
+        super().__init__(composition=composition, **kwargs)

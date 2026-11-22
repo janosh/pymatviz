@@ -242,12 +242,24 @@ def test_py_pkg_treemap_cell_text_fn(
         (dict(color_by="coverage"), "Invalid color_by='coverage'"),
         (dict(color_by="file_path"), "Invalid color_by='file_path'"),  # non-numeric
         (dict(color_by={}), "color_by dict must map file paths to values"),
+        (dict(source_dir="."), r"source_dir scans one project, got 2 names"),
     ],
 )
 def test_py_pkg_treemap_errors(kwargs: dict[str, Any], expected_error: str) -> None:
-    """Empty filtered data and invalid group_by/color_by raise."""
+    """Empty filtered data, invalid group_by/color_by and several names for one
+    source_dir raise.
+    """
     with pytest.raises(ValueError, match=expected_error):
-        pmv.py_pkg_treemap("my_pkg", **kwargs)
+        pmv.py_pkg_treemap(["my_pkg", "another_pkg"], **kwargs)
+
+
+def test_group_by_directory() -> None:
+    """Package modules group by their top-level directory inside the package."""
+    nodes = tree(pmv.py_pkg_treemap("my_pkg", group_by="directory"))
+    leaves = {node_id for node_id, node in nodes.items() if "children" not in node}
+    assert {"my_pkg/root/module1", "my_pkg/submodule/module2"} <= leaves
+    parents = {leaf.rsplit("/", 1)[0] for leaf in leaves}
+    assert parents == {"my_pkg/root", "my_pkg/submodule"}
 
 
 def test_collect_package_modules_not_found() -> None:
@@ -322,7 +334,7 @@ def mock_pkg_data() -> pd.DataFrame:
         "package_name_raw": ["pkg1", "pkg1", "pkg1", "pkg2"],
         "full_module": ["pkg1.modA", "pkg1.modB.sub", "pkg1.modC", "pkg2.modX"],
         "filename": ["modA", "sub", "modC", "modX"],
-        "directory": ["pkg1", "pkg1", "pkg1", "pkg2"],
+        "directory": ["root", "modB", "root", "root"],
         "top_module": ["modA", "modB", "modC", "modX"],
         "line_count": [100, 50, 150, 200],
         "file_path": [
@@ -541,7 +553,7 @@ def rust_like_source_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
 def test_collect_source_modules_basic(rust_like_source_dir: Path) -> None:
     """collect_source_modules_from_dir finds all .rs files and builds hierarchy."""
     df_result = py_pkg.collect_source_modules_from_dir(
-        str(rust_like_source_dir), ["my_crate"], file_extensions=(".rs",)
+        str(rust_like_source_dir), "my_crate", file_extensions=(".rs",)
     )
     assert set(df_result.columns) >= {
         "package",
@@ -581,7 +593,7 @@ def test_collect_source_modules_filters(
         (tmp_path / rel_path).write_text(content)
 
     df_result = py_pkg.collect_source_modules_from_dir(
-        str(tmp_path), ["proj"], file_extensions=(".rs",)
+        str(tmp_path), "proj", file_extensions=(".rs",)
     )
     matches = df_result[df_result["filename"] == filename]
     if expected_module_parts is None:
@@ -593,7 +605,7 @@ def test_collect_source_modules_filters(
 def test_collect_source_modules_nonexistent_dir() -> None:
     """FileNotFoundError raised for non-existent source_dir."""
     with pytest.raises(FileNotFoundError, match="Source directory not found"):
-        py_pkg.collect_source_modules_from_dir("/nonexistent/path", ["proj"])
+        py_pkg.collect_source_modules_from_dir("/nonexistent/path", "proj")
 
 
 def test_collect_source_modules_empty_dir(tmp_path: Path) -> None:
@@ -601,7 +613,7 @@ def test_collect_source_modules_empty_dir(tmp_path: Path) -> None:
     empty = tmp_path / "empty_src"
     empty.mkdir()
     df_result = py_pkg.collect_source_modules_from_dir(
-        str(empty), ["proj"], file_extensions=(".rs",)
+        str(empty), "proj", file_extensions=(".rs",)
     )
     assert df_result.empty
 
@@ -630,7 +642,7 @@ def test_collect_source_modules_py_imports(
         scan_dir.mkdir()
         (scan_dir / "__init__.py").touch()
     (scan_dir / "mod.py").write_text(code)
-    df_result = py_pkg.collect_source_modules_from_dir(str(scan_dir), ["Demo project"])
+    df_result = py_pkg.collect_source_modules_from_dir(str(scan_dir), "Demo project")
     cols = ["line_count", "n_internal_imports", "n_external_imports"]
     assert tuple(df_result.set_index("filename").loc["mod", cols]) == expected
 
@@ -642,7 +654,7 @@ def test_collect_source_modules_mixed_extensions_comment_prefix(tmp_path: Path) 
     (src / "helper.py").write_text("# py comment\n// code in python\nx = 1\n")
     (src / "lib.rs").write_text("// rs comment\n# code in rust\nlet x = 1;\n")
     df_result = py_pkg.collect_source_modules_from_dir(
-        str(src), ["proj"], file_extensions=(".py", ".rs")
+        str(src), "proj", file_extensions=(".py", ".rs")
     )
     assert df_result.set_index("filename")["line_count"].to_dict() == {
         "helper": 2,
@@ -789,6 +801,12 @@ class TestAdaptivePruning:
         assert expected_present <= node_labels
         assert node_labels.isdisjoint(expected_absent)
 
+    def test_max_children_zero_collapses_deepest_level(self) -> None:
+        """max_children_for_split=0 allows no split at the deepest level."""
+        node_labels = self._labels(max_module_depth=2, max_children_for_split=0)
+        assert {"alpha", "beta", "gamma"} <= node_labels
+        assert node_labels.isdisjoint({"big", "medium", "tiny", "s0"})
+
     def test_max_children_only_at_deepest_level(self) -> None:
         """max_children_for_split does not collapse intermediate levels."""
         node_labels = self._labels(
@@ -847,7 +865,7 @@ def test_python_file_metrics(
     monkeypatch.syspath_prepend(str(tmp_path))
     with patch("builtins.open", wraps=open) as file_open:
         if scan_dir:
-            modules = py_pkg.collect_source_modules_from_dir(str(pkg), [pkg.name])
+            modules = py_pkg.collect_source_modules_from_dir(str(pkg), pkg.name)
         else:
             modules = py_pkg.collect_package_modules([pkg.name])
     assert sum(call.args[0] == str(py_file) for call in file_open.call_args_list) == 1

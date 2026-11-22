@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import functools
+import json
 from enum import IntEnum
 from types import SimpleNamespace
 from typing import Any
@@ -44,7 +45,6 @@ class _MockMSONable:
     ("normalize", "value"),
     [
         (normalize_xrd_pattern, None),
-        (normalize_xrd_pattern, {"x": [1, 2], "y": [3, 4], "hkls": [_HKLS[0]] * 2}),
         (structure_to_dict, None),
         (structure_to_dict, {"sites": [], "lattice": {}}),
     ],
@@ -85,14 +85,19 @@ def test_normalizers_reject_unsupported_types(
             "DOS",
             {"DFT": _MOCK_DICT, "MACE": _MOCK_DICT},
         ),
+        # dict inputs are JSON-normalized like converted ones (numpy to lists)
+        (
+            {"energies": np.array([0.5, 1.0]), "efermi": np.float64(0.1)},
+            "DOS",
+            {"energies": [0.5, 1.0], "efermi": 0.1},
+        ),
     ],
 )
 def test_to_dict_passthrough(input_val: Any, label: str, expected: Any) -> None:
-    """Test _to_dict handles None, dict, and MSONable objects."""
+    """_to_dict handles None, dicts and MSONable objects, returning JSON types."""
     result = _to_dict(input_val, label)
     assert result == expected
-    if isinstance(input_val, dict) and input_val == expected:
-        assert result is input_val
+    assert json.loads(json.dumps(result)) == result
 
 
 def test_to_dict_drops_unread_fields() -> None:
@@ -101,7 +106,7 @@ def test_to_dict_drops_unread_fields() -> None:
     obj = type("Bands", (), {"as_dict": lambda _self: big})()
     assert _to_dict(obj, "band structure") == {"bands": [1]}
     assert _to_dict({"DFT": obj}, "band structure") == {"DFT": {"bands": [1]}}
-    assert _to_dict(big, "band structure") is big
+    assert _to_dict(big, "band structure") == big
 
 
 # === _formula_dict ===
@@ -353,6 +358,23 @@ def test_normalize_plot_json_scalar_subclasses(value: Any, expected: Any) -> Non
     normalized = normalize_plot_json(value, "test")
     assert normalized == expected
     assert type(normalized) is type(expected)
+
+
+@pytest.mark.parametrize(
+    ("value", "error_cls", "match"),
+    [
+        ({1: "a", "1": "b", 2: "c"}, ValueError, r"collide as strings: \[1, '1'\]"),
+        ({"a": [1.0, np.inf]}, ValueError, "test.a contains non-finite float"),
+        ([np.float32("nan")], ValueError, "non-finite float value: nan"),
+        ({"a": {1, 2}}, TypeError, "Unsupported value in test.a"),
+    ],
+)
+def test_normalize_plot_json_errors(
+    value: Any, error_cls: type[Exception], match: str
+) -> None:
+    """Non-finite floats, unsupported types and string-colliding keys raise."""
+    with pytest.raises(error_cls, match=match):
+        normalize_plot_json(value, "test")
 
 
 @pytest.mark.parametrize(

@@ -33,8 +33,40 @@ EXPORT_FORMATS = ("png", "svg", "csv", "json", "md", "tex")
 CONTROLS_MODES = ("always", "hover", "never")  # svelte-widgets ControlsConfig.mode
 
 
+class _JsonNormalized(tl.TraitType):
+    """Mixin running every assigned value (in the constructor or later) through
+    normalize_plot_json (numpy arrays/scalars to lists/floats/ints) before the
+    container check, unless the widget declares its own ``@tl.validate`` for the
+    trait (e.g. series sent as binary buffers), which then converts it instead.
+    """
+
+    def _validate(self, obj: Any, value: Any) -> Any:
+        """JSON-normalized value, validated by the container trait."""
+        if self.name not in obj._trait_validators:
+            value = normalize_plot_json(value, f"{type(obj).__name__}.{self.name}")
+        return super()._validate(obj, value)
+
+
+class JsonDict(_JsonNormalized, tl.Dict):
+    """Dict trait whose values are JSON-normalized on every assignment."""
+
+
+class JsonList(_JsonNormalized, tl.List):
+    """List trait whose values are JSON-normalized on every assignment."""
+
+
+class JsonUnion(_JsonNormalized, tl.Union):
+    """Union trait whose values are JSON-normalized on every assignment."""
+
+
+_JSON_TRAITS = {tl.Dict: JsonDict, tl.List: JsonList, tl.Union: JsonUnion}
+
+
 def optional_trait(trait_cls: Any, **kwargs: Any) -> Any:
-    """Synced trait defaulting to None so the frontend component default applies."""
+    """Synced trait defaulting to None so the frontend component default applies.
+    Dict, List and Union traits JSON-normalize every assigned value.
+    """
+    trait_cls = _JSON_TRAITS.get(trait_cls, trait_cls)
     return trait_cls(allow_none=True, default_value=None, **kwargs).tag(sync=True)
 
 
@@ -90,7 +122,7 @@ def color_bar_trait() -> Any:
     color bar, ``None`` hides it, e.g. ``{"title": "count", "orientation":
     "vertical"}`` customizes it.
     """
-    return tl.Dict(default_value={}, allow_none=True).tag(sync=True)
+    return JsonDict(default_value={}, allow_none=True).tag(sync=True)
 
 
 class StructureVizTraits(tl.HasTraits):
@@ -109,9 +141,7 @@ class StructureVizTraits(tl.HasTraits):
     ).tag(sync=True)
 
     # UI controls. gizmo: bool or a matterviz GizmoOptions dict
-    gizmo = tl.Union([tl.Bool(), tl.Dict()], allow_none=True, default_value=None).tag(
-        sync=True
-    )
+    gizmo = optional_trait(tl.Union, trait_types=[tl.Bool(), tl.Dict()])
 
 
 class PlotControlsTraits(tl.HasTraits):
@@ -139,35 +169,16 @@ class HierarchyPlotTraits(PlotControlsTraits):
         """Display labeled nodes with leaf values and optional children."""
         super().__init__(data=data, **kwargs)
 
-    @tl.validate("data", "legend", "padding")
-    def _normalize_hierarchy_json(self, proposal: dict[str, Any]) -> Any:
-        """Normalize JSON values on construction and subsequent assignments. A
-        standalone leaf passed as ``data`` is wrapped in a list: MatterViz hides a
-        single node's depth-0 root, which would leave a leaf without a cell.
+    @tl.validate("data")
+    def _normalize_hierarchy_data(self, proposal: dict[str, Any]) -> Any:
+        """Normalize data on construction and subsequent assignments. A standalone
+        leaf is wrapped in a list: MatterViz hides a single node's depth-0 root,
+        which would leave a leaf without a cell.
         """
         value = proposal["value"]
-        if (
-            proposal["trait"].name == "data"
-            and isinstance(value, dict)
-            and not value.get("children")
-        ):
+        if isinstance(value, dict) and not value.get("children"):
             value = [value]
-        return normalize_plot_json(
-            value, f"{type(self).__name__}.{proposal['trait'].name}"
-        )
-
-
-class CartesianPlotTraits(PlotControlsTraits):
-    """Series, axes, ranges and decorations shared by matterviz 2D plot components
-    (``ScatterPlot``, ``BarPlot``, ``Histogram``). Axis/legend/display/padding are
-    matterviz config dicts, ranges are ``[min, max]`` lists (None = auto).
-    """
-
-    # config kwargs passed through normalize_plot_json (numpy -> JSON) on init
-    _JSON_KWARGS: tuple[str, ...] = (
-        "x_axis", "x2_axis", "y_axis", "y2_axis", "display", "legend", "ref_lines",
-        "padding", "x_range", "x2_range", "y_range", "y2_range",
-    )  # fmt: skip
+        return normalize_plot_json(value, f"{type(self).__name__}.data")
 
 
 _AXIS_OF_KEY = {"x": "x_axis", "values": "x_axis", "y": "y_axis"}

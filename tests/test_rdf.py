@@ -42,6 +42,13 @@ def test_calculate_rdf() -> None:
     check_basic_rdf_properties(radii_partial, rdf_partial, 100)
     # Si2 has only Si, so the partial RDF equals the full RDF
     np.testing.assert_array_equal(rdf_partial, rdf)
+    # numpy scalar parameters give the same float64 bins
+    np_radii, np_rdf = calculate_rdf(
+        SI_STRUCTS[0], cutoff=np.float32(10), n_bins=np.int64(100)
+    )
+    assert np_radii.dtype == np.float64
+    np.testing.assert_array_equal(np_radii, radii)
+    np.testing.assert_array_equal(np_rdf, rdf)
 
 
 @pytest.mark.parametrize(

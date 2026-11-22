@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import functools
 from typing import Any
 
 import traitlets as tl
 
+from pymatviz.widgets._normalize import normalize_plot_json, structure_to_dict
 from pymatviz.widgets._schema_traits import BrillouinZoneTraits
+from pymatviz.widgets._traits import normalized_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -34,6 +37,11 @@ class BrillouinZoneWidget(BrillouinZoneTraits, MatterVizWidget):
         ... )
     """
 
+    # normalized on every assignment: structure objects to dicts, numpy to lists
+    structure = normalized_trait(functools.partial(structure_to_dict, periodic=True))
+    bz_data = normalized_trait(
+        functools.partial(normalize_plot_json, label="BrillouinZone.bz_data")
+    )
     default_k_path = tl.Bool(default_value=True).tag(sync=True)
 
     def __init__(
@@ -51,10 +59,4 @@ class BrillouinZoneWidget(BrillouinZoneTraits, MatterVizWidget):
             bz_data: Pre-computed BZ data with vertices, faces, and edges.
             **kwargs: Additional widget properties.
         """
-        from pymatviz.widgets._normalize import normalize_plot_json, structure_to_dict
-
-        super().__init__(
-            structure=structure_to_dict(structure, periodic=True),
-            bz_data=normalize_plot_json(bz_data, "bz_data"),
-            **kwargs,
-        )
+        super().__init__(structure=structure, bz_data=bz_data, **kwargs)

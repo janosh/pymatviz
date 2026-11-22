@@ -91,6 +91,8 @@ def test_sankey_data() -> None:
     widget = SankeyWidget(data, link_color_mode="gradient")
     assert widget.data["links"][0]["value"] == 3
     assert type(widget.data["links"][0]["value"]) is int
+    widget.data = {"nodes": ({"label": "a"},), "links": ()}  # tuples sync as lists
+    assert widget.data == {"nodes": [{"label": "a"}], "links": []}
     with pytest.raises(tl.TraitError, match="'nodes' and 'links'"):
         widget.data = {"nodes": []}
     with pytest.raises(tl.TraitError, match="finite"):

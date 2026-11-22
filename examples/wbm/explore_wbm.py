@@ -9,9 +9,9 @@ from typing import get_args
 
 import kemio
 import pandas as pd
+from kemio.options import CrystalSystem
 
 import pymatviz as pmv
-from pymatviz.typing import CrystalSystem
 
 
 crystal_systems = get_args(CrystalSystem)  # ordered triclinic to cubic

@@ -206,6 +206,13 @@ def test_structure_dict_pymatgen_ase(ase_atoms: tuple[Any, Any]) -> None:
     assert site_species == [[{"element": "Si", "occu": 1}]] * 2
     assert structure_to_dict(ase_atoms[0]) == periodic
 
+    atoms_with_info = ase_atoms[0].copy()
+    atoms_with_info.info = {"energy": -3.5, "source": "dft"}
+    info_dict = structure_dict(atoms_with_info)
+    assert info_dict["properties"] == {"energy": -3.5, "source": "dft"}
+    widget_struct = pmv.structure(atoms_with_info).structure
+    assert widget_struct["properties"] == info_dict["properties"]
+
 
 @pytest.mark.parametrize("kind", ["pymatgen", "ase", "ase_subclass"])
 @pytest.mark.parametrize("as_series", [False, True])

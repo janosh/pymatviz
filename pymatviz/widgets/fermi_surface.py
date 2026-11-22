@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import functools
 from typing import Any
 
-from pymatviz.widgets._normalize import normalize_json_kwargs, normalize_plot_json
+from pymatviz.widgets._normalize import normalize_plot_json
 from pymatviz.widgets._schema_traits import FermiSurfaceTraits
-from pymatviz.widgets._traits import color_bar_trait, color_scale_trait
+from pymatviz.widgets._traits import (
+    color_bar_trait,
+    color_scale_trait,
+    normalized_trait,
+)
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -39,6 +44,13 @@ class FermiSurfaceWidget(FermiSurfaceTraits, MatterVizWidget):
         ... )
     """
 
+    # JSON-normalized (numpy arrays to lists) on every assignment
+    fermi_data = normalized_trait(
+        functools.partial(normalize_plot_json, label="FermiSurface.fermi_data")
+    )
+    band_data = normalized_trait(
+        functools.partial(normalize_plot_json, label="FermiSurface.band_data")
+    )
     color_scale = color_scale_trait()
     # Shown only when color_property is "property"
     color_bar = color_bar_trait()
@@ -59,10 +71,4 @@ class FermiSurfaceWidget(FermiSurfaceTraits, MatterVizWidget):
         """
         if (fermi_data is None) == (band_data is None):
             raise ValueError("Provide exactly one of fermi_data or band_data.")
-        normalize_json_kwargs(kwargs, ("color_scale", "color_bar"), "FermiSurface")
-
-        super().__init__(
-            fermi_data=normalize_plot_json(fermi_data, "fermi_data"),
-            band_data=normalize_plot_json(band_data, "band_data"),
-            **kwargs,
-        )
+        super().__init__(fermi_data=fermi_data, band_data=band_data, **kwargs)

@@ -118,8 +118,8 @@ def test_files_enum_auto_download(
         test_file = "data/file.txt", url, "Test File"
 
     path = f"{tmp_path}/data/file.txt"
-    os.makedirs(os.path.dirname(path))
-    if pre_existing:
+    if pre_existing:  # else the download creates the missing data/ dir
+        os.makedirs(os.path.dirname(path))
         with open(path, mode="wb") as file:
             file.write(b"old content")
 
@@ -152,3 +152,19 @@ def test_files_enum_auto_download(
     else:
         with open(path, mode="rb") as file:
             assert file.read() == expected_content
+
+
+def test_files_enum_failed_read_leaves_no_file(tmp_path: Path) -> None:
+    """A download failing mid-read leaves no partial file to skip re-downloading."""
+
+    class TestFiles(Files, base_dir=str(tmp_path), auto_download=True):
+        test_file = "file.txt", EXAMPLE_URL, "Test File"
+
+    response = MagicMock()
+    response.__enter__.return_value.read.side_effect = OSError("connection reset")
+    with (
+        patch("pymatviz.enums.urlopen", return_value=response),
+        pytest.raises(OSError, match="connection reset"),
+    ):
+        _ = TestFiles.test_file.file_path
+    assert not os.path.isfile(f"{tmp_path}/file.txt")

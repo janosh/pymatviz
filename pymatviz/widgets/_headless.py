@@ -636,7 +636,7 @@ def _container_style(
     for name, value, default in (("width", width, 800), ("height", height, 600)):
         if value is not None:
             parts.append(f"{name}: {value}px")
-        elif not re.search(rf"(?:^|;\s*){name}\s*:", user_style):
+        elif not re.search(rf"(?:^|;)\s*{name}\s*:", user_style, re.IGNORECASE):
             parts.append(f"{name}: {default}px")
     return "; ".join(parts)
 

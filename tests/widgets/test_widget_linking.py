@@ -127,6 +127,10 @@ def test_link_scatter_click_updates_structure() -> None:
 
     scatter.active_point = None  # hover-off
     assert structure.structure == structure_to_pymatgen_dict(frames[2])
+    # point indices of other series don't index structures, so their clicks are no-ops
+    scatter.active_point = {"series_idx": 1, "point_idx": 0}
+    assert structure.structure == structure_to_pymatgen_dict(frames[2])
+    assert scatter.selected_point == {"series_idx": 0, "point_idx": 2}
     link.unlink()
     scatter.active_point = {"series_idx": 0, "point_idx": 3}
     assert structure.structure == structure_to_pymatgen_dict(frames[2])

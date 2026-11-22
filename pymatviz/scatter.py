@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import warnings
+from numbers import Integral
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -216,10 +217,11 @@ def density_hexbin(
     xs, ys, xlabel, ylabel = _parity_data(x, y, df, xlabel, ylabel)
     marginals = {}
     if marginal_bins is not None:
-        if not isinstance(marginal_bins, int) or marginal_bins < 1:
+        is_bool = isinstance(marginal_bins, bool)
+        if is_bool or not isinstance(marginal_bins, Integral) or marginal_bins < 1:
             raise ValueError(f"{marginal_bins=} must be a positive int")
         marginals = {
-            side: {"type": "histogram", "bins": marginal_bins}
+            side: {"type": "histogram", "bins": int(marginal_bins)}
             for side in ("top", "right")
         }
     widget = BinnedScatterPlotWidget(

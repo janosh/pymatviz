@@ -11,8 +11,14 @@ from pymatviz.widgets._normalize import (
     normalize_plot_json,
 )
 from pymatviz.widgets._schema_traits import ChemPotDiagramTraits
-from pymatviz.widgets._traits import optional_trait
+from pymatviz.widgets._traits import normalized_trait, optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
+
+
+def _chem_pot_entries(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """JSON entries with formula string compositions parsed to dicts."""
+    normalized = _normalize_entry_compositions(entries)
+    return normalize_plot_json(normalized, "ChemPotDiagram.entries")
 
 
 class ChemPotDiagramWidget(ChemPotDiagramTraits, MatterVizWidget):
@@ -30,6 +36,7 @@ class ChemPotDiagramWidget(ChemPotDiagramTraits, MatterVizWidget):
         ... )
     """
 
+    entries = normalized_trait(_chem_pot_entries, tl.List())  # on every assignment
     width = optional_trait(tl.Int, min=1)
     height = optional_trait(tl.Int, min=1)
 
@@ -48,8 +55,4 @@ class ChemPotDiagramWidget(ChemPotDiagramTraits, MatterVizWidget):
                 ``width``/``height`` (px, the aspect ratio the diagram keeps as it fills
                 the available width).
         """
-        normalized = _normalize_entry_compositions(entries or [])
-        super().__init__(
-            entries=normalize_plot_json(normalized, "ChemPotDiagram.entries"),
-            **kwargs,
-        )
+        super().__init__(entries=[] if entries is None else entries, **kwargs)

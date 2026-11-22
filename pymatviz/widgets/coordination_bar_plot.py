@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 import traitlets as tl
 
-from pymatviz.widgets._normalize import normalize_json_kwargs, structure_to_dict
+from pymatviz.widgets._normalize import structure_to_dict
 from pymatviz.widgets._schema_traits import CoordinationBarPlotTraits
 from pymatviz.widgets._traits import PlotControlsTraits
 from pymatviz.widgets.matterviz import MatterVizWidget
@@ -78,8 +78,6 @@ class CoordinationBarPlotWidget(
             **kwargs: Widget traits, e.g. ``strategy``, ``split_mode``, ``mode``,
                 ``orientation``, ``x_axis``, ``y_axis``.
         """
-        json_keys = ("display", "legend", "padding", "x_axis", "y_axis")
-        normalize_json_kwargs(kwargs, json_keys, "CoordinationBarPlot")
         super().__init__(
             structures=structures,
             **kwargs,

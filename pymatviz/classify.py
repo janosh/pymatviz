@@ -5,7 +5,7 @@ precision-recall curves.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
-from typing import Any, Literal, cast
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
@@ -211,16 +211,10 @@ def _standardize_input(
 
     curves_dict: dict[str, dict[str, Any]]
     if isinstance(probs_positive, Mapping):
-        # convert array values to dicts if needed. both casts needed since ty keeps
-        # ArrayLike & Mapping/dict intersections from the isinstance checks
-        probs_dict = cast("Mapping[str, ArrayLike | dict[str, Any]]", probs_positive)
+        # array values become {"probs_positive": array} dicts
         curves_dict = {
-            name: (
-                cast("dict[str, Any]", probs)
-                if isinstance(probs, dict)
-                else {"probs_positive": probs}
-            )
-            for name, probs in probs_dict.items()
+            name: probs if isinstance(probs, dict) else {"probs_positive": probs}
+            for name, probs in probs_positive.items()
         }
         for name, trace_dict in curves_dict.items():
             if "probs_positive" not in trace_dict:
@@ -258,8 +252,8 @@ def _classifier_series(
             classifier's non-NaN rows must contain for its curve to be defined.
 
     Raises:
-        ValueError: If targets hold more than 2 classes or a classifier's targets
-            lack any of required_classes.
+        ValueError: If targets hold more than 2 classes, a classifier's probabilities
+            don't match targets in shape or its targets lack any of required_classes.
     """
     targets, curves_dict = _standardize_input(targets, probs_positive, df)
     targets = np.asarray(targets, dtype=float)
@@ -271,6 +265,11 @@ def _classifier_series(
     for idx, (name, curve_cfg) in enumerate(curves_dict.items()):
         series_kwargs = dict(curve_cfg)  # don't mutate caller-supplied dicts
         curve_probs = np.asarray(series_kwargs.pop("probs_positive"), dtype=float)
+        if curve_probs.shape != targets.shape:
+            raise ValueError(
+                f"Classifier {name or 'probs_positive'!r} has probabilities of shape "
+                f"{curve_probs.shape}, expected one per target {targets.shape}"
+            )
         no_nan = ~np.isnan(targets) & ~np.isnan(curve_probs)
         present = set(np.unique(targets[no_nan]).tolist())
         if missing := [f"{cls:g}" for cls in required_classes if cls not in present]:

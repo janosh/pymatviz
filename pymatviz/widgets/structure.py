@@ -12,7 +12,12 @@ import traitlets as tl
 from pymatviz.widgets._binary import is_binary_envelope, volume_envelope
 from pymatviz.widgets._normalize import normalize_plot_json, structure_to_dict
 from pymatviz.widgets._schema_traits import StructureTraits
-from pymatviz.widgets._traits import StructureVizTraits, normalized_trait
+from pymatviz.widgets._traits import (
+    JsonDict,
+    JsonList,
+    StructureVizTraits,
+    normalized_trait,
+)
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -200,7 +205,7 @@ class StructureWidget(StructureVizTraits, StructureTraits, MatterVizWidget):
     display_mode = tl.CaselessStrEnum(
         ["structure", "slice", "split"], default_value="structure"
     ).tag(sync=True)
-    slice_settings = tl.Dict(default_value={}).tag(sync=True)
+    slice_settings = JsonDict(default_value={}).tag(sync=True)
 
     # UI controls
     enable_info_pane = tl.Bool(default_value=True).tag(sync=True)
@@ -210,8 +215,8 @@ class StructureWidget(StructureVizTraits, StructureTraits, MatterVizWidget):
     # populated on user interaction (observe them to drive other widgets) and can
     # also be set from Python. highlighted_sites is a Python-driven highlight
     # input (e.g. from a linked plot).
-    selected_sites = tl.List(tl.Int(), default_value=[]).tag(sync=True)
-    highlighted_sites = tl.List(tl.Int(), default_value=[]).tag(sync=True)
+    selected_sites = JsonList(tl.Int(), default_value=[]).tag(sync=True)
+    highlighted_sites = JsonList(tl.Int(), default_value=[]).tag(sync=True)
 
     @tl.default("volumetric_data")
     def _default_volumetric_data(self) -> list[dict[str, Any]]:

@@ -48,7 +48,7 @@ def test_density_scatter(df_or_arrays: DfOrArrays, log: bool | None) -> None:
     true_vals, pred_vals = df_regr[X_COL], df_regr[Y_COL]
     mae = skm.mean_absolute_error(true_vals, pred_vals)
     r2_val = skm.r2_score(true_vals, pred_vals)
-    assert widget.annotation == f"MAE = {mae:.3}\nR² = {r2_val:.3}"
+    assert widget.annotation == f"MAE = {mae:.3g}\nR² = {r2_val:.3g}"
 
 
 @pytest.mark.parametrize("plot_func", [pmv.density_scatter, pmv.density_hexbin])
@@ -80,7 +80,12 @@ def test_density_plots_use_series_names_and_drop_nan(
 
 
 @pytest.mark.parametrize(
-    "hist_kwargs", [{}, {"marginal_bins": 100}, {"marginal_bins": 100, "bin_px": 1.5}]
+    "hist_kwargs",
+    [
+        {},
+        {"marginal_bins": 100},
+        {"marginal_bins": np.int64(100), "bin_px": 1.5},  # numpy ints are ints too
+    ],
 )
 def test_binned_density_plots(
     df_or_arrays: DfOrArrays, hist_kwargs: dict[str, Any]
@@ -101,6 +106,7 @@ def test_binned_density_plots(
     assert bool(widget.marginals) == with_hist
     if with_hist:
         assert widget.marginals["top"] == {"type": "histogram", "bins": 100}
+        assert type(widget.marginals["top"]["bins"]) is int
     assert widget.density.get("bin_px") == hist_kwargs.get("bin_px")
     if with_hist:  # user marginals merge per side over the marginal_bins histograms
         custom = pmv.density_hexbin(
@@ -124,6 +130,11 @@ def test_binned_density_plots(
             pmv.density_hexbin,
             {"x": [1, 2], "y": [1, 2], "marginal_bins": 0},
             "marginal_bins=0 must be a positive int",
+        ),
+        (
+            pmv.density_hexbin,
+            {"x": [1, 2], "y": [1, 2], "marginal_bins": True},
+            "marginal_bins=True must be a positive int",
         ),
     ],
 )
@@ -158,7 +169,7 @@ def test_density_scatter_single_point() -> None:
     single_point_df = pd.DataFrame({X_COL: [1.0], Y_COL: [1.0]})
     with pytest.warns(UserWarning, match="KDE impossible for 1 point"):
         widget = pmv.density_scatter(X_COL, Y_COL, df=single_point_df)
-    assert widget.annotation == "MAE = 0.0\nR² = nan"
+    assert widget.annotation == "MAE = 0\nR² = nan"
     assert [line["type"] for line in widget.ref_lines] == ["diagonal"]
 
 

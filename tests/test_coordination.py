@@ -210,7 +210,9 @@ def test_coordination_bar_plot_in_browser(split_mode: CnSplitMode) -> None:
     assert widget.strategy == "explicit_only"
 
 
-@pytest.mark.parametrize("cutoff_range", [(0, 3), (1.0, 5.0)])
+@pytest.mark.parametrize(
+    "cutoff_range", [(0, 3), (1.0, 5.0), (np.int64(1), np.float32(4))]
+)
 def test_coordination_vs_cutoff_line(
     structures: Sequence[kemio.Structure],
     cutoff_range: tuple[float, float],
@@ -338,8 +340,9 @@ def test_coordination_vs_cutoff_line_disordered_structure(
             )
             for cutoff_range in [(1, 2, 3), (True, 3), ("1", 3)]
         ),
+        (NACL, {"num_points": 0}, ValueError, "num_points=0 must be positive"),
     ],
-    ids=["empty_list", "invalid_str", "3_tuple", "bool", "str"],
+    ids=["empty_list", "invalid_str", "3_tuple", "bool", "str", "no_points"],
 )
 def test_coordination_vs_cutoff_line_invalid_inputs(
     structs: Any, kwargs: dict[str, Any], err_cls: type[Exception], match: str

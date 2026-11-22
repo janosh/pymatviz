@@ -45,14 +45,15 @@ def to_composition(
     """
     if isinstance(obj, kemio.Composition):
         return obj
+    # formulas first: is_structure_like walks the type's MRO for each foreign class
+    if isinstance(obj, str | Mapping):
+        return kemio.Composition(obj, allow_negative=allow_negative)
     if is_structure_like(obj):
         return to_structure(obj).composition
-    if not isinstance(obj, str | Mapping):
-        raise TypeError(
-            "Expected a formula string, mapping, Composition or structure, got "
-            f"{type(obj).__name__}"
-        )
-    return kemio.Composition(obj, allow_negative=allow_negative)
+    raise TypeError(
+        "Expected a formula string, mapping, Composition or structure, got "
+        f"{obj!r} of type {type(obj).__name__}"
+    )
 
 
 def count_elements(
@@ -70,7 +71,8 @@ def count_elements(
 
     Args:
         values (dict[str, int | float] | pd.Series | list[str]): Iterable of
-            composition strings/objects or map from element symbols to heatmap values.
+            formula strings, compositions or structures, or map from element
+            symbols to heatmap values.
         count_mode ('(element|fractional|reduced)_composition'):
             Only used when values is a list of composition strings/objects.
             - composition (default): Count elements in each composition as is,
@@ -92,15 +94,16 @@ def count_elements(
     Returns:
         pd.Series: Map element symbols to heatmap values.
     """
-    valid_count_modes = set(ElemCountMode)
-    if count_mode not in valid_count_modes:
-        raise ValueError(f"Invalid {count_mode=} must be one of {valid_count_modes}")
+    if count_mode not in set(ElemCountMode):
+        valid_count_modes = [mode.value for mode in ElemCountMode]
+        raise ValueError(f"Invalid {count_mode=}, must be one of {valid_count_modes}")
     # Ensure values is Series if we got dict/list/tuple
     srs = pd.Series(values)
+    countable = (is_composition_like(val) or is_structure_like(val) for val in srs)
 
     if is_numeric_dtype(srs):
         pass  # already a map from element to value
-    elif is_string_dtype(srs) or all(map(is_composition_like, srs)):
+    elif is_string_dtype(srs) or all(countable):
         comps = [to_composition(comp, allow_negative=True) for comp in srs]
         if count_mode == "occurrence":
             srs = pd.Series(
@@ -123,7 +126,7 @@ def count_elements(
     else:
         raise ValueError(
             "Expected values to be map from element symbols to heatmap values or "
-            f"list of compositions (strings or Composition objects), got {values}"
+            f"list of formulas, compositions or structures, got {values}"
         )
 
     try:  # integer keys (or their strings) are atomic numbers

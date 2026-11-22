@@ -136,8 +136,13 @@ class Files(StrEnum, metaclass=MetaFiles):
         path = f"{type(self)._base_dir}/{self.__dict__['file_path']}"
         if type(self)._auto_download and not os.path.isfile(path) and self.url:
             print(f"Downloading {self.url} to {path}")  # noqa: T201
-            with urlopen(self.url) as response, open(path, mode="wb") as file:  # noqa: S310
-                file.write(response.read())
+            # read fully before opening path: a failed read must not leave a partial
+            # file that later calls would take as downloaded
+            with urlopen(self.url) as response:  # noqa: S310
+                content = response.read()
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, mode="wb") as file:
+                file.write(content)
         return path
 
     @property

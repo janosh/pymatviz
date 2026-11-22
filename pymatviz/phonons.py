@@ -86,11 +86,6 @@ class PhononDBDoc:
 type DosInput = AnyDos | Mapping[str, AnyDos]
 
 
-def _unwrap_single[T](labeled: dict[str, T]) -> T | dict[str, T]:
-    """Pass an unlabeled single input as itself so MatterViz shows no legend entry."""
-    return labeled[""] if list(labeled) == [""] else labeled
-
-
 def _labeled_doses(
     doses: DosInput,
     project: Literal["element", "site"] | None,
@@ -195,8 +190,9 @@ def phonon_dos(
             f"got {show_total=} and {n_labels} DOS"
         )
     dos_dict = _labeled_doses(doses, project, show_total=show_total)
+    # an unlabeled single DOS is passed as itself so MatterViz shows no legend entry
     return DosWidget(
-        doses=_unwrap_single(dos_dict),
+        doses=dos_dict[""] if list(dos_dict) == [""] else dos_dict,
         stack=stack,
         sigma=sigma,
         normalize=normalize,

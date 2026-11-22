@@ -24,6 +24,8 @@ def test_widget_grid(n_widgets: int, n_cols: int, expected_cols: int) -> None:
 
     with pytest.raises(ValueError, match="n_cols=0 must be positive"):
         widget_grid(widgets, 0)
+    with pytest.raises(ValueError, match="needs at least one widget"):
+        widget_grid({})
 
 
 def test_widget_grid_static_repr(monkeypatch: pytest.MonkeyPatch) -> None:

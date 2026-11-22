@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 from typing import Any
 
 import traitlets as tl
@@ -41,7 +42,10 @@ class RdfPlotWidget(PlotControlsTraits, RdfPlotTraits, MatterVizWidget):
         ... )
     """
 
-    patterns = tl.Any(allow_none=True).tag(sync=True)
+    patterns = normalized_trait(
+        functools.partial(normalize_plot_json, label="RdfPlot.patterns"),
+        tl.Union([tl.Dict(), tl.List()]),
+    )
     structures = normalized_trait(_rdf_structures, tl.Union([tl.Dict(), tl.List()]))
     mode = tl.CaselessStrEnum(
         ["element_pairs", "full"], default_value="element_pairs"
@@ -72,8 +76,4 @@ class RdfPlotWidget(PlotControlsTraits, RdfPlotTraits, MatterVizWidget):
                 "computation) or 'patterns' (pre-computed), not both."
             )
 
-        super().__init__(
-            structures=structures,
-            patterns=normalize_plot_json(patterns, "RdfPlot.patterns"),
-            **kwargs,
-        )
+        super().__init__(structures=structures, patterns=patterns, **kwargs)

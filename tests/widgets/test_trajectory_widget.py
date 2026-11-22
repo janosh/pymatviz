@@ -175,11 +175,11 @@ def test_widget_complete_lifecycle(
     for key, value in state.items():
         assert getattr(restored_widget, key) == value
 
-    # atom_type_mapping (LAMMPS type -> element) syncs as given, rejects non-dicts
-    mapping = {1: "Si", "2": "O"}
+    # atom_type_mapping (LAMMPS type -> element) syncs with JSON string keys,
+    # rejects non-dicts
     widget = TrajectoryWidget(data_url="https://example.com/dump.lammpstrj")
-    widget.atom_type_mapping = mapping
-    assert widget.to_dict()["atom_type_mapping"] == mapping
+    widget.atom_type_mapping = {1: "Si", np.int64(2): "O"}
+    assert widget.to_dict()["atom_type_mapping"] == {"1": "Si", "2": "O"}
     with pytest.raises(tl.TraitError):
         TrajectoryWidget(atom_type_mapping=["Si", "O"])
 

@@ -31,8 +31,8 @@ if TYPE_CHECKING:
 def partial_rdfs(
     struct: AnyStructure,
     pairs: Sequence[tuple[str | None, str | None]],
-    cutoff: float = 15,
-    n_bins: int = 75,
+    cutoff: float | np.floating = 15,
+    n_bins: int | np.integer = 75,
     pbc: tuple[Literal[0, 1], Literal[0, 1], Literal[0, 1]] = (1, 1, 1),
 ) -> list[tuple[np.ndarray, np.ndarray]]:
     """Partial radial distribution functions of several (center, neighbor) species
@@ -65,6 +65,7 @@ def partial_rdfs(
         raise ValueError(f"{pbc=} must contain three 0/1 flags")
 
     struct = to_structure(struct)
+    cutoff = float(cutoff)  # numpy float32 cutoffs would give float32 bins
     bin_size = cutoff / n_bins
     radii = np.linspace(0, cutoff, n_bins + 1)[1:]
 
@@ -123,8 +124,8 @@ def calculate_rdf(
     structure: PeriodicStructure,
     center_species: str | None = None,
     neighbor_species: str | None = None,
-    cutoff: float = 15,
-    n_bins: int = 75,
+    cutoff: float | np.floating = 15,
+    n_bins: int | np.integer = 75,
     pbc: tuple[Literal[0, 1], Literal[0, 1], Literal[0, 1]] = (1, 1, 1),
 ) -> tuple[np.ndarray, np.ndarray]:
     """Calculate the radial distribution function (RDF) for a given structure.

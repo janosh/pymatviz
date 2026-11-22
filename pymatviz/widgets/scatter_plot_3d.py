@@ -7,7 +7,7 @@ from typing import Any
 import traitlets as tl
 
 from pymatviz.widgets._binary import is_binary_envelope, plot_series_envelope
-from pymatviz.widgets._normalize import normalize_json_kwargs, normalize_plot_json
+from pymatviz.widgets._normalize import normalize_plot_json
 from pymatviz.widgets._schema_traits import ScatterPlot3dTraits
 from pymatviz.widgets._traits import (
     CAMERA_PROJECTIONS,
@@ -31,11 +31,6 @@ class ScatterPlot3DWidget(PlotControlsTraits, ScatterPlot3dTraits, MatterVizWidg
     camera_projection = tl.CaselessStrEnum(
         CAMERA_PROJECTIONS, default_value="perspective"
     ).tag(sync=True)
-
-    _JSON_KWARGS = (
-        "surfaces", "ref_lines", "ref_planes", "x_axis", "y_axis", "z_axis", "display",
-        "styles", "color_scale", "size_scale", "legend", "point_tween",
-    )  # fmt: skip
 
     @tl.validate("series")
     def _validate_series(self, proposal: dict[str, Any]) -> list[dict[str, Any]] | None:
@@ -94,5 +89,4 @@ class ScatterPlot3DWidget(PlotControlsTraits, ScatterPlot3dTraits, MatterVizWidg
                 ``label``, ``color``, ``size`` fields.
             **kwargs: Additional widget properties.
         """
-        normalize_json_kwargs(kwargs, self._JSON_KWARGS, "ScatterPlot3D")
         super().__init__(series=series, **kwargs)

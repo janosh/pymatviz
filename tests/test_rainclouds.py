@@ -115,7 +115,8 @@ def test_rainclouds_with_dataframe() -> None:
             "show_violin",
         ),
         ({}, {}, ValueError, "at least one dataset"),
-        ({"a": []}, {}, ValueError, "non-empty"),
+        ({"a": []}, {}, ValueError, r"non-empty 1D array, got shape \(0,\)"),
+        ({"a": [[1, 2]]}, {}, ValueError, r"non-empty 1D array, got shape \(1, 2\)"),
         ({"a": [1, float("nan")]}, {}, ValueError, "'a' holds non-finite"),
     ],
 )

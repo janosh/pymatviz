@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter
+from numbers import Real
 from typing import TYPE_CHECKING, Any, Literal, get_args
 
 import kemio
@@ -57,8 +58,8 @@ class CnSplitMode(LabelEnum):
 ELEM_COLORS_JMOL: dict[str, str] = {
     symbol: f"rgb({red}, {green}, {blue})"
     for symbol, (red, green, blue) in zip(
-        kemio.element_table().symbols[1:],  # row 0 is a placeholder
-        kemio.element_table().jmol_colors[1:].tolist(),
+        kemio.element_table().symbol[1:],  # row 0 is a placeholder
+        kemio.element_table().jmol_color[1:].tolist(),
         strict=True,
     )
     if red >= 0  # -1 marks a missing color
@@ -211,7 +212,7 @@ def coordination_vs_cutoff_line(
             single structure or a dictionary or sequence of structures.
         cutoff_range (tuple[float, float]): (min_cutoff, max_cutoff) in Å. Defaults
             to (1, 5).
-        num_points (int): Number of points to calculate between min and max cutoff.
+        num_points (int): Number of cutoffs from min to max cutoff. Defaults to 50.
         element_colors (dict[str, str]): ``{element: CSS color}`` line colors,
             merged over Jmol colors.
         **kwargs: ScatterPlotWidget traits, e.g. ``x_axis``, ``y_axis`` (merged over
@@ -221,10 +222,12 @@ def coordination_vs_cutoff_line(
         ScatterPlotWidget: one line per structure and element.
     """
     if len(cutoff_range) != 2 or not all(
-        isinstance(cutoff, int | float) and not isinstance(cutoff, bool)
+        isinstance(cutoff, Real) and not isinstance(cutoff, bool)
         for cutoff in cutoff_range
     ):
         raise TypeError(f"Invalid {cutoff_range=}, expected (min_cutoff, max_cutoff)")
+    if num_points < 1:
+        raise ValueError(f"{num_points=} must be positive")
     struct_dict = normalize_structures(structures)
     cutoffs = np.linspace(float(cutoff_range[0]), float(cutoff_range[1]), num_points)
     elem_colors = _element_colors(element_colors)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 from typing import Any
 
 import traitlets as tl
@@ -10,11 +11,14 @@ from pymatviz.widgets._normalize import (
     _to_dict,
     check_stack_grids,
     labeled_keys,
-    normalize_json_kwargs,
     structure_to_dict,
 )
 from pymatviz.widgets._schema_traits import BandsAndDosTraits
-from pymatviz.widgets._traits import PlotControlsTraits, optional_trait
+from pymatviz.widgets._traits import (
+    PlotControlsTraits,
+    normalized_trait,
+    optional_trait,
+)
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -40,6 +44,12 @@ class BandsAndDosWidget(PlotControlsTraits, BandsAndDosTraits, MatterVizWidget):
         ... )
     """
 
+    # converted on every assignment (labels and stack grids are checked in __init__)
+    band_structs = normalized_trait(
+        functools.partial(_to_dict, label="band structure", vasprun="bands")
+    )
+    doses = normalized_trait(functools.partial(_to_dict, label="DOS", vasprun="dos"))
+    structure = normalized_trait(functools.partial(structure_to_dict, periodic=True))
     # DOS smearing width in the data unit: THz for phonons, eV for electrons
     sigma = optional_trait(tl.Float, min=0.0)
 
@@ -72,7 +82,6 @@ class BandsAndDosWidget(PlotControlsTraits, BandsAndDosTraits, MatterVizWidget):
             ValueError: If band_structs and doses labels differ, or ``stack=True``
                 and the DOS have different grids.
         """
-        normalize_json_kwargs(kwargs, ("bz_props",), "BandsAndDos")
         bands_dict = _to_dict(band_structs, "band structure", vasprun="bands")
         doses_dict = _to_dict(doses, "DOS", vasprun="dos")
         if band_structs is not None and doses is not None:
@@ -82,8 +91,5 @@ class BandsAndDosWidget(PlotControlsTraits, BandsAndDosTraits, MatterVizWidget):
         if kwargs.get("stack"):
             check_stack_grids(doses_dict)
         super().__init__(
-            band_structs=bands_dict,
-            doses=doses_dict,
-            structure=structure_to_dict(structure, periodic=True),
-            **kwargs,
+            band_structs=bands_dict, doses=doses_dict, structure=structure, **kwargs
         )

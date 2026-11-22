@@ -264,6 +264,8 @@ def test_check_inputs(widget: Any, expect_warning: bool) -> None:
         ([float("nan"), float("inf"), float("-inf")], None),  # all non-finite
         ([[1, 2], {"a": 3}], [1.0, 3.0]),  # nested flattened
         ([True, False, 5], [5.0, 5.0]),  # bools ignored
+        # numpy scalars count (np.int64 and np.float32 aren't int/float subclasses)
+        ([np.int64(-3), np.float32(1.5), np.True_], [-3.0, 1.5]),
         ([10**1000, -(10**1000), 2], [2.0, 2.0]),
         ([0.0, -0.0], [-0.0, -0.0]),
         ([-0.0, 0.0], [0.0, 0.0]),

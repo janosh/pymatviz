@@ -6,13 +6,12 @@ from typing import Any
 
 import traitlets as tl
 
-from pymatviz.widgets._normalize import normalize_json_kwargs
 from pymatviz.widgets._schema_traits import BoxPlotTraits
-from pymatviz.widgets._traits import CartesianPlotTraits, df_series, optional_trait
+from pymatviz.widgets._traits import PlotControlsTraits, df_series, optional_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
-class BoxPlotWidget(CartesianPlotTraits, BoxPlotTraits, MatterVizWidget):
+class BoxPlotWidget(PlotControlsTraits, BoxPlotTraits, MatterVizWidget):
     """MatterViz widget for box, violin and raincloud plots of raw distributions.
 
     Each series holds the raw samples in ``y``; quartiles, whiskers and the KDE are
@@ -52,15 +51,10 @@ class BoxPlotWidget(CartesianPlotTraits, BoxPlotTraits, MatterVizWidget):
             y: DataFrame column of the samples.
             color: DataFrame column to split into one series per value.
             **kwargs: Widget traits, e.g. ``kind``, ``side``, ``points``,
-                ``orientation``, ``whisker_mode``, axis/range configs (see
-                ``CartesianPlotTraits``).
+                ``orientation``, ``whisker_mode``, axis/range configs (``x_axis``
+                dicts, ``[min, max]`` ``x_range`` lists).
         """
         series = df_series(series, color, kwargs, y=y)
-        json_keys = (
-            *self._JSON_KWARGS, "box", "whisker", "median_style", "sample_style",
-            "violin_style", "whisker_percentiles", "kde_clip",
-        )  # fmt: skip
-        normalize_json_kwargs(kwargs, json_keys, "BoxPlot")
         super().__init__(
             series=series,
             **kwargs,

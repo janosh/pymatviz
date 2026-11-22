@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping, Sized
 from operator import index
 from typing import Any
 
@@ -19,15 +19,23 @@ def spacegroup_counts(data: Any) -> dict[str, int]:
     widget syncs at most 230 entries however many structures went in.
 
     Args:
-        data: Space group numbers, Hermann-Mauguin symbols or structures, or a
+        data: Space group numbers, Hermann-Mauguin symbols or structures (a
+            sequence, array, Series or iterator such as a generator), or a
             ``{spacegroup: count}`` mapping (number/symbol keys may repeat a group).
 
     Raises:
-        TypeError: If mapping counts aren't integers.
+        TypeError: For non-iterable data or mapping counts that aren't integers.
         ValueError: For negative counts or invalid space groups.
     """
     from pymatviz.structures import normalize_spacegroups
 
+    if isinstance(data, Iterator):  # e.g. generators, which have no len()
+        data = list(data)
+    elif data is not None and not isinstance(data, Sized):
+        raise TypeError(
+            "Space group data must be a sequence, iterator or mapping, got "
+            f"{type(data).__name__}: {data!r}"
+        )
     if data is None or len(data) == 0:
         return {}
     if isinstance(data, Mapping):

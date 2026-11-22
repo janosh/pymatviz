@@ -69,8 +69,9 @@ class WidgetLink:
                 Required if any widget is a ``StructureWidget`` (its ``structure``
                 is set to ``structures[index]`` on every change) or a
                 ``PeriodicTableWidget``.
-            series_idx: Series index written into ``ScatterPlotWidget`` sinks
-                (``selected_point``). Defaults to 0 (the first series).
+            series_idx: Series whose point indices are selection indices: written
+                into ``ScatterPlotWidget`` sinks (``selected_point``), and the only
+                series whose clicks broadcast. Defaults to 0 (the first series).
 
         Raises:
             ValueError: If fewer than two widgets are given, or a ``StructureWidget``
@@ -159,9 +160,13 @@ class WidgetLink:
 
         Only ``point_idx`` drives selection; ``active_point``'s ``event_id`` (which
         makes repeated identical clicks distinct trait values) is ignored here.
+        Clicks on series other than ``series_idx`` are ignored: their point indices
+        don't index ``structures``.
         """
         point = change["new"]
         if not point or point.get("point_idx") is None:
+            return
+        if point.get("series_idx", self._series_idx) != self._series_idx:
             return
         self._broadcast(int(point["point_idx"]))
 
@@ -258,7 +263,8 @@ def link_selection(
             ``PeriodicTableWidget``.
         structures: Ordered structures indexed by the selection index. Required
             if a ``StructureWidget`` or ``PeriodicTableWidget`` is linked.
-        series_idx: Series index used when highlighting scatter points.
+        series_idx: Scatter series whose points index the selection (the only
+            series whose clicks broadcast, and the one highlighted).
 
     Returns:
         A :class:`WidgetLink` whose ``unlink()`` stops synchronization.

@@ -30,7 +30,7 @@ df_expt_gap = load_dataset("matbench_expt_gap")
 
 
 # %% Atomic masses (the Series name titles the color bar)
-widget = pmv.ptable_heatmap(pmv.utils.df_ptable["masses"])
+widget = pmv.ptable_heatmap(pmv.utils.df_ptable["mass"])
 widget.show()
 widget.to_img(
     f"{pmv.utils.ROOT}/assets/svg/ptable-heatmap-atomic-mass.svg",
@@ -58,7 +58,7 @@ widget.to_img(
 
 # %% Specific heat on a log scale, excluding light elements
 widget = pmv.ptable_heatmap(
-    pmv.utils.df_ptable["specific_heat_capacities"].dropna(),
+    pmv.utils.df_ptable["specific_heat_capacity"].dropna(),
     log=True,
     exclude_elements=["H", "He", "C", "O"],
     color_scale="interpolateYlOrRd",

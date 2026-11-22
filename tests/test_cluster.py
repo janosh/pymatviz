@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Any
 
 import kemio
@@ -202,6 +203,9 @@ def test_project_vectors_components(sample_data: np.ndarray, n_components: int) 
     assert isinstance(proj_obj, PCA)
     assert proj_obj.n_components_ == n_components
     assert proj_obj.explained_variance_ratio_.shape == (n_components,)
+    # nested lists project exactly like arrays
+    list_result, _ = project_vectors(sample_data.tolist(), n_components=n_components)
+    np.testing.assert_array_equal(list_result, result)
 
     # Check that result is not degenerate
     assert not np.allclose(result, 0, atol=1e-10)
@@ -379,7 +383,7 @@ def points(widget: ClusterScatterPlot | ClusterScatterPlot3D) -> pd.DataFrame:
 
 
 @pytest.mark.parametrize("n_components", [2, 3])
-@pytest.mark.parametrize("sort", [True, False, -1])
+@pytest.mark.parametrize("sort", [True, False, -1, np.int64(-1)])
 def test_cluster_compositions_property(
     df_prop: pd.DataFrame, n_components: int, sort: bool | int
 ) -> None:
@@ -600,6 +604,24 @@ def test_projection_stats(
             {"prop_name": "property", "sort": lambda vals: np.argsort(vals)[:1]},
             ValueError,
             "sort callable must return a permutation",
+        ),
+        (
+            {"df": pd.DataFrame({"composition": []})},
+            ValueError,
+            "df has no rows to cluster",
+        ),
+        *(  # every row of a pre-computed coordinates column is checked
+            (
+                {
+                    "df": pd.DataFrame(
+                        {"composition": ["Fe", "Cu"], "xy": [[1, 2], coords]}
+                    ),
+                    "projection": "xy",
+                },
+                ValueError,
+                f"2 coordinates per row, got 1 rows like {re.escape(repr(coords))}",
+            )
+            for coords in ([3], "ab", [1, 2, 3])
         ),
     ],
 )

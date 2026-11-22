@@ -143,14 +143,6 @@ def series_column(series_item: Mapping[str, Any], key: str) -> Any:
     return series_item.get(key)
 
 
-def _numbers_ok(numbers: np.ndarray) -> bool:
-    """Whether atomic numbers are integers in 1..118, what matterviz can render (a
-    DummySpecies' Z is a hash).
-    """
-    in_range = (numbers >= 1) & (numbers <= MAX_ATOMIC_NUMBER)
-    return numbers.dtype.kind in "iu" and bool(np.all(in_range))
-
-
 def volume_envelope(values: Any, **fields: Any) -> dict[str, Any]:
     """Volume envelope for a finite [nx, ny, nz] grid (C order, z fastest).
 
@@ -359,7 +351,9 @@ def trajectory_to_envelope(
     traj.info.pop("time_step", None)  # the widget's time_step, not a frame series
     spin = traj.info.pop("spin_multiplicity", None)
     cells = traj.cells
-    bad_numbers = not len(numbers) or not _numbers_ok(numbers)
+    # matterviz renders Z in 1..118 (a DummySpecies' Z is a hash)
+    z_max = MAX_ATOMIC_NUMBER
+    bad_numbers = not len(numbers) or not 1 <= numbers.min() <= numbers.max() <= z_max
     json_only_sites = traj.charge.any() or traj.site_data.keys() & _JSON_SITE_DATA
     wrong_spin = spin is not None and np.any(spin != 1 + numbers.sum() % 2)
     if bad_numbers or json_only_sites or wrong_spin:
