@@ -104,7 +104,7 @@ def test_mixed_inputs(chart: ChemicalChart, limit: int | None) -> None:
     [
         ([], {}, ValueError, "Empty input"),
         (["?"], {}, ValueError, "Invalid formula"),
-        ([1], {}, TypeError, "Expected str, Composition or Structure"),
+        ([1], {}, TypeError, "Expected a formula string, mapping, Composition or"),
         (["Fe"], {"overflow": "merge"}, ValueError, "Invalid overflow="),
         (["Fe"], {"max_cells": 1}, TypeError, "max_cells"),
     ],

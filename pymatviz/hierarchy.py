@@ -15,7 +15,7 @@ from pymatviz.widgets.treemap import TreemapWidget
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from pymatviz.typing import FormulaGroupBy
+    from pymatviz.typing import FormulaGroupBy, FormulaLike
 
 
 def _validate_overflow(overflow: Literal["other", "drop"]) -> None:
@@ -56,7 +56,7 @@ def _limit_nodes(
 
 
 def _chem_sys_nodes(
-    data: Sequence[Any],
+    data: Sequence[FormulaLike],
     group_by: FormulaGroupBy,
     max_systems: int | None,
     overflow: Literal["other", "drop"],
@@ -110,7 +110,7 @@ def hierarchy_widget(
 
 
 def chem_sys_hierarchy(
-    data: Sequence[Any],
+    data: Sequence[FormulaLike],
     *,
     kind: Literal["sunburst", "treemap"] = "sunburst",
     group_by: FormulaGroupBy = "chem_sys",

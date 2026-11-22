@@ -277,13 +277,17 @@ def test_partial_or_conflicting_stress_stays_json(extra: dict[str, Any]) -> None
         np.testing.assert_array_equal(metadata[key], value)
 
 
-@pytest.mark.parametrize(
-    "n_frames",
-    [0, 1, 3],
-)
-def test_trajectory_widget_structure_sequence(n_frames: int) -> None:
-    """Test TrajectoryWidget handles lists of structures and pymatgen Trajectory."""
+@pytest.mark.parametrize("as_matscikit", [False, True])
+@pytest.mark.parametrize("n_frames", [0, 1, 3])
+def test_trajectory_widget_structure_sequence(
+    n_frames: int, as_matscikit: bool
+) -> None:
+    """Lists of pymatgen or matscikit structures, and pymatgen Trajectories, sync as
+    binary frames.
+    """
     from pymatgen.core import Lattice, Structure
+
+    from pymatviz.structures import to_structure
 
     structures = [
         Structure(
@@ -294,7 +298,10 @@ def test_trajectory_widget_structure_sequence(n_frames: int) -> None:
         for idx in range(n_frames)
     ]
 
-    widget = TrajectoryWidget(trajectory=structures)
+    frames = (
+        [to_structure(struct) for struct in structures] if as_matscikit else structures
+    )
+    widget = TrajectoryWidget(trajectory=frames)
     if not n_frames:  # nothing to encode: empty JSON trajectory
         assert widget.trajectory == {"frames": [], "metadata": {}}
         return

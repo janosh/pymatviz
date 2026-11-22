@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import traitlets as tl
 
 from pymatviz.widgets._schema_traits import CompositionTraits
 from pymatviz.widgets._traits import ELEMENT_COLOR_SCHEMES
 from pymatviz.widgets.matterviz import MatterVizWidget
+
+
+if TYPE_CHECKING:
+    from pymatviz.typing import FormulaLike
 
 
 class CompositionWidget(CompositionTraits, MatterVizWidget):
@@ -41,7 +45,7 @@ class CompositionWidget(CompositionTraits, MatterVizWidget):
         sync=True
     )
 
-    def __init__(self, composition: Any = None, **kwargs: Any) -> None:
+    def __init__(self, composition: FormulaLike | None = None, **kwargs: Any) -> None:
         """Initialize the CompositionWidget.
 
         Args:

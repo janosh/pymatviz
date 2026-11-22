@@ -10,13 +10,18 @@ import numpy as np
 
 from pymatviz.colors import ELEM_COLORS_JMOL
 from pymatviz.coordination.helpers import (
-    PYTHON_CN_STRATEGIES,
+    BrowserCnStrategy,
     CnSplitMode,
     CnStrategy,
-    coordination_nums_in_structure,
+    is_browser_strategy,
 )
 from pymatviz.enums import ElemColorScheme
-from pymatviz.structures import normalize_structures, site_elements, str_labels
+from pymatviz.structures import (
+    normalize_structures,
+    site_elements,
+    site_symbols,
+    str_labels,
+)
 from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.bar_plot import BarPlotWidget, bar_axis_defaults
 from pymatviz.widgets.coordination_bar_plot import CoordinationBarPlotWidget
@@ -75,7 +80,7 @@ def coordination_bar_plot(
     | Sequence[AnyStructure]
     | pd.Series,
     *,
-    strategy: str | CnStrategy = "electroneg_ratio",
+    strategy: BrowserCnStrategy | CnStrategy = "electroneg_ratio",
     split_mode: CnSplitMode | str = CnSplitMode.by_element,
     element_color_scheme: ElemColorScheme | dict[str, str] | None = None,
     annotate_bars: bool = False,
@@ -117,7 +122,7 @@ def coordination_bar_plot(
     """
     split_mode = CnSplitMode(split_mode)
     struct_dict = normalize_structures(structures)
-    if isinstance(strategy, str) and strategy not in PYTHON_CN_STRATEGIES:
+    if is_browser_strategy(strategy):
         if element_color_scheme is not None or annotate_bars:
             raise ValueError(
                 "element_color_scheme and annotate_bars need a Python strategy (cutoff "
@@ -132,28 +137,19 @@ def coordination_bar_plot(
             f"annotate_bars needs split_mode='by_element', got {split_mode=}"
         )
 
-    # {struct_key: {element: [CN of each site]}}
-    struct_cns = {
-        key: coordination_nums_in_structure(struct, strategy=strategy)
-        for key, struct in struct_dict.items()
-    }
-    # {series label: CN counts}; by_element sums each element over all structures
+    # {series label: CN counts} from one neighbor search over all structures;
+    # by_element sums each element (majority one on disordered sites) over them
     groups: dict[str, Counter[int]] = {}
+    all_cns = mk.coordination_numbers(list(struct_dict.values()), strategy)
+    for (key, struct), cns in zip(struct_dict.items(), all_cns, strict=True):
+        if split_mode == CnSplitMode.by_element:
+            for symbol, cn in zip(site_symbols(struct), cns.tolist(), strict=True):
+                groups.setdefault(symbol, Counter())[cn] += 1
+        else:
+            label = str(key) if split_mode == CnSplitMode.by_structure else "All sites"
+            groups.setdefault(label, Counter()).update(cns.tolist())
     if split_mode == CnSplitMode.by_element:
-        for elem_cns in struct_cns.values():
-            for elem, cns in elem_cns.items():
-                groups.setdefault(elem, Counter()).update(cns)
         groups = dict(sorted(groups.items()))
-    elif split_mode == CnSplitMode.by_structure:
-        for key, elem_cns in struct_cns.items():
-            groups[str(key)] = Counter(cn for cns in elem_cns.values() for cn in cns)
-    else:
-        groups[CnSplitMode.none.label] = Counter(
-            cn
-            for elem_cns in struct_cns.values()
-            for cns in elem_cns.values()
-            for cn in cns
-        )
 
     all_cns = {cn for counts in groups.values() for cn in counts}
     cn_values = list(range(min(all_cns), max(all_cns) + 1))

@@ -27,7 +27,6 @@ dependencies = [
   "moyopy>=0.21",
   "numpy>=2.5",
   "pandas>=2.3",
-  "pyyaml>=6.0.3",
   "scikit-learn>=1.9",
   "scipy>=1.18",
 ]
@@ -35,7 +34,7 @@ dependencies = [
 [project.optional-dependencies]
 # moyopy[interface]: pymatgen's get_symmetry_dataset (used by the spacegroup scripts) needs
 # moyopy's ase-based structure interface
-make-assets = ["pymatviz[export,pymatgen]", "lxml>=6", "matminer>=0.10.1", "moyopy[interface]>=0.21"]
+make-assets = ["pymatviz[export,pymatgen]", "lxml>=6", "matminer>=0.10.1", "moyopy[interface]>=0.21", "pyyaml>=6.0.3"]
 gh-pages = ["jupyter>=1.1.1", "nbconvert>=7.17"]
 phonons = ["phonopy>=4.8"] # only needed if user passes in phonopy objects
 # pymatgen-only features: pymatgen Trajectory JSON in TrajectoryWidget, matminer

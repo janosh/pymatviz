@@ -23,17 +23,25 @@ from pymatviz.utils import df_ptable
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from pymatviz.typing import ElemCountModeLike, ElemValues, FormulaGroupBy
+    from pymatgen.core import Composition as PmgComposition
+    from typing_extensions import TypeIs
+
+    from pymatviz.typing import (
+        ElemCountModeLike,
+        ElemValues,
+        FormulaGroupBy,
+        FormulaLike,
+    )
 
 
-def is_composition_like(obj: Any) -> bool:
+def is_composition_like(obj: Any) -> TypeIs[str | mk.Composition | PmgComposition]:
     """Whether obj is a formula string, a matscikit or pymatgen Composition."""
     return isinstance(obj, str | mk.Composition) or has_class(
         obj, "pymatgen.core.composition.Composition"
     )
 
 
-def to_composition(obj: Any, *, allow_negative: bool = False) -> mk.Composition:
+def to_composition(obj: FormulaLike, *, allow_negative: bool = False) -> mk.Composition:
     """Composition (matscikit) of a formula string, {element: amount} mapping,
     matscikit or pymatgen Composition (oxidation states summed per element) or
     structure-like object.
@@ -164,23 +172,16 @@ def count_elements(
 
 
 def _system_and_formula(
-    item: Any, group_by: FormulaGroupBy
+    item: FormulaLike, group_by: FormulaGroupBy
 ) -> tuple[tuple[str, ...], str]:
     """Sorted element tuple and formula label of one count_formulas input item."""
     if isinstance(item, str) and "-" in item:  # already a chemical system string
         elems, formula = item.split("-"), item
     else:
-        if isinstance(item, str):  # assume it's a formula string
-            try:
-                comp = mk.Composition(item)
-            except ValueError as exc:
-                raise ValueError(f"Invalid formula: {item}") from exc
-        elif is_composition_like(item) or is_structure_like(item):
+        try:
             comp = to_composition(item)
-        else:
-            raise TypeError(
-                f"Expected str, Composition or Structure, got {type(item)} instead"
-            )
+        except ValueError as exc:
+            raise ValueError(f"Invalid formula: {item}") from exc
         elems = comp.chemical_system.split("-")
         if group_by == "reduced_formula":
             formula = comp.reduced_formula
@@ -194,7 +195,7 @@ def _system_and_formula(
 
 
 def count_formulas(
-    data: Sequence[Any],
+    data: Sequence[FormulaLike],
     *,
     group_by: FormulaGroupBy = "chem_sys",
 ) -> pd.DataFrame:
@@ -203,7 +204,7 @@ def count_formulas(
     Used e.g. by chem_sys_hierarchy to preprocess input data.
 
     Args:
-        data (Sequence[str | Composition | Structure]): Chemical systems. Can be:
+        data (Sequence[FormulaLike]): Chemical systems. Can be:
             - Chemical system strings like ["Fe-O", "Li-P-O"]
             - Formula strings like ["Fe2O3", "LiPO4"]
             - matscikit or pymatgen Compositions

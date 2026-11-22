@@ -138,11 +138,12 @@ def test_normalize_convex_hull_entries_passthrough() -> None:
     ]
 
 
-@pytest.mark.parametrize("as_entry_list", [False, True])
-def test_normalize_convex_hull_entries_from_phase_diagram(as_entry_list: bool) -> None:
-    """A pymatgen PhaseDiagram or its entries give pymatgen's energies above hull
-    and stability (computed by matscikit).
+@pytest.mark.parametrize("source", ["pymatgen", "entries", "generator", "matscikit"])
+def test_normalize_convex_hull_entries_from_phase_diagram(source: str) -> None:
+    """Phase diagrams (pymatgen, matscikit), entry lists and generators give
+    pymatgen's energies above hull and stability (computed by matscikit).
     """
+    from matscikit.interop import to_phase_diagram
     from pymatgen.analysis.phase_diagram import PDEntry, PhaseDiagram
     from pymatgen.entries.computed_entries import ComputedEntry
 
@@ -154,14 +155,26 @@ def test_normalize_convex_hull_entries_from_phase_diagram(as_entry_list: bool) -
         ComputedEntry("Li3O", -16.0, correction=-0.3),
     ]
     phase_diag = PhaseDiagram(entries)
-    result = normalize_convex_hull_entries(entries if as_entry_list else phase_diag)
-    assert result is not None
-    if not as_entry_list:  # in PhaseDiagram.all_entries order
+    if source == "pymatgen":  # in PhaseDiagram.all_entries order
         entries = phase_diag.all_entries
+    obj = {
+        "pymatgen": phase_diag,
+        "entries": entries,
+        "generator": (entry for entry in entries),
+        "matscikit": to_phase_diagram(entries),
+    }[source]
+    result = normalize_convex_hull_entries(obj)
+    assert result is not None
     assert [entry["composition"] for entry in result] == [
         entry.composition.as_dict() for entry in entries
     ]
-    assert [entry["energy"] for entry in result] == [entry.energy for entry in entries]
+    # total energy = energy per atom x atoms, within round-off of pymatgen's
+    np.testing.assert_allclose(
+        [entry["energy"] for entry in result],
+        [entry.energy for entry in entries],
+        rtol=4e-16,
+        atol=0,
+    )
     np.testing.assert_allclose(
         [entry["e_above_hull"] for entry in result],
         [phase_diag.get_e_above_hull(entry) for entry in entries],

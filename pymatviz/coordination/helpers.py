@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal, get_args
 
 import matscikit as mk
 
@@ -12,12 +12,20 @@ from pymatviz.structures import site_symbols, to_structure
 
 
 if TYPE_CHECKING:
+    from typing_extensions import TypeIs
+
     from pymatviz.typing import AnyStructure
 
-# Neighbor strategies computed in Python by matscikit.coordination_numbers, as
-# pymatgen's CrystalNN() and VoronoiNN()
+# Neighbor strategies computed in Python by matscikit.coordination_numbers: a cutoff
+# in Å, or pymatgen's CrystalNN() and VoronoiNN()
 type CnStrategy = float | Literal["crystal_nn", "voronoi"]
-PYTHON_CN_STRATEGIES = ("crystal_nn", "voronoi")
+# MatterViz bonding strategies, computed in the browser
+BrowserCnStrategy = Literal["electroneg_ratio", "explicit_only", "pair_cutoffs"]
+
+
+def is_browser_strategy(strategy: Any) -> TypeIs[BrowserCnStrategy]:
+    """Whether strategy names a MatterViz bonding strategy (computed in the browser)."""
+    return strategy in get_args(BrowserCnStrategy)
 
 
 class CnSplitMode(LabelEnum):

@@ -26,6 +26,12 @@ if TYPE_CHECKING:
 type AnyStructure = "Structure | IStructure | IMolecule | AseAtoms | PhonopyAtoms"
 type PeriodicStructure = "Structure | IStructure | AseAtoms | PhonopyAtoms"
 type AnyDos = "MskPhononDos | PhononDos | TotalDos | Phonopy"
+# formula strings, {element: amount} mappings or Composition objects
+type CompositionLike = "str | Mapping[str, float] | Composition | PmgComposition"
+# also chemical system strings ("Fe-O") and structures, as count_formulas takes them
+type FormulaLike = "CompositionLike | AnyStructure"
+# space group numbers, Hermann-Mauguin/Hall symbols or periodic structures
+type SpacegroupLike = "int | float | str | PeriodicStructure"
 
 # ElemCountMode values, so callers can pass plain strings (count_mode="occurrence")
 ElemCountModeName = Literal[

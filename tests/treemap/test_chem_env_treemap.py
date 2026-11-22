@@ -92,5 +92,7 @@ def test_chem_env_requires_periodic_structure(
 ) -> None:
     """Both strategies reject nonperiodic inputs before neighbor analysis."""
     molecule = Molecule(["H", "H"], [[0, 0, 0], [0.7, 0, 0]])
-    with pytest.raises(TypeError, match=r"Expected periodic structures, got molecules"):
+    with pytest.raises(
+        TypeError, match=r"Expected structures periodic along a, b and c"
+    ):
         pmv.chem_env_hierarchy(molecule, method=method, kind="treemap")  # ty: ignore[invalid-argument-type]

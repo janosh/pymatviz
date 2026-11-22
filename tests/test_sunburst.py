@@ -10,7 +10,6 @@ import pytest
 from pymatgen.core import Lattice, Structure
 
 import pymatviz as pmv
-from pymatviz.sunburst import spacegroup as spacegroup_mod
 from pymatviz.sunburst import spacegroup_sunburst
 
 
@@ -96,19 +95,16 @@ def test_spacegroup_sunburst_structure_counts(
     }
 
 
-def test_spacegroup_sunburst_reports_conversion_failure(
-    structures: list[Structure], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Report index and type when a structure's space group fails."""
+def test_spacegroup_sunburst_rejects_non_periodic(structures: list[Structure]) -> None:
+    """ASE Atoms with the default pbc=False are rejected with how to fix it."""
+    from ase import Atoms
 
-    def reject_structure(_struct: Any) -> int:
-        """Simulate unsupported structure input."""
-        raise TypeError("unsupported structure")
-
-    monkeypatch.setattr(spacegroup_mod, "get_spacegroup_number", reject_structure)
-
-    with pytest.raises(TypeError, match="structure at index 0 \\(Structure\\)"):
-        spacegroup_sunburst(structures)
+    atoms = Atoms("Si", cell=[3, 3, 3])  # pbc defaults to False
+    with pytest.raises(
+        TypeError, match=r"periodic along a, b and c.*atoms\.pbc = True"
+    ):
+        spacegroup_sunburst([*structures, atoms])
+    assert spacegroup_sunburst([*structures, Atoms("Si", cell=[3, 3, 3], pbc=True)])
 
 
 @pytest.mark.parametrize(

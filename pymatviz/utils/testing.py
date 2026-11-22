@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Final
+from typing import TYPE_CHECKING, Final
 
 import matscikit as mk
 import numpy as np
@@ -13,15 +13,12 @@ from pymatviz.utils import ROOT
 if TYPE_CHECKING:
     from phonopy import Phonopy
 
+    from pymatviz.typing import PeriodicStructure
+
 
 TEST_FILES: str = f"{ROOT}/tests/files"
 
 # === Disordered structures for tests and examples ===
-
-
-def _hexagonal(a: float, c: float) -> np.ndarray:
-    """Row-vector lattice of a hexagonal cell (pymatgen's Lattice.hexagonal)."""
-    return np.array([[a, 0, 0], [-a / 2, a * 3**0.5 / 2, 0], [0, 0, c]])
 
 
 fe3co4_disordered = mk.Structure(
@@ -45,7 +42,7 @@ batio3_disordered = mk.Structure(
 
 # Li-ion cathode with vacancy disorder
 lico2_disordered = mk.Structure(
-    _hexagonal(2.82, 14.05),
+    mk.lattice_from_parameters(2.82, 2.82, 14.05, 90, 90, 120, c_along_z=True),
     [
         {"Li": 0.75},  # Li site with 25% vacancies
         "Co",
@@ -89,7 +86,7 @@ disordered_demo_structures: Final[dict[str, mk.Structure]] = {
 }
 
 
-def formula_spg_str(struct: Any) -> str:
+def formula_spg_str(struct: PeriodicStructure) -> str:
     """Get a string with formula and space group number for a structure.
 
     Args:

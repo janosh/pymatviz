@@ -169,8 +169,8 @@ class MockAseAtoms:
     __qualname__ = "Atoms"
 
 
-class MockMsonAtoms:
-    """Mock object whose type identity matches pymatgen MSONAtoms."""
+class MockMsonAtoms(MockAseAtoms):
+    """Mock of pymatgen's MSONAtoms, an ASE Atoms subclass."""
 
     __module__ = "pymatgen.io.ase"
     __qualname__ = "MSONAtoms"
@@ -353,9 +353,13 @@ def test_normalize_spacegroups_invalid_number_raises(
         ([], "Cannot normalize empty spacegroup data"),
         (["Fm-3m", "InvalidSymbol", "P1"], "InvalidSymbol"),
         (["P2_1/c", "Fm-3m", "P1_bad"], "P1_bad"),
+        ([225, "Fm-3m"], r"one kind\), got \['int', 'str'\]"),
+        (["Fm-3m", 225], r"one kind\), got \['int', 'str'\]"),
+        ([[225]], r"got \['list'\]"),
     ],
 )
-def test_normalize_spacegroups_raises(data: list[str], match: str) -> None:
-    """Reject empty input and unknown Hermann-Mauguin symbols."""
-    with pytest.raises(ValueError, match=match):
+def test_normalize_spacegroups_raises(data: list[Any], match: str) -> None:
+    """Reject empty input, unknown symbols and mixed or unsupported item types."""
+    err_cls = TypeError if "one kind" in match or "list" in match else ValueError
+    with pytest.raises(err_cls, match=match):
         normalize_spacegroups(data)

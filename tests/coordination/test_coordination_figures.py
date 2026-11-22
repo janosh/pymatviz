@@ -7,7 +7,6 @@ import matscikit as mk
 import numpy as np
 import pandas as pd
 import pytest
-import traitlets as tl
 from pymatgen.core import Lattice, Structure
 
 from pymatviz.coordination import coordination_bar_plot, coordination_vs_cutoff_line
@@ -145,7 +144,7 @@ def test_coordination_bar_plot_style_options(nacl: Structure) -> None:
     [
         ([], {}, ValueError, "Cannot plot empty set of structures"),
         ("invalid input", {}, TypeError, "Input must be a matscikit or pymatgen"),
-        (None, {"strategy": "nope"}, tl.TraitError, "strategy"),
+        (None, {"strategy": "nope"}, ValueError, "unknown coordination strategy"),
         (None, {"annotate_bars": True}, ValueError, "need a Python strategy"),
         (None, {"split_mode": "by_structure_and_element"}, ValueError, "not a valid"),
         (

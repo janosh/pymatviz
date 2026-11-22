@@ -4,12 +4,20 @@ and space group numbers for matscikit, pymatgen, ASE and phonopy structures.
 
 from __future__ import annotations
 
+import os
 from collections.abc import Hashable, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
 import matscikit as mk
 import pandas as pd
-from matscikit.interop import has_class, structure_to_pymatgen_dict, to_structure
+from matscikit.interop import (
+    ASE_ATOMS,
+    PHONOPY_ATOMS,
+    PYMATGEN_STRUCTURES,
+    has_class,
+    structure_to_pymatgen_dict,
+    to_structure,
+)
 
 
 if TYPE_CHECKING:
@@ -18,29 +26,27 @@ if TYPE_CHECKING:
     from pymatgen.core import IMolecule, IStructure
     from typing_extensions import TypeIs
 
-    from pymatviz.typing import AnyStructure
+    from pymatviz.typing import AnyStructure, PeriodicStructure, SpacegroupLike
 
 
 def is_ase_atoms(struct: Any) -> TypeIs[Atoms]:
     """Check if the input is an ASE Atoms object without importing ase."""
-    return has_class(struct, "ase.atoms.Atoms", "pymatgen.io.ase.MSONAtoms")
+    return has_class(struct, ASE_ATOMS)  # also pymatgen's MSONAtoms subclass
 
 
 def is_phonopy_atoms(obj: Any) -> TypeIs[PhonopyAtoms]:
     """Check if object is PhonopyAtoms or a subclass (Supercell, Primitive)."""
-    return has_class(obj, "phonopy.structure.atoms.PhonopyAtoms")
+    return has_class(obj, PHONOPY_ATOMS)
 
 
 def is_pymatgen_structure(obj: Any) -> TypeIs[IStructure | IMolecule]:
     """Whether obj is a pymatgen Structure/Molecule (mutable or not), without
     importing pymatgen.
     """
-    return has_class(
-        obj, "pymatgen.core.structure.IStructure", "pymatgen.core.structure.IMolecule"
-    )
+    return has_class(obj, *PYMATGEN_STRUCTURES)
 
 
-def is_structure_like(obj: Any) -> bool:
+def is_structure_like(obj: Any) -> TypeIs[AnyStructure]:
     """Whether obj is a matscikit or pymatgen structure, ASE Atoms or PhonopyAtoms."""
     return (
         isinstance(obj, mk.Structure)
@@ -50,7 +56,7 @@ def is_structure_like(obj: Any) -> bool:
     )
 
 
-def structure_dict(obj: Any) -> dict[str, Any]:
+def structure_dict(obj: AnyStructure) -> dict[str, Any]:
     """Dict in pymatgen's format (MatterViz's JSON structure format) of a structure-like
     object: pymatgen's own ``as_dict()`` for pymatgen objects, else matscikit's
     ``Structure.as_dict()``/``Molecule.as_dict()`` payload (molecules without lattice).
@@ -75,12 +81,10 @@ def site_symbols(struct: mk.Structure) -> list[str]:
     ]
 
 
-type _StructureInput = AnyStructure | PhonopyAtoms
+# items of sequences and mappings may also be structure file paths
+type _StructureItem = AnyStructure | str | os.PathLike[str]
 type _StructureInputs = (
-    _StructureInput
-    | Sequence[_StructureInput]
-    | pd.Series
-    | Mapping[Any, _StructureInput]
+    AnyStructure | Sequence[_StructureItem] | pd.Series | Mapping[Any, _StructureItem]
 )
 
 
@@ -131,33 +135,43 @@ def str_labels[T](labeled: Mapping[Any, T]) -> dict[str, T]:
 def normalize_periodic_structures(
     systems: _StructureInputs,
 ) -> dict[Hashable, mk.Structure]:
-    """normalize_structures, raising TypeError for non-periodic ones (molecules)."""
+    """normalize_structures, raising TypeError for structures not periodic along all
+    three axes (molecules, slabs, wires, ASE Atoms with the default pbc=False).
+    """
     struct_dict = normalize_structures(systems)
-    if molecules := [key for key, val in struct_dict.items() if not any(val.pbc)]:
-        raise TypeError(f"Expected periodic structures, got molecules {molecules}")
+    if non_periodic := {
+        key: val.pbc for key, val in struct_dict.items() if not all(val.pbc)
+    }:
+        raise TypeError(
+            f"Expected structures periodic along a, b and c, got pbc {non_periodic} "
+            "(set atoms.pbc = True for ASE Atoms of a crystal)"
+        )
     return struct_dict
 
 
-def get_spacegroup_number(structure: Any) -> int:
-    """Space group number of a periodic structure-like object (disordered sites
-    are told apart by species and occupancy).
+def spacegroup_numbers(structures: Sequence[PeriodicStructure]) -> list[int]:
+    """Space group numbers of periodic structure-like objects, searched in parallel
+    (disordered sites are told apart by species and occupancy).
 
     Raises:
-        TypeError: For unsupported or non-periodic inputs.
+        TypeError: For unsupported or non-periodic inputs, or structures whose
+            symmetry search fails (naming their indices).
     """
-    struct = next(iter(normalize_periodic_structures(structure).values()))
-    return mk.symmetry_dataset(struct).number
+    structs = list(normalize_periodic_structures(list(structures)).values())
+    numbers = mk.symmetry_summary(structs).number
+    if failed := [idx for idx, number in enumerate(numbers) if number is None]:
+        raise TypeError(f"Symmetry search failed for structures at indices {failed}")
+    return [number for number in numbers if number is not None]
 
 
-def normalize_spacegroups(
-    data: Sequence[int | str | Any] | pd.Series,
-) -> pd.Series:
-    """Space group numbers (1-230) from structures, numbers or Hermann-Mauguin
-    symbols, keeping a Series' index and name.
+def normalize_spacegroups(data: Sequence[SpacegroupLike] | pd.Series) -> pd.Series:
+    """Space group numbers (1-230) from structures, numbers or Hermann-Mauguin/Hall
+    symbols (one kind per input), keeping a Series' index and name.
 
     Raises:
         ValueError: If data is empty, contains missing values, invalid symbols,
             or nonintegral/out-of-range space group numbers.
+        TypeError: For mixed or unsupported item types.
     """
     if len(data) == 0:
         raise ValueError("Cannot normalize empty spacegroup data")
@@ -167,10 +181,10 @@ def normalize_spacegroups(
     result = pd.Series(data).infer_objects()
     if result.isna().any():
         raise ValueError("Space group data must not contain missing values")
-    first_item = result.iloc[0]
 
-    if is_structure_like(first_item):
-        return result.map(get_spacegroup_number)
+    if is_structure_like(result.iloc[0]):
+        numbers = spacegroup_numbers(result.tolist())
+        return pd.Series(numbers, index=result.index, name=result.name)
 
     if pd.api.types.is_numeric_dtype(result):
         invalid = result[(result < 1) | (result > 230) | (result % 1 != 0)]
@@ -181,16 +195,20 @@ def normalize_spacegroups(
             )
         return result.astype(int)
 
-    if isinstance(first_item, str):
-        numbers: dict[str, int] = {}
-        invalid: list[str] = []
+    if all(isinstance(symbol, str) for symbol in result):
+        numbers_of: dict[str, int] = {}
+        invalid_symbols: list[str] = []
         for symbol in result.unique():  # loose spellings, settings, Hall symbols
             try:
-                numbers[symbol] = mk.space_group_number(symbol)
+                numbers_of[symbol] = mk.space_group_number(symbol)
             except ValueError:
-                invalid.append(symbol)
-        if invalid:
-            raise ValueError(f"Invalid space group symbols: {invalid}")
-        return result.map(numbers).astype(int)
+                invalid_symbols.append(symbol)
+        if invalid_symbols:
+            raise ValueError(f"Invalid space group symbols: {invalid_symbols}")
+        return result.map(numbers_of).astype(int)
 
-    return result
+    item_types = sorted({type(item).__name__ for item in result})
+    raise TypeError(
+        "Expected structures, space group numbers or symbols (one kind), got "
+        f"{item_types}"
+    )

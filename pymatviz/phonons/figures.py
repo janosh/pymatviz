@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Literal
 
-import numpy as np
+import matscikit as mk
 from matscikit.interop import to_phonon_dos
 
 from pymatviz.structures import site_symbols
@@ -13,7 +13,6 @@ from pymatviz.widgets.dos import DosWidget
 
 
 if TYPE_CHECKING:
-    import matscikit as mk
     from pymatgen.phonon.dos import CompletePhononDos
 
     from pymatviz.typing import AnyDos
@@ -26,7 +25,7 @@ def _unwrap_single[T](labeled: dict[str, T]) -> T | dict[str, T]:
     return labeled[""] if list(labeled) == [""] else labeled
 
 
-def _phonon_dos(label: str, dos: Any) -> mk.PhononDos:
+def _phonon_dos(label: str, dos: AnyDos | CompletePhononDos) -> mk.PhononDos:
     """PhononDos (matscikit) of a matscikit, phonopy or pymatgen phonon DOS.
 
     Raises:
@@ -36,16 +35,6 @@ def _phonon_dos(label: str, dos: Any) -> mk.PhononDos:
         return to_phonon_dos(dos)
     except TypeError as exc:
         raise TypeError(f"{exc} (key {label!r})") from exc
-
-
-def _dos_dict(frequencies: Any, densities: Any) -> dict[str, Any]:
-    """One DOS curve as a pymatgen PhononDos dict (MatterViz's format)."""
-    return {
-        "@module": "pymatgen.phonon.dos",
-        "@class": "PhononDos",
-        "frequencies": np.asarray(frequencies, dtype=float).tolist(),
-        "densities": np.asarray(densities, dtype=float).tolist(),
-    }
 
 
 def _labeled_doses(
@@ -65,7 +54,7 @@ def _labeled_doses(
     for label, raw_dos in raw_doses.items():
         ph_dos = _phonon_dos(label, raw_dos)
         freqs = ph_dos.frequency_points
-        total = _dos_dict(freqs, ph_dos.total_dos)
+        total = mk.PhononDos(freqs, ph_dos.total_dos).as_dict()
         if project is None:
             dos_dict[label] = total
             continue
@@ -73,7 +62,8 @@ def _labeled_doses(
             raise TypeError(
                 f"project={project!r} needs a DOS with site projections (pymatgen "
                 "CompletePhononDos, matscikit Phonons.projected_dos, phonopy after "
-                f"run_projected_dos), got {type(raw_dos).__name__} for key {label!r}"
+                "run_total_dos and run_projected_dos on one mesh), got "
+                f"{type(raw_dos).__name__} for key {label!r}"
             )
         symbols = site_symbols(ph_dos.structure)
         projected = (
@@ -88,7 +78,7 @@ def _labeled_doses(
         )
         prefix = f"{label} - " if label else ""
         dos_dict |= {
-            f"{prefix}{key}": _dos_dict(freqs, densities)
+            f"{prefix}{key}": mk.PhononDos(freqs, densities).as_dict()
             for key, densities in projected.items()
         }
         if show_total:
@@ -120,8 +110,8 @@ def phonon_dos(
             applies to each DOS. Defaults to None.
         project ("element" | "site" | None): Decompose each site-projected DOS
             (pymatgen CompletePhononDos, matscikit PhononDos with projections,
-            phonopy after run_projected_dos) into per-element or per-site partial
-            DOS. Defaults to None (total DOS only).
+            phonopy after run_total_dos and run_projected_dos on one mesh) into
+            per-element or per-site partial DOS. Defaults to None (total DOS only).
         show_total (bool): When projecting, also plot each total DOS (labeled
             ``Total``). Defaults to True.
         **kwargs: Passed to DosWidget, e.g. ``orientation``, ``show_legend`` or

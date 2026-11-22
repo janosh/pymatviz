@@ -58,10 +58,10 @@ def test_one_hot_encode_oxidation_states(normalize: bool) -> None:
 def test_embed_invalid_input(
     embed_func: Callable[..., np.ndarray], compositions: list[Any]
 ) -> None:
-    """Non-composition inputs raise a ValueError naming the bad composition."""
+    """Non-composition inputs raise a TypeError naming the expected types."""
     if embed_func is matminer_featurize:
         pytest.importorskip("matminer")
-    with pytest.raises(ValueError, match="Invalid composition="):
+    with pytest.raises(TypeError, match="Expected a formula string, mapping"):
         embed_func(compositions)
 
 

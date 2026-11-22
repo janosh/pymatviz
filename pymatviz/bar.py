@@ -15,9 +15,11 @@ if TYPE_CHECKING:
 
     import pandas as pd
 
+    from pymatviz.typing import SpacegroupLike
+
 
 def spacegroup_bar_plot(
-    data: Sequence[Any] | pd.Series,
+    data: Sequence[SpacegroupLike] | pd.Series,
     *,
     show_counts: bool = True,
     log_y: bool = False,
@@ -31,7 +33,7 @@ def spacegroup_bar_plot(
     order.
 
     Args:
-        data (Sequence[int | float | str | Structure] | pd.Series | Mapping): Space
+        data (Sequence[SpacegroupLike] | pd.Series | Mapping): Space
             group symbols, integral numbers (1-230), structures (matscikit, pymatgen,
             ASE, phonopy),
             or a ``{spacegroup: count}`` mapping.

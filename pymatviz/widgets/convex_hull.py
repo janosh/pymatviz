@@ -50,8 +50,8 @@ class ConvexHullWidget(ConvexHullTraits, MatterVizWidget):
         """Initialize the ConvexHullWidget.
 
         Args:
-            entries: Convex hull data -- a pymatgen PhaseDiagram, or a list of dicts
-                with composition and energy keys.
+            entries: Convex hull data -- a matscikit or pymatgen PhaseDiagram,
+                pymatgen entries, or a list of dicts with composition and energy keys.
             **kwargs: Additional widget properties.
         """
         from pymatviz.widgets._normalize import normalize_convex_hull_entries

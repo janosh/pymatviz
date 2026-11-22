@@ -6,7 +6,7 @@ into numerical vectors, which can then be used for clustering and visualization.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 import pandas as pd
@@ -17,7 +17,9 @@ from pymatviz.composition import to_composition
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    import matscikit as mk
+    from pymatgen.core import Element
+
+    from pymatviz.typing import CompositionLike
 
 
 MatminerElementPropertyPreset = Literal[
@@ -25,16 +27,8 @@ MatminerElementPropertyPreset = Literal[
 ]
 
 
-def try_composition(composition: Any) -> mk.Composition:
-    """Composition (matscikit) of a formula or Composition, ValueError if invalid."""
-    try:
-        return to_composition(composition)
-    except (TypeError, ValueError):
-        raise ValueError(f"Invalid {composition=}") from None
-
-
 def matminer_featurize(
-    compositions: Sequence[Any] | pd.Series,
+    compositions: Sequence[CompositionLike] | pd.Series,
     preset: MatminerElementPropertyPreset = "magpie",
     *,
     normalize: bool = False,
@@ -47,7 +41,7 @@ def matminer_featurize(
     which includes physical and chemical properties of elements.
 
     Args:
-        compositions (Sequence[str] | Sequence[Composition] | pd.Series): chemical
+        compositions (Sequence[CompositionLike] | pd.Series): chemical
             formulas as strings or matscikit/pymatgen Composition objects.
         preset (str): Matminer preset to use. Options: "magpie", "deml", "matminer",
             "matscholar_el", "megnet_el" (default: "magpie").
@@ -74,7 +68,7 @@ def matminer_featurize(
 
     from pymatgen.core import Composition  # matminer featurizes pymatgen objects
 
-    comp_objs = [Composition(try_composition(comp).as_dict()) for comp in compositions]
+    comp_objs = [Composition(to_composition(comp).as_dict()) for comp in compositions]
 
     featurizer = ElementProperty.from_preset(preset)
     featurizer.set_n_jobs(n_jobs)
@@ -105,15 +99,15 @@ def matminer_featurize(
 
 
 def one_hot_encode(
-    compositions: Sequence[Any] | pd.Series,
+    compositions: Sequence[CompositionLike] | pd.Series,
     *,
     normalize: bool = True,
-    elements: Sequence[Any] | None = None,
+    elements: Sequence[str | Element] | None = None,
 ) -> np.ndarray:
     """One-hot encode chemical formulas or compositions.
 
     Args:
-        compositions (Sequence[str] | Sequence[Composition] | pd.Series): chemical
+        compositions (Sequence[CompositionLike] | pd.Series): chemical
             formulas as strings or matscikit/pymatgen Composition objects.
         normalize (bool): Whether to normalize the feature vectors to unit norm
             (default: True)
@@ -135,7 +129,7 @@ def one_hot_encode(
     if len(column_of) != len(elements):
         raise ValueError(f"duplicate entries in {elements=}")
 
-    comp_objs = [try_composition(comp) for comp in compositions]
+    comp_objs = [to_composition(comp) for comp in compositions]
     features = np.zeros((len(comp_objs), len(elements)))
 
     for idx, comp in enumerate(comp_objs):

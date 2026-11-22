@@ -30,6 +30,7 @@ _DISPLAY_SPECS: tuple[tuple[str, tuple[str, ...], type[MatterVizWidget], str], .
     ("matscikit", ("PhononBands",), BandStructureWidget, "band_structs"),
     ("matscikit", ("PhononDos",), DosWidget, "doses"),
     ("matscikit", ("XrdPattern",), XrdWidget, "patterns"),
+    ("matscikit", ("PhaseDiagram",), ConvexHullWidget, "entries"),
     ("matscikit.electronic", ("ElectronicBands",), BandStructureWidget, "band_structs"),
     ("matscikit.electronic", ("ElectronicDos",), DosWidget, "doses"),
     (
@@ -127,10 +128,7 @@ def _set_marimo_display(
         return
     for cls in filter(None, (getattr(module, name, None) for name in class_names)):
         if on and not hasattr(cls, "_display_"):
-            try:
-                cls._display_ = create_widget  # ty: ignore[invalid-assignment]
-            except TypeError:  # immutable extension types (matscikit)
-                continue
+            cls._display_ = create_widget  # ty: ignore[invalid-assignment]
         elif not on and vars(cls).get("_display_") is create_widget:
             del cls._display_
 

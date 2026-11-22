@@ -1,20 +1,27 @@
 """Sunburst of space groups grouped by crystal system."""
 
+from __future__ import annotations
+
 from collections import Counter
-from collections.abc import Sequence
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 import pandas as pd
 
 from pymatviz.hierarchy import _limit_nodes, _validate_overflow
-from pymatviz.structures import get_spacegroup_number, is_structure_like
+from pymatviz.structures import is_structure_like, spacegroup_numbers
 from pymatviz.utils import spg_to_crystal_sys
 from pymatviz.widgets.sunburst import SunburstWidget
 
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from pymatviz.typing import SpacegroupLike
+
+
 def spacegroup_sunburst(
-    data: Sequence[Any] | pd.Series,
+    data: Sequence[SpacegroupLike] | pd.Series,
     *,
     max_spacegroups: int | None = None,
     overflow: Literal["other", "drop"] = "other",
@@ -23,7 +30,7 @@ def spacegroup_sunburst(
     """Show space group counts with crystal systems as the inner ring.
 
     Args:
-        data (Sequence[int | str | Structure] | pd.Series): Space group numbers (1 -
+        data (Sequence[SpacegroupLike] | pd.Series): Space group numbers (1 -
             230), international symbols or structures (matscikit, pymatgen, ASE,
             phonopy).
         max_spacegroups (int | None): Maximum number of space groups to show for each
@@ -52,16 +59,7 @@ def spacegroup_sunburst(
     # materialize as list[Any] for Series-safe positional access and untyped iteration
     values: list[Any] = data.tolist() if isinstance(data, pd.Series) else list(data)
     if is_structure_like(values[0]):  # if 1st item is structure-like, assume all are
-        spg_nums: list[Any] = []
-        for idx, struct in enumerate(values):
-            try:
-                spg_nums.append(get_spacegroup_number(struct))
-            except (TypeError, ValueError, RuntimeError) as exc:
-                raise TypeError(
-                    "Could not determine space group for structure at index "
-                    f"{idx} ({type(struct).__name__}). Pass periodic structures."
-                ) from exc
-        values = spg_nums
+        values = list(spacegroup_numbers(values))
     if pd.isna(pd.Series(values, dtype=object)).any():
         raise ValueError("Space group data must not contain missing values")
     # NumPy scalars to Python ints/floats/strings, which spg_to_crystal_sys accepts

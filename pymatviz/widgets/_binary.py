@@ -187,9 +187,14 @@ def _is_number(value: Any) -> bool:
 
 
 def object_metadata(structure: Any) -> dict[str, Any]:
-    """Metadata of a structure-like object: its properties/info, plus ASE calculator
-    results (energy, forces, stress, ...) which pymatgen's ``AseAtomsAdaptor`` drops.
+    """Metadata of a structure-like object: its properties (a matscikit Structure's
+    ``info["properties"]``) or ASE info, plus ASE calculator results (energy, forces,
+    stress, ...) which pymatgen's ``AseAtomsAdaptor`` drops.
     """
+    import matscikit as mk
+
+    if isinstance(structure, mk.Structure):
+        return dict(structure.info.get("properties") or {})
     metadata = getattr(structure, "properties", None) or getattr(structure, "info", {})
     calc = getattr(structure, "calc", None)
     return {**(metadata or {}), **(getattr(calc, "results", None) or {})}
@@ -240,7 +245,9 @@ def _frame(item: Any) -> _Frame | None:
     if isinstance(item, Mapping) and len(item) > 1 and object_metadata(structure):
         return None  # JSON keeps frame metadata separate from structure properties.
     if isinstance(structure, mk.Structure):
-        if not structure.is_ordered:
+        # disordered sites and info beyond properties (pymatgen site data such as
+        # oxidation states, molecule charge) need JSON
+        if not structure.is_ordered or set(structure.info) - {"properties"}:
             return None
         periodic = any(structure.pbc)
         return _Frame(

@@ -108,10 +108,10 @@ def _composition_strings(
     """Convert compositions to a list of formula strings."""
     comp_strs: list[str] = []
     for comp in compositions:
-        if isinstance(comp, str):
-            comp_strs.append(comp)
-        elif is_composition_like(comp):
-            comp_strs.append(to_composition(comp).formula)
+        if is_composition_like(comp):
+            comp_strs.append(
+                comp if isinstance(comp, str) else to_composition(comp).formula
+            )
         elif strict:
             raise TypeError(f"Expected str or Composition, got {comp=}")
         else:

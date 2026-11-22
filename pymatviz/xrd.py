@@ -32,15 +32,16 @@ def _to_pattern_dict(
     if is_structure_like(pattern_or_struct):
         struct = to_structure(pattern_or_struct)
         (pattern_or_struct,) = mk.xrd_patterns([struct], wavelength=wavelength)
+    expected = (
+        f"{label!r}: expected a structure (matscikit, pymatgen, ASE, phonopy), "
+        f"XrdPattern or DiffractionPattern, got {type(pattern_or_struct).__name__}"
+    )
     try:
         pattern = normalize_xrd_pattern(pattern_or_struct)
-    except TypeError:
-        pattern = None
+    except TypeError as exc:
+        raise TypeError(expected) from exc
     if pattern is None:
-        raise TypeError(
-            f"{label!r}: expected a structure (matscikit, pymatgen, ASE, phonopy), "
-            f"XrdPattern or DiffractionPattern, got {type(pattern_or_struct).__name__}"
-        )
+        raise TypeError(expected)
     intensities = np.asarray(pattern.get("y", []), dtype=float)
     if len(intensities) == 0:
         raise ValueError(f"No intensities found in the diffraction pattern for {label}")

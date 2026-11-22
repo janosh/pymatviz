@@ -221,6 +221,8 @@ def _fallback_cases() -> list[Any]:
     from pymatgen.core import DummySpecies, Lattice, Molecule, Species, Structure
     from pymatgen.core.trajectory import Trajectory
 
+    from pymatviz.structures import to_structure
+
     lattice = Lattice.cubic(3)
     coords = [[0, 0, 0], [0.5, 0.5, 0.5]]
     fe2 = Structure(lattice, ["Fe", "Fe"], coords)
@@ -252,6 +254,8 @@ def _fallback_cases() -> list[Any]:
         Trajectory.from_structures([dummy, dummy]),
         [Structure(lattice, [], [])] * 2,  # zero atoms
         [Structure(lattice, [Species("Fe", 2), Species("O", -2)], coords)],
+        # matscikit keeps oxidation states in info["pymatgen"]
+        [to_structure(Structure(lattice, [Species("Fe", 2), "O"], coords))],
         Trajectory.from_structures(
             [Structure(lattice, [Species("Fe", 2), Species("O", -2)], coords)] * 2
         ),

@@ -525,13 +525,14 @@ def _normalize_entry_compositions(
 
 
 def normalize_convex_hull_entries(obj: Any) -> list[dict[str, Any]] | None:
-    """Convex hull entries (composition, energy, stability) of entry dicts, a pymatgen
-    PhaseDiagram or a sequence of entry objects (pymatgen ComputedEntry, PDEntry);
-    energies above hull and stability from matscikit's PhaseDiagram.
+    """Convex hull entries (composition, energy, stability) of entry dicts, a matscikit
+    or pymatgen PhaseDiagram or an iterable of entries (pymatgen ComputedEntry,
+    PDEntry, entry dicts); energies above hull and stability from matscikit's
+    PhaseDiagram, total energies as energy per atom times atoms.
 
     Args:
-        obj: Entry dicts (passed through, formula strings parsed), a pymatgen
-            PhaseDiagram, a sequence of entries, or None.
+        obj: Entry dicts (passed through, formula strings parsed), a PhaseDiagram,
+            an iterable of entries, or None.
 
     Returns:
         List of entry dicts with composition, energy, and stability info, or None.
@@ -543,26 +544,26 @@ def normalize_convex_hull_entries(obj: Any) -> list[dict[str, Any]] | None:
         return None
     if isinstance(obj, (list, tuple)) and all(isinstance(entry, dict) for entry in obj):
         return _normalize_entry_compositions(obj)
+    import matscikit as mk
     from matscikit.interop import to_phase_diagram
 
-    try:
-        phase_diagram = to_phase_diagram(obj)
+    try:  # materialize generators, keep phase diagrams (all_entries) as they are
+        is_diagram = isinstance(obj, mk.PhaseDiagram) or hasattr(obj, "all_entries")
+        phase_diagram = to_phase_diagram(obj if is_diagram else list(obj))
     except TypeError as exc:
         raise TypeError(
             f"Unsupported type for convex hull entries: {type(obj)}. Expected list of "
-            f"dicts, pymatgen PhaseDiagram or entry objects ({exc})."
+            f"dicts, a PhaseDiagram (matscikit, pymatgen) or entry objects ({exc})."
         ) from exc
-    entries = obj.all_entries if hasattr(obj, "all_entries") else obj
     return [
         {
             "composition": composition.as_dict(),
-            "energy": entry.energy,
+            "energy": energy_per_atom * composition.num_atoms,
             "energy_per_atom": energy_per_atom,
             "e_above_hull": e_above_hull,
             "is_stable": is_stable,
         }
-        for entry, composition, energy_per_atom, e_above_hull, is_stable in zip(
-            entries,
+        for composition, energy_per_atom, e_above_hull, is_stable in zip(
             phase_diagram.compositions,
             phase_diagram.energies_per_atom.tolist(),
             phase_diagram.e_above_hull().tolist(),
