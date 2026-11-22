@@ -141,7 +141,12 @@ def test_coordination_bar_plot_style_options(nacl: mk.Structure) -> None:
     ("structs", "kwargs", "err_cls", "match"),
     [
         ([], {}, ValueError, "Cannot plot empty set of structures"),
-        ("invalid input", {}, TypeError, "Input must be a matscikit or pymatgen"),
+        (
+            "invalid input",
+            {},
+            FileNotFoundError,
+            "no structure file at 'invalid input'",
+        ),
         (None, {"strategy": "nope"}, ValueError, "unknown coordination strategy"),
         (None, {"annotate_bars": True}, ValueError, "need a Python strategy"),
         (None, {"split_mode": "by_structure_and_element"}, ValueError, "not a valid"),
@@ -317,7 +322,12 @@ def test_coordination_vs_cutoff_line_disordered_structure() -> None:
     ("structs", "kwargs", "err_cls", "match"),
     [
         ([], {}, ValueError, "Cannot plot empty set of structures"),
-        ("invalid input", {}, TypeError, "Input must be a matscikit or pymatgen"),
+        (
+            "invalid input",
+            {},
+            FileNotFoundError,
+            "no structure file at 'invalid input'",
+        ),
         *(
             (
                 cubic_structure(5, ["Si"], [[0, 0, 0]]),
@@ -340,7 +350,19 @@ def test_coordination_vs_cutoff_line_invalid_inputs(
         coordination_vs_cutoff_line(structs, **kwargs)
 
 
-def test_coordination_bar_plot_rejects_colliding_labels(nacl: mk.Structure) -> None:
-    """Labels equal as strings (1 and "1") raise instead of dropping a structure."""
+@pytest.mark.parametrize(
+    ("strategy", "split_mode"),
+    [("electroneg_ratio", "by_structure"), (3.0, "by_structure"), (3.0, "none")],
+)
+def test_coordination_bar_plot_rejects_colliding_labels(
+    nacl: mk.Structure, strategy: str | float, split_mode: str
+) -> None:
+    """Labels equal as strings (1 and "1") raise instead of merging two structures'
+    histograms, in the browser and Python paths.
+    """
     with pytest.raises(ValueError, match="labels must be unique as strings"):
-        coordination_bar_plot(pd.Series([nacl, nacl], index=[1, "1"]))
+        coordination_bar_plot(
+            pd.Series([nacl, nacl], index=[1, "1"]),
+            strategy=strategy,  # ty: ignore[invalid-argument-type]
+            split_mode=split_mode,
+        )

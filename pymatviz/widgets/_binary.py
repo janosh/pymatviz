@@ -214,6 +214,10 @@ def _pmg_numbers(
     return numbers
 
 
+# Cells below this volume (Å³) are degenerate: such frames go to JSON
+MIN_CELL_VOLUME = 1e-6
+
+
 class _Frame(NamedTuple):
     """Geometry and property sources for one structure or ASE frame."""
 
@@ -257,6 +261,8 @@ def _frame(item: Any) -> _Frame | None:
         ):
             return None
         periodic = any(structure.pbc)
+        if periodic and abs(np.linalg.det(structure.lattice)) < MIN_CELL_VOLUME:
+            return None
         return _Frame(
             numbers,
             structure.positions,
@@ -291,8 +297,8 @@ def _frame(item: Any) -> _Frame | None:
     cell, pbc = np.asarray(structure.cell), tuple(structure.pbc.tolist())
     if not cell.any() and not any(pbc):
         cell, pbc = None, None
-    elif structure.cell.volume < 1e-6:  # Å³
-        return None  # The JSON path completes a degenerate cell.
+    elif structure.cell.volume < MIN_CELL_VOLUME:
+        return None
     site_props = {
         key: val
         for key, val in structure.arrays.items()

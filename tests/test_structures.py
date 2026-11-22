@@ -40,8 +40,13 @@ H2O = mk.Structure(
         ({"si": SI_STRUCTS[1], "h2o": H2O}, ["si", "h2o"]),
         (pd.Series([SI_STRUCTS[0]], index=["s"]), ["s"]),
         ([f"{TEST_FILES}/structures/mp-12712.json"], ["1 Zr18 Pd24"]),  # file path
+        (f"{TEST_FILES}/structures/mp-12712.json", ["Zr18 Pd24"]),  # single path
+        (structure_dict(SI2_STRUCT), ["Si2"]),  # single pymatgen-format dict
     ],
-    ids=["structure", "molecule", "list", "dict", "series", "path"],
+    ids=[
+        *("structure", "molecule", "list", "dict", "series", "path", "single_path"),
+        "structure_dict",
+    ],
 )
 def test_normalize_structures(input_raw: Any, expected_keys: list[Hashable]) -> None:
     """Single inputs key by formula, mappings keep keys, all become matscikit."""
@@ -89,7 +94,7 @@ def test_site_elements_and_symbols() -> None:
 @pytest.mark.parametrize(
     ("invalid_input", "err_cls", "error_match"),
     [
-        ("not a structure", TypeError, "Input must be a matscikit or pymatgen"),
+        ("not a structure", FileNotFoundError, "no structure file at 'not a struct"),
         (12345, TypeError, "Input must be a matscikit or pymatgen"),
         (
             [SI_STRUCTS[0], "invalid"],

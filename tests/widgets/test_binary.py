@@ -237,10 +237,12 @@ def _fallback_cases() -> list[Any]:
             }
         ],
         [mk.Structure(cell, [], np.zeros((0, 3)))] * 2,  # zero atoms
-        # pymatgen site data in info: oxidation states, labels, molecule charge/spin
-        [struct(["Fe", "O"], info={"pymatgen": {"oxidation_states": [2, -2]}})],
-        [struct(["Fe", "Fe"], info={"pymatgen": {"labels": ["Fe1", "Fe2"]}})],
-        [mk.Structure(None, ["H", "H"], h2_pos, pbc=(False,) * 3, info={"charge": 1})],
+        # oxidation states, site labels and properties, molecule charge, tiny cell
+        [struct(["Fe2+", "O2-"])],
+        [struct(["Fe", "Fe"], site_data={"labels": ["Fe1", "Fe2"]})],
+        [struct(["Fe", "Fe"], site_data={"magmoms": np.array([1.0, -1.0])})],
+        [mk.Structure(None, ["H", "H"], h2_pos, pbc=(False,) * 3, charge=1)],
+        [mk.Structure(np.eye(3) * 0.009, ["H", "H"], h2_pos)],  # 7e-7 A^3 cell
         [{"structure": fe2, "n_evals": 2**53 + 1}],  # float64 would round it
         [h2_bulk, h2_bulk.replace(pbc=(True, True, False))],  # pbc
         [h2_mol, h2_bulk],  # cell in only some frames

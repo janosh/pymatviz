@@ -205,7 +205,9 @@ def test_widget_volumetric_data_trait() -> None:
         ("chg", "rho")
     ]
     # {prefix: volume} mappings namespace ids (and labels if present)
-    widget.volumetric_data = {"a": _VOLUME, "b": {**unnamed, "label": "chg"}}
+    widget.set_trait(
+        "volumetric_data", {"a": _VOLUME, "b": {**unnamed, "label": "chg"}}
+    )
     assert [(pl["id"], pl.get("label")) for pl in widget.volumetric_data] == [
         ("a/chg", None),
         ("b/chg", "b/chg"),

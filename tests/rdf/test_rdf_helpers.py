@@ -310,8 +310,8 @@ def test_calculate_rdf_with_no_atoms_of_requested_species(
     [
         (  # invalid_structure_type
             {"structure": "not a structure", "cutoff": 10, "n_bins": 10},
-            TypeError,
-            "Input must be a matscikit or pymatgen",
+            FileNotFoundError,
+            "no structure file at",
         ),
         (  # zero_cutoff
             {"cutoff": 0},

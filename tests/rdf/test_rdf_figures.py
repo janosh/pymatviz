@@ -28,7 +28,7 @@ def python_rdfs(monkeypatch: pytest.MonkeyPatch) -> None:
     [
         (EMPTY_STRUCT, {}, ValueError, r"structures \['.*'\] contain no sites"),
         ({"blank": EMPTY_STRUCT}, {}, ValueError, r"\['blank'\] contain no sites"),
-        ("not a structure", {}, TypeError, "Input must be a matscikit or pymatgen"),
+        ("not a structure", {}, FileNotFoundError, "no structure file at"),
         (None, {}, ValueError, "pass structures or patterns"),
         (NACL, {"patterns": []}, ValueError, "pass structures or patterns"),
         (NACL, {"element_pairs": [("Zn", "Zn")]}, ValueError, "not in any structure"),

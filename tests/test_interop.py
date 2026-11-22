@@ -1462,8 +1462,7 @@ def test_ase_stress_transfer(shape: tuple[int, ...]) -> None:
     for atoms, stress in zip(frames, tensors, strict=True):
         atoms.calc = SinglePointCalculator(atoms, stress=stress)
 
-    widget = TrajectoryWidget()
-    widget.trajectory = frames
+    widget = TrajectoryWidget(trajectory=frames)
     wire = decode_envelope(widget.trajectory)["frame_stress"]
     assert wire.dtype == np.dtype("<f8")
     np.testing.assert_array_equal(wire, tensors.reshape(2, -1))

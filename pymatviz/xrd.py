@@ -66,8 +66,8 @@ def xrd_plot(
     Args:
         patterns (PatternOrStruct | Mapping[str, PatternOrStruct]): A single
             structure (matscikit, pymatgen, ASE, phonopy; disordered sites scatter
-            by occupancy), XrdPattern or DiffractionPattern, or a mapping from
-            legend labels to them.
+            by occupancy), XrdPattern, DiffractionPattern or pattern dict (x/y or
+            two_theta/intensities keys), or a mapping from legend labels to them.
         wavelength (float): X-ray wavelength in Å used to compute patterns of
             structures. Defaults to 1.54184 (Cu K-alpha).
         **kwargs: Passed to XrdWidget, e.g. ``style`` or ``controls_open``.
@@ -80,7 +80,13 @@ def xrd_plot(
     Returns:
         XrdWidget: The MatterViz XRD plot.
     """
-    is_single = not isinstance(patterns, Mapping)
+    # a pattern dict (canonical x/y or Ferrox two_theta/intensities keys holding
+    # arrays) is one pattern; labels named like those keys hold pattern objects
+    is_single = not isinstance(patterns, Mapping) or any(
+        set(keys) <= patterns.keys()
+        and isinstance(patterns[keys[0]], list | tuple | np.ndarray)
+        for keys in (("x", "y"), ("two_theta", "intensities"))
+    )
     labeled = {"XRD Pattern": patterns} if is_single else patterns
     if not labeled:
         raise ValueError("patterns must not be empty")

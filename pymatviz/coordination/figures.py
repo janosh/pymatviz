@@ -122,13 +122,13 @@ def coordination_bar_plot(
     """
     split_mode = CnSplitMode(split_mode)
     struct_dict = normalize_structures(structures)
+    labeled = str_labels(struct_dict)  # by_structure series are keyed by label
     if is_browser_strategy(strategy):
         if element_color_scheme is not None or annotate_bars:
             raise ValueError(
                 "element_color_scheme and annotate_bars need a Python strategy (cutoff "
                 f"radius, 'crystal_nn' or 'voronoi'), got {strategy=}"
             )
-        labeled = str_labels(struct_dict)
         return CoordinationBarPlotWidget(
             labeled, strategy=strategy, split_mode=split_mode.value, **kwargs
         )
@@ -140,13 +140,14 @@ def coordination_bar_plot(
     # {series label: CN counts} from one neighbor search over all structures;
     # by_element sums each element (majority one on disordered sites) over them
     groups: dict[str, Counter[int]] = {}
-    all_cns = mk.coordination_numbers(list(struct_dict.values()), strategy)
-    for (key, struct), cns in zip(struct_dict.items(), all_cns, strict=True):
+    all_cns = mk.coordination_numbers(list(labeled.values()), strategy)
+    for (label, struct), cns in zip(labeled.items(), all_cns, strict=True):
         if split_mode == CnSplitMode.by_element:
             for symbol, cn in zip(site_symbols(struct), cns.tolist(), strict=True):
                 groups.setdefault(symbol, Counter())[cn] += 1
         else:
-            label = str(key) if split_mode == CnSplitMode.by_structure else "All sites"
+            if split_mode != CnSplitMode.by_structure:
+                label = CnSplitMode.none.label  # noqa: PLW2901
             groups.setdefault(label, Counter()).update(cns.tolist())
     if split_mode == CnSplitMode.by_element:
         groups = dict(sorted(groups.items()))

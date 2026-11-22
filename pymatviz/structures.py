@@ -47,23 +47,27 @@ def site_symbols(struct: mk.Structure) -> list[str]:
     ]
 
 
-# items of sequences and mappings may also be structure file paths
+# structure file paths count as structures, alone or as sequence/mapping items
+_PATHS = (str, os.PathLike)
 type _StructureItem = AnyStructure | str | os.PathLike[str]
 type _StructureInputs = (
-    AnyStructure | Sequence[_StructureItem] | pd.Series | Mapping[Any, _StructureItem]
+    _StructureItem | Sequence[_StructureItem] | pd.Series | Mapping[Any, _StructureItem]
 )
 
 
 def normalize_structures(systems: _StructureInputs) -> dict[Hashable, mk.Structure]:
     """Map structure-like inputs (single, sequence or mapping) to matscikit
     Structures, keyed by formula for a single input, by "{index} {formula}" for
-    sequences, and by the given keys for mappings/Series.
+    sequences, and by the given keys for mappings/Series. A structure file path or
+    pymatgen-format structure dict (with "sites") counts as a single input.
 
     Raises:
         ValueError: If systems is empty.
         TypeError: For unsupported input or item types.
+        FileNotFoundError: For a path that isn't a file.
     """
-    if is_structure_like(systems):
+    is_single_dict = isinstance(systems, Mapping) and "sites" in systems
+    if is_structure_like(systems) or is_single_dict or isinstance(systems, _PATHS):
         struct = to_structure(systems)
         return {struct.composition.formula: struct}
 

@@ -11,6 +11,7 @@ from numbers import Number
 from typing import TYPE_CHECKING, Any
 
 import matscikit as mk
+import numpy as np
 import pandas as pd
 from matscikit.interop import has_class
 from pandas.api.types import is_numeric_dtype, is_string_dtype
@@ -144,11 +145,12 @@ def count_elements(
             raise ValueError(
                 f"Atomic numbers must be integers, got: {srs.index.tolist()}"
             )
-        if len(srs) and (atomic_numbers.min() < 1 or atomic_numbers.max() > 118):
+        numbers = np.asarray(atomic_numbers, dtype=int)
+        if len(numbers) and (numbers.min() < 1 or numbers.max() > 118):
             raise ValueError(
                 "element value keys were found to be integers and assumed to represent "
-                f"atomic numbers, but values range from {atomic_numbers.min()} to "
-                f"{atomic_numbers.max()}, expected range [1, 118]."
+                f"atomic numbers, but values range from {numbers.min()} to "
+                f"{numbers.max()}, expected range [1, 118]."
             )
         srs.index = atomic_numbers.map(
             df_ptable.reset_index().set_index("atomic_number").symbol

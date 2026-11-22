@@ -162,8 +162,7 @@ def test_widget_complete_lifecycle(
     widget.current_step_idx = 2
     assert widget.current_step_idx == 2
 
-    new_trajectory = {"frames": [fe3co4_disordered] * 10}
-    widget.trajectory = new_trajectory
+    widget.set_trait("trajectory", {"frames": [fe3co4_disordered] * 10})
     expected_structure = json.loads(
         json.dumps(structure_to_pymatgen_dict(fe3co4_disordered))
     )
@@ -253,10 +252,10 @@ def test_partial_or_conflicting_stress_stays_json(extra: dict[str, Any]) -> None
     """Keep missing stresses, mixed shapes, and user-defined channels intact."""
     atoms = mk.Structure(None, ["H"], [[0, 0, 0]], pbc=(False,) * 3)
     widget = TrajectoryWidget()
-    widget.trajectory = [
-        {"structure": atoms, "stress": [1] * 6},
-        {"structure": atoms, **extra},
-    ]
+    widget.set_trait(
+        "trajectory",
+        [{"structure": atoms, "stress": [1] * 6}, {"structure": atoms, **extra}],
+    )
     frames = widget.trajectory["frames"]
     assert frames[0]["metadata"]["stress"] == [1] * 6
     metadata = frames[1].get("metadata", {})
