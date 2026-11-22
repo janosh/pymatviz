@@ -14,11 +14,10 @@ from pymatviz.widgets.dos import DosWidget
 
 if TYPE_CHECKING:
     from matscikit.results import PhononDosDict
-    from pymatgen.phonon.dos import CompletePhononDos
 
     from pymatviz.typing import AnyDos
 
-type DosInput = AnyDos | CompletePhononDos | Mapping[str, AnyDos | CompletePhononDos]
+type DosInput = AnyDos | Mapping[str, AnyDos]
 
 
 def _unwrap_single[T](labeled: dict[str, T]) -> T | dict[str, T]:
@@ -26,7 +25,7 @@ def _unwrap_single[T](labeled: dict[str, T]) -> T | dict[str, T]:
     return labeled[""] if list(labeled) == [""] else labeled
 
 
-def _phonon_dos(label: str, dos: AnyDos | CompletePhononDos) -> mk.PhononDos:
+def _phonon_dos(label: str, dos: AnyDos) -> mk.PhononDos:
     """PhononDos (matscikit) of a matscikit, phonopy or pymatgen phonon DOS.
 
     Raises:

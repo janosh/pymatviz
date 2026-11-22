@@ -1,5 +1,11 @@
 """Phonon bands and DOS examples."""
 
+# /// script
+# dependencies = [
+#     "monty>=2025.1.9",
+# ]
+# ///
+
 # %%
 import json
 from glob import glob

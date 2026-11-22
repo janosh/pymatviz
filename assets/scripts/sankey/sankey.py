@@ -1,5 +1,11 @@
 """Sankey diagram of crystal systems and space groups."""
 
+# /// script
+# dependencies = [
+#     "matminer>=0.10.1",
+# ]
+# ///
+
 # %%
 import pandas as pd
 from matminer.datasets import load_dataset

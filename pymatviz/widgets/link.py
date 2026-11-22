@@ -230,10 +230,13 @@ class WidgetLink:
 
 
 def _element_symbols(structure: Any) -> set[str]:
-    """Element symbols of one structure (none for ``None``)."""
-    # pymatgen structures have them at hand, without serializing every site
-    if (composition := getattr(structure, "composition", None)) is not None:
-        return {elem.symbol for elem in composition.elements}
+    """Element symbols of one structure-like object or structure dict (none for
+    ``None``).
+    """
+    from matscikit.interop import is_structure_like, to_structure
+
+    if is_structure_like(structure):  # without serializing every site
+        return set(to_structure(structure).composition.elements)
     struct = structure_to_dict(structure) or {"sites": []}
     return {spec["element"] for site in struct["sites"] for spec in site["species"]}
 

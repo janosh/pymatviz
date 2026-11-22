@@ -1,5 +1,12 @@
 """Interactive 3D structure examples."""
 
+# /// script
+# dependencies = [
+#     "matminer>=0.10.1",
+#     "pymatgen>=2026.9.24",
+# ]
+# ///
+
 # %%
 from IPython.display import display
 from matminer.datasets import load_dataset

@@ -26,6 +26,12 @@ Dryad Digital Repository. https://doi.org/10.5061/dryad.gn001
 https://hackingmaterials.lbl.gov/matminer/dataset_summary.html
 """
 
+# /// script
+# dependencies = [
+#     "matminer>=0.10.1",
+# ]
+# ///
+
 # %%
 from matminer.datasets import load_dataset
 

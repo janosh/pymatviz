@@ -4,6 +4,13 @@
 - https://arxiv.org/abs/2503.04070
 """
 
+# /// script
+# dependencies = [
+#     "pymatgen>=2026.9.24",
+#     "tqdm>=4.67",
+# ]
+# ///
+
 # %%
 import os
 

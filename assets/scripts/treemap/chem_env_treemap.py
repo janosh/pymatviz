@@ -1,5 +1,11 @@
 """Compare local coordination environments in one crystal and across a dataset."""
 
+# /// script
+# dependencies = [
+#     "pymatgen>=2026.9.24",
+# ]
+# ///
+
 # %%
 from glob import glob
 

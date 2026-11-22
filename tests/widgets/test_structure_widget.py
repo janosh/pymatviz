@@ -2,18 +2,29 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
+import matscikit as mk
 import numpy as np
 import pytest
 import traitlets as tl
+from matscikit.interop import structure_to_pymatgen_dict
 
 from pymatviz.widgets import StructureWidget
 from tests.widgets.conftest import assert_widget_property_sync, decode_envelope
 
 
-if TYPE_CHECKING:
-    from pymatgen.core import Structure
+_SITE_PROPS = {  # pymatgen-format site data (magmoms, other site properties)
+    "magmoms": [[0, 0, 1], [0, 0, -1]],
+    "site_properties": {"force": [[1.0, 1.0, 1.0], [-1.0, -1.0, -1.0]]},
+}
+
+
+def _with_site_data(struct: mk.Structure, site_data: dict[str, Any]) -> mk.Structure:
+    """Copy of struct carrying pymatgen-format site data in info["pymatgen"]."""
+    struct = struct.copy()
+    struct.info = {"pymatgen": site_data}
+    return struct
 
 
 # minimal flat matterviz VolumetricData payload (2x1x1 grid)
@@ -28,11 +39,17 @@ _VOLUME: dict[str, Any] = {
 
 
 @pytest.mark.parametrize(
-    "structure_fixture",
-    ["structures", "fe3co4_disordered", "fe3co4_disordered_with_props"],
+    ("structure_fixture", "site_data"),
+    [
+        ("structures", None),
+        ("fe3co4_disordered", None),
+        ("fe3co4_disordered", _SITE_PROPS),
+    ],
 )
 def test_widget_structure_inputs(
-    structure_fixture: str, request: pytest.FixtureRequest
+    structure_fixture: str,
+    site_data: dict[str, Any] | None,
+    request: pytest.FixtureRequest,
 ) -> None:
     """Widget must handle different structure input types and formats."""
     fixture_value = request.getfixturevalue(structure_fixture)
@@ -41,11 +58,13 @@ def test_widget_structure_inputs(
     structures = fixture_value if isinstance(fixture_value, tuple) else (fixture_value,)
 
     for structure in structures:
+        if site_data:
+            structure = _with_site_data(structure, site_data)  # noqa: PLW2901
         widget = StructureWidget(structure=structure)
         assert widget.widget_type == "structure"
-        assert widget.structure == structure.as_dict()
+        structure_dict = structure_to_pymatgen_dict(structure)
+        assert widget.structure == structure_dict
 
-        structure_dict = structure.as_dict()
         widget = StructureWidget(structure=structure_dict)
         assert widget.structure == structure_dict
 
@@ -75,7 +94,7 @@ def test_widget_invalid_structure_handling(invalid_structure: Any) -> None:
     ],
 )
 def test_widget_property_sync_structure(
-    structures: tuple[Structure, Structure],
+    structures: tuple[mk.Structure, mk.Structure],
     property_name: str,
     test_values: list[Any],
 ) -> None:
@@ -87,39 +106,38 @@ def test_widget_property_sync_structure(
 
 
 def test_widget_handles_large_structures(
-    structures: tuple[Structure, Structure],
+    structures: tuple[mk.Structure, mk.Structure],
 ) -> None:
     """Widget preserves all sites in a 2000-atom supercell."""
-    widget = StructureWidget(structure=structures[0] * 10)
+    widget = StructureWidget(structure=structures[0].make_supercell(10))
     assert len(widget.structure["sites"]) == 2000
 
 
 _MULTI_VECTOR_PROPS = {
-    "force_DFT": [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
-    "force_MLFF": [[0.9, 0.1, 0.0], [0.1, 0.9, 0.0]],
+    "site_properties": {
+        "force_DFT": [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+        "force_MLFF": [[0.9, 0.1, 0.0], [0.1, 0.9, 0.0]],
+    }
 }
 
 
 @pytest.mark.parametrize(
-    ("structure_fixture", "site_properties", "expected_keys"),
+    ("site_data", "expected_keys"),
     [
-        ("fe3co4_disordered_with_props", None, {"magmom", "force"}),
-        ("fe3co4_disordered", _MULTI_VECTOR_PROPS, {"force_DFT", "force_MLFF"}),
+        (_SITE_PROPS, {"magmom", "force"}),
+        (_MULTI_VECTOR_PROPS, {"force_DFT", "force_MLFF"}),
     ],
     ids=["magmom-force", "multi-vector"],
 )
 def test_widget_preserves_site_properties(
-    structure_fixture: str,
-    site_properties: dict[str, list[list[float]]] | None,
+    site_data: dict[str, Any],
     expected_keys: set[str],
-    request: pytest.FixtureRequest,
+    fe3co4_disordered: mk.Structure,
 ) -> None:
     """Disordered-structure site properties (incl. multiple vector keys) survive
     serialization.
     """
-    struct = request.getfixturevalue(structure_fixture)
-    if site_properties:
-        struct = struct.copy(site_properties=site_properties)
+    struct = _with_site_data(fe3co4_disordered, site_data)
     widget = StructureWidget(structure=struct)
     uniq_prop_keys = {
         key for site in widget.structure["sites"] for key in site.get("properties", {})
@@ -197,51 +215,6 @@ def test_widget_volumetric_data_trait() -> None:
         ("b/chg", "b/chg"),
     ]
     assert isinstance(widget.to_dict()["volumetric_data"], list)
-
-
-def test_widget_volumetric_data_from_pymatgen() -> None:
-    """Pymatgen VolumetricData expands to one binary envelope per data key; Chgcar
-    values are divided by the cell volume like matterviz's CHGCAR parser.
-    """
-    from pymatgen.core import Lattice, Structure
-    from pymatgen.io.vasp.outputs import Chgcar, VolumetricData
-
-    struct = Structure(Lattice.cubic(2.0), ["Na"], [[0, 0, 0]])
-    rng = np.random.default_rng(seed=0)
-    data = {"total": rng.random((2, 2, 3)), "diff": rng.random((2, 2, 3))}
-    total, diff = StructureWidget(
-        volumetric_data=[Chgcar(struct, data)]
-    ).volumetric_data
-    assert (diff["id"], diff["label"]) == ("diff", "diff")
-    assert _meta(total) == {
-        "id": "total",
-        "lattice": struct.lattice.matrix.tolist(),
-        "origin": [0.0, 0.0, 0.0],
-        "periodic": True,
-        "label": "total",
-    }
-    np.testing.assert_allclose(
-        decode_envelope(total)["values"], data["total"] / 8.0, rtol=6e-8, atol=0
-    )
-    # generic VolumetricData (ELFCAR, LOCPOT, ...) is passed through unscaled
-    volume = VolumetricData(struct, {"total": data["total"]})
-    (raw,) = StructureWidget(volumetric_data=[volume]).volumetric_data
-    np.testing.assert_array_equal(
-        decode_envelope(raw)["values"], data["total"].astype(np.float32)
-    )
-
-    # colliding data keys ("total" twice) load side by side via a prefix mapping
-    payloads = StructureWidget(
-        volumetric_data={"relaxed": Chgcar(struct, data), "initial": volume}
-    ).volumetric_data
-    assert [(pl["id"], pl["label"]) for pl in payloads] == [
-        ("relaxed/total", "relaxed/total"),
-        ("relaxed/diff", "relaxed/diff"),
-        ("initial/total", "initial/total"),
-    ]
-    assert payloads[0]["arrays"] == total["arrays"]
-    with pytest.raises(ValueError, match=r"duplicates \['total'\].*prefix: volume"):
-        StructureWidget(volumetric_data=[Chgcar(struct, data), volume])
 
 
 @pytest.mark.parametrize(
@@ -337,10 +310,13 @@ def test_widget_isosurface_volume_swap() -> None:
 @pytest.mark.parametrize("cell_type", ["original", "conventional", "primitive"])
 def test_widget_cell_type(cell_type: str) -> None:
     """cell_type reaches MatterViz, which standardizes; the input cell is synced."""
-    from pymatgen.core import Lattice, Structure
-
-    struct = Structure(Lattice.cubic(4), ["Fe", "O"], [[-0.1, 0, 0], [0.5, 0.5, 0.5]])
-    struct.add_site_property("force", [[1, 0, 0], [0, 1, 0]])
+    struct = mk.Structure(
+        np.eye(3) * 4,
+        ["Fe", "O"],
+        [[-0.1, 0, 0], [0.5, 0.5, 0.5]],
+        fractional=True,
+        info={"pymatgen": {"site_properties": {"force": [[1, 0, 0], [0, 1, 0]]}}},
+    )
     widget = StructureWidget(structure=struct, cell_type=cell_type)
     assert widget.cell_type == cell_type
-    assert widget.structure == struct.as_dict()
+    assert widget.structure == structure_to_pymatgen_dict(struct)

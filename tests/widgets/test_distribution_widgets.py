@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
+import matscikit as mk
 import numpy as np
 import pytest
 import traitlets as tl
-from pymatgen.core import Lattice, Structure
+from matscikit.interop import structure_to_pymatgen_dict
 
 from pymatviz.coordination import CnSplitMode
 from pymatviz.widgets.box_plot import BoxPlotWidget
@@ -16,9 +17,9 @@ from pymatviz.widgets.sankey import SankeyWidget
 
 
 @pytest.fixture
-def si_struct() -> Structure:
+def si_struct() -> mk.Structure:
     """Single-site simple cubic Si."""
-    return Structure(Lattice.cubic(3), ["Si"], [[0, 0, 0]])
+    return mk.Structure(np.eye(3) * 3, ["Si"], [[0, 0, 0]], fractional=True)
 
 
 @pytest.mark.parametrize(
@@ -104,11 +105,11 @@ def test_sankey_data() -> None:
         widget.link_color_mode = "rainbow"
 
 
-def test_coordination_structure_inputs(si_struct: Structure) -> None:
+def test_coordination_structure_inputs(si_struct: mk.Structure) -> None:
     """Single structures reach JS as a bare structure dict, sequences and mappings
     as {label: dict}, the entry forms MatterViz's to_structure_entries reads.
     """
-    as_dict = si_struct.as_dict()
+    as_dict = structure_to_pymatgen_dict(si_struct)
     assert CoordinationBarPlotWidget(si_struct).structures == as_dict
     assert CoordinationBarPlotWidget(as_dict).structures == as_dict
     assert CoordinationBarPlotWidget([si_struct, as_dict]).structures == {

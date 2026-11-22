@@ -5,7 +5,8 @@ Resulting plots are colored by target property of each dataset.
 
 # /// script
 # dependencies = [
-#     "matminer>=0.9.1",
+#     "matminer>=0.10.1",
+#     "pymatgen>=2026.9.24",
 #     "umap-learn>=0.5",
 # ]
 # ///
@@ -18,6 +19,7 @@ import json
 import os
 from typing import TYPE_CHECKING, Any
 
+import numpy as np
 import pandas as pd
 from matminer.datasets import load_dataset
 
@@ -50,7 +52,7 @@ def process_dataset(
     target_key: str,
     target_label: str,
     target_symbol: str,
-    embed_method: pcc.EmbeddingMethod,
+    embed_method: pcc.EmbeddingMethod | str,
     projection: pcc.ProjectionMethod,
     n_components: int,
     **kwargs: Any,
@@ -101,8 +103,15 @@ def process_dataset(
         # Create embeddings
         if embed_method == "one-hot":
             embeddings = pcc.one_hot_encode(compositions)
-        elif embed_method in (Embed.magpie, Embed.matscholar_el):
-            embeddings = pcc.matminer_featurize(compositions, preset=embed_method.value)  # ty: ignore[invalid-argument-type]
+        elif embed_method == Embed.magpie:
+            embeddings = pcc.magpie_featurize(compositions)
+        elif embed_method == "matscholar_el":  # matminer preset, featurized here
+            from matminer.featurizers.composition import ElementProperty
+            from pymatgen.core import Composition
+
+            featurizer = ElementProperty.from_preset("matscholar_el")
+            comps = [Composition(comp) for comp in compositions]
+            embeddings = np.nan_to_num(featurizer.featurize_many(comps))
         else:
             raise ValueError(f"Unknown {embed_method=}")
 
@@ -207,7 +216,7 @@ plot_combinations: list[PlotConfig] = [
     # 4. JDFT2D with one-hot encoding and PCA (3D) - shows raw element relationships
     (*mb_jdft2d, Embed.one_hot, Project.pca, 3),
     # 5. Steels with Matscholar embedding and t-SNE (3D) - shows advanced embedding
-    (*mb_steels, Embed.matscholar_el, Project.tsne, 3),
+    (*mb_steels, "matscholar_el", Project.tsne, 3),
     # 6. Dielectric with PCA (2D) - shows clear linear trends
     (*mb_dielectric, Embed.magpie, Project.pca, 2),
     # 7. Perovskites with PCA (2D) - shows clear linear trends

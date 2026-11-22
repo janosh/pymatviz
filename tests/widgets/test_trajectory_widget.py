@@ -5,9 +5,11 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
+import matscikit as mk
 import numpy as np
 import pytest
 import traitlets as tl
+from matscikit.interop import structure_to_pymatgen_dict
 
 from pymatviz.widgets import TrajectoryWidget
 from tests.widgets.conftest import decode_envelope
@@ -16,19 +18,30 @@ from tests.widgets.conftest import decode_envelope
 if TYPE_CHECKING:
     from typing import Any
 
-    from pymatgen.core import Structure
-
 
 # Defined here, not in tests/widgets/conftest.py: pytest 9.1 binds conftest fixtures
 # to the first Dir node collected for their directory, so they go missing when CLI
 # args revisit tests/widgets after another directory, e.g.
 # `pytest tests/widgets/a.py tests/b.py tests/widgets/c.py`.
+def _fe2_frames(n_frames: int) -> list[mk.Structure]:
+    """Cubic Fe2 structures whose lattice grows by 0.1 A per frame."""
+    return [
+        mk.Structure(
+            np.eye(3) * (3.0 + idx * 0.1),
+            ["Fe", "Fe"],
+            [[0, 0, 0], [0.5, 0.5, 0.5]],
+            fractional=True,
+        )
+        for idx in range(n_frames)
+    ]
+
+
 @pytest.fixture
-def multi_frame_trajectory(fe3co4_disordered: Structure) -> dict[str, Any]:
+def multi_frame_trajectory(fe3co4_disordered: mk.Structure) -> dict[str, Any]:
     """Five-frame trajectory dict of the same disordered structure."""
     frames = [
         {
-            "structure": fe3co4_disordered.as_dict(),
+            "structure": structure_to_pymatgen_dict(fe3co4_disordered),
             "step": idx,
             "metadata": {"step": idx},
         }
@@ -70,7 +83,7 @@ def test_widget_creates_view_model(multi_frame_trajectory: dict[str, Any]) -> No
 @pytest.mark.parametrize("input_format", ["dict", "list", "tuple", "structure"])
 def test_widget_trajectory_updates(
     multi_frame_trajectory: dict[str, Any],
-    fe3co4_disordered: Structure,
+    fe3co4_disordered: mk.Structure,
     input_format: str,
 ) -> None:
     """Widget must handle trajectory updates correctly."""
@@ -85,7 +98,8 @@ def test_widget_trajectory_updates(
     assert widget.current_step_idx == 2
 
     # Test trajectory update (step doesn't reset automatically)
-    updated_structure = fe3co4_disordered.copy(properties={"energy": -1.5})
+    updated_structure = fe3co4_disordered.copy()
+    updated_structure.info = {"properties": {"energy": -1.5}}
     new_trajectory = {
         "frames": [updated_structure, updated_structure],
         "metadata": {"temperature": np.int64(300)},
@@ -96,7 +110,9 @@ def test_widget_trajectory_updates(
         "tuple": tuple(new_trajectory["frames"]),
         "structure": updated_structure,
     }[input_format]
-    expected_structure = json.loads(json.dumps(updated_structure.as_dict()))
+    expected_structure = json.loads(
+        json.dumps(structure_to_pymatgen_dict(updated_structure))
+    )
     assert widget.trajectory == {
         "frames": [
             {
@@ -121,7 +137,7 @@ def test_widget_trajectory_updates(
 
 
 def test_widget_complete_lifecycle(
-    multi_frame_trajectory: dict[str, Any], fe3co4_disordered: Structure
+    multi_frame_trajectory: dict[str, Any], fe3co4_disordered: mk.Structure
 ) -> None:
     """Test complete widget lifecycle including state persistence."""
     widget = TrajectoryWidget(
@@ -148,7 +164,9 @@ def test_widget_complete_lifecycle(
 
     new_trajectory = {"frames": [fe3co4_disordered] * 10}
     widget.trajectory = new_trajectory
-    expected_structure = json.loads(json.dumps(fe3co4_disordered.as_dict()))
+    expected_structure = json.loads(
+        json.dumps(structure_to_pymatgen_dict(fe3co4_disordered))
+    )
     assert [frame["structure"] for frame in widget.trajectory["frames"]] == [
         expected_structure
     ] * 10
@@ -208,16 +226,7 @@ def test_trajectory_widget_property_extraction(
     is_binary: bool,
 ) -> None:
     """Numeric frame properties become binary per-frame scalars, others JSON frames."""
-    from pymatgen.core import Lattice, Structure
-
-    structures = [
-        Structure(
-            lattice=Lattice.cubic(3.0 + idx * 0.1),
-            species=("Fe", "Fe"),
-            coords=((0, 0, 0), (0.5, 0.5, 0.5)),
-        )
-        for idx in range(len(trajectory_input))
-    ]
+    structures = _fe2_frames(len(trajectory_input))
     trajectory_with_structures = [
         {**item, "structure": structures[idx]}
         for idx, item in enumerate(trajectory_input)
@@ -237,33 +246,12 @@ def test_trajectory_widget_property_extraction(
     assert traj["frames"][0]["metadata"] == expected_properties
 
 
-@pytest.mark.parametrize("shape", [(6,), (3, 3)])
-def test_ase_stress_transfer(shape: tuple[int, ...]) -> None:
-    """Transfer raw ASE stress losslessly as binary frame_stress."""
-    from ase import Atoms
-    from ase.calculators.singlepoint import SinglePointCalculator
-
-    frames = [Atoms("H", positions=[[idx, 0, 0]]) for idx in range(2)]
-    tensors = np.random.default_rng(seed=0).normal(size=(len(frames), *shape))
-    for atoms, stress in zip(frames, tensors, strict=True):
-        atoms.calc = SinglePointCalculator(atoms, stress=stress)
-
-    widget = TrajectoryWidget()
-    widget.trajectory = frames
-    encoded = widget.trajectory
-    wire = decode_envelope(encoded)["frame_stress"]
-    assert wire.dtype == np.dtype("<f8")
-    np.testing.assert_array_equal(wire, tensors.reshape(2, -1))
-
-
 @pytest.mark.parametrize(
     "extra", [{}, {"stress": np.eye(3)}, {"stress": np.ones(6), "frame_stress": 42}]
 )
 def test_partial_or_conflicting_stress_stays_json(extra: dict[str, Any]) -> None:
     """Keep missing stresses, mixed shapes, and user-defined channels intact."""
-    from ase import Atoms
-
-    atoms = Atoms("H")
+    atoms = mk.Structure(None, ["H"], [[0, 0, 0]], pbc=(False,) * 3)
     widget = TrajectoryWidget()
     widget.trajectory = [
         {"structure": atoms, "stress": [1] * 6},
@@ -277,61 +265,24 @@ def test_partial_or_conflicting_stress_stays_json(extra: dict[str, Any]) -> None
         np.testing.assert_array_equal(metadata[key], value)
 
 
-@pytest.mark.parametrize("as_matscikit", [False, True])
 @pytest.mark.parametrize("n_frames", [0, 1, 3])
-def test_trajectory_widget_structure_sequence(
-    n_frames: int, as_matscikit: bool
-) -> None:
-    """Lists of pymatgen or matscikit structures, and pymatgen Trajectories, sync as
-    binary frames.
-    """
-    from pymatgen.core import Lattice, Structure
-
-    from pymatviz.structures import to_structure
-
-    structures = [
-        Structure(
-            lattice=Lattice.cubic(3.0 + idx * 0.1),
-            species=("Fe", "Fe"),
-            coords=((0, 0, 0), (0.5, 0.5, 0.5)),
-        )
-        for idx in range(n_frames)
-    ]
-
-    frames = (
-        [to_structure(struct) for struct in structures] if as_matscikit else structures
-    )
-    widget = TrajectoryWidget(trajectory=frames)
+def test_trajectory_widget_structure_sequence(n_frames: int) -> None:
+    """Lists of structures sync as binary frames."""
+    structures = _fe2_frames(n_frames)
+    widget = TrajectoryWidget(trajectory=structures)
     if not n_frames:  # nothing to encode: empty JSON trajectory
         assert widget.trajectory == {"frames": [], "metadata": {}}
         return
 
     arrays = decode_envelope(widget.trajectory)
-    expected_pos = np.array([struct.cart_coords for struct in structures])
+    expected_pos = np.array([struct.positions for struct in structures])
     np.testing.assert_allclose(arrays["positions"], expected_pos, rtol=0, atol=1e-6)
     assert arrays["numbers"].tolist() == [26, 26]
-    expected_cells = [struct.lattice.matrix for struct in structures]
+    expected_cells = [struct.lattice for struct in structures]
     # one shared [3, 3] cell when all frames agree, else [n_frames, 3, 3]
     expected_cells = expected_cells[0] if n_frames == 1 else expected_cells
     np.testing.assert_array_equal(arrays["lattice"], expected_cells)
     assert widget.trajectory["pbc"] == [True] * 3
-
-    from pymatgen.core.trajectory import Trajectory
-
-    traj = Trajectory.from_structures(structures, constant_lattice=False)
-    traj_arrays = decode_envelope(TrajectoryWidget(trajectory=traj).trajectory)
-    np.testing.assert_array_equal(
-        traj_arrays["positions"], expected_pos.astype("float32")
-    )
-    np.testing.assert_array_equal(traj_arrays["lattice"], expected_cells)
-    # The frontend also accepts molecular JSON without the Python constructor's charge.
-    serialized = {
-        "@class": "Trajectory",
-        "coords": [[[0, 0, 0]]],
-        "species": ["H"],
-        "lattice": None,
-    }
-    assert TrajectoryWidget(trajectory=serialized).trajectory == serialized
 
 
 _CUBIC = {"matrix": [[4, 0, 0], [0, 4, 0], [0, 0, 4]]}
@@ -394,35 +345,24 @@ def test_trajectory_widget_completes_only_non_derivable_fields(
 
 
 @pytest.mark.parametrize(
-    ("metadata_field", "metadata_value"),
+    "properties",
     [
-        pytest.param(None, {}, id="no-metadata"),
-        ("properties", {"energy": -1.23, "forces": [[0.0, 0.3, 0.4], [0.0, 0.0, 0.0]]}),
-        ("info", {"temperature": 300, "pressure": 1.0}),
+        pytest.param({}, id="no-metadata"),
+        {"energy": -1.23, "forces": [[0.0, 0.3, 0.4], [0.0, 0.0, 0.0]]},
+        {"temperature": 300, "pressure": 1.0},
     ],
 )
-def test_trajectory_widget_with_structure_metadata(
-    metadata_field: str | None, metadata_value: dict[str, Any]
-) -> None:
-    """TrajectoryWidget forwards structure properties/info to frame metadata, per-atom
+def test_trajectory_widget_with_structure_metadata(properties: dict[str, Any]) -> None:
+    """TrajectoryWidget forwards structure properties to frame metadata, per-atom
     forces to the sites.
     """
-    from pymatgen.core import Lattice, Structure
-
-    structure = Structure(
-        lattice=Lattice.cubic(3.0),
-        species=("Fe", "Fe"),
-        coords=((0, 0, 0), (0.5, 0.5, 0.5)),
-    )
-    if metadata_field == "properties":
-        structure.properties = metadata_value
-    elif metadata_field == "info":
-        object.__setattr__(structure, "info", metadata_value)
+    (structure,) = _fe2_frames(1)
+    structure.info = {"properties": properties}
 
     arrays = decode_envelope(TrajectoryWidget(trajectory=structure).trajectory)
     scalars = {key: arr.tolist() for key, arr in arrays.items() if arr.ndim == 1}
     scalars.pop("numbers")
-    if "forces" in metadata_value:
+    if "forces" in properties:
         assert scalars == {
             "energy": [-1.23],
             "force_max": [pytest.approx(0.5, rel=1e-15)],
@@ -430,60 +370,10 @@ def test_trajectory_widget_with_structure_metadata(
         }
         # float32 vectors: within 1 float32 ulp of the float64 input
         np.testing.assert_allclose(
-            arrays["force"][0], metadata_value["forces"], rtol=1.2e-7, atol=0
+            arrays["force"][0], properties["forces"], rtol=1.2e-7, atol=0
         )
     else:
-        assert scalars == {key: [val] for key, val in metadata_value.items()}
-
-
-@pytest.mark.parametrize(
-    ("symbols", "positions", "cell", "energy"),
-    [
-        pytest.param(
-            "H2O", [[0, 0, 0], [0, 0, 1], [0, 1, 0]], None, -1.5, id="molecule"
-        ),
-        pytest.param(
-            "Fe2", [[0, 0, 0], [0.5, 0.5, 0.5]], [3, 3, 3], -2.0, id="periodic"
-        ),
-    ],
-)
-@pytest.mark.parametrize("mson_atoms", [False, True], ids=["Atoms", "MSONAtoms"])
-def test_trajectory_widget_with_ase_atoms(
-    symbols: str,
-    positions: list[list[float]],
-    cell: list[int] | None,
-    energy: float,
-    mson_atoms: bool,
-) -> None:
-    """ASE frames (incl. pymatgen MSONAtoms, whose as_dict() is not a structure dict)
-    keep info and calculator results (which AseAtomsAdaptor drops) with and without a
-    simulation cell; calculator forces become site vectors.
-    """
-    ase_atoms = pytest.importorskip("ase").Atoms
-    from ase.calculators.singlepoint import SinglePointCalculator
-    from pymatgen.io.ase import MSONAtoms
-
-    atoms_cls = MSONAtoms if mson_atoms else ase_atoms
-
-    atoms = atoms_cls(symbols, positions=positions, cell=cell)
-    atoms.info = {"temperature": 300}
-    forces = np.zeros((len(atoms), 3))
-    forces[0] = [0.0, 0.0, 2.0]
-    atoms.calc = SinglePointCalculator(atoms, energy=energy, forces=forces)
-    payload = TrajectoryWidget(trajectory=atoms).trajectory
-    arrays = decode_envelope(payload)
-    np.testing.assert_allclose(arrays["positions"][0], positions, rtol=0, atol=1e-7)
-    assert arrays["numbers"].tolist() == atoms.numbers.tolist()
-    # a molecule has no cell (and so no pbc); a periodic frame keeps its cell
-    assert ("lattice" in arrays) == (cell is not None)
-    assert payload.get("pbc") == (atoms.pbc.tolist() if cell else None)
-    assert {key: arrays[key].tolist() for key in ("temperature", "energy")} == {
-        "temperature": [300],
-        "energy": [energy],
-    }
-    assert arrays["force_max"].tolist() == [2.0]
-    np.testing.assert_allclose(arrays["force_norm"], [2 / np.sqrt(len(atoms))])
-    assert arrays["force"][0].tolist() == forces.tolist()
+        assert scalars == {key: [val] for key, val in properties.items()}
 
 
 def test_trajectory_widget_atom_type_mapping_trait() -> None:
@@ -500,7 +390,7 @@ def test_trajectory_widget_atom_type_mapping_trait() -> None:
 
 
 def test_trajectory_widget_normalization_regressions(
-    fe3co4_disordered: Structure,
+    fe3co4_disordered: mk.Structure,
 ) -> None:
     """Numpy forces become per-site numeric lists (matterviz 0.8 ignores vectors in
     frame metadata) plus force_max/force_norm, malformed forces raise, the layout trait
@@ -531,7 +421,7 @@ def test_trajectory_widget_normalization_regressions(
 
     # normalization must not mutate the caller's structure dicts (a shallow
     # lattice copy used to leak setdefault/assignments into the input)
-    struct_dict = fe3co4_disordered.as_dict()
+    struct_dict = structure_to_pymatgen_dict(fe3co4_disordered)
     struct_dict["lattice"].pop("pbc", None)
     lattice_before = {**struct_dict["lattice"]}
     TrajectoryWidget(trajectory={"frames": [{"structure": struct_dict}]})

@@ -4,21 +4,20 @@ from __future__ import annotations
 
 from typing import Any, Literal, get_args
 
+import matscikit as mk
 import numpy as np
 import pandas as pd
 import pytest
-from pymatgen.core import Lattice, Structure
 
 import pymatviz as pmv
 from pymatviz.sunburst import spacegroup_sunburst
+from tests.conftest import rocksalt
 
 
 @pytest.fixture
-def rock_salt() -> Structure:
+def rock_salt() -> mk.Structure:
     """Conventional rocksalt NaCl cell with eight octahedrally coordinated sites."""
-    return Structure.from_spacegroup(
-        225, Lattice.cubic(5.64), ["Na+", "Cl-"], [[0, 0, 0], [0.5, 0.5, 0.5]]
-    )
+    return rocksalt()
 
 
 def spg_leaves(widget: pmv.widgets.SunburstWidget) -> dict[str, tuple[str, int]]:
@@ -86,7 +85,7 @@ def test_spacegroup_sunburst_symbol_counts(spg_symbols: list[str]) -> None:
 
 
 def test_spacegroup_sunburst_structure_counts(
-    structures: tuple[Structure, Structure],
+    structures: tuple[mk.Structure, mk.Structure],
 ) -> None:
     """Structure inputs are converted to space group counts via moyopy."""
     assert spg_leaves(spacegroup_sunburst(structures)) == {
@@ -95,16 +94,17 @@ def test_spacegroup_sunburst_structure_counts(
     }
 
 
-def test_spacegroup_sunburst_rejects_non_periodic(structures: list[Structure]) -> None:
-    """ASE Atoms with the default pbc=False are rejected with how to fix it."""
-    from ase import Atoms
-
-    atoms = Atoms("Si", cell=[3, 3, 3])  # pbc defaults to False
+@pytest.mark.parametrize("pbc", [(False,) * 3, (True, True, False)])
+def test_spacegroup_sunburst_rejects_non_periodic(
+    structures: list[mk.Structure], pbc: tuple[bool, bool, bool]
+) -> None:
+    """Structures not periodic along all three axes are rejected with how to fix it."""
+    struct = mk.Structure(np.eye(3) * 3, ["Si"], [[0, 0, 0]], pbc=pbc)
     with pytest.raises(
         TypeError, match=r"periodic along a, b and c.*atoms\.pbc = True"
     ):
-        spacegroup_sunburst([*structures, atoms])
-    assert spacegroup_sunburst([*structures, Atoms("Si", cell=[3, 3, 3], pbc=True)])
+        spacegroup_sunburst([*structures, struct])
+    assert spacegroup_sunburst([*structures, struct.replace(pbc=(True,) * 3)])
 
 
 @pytest.mark.parametrize(
@@ -170,9 +170,9 @@ def test_spacegroup_sunburst_invalid_limit_mode() -> None:
 
 
 @pytest.mark.parametrize("normalize", [False, True])
-def test_chem_env_sunburst_rock_salt(rock_salt: Structure, normalize: bool) -> None:
+def test_chem_env_sunburst_rock_salt(rock_salt: mk.Structure, normalize: bool) -> None:
     """ChemEnv classifies all eight rocksalt sites as CN 6 octahedra (O:6)."""
-    empty = Structure(rock_salt.lattice, [], [])
+    empty = mk.Structure(rock_salt.lattice, [], np.zeros((0, 3)))
     widget = pmv.chem_env_hierarchy([empty, rock_salt], normalize=normalize)
     expected = 1 if normalize else len(rock_salt)
     assert widget.data == [

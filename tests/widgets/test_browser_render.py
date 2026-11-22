@@ -22,10 +22,9 @@ import xml.etree.ElementTree as ET
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from typing import TYPE_CHECKING, Any
 
+import matscikit as mk
 import numpy as np
 import pytest
-from pymatgen.analysis.diffraction.xrd import XRDCalculator
-from pymatgen.core import Lattice, Structure
 
 import pymatviz as pmv
 from pymatviz.widgets import (
@@ -57,6 +56,7 @@ from pymatviz.widgets import (
     XrdWidget,
 )
 from pymatviz.widgets.matterviz import MATTERVIZ_ANYWIDGET_VERSION, _cdn_url
+from tests.conftest import rocksalt
 
 
 if TYPE_CHECKING:
@@ -71,10 +71,10 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-NACL = Structure.from_spacegroup(
-    "Fm-3m", Lattice.cubic(5.6), ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]]
+NACL = rocksalt(5.6)
+FE_O = mk.Structure(
+    np.eye(3) * 3, ["Fe", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]], fractional=True
 )
-FE_O = Structure(Lattice.cubic(3), ["Fe", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
 RNG = np.random.default_rng(seed=0)
 XS, YS = RNG.normal(size=(2, 300))
 HULL_ENTRIES = [
@@ -231,7 +231,7 @@ WIDGET_CASES: dict[
         True,
     ),
     XrdWidget: (
-        lambda _: XrdWidget(patterns=XRDCalculator().get_pattern(NACL)),
+        lambda _: XrdWidget(patterns=mk.xrd_patterns([NACL])[0]),
         True,
     ),
 }

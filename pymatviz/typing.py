@@ -9,20 +9,16 @@ import pandas as pd
 
 
 if TYPE_CHECKING:
-    from ase.atoms import Atoms as AseAtoms
-    from matscikit import Composition, Structure
     from matscikit.interop import CompositionLike, PhononDosLike, StructureLike
-    from phonopy.structure.atoms import PhonopyAtoms
-    from pymatgen.core import Composition as PmgComposition
-    from pymatgen.core import IStructure
 
     from pymatviz.enums import ElemCountMode
 
 # Quoted unions: PEP 695 treats a bare `"Name"` as Literal, not a forward ref
 # structure-like inputs (matscikit, pymatgen, ASE, phonopy), converted to matscikit
 # Structures by normalize_structures; matscikit's interop types
+# (periodic ones checked at runtime)
 type AnyStructure = "StructureLike"
-type PeriodicStructure = "Structure | IStructure | AseAtoms | PhonopyAtoms"
+type PeriodicStructure = "StructureLike"
 type AnyDos = "PhononDosLike"
 # CompositionLike (matscikit): formula strings, {element: amount} mappings (pymatgen
 # Compositions among them) or matscikit Compositions. FormulaLike adds chemical system
@@ -52,7 +48,7 @@ type ElemValues = (
     Mapping[str, int | float]
     | Mapping[int, int | float]
     | pd.Series
-    | Sequence["str | Composition | PmgComposition"]
+    | Sequence["CompositionLike"]
 )
 
 type Rgb256ColorType = tuple[int, int, int]  # 8-bit RGB

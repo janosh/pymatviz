@@ -6,12 +6,13 @@ before starting the calculations.
 
 # /// script
 # dependencies = [
+#     "ase>=3.29",
 #     "mace-torch>=0.3.11",
 #     "orb-models>=0.5.2",
-#     "phonopy>=2.35",
+#     "phonopy>=4.8",
 #     "pymatviz[export]>=0.15.1",
 #     "seekpath",
-#     "ase",
+#     "torch",
 # ]
 # ///
 

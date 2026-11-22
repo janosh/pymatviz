@@ -1,4 +1,4 @@
-"""Test notebook integration for automatic pymatgen object rendering."""
+"""Test notebook integration for automatic matscikit object rendering."""
 
 from __future__ import annotations
 
@@ -10,9 +10,6 @@ import matscikit as mk
 import numpy as np
 import pytest
 from matscikit.electronic import ElectronicDos
-from pymatgen.analysis.diffraction.xrd import DiffractionPattern
-from pymatgen.analysis.phase_diagram import PDEntry, PhaseDiagram
-from pymatgen.core import Composition, Lattice, Structure
 
 import pymatviz as pmv
 from pymatviz import notebook
@@ -20,20 +17,15 @@ from pymatviz.notebook import create_widget
 
 
 @pytest.fixture
-def test_objects(
-    structures: tuple[Structure, Structure], ase_atoms: tuple[Any, Any]
-) -> dict[str, Any]:
+def test_objects(structures: tuple[mk.Structure, mk.Structure]) -> dict[str, Any]:
     """Create test objects for all supported types using existing fixtures."""
-    diffraction_pattern = DiffractionPattern(
-        x=[10, 20, 30],
-        y=[100, 50, 75],
-        hkls=[[{"hkl": (1, 0, 0)}], [{"hkl": (1, 1, 0)}], [{"hkl": (1, 1, 1)}]],
-        d_hkls=[2.5, 2.0, 1.8],
-    )
+    hkls = [[([1, 0, 0], 1)], [([1, 1, 0], 1)], [([1, 1, 1], 1)]]
     return {
         "structure": structures[0],
-        "ase_atoms": ase_atoms[0],
-        "diffraction_pattern": diffraction_pattern,
+        "composition": mk.Composition("Fe2O3"),
+        "xrd_pattern": mk.XrdPattern(
+            [10, 20, 30], [100, 50, 75], [2.5, 2.0, 1.8], hkls
+        ),
     }
 
 
@@ -50,7 +42,7 @@ def shell() -> Any:
     pmv.notebook_mode(on=False)
 
 
-@pytest.mark.parametrize("obj_name", ["structure", "ase_atoms", "diffraction_pattern"])
+@pytest.mark.parametrize("obj_name", ["structure", "composition", "xrd_pattern"])
 def test_notebook_mode_formats_objects(
     shell: Any, test_objects: dict[str, Any], obj_name: str
 ) -> None:
@@ -66,11 +58,11 @@ def test_notebook_mode_formats_objects(
 
 
 def test_notebook_mode_preserves_third_party_printers(
-    shell: Any, structures: tuple[Structure, Structure]
+    shell: Any, structures: tuple[mk.Structure, mk.Structure]
 ) -> None:
     """Turning off restores a prior printer and keeps one installed meanwhile."""
     formatter = shell.display_formatter.mimebundle_formatter
-    key = ("pymatgen.core.structure", "Structure")
+    key = ("matscikit", "Structure")
     prior = lambda _obj: {"text/plain": "prior"}
     formatter.for_type_by_name(*key, prior)
     pmv.notebook_mode(on=True)
@@ -80,10 +72,10 @@ def test_notebook_mode_preserves_third_party_printers(
 
     pmv.notebook_mode(on=True)
     replacement = lambda _obj: {"text/plain": "replacement"}
-    formatter.for_type(Structure, replacement)
+    formatter.for_type(mk.Structure, replacement)
     pmv.notebook_mode(on=False)
     assert formatter.lookup(structures[0]) is replacement
-    formatter.pop(Structure)
+    formatter.pop(mk.Structure)
 
 
 def test_notebook_mode_imports_nothing() -> None:
@@ -116,7 +108,7 @@ class UnknownType:
     """Type without a registered MatterViz widget."""
 
 
-def test_widget_mime_bundle(structures: tuple[Structure, Structure]) -> None:
+def test_widget_mime_bundle(structures: tuple[mk.Structure, mk.Structure]) -> None:
     """Registered types get widget MIME; others raise instead of a silent repr."""
     bundle = notebook._widget_mime_bundle(structures[0])
     assert isinstance(bundle, tuple)
@@ -125,38 +117,13 @@ def test_widget_mime_bundle(structures: tuple[Structure, Structure]) -> None:
         notebook._widget_mime_bundle(UnknownType())
 
 
-def test_phonopy_dos_integration(shell: Any) -> None:
-    """Test phonopy TotalDos notebook integration."""
-    pytest.importorskip("phonopy", reason="phonopy not available")
-
-    from pymatviz.utils.testing import load_phonopy_nacl
-
-    phonopy_nacl = load_phonopy_nacl()
-    phonopy_nacl.run_mesh([10, 10, 10])
-    phonopy_nacl.run_total_dos()
-
-    pmv.notebook_mode(on=True)
-    data, _metadata = shell.display_formatter.format(phonopy_nacl.total_dos)
-    assert WIDGET_MIME in data
-
-
 @pytest.mark.parametrize(
     ("obj_factory", "expected_widget", "expected_type"),
     [
-        (lambda: Composition("Fe2O3"), "CompositionWidget", "composition"),
+        (lambda: mk.Composition("Fe2O3"), "CompositionWidget", "composition"),
+        (lambda: mk.XrdPattern([10], [100]), "XrdWidget", "xrd"),
         (
-            lambda: DiffractionPattern(x=[10], y=[100], hkls=[], d_hkls=[]),
-            "XrdWidget",
-            "xrd",
-        ),
-        (
-            lambda: PhaseDiagram(
-                [
-                    PDEntry(Composition("Li"), -1.9),
-                    PDEntry(Composition("O"), -4.2),
-                    PDEntry(Composition("Li2O"), -14.3),
-                ]
-            ),
+            lambda: mk.PhaseDiagram(["Li", "O", "Li2O"], [-1.9, -4.2, -14.3 / 3]),
             "ConvexHullWidget",
             "convex_hull",
         ),
@@ -178,7 +145,7 @@ def test_phonopy_dos_integration(shell: Any) -> None:
             lambda: (
                 [
                     {
-                        "structure": Structure(Lattice.cubic(3), ["Fe"], [[0, 0, 0]]),
+                        "structure": mk.Structure(np.eye(3) * 3, ["Fe"], [[0, 0, 0]]),
                         "energy": -1.0,
                     }
                 ]
@@ -215,11 +182,11 @@ def test_create_widget_unknown_type_raises(bad_input: Any, match: str) -> None:
 def test_create_widget_matches_subclasses() -> None:
     """Subclasses of registered types display like their base class."""
 
-    class MyStructure(Structure):
-        """A pymatgen Structure subclass."""
+    class MyDos(ElectronicDos):
+        """A matscikit ElectronicDos subclass."""
 
-    widget = create_widget(MyStructure(Lattice.cubic(3), ["Fe"], [[0, 0, 0]]))
-    assert widget.widget_type == "structure"
+    widget = create_widget(MyDos(np.array([-1, 0, 1]), np.array([[0, 1, 0]]), 0.0))
+    assert widget.widget_type == "dos"
 
 
 def test_notebook_mode_in_marimo(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -230,8 +197,8 @@ def test_notebook_mode_in_marimo(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setitem(sys.modules, "marimo", type(sys)("marimo"))
     pmv.notebook_mode(on=True)
     try:
-        widget = Composition("Fe2O3")._display_()  # ty: ignore[missing-attribute]
+        widget = mk.Composition("Fe2O3")._display_()  # ty: ignore[missing-attribute]
         assert widget.widget_type == "composition"
     finally:
         pmv.notebook_mode(on=False)
-    assert not hasattr(Composition, "_display_")
+    assert not hasattr(mk.Composition, "_display_")

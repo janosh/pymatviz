@@ -1,27 +1,19 @@
 from __future__ import annotations
 
-import importlib.util
 from typing import TYPE_CHECKING, Any, Literal
 
+import matscikit as mk
 import numpy as np
 import pytest
-from pymatgen.phonon.dos import PhononDos
 
 import pymatviz as pmv
+from pymatviz.utils.testing import load_nacl_phonons
 
 
 if TYPE_CHECKING:
-    from phonopy import Phonopy
-    from pymatgen.phonon.dos import CompletePhononDos
-
     from tests.conftest import BandsDoses
 
-GRID_012 = PhononDos([0, 1, 2], [1, 2, 1])
-
-# skipif, not pytest.importorskip: the phonopy_nacl fixture imports phonopy at setup
-needs_phonopy = pytest.mark.skipif(
-    importlib.util.find_spec("phonopy") is None, reason="phonopy not installed"
-)
+GRID_012 = mk.PhononDos([0, 1, 2], [1, 2, 1])
 
 
 @pytest.mark.parametrize("labeled", [False, True])
@@ -36,7 +28,7 @@ def test_band_structure_widget_phonons(
     docs = widget.band_structs if labeled else {"DFT": widget.band_structs}
     assert set(docs) == ({"DFT", "MACE"} if labeled else {"DFT"})
     for label, doc in docs.items():
-        np.testing.assert_array_equal(doc["bands"], bands[label].bands)
+        np.testing.assert_array_equal(doc["bands"], bands[label].frequencies.T)
 
     widget = pmv.band_structure(
         band_structs=bands["DFT"], reference_frequency=1.5, style="height:9em"
@@ -52,16 +44,16 @@ def test_band_structure_widget_phonons(
     [(False, 0, None), (True, 0.1, "max"), (False, 0.2, "integral"), (True, 0, "sum")],
 )
 def test_phonon_dos(
-    phonon_doses: dict[str, PhononDos],
+    phonon_doses: dict[str, mk.PhononDos],
     stack: bool,
     sigma: float,
     normalize: Literal["max", "sum", "integral"] | None,
 ) -> None:
     """Raw DOS data goes to the widget, smearing and normalization as traits."""
     if stack:  # MatterViz stacks by index, so stacked DOS must share a grid
-        freqs = next(iter(phonon_doses.values())).frequencies
+        freqs = next(iter(phonon_doses.values())).frequency_points
         phonon_doses = {
-            label: PhononDos(freqs, dos.densities)
+            label: mk.PhononDos(freqs, dos.total_dos)
             for label, dos in phonon_doses.items()
         }
     widget = pmv.phonon_dos(phonon_doses, stack=stack, sigma=sigma, normalize=normalize)
@@ -69,7 +61,7 @@ def test_phonon_dos(
     assert (widget.stack, widget.sigma, widget.normalize) == (stack, sigma, normalize)
     assert list(widget.doses) == list(phonon_doses)
     for label, dos in phonon_doses.items():
-        np.testing.assert_array_equal(widget.doses[label]["densities"], dos.densities)
+        np.testing.assert_array_equal(widget.doses[label]["densities"], dos.total_dos)
 
     single = pmv.phonon_dos(next(iter(phonon_doses.values())))
     assert "densities" in single.doses  # unlabeled DOS is passed as is
@@ -89,7 +81,8 @@ def test_phonon_dos(
         (dict(project="element"), TypeError, "project='element' needs a DOS with site"),
         (
             dict(
-                doses={"a": GRID_012, "b": PhononDos([0, 2, 4], [1, 2, 1])}, stack=True
+                doses={"a": GRID_012, "b": mk.PhononDos([0, 2, 4], [1, 2, 1])},
+                stack=True,
             ),
             ValueError,
             r"one grid, but \['b'\] differ from 'a'",
@@ -97,7 +90,7 @@ def test_phonon_dos(
     ],
 )
 def test_phonon_dos_raises(
-    phonon_doses: dict[str, PhononDos],
+    phonon_doses: dict[str, mk.PhononDos],
     kwargs: dict[str, Any],
     err_type: type[Exception],
     match: str,
@@ -125,7 +118,7 @@ def test_phonon_dos_raises(
     ],
 )
 def test_phonon_dos_projection(
-    complete_phonon_dos: CompletePhononDos,
+    complete_phonon_dos: mk.PhononDos,
     project: Literal["element", "site"] | None,
     show_total: bool,
     labeled: bool,
@@ -140,23 +133,20 @@ def test_phonon_dos_projection(
     )
     if expected_names is None:
         np.testing.assert_array_equal(
-            widget.doses["densities"], complete_phonon_dos.densities
+            widget.doses["densities"], complete_phonon_dos.total_dos
         )
-        assert "pdos" not in widget.doses  # CompletePhononDos reduced to its total
+        assert "pdos" not in widget.doses  # projected DOS reduced to its total
         return
     assert set(widget.doses) == expected_names
+    site_densities = complete_phonon_dos.projected_dos
+    assert site_densities is not None
     expected = (
-        {str(elem): dos for elem, dos in complete_phonon_dos.get_element_dos().items()}
+        complete_phonon_dos.element_dos()
         if project == "element"
-        else {
-            f"{site.specie}{idx}": complete_phonon_dos.get_site_dos(site)
-            for idx, site in enumerate(complete_phonon_dos.structure)
-        }
-    ) | {"Total": complete_phonon_dos}
+        else {"Na0": site_densities[0], "Cl1": site_densities[1]}
+    ) | {"Total": complete_phonon_dos.total_dos}
     for name, doc in widget.doses.items():
-        np.testing.assert_array_equal(
-            doc["densities"], expected[name.split(" - ")[-1]].densities
-        )
+        np.testing.assert_array_equal(doc["densities"], expected[name.split(" - ")[-1]])
 
 
 def test_bands_and_dos_widget_phonons(phonon_bands_doses_mp_2758: BandsDoses) -> None:
@@ -191,43 +181,38 @@ def test_bands_and_dos_widget_phonons(phonon_bands_doses_mp_2758: BandsDoses) ->
             pmv.bands_and_dos(band_structs=bands, doses=mismatched)
 
 
-@needs_phonopy
-def test_phonopy_inputs(phonopy_nacl: Phonopy) -> None:
-    """Phonopy band structures, TotalDos and projected DOS go through matscikit."""
-    phonopy_nacl.run_mesh([5, 5, 5])
-    phonopy_nacl.run_total_dos(freq_pitch=1, use_tetrahedron_method=False)
-    total_dos = phonopy_nacl.total_dos
-    phonopy_nacl.run_band_structure(
-        paths=[np.linspace([0, 0, 0], [1 / 2, 0, 0], 11)], labels=["Γ", "X"]
+def test_nacl_phonons_inputs() -> None:
+    """Band structures, mesh DOS and projected DOS of matscikit Phonons."""
+    phonons = load_nacl_phonons()
+    mesh = phonons.mesh([5, 5, 5], total_dos=True)
+    total_dos = mk.PhononDos(mesh.frequency_points, mesh.total_dos)
+    band_structure = phonons.bands(
+        [[[0, 0, 0], [1 / 2, 0, 0]]], labels=["Γ", "X"], n_points=11
     )
-    band_structure = phonopy_nacl.band_structure
-    assert total_dos is not None
-    assert band_structure is not None
 
     widget = pmv.phonon_dos({"DFT": total_dos, "ML": total_dos})
     np.testing.assert_array_equal(
-        widget.doses["DFT"]["frequencies"], total_dos.frequency_points
+        widget.doses["DFT"]["frequencies"], mesh.frequency_points
     )
-    np.testing.assert_array_equal(widget.doses["ML"]["densities"], total_dos.dos)
+    np.testing.assert_array_equal(widget.doses["ML"]["densities"], mesh.total_dos)
 
     widget = pmv.band_structure(band_structs={"NaCl": band_structure})
     assert np.array(widget.band_structs["NaCl"]["bands"]).shape == (6, 11)
     widget = pmv.bands_and_dos(band_structs=band_structure, doses=total_dos)
-    np.testing.assert_array_equal(widget.doses["densities"], total_dos.dos)
-    np.testing.assert_array_equal(  # exact frequencies, no YAML round trip
-        widget.band_structs["bands"], np.concatenate(band_structure.frequencies).T
+    np.testing.assert_array_equal(widget.doses["densities"], mesh.total_dos)
+    np.testing.assert_array_equal(
+        widget.band_structs["bands"], band_structure.frequencies.T
     )
     assert widget.band_structs["labels_dict"] == {"Γ": [0, 0, 0], "X": [0.5, 0, 0]}
 
-    phonopy_nacl.run_mesh([5, 5, 5], with_eigenvectors=True, is_mesh_symmetry=False)
-    phonopy_nacl.run_total_dos(freq_pitch=1, use_tetrahedron_method=False)
-    phonopy_nacl.run_projected_dos(freq_pitch=1, use_tetrahedron_method=False)
-    widget = pmv.phonon_dos(phonopy_nacl, project="element")
-    projected = phonopy_nacl.projected_dos.projected_dos
+    projected_dos = phonons.projected_dos([5, 5, 5])
+    assert projected_dos.projected_dos is not None
+    widget = pmv.phonon_dos(projected_dos, project="element")
     np.testing.assert_allclose(
         np.add(widget.doses["Na"]["densities"], widget.doses["Cl"]["densities"]),
-        projected.sum(axis=0),
+        projected_dos.projected_dos.sum(axis=0),
         rtol=1e-12,
+        atol=0,
     )
 
 
@@ -235,7 +220,7 @@ def test_phonopy_inputs(phonopy_nacl: Phonopy) -> None:
     ("labeled", "show_total"), [(False, True), (True, False), (True, True)]
 )
 def test_phonon_dos_stack_projection_raises(
-    complete_phonon_dos: CompletePhononDos, labeled: bool, show_total: bool
+    complete_phonon_dos: mk.PhononDos, labeled: bool, show_total: bool
 ) -> None:
     """MatterViz stacks all curves onto one sum, so stacking partials with their
     total or with another DOS's partials would double count.
@@ -259,21 +244,9 @@ def test_band_widgets_drop_eigendisplacements(
 ) -> None:
     """Eigendisplacements, unused by the band plot, are not sent to the widget."""
     bands = phonon_bands_doses_mp_2758["bands"]["DFT"]
-    bands.eigendisplacements = np.ones((*bands.bands.shape, bands.nb_bands // 3, 3))
     assert "eigendisplacements" in bands.as_dict()
-
-    class Unserializable:
-        """Eigendisplacements that fail when as_dict() splits them into lists."""
-
-        @property
-        def real(self) -> None:
-            """Raise like a (slow) list conversion would happen."""
-            raise AssertionError("eigendisplacements were serialized")
-
-    bands.eigendisplacements = sentinel = Unserializable()  # ty: ignore[invalid-assignment]
     widget = pmv.band_structure(band_structs=bands)
     assert "eigendisplacements" not in widget.band_structs
-    assert bands.eigendisplacements is sentinel  # input not mutated
     combined = pmv.bands_and_dos(
         band_structs=bands, doses=phonon_bands_doses_mp_2758["doses"]["DFT"]
     )

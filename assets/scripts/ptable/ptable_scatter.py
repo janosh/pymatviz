@@ -1,5 +1,11 @@
 """Periodic table of per-element scatter and line plots."""
 
+# /// script
+# dependencies = [
+#     "pymatgen>=2026.9.24",
+# ]
+# ///
+
 # %%
 import numpy as np
 from pymatgen.core import Element

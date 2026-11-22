@@ -5,9 +5,9 @@ from __future__ import annotations
 import math
 from typing import Any
 
+import matscikit as mk
 import numpy as np
 import pytest
-from pymatgen.core import Lattice, Structure
 
 import pymatviz as pmv
 from pymatviz.widgets._describe import (
@@ -18,7 +18,9 @@ from pymatviz.widgets._describe import (
 )
 
 
-_STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+_STRUCT = mk.Structure(
+    np.eye(3) * 3, ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5]], fractional=True
+)
 
 
 @pytest.mark.parametrize(
@@ -55,8 +57,8 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
         ),
         (
             pmv.structure(
-                structure=Structure(
-                    Lattice.cubic(3), [{"Fe": 0.1}] * 10, [[0, 0, 0]] * 10
+                structure=mk.Structure(
+                    np.eye(3) * 3, [{"Fe": 0.1}] * 10, [[0, 0, 0]] * 10, fractional=True
                 )
             ),
             {"n_sites": 10, "formula": "Fe", "elements": ["Fe"]},
@@ -182,45 +184,6 @@ def test_describe_widget(widget: Any, expected: dict[str, Any]) -> None:
             assert key not in report
         else:
             assert report[key] == value, f"{key}: {report.get(key)!r} != {value!r}"
-
-
-@pytest.mark.parametrize("monty_coords", [False, True])
-def test_serialized_trajectory_facts(monty_coords: bool) -> None:
-    """Serialized trajectories count frames, symbols, and decorated site occupancies."""
-    coords = [[[0, 0, 0]] * 4] * 3
-    widget = pmv.trajectory(
-        trajectory={
-            "@class": "Trajectory",
-            "coords": (
-                {
-                    "@module": "numpy",
-                    "@class": "array",
-                    "dtype": "float64",
-                    "data": coords,
-                }
-                if monty_coords
-                else coords
-            ),
-            "lattice": _STRUCT.lattice.matrix,
-            "species": [
-                "O",
-                26,
-                "Fe2+",
-                {"element": "Fe", "oxidation_state": 3, "occu": 0.5},
-            ],
-        }
-    )
-    oxygen, iron, ferrous, _ = widget.trajectory["species"]
-    assert oxygen == "O"
-    assert iron["element"] == ferrous["element"] == "Fe"
-    assert ferrous["oxidation_state"] == 2
-    assert widget.describe() == {
-        "widget_type": "trajectory",
-        "n_frames": 3,
-        "n_sites": 4,
-        "elements": ["Fe", "O"],
-        "formula": "Fe2.5O",
-    }
 
 
 @pytest.mark.parametrize(

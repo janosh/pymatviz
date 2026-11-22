@@ -5,6 +5,14 @@ notebook cells. Works in Jupyter, JupyterLab, Marimo, VSCode interactive windows
 and other notebook environments. Simply import pymatviz and use pymatgen objects!
 """
 
+# /// script
+# dependencies = [
+#     "ase>=3.29",
+#     "monty>=2025.1.9",
+#     "pymatgen>=2026.9.24",
+# ]
+# ///
+
 # %%
 # ruff: noqa: B018
 import json
@@ -18,7 +26,7 @@ from pymatgen.core import Lattice, Structure
 
 import pymatviz  # noqa: F401  # importing in a kernel enables auto-display
 from pymatviz.phonons import PhononDBDoc
-from pymatviz.utils.testing import TEST_FILES, load_phonopy_nacl
+from pymatviz.utils.testing import TEST_FILES, load_nacl_phonons
 
 
 # %% Crystal structures auto-render as 3D plots
@@ -65,18 +73,9 @@ bands
 dos
 
 
-# %% Phonopy DOS objects also auto-render
-try:
-    phonopy_nacl = load_phonopy_nacl()
-    phonopy_nacl.run_mesh([10, 10, 10])
-    phonopy_nacl.run_total_dos()
-    phonopy_dos = phonopy_nacl.total_dos
-
-except ImportError:
-    print("phonopy not available - skipping phonopy DOS example")
-    phonopy_dos = None
-
-phonopy_dos  # Auto-renders as interactive DOS plot (if phonopy is available)
+# %% matscikit phonon DOS (here read from phonopy files) auto-renders too
+nacl_dos = load_nacl_phonons().projected_dos([10, 10, 10])
+nacl_dos  # Auto-renders as interactive DOS plot
 
 
 # %% Multiple structures

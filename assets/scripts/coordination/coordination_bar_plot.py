@@ -1,5 +1,11 @@
 """Coordination histogram examples."""
 
+# /// script
+# dependencies = [
+#     "pymatgen>=2026.9.24",
+# ]
+# ///
+
 # %%
 from glob import glob
 

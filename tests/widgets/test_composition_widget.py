@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
+import matscikit as mk
 import pytest
-from pymatgen.core import Composition
 
 from pymatviz.widgets.composition import CompositionWidget
 from tests.widgets.conftest import assert_widget_property_sync
@@ -24,7 +24,7 @@ from tests.widgets.conftest import assert_widget_property_sync
         pytest.param({}, id="empty"),
         pytest.param({"Fe": 1000.0, "O": 1500.0}, id="large-counts"),
         pytest.param(
-            Composition(
+            mk.Composition(
                 "Li0.1Na0.05K0.05Mg0.1Ca0.05Ba0.05Al0.1Si0.2Ti0.05V0.05Cr0.05"
                 "Mn0.1Fe0.15Co0.05Ni0.05Cu0.05Zn0.05O1.0"
             ),
@@ -33,12 +33,12 @@ from tests.widgets.conftest import assert_widget_property_sync
     ],
 )
 def test_widget_composition_inputs(
-    composition_input: str | dict[str, float] | Composition,
+    composition_input: str | dict[str, float] | mk.Composition,
 ) -> None:
     """Widget must handle different composition input types and formats."""
     widget = CompositionWidget(composition=composition_input)
     assert widget.widget_type == "composition"
-    assert widget.composition == Composition(composition_input).as_dict()
+    assert widget.composition == mk.Composition(composition_input).as_dict()
     json.dumps(widget.composition)
 
 

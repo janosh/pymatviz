@@ -7,7 +7,6 @@ import matscikit as mk
 import numpy as np
 import pandas as pd
 import pytest
-from pymatgen.core import Lattice, Structure
 
 from pymatviz.coordination import coordination_bar_plot, coordination_vs_cutoff_line
 from pymatviz.coordination.figures import _element_colors
@@ -16,6 +15,7 @@ from pymatviz.enums import ElemColorScheme
 from pymatviz.widgets.bar_plot import BarPlotWidget
 from pymatviz.widgets.coordination_bar_plot import CoordinationBarPlotWidget
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
+from tests.conftest import FCC_SITES, cubic_structure, rocksalt
 
 
 if TYPE_CHECKING:
@@ -23,16 +23,14 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture
-def nacl() -> Structure:
+def nacl() -> mk.Structure:
     """Conventional rocksalt NaCl: every site octahedral (CN 6 within 3 Å)."""
-    return Structure.from_spacegroup(
-        225, Lattice.cubic(5.64), ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]]
-    )
+    return rocksalt()
 
 
 @pytest.mark.parametrize("split_mode", list(CnSplitMode))
 def test_coordination_bar_plot_split_modes(
-    structures: Sequence[Structure], split_mode: CnSplitMode
+    structures: Sequence[mk.Structure], split_mode: CnSplitMode
 ) -> None:
     """Series per split mode partition the same site CNs, on a contiguous CN axis."""
     struct_dict = {f"s{idx}": struct for idx, struct in enumerate(structures)}
@@ -84,10 +82,10 @@ def test_coordination_bar_plot_split_modes(
     ],
 )
 def test_coordination_bar_plot_literal_counts(
-    nacl: Structure, split_mode: str, expected: dict[str, list[int]]
+    nacl: mk.Structure, split_mode: str, expected: dict[str, list[int]]
 ) -> None:
     """Rocksalt (CN 6) plus diamond Si (CN 4) at 3 Å, as hand-counted literals."""
-    si = Structure.from_spacegroup(227, Lattice.cubic(5.43), ["Si"], [[0, 0, 0]])
+    si = cubic_structure(5.43, ["Si"] * 8, [*FCC_SITES, *FCC_SITES + 0.25])
     widget = coordination_bar_plot(
         {"NaCl": nacl, "Si": si},
         strategy=3.0,
@@ -107,7 +105,7 @@ def test_coordination_bar_plot_literal_counts(
 
 
 @pytest.mark.parametrize("strategy", [3.0, 2.5, "crystal_nn", "voronoi"])
-def test_coordination_bar_plot_strategies(nacl: Structure, strategy: Any) -> None:
+def test_coordination_bar_plot_strategies(nacl: mk.Structure, strategy: Any) -> None:
     """Cutoffs, CrystalNN and Voronoi are computed in Python; rocksalt is CN 6."""
     widget = coordination_bar_plot(nacl, strategy=strategy)
     assert isinstance(widget, BarPlotWidget)
@@ -116,7 +114,7 @@ def test_coordination_bar_plot_strategies(nacl: Structure, strategy: Any) -> Non
         assert dict(zip(srs["x"], srs["y"], strict=True)) == {expected_cn: 4}
 
 
-def test_coordination_bar_plot_style_options(nacl: Structure) -> None:
+def test_coordination_bar_plot_style_options(nacl: mk.Structure) -> None:
     """Colors, bar labels, bar mode and axis options reach the BarPlotWidget."""
     widget = coordination_bar_plot(
         nacl,
@@ -163,7 +161,7 @@ def test_coordination_bar_plot_style_options(nacl: Structure) -> None:
     ],
 )
 def test_coordination_bar_plot_invalid_inputs(
-    nacl: Structure,
+    nacl: mk.Structure,
     structs: Any,
     kwargs: dict[str, Any],
     err_cls: type[Exception],
@@ -176,7 +174,7 @@ def test_coordination_bar_plot_invalid_inputs(
 
 @pytest.mark.parametrize("split_mode", list(CnSplitMode))
 def test_coordination_bar_plot_in_browser(
-    nacl: Structure, split_mode: CnSplitMode
+    nacl: mk.Structure, split_mode: CnSplitMode
 ) -> None:
     """MatterViz strategy names bond in the browser, the default included."""
     widget = coordination_bar_plot({"NaCl": nacl}, split_mode=split_mode)
@@ -207,7 +205,7 @@ def test_element_colors(scheme: ElemColorScheme | dict[str, str]) -> None:
 
 @pytest.mark.parametrize("cutoff_range", [(0, 3), (1.0, 5.0)])
 def test_coordination_vs_cutoff_line(
-    structures: Sequence[Structure],
+    structures: Sequence[mk.Structure],
     cutoff_range: tuple[float, float],
 ) -> None:
     """One line per structure and element, grouped and dashed per structure."""
@@ -218,9 +216,7 @@ def test_coordination_vs_cutoff_line(
         element_color_scheme={"Si": "red"},
     )
     assert isinstance(widget, ScatterPlotWidget)
-    elems = [
-        sorted({site.specie.symbol for site in struct}) for struct in structures[:2]
-    ]
+    elems = [sorted(set(struct.symbols)) for struct in structures[:2]]
     assert [srs["label"] for srs in widget.series] == [
         el for els in elems for el in els
     ]
@@ -240,7 +236,7 @@ def test_coordination_vs_cutoff_line(
     assert widget.y_axis["label"] == "Coordination Number"
 
 
-def test_coordination_vs_cutoff_line_single_structure(nacl: Structure) -> None:
+def test_coordination_vs_cutoff_line_single_structure(nacl: mk.Structure) -> None:
     """A single structure has no legend groups; rocksalt reaches CN 6 by 3 Å."""
     widget = coordination_vs_cutoff_line(nacl, cutoff_range=(2, 3), num_points=3)
     assert all("legend_group" not in srs for srs in widget.series)
@@ -253,10 +249,10 @@ def test_coordination_vs_cutoff_line_single_structure(nacl: Structure) -> None:
     ("structure", "cutoff_range", "num_points"),
     [
         # periodic self-images at exactly the 2 and 4 A cutoffs
-        (Structure(Lattice.cubic(2.0), ["Si"], [[0, 0, 0]]), (1, 5), 5),
+        (cubic_structure(2.0, ["Si"], [[0, 0, 0]]), (1, 5), 5),
         (
-            Structure(
-                Lattice.cubic(6.0),
+            cubic_structure(
+                6.0,
                 ["Si"] * 6 + ["O"] * 6,
                 np.random.default_rng(seed=0).random((12, 3)),
             ),
@@ -266,7 +262,7 @@ def test_coordination_vs_cutoff_line_single_structure(nacl: Structure) -> None:
     ],
 )
 def test_coordination_vs_cutoff_line_one_neighbor_search(
-    structure: Structure,
+    structure: mk.Structure,
     cutoff_range: tuple[float, float],
     num_points: int,
     monkeypatch: pytest.MonkeyPatch,
@@ -275,20 +271,21 @@ def test_coordination_vs_cutoff_line_one_neighbor_search(
     and cutoff.
     """
     cutoffs = np.linspace(*cutoff_range, num_points)
+    symbols = structure.symbols
     expected = {
         elem: [
             float(
                 np.mean(
                     [
-                        len(structure.get_neighbors(site, r=cutoff))
-                        for site in structure
-                        if site.specie.symbol == elem
+                        len(structure.neighbors(idx, cutoff)[0])
+                        for idx, symbol in enumerate(symbols)
+                        if symbol == elem
                     ]
                 )
             )
             for cutoff in cutoffs
         ]
-        for elem in sorted({site.specie.symbol for site in structure})
+        for elem in sorted(set(symbols))
     }
     n_calls = 0
     coordination_numbers = mk.coordination_numbers
@@ -323,7 +320,7 @@ def test_coordination_vs_cutoff_line_disordered_structure() -> None:
         ("invalid input", {}, TypeError, "Input must be a matscikit or pymatgen"),
         *(
             (
-                Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]]),
+                cubic_structure(5, ["Si"], [[0, 0, 0]]),
                 {"cutoff_range": cutoff_range},
                 TypeError,
                 "expected \\(min_cutoff, max_cutoff\\)",
@@ -343,7 +340,7 @@ def test_coordination_vs_cutoff_line_invalid_inputs(
         coordination_vs_cutoff_line(structs, **kwargs)
 
 
-def test_coordination_bar_plot_rejects_colliding_labels(nacl: Structure) -> None:
+def test_coordination_bar_plot_rejects_colliding_labels(nacl: mk.Structure) -> None:
     """Labels equal as strings (1 and "1") raise instead of dropping a structure."""
     with pytest.raises(ValueError, match="labels must be unique as strings"):
         coordination_bar_plot(pd.Series([nacl, nacl], index=[1, "1"]))

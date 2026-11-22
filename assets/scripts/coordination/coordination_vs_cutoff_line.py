@@ -1,5 +1,12 @@
 """Coordination vs cutoff line examples."""
 
+# /// script
+# dependencies = [
+#     "matminer>=0.10.1",
+#     "pymatgen>=2026.9.24",
+# ]
+# ///
+
 # %%
 from glob import glob
 

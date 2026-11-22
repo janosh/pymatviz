@@ -1,5 +1,11 @@
 """Compare coordination environments with site counts or equal weight per structure."""
 
+# /// script
+# dependencies = [
+#     "pymatgen>=2026.9.24",
+# ]
+# ///
+
 # %%
 from glob import glob
 

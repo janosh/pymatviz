@@ -11,6 +11,12 @@ Retrieved April 2, 2019.
 https://ml.materialsproject.org/projects/matbench_mp_e_form
 """
 
+# /// script
+# dependencies = [
+#     "matminer>=0.10.1",
+# ]
+# ///
+
 # %%
 from matminer.datasets import load_dataset
 

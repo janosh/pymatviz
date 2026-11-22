@@ -1,9 +1,11 @@
 """VSCode interactive demo for pymatviz widgets."""
 # /// script
 # dependencies = [
-#     "pymatgen>=2024.1.1",
-#     "ase>=3.22.0",
-#     "phonopy>=2.20.0",
+#     "ase>=3.29",
+#     "ipywidgets",
+#     "monty>=2025.1.9",
+#     "phonopy>=4.8",
+#     "pymatgen>=2026.9.24",
 # ]
 # ///
 

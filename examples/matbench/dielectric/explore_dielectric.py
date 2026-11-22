@@ -12,6 +12,14 @@ those containing noble gases. Retrieved April 2, 2019.
 https://ml.materialsproject.org/projects/matbench_dielectric
 """
 
+# /// script
+# dependencies = [
+#     "matbench-discovery",
+#     "matminer>=0.10.1",
+#     "tqdm>=4.67",
+# ]
+# ///
+
 # %%
 from typing import get_args
 

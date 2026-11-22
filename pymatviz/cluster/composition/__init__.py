@@ -4,7 +4,7 @@ This module provides utilities for clustering and visualizing materials based on
 chemical composition.
 """
 
-from pymatviz.cluster.composition.embed import matminer_featurize, one_hot_encode
+from pymatviz.cluster.composition.embed import magpie_featurize, one_hot_encode
 from pymatviz.cluster.composition.plot import (
     EmbeddingMethod,
     ProjectionCallable,

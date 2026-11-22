@@ -5,16 +5,16 @@ from typing import Any, Literal
 import numpy as np
 import pandas as pd
 import pytest
-from pymatgen.core import Lattice, Structure
 
 import pymatviz.rdf.figures as rdf_figures
 from pymatviz.rdf.figures import rdf_plot
 from pymatviz.rdf.helpers import calculate_rdf
-from tests.conftest import SI_ATOMS, SI_STRUCTS
+from pymatviz.structures import structure_dict
+from tests.conftest import SI_STRUCTS, cubic_structure
 
 
-EMPTY_STRUCT = Structure(Lattice.cubic(1), [], [])
-NACL = Structure(Lattice.cubic(5.64), ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+EMPTY_STRUCT = cubic_structure(1, [], [])
+NACL = cubic_structure(5.64, ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]])
 
 
 @pytest.fixture
@@ -51,12 +51,12 @@ def test_rdf_plot_in_browser(mode: Literal["element_pairs", "full"]) -> None:
     widget = rdf_plot({"a": NACL, "b": SI_STRUCTS[0]}, mode=mode, bins=40)
     assert widget.patterns is None
     assert list(widget.structures) == ["a", "b"]
-    assert Structure.from_dict(widget.structures["a"]) == NACL
+    assert widget.structures["a"] == structure_dict(NACL)
     assert (widget.mode, widget.n_bins) == (mode, 40)
     assert widget.cutoff == pytest.approx(2 * 5.64)  # NaCl's cell is the longest
     lone = rdf_plot(NACL, cutoff=4)  # a single structure is sent unlabeled
     assert lone.cutoff == 4
-    assert Structure.from_dict(lone.structures) == NACL
+    assert lone.structures == structure_dict(NACL)
 
 
 def test_rdf_plot_patterns() -> None:
@@ -99,7 +99,7 @@ def test_rdf_plot_one_search_matches_calculate_rdf(
 
     rng = np.random.default_rng(seed=0)
     species: list[Any] = ["Si", "O", "Fe", "Li"] * 6 + [{"Fe": 0.5, "Co": 0.5}]
-    struct = Structure(Lattice.cubic(6.0), species, rng.uniform(size=(25, 3)))
+    struct = cubic_structure(6.0, species, rng.uniform(size=(25, 3)))
     n_searches = 0
     to_structure = rdf_helpers.to_structure
 
@@ -121,7 +121,9 @@ def test_rdf_plot_one_search_matches_calculate_rdf(
             return self._struct.neighbor_list(cutoff)
 
     monkeypatch.setattr(
-        rdf_helpers, "to_structure", lambda obj: CountingStructure(to_structure(obj))
+        rdf_helpers,
+        "to_structure",
+        lambda obj: CountingStructure(to_structure(obj)),
     )
     widget = rdf_plot(struct, cutoff=cutoff, bins=40)
     assert n_searches == 1
@@ -157,14 +159,13 @@ def test_rdf_plot_multiple_structures(structs_type: str) -> None:
     ]
 
 
-@pytest.mark.parametrize("structs_type", ["single", "dict", "list", "ase"])
+@pytest.mark.parametrize("structs_type", ["single", "dict", "list"])
 def test_rdf_plot_full_in_python(structs_type: str) -> None:
     """One full RDF per structure, labeled by key, matching calculate_rdf."""
     structures = {
         "single": SI_STRUCTS[0],
         "dict": dict(zip(["a", "b"], SI_STRUCTS[:2], strict=True)),
         "list": SI_STRUCTS[:2],
-        "ase": SI_ATOMS[:2],
     }[structs_type]
     widget = rdf_plot(structures, mode="full", cutoff=5, bins=20, colors=["red"])
     n_structs = 1 if structs_type == "single" else 2
@@ -172,10 +173,8 @@ def test_rdf_plot_full_in_python(structs_type: str) -> None:
     if structs_type == "dict":
         assert [entry["label"] for entry in widget.patterns] == ["a", "b"]
     radii, g_r = calculate_rdf(SI_STRUCTS[0], cutoff=5, n_bins=20)
-    # ASE Atoms round-trip perturbs coordinates by ~1e-15 Å, rarely flipping a bin
-    np.testing.assert_allclose(widget.patterns[0]["pattern"]["r"], radii, rtol=1e-12)
-    if structs_type != "ase":
-        np.testing.assert_array_equal(widget.patterns[0]["pattern"]["g_r"], g_r)
+    np.testing.assert_array_equal(widget.patterns[0]["pattern"]["r"], radii)
+    np.testing.assert_array_equal(widget.patterns[0]["pattern"]["g_r"], g_r)
     assert {entry["color"] for entry in widget.patterns} == {"red"}
 
 
@@ -194,7 +193,7 @@ def test_rdf_plot_widget_kwargs(element_pairs: list[tuple[str, str]] | None) -> 
 @pytest.mark.usefixtures("python_rdfs")
 def test_rdf_plot_skips_absent_pairs() -> None:
     """Pairs a structure lacks get no all-zero curve, and pairs are deduplicated."""
-    kbr = Structure(Lattice.cubic(6.6), ["K", "Br"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+    kbr = cubic_structure(6.6, ["K", "Br"], [[0, 0, 0], [0.5, 0.5, 0.5]])
     widget = rdf_plot({"NaCl": NACL, "KBr": kbr}, cutoff=5)
     assert [(entry["legend_group"], entry["label"]) for entry in widget.patterns] == [
         ("NaCl", "Cl-Cl"),

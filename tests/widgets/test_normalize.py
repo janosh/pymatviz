@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import copy
 import functools
-import importlib.util
 from enum import IntEnum
+from types import SimpleNamespace
 from typing import Any
 
+import matscikit as mk
 import numpy as np
 import pandas as pd
 import pytest
-from pymatgen.core import Composition, Lattice, Structure
 
 from pymatviz.widgets._normalize import (
     _normalize_entry_compositions,
@@ -138,52 +138,50 @@ def test_normalize_convex_hull_entries_passthrough() -> None:
     ]
 
 
-@pytest.mark.parametrize("source", ["pymatgen", "entries", "generator", "matscikit"])
-def test_normalize_convex_hull_entries_from_phase_diagram(source: str) -> None:
-    """Phase diagrams (pymatgen, matscikit), entry lists and generators give
-    pymatgen's energies above hull and stability (computed by matscikit).
-    """
-    from matscikit.interop import to_phase_diagram
-    from pymatgen.analysis.phase_diagram import PDEntry, PhaseDiagram
-    from pymatgen.entries.computed_entries import ComputedEntry
+_HULL_ENTRIES = (("Li", -1.9), ("O", -4.2), ("Li2O", -14.3), ("Li2O2", -16.0))
+_HULL_ENTRIES += (("Li3O", -16.3),)
 
+
+@pytest.mark.parametrize("source", ["matscikit", "objects", "generator"])
+def test_normalize_convex_hull_entries_from_phase_diagram(source: str) -> None:
+    """Matscikit PhaseDiagrams, entry objects and generators give compositions, total
+    energies, energies above hull and stability in input order.
+    """
     entries = [
-        PDEntry(Composition("Li"), -1.9),
-        PDEntry(Composition("O"), -4.2),
-        PDEntry(Composition("Li2O"), -14.3),
-        PDEntry(Composition("Li2O2"), -16.0),
-        ComputedEntry("Li3O", -16.0, correction=-0.3),
+        SimpleNamespace(composition=formula, energy=energy)
+        for formula, energy in _HULL_ENTRIES
     ]
-    phase_diag = PhaseDiagram(entries)
-    if source == "pymatgen":  # in PhaseDiagram.all_entries order
-        entries = phase_diag.all_entries
+    compositions = [mk.Composition(formula) for formula, _ in _HULL_ENTRIES]
     obj = {
-        "pymatgen": phase_diag,
-        "entries": entries,
+        "matscikit": mk.PhaseDiagram(
+            compositions,
+            [
+                entry.energy / comp.num_atoms
+                for entry, comp in zip(entries, compositions, strict=True)
+            ],
+        ),
+        "objects": entries,
         "generator": (entry for entry in entries),
-        "matscikit": to_phase_diagram(entries),
     }[source]
     result = normalize_convex_hull_entries(obj)
     assert result is not None
     assert [entry["composition"] for entry in result] == [
-        entry.composition.as_dict() for entry in entries
+        comp.as_dict() for comp in compositions
     ]
-    # total energy = energy per atom x atoms, within round-off of pymatgen's
-    np.testing.assert_allclose(
+    np.testing.assert_allclose(  # energy per atom x atoms
         [entry["energy"] for entry in result],
-        [entry.energy for entry in entries],
+        [energy for _, energy in _HULL_ENTRIES],
         rtol=4e-16,
         atol=0,
     )
+    # reference values from pymatgen's PhaseDiagram (parity test in test_interop.py)
     np.testing.assert_allclose(
         [entry["e_above_hull"] for entry in result],
-        [phase_diag.get_e_above_hull(entry) for entry in entries],
+        [0, 0, 0, 0.625, 0],
         rtol=0,
         atol=1e-12,
     )
-    assert [entry["is_stable"] for entry in result] == [
-        entry in phase_diag.stable_entries for entry in entries
-    ]
+    assert [entry["is_stable"] for entry in result] == [True] * 3 + [False, True]
 
 
 def test_normalize_convex_hull_entries_unsupported_type() -> None:
@@ -242,13 +240,12 @@ def test_normalize_xrd_pattern_rejects_bad_kind(bad_kind: str | None) -> None:
         normalize_xrd_pattern({"x": [1.0], "y": [2.0], "kind": bad_kind})
 
 
-def test_normalize_xrd_pattern_diffraction_pattern_kind() -> None:
-    """DiffractionPatterns are sticks with hkls, profiles without."""
-    from pymatgen.analysis.diffraction.xrd import DiffractionPattern
-
-    x_vals, y_vals = np.array([10.0, 20.0]), np.array([100.0, 50.0])
-    computed = normalize_xrd_pattern(DiffractionPattern(x_vals, y_vals, _HKLS, None))
-    measured = normalize_xrd_pattern(DiffractionPattern(x_vals, y_vals, None, None))
+def test_normalize_xrd_pattern_xrd_pattern_kind() -> None:
+    """XrdPatterns are sticks with hkls, profiles without."""
+    two_theta, intensities = [10.0, 20.0], [100.0, 50.0]
+    hkls = [[([1, 0, 0], 6)], [([1, 1, 0], 12)]]
+    computed = normalize_xrd_pattern(mk.XrdPattern(two_theta, intensities, hkls=hkls))
+    measured = normalize_xrd_pattern(mk.XrdPattern(two_theta, intensities))
     assert computed is not None
     assert "kind" not in computed
     assert measured == {"x": [10.0, 20.0], "y": [100.0, 50.0], "kind": "profile"}
@@ -335,16 +332,14 @@ def test_normalize_xrd_pattern_mixed_schema_prefers_complete_ferrox() -> None:
     assert result["y"] == [1.0, 2.0]
 
 
-def test_normalize_xrd_pattern_from_diffraction_pattern() -> None:
-    """Test DiffractionPattern conversion produces plain floats/ints."""
-    from pymatgen.analysis.diffraction.xrd import DiffractionPattern
-
+def test_normalize_xrd_pattern_from_xrd_pattern() -> None:
+    """XrdPattern conversion produces plain floats/ints."""
     result = normalize_xrd_pattern(
-        DiffractionPattern(
-            x=np.array([10.0, 20.0, 30.0]),
-            y=np.array([100.0, 50.0, 25.0]),
-            hkls=[[{"hkl": (1, 0, 0)}], [{"hkl": (1, 1, 0)}], [{"hkl": (1, 1, 1)}]],
-            d_hkls=np.array([2.5, 2.0, 1.5]),
+        mk.XrdPattern(
+            np.array([10.0, 20.0, 30.0]),
+            np.array([100.0, 50.0, 25.0]),
+            d_spacings=np.array([2.5, 2.0, 1.5]),
+            hkls=[[([1, 0, 0], 6)], [([1, 1, 0], 12)], [([1, 1, 1], 8)]],
         )
     )
     assert result is not None
@@ -353,7 +348,7 @@ def test_normalize_xrd_pattern_from_diffraction_pattern() -> None:
     assert result["d_hkls"] == [2.5, 2.0, 1.5]
     assert type(result["x"][0]) is float
     assert type(result["d_hkls"][0]) is float
-    assert result["hkls"][0][0]["hkl"] == [1, 0, 0]
+    assert result["hkls"][0] == [{"hkl": [1, 0, 0], "multiplicity": 6}]
     assert type(result["hkls"][0][0]["hkl"][0]) is int
 
 
@@ -373,39 +368,28 @@ def test_structure_to_dict_passthrough() -> None:
     assert structure_to_dict(test_dict) is test_dict
 
 
-@pytest.mark.parametrize(
-    ("label", "make_obj"),
-    [
-        (
-            "pymatgen Structure",
-            lambda: Structure(Lattice.cubic(3), ["Si"], [[0, 0, 0]]),
-        ),
-        pytest.param(
-            "ASE Atoms",
-            lambda: __import__("ase.build", fromlist=["bulk"]).bulk(  # ty: ignore[missing-attribute]
-                "Si", "diamond", a=5.43
-            ),
-            marks=pytest.mark.skipif(
-                not importlib.util.find_spec("ase"),
-                reason="ase not installed",
-            ),
-        ),
-    ],
-)
-def test_structure_to_dict_objects(label: str, make_obj: Any) -> None:  # noqa: ARG001
-    """Test conversion from pymatgen Structure and ASE Atoms."""
-    result = structure_to_dict(make_obj())
+@pytest.mark.parametrize("pbc", [(True,) * 3, (False,) * 3])
+def test_structure_to_dict_objects(pbc: tuple[bool, bool, bool]) -> None:
+    """Matscikit crystals convert to dicts with lattice and sites, molecules without
+    lattice.
+    """
+    lattice = np.eye(3) * 3 if any(pbc) else None
+    result = structure_to_dict(mk.Structure(lattice, ["Si"], [[0, 0, 0]], pbc=pbc))
     assert isinstance(result, dict)
-    assert "lattice" in result
-    assert "sites" in result
+    assert ("lattice" in result) is any(pbc)
+    assert len(result["sites"]) == 1
 
 
 @pytest.mark.parametrize(
     ("bad_input", "err_cls", "match"),
     [
         (42, TypeError, "got int"),
-        (Lattice.cubic(3), TypeError, "got Lattice"),  # MSONable but not a structure
-        ([Structure(Lattice.cubic(3), ["Si"], [[0, 0, 0]])], TypeError, "got list"),
+        (mk.Composition("Si"), TypeError, "got Composition"),  # has as_dict()
+        (
+            [mk.Structure(np.eye(3) * 3, ["Si"], [[0, 0, 0]])],
+            TypeError,
+            "got list",
+        ),
         ({"lattice": {}}, TypeError, r"'sites' list.*keys=\['lattice'\]"),
         ({"sites": "Si"}, TypeError, "'sites' list"),
     ],

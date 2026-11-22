@@ -1,5 +1,12 @@
 """Periodic table heatmap examples."""
 
+# /// script
+# dependencies = [
+#     "matminer>=0.10.1",
+#     "pyyaml>=6.0.3",
+# ]
+# ///
+
 # %%
 import os
 from urllib.error import HTTPError, URLError

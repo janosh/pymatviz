@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
+import matscikit as mk
+import numpy as np
 import pytest
-from pymatgen.core import Lattice, Structure
+from matscikit.interop import structure_to_pymatgen_dict
 
 from pymatviz import link_selection
 from pymatviz.widgets import (
@@ -17,10 +19,15 @@ from pymatviz.widgets import (
 from pymatviz.widgets.link import WidgetLink
 
 
-def _frames(n_frames: int = 4) -> list[Structure]:
+def _frames(n_frames: int = 4) -> list[mk.Structure]:
     """Return n_frames distinct cubic structures (lattice grows per frame)."""
     return [
-        Structure(Lattice.cubic(3.0 + 0.1 * idx), ("Fe", "Fe"), ((0, 0, 0), (0.5,) * 3))
+        mk.Structure(
+            np.eye(3) * (3.0 + 0.1 * idx),
+            ["Fe", "Fe"],
+            [[0, 0, 0], [0.5] * 3],
+            fractional=True,
+        )
         for idx in range(n_frames)
     ]
 
@@ -79,7 +86,7 @@ def test_link_selection_requires_two_widgets() -> None:
 @pytest.mark.parametrize("structures", [None, []])
 @pytest.mark.parametrize("sink_cls", [StructureWidget, PeriodicTableWidget])
 def test_link_selection_structure_requires_nonempty_structures(
-    structures: list[Structure] | None,
+    structures: list[mk.Structure] | None,
     sink_cls: type[StructureWidget | PeriodicTableWidget],
 ) -> None:
     """Linking a structure/ptable sink without (non-empty) structures fails early."""
@@ -107,11 +114,11 @@ def test_link_scatter_click_updates_structure() -> None:
     link = link_selection(scatter, structure, structures=frames)
     assert isinstance(link, WidgetLink)
     # initial sync shows frame 0
-    assert structure.structure == frames[0].as_dict()
+    assert structure.structure == structure_to_pymatgen_dict(frames[0])
 
     # simulate a frontend click writing back active_point
     scatter.active_point = {"series_idx": 0, "point_idx": 2}
-    assert structure.structure == frames[2].as_dict()
+    assert structure.structure == structure_to_pymatgen_dict(frames[2])
 
 
 def test_link_scatter_click_highlights_source_scatter() -> None:
@@ -164,10 +171,10 @@ def test_link_ignores_null_scatter_point() -> None:
 
     link_selection(scatter, structure, structures=frames)
     scatter.active_point = {"series_idx": 0, "point_idx": 2}
-    assert structure.structure == frames[2].as_dict()
+    assert structure.structure == structure_to_pymatgen_dict(frames[2])
 
     scatter.active_point = None  # hover-off
-    assert structure.structure == frames[2].as_dict()  # unchanged
+    assert structure.structure == structure_to_pymatgen_dict(frames[2])  # unchanged
 
 
 def test_unlink_stops_syncing() -> None:
@@ -180,7 +187,9 @@ def test_unlink_stops_syncing() -> None:
     link.unlink()
 
     scatter.active_point = {"series_idx": 0, "point_idx": 3}
-    assert structure.structure == frames[0].as_dict()  # unchanged after unlink
+    assert structure.structure == structure_to_pymatgen_dict(
+        frames[0]
+    )  # unchanged after unlink
 
 
 def test_link_repeated_scatter_click_resyncs() -> None:
@@ -201,12 +210,12 @@ def test_link_repeated_scatter_click_resyncs() -> None:
     assert scatter.active_point is not None  # not reset; retains the click
 
     traj.current_step_idx = 2  # move the shared selection elsewhere
-    assert structure.structure == frames[2].as_dict()
+    assert structure.structure == structure_to_pymatgen_dict(frames[2])
 
     # same point, new event_id (as the frontend would send) -> re-syncs
     scatter.active_point = {"series_idx": 0, "point_idx": 1, "event_id": 2}
     assert traj.current_step_idx == 1
-    assert structure.structure == frames[1].as_dict()
+    assert structure.structure == structure_to_pymatgen_dict(frames[1])
 
 
 def test_link_does_not_emit_synthetic_active_point() -> None:
@@ -234,7 +243,9 @@ def test_link_out_of_range_index_warns_and_keeps_structure() -> None:
     link_selection(scatter, structure, structures=frames)
     with pytest.warns(UserWarning, match=r"index=\d+ out of range for \d+ structures"):
         scatter.active_point = {"series_idx": 0, "point_idx": 4}  # beyond len(frames)
-    assert structure.structure == frames[0].as_dict()  # unchanged, no exception
+    assert structure.structure == structure_to_pymatgen_dict(
+        frames[0]
+    )  # unchanged, no exception
 
 
 def test_link_initial_sync_uses_trajectory_step() -> None:
@@ -244,7 +255,7 @@ def test_link_initial_sync_uses_trajectory_step() -> None:
     structure = StructureWidget(structure=frames[0])
 
     link_selection(traj, structure, structures=frames)
-    assert structure.structure == frames[2].as_dict()
+    assert structure.structure == structure_to_pymatgen_dict(frames[2])
 
 
 def test_link_periodic_table_highlights_and_filters_scatter() -> None:
@@ -252,7 +263,9 @@ def test_link_periodic_table_highlights_and_filters_scatter() -> None:
     tile clicks dim scatter points whose structure lacks the clicked elements.
     """
     frames = [
-        Structure(Lattice.cubic(3), species, ((0, 0, 0), (0.5,) * 3))
+        mk.Structure(
+            np.eye(3) * 3, list(species), [[0, 0, 0], [0.5] * 3], fractional=True
+        )
         for species in (("Fe", "O"), ("Li", "O"), ("Li", "Li"))
     ]
     xs = list(range(len(frames)))
@@ -263,8 +276,10 @@ def test_link_periodic_table_highlights_and_filters_scatter() -> None:
     scatter = ScatterPlotWidget(series=[{"x": xs, "y": xs, "point_ids": xs}])
     ptable = PeriodicTableWidget()
 
-    # a structure dict takes the serialized path, pymatgen ones their composition
-    link_selection(scatter, ptable, structures=[*frames[:2], frames[2].as_dict()])
+    # a structure dict takes the serialized path, Structures their composition
+    link_selection(
+        scatter, ptable, structures=[*frames[:2], structure_to_pymatgen_dict(frames[2])]
+    )
     assert ptable.active_elements == ["Fe", "O"]  # initial sync to index 0
     # the frontend toggles clicks relative to the shown elements: clicking Li
     # writes [Fe, O, Li], which filters by Li alone, not by all three

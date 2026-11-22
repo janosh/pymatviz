@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 from pandas.api.types import is_bool_dtype, is_numeric_dtype
 
-from pymatviz.cluster.composition.embed import matminer_featurize, one_hot_encode
+from pymatviz.cluster.composition.embed import magpie_featurize, one_hot_encode
 from pymatviz.cluster.composition.project import project_vectors
 from pymatviz.composition import is_composition_like, to_composition
 from pymatviz.enums import LabelEnum
@@ -80,11 +80,7 @@ class EmbeddingMethod(LabelEnum):
     """Supported embedding methods for composition vectorization."""
 
     one_hot = "one-hot", "One-hot Encoding"
-    magpie = "magpie", "Matminer MagPie"
-    deml = "deml", "Matminer DEML"
-    matminer = "matminer", "Matminer ElementProperty"
-    matscholar_el = "matscholar_el", "Matminer Matscholar Element"
-    megnet_el = "megnet_el", "Matminer MEGNet Element"
+    magpie = "magpie", "Magpie"
 
 
 class ProjectionMethod(LabelEnum):
@@ -162,13 +158,10 @@ def cluster_compositions(
             Method to convert compositions to vectors (default: "magpie"). Options:
             - "one-hot": One-hot encoding of element fractions
             - "magpie": Magpie element-property features (matscikit, as matminer's)
-            - "deml": Matminer's DEML featurization
-            - "matminer": Matminer's ElementProperty featurization
-            - "matscholar_el": Matminer's Matscholar Element featurization
-            - "megnet_el": Matminer's MEGNet Element featurization
-            - Callable: Custom embedding function that takes (N, ) array of compositions
-              and returns (N, D) array of values where D is the number of dimensions in
-              the embedding space.
+            - Callable: Custom embedding function (any other featurization, e.g.
+              matminer presets) that takes (N, ) array of compositions and returns
+              (N, D) array of values where D is the number of dimensions in the
+              embedding space.
             - Column name in df: Name of column containing pre-computed embeddings.
               If using this option, the column must contain numpy arrays or lists.
             Ignored if composition_col contains pre-computed embeddings.
@@ -334,21 +327,15 @@ def cluster_compositions(
             elif callable(embedding_method):
                 embedding_fn = cast("EmbeddingCallable", embedding_method)
                 embeddings = embedding_fn(compositions, **embedding_kwargs)
-            elif embedding_method == "one-hot":
+            elif embedding_method == EmbeddingMethod.one_hot:
                 embeddings = one_hot_encode(compositions, **embedding_kwargs)
+            elif embedding_method == EmbeddingMethod.magpie:
+                embeddings = magpie_featurize(compositions, **embedding_kwargs)
             else:
-                try:
-                    preset = EmbeddingMethod(embedding_method)
-                except (TypeError, ValueError) as exc:
-                    raise ValueError(
-                        f"{embedding_method=} must be in "
-                        f"{[method.value for method in EmbeddingMethod]}, "
-                        "a callable, or a valid column name in the DataFrame"
-                    ) from exc
-                embeddings = matminer_featurize(
-                    compositions,
-                    preset=preset.value,  # ty: ignore[invalid-argument-type]
-                    **embedding_kwargs,
+                raise ValueError(
+                    f"{embedding_method=} must be in "
+                    f"{[method.value for method in EmbeddingMethod]}, a callable, a "
+                    "column name in the DataFrame or precomputed embeddings"
                 )
 
         if callable(projection):

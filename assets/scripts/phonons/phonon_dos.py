@@ -1,5 +1,11 @@
 """Phonon DOS examples."""
 
+# /// script
+# dependencies = [
+#     "monty>=2025.1.9",
+# ]
+# ///
+
 # %%
 import json
 from glob import glob
@@ -10,7 +16,7 @@ from monty.json import MontyDecoder
 
 import pymatviz as pmv
 from pymatviz.phonons.helpers import PhononDBDoc
-from pymatviz.utils.testing import TEST_FILES, load_phonopy_nacl
+from pymatviz.utils.testing import TEST_FILES, load_nacl_phonons
 
 
 # %% Overlay the total phonon DOS of DFT and ML force fields
@@ -32,24 +38,9 @@ for mp_id, formula in (("mp-2758", "Sr4Se4"), ("mp-23907", "H2")):
         )
 
 
-# %% phonopy TotalDos works too
-try:
-    import phonopy  # noqa: F401
-except ImportError:
-    raise SystemExit(0) from None  # install phonopy to run this script
-
-phonopy_nacl = load_phonopy_nacl()
-phonopy_nacl.run_mesh([10, 10, 10])
-phonopy_nacl.run_total_dos()
-if phonopy_nacl.total_dos is None:
-    raise RuntimeError("phonopy total DOS not computed")
-pmv.phonon_dos(phonopy_nacl.total_dos).show()
-
-
-# %% Element- and site-projected DOS straight from a phonopy object
-phonopy_nacl.run_mesh([10, 10, 10], with_eigenvectors=True, is_mesh_symmetry=False)
-phonopy_nacl.run_total_dos()
-phonopy_nacl.run_projected_dos()
+# %% Total and element- or site-projected DOS of matscikit phonons (from phonopy files)
+nacl_dos = load_nacl_phonons().projected_dos([10, 10, 10])
+pmv.phonon_dos(nacl_dos).show()
 projected_examples: list[dict[str, Any]] = [
     {"project": "element"},
     {"project": "element", "show_total": False, "stack": True},
@@ -57,10 +48,8 @@ projected_examples: list[dict[str, Any]] = [
     {"project": "element", "normalize": "max"},
 ]
 for plot_kwargs in projected_examples:
-    pmv.phonon_dos(phonopy_nacl, **plot_kwargs).show()
+    pmv.phonon_dos(nacl_dos, **plot_kwargs).show()
 
 
 # %% Compare multiple models with element projection
-pmv.phonon_dos(
-    {"model A": phonopy_nacl, "model B": phonopy_nacl}, project="element"
-).show()
+pmv.phonon_dos({"model A": nacl_dos, "model B": nacl_dos}, project="element").show()

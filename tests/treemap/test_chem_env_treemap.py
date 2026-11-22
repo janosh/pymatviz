@@ -2,18 +2,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 from unittest.mock import MagicMock
 
+import matscikit as mk
 import pytest
-from pymatgen.core import Molecule
 
 import pymatviz as pmv
 from pymatviz import chem_env
-
-
-if TYPE_CHECKING:
-    from pymatgen.core import Structure
 
 
 @pytest.mark.parametrize("chart", ["treemap", "sunburst"])
@@ -21,7 +17,7 @@ if TYPE_CHECKING:
 def test_chem_env_hierarchy(
     chart: Literal["treemap", "sunburst"],
     overflow: Literal["other", "drop"],
-    structures: tuple[Structure, Structure],
+    structures: tuple[mk.Structure, mk.Structure],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Aggregate duplicate symbols, weight sites per structure, rank full CNs, break
@@ -62,7 +58,7 @@ def test_chem_env_hierarchy(
 
 
 def test_chem_env_treemap_invalid_overflow(
-    structures: tuple[Structure, Structure], monkeypatch: pytest.MonkeyPatch
+    structures: tuple[mk.Structure, mk.Structure], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """An invalid omission mode fails before any environment is classified."""
     collect = MagicMock()
@@ -74,7 +70,9 @@ def test_chem_env_treemap_invalid_overflow(
 
 def test_chem_env_requires_periodic_structure() -> None:
     """Nonperiodic inputs are rejected before neighbor analysis."""
-    molecule = Molecule(["H", "H"], [[0, 0, 0], [0.7, 0, 0]])
+    molecule = mk.Structure(
+        None, ["H", "H"], [[0, 0, 0], [0.7, 0, 0]], pbc=(False,) * 3
+    )
     with pytest.raises(
         TypeError, match=r"Expected structures periodic along a, b and c"
     ):

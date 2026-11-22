@@ -1,5 +1,11 @@
 """Periodic table heatmaps with element tiles split into 2-4 segments."""
 
+# /// script
+# dependencies = [
+#     "pymatgen>=2026.9.24",
+# ]
+# ///
+
 # %%
 import numpy as np
 from pymatgen.core import Element

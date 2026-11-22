@@ -14,12 +14,12 @@ from pymatviz.widgets.xrd import XrdWidget
 
 
 if TYPE_CHECKING:
-    from pymatgen.analysis.diffraction.xrd import DiffractionPattern
+    from matscikit.interop import XrdPatternLike
 
     from pymatviz.typing import AnyStructure
 
 
-type PatternOrStruct = mk.XrdPattern | DiffractionPattern | AnyStructure
+type PatternOrStruct = XrdPatternLike | AnyStructure
 cu_k_alpha_wavelength = 1.54184  # Angstroms
 
 

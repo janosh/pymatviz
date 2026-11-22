@@ -3,11 +3,10 @@ from __future__ import annotations
 from collections import OrderedDict
 from typing import TYPE_CHECKING
 
+import matscikit as mk
 import numpy as np
 import pytest
-from pymatgen.analysis.diffraction.xrd import DiffractionPattern, XRDCalculator
-from pymatgen.core import Structure
-from pymatgen.io.ase import AseAtomsAdaptor
+from matscikit.io import read_structure
 
 import pymatviz as pmv
 from pymatviz.utils.testing import TEST_FILES
@@ -17,71 +16,76 @@ from pymatviz.xrd import cu_k_alpha_wavelength
 if TYPE_CHECKING:
     from typing import Any
 
-MOCK_DIFFRACTION_PATTERN = DiffractionPattern(
-    x=[10, 20, 30, 40, 50],
-    y=[100, 50, 75, 25, 60],
-    hkls=[
-        [{"hkl": (1, 0, 0)}],
-        [{"hkl": (1, 1, 0)}],
-        [{"hkl": (1, 1, 1)}],
-        [{"hkl": (2, 0, 0)}],
-        [{"hkl": (2, 1, 0)}],
-    ],
-    d_hkls=[2.5, 2.0, 1.8, 1.5, 1.3],
+MOCK_HKLS = [(1, 0, 0), (1, 1, 0), (1, 1, 1), (2, 0, 0), (2, 1, 0)]
+MOCK_XRD_PATTERN = mk.XrdPattern(
+    [10, 20, 30, 40, 50],
+    [100, 50, 75, 25, 60],
+    [2.5, 2.0, 1.8, 1.5, 1.3],
+    [[(list(hkl), 1)] for hkl in MOCK_HKLS],
 )
 
-BI2_ZR2_O7_STRUCT = Structure.from_file(
+BI2_ZR2_O7_STRUCT = read_structure(
     f"{TEST_FILES}/xrd/Bi2Zr2O7-Fm3m-experimental-sqs.cif"
 )
-BI2_ZR2_O7_XRD = XRDCalculator().get_pattern(BI2_ZR2_O7_STRUCT)
+(BI2_ZR2_O7_XRD,) = mk.xrd_patterns([BI2_ZR2_O7_STRUCT])
+
+
+def single_peak_pattern(intensity: float) -> mk.XrdPattern:
+    """One-peak XrdPattern with the given intensity."""
+    return mk.XrdPattern([10], [intensity], [1], [[([1, 0, 0], 1)]])
 
 
 @pytest.mark.parametrize(
     ("input_data", "expected"),
     [
-        (MOCK_DIFFRACTION_PATTERN, MOCK_DIFFRACTION_PATTERN),
+        (MOCK_XRD_PATTERN, MOCK_XRD_PATTERN),
         (BI2_ZR2_O7_XRD, BI2_ZR2_O7_XRD),
         (BI2_ZR2_O7_STRUCT, BI2_ZR2_O7_XRD),
-        (AseAtomsAdaptor.get_atoms(BI2_ZR2_O7_STRUCT), BI2_ZR2_O7_XRD),
     ],
 )
-def test_xrd_pattern_single(input_data: Any, expected: DiffractionPattern) -> None:
+def test_xrd_pattern_single(input_data: Any, expected: mk.XrdPattern) -> None:
     """A single pattern or structure is passed as one unlabeled pattern."""
     widget = pmv.xrd_plot(input_data, style="height: 300px")
     assert isinstance(widget, pmv.widgets.XrdWidget)
     assert widget.style == "height: 300px"
-    # ASE Atoms round-trip perturbs coordinates by ~1.5e-14 relative (~70 eps)
-    for key in ("x", "y"):
-        np.testing.assert_allclose(
-            widget.patterns[key], getattr(expected, key), rtol=1e-12, atol=0
-        )
-    assert len(widget.patterns["hkls"]) == len(expected.hkls)
+    for key, values in (("x", expected.two_theta), ("y", expected.intensities)):
+        np.testing.assert_array_equal(widget.patterns[key], values)
+    assert len(widget.patterns["hkls"]) == len(expected.hkls or [])
 
 
 def test_xrd_pattern_mapping() -> None:
-    """Mappings keep label order, compute structures and pass patterns through."""
+    """Mappings keep label order, compute structures and pass patterns (objects or
+    dicts) through.
+    """
+    pattern_dict = {"x": [10, 20], "y": [100, 50], "hkls": [[{"hkl": (1, 0, 0)}]] * 2}
     patterns = OrderedDict(
-        [("Structure", BI2_ZR2_O7_STRUCT), ("Pattern", MOCK_DIFFRACTION_PATTERN)]
+        [
+            ("Structure", BI2_ZR2_O7_STRUCT),
+            ("Pattern", MOCK_XRD_PATTERN),
+            ("Dict", pattern_dict),
+        ]
     )
     widget = pmv.xrd_plot(patterns)
-    assert list(widget.patterns) == ["Structure", "Pattern"]
-    # matscikit's xrd_patterns vs pymatgen's XRDCalculator: observed max rel. 2θ
-    # difference 4.5e-16 (2 eps)
-    np.testing.assert_allclose(
-        widget.patterns["Structure"]["x"], BI2_ZR2_O7_XRD.x, rtol=1e-14, atol=0
+    assert list(widget.patterns) == ["Structure", "Pattern", "Dict"]
+    assert widget.patterns["Dict"]["y"] == [100, 50]
+    np.testing.assert_array_equal(
+        widget.patterns["Structure"]["x"], BI2_ZR2_O7_XRD.two_theta
     )
-    assert widget.patterns["Pattern"]["d_hkls"] == MOCK_DIFFRACTION_PATTERN.d_hkls
+    assert widget.patterns["Pattern"]["d_hkls"] == [2.5, 2.0, 1.8, 1.5, 1.3]
+    assert [peak[0]["hkl"] for peak in widget.patterns["Pattern"]["hkls"]] == [
+        list(hkl) for hkl in MOCK_HKLS
+    ]
 
 
 @pytest.mark.parametrize(
     ("patterns", "err_type", "match"),
     [
-        (DiffractionPattern([], [], [], []), ValueError, "No intensities found"),
+        (mk.XrdPattern([], []), ValueError, "No intensities found"),
         ({}, ValueError, "patterns must not be empty"),
         ("invalid", TypeError, "'XRD Pattern': expected a structure"),
         ({"bad": "invalid"}, TypeError, "'bad': expected a structure"),
         *[
-            (DiffractionPattern([10], [val], [[{"hkl": (1, 0, 0)}]], [1]), *err)
+            (single_peak_pattern(val), *err)
             for val, err in [
                 (0, (ValueError, "At least one diffraction intensity")),
                 (-1, (ValueError, "must be finite and non-negative")),
@@ -101,8 +105,7 @@ def test_xrd_pattern_raises(
 
 def test_xrd_pattern_zero_and_positive() -> None:
     """An all-zero pattern is fine when another pattern has a positive intensity."""
-    zero_pattern = DiffractionPattern([10], [0], [[{"hkl": (1, 0, 0)}]], [1])
-    widget = pmv.xrd_plot({"zero": zero_pattern, "pos": MOCK_DIFFRACTION_PATTERN})
+    widget = pmv.xrd_plot({"zero": single_peak_pattern(0), "pos": MOCK_XRD_PATTERN})
     assert widget.patterns["zero"]["y"] == [0]
 
 
@@ -126,19 +129,12 @@ def test_xrd_pattern_wavelength() -> None:
 
 
 def test_xrd_pattern_labels() -> None:
-    """Labels named like pattern keys stay labels, IStructures are computed, labels
-    colliding as strings raise instead of dropping a pattern.
+    """Labels named like pattern keys stay labels, labels colliding as strings raise
+    instead of dropping a pattern.
     """
-    from pymatgen.core import IStructure
-
-    widget = pmv.xrd_plot({"x": MOCK_DIFFRACTION_PATTERN, "y": BI2_ZR2_O7_STRUCT})
+    widget = pmv.xrd_plot({"x": MOCK_XRD_PATTERN, "y": BI2_ZR2_O7_STRUCT})
     assert list(widget.patterns) == ["x", "y"]
-    assert widget.patterns["x"]["y"] == MOCK_DIFFRACTION_PATTERN.y.tolist()
-
-    widget = pmv.xrd_plot(IStructure.from_sites(BI2_ZR2_O7_STRUCT))
-    np.testing.assert_allclose(
-        widget.patterns["x"], BI2_ZR2_O7_XRD.x, rtol=1e-14, atol=0
-    )
+    assert widget.patterns["x"]["y"] == MOCK_XRD_PATTERN.intensities.tolist()
 
     with pytest.raises(ValueError, match="Labels must be unique as strings"):
-        pmv.xrd_plot({1: MOCK_DIFFRACTION_PATTERN, "1": MOCK_DIFFRACTION_PATTERN})
+        pmv.xrd_plot({1: MOCK_XRD_PATTERN, "1": MOCK_XRD_PATTERN})

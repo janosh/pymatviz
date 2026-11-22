@@ -1,5 +1,11 @@
 """Periodic table of per-element histograms."""
 
+# /// script
+# dependencies = [
+#     "pymatgen>=2026.9.24",
+# ]
+# ///
+
 # %%
 import numpy as np
 from pymatgen.core.periodic_table import Element

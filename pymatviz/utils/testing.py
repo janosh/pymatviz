@@ -11,8 +11,6 @@ from pymatviz.utils import ROOT
 
 
 if TYPE_CHECKING:
-    from phonopy import Phonopy
-
     from pymatviz.typing import PeriodicStructure
 
 
@@ -101,30 +99,16 @@ def formula_spg_str(struct: PeriodicStructure) -> str:
     return f"{struct.composition.formula} ({mk.symmetry_dataset(struct).number})"
 
 
-def load_phonopy_nacl() -> Phonopy:
-    """Load phonopy NaCl object from test files.
-
-    Returns a Phonopy class instance of NaCl 2x2x2 without symmetrizing fc2.
-    This function can be used in both tests and examples to get a consistent
-    phonopy object for demonstrations.
-
-    Returns:
-        Phonopy: Loaded phonopy object with force constants.
-
-    Raises:
-        ImportError: If phonopy is not installed.
+def load_nacl_phonons() -> mk.Phonons:
+    """Harmonic phonons of NaCl (2x2x2 supercell, force constants not symmetrized)
+    from the test phonopy files, read by matscikit, for tests and examples.
 
     Example:
-        >>> phonopy_nacl = load_phonopy_nacl()
-        >>> phonopy_nacl.run_mesh([10, 10, 10])
-        >>> phonopy_nacl.run_total_dos()
-        >>> dos = phonopy_nacl.total_dos
+        >>> phonons = load_nacl_phonons()
+        >>> pmv.phonon_dos(phonons.projected_dos([10, 10, 10]), project="element")
     """
-    import phonopy
-
-    return phonopy.load(
+    return mk.Phonons.from_phonopy_yaml(
         f"{TEST_FILES}/phonons/NaCl/phonopy_disp.yaml.xz",
-        force_sets_filename=f"{TEST_FILES}/phonons/NaCl/force_sets.dat",
-        symmetrize_fc=False,
-        produce_fc=True,
+        force_sets=f"{TEST_FILES}/phonons/NaCl/force_sets.dat",
+        symmetrize=False,
     )

@@ -5,8 +5,8 @@ from __future__ import annotations
 import functools
 from typing import TYPE_CHECKING, Any, Literal
 
+import matscikit as mk
 import pytest
-from pymatgen.core import Composition, Structure
 
 import pymatviz as pmv
 
@@ -84,10 +84,19 @@ def test_system_limit(
 @pytest.mark.parametrize("limit", [None, 99])
 def test_mixed_inputs(chart: ChemicalChart, limit: int | None) -> None:
     """Mixed inputs produce nodes only for arities present in the data."""
-    structure = Structure(
-        [[3, 0, 0], [0, 3, 0], [0, 0, 3]], ["Fe", "O"], [[0, 0, 0], [0.5] * 3]
+    structure = mk.Structure(
+        [[3, 0, 0], [0, 3, 0], [0, 0, 3]],
+        ["Fe", "O"],
+        [[0, 0, 0], [0.5] * 3],
+        fractional=True,
     )
-    inputs = ["Fe-O", " Fe2O3 ", structure, Composition("LiPO4"), "Zr48Al8Cu32Ni4Ag8"]
+    inputs = [
+        "Fe-O",
+        " Fe2O3 ",
+        structure,
+        mk.Composition("LiPO4"),
+        "Zr48Al8Cu32Ni4Ag8",
+    ]
     widget = chart(inputs, max_systems=limit)
     assert [(root["label"], root["children"]) for root in widget.data] == [
         ("binary", [{"id": "binary/Fe-O", "label": "Fe-O", "value": 3}]),

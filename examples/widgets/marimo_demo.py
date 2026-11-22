@@ -8,9 +8,11 @@ Run with `marimo edit examples/widgets/marimo_demo.py --no-sandbox --watch`.
 # conflict with marimo's code generation pattern and cannot be fixed per-cell.
 # /// script
 # dependencies = [
-#     "pymatgen>=2024.1.1",
-#     "ase>=3.22.0",
-#     "phonopy>=2.20.0",
+#     "ase>=3.29",
+#     "marimo",
+#     "monty>=2025.1.9",
+#     "phonopy>=4.8",
+#     "pymatgen>=2026.9.24",
 # ]
 # ///
 

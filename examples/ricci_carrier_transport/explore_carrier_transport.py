@@ -18,6 +18,13 @@ Extensive column descriptions and metadata at
 https://hackingmaterials.lbl.gov/matminer/dataset_summary.html#ricci-boltztrap-mp-tabular.
 """
 
+# /// script
+# dependencies = [
+#     "matminer>=0.10.1",
+#     "tqdm>=4.67",
+# ]
+# ///
+
 # %%
 from matminer.datasets import load_dataset
 from tqdm import tqdm

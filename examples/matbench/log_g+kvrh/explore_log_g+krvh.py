@@ -9,6 +9,15 @@ https://ml.materialsproject.org/projects/matbench_log_gvrh
 https://ml.materialsproject.org/projects/matbench_log_kvrh
 """
 
+# /// script
+# dependencies = [
+#     "matbench-discovery",
+#     "matminer>=0.10.1",
+#     "pymatgen>=2026.9.24",
+#     "tqdm>=4.67",
+# ]
+# ///
+
 # %%
 from time import perf_counter
 from typing import get_args

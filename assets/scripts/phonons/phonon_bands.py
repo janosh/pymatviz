@@ -1,16 +1,21 @@
 """Phonon bands examples."""
 
+# /// script
+# dependencies = [
+#     "monty>=2025.1.9",
+# ]
+# ///
+
 # %%
 import json
 from glob import glob
 
-import numpy as np
 from monty.io import zopen
 from monty.json import MontyDecoder
 
 import pymatviz as pmv
 from pymatviz.phonons import PhononDBDoc
-from pymatviz.utils.testing import TEST_FILES
+from pymatviz.utils.testing import TEST_FILES, load_nacl_phonons
 
 
 # %% Overlay phonon bands of DFT and ML force fields
@@ -40,26 +45,18 @@ for mp_id, formula in (("mp-2758", "Sr4Se4"), ("mp-23907", "H2")):
         )
 
 
-# %% phonopy band structures work too
-try:
-    import phonopy
-except ImportError:
-    raise SystemExit(0) from None  # install phonopy to run this script
-
-phonopy_nacl: phonopy.Phonopy = phonopy.load(
-    phonopy_yaml=f"{TEST_FILES}/phonons/NaCl/phonopy_disp.yaml.xz",
-    force_sets_filename=f"{TEST_FILES}/phonons/NaCl/force_sets.dat",
+# %% Band structure of matscikit phonons (from phonopy files) along L-Γ-X-K-Γ-W
+nacl_bands = load_nacl_phonons().bands(
+    [
+        [
+            [1 / 3, 1 / 3, 0],
+            [0, 0, 0],
+            [1 / 2, 0, 0],
+            [1 / 2, 1 / 2, 0],
+            [0, 0, 0],
+            [1 / 3, 1 / 3, 1 / 2],
+        ]
+    ],
+    labels=["L", "Γ", "X", "K", "Γ", "W"],
 )
-phonopy_nacl.run_mesh([10, 10, 10])
-q_paths = {
-    "L -> Γ": np.linspace([1 / 3, 1 / 3, 0], [0, 0, 0], 51),
-    "Γ -> X": np.linspace([0, 0, 0], [1 / 2, 0, 0], 51),
-    "X -> K": np.linspace([1 / 2, 0, 0], [1 / 2, 1 / 2, 0], 51),
-    "K -> Γ": np.linspace([1 / 2, 1 / 2, 0], [0, 0, 0], 51),
-    "Γ -> W": np.linspace([0, 0, 0], [1 / 3, 1 / 3, 1 / 2], 51),
-}
-phonopy_nacl.run_band_structure(paths=list(q_paths.values()))
-if phonopy_nacl.band_structure is None:
-    raise RuntimeError("phonopy band structure not computed")
-
-pmv.band_structure(band_structs={"NaCl (phonopy)": phonopy_nacl.band_structure}).show()
+pmv.band_structure(band_structs={"NaCl (matscikit)": nacl_bands}).show()

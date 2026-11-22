@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, get_args
 
 import pandas as pd
 import pytest
-from pymatgen.core import Composition
+from matscikit import Composition
 
 import pymatviz as pmv
 from pymatviz.composition import count_elements, count_formulas
@@ -66,10 +66,12 @@ def test_count_elements_accepts_count_mode_names() -> None:
 def test_count_elements_exact_sums(count_mode: ElemCountMode) -> None:
     """Element sums over many formulas are exactly rounded (math.fsum)."""
     formulas = ["LiFePO4", "Ba0.5Sr0.5TiO3", "Fe2O3", "NaCl"] * 251
-    attr = "element_composition" if count_mode == "composition" else count_mode
     amounts: dict[str, list[float]] = {}
     for formula in formulas:
-        for elem, amt in getattr(Composition(formula), attr).as_dict().items():
+        comp = Composition(formula)
+        if count_mode == ElemCountMode.fractional_composition:
+            comp = comp.fractional_composition
+        for elem, amt in comp.as_dict().items():
             amounts.setdefault(elem, []).append(amt)
     expected = {elem: math.fsum(vals) for elem, vals in amounts.items()}
     counts = count_elements(formulas, count_mode=count_mode)

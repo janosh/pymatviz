@@ -21,6 +21,13 @@ e_above_hull.
 https://ml.materialsproject.org/projects/matbench_expt_gap
 """
 
+# /// script
+# dependencies = [
+#     "matminer>=0.10.1",
+#     "pymatgen>=2026.9.24",
+# ]
+# ///
+
 # %%
 from __future__ import annotations
 

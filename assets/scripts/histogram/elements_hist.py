@@ -1,5 +1,11 @@
 """Elements histogram examples."""
 
+# /// script
+# dependencies = [
+#     "matminer>=0.10.1",
+# ]
+# ///
+
 # %%
 from matminer.datasets import load_dataset
 

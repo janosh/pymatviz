@@ -2,25 +2,18 @@
 
 from __future__ import annotations
 
-import pytest
+import numpy as np
+
+from pymatviz.utils.testing import load_nacl_phonons
 
 
-def test_load_phonopy_nacl() -> None:
-    """Test load_phonopy_nacl utility function."""
-    pytest.importorskip("phonopy")
-    from pymatviz.utils.testing import load_phonopy_nacl
-
-    phonopy_nacl = load_phonopy_nacl()
-    force_constants = phonopy_nacl.force_constants
-
-    unitcell_symbols = tuple(phonopy_nacl.unitcell.symbols)
-    supercell_symbols = tuple(phonopy_nacl.supercell.symbols)
-    assert set(unitcell_symbols) == {"Na", "Cl"}
-    assert len(supercell_symbols) > len(unitcell_symbols)
-    assert set(supercell_symbols) == {"Na", "Cl"}
-
-    assert force_constants is not None
-    assert force_constants.ndim == 4
-    assert force_constants.shape[1] == len(supercell_symbols)
-    assert 0 < force_constants.shape[0] <= len(unitcell_symbols)
-    assert force_constants.shape[2:] == (3, 3)
+def test_load_nacl_phonons() -> None:
+    """NaCl phonons have a 2-atom primitive cell, 64-atom supercell force constants
+    and at Γ near-zero acoustic (unsymmetrized force constants) and optic modes.
+    """
+    phonons = load_nacl_phonons()
+    assert phonons.primitive.symbols == ["Na", "Cl"]
+    assert np.shape(phonons.compact_force_constants) == (2, 64, 3, 3)
+    (gamma,) = phonons.frequencies([[0, 0, 0]])
+    assert np.abs(gamma[:3]).max() < 0.1
+    assert gamma[3:].min() > 1

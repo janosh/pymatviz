@@ -4,6 +4,12 @@ This script shows how to create interactive treemaps visualizing module
 structures of Python packages using the pmv.py_pkg_treemap function.
 """
 
+# /// script
+# dependencies = [
+#     "pymatgen>=2026.9.24",
+# ]
+# ///
+
 # %%
 from __future__ import annotations
 

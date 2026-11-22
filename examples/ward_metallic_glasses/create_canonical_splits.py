@@ -9,6 +9,12 @@ For element and system splits, the held-out data is split 50/50 into validation 
 sets to maximize compositional diversity between the sets.
 """
 
+# /// script
+# dependencies = [
+#     "pymatgen>=2026.9.24",
+# ]
+# ///
+
 import os
 from collections import Counter
 from typing import Any, Literal, get_args

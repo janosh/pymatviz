@@ -8,11 +8,12 @@ from contextlib import nullcontext
 from typing import TYPE_CHECKING, Any, Literal
 from unittest.mock import Mock, patch
 
+import matscikit as mk
 import numpy as np
 import pandas as pd
 import pytest
 import traitlets as tl
-from pymatgen.core import Lattice, Molecule, Structure
+from matscikit.interop import structure_to_pymatgen_dict
 
 import pymatviz as pmv
 from pymatviz.widgets import matterviz
@@ -52,7 +53,14 @@ from tests.widgets.test_browser_render import WIDGET_CASES
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-FE_STRUCT = Structure(Lattice.cubic(2.87), ["Fe", "Fe"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+
+def _cubic(species: list[str], a_len: float = 3.0) -> mk.Structure:
+    """Simple cubic structure with species at (0, 0, 0) and (1/2, 1/2, 1/2)."""
+    coords = [[0, 0, 0], [0.5, 0.5, 0.5]][: len(species)]
+    return mk.Structure(np.eye(3) * a_len, species, coords, fractional=True)
+
+
+FE_STRUCT = _cubic(["Fe", "Fe"], 2.87)
 
 
 # === Construction and widget_type ===
@@ -800,9 +808,9 @@ def test_color_scale_config_normalized_and_validated(widget_cls: type) -> None:
         (BrillouinZoneWidget, "structure"),
     ],
 )
-def test_widgets_accept_pymatgen_structure(widget_cls: type, trait: str) -> None:
-    """Structure traits sync a pymatgen Structure as a dict."""
-    struct = Structure(Lattice.cubic(3), ["Si"], [[0, 0, 0]])
+def test_widgets_accept_structure(widget_cls: type, trait: str) -> None:
+    """Structure traits sync a matscikit Structure as a dict."""
+    struct = _cubic(["Si"])
     synced = getattr(widget_cls(**{trait: struct}), trait)
     assert isinstance(synced, dict)
     assert "lattice" in synced
@@ -812,7 +820,11 @@ def test_widgets_accept_pymatgen_structure(widget_cls: type, trait: str) -> None
 def test_brillouin_zone_widgets_reject_molecules(widget_cls: type) -> None:
     """A Brillouin zone needs a lattice, so a Molecule fails at construction."""
     with pytest.raises(TypeError, match="periodic structure"):
-        widget_cls(structure=Molecule(["H", "H"], [[0, 0, 0], [0, 0, 0.74]]))
+        widget_cls(
+            structure=mk.Structure(
+                None, ["H", "H"], [[0, 0, 0], [0, 0, 0.74]], pbc=(False,) * 3
+            )
+        )
 
 
 def test_rdf_plot_rejects_both_structures_and_patterns() -> None:
@@ -826,18 +838,15 @@ def test_rdf_plot_rejects_both_structures_and_patterns() -> None:
 
 def test_xrd_widget_labeled_patterns() -> None:
     """A {label: pattern} mapping normalizes each pattern, keeping label order."""
-    from pymatgen.analysis.diffraction.xrd import DiffractionPattern
-
-    computed = DiffractionPattern(
-        [10, 20], [100, 50], [[{"hkl": (1, 0, 0)}]] * 2, [2, 1]
+    computed = mk.XrdPattern(
+        [10, 20], [100, 50], d_spacings=[2, 1], hkls=[[([1, 0, 0], 6)]] * 2
     )
     widget = XrdWidget(
         patterns={"computed": computed, "scan": {"two_theta": [5], "intensities": [1]}}
     )
     assert list(widget.patterns) == ["computed", "scan"]
-    # matscikit's XrdPattern defaults missing multiplicities to 1
     assert widget.patterns["computed"]["hkls"][0] == [
-        {"hkl": [1, 0, 0], "multiplicity": 1}
+        {"hkl": [1, 0, 0], "multiplicity": 6}
     ]
     assert widget.patterns["scan"] == {"x": [5], "y": [1], "kind": "profile"}
     with pytest.raises(ValueError, match="patterns mapping must not be empty"):
@@ -1304,8 +1313,7 @@ def test_headless_bar_plot_writes_file(
 @_skip_no_playwright
 def test_headless_structure_png() -> None:
     """StructureWidget (canvas/WebGL) produces a valid PNG."""
-    struct = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5]])
-    widget = StructureWidget(structure=struct, style="height: 400px;")
+    widget = StructureWidget(structure=_cubic(["Si", "Si"]), style="height: 400px;")
     png_bytes = widget.to_img(fmt="png", dpi=72)
     assert png_bytes[:4] == b"\x89PNG"
     assert len(png_bytes) > 5000
@@ -1318,9 +1326,7 @@ def test_headless_webgl_structure_exports(with_plot: bool) -> None:
     if with_plot:
         frames = [
             {
-                "structure": Structure(
-                    Lattice.cubic(3 + 0.1 * idx), ["Si"], [[0, 0, 0]]
-                ).as_dict(),
+                "structure": structure_to_pymatgen_dict(_cubic(["Si"], 3 + 0.1 * idx)),
                 "step": idx,
                 "metadata": {"energy": -float(idx)},
             }
@@ -1332,8 +1338,7 @@ def test_headless_webgl_structure_exports(with_plot: bool) -> None:
             style="height: 400px;",
         )
     else:
-        struct = Structure(Lattice.cubic(3.0), ["Si"], [[0, 0, 0]])
-        widget = StructureWidget(structure=struct, style="height: 300px;")
+        widget = StructureWidget(structure=_cubic(["Si"]), style="height: 300px;")
     assert b"/Font" not in widget.to_img(fmt="pdf", dpi=72), "expected raster PDF"
     with pytest.raises(RuntimeError, match="no vector form"):
         widget.to_img(fmt="svg")
@@ -1467,7 +1472,7 @@ def test_headless_repeated_exports_in_one_process() -> None:
         (ScatterPlotWidget(), True, "svg"),  # empty: renders axes but warns on data
         (
             StructureWidget(
-                structure=Structure(Lattice.cubic(3.0), ["Si"], [[0, 0, 0]]),
+                structure=_cubic(["Si"]),
                 style="height: 300px;",
             ),
             False,
@@ -1689,24 +1694,23 @@ def test_heatmap_matrix_dataframe_missing_cells() -> None:
 
 
 @pytest.mark.parametrize("labeled", [False, True])
-def test_vasprun_paths_match_pymatgen(labeled: bool) -> None:
-    """vasprun.xml paths (single or as dict values) give pymatgen's bands and DOS."""
-    from pymatgen.electronic_structure.core import Spin
-    from pymatgen.io.vasp import Vasprun
+def test_vasprun_paths(labeled: bool) -> None:
+    """vasprun.xml paths (single or as dict values) give matscikit's bands and DOS."""
+    from matscikit.io import read_vasprun
 
     from pymatviz.utils.testing import TEST_FILES
 
     path = f"{TEST_FILES}/vasprun/MgO.vasprun.xml.xz"
-    vasprun = Vasprun(path, parse_projected_eigen=False)
-    pmg_bands, pmg_dos = vasprun.get_band_structure().as_dict(), vasprun.complete_dos
+    vasprun = read_vasprun(path)
+    ref_bands, ref_dos = vasprun.bands.as_dict(), vasprun.dos.as_dict()
     inputs = {"MgO": path} if labeled else path
     widget = pmv.bands_and_dos(band_structs=inputs, doses=inputs)
     bands = widget.band_structs["MgO"] if labeled else widget.band_structs
     doses = widget.doses["MgO"] if labeled else widget.doses
-    np.testing.assert_array_equal(bands["bands"]["1"], pmg_bands["bands"]["1"])
-    np.testing.assert_array_equal(bands["kpoints"], pmg_bands["kpoints"])
-    assert bands["efermi"] == pmg_bands["efermi"]
-    np.testing.assert_array_equal(doses["energies"], pmg_dos.energies)
-    np.testing.assert_array_equal(doses["densities"]["1"], pmg_dos.densities[Spin.up])
+    np.testing.assert_array_equal(bands["bands"]["1"], ref_bands["bands"]["1"])
+    np.testing.assert_array_equal(bands["kpoints"], ref_bands["kpoints"])
+    assert bands["efermi"] == ref_bands["efermi"]
+    np.testing.assert_array_equal(doses["energies"], ref_dos["energies"])
+    np.testing.assert_array_equal(doses["densities"]["1"], ref_dos["densities"]["1"])
     assert pmv.dos(doses=path).doses["energies"] == doses["energies"]
     assert pmv.band_structure(band_structs=path).band_structs["bands"] == bands["bands"]

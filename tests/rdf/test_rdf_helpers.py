@@ -5,15 +5,15 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
-from pymatgen.core import IStructure, Lattice, Structure
-from pymatgen.core.composition import Composition
 
 from pymatviz.rdf.helpers import calculate_rdf
-from tests.conftest import SI_ATOMS, SI_STRUCTS
+from tests.conftest import SI_STRUCTS, cubic_structure
 
 
 if TYPE_CHECKING:
-    from typing import Any, Literal
+    from typing import Literal
+
+    import matscikit as mk
 
 
 def check_basic_rdf_properties(
@@ -32,21 +32,13 @@ def check_basic_rdf_properties(
     assert rdf[0] == 0, f"{rdf=} should start at 0{suffix}"
 
 
-@pytest.mark.parametrize(
-    ("structure_name", "structure"),
-    [
-        ("pymatgen_structure", SI_STRUCTS[0]),
-        ("istructure", IStructure.from_sites(list(SI_STRUCTS[0].sites))),
-        ("ase_atoms", SI_ATOMS[0]),
-    ],
-)
-def test_calculate_rdf(structure_name: str, structure: Any) -> None:
-    """Test full and Si-Si partial RDFs for various structure types."""
-    radii, rdf = calculate_rdf(structure, cutoff=10, n_bins=100)
-    check_basic_rdf_properties(radii, rdf, 100, structure_name)
+def test_calculate_rdf() -> None:
+    """Full and Si-Si partial RDFs of Si2 agree."""
+    radii, rdf = calculate_rdf(SI_STRUCTS[0], cutoff=10, n_bins=100)
+    check_basic_rdf_properties(radii, rdf, 100)
 
-    radii_partial, rdf_partial = calculate_rdf(structure, "Si", "Si", 10, 100)
-    check_basic_rdf_properties(radii_partial, rdf_partial, 100, structure_name)
+    radii_partial, rdf_partial = calculate_rdf(SI_STRUCTS[0], "Si", "Si", 10, 100)
+    check_basic_rdf_properties(radii_partial, rdf_partial, 100)
     # Si2 has only Si, so the partial RDF equals the full RDF
     np.testing.assert_array_equal(rdf_partial, rdf)
 
@@ -59,7 +51,7 @@ def test_calculate_rdf_normalization(composition: list[str], n_atoms: int) -> No
     """Test RDF normalization for different compositions."""
     elements = sum(([el] * n_atoms for el in composition), [])  # noqa: RUF017
     coords = np.random.default_rng(seed=0).uniform(size=(len(elements), 3))
-    structure = Structure(Lattice.cubic(30), elements, coords)
+    structure = cubic_structure(30, elements, coords)
 
     cutoff, n_bins = 12, 75
     for el1 in composition:
@@ -94,7 +86,7 @@ def test_calculate_rdf_pbc_settings(
     expected_peak: tuple[float, float] | None,
 ) -> None:
     """Test RDF calculation with different PBC settings."""
-    structure = Structure(Lattice.cubic(5), ["Si"] * 2, [[0] * 3, [0.5] * 3])
+    structure = cubic_structure(5, ["Si"] * 2, [[0] * 3, [0.5] * 3])
     cutoff, n_bins = 10, 100
 
     radii, rdf = calculate_rdf(
@@ -120,7 +112,7 @@ def test_calculate_rdf_pbc_settings(
 def test_calculate_rdf_pbc_consistency() -> None:
     """Test consistency of RDF calculation with different PBC settings."""
     coords = np.random.default_rng(seed=0).uniform(size=(20, 3))
-    structure = Structure(Lattice.cubic(10), ["Si"] * 20, coords)
+    structure = cubic_structure(10, ["Si"] * 20, coords)
     cutoff, n_bins = 15, 150
 
     (_radii_full_pbc, rdf_full_pbc), (_radii_no_pbc, rdf_no_pbc) = (
@@ -148,7 +140,7 @@ def test_calculate_rdf_pbc_consistency() -> None:
 def test_calculate_rdf_different_species() -> None:
     """Same-species RDFs count periodic images and cross-species peaks appear."""
     coords = [[0, 0, 0], [0.5, 0.5, 0.5]]
-    structure = Structure(Lattice.cubic(5), ["Si", "Ge"], coords)
+    structure = cubic_structure(5, ["Si", "Ge"], coords)
     cutoff, n_bins = 10, 100
 
     _, rdf_si_si, _, rdf_si_ge, _, rdf_ge_ge = (
@@ -178,7 +170,7 @@ def test_calculate_rdf_different_species() -> None:
 )
 def test_calculate_rdf_edge_cases(cutoff: float, frac_coords: list[float]) -> None:
     """RDF is zero when no neighbors lie within the cutoff."""
-    single_atom = Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]])
+    single_atom = cubic_structure(5, ["Si"], [[0, 0, 0]])
     _radii, rdf = calculate_rdf(
         single_atom,
         center_species="Si",
@@ -189,7 +181,7 @@ def test_calculate_rdf_edge_cases(cutoff: float, frac_coords: list[float]) -> No
     assert np.all(rdf == 0), f"{rdf=} should be all zeros"
 
     # Check RDF=0 everywhere for distant atoms (beyond cutoff)
-    distant_atoms = Structure(Lattice.cubic(5), ["Si", "Si"], [[0, 0, 0], frac_coords])
+    distant_atoms = cubic_structure(5, ["Si", "Si"], [[0, 0, 0], frac_coords])
     _radii, rdf = calculate_rdf(
         distant_atoms,
         center_species="Si",
@@ -201,7 +193,7 @@ def test_calculate_rdf_edge_cases(cutoff: float, frac_coords: list[float]) -> No
     assert np.all(rdf == 0), f"{rdf=} should be all zeros"
 
 
-def test_calculate_rdf_disordered_structure(fe3co4_disordered: Structure) -> None:
+def test_calculate_rdf_disordered_structure(fe3co4_disordered: mk.Structure) -> None:
     """Test RDF calculation for structures with disordered sites."""
     cutoff, n_bins = 10, 100
     radii, rdf = calculate_rdf(fe3co4_disordered, cutoff=cutoff, n_bins=n_bins)
@@ -212,11 +204,10 @@ def test_calculate_rdf_disordered_structure(fe3co4_disordered: Structure) -> Non
     assert rdf[peak_idx] == pytest.approx(20.552033)
     assert np.std(rdf) == pytest.approx(3.12714)
 
-    hea_structure = Structure(
-        lattice=Lattice.cubic(a_len := 3.59),
-        species=[Composition({"Co": 0.2, "Cr": 0.2, "Fe": 0.2, "Ni": 0.2, "Mn": 0.2})]
-        * 4,
-        coords=[(0, 0, 0), (0.5, 0.5, 0), (0.5, 0, 0.5), (0, 0.5, 0.5)],
+    hea_structure = cubic_structure(
+        a_len := 3.59,
+        [dict.fromkeys(("Co", "Cr", "Fe", "Ni", "Mn"), 0.2)] * 4,
+        [(0, 0, 0), (0.5, 0.5, 0), (0.5, 0, 0.5), (0, 0.5, 0.5)],
     )
 
     cutoff, n_bins = 10, 100
@@ -254,8 +245,8 @@ def test_calculate_rdf_extreme_parameters(
 ) -> None:
     """Test RDF calculation with extreme parameters."""
     # Create a simple structure with known distances
-    structure = Structure(
-        Lattice.cubic(5),
+    structure = cubic_structure(
+        5,
         ["Si", "Si", "Si", "Si"],
         [(0, 0, 0), (0.5, 0.5, 0), (0.5, 0, 0.5), (0, 0.5, 0.5)],
     )
@@ -291,8 +282,8 @@ def test_calculate_rdf_with_no_atoms_of_requested_species(
     center: str, neighbor: str, expect_zeros: bool
 ) -> None:
     """Test RDF calculation when requested species don't exist in structure."""
-    structure = Structure(
-        Lattice.cubic(5),
+    structure = cubic_structure(
+        5,
         ["Si", "Si", "O", "O"],
         [(0, 0, 0), (0.5, 0.5, 0.5), (0.25, 0.25, 0.25), (0.75, 0.75, 0.75)],
     )
@@ -360,8 +351,8 @@ def test_calculate_rdf_input_validation(
     empty: bool,
 ) -> None:
     """Test input validation in calculate_rdf function."""
-    structure = Structure(
-        Lattice.cubic(5), [] if empty else ["Si"], [] if empty else [[0, 0, 0]]
+    structure = cubic_structure(
+        5, [] if empty else ["Si"], [] if empty else [[0, 0, 0]]
     )
 
     params = {"structure": structure, "cutoff": 10, "n_bins": 10} | test_input
@@ -394,7 +385,7 @@ def test_calculate_rdf_coordination_numbers(
     number (regression: same-species RDFs dropped periodic images of the center
     atom, e.g. zeroing single-atom-cell RDFs entirely).
     """
-    struct = Structure(Lattice.cubic(a_len), [species] * len(frac_coords), frac_coords)
+    struct = cubic_structure(a_len, [species] * len(frac_coords), frac_coords)
     radii, rdf = calculate_rdf(struct, species, species, cutoff=6, n_bins=600)
     rho, bin_width = len(struct) / struct.volume, radii[1] - radii[0]
     mask = radii < first_shell_max  # integrate g(r) over the first shell

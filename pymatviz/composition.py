@@ -23,7 +23,7 @@ from pymatviz.utils import df_ptable
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from pymatgen.core import Composition as PmgComposition
+    from matscikit.interop import CompositionLike
     from typing_extensions import TypeIs
 
     from pymatviz.typing import (
@@ -34,7 +34,7 @@ if TYPE_CHECKING:
     )
 
 
-def is_composition_like(obj: Any) -> TypeIs[str | mk.Composition | PmgComposition]:
+def is_composition_like(obj: Any) -> TypeIs[CompositionLike]:
     """Whether obj is a formula string, a matscikit or pymatgen Composition."""
     return isinstance(obj, str | mk.Composition) or has_class(
         obj, "pymatgen.core.composition.Composition"

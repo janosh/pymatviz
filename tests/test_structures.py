@@ -2,25 +2,12 @@
 
 from __future__ import annotations
 
-import subprocess
-import sys
 from typing import TYPE_CHECKING
 
 import matscikit as mk
 import numpy as np
 import pandas as pd
 import pytest
-from ase import Atoms
-from pymatgen.core import (
-    DummySpecies,
-    Element,
-    IMolecule,
-    IStructure,
-    Lattice,
-    Molecule,
-    Species,
-    Structure,
-)
 
 from pymatviz.structures import (
     normalize_spacegroups,
@@ -30,7 +17,8 @@ from pymatviz.structures import (
     structure_dict,
     to_structure,
 )
-from tests.conftest import SI2_STRUCT, SI_ATOMS, SI_STRUCTS
+from pymatviz.utils.testing import TEST_FILES
+from tests.conftest import SI2_STRUCT, SI_STRUCTS
 
 
 if TYPE_CHECKING:
@@ -38,37 +26,22 @@ if TYPE_CHECKING:
     from typing import Any
 
 
-SI_ISTRUCT = IStructure.from_sites(SI_STRUCTS[0])
-H2O = Molecule(["H", "H", "O"], [[0, 0, 0], [0, 0, 1.5], [0, 0, 0.75]])
-H2O_IMOL = IMolecule.from_sites(H2O)
-
-
-class DerivedAtoms(Atoms):
-    """Exercise adapter-free conversion of caller-defined ASE subclasses."""
+H2O = mk.Structure(
+    None, ["H", "H", "O"], [[0, 0, 0], [0, 0, 1.5], [0, 0, 0.75]], pbc=(False,) * 3
+)
 
 
 @pytest.mark.parametrize(
     ("input_raw", "expected_keys"),
     [
         (SI_STRUCTS[0], ["Si2"]),
-        (SI_ISTRUCT, ["Si2"]),
-        (SI_ATOMS[0], ["Si2"]),
-        (to_structure(SI_STRUCTS[0]), ["Si2"]),
-        (H2O_IMOL, ["H2 O1"]),
-        ([SI_ATOMS[0], H2O], ["1 Si2", "2 H2 O1"]),  # 1-based index and formula
-        ({"si": SI_ATOMS[1], "h2o": H2O}, ["si", "h2o"]),
-        (pd.Series([SI_ISTRUCT], index=["s"]), ["s"]),
+        (H2O, ["H2 O1"]),
+        ([SI_STRUCTS[0], H2O], ["1 Si2", "2 H2 O1"]),  # 1-based index and formula
+        ({"si": SI_STRUCTS[1], "h2o": H2O}, ["si", "h2o"]),
+        (pd.Series([SI_STRUCTS[0]], index=["s"]), ["s"]),
+        ([f"{TEST_FILES}/structures/mp-12712.json"], ["1 Zr18 Pd24"]),  # file path
     ],
-    ids=[
-        "structure",
-        "istructure",
-        "atoms",
-        "matscikit",
-        "imolecule",
-        "list",
-        "dict",
-        "series",
-    ],
+    ids=["structure", "molecule", "list", "dict", "series", "path"],
 )
 def test_normalize_structures(input_raw: Any, expected_keys: list[Hashable]) -> None:
     """Single inputs key by formula, mappings keep keys, all become matscikit."""
@@ -77,58 +50,29 @@ def test_normalize_structures(input_raw: Any, expected_keys: list[Hashable]) -> 
     assert all(isinstance(struct, mk.Structure) for struct in struct_dict.values())
 
 
-@pytest.mark.parametrize("source", [SI_STRUCTS[0], SI_ATOMS[0]], ids=["pmg", "ase"])
-def test_to_structure_geometry(source: Any) -> None:
-    """Pymatgen and ASE inputs keep lattice, positions, species and pbc."""
-    struct = to_structure(source)
-    np.testing.assert_allclose(struct.lattice, SI_STRUCTS[0].lattice.matrix, atol=1e-12)
-    np.testing.assert_allclose(struct.positions, SI_STRUCTS[0].cart_coords, atol=1e-12)
-    assert struct.symbols == ["Si", "Si"]
-    assert struct.pbc == (True, True, True)
-
-
-def test_to_structure_species_and_molecules() -> None:
-    """Oxidation states sum per element, dummy species become vacancies, molecules
-    turn off periodic boundaries, matscikit Structures pass through.
+def test_to_structure_and_structure_dict() -> None:
+    """Matscikit Structures pass through, vacant sites keep their index, molecules
+    become pymatgen-style dicts without lattice or fractional coordinates.
     """
-    site_species = [
-        {Species("Fe", 2): 0.25, Species("Fe", 3): 0.5, DummySpecies("X"): 0.25},
-        Element("O"),
-    ]
-    pmg_struct = IStructure(Lattice.cubic(3), site_species, [[0, 0, 0], [0.5] * 3])
-    struct = to_structure(pmg_struct)
-    assert struct.site_occupancies == [{"Fe": 0.75}, {"O": 1.0}]
-    assert not struct.is_ordered
-    assert to_structure(struct) is struct
-
-    mol = to_structure(H2O)
-    assert mol.pbc == (False, False, False)
-    np.testing.assert_allclose(mol.positions, H2O.cart_coords)
-
+    assert to_structure(SI2_STRUCT) is SI2_STRUCT
     with pytest.raises(TypeError, match="expected a matscikit or pymatgen"):
         to_structure(42)
     with pytest.raises(FileNotFoundError, match="no structure file at 'Si'"):
         to_structure("Si")  # strings are file paths
-    # a vacancy-only site stays a (vacant) site, so site indices match pymatgen's
-    vacant = to_structure(
-        IStructure(Lattice.cubic(3), [DummySpecies("X"), "Fe"], [[0, 0, 0], [0.5] * 3])
+
+    vacant = mk.Structure(
+        np.eye(3) * 3, [{}, "Fe"], [[0, 0, 0], [0.5] * 3], fractional=True
     )
     assert vacant.site_occupancies == [{}, {"Fe": 1.0}]
     assert site_symbols(vacant) == ["X", "Fe"]
     assert structure_dict(vacant)["sites"][0]["label"] == "X0+"
 
-
-def test_structure_dict() -> None:
-    """Pymatgen objects keep their as_dict, others become pymatgen-style dicts,
-    molecules without lattice or fractional coordinates.
-    """
-    assert structure_dict(SI2_STRUCT) == SI2_STRUCT.as_dict()  # keeps Si4+
-    periodic = structure_dict(SI_ATOMS[0])
+    periodic = structure_dict(SI2_STRUCT)
     assert periodic["lattice"]["pbc"] == [True, True, True]
     assert [site["species"] for site in periodic["sites"]] == [
         [{"element": "Si", "occu": 1}]
     ] * 2
-    mol = structure_dict(to_structure(H2O))
+    mol = structure_dict(H2O)
     assert mol["@class"] == "Molecule"
     assert "lattice" not in mol
     assert all("abc" not in site and "xyz" in site for site in mol["sites"])
@@ -193,85 +137,24 @@ def test_normalize_spacegroups(
     pd.testing.assert_series_equal(normalize_spacegroups(data), expected_series)
 
 
-@pytest.mark.parametrize(
-    "structures",
-    [
-        SI_STRUCTS,
-        SI_ATOMS,
-        tuple(DerivedAtoms(atoms) for atoms in SI_ATOMS),
-        tuple(map(to_structure, SI_STRUCTS)),
-    ],
-    ids=["pymatgen", "ase", "ase_subclass", "matscikit"],
-)
 @pytest.mark.parametrize("as_series", [False, True])
-def test_normalize_spacegroups_with_structures(
-    structures: tuple, as_series: bool
-) -> None:
-    """Preserve identifiers when extracting symmetry from either structure format."""
-    from moyopy import MoyoDataset
-    from moyopy.interface import MoyoAdapter
-
-    expected = pd.Series(
-        [MoyoDataset(MoyoAdapter.from_py_obj(struct)).number for struct in SI_STRUCTS]
-    )
-    data: tuple | pd.Series = structures
+def test_normalize_spacegroups_with_structures(as_series: bool) -> None:
+    """Preserve identifiers when extracting symmetry from structures."""
+    expected = pd.Series([12, 129])
+    data: tuple | pd.Series = SI_STRUCTS
     if as_series:
         index = pd.Index(["sample-a", "sample-b"], name="sample")
-        data = pd.Series(list(structures), index=index, name="spacegroup")
+        data = pd.Series(list(SI_STRUCTS), index=index, name="spacegroup")
         expected.index, expected.name = index, "spacegroup"
     pd.testing.assert_series_equal(normalize_spacegroups(data), expected)
 
 
 def test_normalize_spacegroups_disordered() -> None:
-    """Disordered structures get the space groups of pymatgen's SpacegroupAnalyzer."""
-    from matscikit.interop import structure_to_pymatgen_dict
-    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
-
+    """Disordered structures are told apart by species and occupancy."""
     from pymatviz.utils.testing import disordered_demo_structures
 
     structs = list(disordered_demo_structures.values())
-    expected = [
-        SpacegroupAnalyzer(
-            Structure.from_dict(structure_to_pymatgen_dict(struct))
-        ).get_space_group_number()
-        for struct in structs
-    ]
-    assert normalize_spacegroups(structs).tolist() == expected == [221, 191, 221, 221]
-
-
-def test_core_features_without_pymatgen_or_ase() -> None:
-    """Base imports, symmetry, RDF, coordination, chemical environments, compositions,
-    XRD, phonon DOS and widgets need neither pymatgen nor ASE.
-    """
-    subprocess.run(
-        [
-            sys.executable,
-            "-c",
-            """
-import sys
-sys.modules["ase"] = sys.modules["pymatgen"] = sys.modules["moyopy.interface"] = None
-import matscikit as mk
-import numpy as np
-import pymatviz as pmv
-from pymatviz.structures import normalize_spacegroups
-
-structure = mk.Structure(np.eye(3) * 3, ["Si"], [[0, 0, 0]])
-assert normalize_spacegroups([structure]).tolist() == [221]
-assert pmv.spacegroup_sunburst([structure]).data[0]["children"][0]["label"] == "221"
-pmv.structure(structure=structure)
-pmv.rdf_plot(structure, mode="full")
-pmv.coordination_bar_plot(structure, strategy=3.0)
-pmv.coordination_bar_plot(structure, strategy="crystal_nn")
-pmv.chem_env_hierarchy(structure)
-pmv.phonon_dos(mk.PhononDos([0, 1, 2], [0, 1, 0]))
-pmv.xrd_plot(structure)
-pmv.ptable_heatmap(pmv.count_elements(["Fe2O3", mk.Composition("NaCl")]))
-""",
-        ],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
+    assert normalize_spacegroups(structs).tolist() == [221, 191, 221, 221]
 
 
 @pytest.mark.parametrize("invalid_val", [0, -1, 231, 500, 2.5, float("nan"), pd.NA])

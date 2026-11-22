@@ -13,6 +13,12 @@ within 20 meV of the hull and ~1k of which are on the hull. They organized all o
 campaigns by chemical system.
 """
 
+# /// script
+# dependencies = [
+#     "pymatgen>=2026.9.24",
+# ]
+# ///
+
 # %%
 import os
 

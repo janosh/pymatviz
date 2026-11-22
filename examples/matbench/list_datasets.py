@@ -1,5 +1,11 @@
 """List all Matbench datasets available in Matminer."""
 
+# /// script
+# dependencies = [
+#     "matminer>=0.10.1",
+# ]
+# ///
+
 # %%
 from matminer.datasets import get_available_datasets
 

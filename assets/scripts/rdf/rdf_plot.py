@@ -1,5 +1,12 @@
 """RDF examples: element-pair and full RDFs, computed in the browser or Python."""
 
+# /// script
+# dependencies = [
+#     "matminer>=0.10.1",
+#     "pymatgen>=2026.9.24",
+# ]
+# ///
+
 # %%
 import numpy as np
 from matminer.datasets import load_dataset
