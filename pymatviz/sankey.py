@@ -101,7 +101,9 @@ def sankey_flow_data(
     n_linked_rows = flows.sum()
     # one node per value per side (a value in both columns gets two), in order of
     # first appearance in the flows
-    side_counts = [flows.groupby(level=lvl, sort=False).sum() for lvl in (0, 1)]
+    side_counts = [
+        flows.groupby(level=lvl, observed=True, sort=False).sum() for lvl in (0, 1)
+    ]
     node_ids: list[dict[Any, int]] = [{}, {}]
     nodes: list[dict[str, Any]] = []
     for col, counts, ids in zip((source, target), side_counts, node_ids, strict=True):
