@@ -125,48 +125,28 @@ def sample_data() -> np.ndarray:
 
 
 @pytest.mark.parametrize(
-    ("method", "kwargs", "expected_obj_type", "obj_attrs"),
+    ("method", "kwargs", "expected_obj_type", "extra_attrs"),
     [
-        (
-            "pca",
-            {"whiten": True},
-            PCA,
-            {"n_components_": 2, "whiten": True, "svd_solver": "full"},
-        ),
-        ("pca", {"svd_solver": "arpack"}, PCA, {"svd_solver": "arpack"}),
+        ("pca", {"whiten": True}, PCA, {"n_components_": 2, "svd_solver": "full"}),
+        ("pca", {"svd_solver": "arpack"}, PCA, {}),
         (
             "tsne",
             {"perplexity": 10.0, "learning_rate": 100.0, "max_iter": 500},
             TSNE,
-            {
-                "n_components": 2,
-                "perplexity": 10.0,
-                "learning_rate": 100.0,
-                "max_iter": 500,
-            },
+            {"n_components": 2},
         ),
-        (
-            "umap",
-            {"n_neighbors": 5, "min_dist": 0.2, "spread": 2},
-            None,
-            {"n_neighbors": 5, "min_dist": 0.2, "spread": 2},
-        ),
+        ("umap", {"n_neighbors": 5, "min_dist": 0.2, "spread": 2}, None, {}),
         (
             "isomap",
             {"n_neighbors": 5, "metric": "euclidean", "path_method": "D"},
             Isomap,
-            {"n_neighbors": 5, "metric": "euclidean", "path_method": "D"},
+            {},
         ),
         (
             "kernel_pca",
             {"kernel": "rbf", "gamma": 0.1, "fit_inverse_transform": True},
             KernelPCA,
-            {
-                "n_components": 2,
-                "kernel": "rbf",
-                "gamma": 0.1,
-                "fit_inverse_transform": True,
-            },
+            {"n_components": 2},
         ),
     ],
 )
@@ -175,9 +155,9 @@ def test_project_vectors_methods(
     method: ProjectionMethod,
     kwargs: dict[str, Any],
     expected_obj_type: type,
-    obj_attrs: dict[str, Any],
+    extra_attrs: dict[str, Any],
 ) -> None:
-    """Test different projection methods."""
+    """Each method returns its fitted projector with the given kwargs set."""
     if method == ProjectionMethod.umap:
         pytest.importorskip("umap")
         from umap import UMAP
@@ -185,13 +165,9 @@ def test_project_vectors_methods(
         expected_obj_type = UMAP
 
     result, proj_obj = project_vectors(sample_data, method=method, **kwargs)
-
     assert result.shape == (100, 2)
-
     assert isinstance(proj_obj, expected_obj_type)
-
-    # Check projection object attributes
-    for attr, value in obj_attrs.items():
+    for attr, value in (kwargs | extra_attrs).items():
         assert getattr(proj_obj, attr) == value
 
     # scale_data=True centers the projection and scales it to unit RMS (t-SNE
@@ -223,13 +199,9 @@ def test_project_vectors_components(sample_data: np.ndarray, n_components: int) 
 
 
 def test_project_vectors_with_scaling(sample_data: np.ndarray) -> None:
-    """Test projection with and without data scaling."""
-    # With scaling (default)
+    """Projection with (default) and without data scaling."""
     result_with_scaling, proj_obj1 = project_vectors(sample_data, scale_data=True)
-
-    # Without scaling
     result_without_scaling, proj_obj2 = project_vectors(sample_data, scale_data=False)
-
     assert isinstance(proj_obj1, PCA)
     assert isinstance(proj_obj2, PCA)
     assert proj_obj1.n_components_ == proj_obj2.n_components_ == 2
@@ -248,36 +220,22 @@ def test_project_vectors_with_scaling(sample_data: np.ndarray) -> None:
 
 
 def test_project_vectors_random_state(sample_data: np.ndarray) -> None:
-    """Test reproducibility with fixed random state."""
+    """UMAP is reproducible for a fixed random state and varies across states."""
     pytest.importorskip("umap")
     from umap import UMAP
 
-    # Run twice with same random state for UMAP
-    result1, umap_obj1 = project_vectors(
-        sample_data, method=ProjectionMethod.umap, random_state=0
-    )
-    result2, umap_obj2 = project_vectors(
-        sample_data, method=ProjectionMethod.umap, random_state=0
+    (result1, umap_obj1), (result2, umap_obj2), (result3, umap_obj3) = (
+        project_vectors(sample_data, method=ProjectionMethod.umap, random_state=seed)
+        for seed in (0, 0, 1)
     )
     assert isinstance(umap_obj1, UMAP)
-    assert umap_obj1.random_state == 0
-    assert umap_obj1 is not umap_obj2
-
-    # Results should be identical with same random state
-    assert np.allclose(result1, result2, atol=1e-10)
-
-    # Run with different random state for UMAP
-    result3, umap_obj3 = project_vectors(
-        sample_data, method=ProjectionMethod.umap, random_state=1
-    )
     assert isinstance(umap_obj3, UMAP)
-    assert umap_obj3.random_state == 1
-    # Results should be different with different random states
+    assert (umap_obj1.random_state, umap_obj3.random_state) == (0, 1)
+    assert umap_obj1 is not umap_obj2
+    assert np.allclose(result1, result2, atol=1e-10)
     assert not np.allclose(result1, result3, atol=1e-10)
-
-    # Check that both results have reasonable scale
-    assert np.std(result1) == pytest.approx(1.0, rel=0.5)
-    assert np.std(result3) == pytest.approx(1.0, rel=0.5)
+    for result in (result1, result3):
+        assert np.std(result) == pytest.approx(1.0, rel=0.5)
 
 
 @pytest.mark.parametrize(
@@ -365,7 +323,6 @@ def test_project_vectors_isomap_two_samples() -> None:
     assert projected.shape == (2, 2)
 
 
-np_rng = np.random.default_rng(seed=0)
 BASE_KWARGS: dict[str, Any] = dict(embedding_method="one-hot", projection="pca")
 
 
@@ -652,7 +609,7 @@ def test_cluster_compositions_invalid_inputs(
 @pytest.mark.parametrize("n_components", [2, 3])
 def test_precomputed_coordinates(df_prop: pd.DataFrame, n_components: int) -> None:
     """A column of coordinates is plotted as is, without projector or embeddings."""
-    coords = np_rng.random((len(df_prop), n_components))
+    coords = np.random.default_rng(seed=0).random((len(df_prop), n_components))
     df_prop["coords"] = list(coords)
     widget = pmv.cluster_compositions(
         df_prop, projection="coords", n_components=n_components
@@ -730,21 +687,15 @@ def test_annotate_points(df_prop: pd.DataFrame) -> None:
     }
 
 
-def test_non_finite_property_values(df_prop: pd.DataFrame) -> None:
-    """NaN/None property values become None in metadata and colors."""
-    df_prop.loc[1, "property"] = np.nan
-    widget = pmv.cluster_compositions(
-        df_prop, prop_name="property", sort=False, **BASE_KWARGS
-    )
-    assert widget.series[0]["metadata"][1] == {"composition": "FeO", "property": None}
-    assert widget.series[0]["color_values"][1] is None
-
-
 def test_cluster_compositions_kwargs(df_prop: pd.DataFrame) -> None:
-    """Extra keyword arguments go to the widget, overriding defaults."""
+    """Extra kwargs go to the widget, overriding defaults; NaN properties become
+    None in metadata and colors.
+    """
+    df_prop.loc[1, "property"] = np.nan
     widget = pmv.cluster_compositions(
         df_prop,
         prop_name="property",
+        sort=False,
         color_scale="interpolatePlasma",
         marker_size=12,
         color_bar={"title": "E (eV)"},
@@ -752,5 +703,8 @@ def test_cluster_compositions_kwargs(df_prop: pd.DataFrame) -> None:
     )
     assert isinstance(widget, ClusterScatterPlot)
     assert widget.color_scale["scheme"] == "interpolatePlasma"
-    assert widget.series[0]["point_style"] == {"radius": 6}
+    (srs,) = widget.series
+    assert srs["point_style"] == {"radius": 6}
     assert widget.color_bar == {"title": "E (eV)"}
+    assert srs["metadata"][1] == {"composition": "FeO", "property": None}
+    assert srs["color_values"][1] is None

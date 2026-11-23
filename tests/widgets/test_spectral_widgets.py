@@ -53,9 +53,8 @@ def test_dos_sigma_in_data_unit(
 )
 def test_widgets_accept_structure(widget_cls: type, trait: str) -> None:
     """Structure traits sync a kemio Structure as a dict."""
-    struct = SI_STRUCT
-    synced = getattr(widget_cls(**{trait: struct}), trait)
-    assert synced == structure_to_pymatgen_dict(struct)
+    synced = getattr(widget_cls(**{trait: SI_STRUCT}), trait)
+    assert synced == structure_to_pymatgen_dict(SI_STRUCT)
 
 
 H2_MOLECULE = kemio.Structure(
@@ -64,75 +63,58 @@ H2_MOLECULE = kemio.Structure(
 
 
 @pytest.mark.parametrize(
-    ("widget_cls", "kwargs", "err", "match"),
+    ("widget_cls", "kwargs", "match"),
     [
         # converted by the trait, not a TypeError from __init__ like before
         (
             BandsAndDosWidget,
             {"band_structs": "invalid"},
-            tl.TraitError,
             "Unsupported type for band structure",
         ),
         # a Brillouin zone needs a lattice
-        (
-            BandsAndDosWidget,
-            {"structure": H2_MOLECULE},
-            tl.TraitError,
-            "periodic structure",
-        ),
-        (
-            BrillouinZoneWidget,
-            {"structure": H2_MOLECULE},
-            tl.TraitError,
-            "periodic structure",
-        ),
+        (BandsAndDosWidget, {"structure": H2_MOLECULE}, "periodic structure"),
+        (BrillouinZoneWidget, {"structure": H2_MOLECULE}, "periodic structure"),
         (
             RdfPlotWidget,
             {
                 "structures": {"lattice": {}, "sites": []},
                 "patterns": [{"r": [1], "g_r": [1]}],
             },
-            tl.TraitError,
             "not both",
         ),
         (
             FermiSurfaceWidget,
             {"fermi_data": None, "band_data": None},
-            tl.TraitError,
             "exactly one of fermi_data or band_data",
         ),
         (
             FermiSurfaceWidget,
             {"fermi_data": {"isosurfaces": []}, "band_data": {"energies": []}},
-            tl.TraitError,
             "exactly one of fermi_data or band_data",
         ),
         # normalized values must still be the dict the frontend reads
         (
             FermiSurfaceWidget,
             {"fermi_data": [1, 2]},
-            tl.TraitError,
             r"'fermi_data' trait of a FermiSurfaceWidget .* dict or None, not the list",
         ),
         (
             BrillouinZoneWidget,
             {"bz_data": [1]},
-            tl.TraitError,
             r"'bz_data' trait of a BrillouinZoneWidget .* dict or None, not the list",
         ),
         (
             RdfPlotWidget,
             {"patterns": "abc"},
-            tl.TraitError,
             r"'patterns' trait of a RdfPlotWidget .* a list, not the str 'abc'",
         ),
     ],
 )
 def test_widgets_reject_invalid_data_sources(
-    widget_cls: type, kwargs: dict[str, Any], err: type[Exception], match: str
+    widget_cls: type, kwargs: dict[str, Any], match: str
 ) -> None:
     """Molecules for Brillouin zones and missing or conflicting data sources raise."""
-    with pytest.raises(err, match=match):
+    with pytest.raises(tl.TraitError, match=match):
         widget_cls(**kwargs)
 
 

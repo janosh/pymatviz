@@ -50,20 +50,6 @@ def bar_plot_widget() -> BarPlotWidget:
     )
 
 
-@needs_pillow
-def test_headless_bar_plot_png(bar_plot_widget: BarPlotWidget) -> None:
-    """BarPlotWidget.to_img(fmt='png') produces a valid, non-trivial PNG."""
-    import io
-
-    from PIL import Image
-
-    png_bytes = bar_plot_widget.to_img(fmt="png", dpi=72)
-    assert png_bytes[:4] == b"\x89PNG"
-    img = Image.open(io.BytesIO(png_bytes))
-    assert img.width >= 400
-    assert img.height >= 200
-
-
 @pytest.mark.parametrize(
     "chart",
     [
@@ -206,53 +192,69 @@ def test_headless_bar_plot_writes_file(
         assert fh.read() == result
 
 
-@pytest.mark.parametrize("with_plot", [False, True])
-def test_headless_webgl_structure_exports(with_plot: bool) -> None:
-    """WebGL structures export PNG, rasterize PDFs and raise for SVG, also beside an
-    SVG plot.
-    """
-    if with_plot:
-        frames = [
-            {
-                "structure": structure_to_pymatgen_dict(
-                    cubic_structure(3 + 0.1 * idx, ["Si"], [0, 0, 0])
-                ),
-                "step": idx,
-                "metadata": {"energy": -float(idx)},
-            }
-            for idx in range(4)
-        ]
-        widget = TrajectoryWidget(
-            trajectory={"frames": frames},
-            display_mode="structure+plot",
-            style="height: 400px;",
-        )
-    else:
-        widget = StructureWidget(
+def _si_trajectory() -> TrajectoryWidget:
+    """A 4-frame Si trajectory shown as structure beside its energy plot."""
+    frames = [
+        {
+            "structure": structure_to_pymatgen_dict(
+                cubic_structure(3 + 0.1 * idx, ["Si"], [0, 0, 0])
+            ),
+            "step": idx,
+            "metadata": {"energy": -float(idx)},
+        }
+        for idx in range(4)
+    ]
+    return TrajectoryWidget(
+        trajectory={"frames": frames},
+        display_mode="structure+plot",
+        style="height: 400px;",
+    )
+
+
+@pytest.mark.parametrize(
+    "make_widget",
+    [
+        lambda: StructureWidget(
             structure=cubic_structure(3, ["Si", "Si"], BCC_COORDS),
             style="height: 400px;",
-        )
+        ),
+        _si_trajectory,  # WebGL beside an SVG plot
+        lambda: ConvexHullWidget(  # ternary hulls render WebGL
+            entries=[
+                {"composition": {"Li": 1}, "energy": -1.9},
+                {"composition": {"Fe": 1}, "energy": -4.2},
+                {"composition": {"O": 1}, "energy": -3.0},
+                {"composition": {"Li": 2, "O": 1}, "energy": -15.8},
+            ],
+            style="height: 500px;",
+        ),
+    ],
+    ids=["structure", "trajectory_with_plot", "ternary_convex_hull"],
+)
+def test_headless_webgl_exports(make_widget: Callable[[], MatterVizWidget]) -> None:
+    """WebGL widgets export PNG, rasterize PDFs and raise for SVG."""
+    widget = make_widget()
     png_bytes = widget.to_img(fmt="png", dpi=72)
     assert png_bytes[:4] == b"\x89PNG"
     assert len(png_bytes) > 5000
-    assert b"/Font" not in widget.to_img(fmt="pdf", dpi=72), "expected raster PDF"
+    pdf_bytes = widget.to_img(fmt="pdf", dpi=72)
+    assert pdf_bytes[:5] == b"%PDF-"
+    assert b"/Font" not in pdf_bytes, "expected raster PDF"
     with pytest.raises(RuntimeError, match="no vector form"):
         widget.to_img(fmt="svg")
 
 
 @needs_pillow
-def test_headless_dpi_affects_png_dimensions() -> None:
-    """Higher DPI produces larger pixel dimensions for the same widget."""
+def test_headless_bar_plot_png_scales_with_dpi(bar_plot_widget: BarPlotWidget) -> None:
+    """to_img(fmt='png') gives a full-size PNG whose pixel size grows with DPI."""
     import io
 
     from PIL import Image
 
-    widget = ScatterPlotWidget(
-        series=[{"x": [0, 1], "y": [0, 1], "label": "pt"}],
-        style="width: 200px; height: 200px;",
-    )
-    img_lo = Image.open(io.BytesIO(widget.to_img(fmt="png", dpi=72)))
-    img_hi = Image.open(io.BytesIO(widget.to_img(fmt="png", dpi=216)))
+    png_lo, png_hi = (bar_plot_widget.to_img(fmt="png", dpi=dpi) for dpi in (72, 216))
+    assert png_lo[:4] == png_hi[:4] == b"\x89PNG"
+    img_lo, img_hi = (Image.open(io.BytesIO(png)) for png in (png_lo, png_hi))
+    assert (img_lo.width, img_lo.height) >= (400, 200)
     assert img_hi.width > img_lo.width * 2
     assert img_hi.height > img_lo.height * 2
 
@@ -299,30 +301,14 @@ def test_headless_widget_renders_nonblank_png(
     assert blank_frac < max_blank
 
 
-def test_headless_convex_hull_ternary_canvas_export() -> None:
-    """Ternary ConvexHull renders WebGL: PNG works, SVG raises, PDF is valid."""
-    widget = ConvexHullWidget(
-        entries=[
-            {"composition": {"Li": 1}, "energy": -1.9},
-            {"composition": {"Fe": 1}, "energy": -4.2},
-            {"composition": {"O": 1}, "energy": -3.0},
-            {"composition": {"Li": 2, "O": 1}, "energy": -15.8},
-        ],
-        style="height: 500px;",
-    )
-    assert widget.to_img(fmt="png", dpi=72)[:4] == b"\x89PNG"
-    assert widget.to_img(fmt="pdf", dpi=72)[:5] == b"%PDF-"
-    with pytest.raises(RuntimeError, match="no vector form"):
-        widget.to_img(fmt="svg")
-
-
-def test_headless_repeated_exports_in_one_process() -> None:
+def test_headless_repeated_exports_in_one_process(
+    bar_plot_widget: BarPlotWidget,
+) -> None:
     """Repeated to_img() calls succeed (1st sync render flips later ones to async)."""
-    bar = BarPlotWidget(series=[{"x": [0, 1], "y": [1.0, 2.0]}], style="height: 300px;")
     scatter = ScatterPlotWidget(
         series=[{"x": [0, 1], "y": [1.0, 2.0]}], style="height: 300px;"
     )
-    for widget in (bar, scatter, bar):
+    for widget in (bar_plot_widget, scatter, bar_plot_widget):
         assert widget.to_img(fmt="png", dpi=72)[:4] == b"\x89PNG"
 
 

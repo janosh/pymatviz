@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import concurrent.futures
+import contextlib
 import functools
 import importlib.util
 import io
@@ -40,13 +41,19 @@ from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Generator, Iterator
 
 HEADLESS_PATH = "pymatviz.widgets._headless"
 
 DUMMY_WIDGET_DATA: dict[str, Any] = {"widget_type": "scatter_plot", "style": ""}
 DUMMY_ESM = "export default { render() {} }"
 DUMMY_CSS = ".widget {}"
+DUMMY_JOB = dict(
+    widget_data=DUMMY_WIDGET_DATA, esm_content=DUMMY_ESM, css_content=DUMMY_CSS
+)
+_render = functools.partial(
+    render_widget_headless, DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS
+)
 
 
 @pytest.fixture(autouse=True)
@@ -104,11 +111,13 @@ def _mock_page(
     return page
 
 
-def _mock_browser(*pages: MagicMock) -> MagicMock:
-    """Mock browser whose new_page() hands out ``pages`` in order."""
+@contextlib.contextmanager
+def _serve_pages(*pages: MagicMock) -> Generator[MagicMock]:
+    """Patch in a mock browser whose new_page() hands out ``pages`` in order."""
     browser = MagicMock()
     browser.new_page = AsyncMock(side_effect=list(pages))
-    return browser
+    with patch(f"{HEADLESS_PATH}._get_browser", AsyncMock(return_value=browser)):
+        yield browser
 
 
 def _mount_count(page: MagicMock) -> int:
@@ -131,15 +140,12 @@ def test_sync_export_inside_running_loop() -> None:
     """A sync export from inside a running event loop (Jupyter) blocks on the browser
     thread instead of re-entering the caller's loop, so needs no nest_asyncio.
     """
-    browser = _mock_browser(_mock_page())
 
     async def export_in_loop() -> tuple[bytes, threading.Thread]:
         """Export synchronously while this loop runs, as a notebook cell does."""
-        return render_widget_headless(DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS), (
-            threading.current_thread()
-        )
+        return _render(), threading.current_thread()
 
-    with patch(f"{HEADLESS_PATH}._get_browser", AsyncMock(return_value=browser)):
+    with _serve_pages(_mock_page()):
         png, caller_thread = asyncio.run(export_in_loop())
     assert png == b"PNGDATA"
     assert caller_thread is threading.main_thread()
@@ -175,21 +181,13 @@ def test_render_widget_headless_formats_and_dpi(
     svg_result = {"svg": expected_bytes.decode()} if fmt == "svg" else None
     page = _mock_page(svg_result=svg_result, webgl=webgl)
     page.locator.return_value.screenshot.return_value = expected_bytes
-    browser = _mock_browser(page)
 
     with (
-        patch(f"{HEADLESS_PATH}._get_browser", AsyncMock(return_value=browser)),
+        _serve_pages(page) as browser,
         patch(f"{HEADLESS_PATH}._png_to_pdf", return_value=b"%PDF-raster") as to_pdf,
         patch(f"{HEADLESS_PATH}._trim_png", return_value=b"trimmed") as trim_png,
     ):
-        result = render_widget_headless(
-            DUMMY_WIDGET_DATA,
-            DUMMY_ESM,
-            DUMMY_CSS,
-            fmt=fmt,
-            dpi=dpi,
-            transparent=transparent,
-        )
+        result = _render(fmt=fmt, dpi=dpi, transparent=transparent)
 
     assert result == expected_bytes
     mount_style = next(
@@ -224,16 +222,13 @@ def test_warm_page_reused_per_bundle_and_dpi() -> None:
     each, also after a failed capture); a new DPI or bundle gets its own page.
     """
     pages = [_mock_page(svg_result={"error": "no vector form"}) for _ in range(3)]
-    browser = _mock_browser(*pages)
-    with patch(f"{HEADLESS_PATH}._get_browser", AsyncMock(return_value=browser)):
+    with _serve_pages(*pages) as browser:
         for _ in range(3):
-            render_widget_headless(DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS, dpi=72)
+            _render(dpi=72)
         with pytest.raises(RuntimeError, match="SVG export failed: no vector form"):
-            render_widget_headless(
-                DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS, fmt="svg", dpi=72
-            )
+            _render(fmt="svg", dpi=72)
         render_diagnostics(DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS, dpi=72)
-        render_widget_headless(DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS, dpi=144)
+        _render(dpi=144)
         render_widget_headless(DUMMY_WIDGET_DATA, f"{DUMMY_ESM};", DUMMY_CSS, dpi=72)
 
     assert browser.new_page.await_count == 3
@@ -248,22 +243,9 @@ def test_warm_page_reused_per_bundle_and_dpi() -> None:
         page.close.assert_not_awaited()
 
 
-def test_failed_render_replaces_page() -> None:
-    """A widget whose render fails closes its page; the next export gets a new one."""
-    broken, fresh = _mock_page(render_error="boom"), _mock_page()
-    browser = _mock_browser(broken, fresh)
-    with patch(f"{HEADLESS_PATH}._get_browser", AsyncMock(return_value=browser)):
-        with pytest.raises(RuntimeError, match="Widget render failed: boom"):
-            render_widget_headless(DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS)
-        png = render_widget_headless(DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS)
-        assert png == b"PNGDATA"
-    broken.close.assert_awaited_once()
-    fresh.close.assert_not_awaited()
-
-
 def test_failed_render_retires_its_page() -> None:
-    """A failing export retires its page while a concurrent export renders on its
-    own fresh page, which stays warm.
+    """A failing export closes and retires its page while a concurrent export
+    renders on its own fresh page, which stays warm.
     """
     mounting = threading.Event()
 
@@ -274,19 +256,16 @@ def test_failed_render_retires_its_page() -> None:
 
     broken = _mock_page(render_error="boom", on_mount=on_mount)
     fresh = _mock_page()
-    browser = _mock_browser(broken, fresh)
     results: dict[str, object] = {}
 
     def export(name: str) -> None:
         """Export from a worker thread, recording the result or error."""
         try:
-            results[name] = render_widget_headless(
-                DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS
-            )
+            results[name] = _render()
         except RuntimeError as exc:
             results[name] = str(exc)
 
-    with patch(f"{HEADLESS_PATH}._get_browser", AsyncMock(return_value=browser)):
+    with _serve_pages(broken, fresh):
         failing = threading.Thread(target=export, args=("failing",))
         failing.start()
         assert mounting.wait(5)
@@ -298,6 +277,8 @@ def test_failed_render_retires_its_page() -> None:
     assert (_mount_count(broken), _mount_count(fresh)) == (1, 1)
     (warm,) = headless_mod._warm_pages
     assert warm.page is fresh
+    broken.close.assert_awaited_once()
+    fresh.close.assert_not_awaited()
 
 
 def test_run_in_browser_thread_bounds_wait() -> None:
@@ -358,10 +339,9 @@ def test_idle_warm_pages_evicted_lru() -> None:
     """Beyond _MAX_WARM_PAGES idle pages, the least recently used one closes."""
     n_pages = headless_mod._MAX_WARM_PAGES + 1
     pages = [_mock_page() for _ in range(n_pages)]
-    browser = _mock_browser(*pages)
-    with patch(f"{HEADLESS_PATH}._get_browser", AsyncMock(return_value=browser)):
+    with _serve_pages(*pages):
         for dpi in range(72, 72 * (n_pages + 1), 72):
-            render_widget_headless(DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS, dpi=dpi)
+            _render(dpi=dpi)
         assert len(headless_mod._warm_pages) == headless_mod._MAX_WARM_PAGES
     pages[0].close.assert_awaited_once()
     for page in pages[1:]:
@@ -384,12 +364,8 @@ def test_batch_exports_render_concurrently_on_capped_pages() -> None:
 
     n_slots = headless_mod._MAX_WARM_PAGES
     pages = [_mock_page(on_mount=on_mount) for _ in range(n_slots)]
-    browser = _mock_browser(*pages)
-    job = dict(
-        widget_data=DUMMY_WIDGET_DATA, esm_content=DUMMY_ESM, css_content=DUMMY_CSS
-    )
-    jobs = [job] * (n_slots + 2)
-    with patch(f"{HEADLESS_PATH}._get_browser", AsyncMock(return_value=browser)):
+    jobs = [DUMMY_JOB] * (n_slots + 2)
+    with _serve_pages(*pages) as browser:
         results = headless_mod.render_widgets_headless(jobs)
     assert results == [b"PNGDATA"] * len(jobs)
     assert (peak, browser.new_page.await_count) == (n_slots, n_slots)
@@ -400,12 +376,11 @@ def test_bundle_load_error_surfaces() -> None:
     """A bundle that fails to import reports its error and leaves no page behind."""
     page = _mock_page()
     page.evaluate = AsyncMock(return_value="Error: ESM bundle has no render export")
-    browser = _mock_browser(page)
     with (
-        patch(f"{HEADLESS_PATH}._get_browser", AsyncMock(return_value=browser)),
+        _serve_pages(page),
         pytest.raises(RuntimeError, match=r"render failed: .*no render export"),
     ):
-        render_widget_headless(DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS)
+        _render()
     page.close.assert_awaited_once()
     assert headless_mod._warm_pages == []
 
@@ -532,7 +507,9 @@ def test_export_wider_than_page() -> None:
 
 
 def test_build_html_contains_esm_and_mount() -> None:
-    """The warm-page HTML embeds the CSS and base64 ESM and defines the mount hooks."""
+    """The warm-page HTML embeds the CSS and base64 ESM, defines the mount hooks and
+    hides loading spinners.
+    """
     css = "body { color: red; }"
     html = _build_html("export default { render() {} }", css)
     assert f"<style>{css}</style>" in html
@@ -541,6 +518,8 @@ def test_build_html_contains_esm_and_mount() -> None:
     hooks = ("mount", "unmount", "probe", "ready")
     for hook in (f"__matterviz_{name}" for name in hooks):
         assert f"window.{hook} =" in html
+    # spinner guard so loading states are never captured
+    assert '.spinner[role="status"]' in html
 
 
 # === to_html / build_interactive_html (browser-free) ===
@@ -603,24 +582,18 @@ def test_to_html_default_uses_cdn_url(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "const esm_blob" not in html  # external, not inlined
 
 
-def test_to_html_inline_embeds_bundle() -> None:
-    """inline=True embeds the base64 bundle and references no CDN."""
+def test_to_html_inline() -> None:
+    """inline=True embeds the base64 bundle (no CDN), disables Worker only for
+    chem_pot (a CDN/blob worker can't load) and conflicts with esm_url.
+    """
     html = _scatter().to_html(inline=True)
     assert "const esm_blob" in html
     assert _bundle_sources(MATTERVIZ_ANYWIDGET_VERSION)[0] not in html
-
-
-def test_to_html_worker_shim_only_for_chem_pot() -> None:
-    """to_html disables Worker for chem_pot (CDN/blob worker can't load) only."""
+    assert ", el, false);" in html
     chem_pot = ChemPotDiagramWidget(
         entries=[{"name": "Li", "energy": -1.9, "composition": {"Li": 1}}]
     )
     assert ", el, true);" in chem_pot.to_html(inline=True)
-    assert ", el, false);" in _scatter().to_html(inline=True)
-
-
-def test_to_html_inline_and_esm_url_conflict() -> None:
-    """Passing both inline and esm_url is rejected."""
     with pytest.raises(ValueError, match="not both"):
         _scatter().to_html(inline=True, esm_url="https://x/y.js")
 
@@ -638,9 +611,7 @@ def test_to_html_writes_file(tmp_path: Any) -> None:
 def test_transparent_rejects_opaque_formats(fmt: str) -> None:
     """Transparent export raises for formats without alpha (JPEG) or trimming (PDF)."""
     with pytest.raises(ValueError, match=f"supports png and svg, got fmt='{fmt}'"):
-        render_widget_headless(
-            DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS, fmt=fmt, transparent=True
-        )
+        _render(fmt=fmt, transparent=True)
 
 
 @pytest.mark.parametrize(
@@ -676,11 +647,6 @@ def test_trim_png(
 
 def test_png_blank_fraction_uniform_image() -> None:
     """png_blank_fraction returns 1.0 for a single-color image."""
-    pytest.importorskip("PIL")
-    import io
-
-    from PIL import Image
-
     buf = io.BytesIO()
     Image.new("RGB", (8, 8), (255, 255, 255)).save(buf, format="PNG")
     assert png_blank_fraction(buf.getvalue()) == 1.0
@@ -698,14 +664,9 @@ def test_overlapping_exports_trim_idle_pages_on_release() -> None:
         await asyncio.to_thread(barrier.wait, 5)
 
     pages = [_mock_page(on_mount=on_mount) for _ in range(n_exports)]
-    browser = _mock_browser(*pages)
 
-    def export() -> None:
-        """Export from a worker thread."""
-        render_widget_headless(DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS)
-
-    with patch(f"{HEADLESS_PATH}._get_browser", AsyncMock(return_value=browser)):
-        threads = [threading.Thread(target=export) for _ in range(n_exports)]
+    with _serve_pages(*pages) as browser:
+        threads = [threading.Thread(target=_render) for _ in range(n_exports)]
         for thread in threads:
             thread.start()
         for thread in threads:
@@ -730,29 +691,19 @@ def test_batch_failure_cancels_sibling_renders() -> None:
     n_slow = headless_mod._MAX_WARM_PAGES - 1
     pages = [_mock_page(render_error="boom")]
     pages += [_mock_page(on_mount=slow_mount) for _ in range(n_slow)]
-    job = dict(
-        widget_data=DUMMY_WIDGET_DATA, esm_content=DUMMY_ESM, css_content=DUMMY_CSS
-    )
     with (
-        patch(
-            f"{HEADLESS_PATH}._get_browser",
-            AsyncMock(return_value=_mock_browser(*pages)),
-        ),
+        _serve_pages(*pages),
         pytest.raises(RuntimeError, match="Widget render failed: boom"),
     ):
-        headless_mod.render_widgets_headless([job] * (n_slow + 1))
+        headless_mod.render_widgets_headless([DUMMY_JOB] * (n_slow + 1))
     assert cancelled == [True] * n_slow
 
 
 def test_batch_budget_covers_full_waves() -> None:
     """A batch may take one full single-export budget per wave of renders."""
-    job = dict(
-        widget_data=DUMMY_WIDGET_DATA, esm_content=DUMMY_ESM, css_content=DUMMY_CSS,
-        timeout=1,
-    )  # fmt: skip
     n_jobs = 5 * headless_mod._MAX_WARM_PAGES
     with patch(f"{HEADLESS_PATH}._run_in_browser_thread") as run:
-        headless_mod.render_widgets_headless([job] * n_jobs)
+        headless_mod.render_widgets_headless([DUMMY_JOB | {"timeout": 1}] * n_jobs)
     (coro, _), kwargs = run.call_args
     coro.close()
     assert kwargs["budget"] == 5 * headless_mod._call_budget(1)
@@ -765,13 +716,11 @@ def test_cancel_during_eviction_releases_page() -> None:
     page = _mock_page()
     evict = AsyncMock(side_effect=[asyncio.CancelledError(), None])
     with (
-        patch(
-            f"{HEADLESS_PATH}._get_browser", AsyncMock(return_value=_mock_browser(page))
-        ),
+        _serve_pages(page),
         patch(f"{HEADLESS_PATH}._evict_idle", evict),
         pytest.raises((asyncio.CancelledError, concurrent.futures.CancelledError)),
     ):
-        render_widget_headless(DUMMY_WIDGET_DATA, DUMMY_ESM, DUMMY_CSS)
+        _render()
     assert headless_mod._warm_pages == []
     page.close.assert_awaited_once()
 
@@ -971,8 +920,6 @@ def test_build_html_render_gates(
     options = headless_mod._mount_options(inputs)
     assert options["allow_html"] is expect_html_fallback
     assert options["no_worker"] is expect_worker_shim
-    # Spinner guard is always present so loading states are never captured
-    assert '.spinner[role="status"]' in headless_mod._build_html("// esm", "/* css */")
 
 
 def test_render_report_never_raises_on_asset_failure(

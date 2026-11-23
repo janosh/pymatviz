@@ -66,21 +66,16 @@ def test_spacegroup_sunburst_invalid_data(
         spacegroup_sunburst([1, invalid])
 
 
-def test_spacegroup_sunburst_merges_spellings() -> None:
-    """Symbol spellings and int/float numbers of one group share a slice labeled
-    with the canonical symbol.
-    """
-    assert spg_leaves(spacegroup_sunburst(["Fm-3m", "F m -3 m", "P1"])) == {
-        "cubic/Fm-3m": ("Fm-3m", 2),
-        "triclinic/P1": ("P1", 1),
-    }
-    assert spg_leaves(spacegroup_sunburst([225, 225.0])) == {"cubic/225": ("225", 2)}
-
-
 @pytest.mark.parametrize(
     ("data", "expected"),
     [
         ([1], {"triclinic/1": ("1", 1)}),
+        # symbol spellings and int/float numbers of one group share a canonical slice
+        (
+            ["Fm-3m", "F m -3 m", "P1"],
+            {"cubic/Fm-3m": ("Fm-3m", 2), "triclinic/P1": ("P1", 1)},
+        ),
+        ([225, 225.0], {"cubic/225": ("225", 2)}),
         (np.array([225, 225, 1]), {"cubic/225": ("225", 2), "triclinic/1": ("1", 1)}),
         (["P1"], {"triclinic/P1": ("P1", 1)}),
         (
@@ -126,32 +121,24 @@ def test_spacegroup_sunburst_rejects_non_periodic(
 
 
 @pytest.mark.parametrize(
-    ("max_spacegroups", "overflow", "expected_systems", "expected_others"),
+    ("max_spacegroups", "overflow", "expected_systems", "n_hidden"),
+    # spg 1-2 are triclinic (2 entries), spg 3-7 monoclinic (5 entries)
     [
-        # Edge cases for max_spacegroups
-        (None, "other", 7, None),  # no limit
-        (10, "other", 7, None),  # greater than number of systems
-        # Normal cases with "other" mode. max_spacegroups applies per crystal system:
-        # spg 1-2 are triclinic (2 entries), spg 3-7 monoclinic (5 entries)
-        (
-            1,
-            "other",
-            4,
-            [("Other (1 more not shown)", 1), ("Other (4 more not shown)", 4)],
-        ),
-        (2, "other", 5, [("Other (3 more not shown)", 3)]),  # triclinic fits fully
-        (3, "other", 6, [("Other (2 more not shown)", 2)]),
-        # Cases with "drop" mode (per crystal system)
-        (1, "drop", 2, None),  # top 1 per crystal system
-        (2, "drop", 4, None),  # top 2 per crystal system
-        (3, "drop", 5, None),  # top 3 monoclinic + both triclinic
+        (None, "other", 7, []),  # no limit
+        (10, "other", 7, []),  # more than any system holds
+        (1, "other", 4, [1, 4]),
+        (2, "other", 5, [3]),  # triclinic fits fully
+        (3, "other", 6, [2]),
+        (1, "drop", 2, []),
+        (2, "drop", 4, []),
+        (3, "drop", 5, []),  # top 3 monoclinic + both triclinic
     ],
 )
 def test_spacegroup_sunburst_max_spacegroups(
     max_spacegroups: int | None,
     overflow: Literal["other", "drop"],
     expected_systems: int,
-    expected_others: list[tuple[str, int]] | None,
+    n_hidden: list[int],
 ) -> None:
     """max_spacegroups limits space groups shown *per crystal system* (regression:
     the limit used to be applied globally, silently dropping entire crystal systems).
@@ -164,7 +151,7 @@ def test_spacegroup_sunburst_max_spacegroups(
     others = sorted(
         (label, val) for label, val in space_groups.items() if "more not shown" in label
     )
-    assert others == sorted(expected_others or [])
+    assert others == sorted((f"Other ({num} more not shown)", num) for num in n_hidden)
 
 
 @pytest.mark.parametrize(
@@ -355,28 +342,31 @@ def test_chem_env_hierarchy(
     )
 
 
-def test_chem_env_treemap_invalid_overflow(
-    structures: tuple[kemio.Structure, kemio.Structure], monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize(
+    ("structure", "kwargs", "err_cls", "match"),
+    [
+        (rocksalt(), {"overflow": "keep"}, ValueError, "overflow"),
+        (
+            kemio.Structure(None, ["H"] * 2, [[0] * 3, [0.7, 0, 0]], pbc=(False,) * 3),
+            {},
+            TypeError,
+            "Expected structures periodic along a, b and c",
+        ),
+    ],
+    ids=["invalid-overflow", "non-periodic"],
+)
+def test_chem_env_rejects_before_classifying(
+    structure: kemio.Structure,
+    kwargs: dict[str, Any],
+    err_cls: type[Exception],
+    match: str,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """An invalid omission mode fails before any environment is classified."""
+    """Invalid overflow and nonperiodic inputs fail before neighbor analysis."""
     collect = MagicMock()
     monkeypatch.setattr(hierarchy, "site_environments", collect)
-    with pytest.raises(ValueError, match="overflow"):
-        pmv.chem_env_hierarchy(structures, overflow="keep", kind="treemap")  # ty: ignore[invalid-argument-type]
-    collect.assert_not_called()
-
-
-def test_chem_env_requires_periodic_structure(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Nonperiodic inputs are rejected before neighbor analysis."""
-    collect = MagicMock()
-    monkeypatch.setattr(hierarchy, "site_environments", collect)
-    molecule = kemio.Structure(
-        None, ["H", "H"], [[0, 0, 0], [0.7, 0, 0]], pbc=(False,) * 3
-    )
-    with pytest.raises(
-        TypeError, match=r"Expected structures periodic along a, b and c"
-    ):
-        pmv.chem_env_hierarchy(molecule, kind="treemap")  # ty: ignore[invalid-argument-type]
+    with pytest.raises(err_cls, match=match):
+        pmv.chem_env_hierarchy(structure, kind="treemap", **kwargs)
     collect.assert_not_called()
 
 

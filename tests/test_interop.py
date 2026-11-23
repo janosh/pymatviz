@@ -51,7 +51,7 @@ from tests.widgets.conftest import decode_envelope
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Hashable
+    from collections.abc import Hashable
     from typing import Literal
 
 
@@ -100,13 +100,8 @@ def pmg_li_o_entries() -> list[Any]:
     from pymatgen.entries.computed_entries import ComputedEntry
 
     formula_energies = [("Li", -1.9), ("O", -4.2), ("Li2O", -14.3), ("Li2O2", -16.0)]
-    return [
-        *(
-            PDEntry(Composition(formula), energy)
-            for formula, energy in formula_energies
-        ),
-        ComputedEntry("Li3O", -16.0, correction=-0.3, entry_id="mp-3"),
-    ]
+    entries = [PDEntry(Composition(form), energy) for form, energy in formula_energies]
+    return [*entries, ComputedEntry("Li3O", -16.0, correction=-0.3, entry_id="mp-3")]
 
 
 # === Structures, compositions, symmetry, RDF, coordination, chemical environments ===
@@ -392,13 +387,11 @@ def test_coordination_vs_cutoff_line_matches_pymatgen(
     expected: dict[str, list[float]] = {}
     for elem in sorted(set(species)):
         elem_sites = [site for site in structure if site.specie.symbol == elem]
-        mean_cns = []
-        for cutoff in cutoffs:
-            n_neighbors = [
-                len(structure.get_neighbors(site, r=cutoff)) for site in elem_sites
-            ]
-            mean_cns.append(float(np.mean(n_neighbors)))
-        expected[elem] = mean_cns
+        n_neighbors = [
+            [len(structure.get_neighbors(site, r=cutoff)) for site in elem_sites]
+            for cutoff in cutoffs
+        ]
+        expected[elem] = [float(np.mean(counts)) for counts in n_neighbors]
 
     widget = pmv.coordination_vs_cutoff_line(
         structure, cutoff_range=cutoff_range, num_points=num_points
@@ -511,13 +504,12 @@ def test_pymatgen_phonon_dos(
 
     widget = pmv.phonon_dos(pmg_dos, project=project)
     expected = pmv.phonon_dos(complete_phonon_dos, project=project)
-    assert set(widget.doses) == set(expected.doses)
+    expected_names = {"Na", "Cl"} if project == "element" else {"Na1", "Cl2"}
+    assert set(widget.doses) == set(expected.doses) == expected_names | {"Total"}
     for name, doc in widget.doses.items():
         np.testing.assert_array_equal(
             doc["densities"], expected.doses[name]["densities"]
         )
-    expected_names = {"Na", "Cl"} if project == "element" else {"Na1", "Cl2"}
-    assert set(widget.doses) == expected_names | {"Total"}
 
 
 def test_pymatgen_phonon_db_doc() -> None:
@@ -584,38 +576,32 @@ def pymatgen_xrd_inputs() -> dict[str, Any]:
 
 
 @pytest.mark.parametrize(
-    ("make_input", "expected_key"),
+    ("kind", "expected_key"),
     [
-        (lambda inputs: inputs["mock"], "mock"),
-        (lambda inputs: inputs["xrd"], "xrd"),
-        (lambda inputs: inputs["struct"], "xrd"),
-        (
-            lambda inputs: pytest.importorskip("pymatgen.core").IStructure.from_sites(
-                inputs["struct"]
-            ),
-            "xrd",
-        ),
-        (
-            lambda inputs: pytest.importorskip(
-                "pymatgen.io.ase"
-            ).AseAtomsAdaptor.get_atoms(inputs["struct"]),
-            "xrd",
-        ),
+        ("mock", "mock"),
+        ("xrd", "xrd"),
+        ("struct", "xrd"),
+        ("istructure", "xrd"),
+        ("ase", "xrd"),
     ],
-    ids=["pattern", "xrd_calculator", "structure", "istructure", "ase"],
 )
 def test_pymatgen_xrd_inputs(
-    make_input: Callable[[dict[str, Any]], Any],
-    expected_key: str,
-    pymatgen_xrd_inputs: dict[str, Any],
+    kind: str, expected_key: str, pymatgen_xrd_inputs: dict[str, Any]
 ) -> None:
     """Pymatgen DiffractionPatterns pass through, pymatgen/ASE structures match
     pymatgen's XRDCalculator.
     """
-    inputs = pymatgen_xrd_inputs
-    expected = inputs[expected_key]
-    widget = pmv.xrd_plot(make_input(inputs), style="height: 300px")
-    assert isinstance(widget, pmv.widgets.XrdWidget)
+    inputs, expected = pymatgen_xrd_inputs, pymatgen_xrd_inputs[expected_key]
+    if kind == "istructure":
+        obj = pytest.importorskip("pymatgen.core").IStructure.from_sites(
+            inputs["struct"]
+        )
+    elif kind == "ase":
+        adaptor = pytest.importorskip("pymatgen.io.ase").AseAtomsAdaptor
+        obj = adaptor.get_atoms(inputs["struct"])
+    else:
+        obj = inputs[kind]
+    widget = pmv.xrd_plot(obj, style="height: 300px")
     # kemio's xrd_patterns vs pymatgen's XRDCalculator: observed max rel. 2θ
     # difference 4.5e-16 (2 eps), ASE Atoms round trip perturbs coordinates by
     # ~1.5e-14 relative (~70 eps)
@@ -673,50 +659,37 @@ def test_notebook_mode_formats_third_party_objects(
     assert WIDGET_MIME not in data
 
 
-def make_pmg_structure_subclass() -> Any:
-    """Instance of a pymatgen Structure subclass."""
+@pytest.mark.parametrize(
+    ("widget_type", "expected_widget"),
+    [
+        ("composition", "CompositionWidget"),
+        ("xrd", "XrdWidget"),
+        ("convex_hull", "ConvexHullWidget"),
+        ("structure", "StructureWidget"),  # a pymatgen Structure subclass
+        ("trajectory", "TrajectoryWidget"),
+    ],
+)
+def test_create_widget_pymatgen(widget_type: str, expected_widget: str) -> None:
+    """create_widget handles pymatgen objects (and subclasses) like kemio's."""
     pymatgen_core = pytest.importorskip("pymatgen.core")
+    from pymatgen.analysis.phase_diagram import PhaseDiagram
+
+    from pymatviz.notebook import create_widget
 
     class MyStructure(pymatgen_core.Structure):
         """A pymatgen Structure subclass."""
 
-    return MyStructure(pymatgen_core.Lattice.cubic(3), ["Fe"], [[0, 0, 0]])
-
-
-@pytest.mark.parametrize(
-    ("obj_factory", "expected_widget", "expected_type"),
-    [
-        (
-            lambda: pytest.importorskip("pymatgen.core").Composition("Fe2O3"),
-            "CompositionWidget",
-            "composition",
-        ),
-        (lambda: pmg_diffraction_pattern(1), "XrdWidget", "xrd"),
-        (
-            lambda: pytest.importorskip("pymatgen.analysis.phase_diagram").PhaseDiagram(
-                pmg_li_o_entries()
-            ),
-            "ConvexHullWidget",
-            "convex_hull",
-        ),
-        (make_pmg_structure_subclass, "StructureWidget", "structure"),
-        (
-            lambda: [{"structure": pmg_cubic(["Fe"]), "energy": -1.0}] * 2,
-            "TrajectoryWidget",
-            "trajectory",
-        ),
-    ],
-    ids=["composition", "xrd", "phase_diagram", "structure_subclass", "trajectory"],
-)
-def test_create_widget_pymatgen(
-    obj_factory: Callable[[], Any], expected_widget: str, expected_type: str
-) -> None:
-    """create_widget handles pymatgen objects (and subclasses) like kemio's."""
-    from pymatviz.notebook import create_widget
-
-    widget = create_widget(obj_factory())
+    lattice = pymatgen_core.Lattice.cubic(3)
+    obj = {
+        "composition": lambda: pymatgen_core.Composition("Fe2O3"),
+        "xrd": lambda: pmg_diffraction_pattern(1),
+        "convex_hull": lambda: PhaseDiagram(pmg_li_o_entries()),
+        "structure": lambda: MyStructure(lattice, ["Fe"], [[0, 0, 0]]),
+        "trajectory": lambda: [{"structure": pmg_cubic(["Fe"]), "energy": -1.0}] * 2,
+    }[widget_type]()
+    widget = create_widget(obj)
     assert type(widget).__name__ == expected_widget
-    assert widget.widget_type == expected_type
+    assert widget.widget_type == widget_type
 
 
 # === Composition embeddings ===
@@ -933,16 +906,15 @@ def test_normalize_xrd_pattern_diffraction_pattern() -> None:
     from pymatgen.analysis.diffraction.xrd import DiffractionPattern
 
     x_vals, y_vals, hkls = pattern.x, pattern.y, pattern.hkls
-    computed = normalize_xrd_pattern(DiffractionPattern(x_vals, y_vals, hkls, None))
     profile = {"x": [10, 20, 30], "y": [100, 50, 75], "kind": "profile"}
     for no_hkls in (None, []):
         measured = DiffractionPattern(x_vals, y_vals, no_hkls, no_hkls)
         assert normalize_xrd_pattern(measured) == profile
-    assert computed is not None
-    assert "kind" not in computed
-
+    computed = normalize_xrd_pattern(DiffractionPattern(x_vals, y_vals, hkls, None))
     result = normalize_xrd_pattern(pattern)
+    assert computed is not None
     assert result is not None
+    assert "kind" not in computed
     assert "kind" not in result
     assert result["x"] == [10.0, 20.0, 30.0]
     assert result["d_hkls"] == [2.5, 2.0, 1.8]
@@ -1027,6 +999,7 @@ def _fallback_cases() -> list[Any]:
     fe_o_oxidized = pmg_cubic([Species("Fe", 2), Species("O", -2)])
     zeros = np.zeros((2, 3))
     with_force = pmg_cubic(["Fe", "Fe"], site_properties={"force": zeros})
+    alpha = pmg_cubic(["Fe", "Fe"], properties={"phase": "alpha"})
     h2_pos = [[0, 0, 0], [0, 0, 0.7]]
     h2_bulk = Atoms("H2", h2_pos, cell=np.eye(3) * 5, pbc=True)
     return [
@@ -1035,12 +1008,7 @@ def _fallback_cases() -> list[Any]:
         [pmg_cubic([{"Fe": 0.5, "Co": 0.5}])],  # disordered
         [fe2.copy(site_properties={"aux": [[0, 1, 2], [3, 4]]})],
         [with_force.copy(site_properties={"force_max": zeros})],
-        [
-            {
-                "structure": pmg_cubic(["Fe", "Fe"], properties={"phase": "alpha"}),
-                "energy": -1,
-            }
-        ],
+        [{"structure": alpha, "energy": -1}],  # string structure property
         [dummy, dummy],
         Trajectory.from_structures([dummy, dummy]),
         [pmg_cubic([])] * 2,  # zero atoms
@@ -1065,10 +1033,7 @@ def _fallback_cases() -> list[Any]:
     ]
 
 
-_N_FALLBACK_CASES = 24
-
-
-@pytest.mark.parametrize("case_idx", range(_N_FALLBACK_CASES))
+@pytest.mark.parametrize("case_idx", range(24))
 def test_unsupported_pymatgen_ase_frames_fall_back_to_json(case_idx: int) -> None:
     """pymatgen/ASE frames the binary format can't hold (or would silently strip,
     like oxidation states, labels, molecule charge/spin) sync as JSON.
@@ -1076,7 +1041,7 @@ def test_unsupported_pymatgen_ase_frames_fall_back_to_json(case_idx: int) -> Non
     pytest.importorskip("ase")
     pytest.importorskip("pymatgen.core")
     cases = _fallback_cases()
-    assert len(cases) == _N_FALLBACK_CASES
+    assert len(cases) == 24
     traj = TrajectoryWidget(trajectory=cases[case_idx]).trajectory
     assert "format" not in traj
     assert "frames" in traj
@@ -1123,16 +1088,9 @@ def test_disordered_pymatgen_trajectory_frames(source: str) -> None:
     payload = widget.trajectory
     assert traj.coords_are_displacement
     assert payload["time_step"] == {"value": 2, "unit": "fs"}
-    assert payload["frames"][1]["metadata"] == {
-        "energy": -1,
-        "force_max": 5,
-        "force_norm": 5,
-    }
-    assert payload["frames"][1]["structure"]["sites"][0]["properties"]["force"] == [
-        0,
-        3,
-        4,
-    ]
+    last_frame = payload["frames"][1]
+    assert last_frame["metadata"] == {"energy": -1, "force_max": 5, "force_norm": 5}
+    assert last_frame["structure"]["sites"][0]["properties"]["force"] == [0, 3, 4]
     for idx, (frame, pos) in enumerate(zip(payload["frames"], frac[:, 0], strict=True)):
         # as pymatgen's frames: Trajectory drops an explicit charge on disordered ones
         assert frame["structure"]["charge"] == traj[idx].charge == 3
@@ -1213,27 +1171,18 @@ def test_serialized_pymatgen_trajectory_facts(monty_coords: bool) -> None:
     """Serialized pymatgen Trajectories (read without pymatgen) count frames, symbols
     and decorated site occupancies.
     """
-    coords = [[[0, 0, 0]] * 4] * 3
+    coords: Any = [[[0, 0, 0]] * 4] * 3
+    if monty_coords:
+        coords = {"@module": "numpy", "@class": "array", "dtype": "float64"} | {
+            "data": coords
+        }
+    ferric = {"element": "Fe", "oxidation_state": 3, "occu": 0.5}
     widget = pmv.trajectory(
         trajectory={
             "@class": "Trajectory",
-            "coords": (
-                {
-                    "@module": "numpy",
-                    "@class": "array",
-                    "dtype": "float64",
-                    "data": coords,
-                }
-                if monty_coords
-                else coords
-            ),
+            "coords": coords,
             "lattice": np.eye(3) * 3,
-            "species": [
-                "O",
-                26,
-                "Fe2+",
-                {"element": "Fe", "oxidation_state": 3, "occu": 0.5},
-            ],
+            "species": ["O", 26, "Fe2+", ferric],
         }
     )
     sites = widget.trajectory["frames"][0]["structure"]["sites"]
@@ -1370,6 +1319,7 @@ def test_trajectory_widget_with_ase_atoms(
     """
     ase = pytest.importorskip("ase")
     from ase.calculators.singlepoint import SinglePointCalculator
+    from ase.units import fs
 
     pbc = cell is not None
     if mson_atoms:
@@ -1390,26 +1340,18 @@ def test_trajectory_widget_with_ase_atoms(
     # a molecule has no cell (and so no pbc); a periodic frame keeps its cell
     assert ("lattice" in arrays) == (cell is not None)
     assert payload.get("pbc") == (atoms.pbc.tolist() if cell else None)
-    assert {key: arrays[key].tolist() for key in ("temperature", "energy")} == {
-        "temperature": [300],
-        "energy": [energy],
-    }
+    assert arrays["temperature"].tolist() == [300]
+    assert arrays["energy"].tolist() == [energy]
     assert arrays["force_max"].tolist() == [2.0]
     np.testing.assert_allclose(arrays["force_norm"], [2 / np.sqrt(len(atoms))])
     assert arrays["force"][0].tolist() == forces.tolist()
 
-    step_arrays = decode_envelope(
-        TrajectoryWidget(trajectory=[{"structure": atoms, "step": 7}]).trajectory
-    )
-    assert {key: step_arrays[key].tolist() for key in ("steps", "energy")} == {
-        "steps": [7],
-        "energy": [energy],
-    }
+    step_frame = {"structure": atoms, "step": 7}
+    step_arrays = decode_envelope(TrajectoryWidget(trajectory=[step_frame]).trajectory)
+    assert step_arrays["steps"].tolist() == [7]
+    assert step_arrays["energy"].tolist() == [energy]
     atoms.set_momenta(np.ones((len(atoms), 3)))
-    velocities = decode_envelope(TrajectoryWidget(trajectory=atoms).trajectory)[
-        "velocities"
-    ]
-    from ase.units import fs
-
+    arrays = decode_envelope(TrajectoryWidget(trajectory=atoms).trajectory)
     # Å/fs, as kemio converts ASE momenta
-    np.testing.assert_allclose(velocities[0], atoms.get_velocities() * fs, rtol=1e-6)
+    expected_vel = atoms.get_velocities() * fs
+    np.testing.assert_allclose(arrays["velocities"][0], expected_vel, rtol=1e-6)

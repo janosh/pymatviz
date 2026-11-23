@@ -16,9 +16,9 @@ from tests.conftest import y_pred, y_true
 
 
 def test_dir_globals() -> None:
+    """PKG_DIR is the package directory inside the repo ROOT."""
     assert os.path.isdir(PKG_DIR)
     assert os.path.isdir(ROOT)
-
     assert os.path.dirname(PKG_DIR) == ROOT
     assert set(os.listdir(ROOT)) >= {"examples", "pymatviz", "tests", "assets"}
 

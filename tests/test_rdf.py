@@ -18,7 +18,6 @@ from tests.conftest import FCC_SITES, SI_STRUCTS, cubic_structure
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from typing import Literal
 
     import kemio
 
@@ -239,11 +238,13 @@ def test_calculate_rdf_with_no_atoms_of_requested_species(
         ({"cutoff": float("inf")}, ValueError, "must be positive and finite"),
         ({"n_bins": 2.5}, ValueError, "must be positive and integral"),
         ({"pbc": "invalid"}, (TypeError, ValueError), None),
+        # a sequence of structures raises instead of silently using the first
+        ({"structure": SI_STRUCTS[:2]}, TypeError, "takes one structure, got 2"),
     ],
 )
 @pytest.mark.parametrize("empty", [False, True])
 def test_calculate_rdf_input_validation(
-    test_input: dict[str, str | float],
+    test_input: dict[str, Any],
     expected_err_cls: type[Exception] | tuple[type[Exception], ...],
     error_msg: str | None,
     empty: bool,
@@ -281,12 +282,6 @@ def test_calculate_rdf_coordination_numbers(
     mask = radii < first_shell_max  # integrate g(r) over the first shell
     coord_num = np.sum(rdf[mask] * rho * 4 * np.pi * radii[mask] ** 2 * bin_width)
     assert coord_num == pytest.approx(expected_cn, rel=1e-6)
-
-
-def test_calculate_rdf_rejects_several_structures() -> None:
-    """A sequence of structures raises instead of silently using the first."""
-    with pytest.raises(TypeError, match="takes one structure, got 2"):
-        calculate_rdf(SI_STRUCTS[:2])  # ty: ignore[invalid-argument-type]
 
 
 EMPTY_STRUCT = cubic_structure(1, [], [])
@@ -477,13 +472,9 @@ def test_rdf_plot_full_in_python(structs_type: str) -> None:
 @pytest.mark.parametrize("element_pairs", [None, [("Na", "Cl")]])
 def test_rdf_plot_widget_kwargs(element_pairs: list[tuple[str, str]] | None) -> None:
     """Extra kwargs reach the widget, in the browser and Python paths."""
-    widget = rdf_plot(
-        NACL,
-        element_pairs=element_pairs,
-        show_reference_line=False,
-        style="height: 9em",
-    )
-    assert (widget.show_reference_line, widget.style) == (False, "height: 9em")
+    kwargs: dict[str, Any] = {"show_reference_line": False, "style": "height: 9em"}
+    widget = rdf_plot(NACL, element_pairs=element_pairs, **kwargs)
+    assert (widget.show_reference_line, widget.style) == tuple(kwargs.values())
 
 
 @pytest.mark.usefixtures("python_rdfs")
