@@ -148,8 +148,9 @@ def test_elements_hist(
 )
 def test_elements_hist_invalid_args(kwargs: dict[str, Any], match: str) -> None:
     """Unknown show_values, non-positive max_elements and negative counts raise."""
+    call_kwargs: dict[str, Any] = {"values": ["Fe2O3", "NaCl"]} | kwargs
     with pytest.raises(ValueError, match=match):
-        elements_hist(**{"values": ["Fe2O3", "NaCl"]} | kwargs)
+        elements_hist(**call_kwargs)
 
 
 @pytest.mark.usefixtures("python_bins")
@@ -328,3 +329,34 @@ def test_histogram_rejects_groups_equal_as_strings() -> None:
     df_vals = pd.DataFrame({"v": [0.0, 10.0], "g": pd.Series([1, "1"], dtype=object)})
     with pytest.raises(ValueError, match="labels must be unique as strings"):
         histogram(df_vals, x="v", color="g")
+
+
+@pytest.mark.parametrize(
+    ("sort_groups", "expected"),
+    [
+        (None, ["b", "c", "a"]),  # order of first appearance
+        (sorted, ["a", "b", "c"]),
+        (lambda keys: sorted(keys, reverse=True), ["c", "b", "a"]),
+    ],
+)
+@pytest.mark.parametrize("python_binned", [False, True])
+def test_histogram_sort_groups(
+    sort_groups: Any, expected: list[str], python_binned: bool
+) -> None:
+    """Groups keep first-appearance order unless sort_groups reorders them."""
+    df_vals = pd.DataFrame({"v": [1.0, 2.0, 3.0, 4.0], "g": list("bcab")})
+    opts: dict[str, Any] = {"density": True} if python_binned else {}
+    widget = histogram(df_vals, x="v", color="g", sort_groups=sort_groups, **opts)
+    assert [srs["label"] for srs in widget.series] == expected
+    if not python_binned:  # values follow their group
+        values = {srs["label"]: list(srs["values"]) for srs in widget.series}
+        assert values == {"a": [3.0], "b": [1.0, 4.0], "c": [2.0]}
+
+
+@pytest.mark.parametrize(
+    "sort_groups", [lambda keys: keys[:1], lambda keys: [*keys, "z"], lambda _: ["a"]]
+)
+def test_histogram_sort_groups_rejects_non_permutation(sort_groups: Any) -> None:
+    """sort_groups must return exactly the group keys, reordered."""
+    with pytest.raises(ValueError, match="sort_groups must return a reordering"):
+        histogram({"p": [1.0], "q": [2.0]}, sort_groups=sort_groups)

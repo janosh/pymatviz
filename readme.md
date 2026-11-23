@@ -104,9 +104,8 @@ Example usage:
 import pandas as pd
 import pymatviz as pmv
 
-df_comp = pd.DataFrame(
-    {"composition": ["Fe2O3", "Al2O3", "SiO2", "TiO2"], "property": [1.0, 2.0, 3.0, 4.0]}
-)
+formulas = ["Fe2O3", "Al2O3", "SiO2", "TiO2"]
+df_comp = pd.DataFrame({"composition": formulas, "property": [1.0, 2.0, 3.0, 4.0]})
 widget = pmv.cluster_compositions(
     df_comp,
     prop_name="property",  # optional property to color points by
@@ -153,17 +152,20 @@ comp_widget = pmv.composition("Fe2O3")
 
 # Interactive trajectory visualization from structures or dicts of structure and properties
 traj_widget1 = pmv.trajectory([struct1, struct2, struct3])
-traj_widget2 = pmv.trajectory([{"structure": struct1, "energy": 1.0}, {"structure": struct2, "energy": 2.0}])
+frames = [{"structure": struct1, "energy": 1.0}, {"structure": struct2, "energy": 2.0}]
+traj_widget2 = pmv.trajectory(frames)
 ```
 
 All widgets support export and inspection APIs that work in plain Python scripts, CI, and agent workflows — no notebook frontend required:
 
 ```py
-widget.to_html("structure.html")  # standalone interactive HTML page (pan/zoom/rotate work)
+# standalone interactive HTML page (pan/zoom/rotate work)
+widget.to_html("structure.html")
 widget.to_img("structure.png", dpi=150)  # PNG/JPEG/SVG/PDF via headless Chromium
 widget.describe()  # machine-readable facts: counts, ranges, formula, chemical system
 widget.render_report()  # headless render health check: blank fraction, warnings
-widget.to_json("structure.json")  # save the widget; pmv.from_json("structure.json") restores it
+# save the widget; pmv.from_json("structure.json") restores it
+widget.to_json("structure.json")
 ```
 
 `pmv.export_widgets({name: widget, ...}, "figures/", fmt="png")` exports many widgets at once (SVG only works for 2D plots, not 3D viewers like `structure`), rendering up to 4 concurrently in one headless browser (about 2.4x faster than calling `to_img` on each).

@@ -9,7 +9,7 @@ import numpy as np
 import traitlets as tl
 
 from pymatviz.utils import df_ptable
-from pymatviz.widgets._normalize import normalize_plot_json
+from pymatviz.widgets._normalize import materialize_iterator, normalize_plot_json
 from pymatviz.widgets._schema_traits import PeriodicTableTraits
 from pymatviz.widgets._traits import (
     color_bar_trait,
@@ -75,7 +75,7 @@ def float_array(values: Any, label: str) -> np.ndarray[Any, np.dtype[np.float64]
         ValueError: If values isn't a 1D numeric array.
     """
     try:
-        arr = np.asarray(values, dtype=float)
+        arr = np.asarray(materialize_iterator(values), dtype=float)
     except (TypeError, ValueError) as exc:
         raise ValueError(f"{label} must be a 1D numeric array: {exc}") from exc
     if arr.ndim != 1:
@@ -119,7 +119,8 @@ def normalize_tile_plots(
         raise ValueError(f"tile_plots keys must be element symbols, got {unknown}")
     normalized: dict[str, dict[str, Any] | list[dict[str, Any]]] = {}
     kinds: set[str] = set()
-    for symbol, plot in tile_plots.items():
+    for symbol, raw_plot in tile_plots.items():
+        plot = materialize_iterator(raw_plot)  # a generator of series
         is_list = isinstance(plot, Sequence) and not isinstance(plot, str | Mapping)
         series_list = list(plot) if is_list else [plot]
         out: list[dict[str, Any]] = []
@@ -212,6 +213,27 @@ def normalize_tile_plot_config(
                 f"the data), got {axis_range}"
             )
     return config
+
+
+def _missing_heat_to_none(value: Any) -> Any:
+    """Heat values with NaN, ±inf and pandas NA as None at any depth (also in split
+    values and numpy arrays), which matterviz draws as missing tiles or segments,
+    like the NaN of tile_plots.
+    """
+    import pandas as pd
+
+    value = materialize_iterator(value)
+    if isinstance(value, Mapping):
+        return {key: _missing_heat_to_none(val) for key, val in value.items()}
+    if isinstance(value, np.ndarray):
+        value = value.tolist()
+    if isinstance(value, list | tuple):
+        return [_missing_heat_to_none(val) for val in value]
+    if value is pd.NA or (
+        isinstance(value, float | np.floating) and not np.isfinite(value)
+    ):
+        return None
+    return value
 
 
 def _has_heat_numbers(heatmap_values: Any) -> bool:
@@ -312,16 +334,19 @@ class PeriodicTableWidget(PeriodicTableTraits, MatterVizWidget):
 
     @validator("heatmap_values")
     def _validate_heatmap_values(self, proposal: dict[str, Any]) -> Any:
-        """Normalize heat values to JSON on every assignment and reject numeric ones
-        beside a tile plot color scale. A pandas Series keeps its element index
-        (its ``tolist()`` would map values to elements by position).
+        """Normalize heat values to JSON on every assignment (NaN, ±inf and NA to
+        None, a missing tile) and reject numeric ones beside a tile plot color scale.
+        A pandas Series keeps its element index (its ``tolist()`` would map values to
+        elements by position).
         """
         import pandas as pd
 
         value = proposal["value"]
         if isinstance(value, pd.Series):
             value = value.to_dict()
-        values = normalize_plot_json(value, "PeriodicTable.heatmap_values")
+        values = normalize_plot_json(
+            _missing_heat_to_none(value), "PeriodicTable.heatmap_values"
+        )
         self._check_one_color_scale(values, self.tile_plot_config)
         return values
 
@@ -344,9 +369,10 @@ class PeriodicTableWidget(PeriodicTableTraits, MatterVizWidget):
         """Initialize the PeriodicTableWidget.
 
         Args:
-            heatmap_values: Element-keyed dict or list of values to color-map
-                onto the periodic table. A value can be a list of 2-4 numbers to
-                split the tile into segments.
+            heatmap_values: Element-keyed dict, pandas Series or list of values to
+                color-map onto the periodic table. A value can be a list of 2-4
+                numbers to split the tile into segments. NaN, ±inf and None values
+                (e.g. a Series' missing data) draw as missing tiles or segments.
             **kwargs: Widget traits, e.g. ``color_scale``, ``color_bar``, ``labels``,
                 ``missing``, ``tile_plots``, ``tile_plot_config``, ``tile_props``.
         """

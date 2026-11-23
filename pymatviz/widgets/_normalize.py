@@ -5,6 +5,7 @@ for matterviz Svelte components.
 from __future__ import annotations
 
 import math
+from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any, Literal
 
 
@@ -12,6 +13,16 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     import pandas as pd
+
+
+def materialize_iterator(value: Any) -> Any:
+    """List of an iterator's items (generators, ``map``, ``zip``, ``iter(...)``),
+    consumed once, so every widget input taking a sequence of items also takes an
+    iterator. Other values (sequences, mappings, arrays, objects) pass through.
+    Widget traits call this on every assigned value before validating it (see
+    ``pymatviz.widgets._traits``), and ``normalize_plot_json`` on nested values.
+    """
+    return list(value) if isinstance(value, Iterator) else value
 
 
 def with_defaults(defaults: dict[str, Any], kwargs: dict[str, Any]) -> dict[str, Any]:
@@ -254,7 +265,7 @@ def normalize_plot_json(value: Any, label: str) -> Any:
     if isinstance(value, dict):  # subclasses, e.g. OrderedDict
         return normalize_plot_json(dict(value), label)
 
-    if isinstance(value, (list, tuple)):  # subclasses, e.g. namedtuples
+    if isinstance(value, (list, tuple, Iterator)):  # e.g. namedtuples, generators
         return normalize_plot_json(list(value), label)
 
     if hasattr(value, "as_dict") and callable(value.as_dict):
@@ -560,17 +571,18 @@ def normalize_xrd_pattern(obj: Any) -> dict[str, Any] | None:
     if obj is None:
         return None
     if isinstance(obj, dict):
-        if missing := [key for key in ("x", "y") if key not in obj]:
+        # normalized first, so x/y iterators (consumed once) have a length
+        pattern = normalize_plot_json(obj, "XRD pattern")
+        if missing := [key for key in ("x", "y") if key not in pattern]:
             raise ValueError(
                 f"XRD pattern dicts need 'x' (2θ) and 'y' (intensity) keys, missing "
-                f"{missing} in keys {sorted(map(str, obj))}"
+                f"{missing} in keys {sorted(pattern)}"
             )
-        if len(obj["x"]) != len(obj["y"]):
+        if len(pattern["x"]) != len(pattern["y"]):
             raise ValueError(
                 "XRD pattern dict has mismatched lengths: "
-                f"len(x)={len(obj['x'])}, len(y)={len(obj['y'])}."
+                f"len(x)={len(pattern['x'])}, len(y)={len(pattern['y'])}."
             )
-        raw = obj
     else:
         import kemio
         from kemio.interop import has_class, to_xrd_pattern
@@ -582,8 +594,7 @@ def normalize_xrd_pattern(obj: Any) -> dict[str, Any] | None:
                 f"Unsupported type for XRD pattern: {type(obj)}. "
                 "Expected dict, kemio XrdPattern or pymatgen DiffractionPattern."
             )
-        raw = dict(obj.as_dict())  # matterviz's layout
-    pattern = normalize_plot_json(raw, "XRD pattern")
+        pattern = normalize_plot_json(dict(obj.as_dict()), "XRD pattern")  # matterviz
     if "kind" not in pattern:
         return pattern if pattern.get("hkls") else {**pattern, "kind": "profile"}
     if pattern["kind"] not in XRD_PATTERN_KINDS:

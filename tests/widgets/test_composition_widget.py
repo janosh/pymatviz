@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 from typing import Any
 
@@ -45,6 +46,90 @@ def test_widget_composition_inputs(
     widget = CompositionWidget()  # later assignments convert too
     widget.composition = composition_input
     assert widget.composition == expected
+
+
+def _pmg_species_inputs() -> list[Any]:
+    """Fe2+ O2- as a pymatgen Composition and as a {Species: amount} dict."""
+    from pymatgen.core import Composition, Species
+
+    return [
+        Composition({"Fe2+": 1, "O2-": 1}),
+        {Species("Fe", 2): 1, Species("O", -2): 1},
+    ]
+
+
+@pytest.mark.parametrize(
+    ("species_input", "expected"),
+    [
+        ({"Fe2+": 1, "O2-": 1}, {"Fe2+": 1.0, "O2-": 1.0}),
+        ({"Fe3+": 0.5, "Fe2+": 0.5, "O2-": 1}, {"Fe3+": 0.5, "Fe2+": 0.5, "O2-": 1.0}),
+        ({"Na+": 1, "Cl": 1}, {"Na+": 1.0, "Cl": 1.0}),  # species mixed with elements
+        ({"Fe2.5+": 2, "O2-": 5}, {"Fe2.5+": 2.0, "O2-": 5.0}),
+        ({26: 1, "O2-": 1}, {"Fe": 1.0, "O2-": 1.0}),  # atomic numbers as symbols
+        ({"Fe2+": 0, "O2-": 1}, {"O2-": 1.0}),  # zero amounts dropped, like kemio
+    ],
+)
+def test_widget_keeps_oxidation_states(
+    species_input: dict[Any, float], expected: dict[str, float]
+) -> None:
+    """Species keys sync as given: MatterViz draws Fe2+ and Fe3+ as separate
+    segments colored by Fe.
+    """
+    composition = CompositionWidget(species_input).composition
+    assert composition == expected
+    assert {type(amount) for amount in composition.values()} == {float}
+
+
+def test_widget_keeps_pymatgen_species() -> None:
+    """Pymatgen Compositions, {Species: amount} dicts and species structures keep
+    their species; Species properties are ignored and keys naming the same
+    species are summed.
+    """
+    from pymatgen.core import Lattice, Species, Structure
+
+    fe_o_structure = Structure(
+        Lattice.cubic(4), ["Fe2+", "O2-"], [[0, 0, 0], [0.5, 0.5, 0.5]]
+    )
+    spin_species = {Species("Fe", 2, spin=5): 1, Species("O", -2): 1}
+    for comp in [*_pmg_species_inputs(), fe_o_structure, spin_species]:
+        assert CompositionWidget(comp).composition == {"Fe2+": 1.0, "O2-": 1.0}
+    same_species = {"Fe2+": 1, Species("Fe", 2): 2, Species("Fe", 2.5): 1}
+    expected = {"Fe2+": 3.0, "Fe2.5+": 1.0}
+    assert CompositionWidget(same_species).composition == expected
+
+
+@pytest.mark.parametrize(
+    ("species_input", "match"),
+    [
+        ({"Xx2+": 1, "O2-": 1}, r"unknown element\(s\) \['Xx'\]"),
+        ({"Fe2+": 1, "Qq": 1}, r"unknown element\(s\) \['Qq'\]"),
+        ({"Fe2+": "a lot"}, "could not convert string to float"),
+        ({"Fe02+": 1}, r"must look like Fe2\+ or O-, got \['Fe02\+'\]"),
+        ({"Fe12+": 1, "O": 1}, r"got \['Fe12\+'\]"),  # MatterViz rejects these too
+        (
+            {"Fe2+": float("nan"), "O2-": 1},
+            r"amounts must be finite, got \['Fe2\+'\]",
+        ),
+    ],
+)
+def test_widget_rejects_invalid_species(
+    species_input: dict[str, Any], match: str
+) -> None:
+    """Species compositions with unknown elements or non-numeric amounts raise."""
+    with pytest.raises(tl.TraitError, match=match):
+        CompositionWidget(species_input)
+
+
+@pytest.mark.skipif(
+    importlib.util.find_spec("playwright") is None, reason="needs playwright"
+)
+def test_widget_species_composition_renders() -> None:
+    """A species composition renders headlessly (needs a matterviz-anywidget bundle
+    whose composition charts accept species keys).
+    """
+    report = CompositionWidget({"Fe2+": 1, "O2-": 1}).render_report(timeout=60)
+    assert report.ok, report.error
+    assert not report.is_blank
 
 
 @pytest.mark.parametrize(

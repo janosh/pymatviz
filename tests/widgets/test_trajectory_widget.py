@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from typing import TYPE_CHECKING
+from unittest.mock import Mock
 
 import kemio
 import numpy as np
@@ -48,6 +49,47 @@ def multi_frame_trajectory(fe3co4_disordered: kemio.Structure) -> dict[str, Any]
     return {"frames": frames}
 
 
+@pytest.mark.parametrize("binary", [True, False])
+def test_current_step_idx_in_range_of_frames(
+    multi_frame_trajectory: dict[str, Any], binary: bool
+) -> None:
+    """Python steps beyond the frames raise naming the range (rolling back batches),
+    frontend ones clamp and echo back, a shorter trajectory clamps the step.
+    """
+    traj = _fe2_frames(5) if binary else multi_frame_trajectory  # envelope or JSON
+    widget = TrajectoryWidget(trajectory=traj, current_step_idx=4)
+    assert widget.current_step_idx == 4
+    for bad in (5, -1):
+        with pytest.raises(tl.TraitError, match=rf"current_step_idx={bad} .*0 to 4"):
+            widget.current_step_idx = bad
+    with pytest.raises(tl.TraitError, match="current_step_idx=5"):
+        TrajectoryWidget(trajectory=traj, current_step_idx=5)
+
+    widget.comm = Mock(kernel=Mock())  # frontend updates race data updates
+    widget.set_state({"current_step_idx": 9})
+    assert widget.current_step_idx == 4
+    echoed = widget.comm.send.call_args.kwargs["data"]
+    assert echoed["state"] == {"current_step_idx": 4}
+    widget.comm = None
+
+    def assign_batch() -> None:
+        """A shorter trajectory and a step beyond it, in one batch."""
+        with widget.hold_trait_notifications():
+            widget.trajectory = _fe2_frames(2)
+            widget.current_step_idx = 3
+
+    with pytest.raises(tl.TraitError, match="current_step_idx=3"):
+        assign_batch()
+    assert widget.current_step_idx == 4
+    assert widget.trajectory == TrajectoryWidget(trajectory=traj).trajectory
+
+    widget.trajectory = _fe2_frames(2)
+    assert widget.current_step_idx == 1
+    widget.trajectory = None  # frames unknown (e.g. loaded from data_url)
+    widget.current_step_idx = 7
+    assert widget.current_step_idx == 7
+
+
 @pytest.mark.parametrize("input_format", ["dict", "list", "tuple", "structure"])
 def test_widget_trajectory_updates(
     multi_frame_trajectory: dict[str, Any],
@@ -63,7 +105,7 @@ def test_widget_trajectory_updates(
     assert widget.trajectory == json.loads(json.dumps(multi_frame_trajectory))
 
     widget.current_step_idx = 2
-    # Test trajectory update (step doesn't reset automatically)
+    # a shorter trajectory clamps the step to its last frame
     updated_structure = fe3co4_disordered.copy()
     updated_structure.info = {"energy": -1.5}
     new_trajectory = {
@@ -93,10 +135,11 @@ def test_widget_trajectory_updates(
     json.dumps(widget.get_state()["trajectory"])
     assert new_trajectory["frames"][0] is updated_structure
     assert isinstance(new_trajectory["metadata"]["temperature"], np.int64)
-    assert widget.current_step_idx == 2  # Remains unchanged
-    widget.trajectory = None
+    last_step = 0 if input_format == "structure" else 1
+    assert widget.current_step_idx == last_step
+    widget.trajectory = None  # frame count unknown: the step stays
     assert widget.trajectory is None
-    assert widget.current_step_idx == 2
+    assert widget.current_step_idx == last_step
     with pytest.raises(tl.TraitError, match="Unsupported trajectory type"):
         widget.trajectory = "invalid trajectory"
     assert widget.trajectory is None

@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import ArrayLike
 
-from pymatviz.utils import df_to_arrays
+from pymatviz.utils import align_series, df_to_arrays
 from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.heatmap_matrix import HeatmapMatrixWidget
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
@@ -218,6 +218,8 @@ def _classifier_series(
                 "use arrays or a dict of predictions."
             )
         targets, probs_positive = df_to_arrays(df, targets, probs_positive)
+    else:  # pair Series by index label, not position
+        targets, probs_positive = align_series(targets, probs_positive)
 
     # {name: {"probs_positive": array, **series_kwargs}}, a lone array named ""
     curves_dict: dict[str, dict[str, Any]] = {"": {"probs_positive": probs_positive}}

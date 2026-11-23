@@ -183,6 +183,22 @@ def test_uncertainty_dataframe_alignment(plot: Callable, std_kind: str) -> None:
 
 
 @pytest.mark.parametrize("plot", [qq_gaussian, error_decay_with_uncert])
+@pytest.mark.parametrize("std_kind", ["series", "mapping"])
+def test_uncertainty_aligns_series_by_index(plot: Callable, std_kind: str) -> None:
+    """Shuffled y_true/y_pred/y_std Series pair by index label, not position."""
+    idx = list("abcd")
+    true_vals, pred_vals, std = [0, 1, 2, 3], [1, 3, 2, 7], [1, 2, 3, 4]
+    order = [2, 0, 3, 1]
+    std_srs = pd.Series(std, index=idx).iloc[order[::-1]]
+    actual = plot(
+        pd.Series(true_vals, index=idx),
+        pd.Series(pred_vals, index=idx).iloc[order],
+        std_srs if std_kind == "series" else {"std": std_srs},
+    )
+    assert actual.series == plot(true_vals, pred_vals, std).series
+
+
+@pytest.mark.parametrize("plot", [qq_gaussian, error_decay_with_uncert])
 @pytest.mark.parametrize(
     ("true_vals", "pred_vals", "std", "match"),
     [

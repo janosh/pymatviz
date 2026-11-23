@@ -208,3 +208,17 @@ def test_density_scatter_kwargs() -> None:
     assert log_widget.color_scale == {"scheme": "interpolatePlasma", "type": "log"}
     assert widget.annotation == "RMSE = 0.58"
     assert [line["type"] for line in widget.ref_lines] == ["segment"]
+
+
+@pytest.mark.parametrize("plot_func", [pmv.density_scatter, pmv.density_hexbin])
+def test_density_plots_align_series_by_index(plot_func: Callable[..., Any]) -> None:
+    """Two Series pair by index label, not position; disjoint indexes raise."""
+    xs = pd.Series([1.0, 2.0, 3.0, 4.0], index=list("abcd"))
+    shuffled = pd.Series([40.0, 10.0, 30.0, 20.0], index=list("dacb"))
+    widget = plot_func(xs, shuffled, stats=False)
+    pairs = sorted(zip(widget.series[0]["x"], widget.series[0]["y"], strict=True))
+    assert pairs == [(1, 10), (2, 20), (3, 30), (4, 40)]
+    with pytest.raises(ValueError, match="share no index labels"):
+        plot_func(xs, shuffled.set_axis(list("wxyz")), stats=False)
+    with pytest.raises(ValueError, match="must be unique"):
+        plot_func(xs, shuffled.set_axis(list("aabc")), stats=False)

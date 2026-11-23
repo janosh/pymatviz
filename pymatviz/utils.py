@@ -5,15 +5,12 @@ extraction.
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Any
+from collections.abc import Mapping
+from typing import Any
 
 import kemio
 import numpy as np
 import pandas as pd
-
-
-if TYPE_CHECKING:
-    from collections.abc import Mapping
 
 
 PKG_DIR: str = os.path.dirname(__file__)
@@ -53,9 +50,64 @@ def str_labels[T](labeled: Mapping[Any, T]) -> dict[str, T]:
     return as_str
 
 
+def align_series(*values: Any) -> list[Any]:
+    """Align the pandas Series among values (top-level or values of a Mapping, like
+    a dict of named predictions) on their shared index labels (inner join, in the
+    first Series' order), so paired data match by label rather than position. Other
+    values pass through unchanged. A no-op if fewer than 2 Series or all their
+    indexes are equal.
+
+    Raises:
+        ValueError: If a Series index has duplicates, the indexes share no label, or
+            they differ while plain arrays (which can't be aligned) are present.
+    """
+    flat = [
+        val
+        for value in values
+        for val in (value.values() if isinstance(value, Mapping) else [value])
+    ]
+    all_series = [val for val in flat if isinstance(val, pd.Series)]
+    if len(all_series) < 2:
+        return list(values)
+    for srs in all_series:
+        check_unique_labels(srs, f"index of Series {srs.name!r} (to align on)")
+    first_index = all_series[0].index
+    if all(srs.index.equals(first_index) for srs in all_series[1:]):
+        return list(values)
+    if plain := [
+        type(val).__name__
+        for val in flat
+        # nested dicts (e.g. per-classifier kwargs) count as unalignable too
+        if not isinstance(val, pd.Series | str | None)
+        and (isinstance(val, Mapping) or np.ndim(val) > 0)
+    ]:
+        raise ValueError(
+            f"can't align pandas Series with differing indexes against unlabeled "
+            f"{plain}: pass all as Series or all as arrays"
+        )
+    common = first_index
+    for srs in all_series[1:]:
+        common = common.intersection(srs.index, sort=False)
+    if common.empty:
+        names = [srs.name for srs in all_series]
+        raise ValueError(f"pandas Series {names} share no index labels to align on")
+
+    def aligned(val: Any) -> Any:
+        """Val reindexed to the common labels if a Series, else val."""
+        return val.loc[common] if isinstance(val, pd.Series) else val
+
+    return [
+        {key: aligned(val) for key, val in value.items()}
+        if isinstance(value, Mapping)
+        else aligned(value)
+        for value in values
+    ]
+
+
 def df_to_arrays(df: pd.DataFrame | None, *args: Any) -> list[Any]:
     """Columns of df (rows with NaN in any of them dropped) if df is given, else args
-    as arrays. A list of column names becomes a ``{col: array}`` dict.
+    as arrays (pandas Series aligned by index, see align_series). A list of column
+    names becomes a ``{col: array}`` dict.
 
     Raises:
         TypeError: If df is neither a DataFrame nor None.
@@ -65,7 +117,7 @@ def df_to_arrays(df: pd.DataFrame | None, *args: Any) -> list[Any]:
     if df is None:
         if cols := [arg for arg in args if isinstance(arg, str)]:
             raise ValueError(f"got column names but no df to get data from: {cols}")
-        return list(map(np.asarray, args))
+        return list(map(np.asarray, align_series(*args)))
     if not isinstance(df, pd.DataFrame):
         raise TypeError(f"df should be pandas DataFrame or None, got {type(df)}")
     is_col = [isinstance(arg, str | int) for arg in args]

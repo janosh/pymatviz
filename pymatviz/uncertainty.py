@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from pymatviz.powerups import add_identity_line
-from pymatviz.utils import df_to_arrays
+from pymatviz.utils import align_series, df_to_arrays
 from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 
@@ -33,6 +33,8 @@ def _load_regression_data(
         ValueError: For arrays of wrong shape or with non-finite values.
     """
     row_mask = None
+    if df is None:  # pair Series by index label, not position
+        y_true, y_pred, y_std = align_series(y_true, y_pred, y_std)
     # one df column label (str, or int as df_to_arrays takes; an int can't be an
     # uncertainty array), or a list of str labels (an int list is uncertainty data)
     is_column = isinstance(y_std, str) or (

@@ -9,7 +9,11 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import traitlets as tl
 
-from pymatviz.widgets._normalize import normalize_plot_json, with_defaults
+from pymatviz.widgets._normalize import (
+    materialize_iterator,
+    normalize_plot_json,
+    with_defaults,
+)
 
 
 if TYPE_CHECKING:
@@ -46,7 +50,8 @@ def validator(*names: str) -> Callable[[Callable[..., Any]], Any]:
     ``hold_trait_notifications()`` (which widget constructors use) validators run
     when the batch ends, and traitlets rolls the batch back only for a TraitError:
     any other error (e.g. a KeyError or FileNotFoundError while converting the value)
-    left the invalid value set and synced.
+    left the invalid value set and synced. An iterator value (e.g. a generator)
+    reaches the validator as the list of its items.
     """
 
     def decorator(func: Callable[..., Any]) -> Any:
@@ -56,7 +61,8 @@ def validator(*names: str) -> Callable[[Callable[..., Any]], Any]:
         def checked(obj: Any, proposal: tl.Bunch) -> Any:
             """Func's validated value, its errors as TraitError."""
             try:
-                return func(obj, proposal)
+                value = materialize_iterator(proposal["value"])
+                return func(obj, tl.Bunch(proposal, value=value))
             except tl.TraitError:
                 raise
             except Exception as exc:
@@ -65,6 +71,62 @@ def validator(*names: str) -> Callable[[Callable[..., Any]], Any]:
         return tl.validate(*names)(checked)
 
     return decorator
+
+
+# === Index traits ===
+# Two-way index traits (trajectory step, histogram series, scatter point, structure
+# sites) are checked against the data length Python knows. Python assignments out of
+# range raise; frontend updates are clamped (or dropped) instead, since they can race
+# a Python data update and a raise would leave the two sides out of sync (ipywidgets
+# echoes a value a validator changed back to the frontend). Replacing the data with
+# shorter data clamps or resets the dependent index (observers on the data traits).
+
+
+def from_frontend(widget: Any, name: str) -> bool:
+    """Whether trait ``name`` is being set by a frontend state update: ipywidgets'
+    ``set_state`` locks the keys it sets in ``_property_lock`` while it sets them.
+    """
+    return name in getattr(widget, "_property_lock", {})
+
+
+def index_error(
+    widget: Any, name: str, index: Any, n_items: int | None, what: str
+) -> IndexError:
+    """IndexError naming the widget trait, the bad index and the valid range."""
+    if n_items is None:
+        valid = "a non-negative int"
+    else:
+        valid = f"0 to {n_items - 1}" if n_items else f"none: no {what}"
+    return IndexError(
+        f"{type(widget).__name__}.{name}={index!r} is out of range for "
+        f"{'unknown' if n_items is None else n_items} {what} (valid: {valid})"
+    )
+
+
+def checked_position(
+    widget: Any, name: str, index: int, n_items: int | None, what: str
+) -> int:
+    """Validated position index (e.g. a trajectory step) into ``n_items`` items.
+    0 always passes, as the position of empty data, and any non-negative index when
+    ``n_items`` is None (data Python doesn't hold, e.g. loaded from a ``data_url``).
+    Frontend updates out of range are clamped into range.
+
+    Raises:
+        IndexError: For an out-of-range index assigned from Python.
+    """
+    last = None if n_items is None else max(n_items - 1, 0)
+    if index >= 0 and (last is None or index <= last):
+        return index
+    if from_frontend(widget, name):
+        return max(0, index if last is None else min(index, last))
+    raise index_error(widget, name, index, n_items, what)
+
+
+def clamped_position(index: int, n_items: int | None) -> int:
+    """Position index clamped into range of ``n_items`` items (unchanged for None),
+    for observers reacting to data replaced by shorter data.
+    """
+    return index if n_items is None else min(index, max(n_items - 1, 0))
 
 
 class JsonFloat(tl.Float):
@@ -124,6 +186,7 @@ class _JsonNormalized(tl.TraitType):
         """JSON-normalized value, validated by the container trait."""
         if _is_stored_value(self, obj, value):
             return value
+        value = materialize_iterator(value)  # raw traits too, before the List check
         if self.name not in getattr(obj, "_raw_json_traits", ()):  # plain HasTraits
             try:
                 value = normalize_plot_json(value, f"{type(obj).__name__}.{self.name}")
@@ -202,7 +265,7 @@ class _Normalized(tl.Any):
         become TraitError, which rolls back ``hold_trait_notifications()`` batches.
         """
         try:
-            normalized = self.normalize(value)
+            normalized = self.normalize(materialize_iterator(value))
         except tl.TraitError:
             raise
         except Exception as exc:

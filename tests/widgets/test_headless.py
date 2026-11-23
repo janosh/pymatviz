@@ -577,7 +577,8 @@ def test_widget_data_json_numpy_scalars_and_unknown_types() -> None:
     """
     from pymatviz.widgets._headless import _widget_data_json
 
-    data = {"idx": np.int64(141), "val": np.float32(0.5), "flag": np.bool_(1)}
+    data: dict[str, Any] = {"idx": np.int64(141), "val": np.float32(0.5)}
+    data |= {"flag": np.bool_(1)}
     data |= {"arr": np.arange(2), "buf": memoryview(b"ab"), "tag": "</script>"}
     data |= {"label": "<!--<script>"}
     assert json.loads(_widget_data_json(data)) == {

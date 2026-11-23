@@ -4,6 +4,7 @@ import warnings
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from pymatviz import powerups
@@ -68,6 +69,14 @@ def test_annotate_metrics(
     # repeated calls stack blocks
     powerups.annotate_metrics(widget, series=0, metrics=["MAE"])
     assert widget.annotation.startswith(f"{expected}\nMAE = ")
+
+
+def test_annotate_metrics_aligns_series_by_index() -> None:
+    """Explicit xs/ys Series pair by index label, not position."""
+    xs = pd.Series([1.0, 2.0, 3.0], index=list("abc"))
+    ys = pd.Series([3.0, 1.0, 2.0], index=list("cab"))  # same pairs, shuffled
+    widget = powerups.annotate_metrics(make_widget(), xs, ys, metrics=["MAE"])
+    assert widget.annotation == "MAE = 0"
 
 
 def test_annotate_metrics_drops_nonfinite_pairs() -> None:

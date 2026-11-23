@@ -270,6 +270,12 @@ def test_df_input(
     # no_skill=False for consistent trace counting
     widget = curve_func("target", "prob", df=df_clf, no_skill=False)
     assert widget.series == curve_func(targets, probs, no_skill=False).series
+    # Series pair by index label: shuffled probs (alone or in a dict) give the
+    # same curves
+    shuffled = df_clf["prob"].sample(frac=1, random_state=0)
+    for probs_in, expected in ((shuffled, probs), ({"m": shuffled}, {"m": probs})):
+        aligned = curve_func(df_clf["target"], probs_in, no_skill=False)
+        assert aligned.series == curve_func(targets, expected, no_skill=False).series
 
 
 @pytest.mark.parametrize(

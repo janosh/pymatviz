@@ -18,7 +18,7 @@ from pymatviz.widgets.histogram import HistogramWidget
 
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
     from typing import Any, Literal
 
     from numpy.typing import ArrayLike
@@ -107,6 +107,7 @@ def histogram(
     *,
     x: str | None = None,
     color: str | None = None,
+    sort_groups: Callable[[list[Any]], list[Any]] | None = None,
     bins: int | Sequence[float] | str = 200,
     x_range: tuple[float | None, float | None] | None = None,
     density: bool = False,
@@ -128,7 +129,11 @@ def histogram(
             silently dropped (DataFrame rows with NaN are dropped).
         x (str, optional): DataFrame column to bin.
         color (str, optional): DataFrame column to split into one distribution per
-            value.
+            value, in order of first appearance.
+        sort_groups (Callable[[list], list], optional): Reorders the distributions
+            (legend and draw order): takes the list of group keys (``color`` column
+            values or dict keys, in given order) and returns them reordered, e.g.
+            ``sorted`` or ``lambda keys: keys[::-1]``. Defaults to None (keep order).
         bins (int | sequence | str, optional): Number of bins, or (in Python) bin
             edges or a NumPy binning rule like "auto". Defaults to 200.
         x_range (tuple, optional): The range of values to include in the histogram.
@@ -148,7 +153,8 @@ def histogram(
     Raises:
         ValueError: For empty or non-finite values, labels sharing a string form
             (1 and "1"), a DataFrame without ``x``, an x_range resolving to
-            lo > hi, or density in an x_range holding no values of a distribution.
+            lo > hi, density in an x_range holding no values of a distribution, or
+            sort_groups not returning a reordering of the group keys.
         TypeError: If x or color name columns but values is no DataFrame.
     """
     if isinstance(values, pd.DataFrame):
@@ -170,6 +176,15 @@ def histogram(
         name = getattr(values, "name", None)
         x_axis_title = "Value" if name is None else name
         data = values if isinstance(values, Mapping) else {x_axis_title: values}
+    if sort_groups is not None:
+        keys = list(data)
+        sorted_keys = list(sort_groups(keys))
+        # dict keys are unique, so equal length and key set means a permutation
+        if len(sorted_keys) != len(keys) or set(sorted_keys) != set(keys):
+            raise ValueError(
+                f"sort_groups must return a reordering of {keys}, got {sorted_keys}"
+            )
+        data = {key: data[key] for key in sorted_keys}
     data_arrays = {
         label: np.asarray(vals, dtype=float) for label, vals in str_labels(data).items()
     }

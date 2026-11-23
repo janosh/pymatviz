@@ -67,12 +67,16 @@ def test_interaction_traits_sync(
     default: object,
 ) -> None:
     """Interaction traits default correctly, seed via init, round-trip and sync."""
-    widget = widget_cls()
+    # selected_point must address a point of the series
+    data = {"series": [{"x": [0, 1, 2, 3], "y": [0, 1, 2, 3]}]}
+    init_kwargs = data if widget_cls is ScatterPlotWidget else {}
+    widget = widget_cls(**init_kwargs)
     assert getattr(widget, trait_name) == default
     setattr(widget, trait_name, value)
     assert getattr(widget, trait_name) == value
     assert widget.class_traits()[trait_name].metadata.get("sync") is True
-    assert getattr(widget_cls(**{trait_name: value}), trait_name) == value
+    seeded = widget_cls(**init_kwargs, **{trait_name: value})
+    assert getattr(seeded, trait_name) == value
 
 
 _NO_STRUCTS = "requires non-empty `structures`"
@@ -158,11 +162,33 @@ def test_link_trajectory_step_drives_scatter_highlight(
     """Stepping a trajectory highlights the matching scatter point in the configured
     series (default 0).
     """
-    traj, scatter = TrajectoryWidget(trajectory=_frames()), _scatter()
+    xs = list(range(4))
+    traj = TrajectoryWidget(trajectory=_frames())
+    scatter = ScatterPlotWidget(series=[{"x": xs, "y": xs}] * 3)
 
     link_selection(traj, scatter, **link_kwargs)
     traj.current_step_idx = 3
     assert scatter.selected_point == {"series_idx": series_idx, "point_idx": 3}
+
+
+def test_link_skips_out_of_range_indices() -> None:
+    """A scatter click beyond the trajectory's frames leaves its step (warning), a
+    step beyond the scatter's points clears its highlight, neither raises.
+    """
+    traj, scatter = TrajectoryWidget(trajectory=_frames(2)), _scatter(6)
+    link_selection(traj, scatter)
+    traj.current_step_idx = 1
+    with pytest.warns(UserWarning, match="index=5 out of range for 2 trajectory"):
+        scatter.active_point = {"series_idx": 0, "point_idx": 5}
+    assert traj.current_step_idx == 1
+    assert scatter.selected_point == {"series_idx": 0, "point_idx": 5}
+
+    traj, scatter = TrajectoryWidget(trajectory=_frames(4)), _scatter(2)
+    link_selection(traj, scatter)
+    traj.current_step_idx = 3
+    assert scatter.selected_point is None
+    traj.current_step_idx = 1
+    assert scatter.selected_point == {"series_idx": 0, "point_idx": 1}
 
 
 def test_link_no_infinite_loop_between_two_trajectories() -> None:

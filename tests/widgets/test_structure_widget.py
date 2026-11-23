@@ -123,6 +123,36 @@ def _meta(payload: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in payload.items() if k not in ("format", "kind", "arrays")}
 
 
+@pytest.mark.parametrize("trait_name", ["selected_sites", "highlighted_sites"])
+def test_site_indices_in_range_of_sites(
+    fe3co4_disordered: kemio.Structure, trait_name: str
+) -> None:
+    """Python site indices must address the structure's sites; frontend ones index
+    the rendered sites (image atoms appended) and pass; a new structure drops
+    indices beyond its sites.
+    """
+    n_sites = len(fe3co4_disordered)
+    widget = StructureWidget(structure=fe3co4_disordered, **{trait_name: [0, 1]})
+    for bad in ([0, n_sites], [-1]):
+        bad_idx = bad[-1]
+        with pytest.raises(
+            tl.TraitError, match=rf"{trait_name}\[\d\]={bad_idx} .*0 to {n_sites - 1}"
+        ):
+            setattr(widget, trait_name, bad)
+    assert getattr(widget, trait_name) == [0, 1]
+    image_idx = n_sites + 3  # an image atom clicked in the viewer
+    widget.set_state({trait_name: [1, image_idx]})
+    assert getattr(widget, trait_name) == [1, image_idx]
+
+    widget.structure = {"sites": [*widget.structure["sites"][:1]]}
+    assert getattr(widget, trait_name) == []  # [1, image_idx] beyond the one site
+    # standardized cells and structures Python doesn't hold have unknown site counts
+    widget.cell_type = "conventional"
+    setattr(widget, trait_name, [5])
+    no_structure = StructureWidget(structure_string="...", **{trait_name: [5]})
+    assert getattr(no_structure, trait_name) == [5]
+
+
 def test_widget_volumetric_data_trait() -> None:
     """volumetric_data defaults to a fresh [], sends dict volumes as float32 binary
     envelopes (flat values + dims or legacy nested grid[ix][iy][iz], z fastest), passes

@@ -5,7 +5,7 @@ and space group numbers for kemio, pymatgen, ASE and phonopy structures.
 from __future__ import annotations
 
 import os
-from collections.abc import Hashable, Mapping, Sequence
+from collections.abc import Hashable, Iterator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
 import kemio
@@ -59,7 +59,7 @@ type _StructureInputs = (
 
 
 def normalize_structures(systems: _StructureInputs) -> dict[Hashable, kemio.Structure]:
-    """Map structure-like inputs (single, sequence or mapping) to kemio
+    """Map structure-like inputs (single, sequence, iterator or mapping) to kemio
     Structures, keyed by formula for a single input, by "{index} {formula}" for
     sequences, and by the given keys for mappings/Series. A structure file path or
     pymatgen-format structure dict (with a "sites" list) counts as a single input.
@@ -69,6 +69,8 @@ def normalize_structures(systems: _StructureInputs) -> dict[Hashable, kemio.Stru
         TypeError: For unsupported input or item types.
         FileNotFoundError: For a path that isn't a file.
     """
+    if isinstance(systems, Iterator):  # generators etc., consumed once
+        systems = list(systems)
     # a structure dict holds a list of site dicts, a mapping of labeled structures
     # may well name one "sites"
     is_single_dict = isinstance(systems, Mapping) and isinstance(

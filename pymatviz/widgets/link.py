@@ -29,7 +29,7 @@ from pymatviz.widgets._normalize import structure_to_dict
 from pymatviz.widgets.periodic_table import PeriodicTableWidget
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 from pymatviz.widgets.structure import StructureWidget
-from pymatviz.widgets.trajectory import TrajectoryWidget
+from pymatviz.widgets.trajectory import TrajectoryWidget, n_frames
 
 
 if TYPE_CHECKING:
@@ -219,12 +219,24 @@ class WidgetLink:
             self._syncing = False
 
     def _apply(self, widget: Any, index: int) -> None:
-        """Reflect the shared ``index`` in a single widget (its sink)."""
+        """Reflect the shared ``index`` in a single widget (its sink). An index
+        beyond a trajectory's frames leaves its step unchanged (warning), one beyond
+        the scatter series' points clears its highlight.
+        """
         in_table = 0 <= index < len(self._elements)
         if isinstance(widget, TrajectoryWidget):
-            widget.current_step_idx = index
+            n_steps = n_frames(widget.trajectory)
+            if n_steps is None or 0 <= index < n_steps:
+                widget.current_step_idx = index
+            else:
+                warnings.warn(
+                    f"link_selection: {index=} out of range for {n_steps} trajectory "
+                    "frames; TrajectoryWidget not updated.",
+                    stacklevel=2,
+                )
         elif isinstance(widget, ScatterPlotWidget):
-            widget.selected_point = {"series_idx": self._series_idx, "point_idx": index}
+            point = {"series_idx": self._series_idx, "point_idx": index}
+            widget.selected_point = None if widget._point_error(point) else point
             if self._elements:  # the table now shows this structure, not a filter
                 widget.highlighted_ids = None
         elif isinstance(widget, StructureWidget) and self._structures is not None:

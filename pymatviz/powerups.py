@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from pymatviz.utils import align_series
 from pymatviz.widgets._binary import series_column
 from pymatviz.widgets.binned_scatter_plot import BinnedScatterPlotWidget
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
@@ -93,7 +94,10 @@ def _resolve_xy(
     ys: ArrayLike,
     series: SeriesSelector,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Explicit xs/ys as float arrays, else the concatenated selected series data."""
+    """Explicit xs/ys as float arrays (pandas Series aligned by index), else the
+    concatenated selected series data.
+    """
+    xs, ys = align_series(xs, ys)
     xs_arr, ys_arr = np.asarray(xs, dtype=float), np.asarray(ys, dtype=float)
     if xs_arr.size or ys_arr.size:
         if xs_arr.ndim != 1 or xs_arr.shape != ys_arr.shape:

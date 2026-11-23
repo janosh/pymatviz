@@ -14,6 +14,7 @@ import pandas as pd
 import pytest
 import traitlets as tl
 
+from pymatviz.widgets._binary import BINARY_SERIES_MIN_POINTS
 from pymatviz.widgets.bar_plot import BarPlotWidget
 from pymatviz.widgets.box_plot import BoxPlotWidget
 from pymatviz.widgets.heatmap_matrix import HeatmapMatrixWidget
@@ -26,7 +27,7 @@ from pymatviz.widgets.spacegroup_bar import SpacegroupBarPlotWidget
 def test_to_dict_reflects_constructor_values_and_mutations() -> None:
     """to_dict values match the constructor args and pick up later mutations."""
     widget = HistogramWidget(
-        series=[{"values": [2, 3], "label": "h"}],
+        series=[{"values": [2, 3], "label": "h"}, {"values": [1], "label": "g"}],
         bins=25,
         mode="overlay",
         selected_series_idx=1,
@@ -36,7 +37,10 @@ def test_to_dict_reflects_constructor_values_and_mutations() -> None:
     assert state["bins"] == 25
     assert state["mode"] == "overlay"
     assert state["selected_series_idx"] == 1
-    assert state["series"] == [{"values": [2.0, 3.0], "label": "h"}]
+    assert state["series"] == [
+        {"values": [2.0, 3.0], "label": "h"},
+        {"values": [1.0], "label": "g"},
+    ]
     assert state["x_axis"] == {"label": "Value"}
 
     widget.x_axis = {"label": "updated"}
@@ -44,6 +48,38 @@ def test_to_dict_reflects_constructor_values_and_mutations() -> None:
 
     widget.style = "height: 999px;"
     assert widget.to_dict()["style"] == "height: 999px;"
+
+
+def test_histogram_series_idx_follows_series() -> None:
+    """selected_series_idx clamps frontend values and to fewer new series."""
+    widget = HistogramWidget([{"values": [1]}] * 3, selected_series_idx=2)
+    widget.set_state({"selected_series_idx": 5})  # racing a series update
+    assert widget.selected_series_idx == 2
+    widget.series = [{"values": [1]}] * 2
+    assert widget.selected_series_idx == 1
+    widget.series = None
+    assert widget.selected_series_idx == 0
+
+
+@pytest.mark.parametrize("n_points", [3, BINARY_SERIES_MIN_POINTS])  # JSON, binary
+def test_scatter_selected_point_follows_series(n_points: int) -> None:
+    """selected_point must address a point (JSON or binary series); new series
+    without it, and frontend points out of range, reset it to None.
+    """
+    xs = np.arange(n_points)
+    last = {"series_idx": 0, "point_idx": n_points - 1}
+    widget = ScatterPlotWidget([{"x": xs, "y": xs}], selected_point=last)
+    assert widget.selected_point == last
+    match = f"point_idx={n_points} is out of range for {n_points} points"
+    with pytest.raises(tl.TraitError, match=match):
+        widget.selected_point = {"series_idx": 0, "point_idx": n_points}
+    widget.set_state({"selected_point": {"series_idx": 3, "point_idx": 0}})
+    assert widget.selected_point is None
+    widget.selected_point = last
+    widget.series = [{"x": [*xs, n_points], "y": [*xs, 0]}]  # longer: kept
+    assert widget.selected_point == last
+    widget.series = [{"x": xs[:-1], "y": xs[:-1]}]
+    assert widget.selected_point is None
 
 
 @pytest.mark.parametrize(

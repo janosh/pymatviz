@@ -17,6 +17,8 @@ from pymatviz.widgets._traits import (
     JsonDict,
     JsonList,
     StructureVizTraits,
+    from_frontend,
+    index_error,
     normalized_trait,
     validator,
 )
@@ -241,9 +243,44 @@ class StructureWidget(StructureVizTraits, StructureTraits, MatterVizWidget):
     # selected_sites (clicked atoms) and hovered_site_idx (hovered atom) are
     # populated on user interaction (observe them to drive other widgets) and can
     # also be set from Python. highlighted_sites is a Python-driven highlight
-    # input (e.g. from a linked plot).
+    # input (e.g. from a linked plot). Frontend values index the rendered sites,
+    # which append image atoms after the structure's own and follow cell_type, so
+    # only Python assignments are checked against the structure's sites (with
+    # cell_type="original"). A new structure drops indices beyond its sites.
     selected_sites = JsonList(tl.Int(), default_value=[]).tag(sync=True)
     highlighted_sites = JsonList(tl.Int(), default_value=[]).tag(sync=True)
+
+    def _n_own_sites(self, structure: Any) -> int | None:
+        """Site count site indices set from Python address: the structure dict's,
+        None while unknown (structure_string, data_url, a standardized cell_type, a
+        structure object mid-batch before its validator ran).
+        """
+        if self.cell_type != "original" or not isinstance(structure, dict):
+            return None
+        return len(structure["sites"])
+
+    @validator("selected_sites", "highlighted_sites")
+    def _check_site_indices(self, proposal: dict[str, Any]) -> list[int]:
+        """Reject Python-set indices that are negative or beyond the sites."""
+        name, indices = proposal["trait"].name, proposal["value"]
+        if from_frontend(self, name):
+            return indices
+        n_sites = self._n_own_sites(self.structure)
+        for pos, idx in enumerate(indices):
+            if idx < 0 or (n_sites is not None and idx >= n_sites):
+                raise index_error(self, f"{name}[{pos}]", idx, n_sites, "sites")
+        return indices
+
+    @tl.observe("structure")
+    def _drop_stale_site_indices(self, change: dict[str, Any]) -> None:
+        """Drop selected/highlighted indices beyond a new structure's sites."""
+        if (n_sites := self._n_own_sites(change["new"])) is None:
+            return
+        with self.hold_trait_notifications():
+            for name in ("selected_sites", "highlighted_sites"):
+                indices = getattr(self, name)
+                if any(idx >= n_sites for idx in indices):
+                    setattr(self, name, [idx for idx in indices if idx < n_sites])
 
     @tl.default("volumetric_data")
     def _default_volumetric_data(self) -> list[dict[str, Any]]:

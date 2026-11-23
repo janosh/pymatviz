@@ -264,6 +264,25 @@ def test_widget_traitlet_defaults(widget_cls: type, attr: str, expected: Any) ->
             "heatmap_values",
             {"Fe": 1.5, "O": 2},
         ),
+        # NaN, ±inf and NA heat values become None (missing tiles), like tile_plots
+        (
+            PeriodicTableWidget,
+            {"heatmap_values": pd.Series({"Fe": 1.5, "O": np.nan, "Na": -np.inf})},
+            "heatmap_values",
+            {"Fe": 1.5, "O": None, "Na": None},
+        ),
+        (
+            PeriodicTableWidget,
+            {"heatmap_values": np.array([1.0, np.nan, 3.0])},
+            "heatmap_values",
+            [1.0, None, 3.0],
+        ),
+        (  # split tiles keep their other segments
+            PeriodicTableWidget,
+            {"heatmap_values": {"Fe": [1.0, np.float32("nan")], "O": pd.NA}},
+            "heatmap_values",
+            {"Fe": [1.0, None], "O": None},
+        ),
         (
             RdfPlotWidget,
             {"patterns": [{"r": np.array([1.0, 2.0]), "g_r": np.ones(2)}]},
@@ -331,6 +350,65 @@ def test_widget_normalizes_inputs(
     assert result == expected
     assert type(result) is type(expected)
     setattr(widget, attr, kwargs[attr])
+    assert getattr(widget, attr) == expected
+
+
+_TREE = [{"label": "a", "value": 1}, {"label": "b", "value": 2}]
+
+
+def _seq(items: list[Any]) -> Any:
+    """Factory of items as a list, or as a generator if lazy."""
+    return lambda lazy: (item for item in items) if lazy else list(items)
+
+
+_ITERATOR_CASES = [
+    (TrajectoryWidget, "trajectory", _seq([SI_STRUCT, SI_STRUCT])),
+    (CoordinationBarPlotWidget, "structures", _seq([SI_STRUCT, SI_STRUCT])),
+    (RdfPlotWidget, "structures", _seq([SI_STRUCT])),
+    (TreemapWidget, "data", _seq(_TREE)),
+    (SunburstWidget, "data", _seq(_TREE)),
+    (SpacegroupBarPlotWidget, "data", _seq([225, 225, 62])),
+    (ScatterPlotWidget, "series", _seq([{"x": [1, 2], "y": [3, 4]}])),
+    (HistogramWidget, "series", _seq([{"values": [1, 2]}, {"values": [3]}])),
+    (BarPlotWidget, "series", _seq([{"x": [1, 2], "y": [3, 4]}])),
+    (ConvexHullWidget, "entries", _seq([{"composition": {"Li": 1}, "energy": -1}])),
+    (StructureWidget, "selected_sites", _seq([0, 1])),
+    (PeriodicTableWidget, "active_elements", _seq(["Fe", "O"])),
+    (PeriodicTableWidget, "heatmap_values", _seq([1.0, np.nan, 3.0])),
+    # nested iterators: x/y of an XRD dict, a tree node's children, a tile's series
+    (
+        XrdWidget,
+        "patterns",
+        lambda lazy: {"x": _seq([10.0, 20.0])(lazy), "y": _seq([1.0, 2.0])(lazy)},
+    ),
+    (TreemapWidget, "data", lambda lazy: {"label": "r", "children": _seq(_TREE)(lazy)}),
+    (
+        PeriodicTableWidget,
+        "tile_plots",
+        lambda lazy: {"Fe": _seq([{"values": _seq([1.0, 2.0])(lazy)}])(lazy)},
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("widget_cls", "attr", "make_value"),
+    _ITERATOR_CASES,
+    ids=[f"{cls.__name__}.{attr}" for cls, attr, _ in _ITERATOR_CASES],
+)
+def test_widgets_take_iterators(
+    widget_cls: type[MatterVizWidget], attr: str, make_value: Any
+) -> None:
+    """Generators sync like the list of their items, on construction, assignment
+    and in batches.
+    """
+    expected = getattr(widget_cls(**{attr: make_value(lazy=False)}), attr)
+    assert getattr(widget_cls(**{attr: make_value(lazy=True)}), attr) == expected
+    widget = widget_cls()
+    setattr(widget, attr, make_value(lazy=True))
+    assert getattr(widget, attr) == expected
+    widget = widget_cls()
+    with widget.hold_trait_notifications():
+        setattr(widget, attr, make_value(lazy=True))
     assert getattr(widget, attr) == expected
 
 
@@ -634,6 +712,10 @@ def test_config_traits_normalize_on_assignment(
             {"nodes": [{"label": "a"}], "links": [{"value": np.float32(3)}]},
             {"nodes": [{"label": "a"}], "links": [{"value": 3.0}]},
         ),
+        "selected_point": (
+            {"series_idx": np.int64(0), "point_idx": np.int64(1)},
+            {"series_idx": 0, "point_idx": 1},
+        ),
     }
     assigned: dict[str, Any] = {}
     for name in widget.public_trait_names():
@@ -641,7 +723,7 @@ def test_config_traits_normalize_on_assignment(
         sub_traits = getattr(trait, "trait_types", [trait])
         if name in widget._raw_json_traits or trait.read_only:
             continue  # their validators convert them (e.g. series to binary)
-        if name in valid_values and isinstance(trait, tl.Dict):
+        if name in valid_values and any(isinstance(sub, tl.Dict) for sub in sub_traits):
             value, expected = valid_values[name]
         elif any(isinstance(sub, tl.Dict) for sub in sub_traits):
             value = {"range": np.array([0.0, 1.5]), "count": np.int64(2)}
@@ -686,10 +768,10 @@ def test_scalar_traits_take_numpy_reject_non_finite(
             ):
                 setattr(widget, name, bad)
             assert getattr(widget, name) == 0.5
-    for name in ints:
-        setattr(widget, name, np.int64(2))
+    for name in ints:  # 1 is in range of index traits (2 frames, 2 series)
+        setattr(widget, name, np.int64(1))
         assert type(getattr(widget, name)) is int
-        assert getattr(widget, name) == 2
+        assert getattr(widget, name) == 1
     for name in bools:  # False passes validators like DosWidget's stack check
         setattr(widget, name, np.bool_(0))
         assert getattr(widget, name) is False
@@ -766,6 +848,43 @@ def test_scalar_traits_take_numpy_reject_non_finite(
         # None skipped the validator outside batches, then broke isosurface checks
         (StructureWidget, "volumetric_data", None, "list of volumes or a {prefix"),
         (TreemapWidget, "zoom_root_id", True, "string or number, got True"),
+        # index traits must address an item of the data
+        (
+            lambda: TrajectoryWidget([SI_STRUCT] * 2),
+            "current_step_idx",
+            2,
+            r"current_step_idx=2 is out of range for 2 frames \(valid: 0 to 1\)",
+        ),
+        (
+            lambda: HistogramWidget([{"values": [1]}]),
+            "selected_series_idx",
+            1,
+            r"selected_series_idx=1 is out of range for 1 series \(valid: 0 to 0\)",
+        ),
+        (
+            lambda: StructureWidget(SI_STRUCT),
+            "selected_sites",
+            [0, 1],
+            r"selected_sites\[1\]=1 is out of range for 1 sites",
+        ),
+        (
+            lambda: ScatterPlotWidget([{"x": [1, 2], "y": [3, 4]}]),
+            "selected_point",
+            {"series_idx": 0, "point_idx": 2},
+            r"selected_point.point_idx=2 is out of range for 2 points",
+        ),
+        (
+            lambda: ScatterPlotWidget([{"x": [1, 2], "y": [3, 4]}]),
+            "selected_point",
+            {"series_idx": 1, "point_idx": 0},
+            r"selected_point.series_idx=1 is out of range for 1 series",
+        ),
+        (
+            ScatterPlotWidget,
+            "selected_point",
+            {"point_idx": 0},
+            "selected_point needs int series_idx and point_idx",
+        ),
     ],
 )
 def test_invalid_batched_assignment_rolls_back(

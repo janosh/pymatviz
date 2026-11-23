@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Iterator, Mapping, Sized
+from collections.abc import Mapping, Sized
 from numbers import Integral
 from typing import Any
 
 import numpy as np
 import traitlets as tl
 
+from pymatviz.widgets._normalize import materialize_iterator
 from pymatviz.widgets._schema_traits import SpacegroupBarTraits
 from pymatviz.widgets._traits import JsonBool, validator
 from pymatviz.widgets.matterviz import MatterVizWidget
@@ -47,9 +48,8 @@ def spacegroup_counts(data: Any) -> dict[str, int]:
     """
     from pymatviz.structures import normalize_spacegroups
 
-    if isinstance(data, Iterator):  # e.g. generators, which have no len()
-        data = list(data)
-    elif data is not None and not isinstance(data, Sized):
+    data = materialize_iterator(data)  # e.g. generators, which have no len()
+    if data is not None and not isinstance(data, Sized):
         raise TypeError(
             "Space group data must be a sequence, iterator or mapping, got "
             f"{type(data).__name__}: {data!r}"

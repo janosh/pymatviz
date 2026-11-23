@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 import numpy as np
@@ -9,6 +10,7 @@ import traitlets as tl
 
 from pymatviz.structures import structure_dict
 from pymatviz.widgets._binary import (
+    BINARY_FORMAT,
     _is_number,
     force_stats,
     frame_input,
@@ -21,10 +23,27 @@ from pymatviz.widgets._traits import (
     JsonBool,
     JsonInt,
     StructureVizTraits,
+    checked_position,
+    clamped_position,
     optional_trait,
     validator,
 )
 from pymatviz.widgets.matterviz import MatterVizWidget
+
+
+def n_frames(trajectory: Any) -> int | None:
+    """Frame count of a ``trajectory`` trait value: a binary envelope, a ``{"frames":
+    [...]}`` dict or (mid-batch, before its validator ran) a sequence of frames. None
+    when Python can't tell without converting it (None for a ``data_url`` trajectory,
+    raw pymatgen Trajectories, iterators, which counting would consume).
+    """
+    if isinstance(trajectory, Mapping):
+        if trajectory.get("format") == BINARY_FORMAT:
+            positions = (trajectory.get("arrays") or {}).get("positions") or {}
+            return (positions.get("shape") or [None])[0]  # the renderer reports gaps
+        frames = trajectory.get("frames")
+        return len(frames) if isinstance(frames, list | tuple) else None
+    return len(trajectory) if isinstance(trajectory, list | tuple) else None
 
 
 class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
@@ -84,6 +103,8 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
     """
 
     trajectory = tl.Any(default_value=None, allow_none=True).tag(sync=True)
+    # Two-way synced displayed frame, in range of the frames (replacing the trajectory
+    # with a shorter one clamps it to the last frame)
     current_step_idx = JsonInt(0).tag(sync=True)
 
     # Layout
@@ -140,6 +161,21 @@ class TrajectoryWidget(StructureVizTraits, TrajectoryTraits, MatterVizWidget):
         if normalized is not None and is_binary_envelope(normalized, "trajectory"):
             return normalized
         return normalize_plot_json(normalized, "trajectory")
+
+    @validator("current_step_idx")
+    def _check_step_idx(self, proposal: dict[str, Any]) -> int:
+        """Reject steps beyond the frames (clamping frontend ones)."""
+        n_steps = n_frames(self.trajectory)
+        return checked_position(
+            self, "current_step_idx", proposal["value"], n_steps, "frames"
+        )
+
+    @tl.observe("trajectory")
+    def _clamp_step_idx(self, change: dict[str, Any]) -> None:
+        """Move the step to the last frame of a shorter new trajectory."""
+        self.current_step_idx = clamped_position(
+            self.current_step_idx, n_frames(change["new"])
+        )
 
     @staticmethod
     def _attach_forces(frame: dict[str, Any], frame_idx: int) -> dict[str, Any]:

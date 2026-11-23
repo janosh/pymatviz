@@ -11,10 +11,17 @@ from pymatviz.widgets._traits import (
     JsonBool,
     JsonInt,
     PlotControlsTraits,
+    checked_position,
+    clamped_position,
     df_series,
     validator,
 )
 from pymatviz.widgets.matterviz import MatterVizWidget
+
+
+def _n_series(series: list[Any] | None) -> int:
+    """Series count of a ``series`` trait value (None: no series)."""
+    return 0 if series is None else len(series)
 
 
 class HistogramWidget(PlotControlsTraits, HistogramTraits, MatterVizWidget):
@@ -29,7 +36,8 @@ class HistogramWidget(PlotControlsTraits, HistogramTraits, MatterVizWidget):
     mode = tl.CaselessStrEnum(values=["single", "overlay"], default_value="single").tag(
         sync=True
     )
-    # Two-way synced index of the active series in single-mode controls
+    # Two-way synced index of the active series in single-mode controls, in range of
+    # the series (replacing them with fewer clamps it to the last one)
     selected_series_idx = JsonInt(default_value=0).tag(sync=True)
     show_legend = JsonBool(default_value=True).tag(sync=True)
 
@@ -40,6 +48,21 @@ class HistogramWidget(PlotControlsTraits, HistogramTraits, MatterVizWidget):
         """Normalize series on init and reassignment, including batched updates."""
         return self._normalize_series(
             proposal["value"], "Histogram", keys=("values",), binary=False
+        )
+
+    @validator("selected_series_idx")
+    def _check_series_idx(self, proposal: dict[str, Any]) -> int:
+        """Reject indices beyond the series (clamping frontend ones)."""
+        n_series = _n_series(self.series)
+        return checked_position(
+            self, "selected_series_idx", proposal["value"], n_series, "series"
+        )
+
+    @tl.observe("series")
+    def _clamp_series_idx(self, change: dict[str, Any]) -> None:
+        """Move the active series to the last of fewer new series."""
+        self.selected_series_idx = clamped_position(
+            self.selected_series_idx, _n_series(change["new"])
         )
 
     def __init__(

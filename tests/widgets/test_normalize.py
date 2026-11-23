@@ -386,10 +386,18 @@ class _MockIntEnum(IntEnum):
         (np.float64(4.5), 4.5),
         (_MockIntEnum.VALUE, 42),
         ({"obj": _MockMSONable()}, {"obj": _MOCK_DICT}),  # nested as_dict()
+        # iterators (consumed once) become lists, nested ones too
+        ((val for val in (1, np.int64(2))), [1, 2]),
+        (
+            {"a": map(float, [1, 2]), "b": zip([1], [2], strict=True)},
+            {"a": [1.0, 2.0], "b": [[1, 2]]},
+        ),
     ],
 )
 def test_normalize_plot_json_scalar_subclasses(value: Any, expected: Any) -> None:
-    """Scalar subclasses and MSONable objects normalize to JSON-safe primitives."""
+    """Scalar subclasses, MSONable objects and iterators normalize to JSON-safe
+    primitives.
+    """
     normalized = normalize_plot_json(value, "test")
     assert normalized == expected
     assert type(normalized) is type(expected)

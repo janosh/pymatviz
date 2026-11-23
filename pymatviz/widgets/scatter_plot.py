@@ -6,6 +6,7 @@ from typing import Any
 
 import traitlets as tl
 
+from pymatviz.widgets._binary import series_column
 from pymatviz.widgets._schema_traits import ScatterPlotTraits
 from pymatviz.widgets._traits import (
     JsonDict,
@@ -13,10 +14,25 @@ from pymatviz.widgets._traits import (
     color_bar_trait,
     color_scale_trait,
     df_series,
+    from_frontend,
+    index_error,
     optional_trait,
     validator,
 )
 from pymatviz.widgets.matterviz import MatterVizWidget
+
+
+_POINT_KEYS = ("series_idx", "point_idx")
+
+
+def _n_points(series_entry: Any) -> int | None:
+    """Point count of a series entry (JSON or binary), None when unknown (x missing
+    or an iterator mid-batch, before the series validator ran).
+    """
+    if not isinstance(series_entry, dict):
+        return None
+    x_vals = series_column(series_entry, "x")
+    return len(x_vals) if hasattr(x_vals, "__len__") else None
 
 
 class ScatterPlotWidget(PlotControlsTraits, ScatterPlotTraits, MatterVizWidget):
@@ -61,6 +77,49 @@ class ScatterPlotWidget(PlotControlsTraits, ScatterPlotTraits, MatterVizWidget):
         super().__init__(series=series, **kwargs)
 
     _raw_json_traits = frozenset({"series"})  # _normalize_series converts them
+
+    def _point_error(self, point: dict[str, Any]) -> IndexError | None:
+        """IndexError if ``point`` addresses no point of the current series."""
+        series = self.series or []
+        series_idx, point_idx = (point[key] for key in _POINT_KEYS)
+        if not 0 <= series_idx < len(series):
+            return index_error(
+                self, "selected_point.series_idx", series_idx, len(series), "series"
+            )
+        n_points = _n_points(series[series_idx])
+        if point_idx < 0 or (n_points is not None and point_idx >= n_points):
+            return index_error(
+                self, "selected_point.point_idx", point_idx, n_points, "points"
+            )
+        return None
+
+    @validator("selected_point")
+    def _check_selected_point(self, proposal: dict[str, Any]) -> Any:
+        """Require int ``series_idx`` and ``point_idx`` addressing a point of the
+        series. A frontend selection out of range resets to None.
+        """
+        if (point := proposal["value"]) is None:
+            return None
+        if bad := [
+            key
+            for key in _POINT_KEYS
+            if isinstance(point.get(key), bool) or not isinstance(point.get(key), int)
+        ]:
+            raise TypeError(
+                f"selected_point needs int {' and '.join(_POINT_KEYS)}, got {point}: "
+                f"bad {bad}"
+            )
+        if (error := self._point_error(point)) is None:
+            return point
+        if from_frontend(self, "selected_point"):
+            return None
+        raise error
+
+    @tl.observe("series")
+    def _reset_selected_point(self, _change: dict[str, Any]) -> None:
+        """Clear a selected point the new series no longer have."""
+        if self.selected_point is not None and self._point_error(self.selected_point):
+            self.selected_point = None
 
     @validator("series")
     def _validate_series(self, proposal: dict[str, Any]) -> list[dict[str, Any]] | None:
