@@ -4,6 +4,7 @@ validation, unknown kwargs and JSON round trips.
 
 from __future__ import annotations
 
+import inspect
 import json
 from typing import Any
 from unittest.mock import Mock
@@ -212,7 +213,7 @@ def test_widget_notebook_integration(widget_cls: type[MatterVizWidget]) -> None:
         (HeatmapMatrixWidget, "color_scale", None),
         (HeatmapMatrixWidget, "tile_size", "50px"),
         (HeatmapMatrixWidget, "gap", "0px"),
-        (SpacegroupBarPlotWidget, "data", {}),
+        (SpacegroupBarPlotWidget, "data", None),
         (SpacegroupBarPlotWidget, "show_counts", True),
         (SpacegroupBarPlotWidget, "show_legend", False),
         (SpacegroupBarPlotWidget, "orientation", "vertical"),
@@ -251,6 +252,17 @@ def test_widget_traitlet_defaults(widget_cls: type, attr: str, expected: Any) ->
             {"y_items": "O"},
             "y_items",
             [{"key": "O", "label": "O"}],
+        ),
+        # dict items fill a missing key or label from the other (as a string)
+        (
+            HeatmapMatrixWidget,
+            {"x_items": [{"label": "a"}, {"key": 5}, {"key": "k", "label": "L"}]},
+            "x_items",
+            [
+                {"key": "a", "label": "a"},
+                {"key": 5, "label": "5"},
+                {"key": "k", "label": "L"},
+            ],
         ),
         (
             PeriodicTableWidget,
@@ -534,8 +546,6 @@ def _widget_subclasses(cls: type = MatterVizWidget) -> list[type]:
         *(
             pytest.param(cls, id=cls.__name__)
             for cls in sorted(set(_widget_subclasses()), key=lambda cls: cls.__name__)
-            # validates its exactly-one-of data args before reaching the base init
-            if cls.__name__ != "FermiSurfaceWidget"
         ),
         pytest.param(
             lambda **kw: pmv.ptable_hists({"Fe": [1.0]}, **kw), id="ptable_hists"
@@ -550,6 +560,23 @@ def test_unknown_kwargs_raise(make_widget: Any) -> None:
     """Typos and unsupported options raise instead of being dropped."""
     with pytest.raises(TypeError, match=r"Unknown \w+ options: \['bogus'\]"):
         make_widget(bogus=1)
+
+
+def test_positional_traits() -> None:
+    """Constructors take their _positional_traits in order, each once."""
+    assert BrillouinZoneWidget(None, {"vertices": []}).bz_data == {"vertices": []}
+    with pytest.raises(
+        TypeError, match=r"Xrd\w+ takes positional \('patterns',\), got 2"
+    ):
+        XrdWidget(None, None)
+    with pytest.raises(TypeError, match=r"got \['doses'\] positionally and as keyword"):
+        DosWidget(None, doses=None)
+    assert str(inspect.signature(BandsAndDosWidget)) == (
+        "(band_structs=None, doses=None, structure=None, *, version_override=None, "
+        "**kwargs)"
+    )
+    with pytest.raises(TypeError, match=r"_positional_traits \('nope',\) must be"):
+        type("Bad", (MatterVizWidget,), {"_positional_traits": ("nope",)})
 
 
 @pytest.mark.parametrize("widget_cls", WIDGET_CASES, ids=lambda cls: cls.__name__)

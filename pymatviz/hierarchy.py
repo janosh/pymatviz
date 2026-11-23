@@ -28,10 +28,15 @@ if TYPE_CHECKING:
     )
 
 
-def _validate_overflow(overflow: Literal["other", "drop"]) -> None:
-    """Reject invalid aggregation modes before preparing plot data."""
+_WIDGETS = {"sunburst": SunburstWidget, "treemap": TreemapWidget}
+
+
+def _check_options(overflow: str, kind: str = "sunburst") -> None:
+    """Reject invalid overflow modes and widget kinds before preparing plot data."""
     if overflow not in ("other", "drop"):
         raise ValueError(f"Invalid {overflow=}, must be 'other' or 'drop'")
+    if kind not in _WIDGETS:
+        raise ValueError(f"Invalid {kind=}, must be 'sunburst' or 'treemap'")
 
 
 def _limit_nodes(
@@ -65,20 +70,6 @@ def _limit_nodes(
     return kept
 
 
-def hierarchy_widget(
-    kind: Literal["sunburst", "treemap"], nodes: list[dict[str, Any]], **kwargs: Any
-) -> SunburstWidget | TreemapWidget:
-    """Sunburst or treemap of hierarchy nodes.
-
-    Raises:
-        ValueError: For any other kind.
-    """
-    if kind not in ("sunburst", "treemap"):
-        raise ValueError(f"Invalid {kind=}, must be 'sunburst' or 'treemap'")
-    widget_cls = SunburstWidget if kind == "sunburst" else TreemapWidget
-    return widget_cls(nodes, **kwargs)
-
-
 def chem_sys_hierarchy(
     data: Sequence[FormulaLike],
     *,
@@ -97,7 +88,7 @@ def chem_sys_hierarchy(
     in one leaf per arity; ``"drop"`` excludes their counts. Additional options,
     such as ``label_text`` and ``max_depth``, go to the widget.
     """
-    _validate_overflow(overflow)
+    _check_options(overflow, kind)
     counts = count_formulas(data, group_by=group_by)
     roots = []
     for arity, group in counts.groupby("arity_name", sort=False):
@@ -127,7 +118,7 @@ def chem_sys_hierarchy(
                 if "children" in node:
                     del node["value"]
         roots.append({"id": arity, "label": arity, "children": children})
-    return hierarchy_widget(kind, roots, **kwargs)
+    return _WIDGETS[kind](roots, **kwargs)
 
 
 def site_environments(
@@ -172,7 +163,7 @@ def chem_env_hierarchy(
     coordination number and environment symbol). Mode "other" combines omitted counts
     into one leaf per group; "drop" omits them. Additional options go to the widget.
     """
-    _validate_overflow(overflow)
+    _check_options(overflow, kind)
     structs = [
         struct
         for struct in normalize_periodic_structures(structures).values()
@@ -204,7 +195,7 @@ def chem_env_hierarchy(
                 children, max_environments, overflow, parent_id=root["id"]
             )
             del root["value"]  # The renderer derives branch totals from visible leaves.
-    return hierarchy_widget(kind, roots, **kwargs)
+    return _WIDGETS[kind](roots, **kwargs)
 
 
 def spacegroup_sunburst(
@@ -239,10 +230,7 @@ def spacegroup_sunburst(
             overflow is invalid.
         TypeError: If the space group of a structure can't be determined.
     """
-    _validate_overflow(overflow)
-    if len(data) == 0:
-        raise ValueError("spacegroup_sunburst requires non-empty data")
-
+    _check_options(overflow)
     numbers = normalize_spacegroups(data)  # merges spellings, settings, int/float
     # symbol inputs are labeled with their canonical short symbol, others by number
     as_symbols = isinstance(pd.Series(data).iloc[0], str)

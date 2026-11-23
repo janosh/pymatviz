@@ -123,7 +123,7 @@ def test_phonon_dos(
             TypeError,
             r"to_phonon_dos takes a kemio, phonopy or pymatgen object.*key ''\)",
         ),
-        (dict(normalize="invalid"), ValueError, "Invalid normalize='invalid'"),
+        (dict(normalize="invalid"), tl.TraitError, "'normalize' trait"),
         (dict(project="invalid"), ValueError, "Invalid project='invalid'"),
         (dict(project="element"), TypeError, "project='element' needs a DOS with site"),
         (

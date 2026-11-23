@@ -118,21 +118,6 @@ def normalize_periodic_structures(
     return struct_dict
 
 
-def spacegroup_numbers(structures: Sequence[PeriodicStructure]) -> list[int]:
-    """Space group numbers of periodic structure-like objects, searched in parallel
-    (disordered sites are told apart by species and occupancy).
-
-    Raises:
-        TypeError: For unsupported or non-periodic inputs, or structures whose
-            symmetry search fails (naming their indices).
-    """
-    structs = list(normalize_periodic_structures(list(structures)).values())
-    numbers = kemio.symmetry_summary(structs).number
-    if failed := [idx for idx, number in enumerate(numbers) if number is None]:
-        raise TypeError(f"Symmetry search failed for structures at indices {failed}")
-    return [number for number in numbers if number is not None]
-
-
 def normalize_spacegroups(data: Sequence[SpacegroupLike] | pd.Series) -> pd.Series:
     """Space group numbers (1-230) from structures, numbers or Hermann-Mauguin/Hall
     symbols (one kind per input), keeping a Series' index and name.
@@ -140,7 +125,8 @@ def normalize_spacegroups(data: Sequence[SpacegroupLike] | pd.Series) -> pd.Seri
     Raises:
         ValueError: If data is empty, contains missing values, invalid symbols,
             or nonintegral/out-of-range space group numbers.
-        TypeError: For mixed or unsupported item types.
+        TypeError: For mixed or unsupported item types, non-periodic structures or
+            failed symmetry searches.
     """
     if len(data) == 0:
         raise ValueError("Cannot normalize empty spacegroup data")
@@ -152,9 +138,15 @@ def normalize_spacegroups(data: Sequence[SpacegroupLike] | pd.Series) -> pd.Seri
         raise ValueError("Space group data must not contain missing values")
 
     # first item short-circuits number/symbol inputs, mixed ones fall to the TypeError
+    # (searched in parallel, disordered sites told apart by species and occupancy)
     if is_structure_like(result.iloc[0]) and all(map(is_structure_like, result)):
-        numbers = spacegroup_numbers(result.tolist())
-        return pd.Series(numbers, index=result.index, name=result.name)
+        structs = list(normalize_periodic_structures(result.tolist()).values())
+        numbers = kemio.symmetry_summary(structs).number
+        if failed := [idx for idx, num in enumerate(numbers) if num is None]:
+            raise TypeError(
+                f"Symmetry search failed for structures at indices {failed}"
+            )
+        return pd.Series(numbers, index=result.index, name=result.name, dtype=int)
 
     if pd.api.types.is_numeric_dtype(result) and not pd.api.types.is_bool_dtype(result):
         invalid = result[(result < 1) | (result > 230) | (result % 1 != 0)]

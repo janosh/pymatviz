@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from pymatviz.data import TEST_FILES, disordered_demo_structures, hea_disordered
+from pymatviz.data import TEST_FILES, disordered_demo_structures
 from pymatviz.structures import (
     normalize_spacegroups,
     normalize_structures,
@@ -76,8 +76,9 @@ def test_to_structure_and_site_helpers() -> None:
     assert vacant.site_occupancies == [{}, {"Fe": 1.0}]
     assert site_symbols(vacant) == ["X", "Fe"]
     assert structure_dict(vacant)["sites"][0]["label"] == "X0+"
-    assert site_elements(hea_disordered) == [{"Fe", "Ni", "Cr"}, {"Al"}]
-    assert site_symbols(hea_disordered) == ["Fe", "Al"]
+    hea = disordered_demo_structures["Fe₀.₅Ni₀.₃Cr₀.₂Al"]
+    assert site_elements(hea) == [{"Fe", "Ni", "Cr"}, {"Al"}]
+    assert site_symbols(hea) == ["Fe", "Al"]
 
     periodic = structure_dict(SI2_STRUCT)
     assert periodic["lattice"]["pbc"] == [True, True, True]

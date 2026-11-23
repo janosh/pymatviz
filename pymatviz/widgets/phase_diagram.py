@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from pymatviz.widgets._schema_traits import PhaseDiagramTraits
 from pymatviz.widgets.matterviz import MatterVizWidget
 
@@ -50,12 +48,4 @@ class PhaseDiagramWidget(PhaseDiagramTraits, MatterVizWidget):
         >>> widget
     """
 
-    def __init__(self, data: dict[str, Any] | None = None, **kwargs: Any) -> None:
-        """Initialize the PhaseDiagramWidget.
-
-        Args:
-            data: Phase diagram data dict with components, temperature_range,
-                regions, and boundaries.
-            **kwargs: Additional widget properties.
-        """
-        super().__init__(data=data, **kwargs)
+    _positional_traits = ("data",)

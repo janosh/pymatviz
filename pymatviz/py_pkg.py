@@ -343,7 +343,7 @@ def py_pkg_treemap(
     *,
     source_dir: str | None = None,
     file_extensions: tuple[str, ...] = (".py",),
-    cell_text_fn: ModuleFormatter | bool = default_module_formatter,
+    cell_text_fn: ModuleFormatter | Literal[False] = default_module_formatter,
     group_by: GroupBy = "module",
     max_module_depth: int | None = None,
     min_lines_for_split: int = 0,
@@ -376,10 +376,9 @@ def py_pkg_treemap(
             ``source_dir``. Defaults to ``(".py",)``. Use ``(".rs",)`` for Rust,
             ``(".ts", ".tsx")`` for TypeScript, etc. Ignored when ``source_dir``
             is None.
-        cell_text_fn (ModuleFormatter | bool): How to display top-level names + counts:
-            - Function that takes name, count, total count and returns string
-            - True: Use default_module_formatter
-            - False: Don't add counts to top-level names
+        cell_text_fn (ModuleFormatter | False): Labels top-level names from (name,
+            count, total count), or False for bare names. Defaults to
+            default_module_formatter.
         group_by (GroupBy): How to group the package modules:
             - "file": Group by filename
             - "directory": Group by top-level directory
@@ -466,33 +465,20 @@ def py_pkg_treemap(
     else:
         df_modules = collect_package_modules(package_names)
 
-    if df_modules.empty:
-        location = source_dir or package_names
-        raise ValueError(f"No source files found in: {location}")
-
-    if cell_size_fn is None:
-        df_modules["cell_value"] = df_modules["line_count"]
-    else:
-        metrics_keys = ModuleStats._fields
-        df_modules["cell_value"] = df_modules.apply(
-            lambda row: cell_size_fn(
-                ModuleStats(**{key: row[key] for key in metrics_keys})
-            ),
-            axis=1,
-        )
-
+    df_modules["cell_value"] = (
+        df_modules["line_count"]
+        if cell_size_fn is None
+        else [
+            cell_size_fn(ModuleStats(*row))
+            for row in df_modules.itertuples(index=False)
+        ]
+    )
     # cell_size_fn returning 0 omits a module
-    df_modules = df_modules[df_modules["cell_value"] > 0]
-
-    if df_modules.empty:
+    df_treemap = df_modules[df_modules["cell_value"] > 0].copy()
+    if df_treemap.empty:
         location = source_dir or package_names
-        raise ValueError(
-            f"No source files found in {location} after filtering by "
-            "cell_size_fn(module) == 0."
-        )
+        raise ValueError(f"No source files of nonzero cell size in {location}")
 
-    # Add color values to the DataFrame if heatmap mode is enabled
-    df_treemap = df_modules.copy()
     has_color_mode = color_by is not None
     if isinstance(color_by, dict):
         df_treemap["color_value"] = [
@@ -597,8 +583,6 @@ def py_pkg_treemap(
     }.get(group_by, ["package", *level_columns])
 
     package_totals = df_treemap.groupby("package")["cell_value"].sum()
-    if cell_text_fn is True:
-        cell_text_fn = default_module_formatter
     total_value = package_totals.sum()
     package_labels = {
         pkg: cell_text_fn(pkg, pkg_total, total_value) if cell_text_fn else pkg

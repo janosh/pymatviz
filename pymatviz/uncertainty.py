@@ -30,7 +30,7 @@ def _load_regression_data(
     a dict of labeled arrays), pulling columns from df when given.
 
     Raises:
-        ValueError: For arrays of wrong shape or with non-finite values.
+        ValueError: For empty arrays, wrong shapes or non-finite values.
     """
     row_mask = None
     if df is None:  # pair Series by index label, not position
@@ -55,6 +55,8 @@ def _load_regression_data(
             row_mask = df[[y_true, y_pred]].notna().all(axis=1).to_numpy()
 
     true_vals, pred_vals = np.asarray(true_vals), np.asarray(pred_vals)
+    if not true_vals.size:
+        raise ValueError("Uncertainty plots need non-empty data")
     std_arrays = {
         str(key): np.asarray(std)
         for key, std in (
@@ -113,8 +115,6 @@ def qq_gaussian(
     """
     y_true, y_pred, y_std = _load_regression_data(y_true, y_pred, y_std, df)
     residuals = y_pred - y_true
-    if len(residuals) == 0:
-        raise ValueError("Q-Q calibration requires non-empty data")
     eps = 1e-10
     exp_proportions = np.linspace(eps, 1 - eps, 100)
     from scipy.stats import norm
@@ -198,8 +198,6 @@ def error_decay_with_uncert(
     y_true, y_pred, y_std = _load_regression_data(y_true, y_pred, y_std, df)
     abs_err = np.abs(y_true - y_pred)
     n_samples = len(abs_err)
-    if n_samples == 0:
-        raise ValueError("error_decay_with_uncert needs non-empty data")
     retained = np.arange(1, n_samples + 1)
     sample_indices = (
         np.linspace(0, n_samples - 1, min(100, n_samples), dtype=int)

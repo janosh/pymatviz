@@ -69,62 +69,35 @@ fe3co4_disordered = kemio.Structure(
     [[0, 0, 0], [0.5, 0.5, 0.5]],
     fractional=True,
 )
-batio3_disordered = kemio.Structure(
-    np.eye(3) * 4.0,
-    [
-        "Ba",  # Pure Ba site
-        {"Ti": 0.6, "Zr": 0.4},  # Disordered Ti/Zr site
-        "O",
-        "O",
-        "O",  # Pure O sites
-    ],
-    [(0, 0, 0), (0.5, 0.5, 0.5), (0.5, 0.5, 0), (0.5, 0, 0.5), (0, 0.5, 0.5)],
-    fractional=True,
-)
-
-# Li-ion cathode with vacancy disorder
-lico2_disordered = kemio.Structure(
-    kemio.lattice_from_parameters(2.82, 2.82, 14.05, 90, 90, 120, c_along_z=True),
-    [
-        {"Li": 0.75},  # Li site with 25% vacancies
-        "Co",
-        "O",
-        "O",
-    ],
-    [(0, 0, 0), (0, 0, 0.5), (0, 0, 0.25), (0, 0, 0.75)],
-    fractional=True,
-)
-
-# High-entropy alloy with ternary disorder (3 species on one site)
-hea_disordered = kemio.Structure(
-    np.eye(3) * 3.6,
-    [
-        {"Fe": 0.5, "Ni": 0.3, "Cr": 0.2},  # Ternary disordered site
-        "Al",  # Pure Al site
-    ],
-    [(0, 0, 0), (0.5, 0.5, 0.5)],
-    fractional=True,
-)
-
-# Complex multisite disorder - solid solution with multiple disordered sites
-solid_solution = kemio.Structure(
-    np.eye(3) * 5.0,
-    [
-        {"Ca": 0.6, "Sr": 0.4},  # Disordered A-site
-        {"Ti": 0.8, "Zr": 0.15, "Hf": 0.05},  # Ternary disordered B-site
-        "O",  # Pure O sites
-        "O",
-        "O",
-    ],
-    [(0, 0, 0), (0.5, 0.5, 0.5), (0.5, 0.5, 0), (0.5, 0, 0.5), (0, 0.5, 0.5)],
-    fractional=True,
-)
 
 disordered_demo_structures: Final[dict[str, kemio.Structure]] = {
-    "BaTi₀.₆Zr₀.₄O₃": batio3_disordered,
-    "Li₀.₇₅CoO₂ (with vacancies)": lico2_disordered,
-    "Fe₀.₅Ni₀.₃Cr₀.₂Al": hea_disordered,
-    "Ca₀.₆Sr₀.₄Ti₀.₈Zr₀.₁₅Hf₀.₀₅O₃": solid_solution,
+    "BaTi₀.₆Zr₀.₄O₃": kemio.Structure(
+        np.eye(3) * 4.0,
+        ["Ba", {"Ti": 0.6, "Zr": 0.4}, "O", "O", "O"],
+        [(0, 0, 0), (0.5, 0.5, 0.5), (0.5, 0.5, 0), (0.5, 0, 0.5), (0, 0.5, 0.5)],
+        fractional=True,
+    ),
+    # Li-ion cathode with 25% Li vacancies
+    "Li₀.₇₅CoO₂ (with vacancies)": kemio.Structure(
+        kemio.lattice_from_parameters(2.82, 2.82, 14.05, 90, 90, 120, c_along_z=True),
+        [{"Li": 0.75}, "Co", "O", "O"],
+        [(0, 0, 0), (0, 0, 0.5), (0, 0, 0.25), (0, 0, 0.75)],
+        fractional=True,
+    ),
+    # high-entropy alloy with 3 species on one site
+    "Fe₀.₅Ni₀.₃Cr₀.₂Al": kemio.Structure(
+        np.eye(3) * 3.6,
+        [{"Fe": 0.5, "Ni": 0.3, "Cr": 0.2}, "Al"],
+        [(0, 0, 0), (0.5, 0.5, 0.5)],
+        fractional=True,
+    ),
+    # solid solution with disordered A and (ternary) B sites
+    "Ca₀.₆Sr₀.₄Ti₀.₈Zr₀.₁₅Hf₀.₀₅O₃": kemio.Structure(
+        np.eye(3) * 5.0,
+        [{"Ca": 0.6, "Sr": 0.4}, {"Ti": 0.8, "Zr": 0.15, "Hf": 0.05}, "O", "O", "O"],
+        [(0, 0, 0), (0.5, 0.5, 0.5), (0.5, 0.5, 0), (0.5, 0, 0.5), (0, 0.5, 0.5)],
+        fractional=True,
+    ),
 }
 
 

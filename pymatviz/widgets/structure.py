@@ -348,17 +348,4 @@ class StructureWidget(StructureVizTraits, StructureTraits, MatterVizWidget):
             check_layer_volume_ids(proposal["value"], volumes)
         return proposal["value"]
 
-    def __init__(
-        self, structure: dict[str, Any] | Any | None = None, **kwargs: Any
-    ) -> None:
-        """Initialize the StructureWidget.
-
-        Args:
-            structure: Structure data -- a pymatgen ``Structure``, ASE
-                ``Atoms``, or a pre-serialized dict. Converted to dict
-                internally. Alternatively, pass ``structure_string`` as
-                a keyword argument with a raw CIF/POSCAR/XYZ string.
-            **kwargs: Additional widget properties (e.g.
-                ``structure_string``, ``atom_radius``, ``show_bonds``).
-        """
-        super().__init__(structure=structure, **kwargs)
+    _positional_traits = ("structure",)

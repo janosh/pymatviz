@@ -346,6 +346,7 @@ def test_chem_env_hierarchy(
     ("structure", "kwargs", "err_cls", "match"),
     [
         (rocksalt(), {"overflow": "keep"}, ValueError, "overflow"),
+        (rocksalt(), {"kind": "pie"}, ValueError, "Invalid kind='pie'"),
         (
             kemio.Structure(None, ["H"] * 2, [[0] * 3, [0.7, 0, 0]], pbc=(False,) * 3),
             {},
@@ -353,7 +354,7 @@ def test_chem_env_hierarchy(
             "Expected structures periodic along a, b and c",
         ),
     ],
-    ids=["invalid-overflow", "non-periodic"],
+    ids=["invalid-overflow", "invalid-kind", "non-periodic"],
 )
 def test_chem_env_rejects_before_classifying(
     structure: kemio.Structure,
@@ -362,11 +363,12 @@ def test_chem_env_rejects_before_classifying(
     match: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Invalid overflow and nonperiodic inputs fail before neighbor analysis."""
+    """Invalid overflow, kind and nonperiodic inputs fail before neighbor analysis."""
     collect = MagicMock()
     monkeypatch.setattr(hierarchy, "site_environments", collect)
+    all_kwargs: dict[str, Any] = {"kind": "treemap", **kwargs}
     with pytest.raises(err_cls, match=match):
-        pmv.chem_env_hierarchy(structure, kind="treemap", **kwargs)
+        pmv.chem_env_hierarchy(structure, **all_kwargs)
     collect.assert_not_called()
 
 

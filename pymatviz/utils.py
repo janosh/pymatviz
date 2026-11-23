@@ -38,15 +38,17 @@ def check_unique_labels(labels: Any, name: str) -> None:
         raise ValueError(f"{name} must be unique, got duplicates {dupes}")
 
 
-def str_labels[T](labeled: Mapping[Any, T]) -> dict[str, T]:
-    """Mapping with its keys as strings.
+def str_labels[T](labeled: Mapping[Any, T] | pd.Series) -> dict[str, T]:
+    """Mapping (or pd.Series) with its keys as strings.
 
     Raises:
-        ValueError: If distinct keys share a string form (e.g. 1 and "1").
+        ValueError: If keys share a string form (e.g. 1 and "1", or a repeated
+            Series index label).
     """
     as_str = {str(key): val for key, val in labeled.items()}
     if len(as_str) < len(labeled):
-        raise ValueError(f"labels must be unique as strings, got {list(labeled)}")
+        keys = list(labeled.keys())
+        raise ValueError(f"labels must be unique as strings, got {keys}")
     return as_str
 
 

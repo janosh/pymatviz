@@ -7,13 +7,8 @@ from typing import Any
 import traitlets as tl
 
 from pymatviz.widgets._schema_traits import BarPlotTraits
-from pymatviz.widgets._traits import (
-    PlotControlsTraits,
-    color_scale_trait,
-    df_series,
-    validator,
-)
-from pymatviz.widgets.matterviz import MatterVizWidget
+from pymatviz.widgets._traits import PlotControlsTraits, color_scale_trait, df_series
+from pymatviz.widgets.matterviz import MatterVizWidget, SeriesPlotMixin
 
 
 def bar_axis_defaults(
@@ -28,7 +23,9 @@ def bar_axis_defaults(
     return {cat_key: category, val_key: value}
 
 
-class BarPlotWidget(PlotControlsTraits, BarPlotTraits, MatterVizWidget):
+class BarPlotWidget(
+    SeriesPlotMixin, PlotControlsTraits, BarPlotTraits, MatterVizWidget
+):
     """MatterViz widget wrapper for grouped/stacked/overlay bar plots."""
 
     orientation = tl.CaselessStrEnum(
@@ -39,14 +36,7 @@ class BarPlotWidget(PlotControlsTraits, BarPlotTraits, MatterVizWidget):
     ).tag(sync=True)
     color_scale = color_scale_trait()
 
-    _raw_json_traits = frozenset({"series"})  # _normalize_series converts them
-
-    @validator("series")
-    def _validate_series(self, proposal: dict[str, Any]) -> list[dict[str, Any]] | None:
-        """Normalize series on init and reassignment (arrays to lists, reject
-        non-finite values) before syncing.
-        """
-        return self._normalize_series(proposal["value"], "BarPlot", binary=False)
+    _binary_series = False
 
     def __init__(
         self,

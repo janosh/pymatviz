@@ -39,33 +39,18 @@ def with_defaults(defaults: dict[str, Any], kwargs: dict[str, Any]) -> dict[str,
     return defaults | kwargs | merged_dicts
 
 
-# pymatgen as_dict() fields MatterViz never draws, up to ~100 MB on projected band
+# as_dict() fields MatterViz never draws, up to ~100 MB on projected band
 # structures: band projections, CompleteDos.pdos, phonon eigendisplacements
 _UNREAD_KEYS = frozenset({"projections", "pdos", "eigendisplacements"})
-
-
-# Empty stand-ins set on a shallow copy so as_dict() never builds those lists
+# Empty stand-ins set on a shallow copy of a pymatgen object so its as_dict() never
+# builds those lists. That also drops what pymatgen derives from them: atom_dos and
+# spd_dos of a CompleteDos and the structure of a projected band structure.
 _UNREAD_ATTRS = {
     "projections": {},
     "pdos": {},
     "eigendisplacements": (),
     "nac_eigendisplacements": [],
 }
-
-
-def _slim_as_dict(obj: Any) -> dict[str, Any]:
-    """``obj.as_dict()`` without the fields MatterViz never reads, serialized from a
-    shallow copy with those fields emptied (the input is not mutated). Emptying them
-    also drops what pymatgen derives from them: ``atom_dos``/``spd_dos`` of a
-    CompleteDos and the ``structure`` of a projected band structure.
-    """
-    import copy
-
-    view = copy.copy(obj)
-    for attr, empty in _UNREAD_ATTRS.items():
-        if attr in vars(view):
-            setattr(view, attr, empty)
-    return {key: val for key, val in view.as_dict().items() if key not in _UNREAD_KEYS}
 
 
 # phonopy objects kemio.interop converts to PhononBands / PhononDos
@@ -126,13 +111,17 @@ def _object_dict(obj: Any) -> dict[str, Any] | None:
         obj = to_phonon_bands(obj)
     elif has_class(obj, *_PHONOPY_DOS):
         obj = to_phonon_dos(obj)
-    if isinstance(
-        obj, (kemio.PhononBands, kemio.PhononDos, ElectronicBands, ElectronicDos)
-    ):
-        return {
-            key: val for key, val in obj.as_dict().items() if key not in _UNREAD_KEYS
-        }
-    return _slim_as_dict(obj) if callable(getattr(obj, "as_dict", None)) else None
+    if not callable(getattr(obj, "as_dict", None)):
+        return None
+    kemio_types = (kemio.PhononBands, kemio.PhononDos, ElectronicBands, ElectronicDos)
+    if not isinstance(obj, kemio_types):  # a shallow copy, the input isn't mutated
+        import copy
+
+        obj = copy.copy(obj)
+        for attr, empty in _UNREAD_ATTRS.items():
+            if attr in vars(obj):
+                setattr(obj, attr, empty)
+    return {key: val for key, val in obj.as_dict().items() if key not in _UNREAD_KEYS}
 
 
 _VASPRUN_SUFFIXES = (".xml", ".xml.gz", ".xml.xz", ".xml.bz2")
@@ -483,11 +472,8 @@ def _formula_dict(formula: str) -> dict[str, float]:
 def _normalize_entry_compositions(
     entries: Sequence[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    """Ensure entry compositions are dicts, parsing formula strings as needed.
-
-    The matterviz frontend expects compositions as ``{element: amount}`` dicts.
-    This converts any string compositions (e.g. ``"Li2O"``) to that format,
-    leaving dict compositions unchanged.
+    """Entries with formula-string compositions (e.g. ``"Li2O"``) parsed to the
+    ``{element: amount}`` dicts matterviz expects, dict compositions unchanged.
     """
     return [
         {**entry, "composition": _formula_dict(entry["composition"])}
@@ -544,9 +530,6 @@ def normalize_convex_hull_entries(obj: Any) -> list[dict[str, Any]] | None:
     ]
 
 
-XRD_PATTERN_KINDS = ("sticks", "profile")
-
-
 def normalize_xrd_pattern(obj: Any) -> dict[str, Any] | None:
     """Convert an XRD pattern to a JSON-serializable dict for matterviz.
 
@@ -594,12 +577,11 @@ def normalize_xrd_pattern(obj: Any) -> dict[str, Any] | None:
                 f"Unsupported type for XRD pattern: {type(obj)}. "
                 "Expected dict, kemio XrdPattern or pymatgen DiffractionPattern."
             )
-        pattern = normalize_plot_json(dict(obj.as_dict()), "XRD pattern")  # matterviz
+        pattern = normalize_plot_json(obj.as_dict(), "XRD pattern")
     if "kind" not in pattern:
         return pattern if pattern.get("hkls") else {**pattern, "kind": "profile"}
-    if pattern["kind"] not in XRD_PATTERN_KINDS:
+    if pattern["kind"] not in (kinds := ["sticks", "profile"]):
         raise ValueError(
-            f"XRD pattern kind={pattern['kind']!r} must be one of "
-            f"{list(XRD_PATTERN_KINDS)}."
+            f"XRD pattern kind={pattern['kind']!r} must be one of {kinds}."
         )
     return pattern

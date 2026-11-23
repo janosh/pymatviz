@@ -29,6 +29,8 @@ class FermiSurfaceWidget(FermiSurfaceTraits, MatterVizWidget):
     k_lattice, fermi_energy}`` or an IFermi ``FermiSurface.as_dict()``; ``band_data``:
     ``{energies: [spin][band][kx][ky][kz], k_grid, k_lattice, fermi_energy}``.
 
+    Pass exactly one of the two, else TraitError.
+
     Examples:
         From raw band grid data (one free-electron band, cut into a sphere):
         >>> import numpy as np
@@ -69,24 +71,7 @@ class FermiSurfaceWidget(FermiSurfaceTraits, MatterVizWidget):
     # Shown only when color_property is "property"
     color_bar = color_bar_trait()
 
-    def __init__(
-        self,
-        fermi_data: dict[str, Any] | None = None,
-        band_data: dict[str, Any] | None = None,
-        **kwargs: Any,
-    ) -> None:
-        """Initialize the FermiSurfaceWidget.
-
-        Args:
-            fermi_data: Pre-computed Fermi surface data with isosurfaces and
-                reciprocal lattice info.
-            band_data: Raw band grid data with energies on a k-grid.
-            **kwargs: Additional widget properties.
-
-        Raises:
-            TraitError: Unless exactly one of fermi_data and band_data is given.
-        """
-        super().__init__(fermi_data=fermi_data, band_data=band_data, **kwargs)
+    _positional_traits = ("fermi_data", "band_data")
 
     @validator("fermi_data", "band_data")
     def _validate_one_source(self, proposal: tl.Bunch) -> Any:

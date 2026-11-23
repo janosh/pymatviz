@@ -14,7 +14,6 @@ from pymatviz.widgets._traits import (
     color_bar_trait,
     color_scale_trait,
     normalized_trait,
-    validator,
 )
 from pymatviz.widgets.matterviz import MatterVizWidget
 
@@ -34,23 +33,17 @@ def _normalize_axis_items(
     """
     result: list[dict[str, Any]] = []
     for item in [items] if isinstance(items, str) else items:
-        if isinstance(item, dict):
-            normalized = normalize_plot_json(item, "HeatmapMatrix.axis_item")
-            key = normalized.get("key")
-            label = normalized.get("label")
-            if key is None and label is None:
-                raise ValueError(
-                    "HeatmapMatrix axis-item dicts must include "
-                    "at least 'key' or 'label'."
-                )
-            if key is None:
-                normalized["key"] = str(label)
-            if label is None:
-                normalized["label"] = str(normalized["key"])
-            result.append(normalized)
-        else:
-            label = str(item)
-            result.append({"key": label, "label": label})
+        if not isinstance(item, dict):
+            result.append({"key": str(item), "label": str(item)})
+            continue
+        normalized = normalize_plot_json(item, "HeatmapMatrix.axis_item")
+        key, label = normalized.get("key"), normalized.get("label")
+        if key is None and label is None:
+            raise ValueError("HeatmapMatrix axis-item dicts need a 'key' or 'label'")
+        key = str(label) if key is None else key
+        result.append(
+            normalized | {"key": key, "label": str(key) if label is None else label}
+        )
     return result
 
 
@@ -71,7 +64,6 @@ class HeatmapMatrixWidget(HeatmapMatrixTraits, MatterVizWidget):
 
     x_items = normalized_trait(_normalize_axis_items, tl.List())
     y_items = normalized_trait(_normalize_axis_items, tl.List())
-    values = tl.Any(allow_none=True).tag(sync=True)
     color_scale = color_scale_trait()
     color_bar = color_bar_trait()
     tile_size = tl.Unicode(default_value="50px").tag(sync=True)
@@ -115,8 +107,3 @@ class HeatmapMatrixWidget(HeatmapMatrixTraits, MatterVizWidget):
             values=values,
             **kwargs,
         )
-
-    @validator("values")
-    def _validate_values(self, proposal: dict[str, Any]) -> Any:
-        """JSON-normalize values (numpy arrays to lists) on every assignment."""
-        return normalize_plot_json(proposal["value"], "HeatmapMatrix.values")

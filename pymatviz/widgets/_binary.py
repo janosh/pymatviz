@@ -12,10 +12,6 @@ from pymatviz.widgets._normalize import normalize_plot_json
 
 
 BINARY_FORMAT = "matterviz-binary-v1"
-TRAJECTORY_RESERVED = {"positions", "numbers", "lattice", "steps"}
-# kemio Structure info keys describing the structure, not frame metadata
-STRUCTURE_INFO_KEYS = ("spin_multiplicity",)
-MAX_ATOMIC_NUMBER = 118
 
 
 def is_binary_envelope(value: Any, kind: str) -> bool:
@@ -47,15 +43,17 @@ def binary_array(
     arr = np.asarray(values)
     if arr.dtype.kind not in "iuf":
         raise ValueError(f"{name} must be a numeric array, got {arr.dtype}")
-    if shape is not None:
-        # strict=False is safe: a length mismatch already fails the ndim check
-        size_pairs = zip(shape, arr.shape, strict=False)
-        wrong_size = any(want not in (None, got) for want, got in size_pairs)
-        if arr.ndim != len(shape) or wrong_size:
-            expected = ", ".join("*" if size is None else str(size) for size in shape)
-            raise ValueError(
-                f"{name} must be a numeric array of shape [{expected}], got {arr.shape}"
-            )
+    # strict=False is safe: a length mismatch already fails the ndim check
+    if shape is not None and (
+        arr.ndim != len(shape)
+        or any(
+            want not in (None, got) for want, got in zip(shape, arr.shape, strict=False)
+        )
+    ):
+        expected = ", ".join("*" if size is None else str(size) for size in shape)
+        raise ValueError(
+            f"{name} must be a numeric array of shape [{expected}], got {arr.shape}"
+        )
     with np.errstate(over="ignore"):
         wire = np.ascontiguousarray(arr, dtype=np.dtype(dtype).newbyteorder("<"))
     if finite and wire.dtype.kind == "f" and not (valid := np.isfinite(wire)).all():
@@ -178,17 +176,6 @@ def volume_envelope(values: Any, **fields: Any) -> dict[str, Any]:
     }
 
 
-def _is_number(value: Any) -> bool:
-    """Recognize real numeric scalars, including 0-d arrays and excluding booleans."""
-    if isinstance(value, int):
-        return not isinstance(value, bool)
-    return (
-        isinstance(value, (float, np.number, np.ndarray))
-        and np.ndim(value) == 0
-        and np.asarray(value).dtype.kind in "iuf"
-    )
-
-
 def object_metadata(structure: Any) -> dict[str, Any]:
     """Metadata of a structure-like object: a kemio Structure's info (extxyz frame
     keys, pymatgen properties) or ASE info, plus ASE calculator results
@@ -196,9 +183,8 @@ def object_metadata(structure: Any) -> dict[str, Any]:
     """
     import kemio
 
-    if isinstance(structure, kemio.Structure):
-        info = structure.info
-        return {key: val for key, val in info.items() if key not in STRUCTURE_INFO_KEYS}
+    if isinstance(structure, kemio.Structure):  # spin describes the structure
+        return {k: v for k, v in structure.info.items() if k != "spin_multiplicity"}
     metadata = getattr(structure, "properties", None) or getattr(structure, "info", {})
     calc = getattr(structure, "calc", None)
     return {**(metadata or {}), **(getattr(calc, "results", None) or {})}
@@ -209,13 +195,9 @@ def frame_item(frame: Any, drop: Collection[str] = ()) -> dict[str, Any]:
     structure's info (minus ``drop`` keys) moved to the item on a copy.
     """
     metadata = object_metadata(frame.structure)
-    structure = frame.structure.replace(  # frame metadata goes to the item
-        info={
-            key: val
-            for key, val in frame.structure.info.items()
-            if key == "spin_multiplicity"
-        }
-    )
+    info = frame.structure.info  # frame metadata goes to the item, spin stays
+    spin = {key: info[key] for key in ("spin_multiplicity",) if key in info}
+    structure = frame.structure.replace(info=spin)
     results = {
         key: val
         for key in ("energy", "free_energy", "forces", "stress")
@@ -249,8 +231,6 @@ def force_stats(forces: np.ndarray) -> dict[str, Any]:
     }
 
 
-# Cells below this volume (Å³) are degenerate: such trajectories go to JSON
-MIN_CELL_VOLUME = 1e-6
 # site data binary channels can't hold, which JSON structures keep
 _JSON_SITE_DATA = frozenset({"labels", "oxidation_states"})
 
@@ -296,7 +276,7 @@ def _channels(traj: Any) -> dict[str, Any] | None:
     scalars = {"steps" if key == "step" else key: val for key, val in scalars.items()}
     stress = traj.stress
     per_frame = [*vectors.values(), *([stress] if stress is not None else [])]
-    reserved = TRAJECTORY_RESERVED - {"steps"}
+    reserved = {"positions", "numbers", "lattice"}
     reserved_clash = (vectors.keys() | scalars.keys()) & reserved
     stress_clash = stress is not None and "frame_stress" in scalars
     stats_clash = vectors.keys() & {"force_max", "force_norm"}
@@ -362,14 +342,14 @@ def trajectory_to_envelope(
     spin = traj.info.pop("spin_multiplicity", None)
     cells = traj.cells
     # matterviz renders Z in 1..118 (a DummySpecies' Z is a hash)
-    z_max = MAX_ATOMIC_NUMBER
-    bad_numbers = not len(numbers) or not 1 <= numbers.min() <= numbers.max() <= z_max
+    bad_numbers = not len(numbers) or not 1 <= numbers.min() <= numbers.max() <= 118
     json_only_sites = traj.charge.any() or traj.site_data.keys() & _JSON_SITE_DATA
     wrong_spin = spin is not None and np.any(spin != 1 + numbers.sum() % 2)
     if bad_numbers or json_only_sites or wrong_spin:
         return None
 
-    if cells is not None and (np.abs(np.linalg.det(cells)) < MIN_CELL_VOLUME).any():
+    # degenerate cells (volume < 1e-6 Å³) go to JSON
+    if cells is not None and (np.abs(np.linalg.det(cells)) < 1e-6).any():
         return None
     if (channels := _channels(traj)) is None:
         return None

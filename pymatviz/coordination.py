@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections import Counter
-from numbers import Real
 from typing import TYPE_CHECKING, Any, Literal, get_args
 
 import kemio
@@ -212,15 +211,13 @@ def coordination_vs_cutoff_line(
     Returns:
         ScatterPlotWidget: one line per structure and element.
     """
-    if len(cutoff_range) != 2 or not all(
-        isinstance(cutoff, Real) and not isinstance(cutoff, bool)
-        for cutoff in cutoff_range
-    ):
-        raise TypeError(f"Invalid {cutoff_range=}, expected (min_cutoff, max_cutoff)")
     if num_points < 1:
         raise ValueError(f"{num_points=} must be positive")
+    min_cutoff, max_cutoff = cutoff_range
+    if bool in map(type, cutoff_range) or min(min_cutoff, max_cutoff) < 0:
+        raise ValueError(f"Invalid {cutoff_range=}, expected two cutoffs >= 0")
     struct_dict = str_labels(normalize_structures(structures))
-    cutoffs = np.linspace(float(cutoff_range[0]), float(cutoff_range[1]), num_points)
+    cutoffs = np.linspace(float(min_cutoff), float(max_cutoff), num_points)
     elem_colors = _element_colors(element_colors)
     multi_struct = len(struct_dict) > 1
     # (n_sites, n_cutoffs) CNs per structure from one neighbor search each

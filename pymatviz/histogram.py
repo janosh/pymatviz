@@ -66,8 +66,7 @@ def elements_hist(
     if max_elements is not None and max_elements < 1:  # head(-n) drops the last n
         raise ValueError(f"{max_elements=} must be a positive integer or None")
     elem_counts = count_elements(values, count_mode)
-    negative = elem_counts[elem_counts < 0]
-    if len(negative) > 0:
+    if len(negative := elem_counts[elem_counts < 0]):
         raise ValueError(f"element counts must be >= 0, got {negative.to_dict()}")
     non_zero = elem_counts[elem_counts > 0].sort_values(ascending=False)
     total_count = non_zero.sum()  # percent labels are shares of all elements

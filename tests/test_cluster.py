@@ -244,11 +244,7 @@ def test_project_vectors_random_state(sample_data: np.ndarray) -> None:
         (100, {"method": "invalid_method"}, "Unknown projection method="),
         (100, {"n_components": 1}, "n_components must be at least 2"),
         (1, {"n_components": 2}, "Need at least n_components=2 samples, got 1"),
-        (
-            100,
-            {"method": ProjectionMethod.tsne, "n_components": 4},
-            "t-SNE visualization typically uses 2 or 3 components",
-        ),
+        (100, {"method": ProjectionMethod.tsne, "n_components": 4}, ""),  # sklearn
         (3, {"method": ProjectionMethod.umap}, "UMAP needs at least n_components"),
     ],
 )
@@ -535,10 +531,13 @@ def test_projection_stats(
     [
         ({"n_components": 4}, ValueError, "n_components=4 must be 2 or 3"),
         ({"embedding_method": "invalid_method"}, ValueError, "embedding_method="),
+        ({"embedding_method": None}, ValueError, "embedding_method=None must be in"),
+        ({"projection": None}, ValueError, "projection=None must be in"),
+        ({"prop_name": "property", "sort": "asc"}, TypeError, "Invalid sort"),
         (
             {"df": pd.DataFrame({"composition": [object(), object()]})},
             TypeError,
-            "Expected str or Composition",
+            "Expected a formula string",
         ),
         (
             {"n_components": 3, "show_chem_sys": "shape"},
@@ -656,6 +655,10 @@ def test_custom_embedding_and_projection(df_prop: pd.DataFrame) -> None:
     assert widget.projector is None
     assert widget.x_axis == {"label": "my_project 1"}
     np.testing.assert_array_equal(points(widget)["x"], widget.embeddings[:, 0])
+    widget = pmv.cluster_compositions(
+        df_prop, embedding_method=my_embed, projection=lambda emb, **_: emb[:, :2]
+    )
+    assert widget.x_axis == {"label": "Component 1"}  # lambdas get a generic label
 
 
 def test_annotate_points(df_prop: pd.DataFrame) -> None:

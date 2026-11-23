@@ -29,6 +29,13 @@ class BandsAndDosWidget(
     paths, or pre-computed dicts. Pass
     ``{label: obj}`` dicts to overlay several band structures / DOS curves.
 
+    ``doses`` labels must match ``band_structs``'. An optional ``structure``
+    (pymatgen, ASE, PhonopyAtoms or structure dict) adds its Brillouin zone with
+    the bands' k-path. ``fermi_level`` applies to both panels, ``show_legend``
+    to the bands, ``stack``, ``sigma`` (THz for phonons, eV for electrons),
+    ``normalize`` and ``spin_mode`` to the DOS. Mismatched labels, or
+    ``stack=True`` with DOS on different grids, raise TraitError.
+
     Examples:
         From kemio phonon bands and DOS (NaCl demo data):
         >>> import pymatviz as pmv
@@ -55,38 +62,7 @@ class BandsAndDosWidget(
     # DOS smearing width in the data unit: THz for phonons, eV for electrons
     sigma = optional_trait(tl.Float, min=0.0)
 
-    def __init__(
-        self,
-        band_structs: Any | None = None,
-        doses: Any | None = None,
-        structure: Any | None = None,
-        **kwargs: Any,
-    ) -> None:
-        """Initialize the BandsAndDosWidget.
-
-        Args:
-            band_structs: Band structure data -- a kemio PhononBands or
-                ElectronicBands, pymatgen BandStructure, BandStructureSymmLine or
-                PhononBandStructureSymmLine, phonopy BandStructure, a vasprun.xml
-                path, a dict, or a ``{label: band_structure}`` dict of those.
-            doses: DOS data -- a kemio PhononDos or ElectronicDos, pymatgen Dos,
-                CompleteDos or PhononDos, phonopy TotalDos or Phonopy, a vasprun.xml
-                path, a dict, or a ``{label: dos}`` dict with the same labels as
-                band_structs.
-            structure: Optional crystal (pymatgen Structure, ASE Atoms, PhonopyAtoms
-                or structure dict) adding its Brillouin zone with the bands' k-path.
-            **kwargs: Additional widget properties, e.g. ``fermi_level`` for both
-                panels, ``show_legend`` for the bands panel, or ``stack``, ``sigma``
-                (THz for phonons, eV for electrons), ``normalize``, and ``spin_mode``
-                for the DOS panel.
-
-        Raises:
-            TraitError: If band_structs and doses labels differ, or ``stack=True``
-                and the DOS have different grids.
-        """
-        super().__init__(
-            band_structs=band_structs, doses=doses, structure=structure, **kwargs
-        )
+    _positional_traits = ("band_structs", "doses", "structure")
 
     @validator("band_structs", "doses", "stack")
     def _check_stack_grids(self, proposal: tl.Bunch) -> Any:

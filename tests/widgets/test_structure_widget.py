@@ -132,7 +132,8 @@ def test_site_indices_in_range_of_sites(
     indices beyond its sites.
     """
     n_sites = len(fe3co4_disordered)
-    widget = StructureWidget(structure=fe3co4_disordered, **{trait_name: [0, 1]})
+    indices: dict[str, Any] = {trait_name: [0, 1]}
+    widget = StructureWidget(structure=fe3co4_disordered, **indices)
     for bad in ([0, n_sites], [-1]):
         bad_idx = bad[-1]
         with pytest.raises(
@@ -149,7 +150,8 @@ def test_site_indices_in_range_of_sites(
     # standardized cells and structures Python doesn't hold have unknown site counts
     widget.cell_type = "conventional"
     setattr(widget, trait_name, [5])
-    no_structure = StructureWidget(structure_string="...", **{trait_name: [5]})
+    indices = {trait_name: [5]}
+    no_structure = StructureWidget(structure_string="...", **indices)
     assert getattr(no_structure, trait_name) == [5]
 
 
@@ -279,10 +281,12 @@ def test_widget_isosurface_layer_volume_ids(
 ) -> None:
     """Isosurface layers must name a volume_id that matches a loaded volume."""
     settings = {"layers": [layer]}
-    for kwargs in (  # both trait orders: cross-validation runs after __init__
+    # both trait orders: cross-validation runs after __init__
+    trait_orders: list[dict[str, Any]] = [
         dict(isosurface_settings=settings, volumetric_data=volumes),
         dict(volumetric_data=volumes, isosurface_settings=settings),
-    ):
+    ]
+    for kwargs in trait_orders:
         if match is None:
             assert StructureWidget(**kwargs).isosurface_settings == settings
         else:

@@ -140,13 +140,16 @@ class WidgetLink:
                         "scatter series to carry point_ids (structure indices)"
                     )
 
+        sources = {
+            TrajectoryWidget: (self._on_trajectory, "current_step_idx"),
+            ScatterPlotWidget: (self._on_scatter, "active_point"),
+            PeriodicTableWidget: (self._on_ptable, "active_elements"),
+        }
         for widget in self.widgets:
-            if isinstance(widget, TrajectoryWidget):
-                self._add_observer(widget, self._on_trajectory, "current_step_idx")
-            elif isinstance(widget, ScatterPlotWidget):
-                self._add_observer(widget, self._on_scatter, "active_point")
-            elif isinstance(widget, PeriodicTableWidget):
-                self._add_observer(widget, self._on_ptable, "active_elements")
+            for cls, (handler, trait_name) in sources.items():
+                if isinstance(widget, cls):
+                    widget.observe(handler, names=trait_name)
+                    self._observers.append((widget, handler, trait_name))
 
         # initial sync so all sinks reflect the starting index (a trajectory's
         # current step if present, else 0)
@@ -159,11 +162,6 @@ class WidgetLink:
             0,
         )
         self._broadcast(initial)
-
-    def _add_observer(self, widget: Any, handler: Any, trait_name: str) -> None:
-        """Register a traitlets observer and remember it for ``unlink``."""
-        widget.observe(handler, names=trait_name)
-        self._observers.append((widget, handler, trait_name))
 
     def _on_trajectory(self, change: dict[str, Any]) -> None:
         """Broadcast a trajectory step change to the other widgets."""

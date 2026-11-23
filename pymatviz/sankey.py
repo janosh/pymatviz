@@ -98,15 +98,11 @@ def sankey_flow_data(
         .size()
         .sort_values(ascending=False, kind="stable")
     )
-    pairs = [(*key, count) for key, count in flows.items()]
     n_linked_rows = flows.sum()
-
-    # one node per value per side (a value in both columns gets two)
+    # one node per value per side (a value in both columns gets two), in order of
+    # first appearance in the flows
+    side_counts = [flows.groupby(level=lvl, sort=False).sum() for lvl in (0, 1)]
     node_ids: list[dict[Any, int]] = [{}, {}]
-    side_counts: list[dict[Any, int]] = [{}, {}]
-    for *vals, count in pairs:
-        for counts, val in zip(side_counts, vals, strict=True):
-            counts[val] = counts.get(val, 0) + count
     nodes: list[dict[str, Any]] = []
     for col, counts, ids in zip((source, target), side_counts, node_ids, strict=True):
         for val, count in counts.items():
@@ -126,6 +122,6 @@ def sankey_flow_data(
 
     links = [
         {"source": node_ids[0][src_val], "target": node_ids[1][tgt_val], "value": count}
-        for src_val, tgt_val, count in pairs
+        for (src_val, tgt_val), count in flows.items()
     ]
     return {"nodes": nodes, "links": links}

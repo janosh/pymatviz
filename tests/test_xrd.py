@@ -99,6 +99,7 @@ def test_xrd_pattern_mapping() -> None:
             for val, err in [
                 (0, (ValueError, "At least one diffraction intensity")),
                 (-1, (ValueError, "must be finite and non-negative")),
+                (None, (ValueError, "must be finite and non-negative")),
                 (np.nan, (ValueError, "non-finite|must be finite")),
                 (np.inf, (ValueError, "non-finite|must be finite")),
             ]
@@ -106,12 +107,12 @@ def test_xrd_pattern_mapping() -> None:
         (  # labels colliding as strings raise instead of dropping a pattern
             {1: MOCK_XRD_PATTERN, "1": MOCK_XRD_PATTERN},
             ValueError,
-            "Labels must be unique as strings",
+            "labels must be unique as strings",
         ),
         (
             pd.Series([MOCK_XRD_PATTERN] * 2, index=["a", "a"]),
             ValueError,
-            r"Labels must be unique as strings, got \['a', 'a'\]",
+            r"labels must be unique as strings, got \['a', 'a'\]",
         ),
         (pd.Series([], dtype=object), ValueError, "patterns must not be empty"),
     ],

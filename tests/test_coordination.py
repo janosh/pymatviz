@@ -341,18 +341,23 @@ def test_coordination_vs_cutoff_line_disordered_structure(
             FileNotFoundError,
             "no structure file at 'invalid input'",
         ),
-        *(
-            (
-                cubic_structure(5, ["Si"], [[0, 0, 0]]),
-                {"cutoff_range": cutoff_range},
-                TypeError,
-                "expected \\(min_cutoff, max_cutoff\\)",
-            )
-            for cutoff_range in [(1, 2, 3), (True, 3), ("1", 3)]
-        ),
+        (NACL, {"cutoff_range": (1, 2, 3)}, ValueError, "too many values to unpack"),
+        (NACL, {"cutoff_range": "15"}, TypeError, ""),
+        (NACL, {"cutoff_range": (-1, 3)}, ValueError, "expected two cutoffs >= 0"),
+        (NACL, {"cutoff_range": (True, 3)}, ValueError, "expected two cutoffs >= 0"),
+        (NACL, {"cutoff_range": ("1", 3)}, TypeError, ""),
         (NACL, {"num_points": 0}, ValueError, "num_points=0 must be positive"),
     ],
-    ids=["empty_list", "invalid_str", "3_tuple", "bool", "str", "no_points"],
+    ids=[
+        "empty_list",
+        "invalid_str",
+        "3_tuple",
+        "str",
+        "negative",
+        "bool",
+        "str_elem",
+        "no_points",
+    ],
 )
 def test_coordination_vs_cutoff_line_invalid_inputs(
     structs: Any, kwargs: dict[str, Any], err_cls: type[Exception], match: str

@@ -8,11 +8,9 @@ import math
 import re
 from collections import defaultdict
 from collections.abc import Mapping
-from numbers import Number
 from typing import TYPE_CHECKING
 
 import kemio
-import numpy as np
 import pandas as pd
 from kemio.interop import is_composition_like
 from pandas.api.types import is_numeric_dtype, is_string_dtype
@@ -130,25 +128,21 @@ def count_elements(
         )
 
     try:  # integer keys (or their strings) are atomic numbers
-        atomic_numbers = srs.index.astype(int)
+        numbers = srs.index.astype(int)
     except (ValueError, TypeError):
         pass
     else:
-        if any(
-            isinstance(key, Number) and key != number
-            for key, number in zip(srs.index, atomic_numbers, strict=True)
-        ):
+        if (numbers != srs.index.astype(float)).any():
             raise ValueError(
                 f"Atomic numbers must be integers, got: {srs.index.tolist()}"
             )
-        numbers = np.asarray(atomic_numbers, dtype=int)
-        if len(numbers) and (numbers.min() < 1 or numbers.max() > 118):
+        if ((numbers < 1) | (numbers > 118)).any():
             raise ValueError(
                 "element value keys were found to be integers and assumed to represent "
                 f"atomic numbers, but values range from {numbers.min()} to "
                 f"{numbers.max()}, expected range [1, 118]."
             )
-        srs.index = atomic_numbers.map(element_symbols)
+        srs.index = numbers.map(element_symbols)
 
     check_unique_labels(srs, "element keys")  # reindex would fail on duplicates
     bad_symbols = srs.index.difference(df_ptable.index)

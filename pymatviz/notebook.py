@@ -23,63 +23,50 @@ if TYPE_CHECKING:
     from pymatviz.widgets.matterviz import MatterVizWidget
 
 
-# (module defining the classes, class names, widget class, constructor kwarg), matched
-# by dotted class name so nothing is imported until such an object is displayed.
-# pymatgen's PhaseDiagram is an energy convex hull, so it maps to ConvexHullWidget.
-_DISPLAY_SPECS: tuple[tuple[str, tuple[str, ...], type[MatterVizWidget], str], ...] = (
-    ("kemio", ("Structure",), StructureWidget, "structure"),
-    ("kemio", ("Composition",), CompositionWidget, "composition"),
-    ("kemio", ("PhononBands",), BandStructureWidget, "band_structs"),
-    ("kemio", ("PhononDos",), DosWidget, "doses"),
-    ("kemio", ("XrdPattern",), XrdWidget, "patterns"),
-    ("kemio", ("PhaseDiagram",), ConvexHullWidget, "entries"),
-    ("kemio.electronic", ("ElectronicBands",), BandStructureWidget, "band_structs"),
-    ("kemio.electronic", ("ElectronicDos",), DosWidget, "doses"),
-    (
-        "pymatgen.core.structure",
-        ("Structure", "IStructure", "Molecule", "IMolecule"),
-        StructureWidget,
-        "structure",
+# Displayable classes by dotted name, so nothing is imported until such an object is
+# displayed. pymatgen's PhaseDiagram is an energy convex hull, hence ConvexHullWidget.
+_DISPLAY_SPECS: dict[tuple[type[MatterVizWidget], str], tuple[str, ...]] = {
+    (StructureWidget, "structure"): (
+        "kemio.Structure",
+        "pymatgen.core.structure.Structure",
+        "pymatgen.core.structure.IStructure",
+        "pymatgen.core.structure.Molecule",
+        "pymatgen.core.structure.IMolecule",
+        "ase.atoms.Atoms",
+        "phonopy.structure.atoms.PhonopyAtoms",
     ),
-    ("ase.atoms", ("Atoms",), StructureWidget, "structure"),
-    ("phonopy.structure.atoms", ("PhonopyAtoms",), StructureWidget, "structure"),
-    (
-        "pymatgen.electronic_structure.bandstructure",
-        ("BandStructure", "BandStructureSymmLine"),
-        BandStructureWidget,
-        "band_structs",
+    (CompositionWidget, "composition"): (
+        "kemio.Composition",
+        "pymatgen.core.composition.Composition",
     ),
-    (
-        "pymatgen.phonon.bandstructure",
-        ("PhononBandStructureSymmLine",),
-        BandStructureWidget,
-        "band_structs",
+    (BandStructureWidget, "band_structs"): (
+        "kemio.PhononBands",
+        "kemio.electronic.ElectronicBands",
+        "pymatgen.electronic_structure.bandstructure.BandStructure",
+        "pymatgen.electronic_structure.bandstructure.BandStructureSymmLine",
+        "pymatgen.phonon.bandstructure.PhononBandStructureSymmLine",
+        "phonopy.phonon.band_structure.BandStructure",
     ),
-    ("pymatgen.electronic_structure.dos", ("Dos", "CompleteDos"), DosWidget, "doses"),
-    ("pymatgen.phonon.dos", ("PhononDos",), DosWidget, "doses"),
-    ("phonopy.phonon.dos", ("TotalDos",), DosWidget, "doses"),
-    (
-        "phonopy.phonon.band_structure",
-        ("BandStructure",),
-        BandStructureWidget,
-        "band_structs",
+    (DosWidget, "doses"): (
+        "kemio.PhononDos",
+        "kemio.electronic.ElectronicDos",
+        "pymatgen.electronic_structure.dos.Dos",
+        "pymatgen.electronic_structure.dos.CompleteDos",
+        "pymatgen.phonon.dos.PhononDos",
+        "phonopy.phonon.dos.TotalDos",
     ),
-    (
-        "pymatgen.analysis.diffraction.core",
-        ("DiffractionPattern",),
-        XrdWidget,
-        "patterns",
+    (XrdWidget, "patterns"): (
+        "kemio.XrdPattern",
+        "pymatgen.analysis.diffraction.core.DiffractionPattern",
     ),
-    ("pymatgen.analysis.phase_diagram", ("PhaseDiagram",), ConvexHullWidget, "entries"),
-    ("pymatgen.core.composition", ("Composition",), CompositionWidget, "composition"),
-)
-_WIDGET_OF = {
-    f"{module}.{name}": (widget_cls, param)
-    for module, names, widget_cls, param in _DISPLAY_SPECS
-    for name in names
+    (ConvexHullWidget, "entries"): (
+        "kemio.PhaseDiagram",
+        "pymatgen.analysis.phase_diagram.PhaseDiagram",
+    ),
 }
+_WIDGET_OF = {name: spec for spec, names in _DISPLAY_SPECS.items() for name in names}
 # Printers notebook_mode replaced in IPython, restored when it is turned off
-_previous_printers: dict[tuple[str, str], Any] = {}
+_previous_printers: dict[str, Any] = {}
 
 
 def _display_spec(obj: Any) -> tuple[type[MatterVizWidget], str] | None:
@@ -122,19 +109,16 @@ def _widget_mime_bundle(obj: Any) -> dict[str, Any] | tuple[dict, dict] | None:
     return create_widget(obj)._repr_mimebundle_()
 
 
-def _set_marimo_display(
-    module_path: str, class_names: tuple[str, ...], *, on: bool
-) -> None:
-    """Add (or remove) create_widget as _display_ on the importable classes."""
+def _set_marimo_display(module_path: str, class_name: str, *, on: bool) -> None:
+    """Add (or remove) create_widget as _display_ on the class if importable."""
     try:
-        module = importlib.import_module(module_path)
-    except ImportError:
+        cls = getattr(importlib.import_module(module_path), class_name)
+    except (ImportError, AttributeError):
         return
-    for cls in filter(None, (getattr(module, name, None) for name in class_names)):
-        if on and not hasattr(cls, "_display_"):
-            cls._display_ = create_widget  # ty: ignore[invalid-assignment]
-        elif not on and vars(cls).get("_display_") is create_widget:
-            del cls._display_
+    if on and not hasattr(cls, "_display_"):
+        cls._display_ = create_widget  # ty: ignore[invalid-assignment]
+    elif not on and vars(cls).get("_display_") is create_widget:
+        del cls._display_
 
 
 def notebook_mode(*, on: bool) -> None:
@@ -158,22 +142,21 @@ def notebook_mode(*, on: bool) -> None:
     in_marimo = "marimo" in sys.modules
     if shell is None and not in_marimo:
         raise RuntimeError("notebook_mode needs a running IPython session or marimo")
-    for module_path, class_names, _widget_cls, _param in _DISPLAY_SPECS:
+    for dotted_name in _WIDGET_OF:
+        key = module_path, class_name = dotted_name.rsplit(".", 1)
         if in_marimo:
-            _set_marimo_display(module_path, class_names, on=on)
+            _set_marimo_display(module_path, class_name, on=on)
         if shell is None:
             continue
         formatter = shell.display_formatter.mimebundle_formatter
-        for class_name in class_names:
-            key = (module_path, class_name)
-            # pop by name also finds printers IPython already resolved to the type
-            current = formatter.pop(f"{module_path}.{class_name}", None)
-            if on:
-                _previous_printers.setdefault(key, current)
-                formatter.for_type_by_name(*key, _widget_mime_bundle)
-            elif current is not _widget_mime_bundle and current is not None:
-                formatter.for_type_by_name(*key, current)  # a third party's, keep it
-            elif (previous := _previous_printers.get(key)) is not None:
-                formatter.for_type_by_name(*key, previous)
+        # pop by name also finds printers IPython already resolved to the type
+        current = formatter.pop(dotted_name, None)
+        if on:
+            _previous_printers.setdefault(dotted_name, current)
+            formatter.for_type_by_name(*key, _widget_mime_bundle)
+        elif current is not _widget_mime_bundle and current is not None:
+            formatter.for_type_by_name(*key, current)  # a third party's, keep it
+        elif (previous := _previous_printers.get(dotted_name)) is not None:
+            formatter.for_type_by_name(*key, previous)
     if not on:
         _previous_printers.clear()

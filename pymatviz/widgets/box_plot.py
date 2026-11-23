@@ -7,16 +7,13 @@ from typing import Any
 import traitlets as tl
 
 from pymatviz.widgets._schema_traits import BoxPlotTraits
-from pymatviz.widgets._traits import (
-    PlotControlsTraits,
-    df_series,
-    optional_trait,
-    validator,
-)
-from pymatviz.widgets.matterviz import MatterVizWidget
+from pymatviz.widgets._traits import PlotControlsTraits, df_series, optional_trait
+from pymatviz.widgets.matterviz import MatterVizWidget, SeriesPlotMixin
 
 
-class BoxPlotWidget(PlotControlsTraits, BoxPlotTraits, MatterVizWidget):
+class BoxPlotWidget(
+    SeriesPlotMixin, PlotControlsTraits, BoxPlotTraits, MatterVizWidget
+):
     """MatterViz widget for box, violin and raincloud plots of raw distributions.
 
     Each series holds the raw samples in ``y``; quartiles, whiskers and the KDE are
@@ -34,12 +31,7 @@ class BoxPlotWidget(PlotControlsTraits, BoxPlotTraits, MatterVizWidget):
         tl.Union, trait_types=[tl.Float(), tl.Enum(["silverman", "scott"])]
     )
 
-    _raw_json_traits = frozenset({"series"})  # _normalize_series converts them
-
-    @validator("series")
-    def _validate_series(self, proposal: dict[str, Any]) -> list[dict[str, Any]] | None:
-        """Normalize series (raw samples in ``y``, binary when large) before syncing."""
-        return self._normalize_series(proposal["value"], "BoxPlot", keys=("y",))
+    _series_keys = ("y",)  # raw samples
 
     def __init__(
         self,

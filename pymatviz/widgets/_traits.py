@@ -40,18 +40,25 @@ EXPORT_FORMATS = ("png", "svg", "csv", "json", "md", "tex")
 CONTROLS_MODES = ("always", "hover", "never")  # svelte-widgets ControlsConfig.mode
 
 
-def as_trait_error(exc: Exception) -> tl.TraitError:
-    """TraitError naming exc's type and message, to raise ``from exc``."""
-    return tl.TraitError(f"{type(exc).__name__}: {exc}")
-
-
-def validator(*names: str) -> Callable[[Callable[..., Any]], Any]:
-    """``tl.validate`` re-raising any error of the validator as TraitError. Inside
+def trait_errors[**P, R](func: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> R:
+    """``func(*args, **kwargs)``, its errors re-raised as TraitError. Inside
     ``hold_trait_notifications()`` (which widget constructors use) validators run
     when the batch ends, and traitlets rolls the batch back only for a TraitError:
     any other error (e.g. a KeyError or FileNotFoundError while converting the value)
-    left the invalid value set and synced. An iterator value (e.g. a generator)
-    reaches the validator as the list of its items.
+    would leave the invalid value set and synced.
+    """
+    try:
+        return func(*args, **kwargs)
+    except tl.TraitError:
+        raise
+    except Exception as exc:
+        raise tl.TraitError(f"{type(exc).__name__}: {exc}") from exc
+
+
+def validator(*names: str) -> Callable[[Callable[..., Any]], Any]:
+    """``tl.validate`` re-raising any error of the validator as TraitError (see
+    ``trait_errors``). An iterator value (e.g. a generator) reaches the validator as
+    the list of its items.
     """
 
     def decorator(func: Callable[..., Any]) -> Any:
@@ -60,13 +67,8 @@ def validator(*names: str) -> Callable[[Callable[..., Any]], Any]:
         @functools.wraps(func)
         def checked(obj: Any, proposal: tl.Bunch) -> Any:
             """Func's validated value, its errors as TraitError."""
-            try:
-                value = materialize_iterator(proposal["value"])
-                return func(obj, tl.Bunch(proposal, value=value))
-            except tl.TraitError:
-                raise
-            except Exception as exc:
-                raise as_trait_error(exc) from exc
+            value = trait_errors(materialize_iterator, proposal["value"])
+            return trait_errors(func, obj, tl.Bunch(proposal, value=value))
 
         return tl.validate(*names)(checked)
 
@@ -187,11 +189,10 @@ class _JsonNormalized(tl.TraitType):
         if _is_stored_value(self, obj, value):
             return value
         value = materialize_iterator(value)  # raw traits too, before the List check
-        if self.name not in getattr(obj, "_raw_json_traits", ()):  # plain HasTraits
-            try:
-                value = normalize_plot_json(value, f"{type(obj).__name__}.{self.name}")
-            except Exception as exc:
-                raise as_trait_error(exc) from exc
+        mro = type(obj).__mro__
+        if not any(self.name in vars(cls).get("_raw_json_traits", ()) for cls in mro):
+            label = f"{type(obj).__name__}.{self.name}"
+            value = trait_errors(normalize_plot_json, value, label)
         return super()._validate(obj, value)
 
 
@@ -264,12 +265,7 @@ class _Normalized(tl.Any):
         """Normalized value, validated by the output trait. The normalizer's errors
         become TraitError, which rolls back ``hold_trait_notifications()`` batches.
         """
-        try:
-            normalized = self.normalize(materialize_iterator(value))
-        except tl.TraitError:
-            raise
-        except Exception as exc:
-            raise as_trait_error(exc) from exc
+        normalized = trait_errors(self.normalize, materialize_iterator(value))
         return self.output.validate(obj, normalized)
 
 
@@ -345,12 +341,7 @@ class HierarchyPlotTraits(PlotControlsTraits):
     zoom_root_id = optional_trait(
         tl.Union, trait_types=[tl.Int(), tl.Float(), tl.Unicode()]
     )
-
-    def __init__(
-        self, data: dict[str, Any] | list[dict[str, Any]] | None = None, **kwargs: Any
-    ) -> None:
-        """Display labeled nodes with leaf values and optional children."""
-        super().__init__(data=data, **kwargs)
+    _positional_traits = ("data",)  # node dict or list of root nodes
 
     @validator("zoom_root_id")
     def _reject_bool_zoom_root_id(self, proposal: tl.Bunch) -> Any:

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sys
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 from unittest.mock import patch
 
 import numpy as np
@@ -199,7 +199,11 @@ def test_find_package_path_sys_path_fallback(
 @pytest.mark.parametrize(
     ("cell_text_fn", "expected_in_labels", "expected_not_in_labels"),
     [
-        (True, [" lines", "%)", "my_pkg (", "another_pkg ("], []),  # Default formatter
+        (
+            py_pkg.default_module_formatter,
+            [" lines", "%)", "my_pkg (", "another_pkg ("],
+            [],
+        ),
         (False, ["my_pkg", "another_pkg"], ["(", " lines"]),  # No formatting
         (  # Custom formatter
             lambda pkg, count, total: f"PKG: {pkg} [{count}/{total}]",
@@ -209,7 +213,7 @@ def test_find_package_path_sys_path_fallback(
     ],
 )
 def test_py_pkg_treemap_cell_text_fn(
-    cell_text_fn: ModuleFormatter | bool,
+    cell_text_fn: ModuleFormatter | Literal[False],
     expected_in_labels: list[str],
     expected_not_in_labels: list[str],
 ) -> None:
@@ -231,7 +235,7 @@ def test_py_pkg_treemap_cell_text_fn(
     [
         (
             dict(cell_size_fn=lambda _cell: 0),
-            "No source files found .* after filtering by cell_size_fn",
+            "No source files of nonzero cell size in",
         ),
         (dict(group_by="package"), "Invalid group_by='package', must be one of"),
         (
@@ -708,7 +712,7 @@ def test_treemap_source_dir_no_matching_files(tmp_path: Path) -> None:
     empty = tmp_path / "no_rs"
     empty.mkdir()
     (empty / "readme.md").write_text("# hello\n")
-    with pytest.raises(ValueError, match="No source files found"):
+    with pytest.raises(ValueError, match="No source files of nonzero cell size"):
         pmv.py_pkg_treemap("proj", source_dir=str(empty), file_extensions=(".rs",))
 
 

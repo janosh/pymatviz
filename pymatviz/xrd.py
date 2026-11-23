@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 
 from pymatviz.structures import is_structure_like, to_structure
+from pymatviz.utils import str_labels
 from pymatviz.widgets._normalize import normalize_xrd_pattern
 from pymatviz.widgets.xrd import XrdWidget
 
@@ -48,8 +49,8 @@ def xrd_plot(
         **kwargs: Passed to XrdWidget, e.g. ``style`` or ``controls_open``.
 
     Raises:
-        ValueError: If patterns are empty, an intensity is negative or not finite,
-            or no intensity is positive.
+        ValueError: If patterns are empty, labels collide as strings, an intensity
+            is negative or not finite, or no intensity is positive.
         TypeError: If patterns is not a structure or pattern, or a mapping of them.
 
     Returns:
@@ -62,40 +63,38 @@ def xrd_plot(
         and isinstance(patterns["x"], list | tuple | np.ndarray | pd.Series)
     )
     is_single = not isinstance(patterns, Mapping | pd.Series) or is_pattern_dict
-    # (label, pattern) pairs: a Series (e.g. a df column) may repeat index labels
-    labeled = [("XRD Pattern", patterns)] if is_single else list(patterns.items())
+    labeled = str_labels({"XRD Pattern": patterns} if is_single else patterns)
     if not labeled:
         raise ValueError("patterns must not be empty")
+    # patterns of all structures in one (parallel) kemio call
+    structs = {
+        label: to_structure(val)
+        for label, val in labeled.items()
+        if is_structure_like(val)
+    }
+    if structs:
+        xrd_patterns = kemio.xrd_patterns([*structs.values()], wavelength=wavelength)
+        labeled |= dict(zip(structs, xrd_patterns, strict=True))
     computed: dict[str, dict[str, Any]] = {}
-    for raw_label, value in labeled:
-        label = str(raw_label)
-        pattern_obj = value
-        if is_structure_like(value):
-            struct = to_structure(value)
-            (pattern_obj,) = kemio.xrd_patterns([struct], wavelength=wavelength)
+    for label, value in labeled.items():
         expected = (
             f"{label!r}: expected a structure (kemio, pymatgen, ASE, phonopy), "
-            f"XrdPattern or DiffractionPattern, got {type(pattern_obj).__name__}"
+            f"XrdPattern or DiffractionPattern, got {type(value).__name__}"
         )
-        try:
-            pattern = normalize_xrd_pattern(pattern_obj)
+        try:  # non-finite intensities raise here
+            pattern = normalize_xrd_pattern(value)
         except TypeError as exc:
             raise TypeError(expected) from exc
         if pattern is None:
             raise TypeError(expected)
-        intensities = np.asarray(pattern.get("y", []), dtype=float)
+        intensities = np.asarray(pattern["y"], dtype=float)
         if len(intensities) == 0:
-            raise ValueError(
-                f"No intensities found in the diffraction pattern for {label}"
-            )
+            raise ValueError(f"No intensities found in the diffraction pattern {label}")
         if not np.isfinite(intensities).all() or np.any(intensities < 0):
             raise ValueError(
                 f"Intensities for {label!r} must be finite and non-negative"
             )
         computed[label] = pattern
-    if len(computed) != len(labeled):
-        labels = [label for label, _ in labeled]
-        raise ValueError(f"Labels must be unique as strings, got {labels}")
     if not any(np.any(np.asarray(pat["y"]) > 0) for pat in computed.values()):
         raise ValueError("At least one diffraction intensity must be positive")
     return XrdWidget(

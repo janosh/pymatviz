@@ -115,15 +115,13 @@ def phonon_dos(
         DosWidget: MatterViz density of states plot.
 
     Raises:
-        ValueError: If doses is empty, normalize or project is invalid, or stacking a
+        ValueError: If doses is empty, project is invalid, or stacking a
             projection would also stack its total or several DOS onto each other,
             or stacked DOS have different frequency grids.
         TypeError: If a DOS is unsupported or project is set for a DOS without site
             projections.
+        TraitError: If normalize is invalid.
     """
-    valid_normalize = (None, "max", "sum", "integral")
-    if normalize not in valid_normalize:
-        raise ValueError(f"Invalid {normalize=}, must be one of {valid_normalize}.")
     if project not in (None, "element", "site"):
         raise ValueError(f"Invalid {project=}, must be 'element' or 'site'")
     raw_doses = dict(doses) if isinstance(doses, Mapping) else {"": doses}

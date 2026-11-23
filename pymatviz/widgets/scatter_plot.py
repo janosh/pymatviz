@@ -16,10 +16,9 @@ from pymatviz.widgets._traits import (
     df_series,
     from_frontend,
     index_error,
-    optional_trait,
     validator,
 )
-from pymatviz.widgets.matterviz import MatterVizWidget
+from pymatviz.widgets.matterviz import MatterVizWidget, SeriesPlotMixin
 
 
 _POINT_KEYS = ("series_idx", "point_idx")
@@ -35,7 +34,9 @@ def _n_points(series_entry: Any) -> int | None:
     return len(x_vals) if hasattr(x_vals, "__len__") else None
 
 
-class ScatterPlotWidget(PlotControlsTraits, ScatterPlotTraits, MatterVizWidget):
+class ScatterPlotWidget(
+    SeriesPlotMixin, PlotControlsTraits, ScatterPlotTraits, MatterVizWidget
+):
     """MatterViz widget wrapper for 2D scatter/line plots.
 
     The payload follows matterviz `ScatterPlot` props with a Python-friendly API.
@@ -45,9 +46,6 @@ class ScatterPlotWidget(PlotControlsTraits, ScatterPlotTraits, MatterVizWidget):
     color_bar = color_bar_trait()
     # Size legend props; {} shows it when markers vary in size, None hides it
     size_legend = JsonDict(default_value={}, allow_none=True).tag(sync=True)
-    # Density contours per series: True for defaults or a dict of levels, bandwidth,
-    # filled, fill_opacity, stroke_width
-    density_contours = optional_trait(tl.Union, trait_types=[tl.Bool(), tl.Dict()])
 
     def __init__(
         self,
@@ -68,15 +66,15 @@ class ScatterPlotWidget(PlotControlsTraits, ScatterPlotTraits, MatterVizWidget):
             color: DataFrame column to split into one series per value.
             **kwargs: Widget traits, e.g. axis/range configs (``x_axis``
                 dicts, ``[min, max]`` ``x_range`` lists), ``styles``, ``color_scale``,
-                ``fill_regions``, ``error_bands``, ``marker_renderer`` (``"auto"``,
-                ``"svg"`` or ``"canvas"``) or ``selected_point``
+                ``fill_regions``, ``error_bands``, ``density_contours`` (True or a
+                dict of levels, bandwidth, filled, fill_opacity, stroke_width),
+                ``marker_renderer`` (``"auto"``, ``"svg"`` or ``"canvas"``) or
+                ``selected_point``
                 (``{"series_idx", "point_idx"}`` to highlight; observe
                 ``active_point`` to react to clicks).
         """
         series = df_series(series, color, kwargs, x=x, y=y)
         super().__init__(series=series, **kwargs)
-
-    _raw_json_traits = frozenset({"series"})  # _normalize_series converts them
 
     def _point_error(self, point: dict[str, Any]) -> IndexError | None:
         """IndexError if ``point`` addresses no point of the current series."""
@@ -120,8 +118,3 @@ class ScatterPlotWidget(PlotControlsTraits, ScatterPlotTraits, MatterVizWidget):
         """Clear a selected point the new series no longer have."""
         if self.selected_point is not None and self._point_error(self.selected_point):
             self.selected_point = None
-
-    @validator("series")
-    def _validate_series(self, proposal: dict[str, Any]) -> list[dict[str, Any]] | None:
-        """Normalize series on init and reassignment, binary when large."""
-        return self._normalize_series(proposal["value"], "ScatterPlot")

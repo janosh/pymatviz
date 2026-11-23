@@ -5,7 +5,6 @@ annotations and ECDF lines.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from numbers import Real
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -175,24 +174,12 @@ def annotate_metrics[Widget: ScatterPlotWidget | BinnedScatterPlotWidget](
     _check_widget(widget)
     if isinstance(metrics, str):
         metrics = [metrics]
-    if not isinstance(metrics, (Mapping, list, tuple, set)):
-        raise TypeError(
-            f"metrics must be dict|list|tuple|set, not {type(metrics).__name__}"
-        )
     # label -> precomputed number or name of the metric to compute
     label_to_metric: dict[str, float | str] = (
         {str(label): val for label, val in metrics.items()}
         if isinstance(metrics, Mapping)
         else {str(name): str(name) for name in metrics}
     )
-    if bad_vals := {
-        label: val
-        for label, val in label_to_metric.items()
-        if not isinstance(val, (Real, str))
-    }:
-        raise TypeError(
-            f"metrics values must be numbers or metric names, got {bad_vals}"
-        )
     funcs = dict(BUILTIN_METRICS)
     for name in {val for val in label_to_metric.values() if isinstance(val, str)}:
         if name not in funcs:

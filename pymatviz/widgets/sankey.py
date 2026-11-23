@@ -44,12 +44,4 @@ class SankeyWidget(PlotControlsTraits, SankeyTraits, MatterVizWidget):
             )
         return data
 
-    def __init__(self, data: dict[str, Any] | None = None, **kwargs: Any) -> None:
-        """Initialize a Sankey widget.
-
-        Args:
-            data: ``{"nodes": [...], "links": [...]}`` flow data.
-            **kwargs: Widget traits, e.g. ``orientation``, ``node_align``,
-                ``link_color_mode``, ``value_format``.
-        """
-        super().__init__(data=data, **kwargs)
+    _positional_traits = ("data",)

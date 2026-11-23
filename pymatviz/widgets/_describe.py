@@ -34,8 +34,7 @@ def _minmax(values: Any) -> list[float] | None:
             except OverflowError:
                 continue
             if math.isfinite(num):
-                minimum = min(minimum, num)
-                maximum = max(maximum, num)
+                minimum, maximum = min(minimum, num), max(maximum, num)
         elif isinstance(item, np.ndarray) and item.dtype.kind in "iuf":
             if (finite := item[np.isfinite(item)]).size:
                 minimum = min(minimum, float(finite.min()))
@@ -134,11 +133,6 @@ def _source_flags(
 ) -> dict[str, Any]:
     """Report which optional data sources are populated (e.g. structures/patterns)."""
     return {f"has_{key}": widget_data.get(key) is not None for key in keys}
-
-
-def _describe_structure(data: Mapping[str, Any]) -> dict[str, Any]:
-    """Facts for a single structure."""
-    return _structure_facts(data.get("structure"))
 
 
 def _describe_trajectory(data: Mapping[str, Any]) -> dict[str, Any]:
@@ -310,11 +304,6 @@ _describe_xrd = functools.partial(
 )
 
 
-def _describe_bands_and_dos(data: Mapping[str, Any]) -> dict[str, Any]:
-    """Combined band-structure and DOS facts."""
-    return {**_describe_band_structure(data), **_describe_dos(data)}
-
-
 def _describe_hierarchy(data: Mapping[str, Any]) -> dict[str, Any]:
     """Node/leaf counts and depth for a chart hierarchy."""
     tree = data.get("data")
@@ -360,14 +349,6 @@ def _describe_coordination_bar_plot(data: Mapping[str, Any]) -> dict[str, Any]:
     return {"n_structures": len(structures)}
 
 
-def _describe_brillouin_zone(data: Mapping[str, Any]) -> dict[str, Any]:
-    """Data source flags plus structure facts for a Brillouin zone."""
-    return {
-        **_source_flags(data, ("structure", "bz_data")),
-        **_describe_structure(data),
-    }
-
-
 # Facts for 2D scatter/bar plots (3D adds a z-axis range, histograms bin along x)
 _describe_xy = functools.partial(_xy_facts, axes=("x", "y"))
 _describe_xyz = functools.partial(_xy_facts, axes=("x", "y", "z"))
@@ -384,7 +365,7 @@ _HANDLERS: dict[str, Any] = {
     "box_plot": _describe_box,
     "sankey": _describe_sankey,
     "coordination_bar_plot": _describe_coordination_bar_plot,
-    "structure": _describe_structure,
+    "structure": lambda data: _structure_facts(data.get("structure")),
     "trajectory": _describe_trajectory,
     "periodic_table": _describe_periodic_table,
     "heatmap_matrix": _describe_heatmap_matrix,
@@ -395,23 +376,30 @@ _HANDLERS: dict[str, Any] = {
     "spacegroup_bar": _describe_spacegroup_bar,
     "dos": _describe_dos,
     "band_structure": _describe_band_structure,
-    "bands_and_dos": _describe_bands_and_dos,
+    "bands_and_dos": lambda data: _describe_band_structure(data) | _describe_dos(data),
     "sunburst": _describe_hierarchy,
     "treemap": _describe_hierarchy,
     # which optional data source is populated (structures/patterns, fermi/band)
     "rdf_plot": functools.partial(_source_flags, keys=("structures", "patterns")),
     "fermi_surface": functools.partial(_source_flags, keys=("fermi_data", "band_data")),
-    "brillouin_zone": _describe_brillouin_zone,
+    "brillouin_zone": lambda data: (
+        _source_flags(data, ("structure", "bz_data"))
+        | _structure_facts(data.get("structure"))
+    ),
 }
 
+# plot widget_type -> the series key whose samples it draws
+_SAMPLE_KEYS = {
+    "scatter_plot": "x",
+    "bar_plot": "x",
+    "scatter_plot_3d": "x",
+    "binned_scatter_plot": "x",
+    "histogram": "values",
+    "box_plot": "y",
+}
 # widget_type -> the primary data traitlet whose emptiness implies a blank render
 _PRIMARY_DATA: dict[str, str | tuple[str, ...]] = {
-    "scatter_plot": "series",
-    "bar_plot": "series",
-    "histogram": "series",
-    "scatter_plot_3d": "series",
-    "binned_scatter_plot": "series",
-    "box_plot": "series",
+    **dict.fromkeys(_SAMPLE_KEYS, "series"),
     "sankey": "data",
     "coordination_bar_plot": "structures",
     "phase_diagram": "data",
@@ -472,17 +460,6 @@ def short_summary(report: Mapping[str, Any]) -> str:
         if key in report:
             return f"{widget_type}: {report[key]} {noun}"
     return str(widget_type)
-
-
-# plot widget_type -> the series key whose samples it draws
-_SAMPLE_KEYS = {
-    "scatter_plot": "x",
-    "bar_plot": "x",
-    "scatter_plot_3d": "x",
-    "binned_scatter_plot": "x",
-    "histogram": "values",
-    "box_plot": "y",
-}
 
 
 def check_inputs(widget_data: Mapping[str, Any]) -> list[str]:

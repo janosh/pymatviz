@@ -16,15 +16,12 @@ from pymatviz.widgets._traits import (
     df_series,
     validator,
 )
-from pymatviz.widgets.matterviz import MatterVizWidget
+from pymatviz.widgets.matterviz import MatterVizWidget, SeriesPlotMixin
 
 
-def _n_series(series: list[Any] | None) -> int:
-    """Series count of a ``series`` trait value (None: no series)."""
-    return 0 if series is None else len(series)
-
-
-class HistogramWidget(PlotControlsTraits, HistogramTraits, MatterVizWidget):
+class HistogramWidget(
+    SeriesPlotMixin, PlotControlsTraits, HistogramTraits, MatterVizWidget
+):
     """MatterViz widget wrapper for histogram visualizations. Each series holds the
     raw samples to bin in ``values``; binning happens in the frontend.
 
@@ -41,19 +38,13 @@ class HistogramWidget(PlotControlsTraits, HistogramTraits, MatterVizWidget):
     selected_series_idx = JsonInt(default_value=0).tag(sync=True)
     show_legend = JsonBool(default_value=True).tag(sync=True)
 
-    _raw_json_traits = frozenset({"series"})  # _normalize_series converts them
-
-    @validator("series")
-    def _validate_series(self, proposal: dict[str, Any]) -> list[dict[str, Any]] | None:
-        """Normalize series on init and reassignment, including batched updates."""
-        return self._normalize_series(
-            proposal["value"], "Histogram", keys=("values",), binary=False
-        )
+    _series_keys = ("values",)  # raw samples
+    _binary_series = False
 
     @validator("selected_series_idx")
     def _check_series_idx(self, proposal: dict[str, Any]) -> int:
         """Reject indices beyond the series (clamping frontend ones)."""
-        n_series = _n_series(self.series)
+        n_series = len(self.series or [])
         return checked_position(
             self, "selected_series_idx", proposal["value"], n_series, "series"
         )
@@ -62,7 +53,7 @@ class HistogramWidget(PlotControlsTraits, HistogramTraits, MatterVizWidget):
     def _clamp_series_idx(self, change: dict[str, Any]) -> None:
         """Move the active series to the last of fewer new series."""
         self.selected_series_idx = clamped_position(
-            self.selected_series_idx, _n_series(change["new"])
+            self.selected_series_idx, len(change["new"] or [])
         )
 
     def __init__(

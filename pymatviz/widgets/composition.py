@@ -74,6 +74,12 @@ def _composition_dict(composition: FormulaLike) -> dict[str, float]:
 class CompositionWidget(CompositionTraits, MatterVizWidget):
     """MatterViz widget for visualizing compositions in Python notebooks.
 
+    ``composition`` is a formula, ``{element: amount}`` dict, kemio or pymatgen
+    Composition, or structure (negative amounts allowed). Mappings and
+    pymatgen structures with oxidation states (``"Fe2+"`` keys, ``Species``)
+    keep them: Fe2+ and Fe3+ show as separate segments colored by Fe. Formula
+    strings sum them per element.
+
     Examples:
         Basic usage:
         >>> import pymatviz as pmv
@@ -102,15 +108,4 @@ class CompositionWidget(CompositionTraits, MatterVizWidget):
         sync=True
     )
 
-    def __init__(self, composition: FormulaLike | None = None, **kwargs: Any) -> None:
-        """Initialize the CompositionWidget.
-
-        Args:
-            composition: A formula string, {element: amount} dict, kemio or
-                pymatgen Composition, or structure (negative amounts allowed).
-                Mappings and pymatgen structures with oxidation states (``"Fe2+"``
-                keys, pymatgen ``Species``) keep them: Fe2+ and Fe3+ show as separate
-                segments colored by Fe. Formula strings sum them per element.
-            **kwargs: Additional widget properties
-        """
-        super().__init__(composition=composition, **kwargs)
+    _positional_traits = ("composition",)

@@ -77,14 +77,4 @@ class XrdWidget(PlotControlsTraits, XrdTraits, MatterVizWidget):
 
     patterns = normalized_trait(_normalize_patterns)
 
-    def __init__(self, patterns: Any | None = None, **kwargs: Any) -> None:
-        """Initialize the XrdWidget.
-
-        Args:
-            patterns: XRD pattern data: a kemio XrdPattern, pymatgen
-                DiffractionPattern, a dict with x (2-theta angles) and y
-                (intensities) keys, or a ``{label: pattern}`` mapping of those.
-            **kwargs: Additional widget properties (e.g. ``controls_open`` to
-                start with the control pane expanded).
-        """
-        super().__init__(patterns=patterns, **kwargs)
+    _positional_traits = ("patterns",)

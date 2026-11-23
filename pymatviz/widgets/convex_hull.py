@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 import traitlets as tl
 
 from pymatviz.widgets._normalize import normalize_convex_hull_entries
@@ -49,12 +47,4 @@ class ConvexHullWidget(ConvexHullTraits, MatterVizWidget):
     show_unstable = JsonBool(default_value=True).tag(sync=True)
     show_hull_faces = JsonBool(default_value=True).tag(sync=True)
 
-    def __init__(self, entries: Any | None = None, **kwargs: Any) -> None:
-        """Initialize the ConvexHullWidget.
-
-        Args:
-            entries: Convex hull data -- a kemio or pymatgen PhaseDiagram,
-                pymatgen entries, or a list of dicts with composition and energy keys.
-            **kwargs: Additional widget properties.
-        """
-        super().__init__(entries=entries, **kwargs)
+    _positional_traits = ("entries",)

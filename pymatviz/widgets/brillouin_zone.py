@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import functools
-from typing import Any
 
 from pymatviz.widgets._normalize import normalize_plot_json, structure_to_dict
 from pymatviz.widgets._schema_traits import BrillouinZoneTraits
@@ -43,19 +42,4 @@ class BrillouinZoneWidget(BrillouinZoneTraits, MatterVizWidget):
     )
     default_k_path = JsonBool(default_value=True).tag(sync=True)
 
-    def __init__(
-        self,
-        structure: Any | None = None,
-        bz_data: dict[str, Any] | None = None,
-        **kwargs: Any,
-    ) -> None:
-        """Initialize the BrillouinZoneWidget.
-
-        Args:
-            structure: A pymatgen Structure, ASE Atoms, PhonopyAtoms or structure
-                dict (see ``structure_to_dict``). The BZ is computed by the matterviz
-                frontend from the lattice.
-            bz_data: Pre-computed BZ data with vertices, faces, and edges.
-            **kwargs: Additional widget properties.
-        """
-        super().__init__(structure=structure, bz_data=bz_data, **kwargs)
+    _positional_traits = ("structure", "bz_data")

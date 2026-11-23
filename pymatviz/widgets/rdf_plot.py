@@ -40,6 +40,10 @@ class RdfPlotWidget(PlotControlsTraits, RdfPlotTraits, MatterVizWidget):
     Accepts pre-computed RDF patterns or structure data for on-the-fly computation.
     Provide either ``structures`` or ``patterns``, not both.
 
+    ``structures`` is a structure (kemio, pymatgen, ASE, phonopy or structure
+    dict), or a list or ``{label: structure}`` dict of them. ``patterns`` is a
+    keyword-only list of ``{label, pattern: {r, g_r}}`` dicts.
+
     Examples:
         From a kemio Structure (or pymatgen Structure, ASE Atoms, structure dict):
         >>> import numpy as np
@@ -63,24 +67,7 @@ class RdfPlotWidget(PlotControlsTraits, RdfPlotTraits, MatterVizWidget):
     cutoff = JsonFloat(default_value=15).tag(sync=True)  # > 0, see _validate_cutoff
     n_bins = JsonInt(default_value=75, min=1).tag(sync=True)
 
-    def __init__(
-        self,
-        structures: Any | None = None,
-        *,
-        patterns: Any | None = None,
-        **kwargs: Any,
-    ) -> None:
-        """Initialize the RdfPlotWidget.
-
-        Args:
-            structures: A structure (kemio, pymatgen, ASE, phonopy or structure
-                dict), or a list or ``{label: structure}`` dict of them, for
-                on-the-fly RDF computation.
-            patterns: Pre-computed RDF entries (list of
-                ``{label, pattern: {r, g_r}}`` dicts).
-            **kwargs: Additional widget properties.
-        """
-        super().__init__(structures=structures, patterns=patterns, **kwargs)
+    _positional_traits = ("structures",)
 
     @validator("structures", "patterns")
     def _validate_one_source(self, proposal: tl.Bunch) -> Any:

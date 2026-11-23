@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import math
 import warnings
-from typing import TYPE_CHECKING, Any, Literal, Protocol, cast
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 import pandas as pd
@@ -21,7 +21,7 @@ from pymatviz.widgets.scatter_plot_3d import ScatterPlot3DWidget
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Mapping, Sequence
+    from collections.abc import Callable, Mapping, Sequence
 
     from kemio.interop import CompositionLike
     from numpy.typing import ArrayLike
@@ -182,8 +182,6 @@ def project_vectors(
         )
 
     elif method == "tsne":
-        if n_components > 3:
-            raise ValueError("t-SNE visualization typically uses 2 or 3 components")
         # Adjust perplexity for small datasets
         default_perplexity = min(30, n_samples / 3)  # t-SNE default is 30
         tsne_kwargs = {
@@ -203,10 +201,8 @@ def project_vectors(
             )
         try:
             from umap import UMAP
-        except ImportError:
-            raise ImportError(
-                "UMAP requires the 'umap-learn' package: pip install umap-learn"
-            ) from None
+        except ImportError as exc:
+            raise ImportError("UMAP needs umap-learn: pip install umap-learn") from exc
         reducer = UMAP(
             n_components=n_components,
             random_state=random_state,
@@ -280,24 +276,6 @@ class ClusterScatterPlot3D(ScatterPlot3DWidget):
     embeddings: np.ndarray | None = None
 
 
-class ProjectionCallable(Protocol):
-    """Protocol for custom projection functions."""
-
-    def __call__(
-        self, embeddings: np.ndarray, n_components: int, **kwargs: Any
-    ) -> np.ndarray:
-        """Project embeddings to lower dimensions."""
-        ...
-
-
-class EmbeddingCallable(Protocol):
-    """Protocol for custom embedding functions."""
-
-    def __call__(self, compositions: Sequence[str], **kwargs: Any) -> np.ndarray:
-        """Convert compositions to embeddings."""
-        ...
-
-
 class EmbeddingMethod(LabelEnum):
     """Supported embedding methods for composition vectorization."""
 
@@ -320,21 +298,13 @@ ShowChemSys = Literal["color", "shape", "color+shape"]
 type ColorScale = str | dict[str, Any]
 
 
-def _composition_strings(
-    compositions: Iterable[Any], *, strict: bool = True
-) -> list[str]:
-    """Convert compositions to a list of formula strings."""
-    comp_strs: list[str] = []
-    for comp in compositions:
-        if is_composition_like(comp):
-            comp_strs.append(
-                comp if isinstance(comp, str) else to_composition(comp).formula
-            )
-        elif strict:
-            raise TypeError(f"Expected str or Composition, got {comp=}")
-        else:
-            comp_strs.append(str(comp))
-    return comp_strs
+def _formula(comp: Any) -> str:
+    """Formula of a composition-like value, other values (e.g. labels next to
+    pre-computed coordinates) as str.
+    """
+    if isinstance(comp, str) or not is_composition_like(comp):
+        return str(comp)
+    return to_composition(comp).formula
 
 
 def cluster_compositions(
@@ -344,8 +314,8 @@ def cluster_compositions(
     prop_name: str | None = None,
     embedding_method: str
     | EmbeddingMethod
-    | EmbeddingCallable = EmbeddingMethod.magpie,
-    projection: ProjectionMethod | ProjectionCallable | str,
+    | Callable[..., np.ndarray] = EmbeddingMethod.magpie,
+    projection: ProjectionMethod | Callable[..., np.ndarray] | str,
     n_components: int = 2,
     marker_size: float = 8,
     show_chem_sys: ShowChemSys | None = None,
@@ -531,19 +501,18 @@ def cluster_compositions(
     embeddings: np.ndarray | None = None
     if using_precomputed_coords:
         projected = np.array([np.array(coords) for coords in df[projection]])
-        comp_strs = _composition_strings(compositions, strict=False)
+        comp_strs = [_formula(comp) for comp in compositions]
     else:
         if isinstance(compositions.iloc[0], (list, np.ndarray)):
             # composition_col holds pre-computed embeddings, label points by index
             comp_strs = df.index.tolist()
             embeddings = np.array([np.array(val) for val in compositions])
         else:
-            comp_strs = _composition_strings(compositions)
-            if isinstance(embedding_method, str) and embedding_method in df:
+            comp_strs = [_formula(comp) for comp in compositions]
+            if not isinstance(embedding_method, str) and callable(embedding_method):
+                embeddings = embedding_method(compositions, **embedding_kwargs)
+            elif embedding_method in df:
                 embeddings = np.array([np.array(val) for val in df[embedding_method]])
-            elif callable(embedding_method):
-                embedding_fn = cast("EmbeddingCallable", embedding_method)
-                embeddings = embedding_fn(compositions, **embedding_kwargs)
             elif embedding_method == EmbeddingMethod.one_hot:
                 embeddings = one_hot_encode(compositions, **embedding_kwargs)
             elif embedding_method == EmbeddingMethod.magpie:
@@ -555,15 +524,14 @@ def cluster_compositions(
                     "column name in the DataFrame or precomputed embeddings"
                 )
 
-        if callable(projection):
-            projection_fn = cast("ProjectionCallable", projection)
-            projected = projection_fn(
+        if not isinstance(projection, str) and callable(projection):
+            projected = projection(
                 embeddings, n_components=n_components, **projection_kwargs
             )
         else:
             try:
                 projection_method = ProjectionMethod(projection)
-            except (TypeError, ValueError) as exc:
+            except ValueError as exc:
                 raise ValueError(
                     f"{projection=} must be in "
                     f"{[method.value for method in ProjectionMethod]}, "
@@ -578,14 +546,13 @@ def cluster_compositions(
 
     proj_name = projection if is_method_name else "coordinates"
     coord_names = [f"{proj_name}{dim}" for dim in range(1, n_components + 1)]
-    if using_precomputed_coords:  # For pre-computed coordinates, use generic label
-        method_label = "Component"
-    elif is_method_name:  # For built-in projection methods, use standardized labels
+    # built-in methods have standard labels, custom functions their name (column
+    # names of pre-computed coordinates and lambdas a generic one)
+    method_label = getattr(projection, "__name__", "<lambda>")
+    if is_method_name:
         method_label = ProjectionMethod(projection).label
-    else:  # custom projection functions are labeled by name
-        method_label = getattr(projection, "__name__", "Component")
-        if method_label == "<lambda>":
-            method_label = "Component"
+    elif method_label == "<lambda>":
+        method_label = "Component"
     axis_labels = [f"{method_label} {dim}" for dim in range(1, n_components + 1)]
 
     stats_lines: list[str] = []

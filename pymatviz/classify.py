@@ -185,20 +185,10 @@ def _classifier_series(
     build_series: Callable[[str, np.ndarray, np.ndarray], tuple[dict[str, Any], float]],
     required_classes: tuple[float, ...],
 ) -> list[dict[str, Any]]:
-    """One line series per classifier, sorted by a score (descending).
-
-    Args:
-        targets (ArrayLike | str): Ground truth labels (see roc_curve).
-        probs_positive (Predictions): Per-classifier probabilities (see roc_curve).
-        df (pd.DataFrame | None): Optional DataFrame holding both columns.
-        build_series (Callable): Given (name, targets_no_nan, probs_no_nan), returns
-            the series dict (x, y, label, metadata) and the score to sort by.
-        required_classes (tuple[float, ...]): Classes (0 negative, 1 positive) each
-            classifier's non-NaN rows must contain for its curve to be defined.
-
-    Raises:
-        ValueError: If targets hold more than 2 classes, a classifier's probabilities
-            don't match targets in shape or its targets lack any of required_classes.
+    """One line series per classifier (arguments as in roc_curve), sorted by the
+    score build_series returns with each series dict from (name, binary targets,
+    probabilities) without NaN rows. Each classifier's targets must hold
+    required_classes (0 negative, 1 positive) for its curve to be defined.
     """
     if df is not None:
         if not isinstance(targets, str):

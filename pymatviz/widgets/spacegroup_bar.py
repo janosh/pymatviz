@@ -12,7 +12,7 @@ import traitlets as tl
 
 from pymatviz.widgets._normalize import materialize_iterator
 from pymatviz.widgets._schema_traits import SpacegroupBarTraits
-from pymatviz.widgets._traits import JsonBool, validator
+from pymatviz.widgets._traits import JsonBool, normalized_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -49,12 +49,12 @@ def spacegroup_counts(data: Any) -> dict[str, int]:
     from pymatviz.structures import normalize_spacegroups
 
     data = materialize_iterator(data)  # e.g. generators, which have no len()
-    if data is not None and not isinstance(data, Sized):
+    if not isinstance(data, Sized):
         raise TypeError(
             "Space group data must be a sequence, iterator or mapping, got "
             f"{type(data).__name__}: {data!r}"
         )
-    if data is None or len(data) == 0:
+    if len(data) == 0:
         return {}
     if isinstance(data, Mapping):
         counts = np.array([_count_int(count, data) for count in data.values()])
@@ -93,23 +93,11 @@ class SpacegroupBarPlotWidget(SpacegroupBarTraits, MatterVizWidget):
         {'62': 3, '166': 1, '225': 2}
     """
 
-    data = tl.Any(allow_none=True).tag(sync=True)  # validated into {"<number>": count}
+    data = normalized_trait(spacegroup_counts)  # into {"<number>": count}
     show_counts = JsonBool(default_value=True).tag(sync=True)
     show_legend = JsonBool(default_value=False).tag(sync=True)
     orientation = tl.CaselessStrEnum(
         values=["vertical", "horizontal"], default_value="vertical"
     ).tag(sync=True)
 
-    def __init__(self, data: Any = None, **kwargs: Any) -> None:
-        """Initialize a space group bar plot widget.
-
-        Args:
-            data: Space group numbers/symbols/structures or a count mapping.
-            **kwargs: Additional widget properties.
-        """
-        super().__init__(data=data, **kwargs)
-
-    @validator("data")
-    def _validate_data(self, proposal: dict[str, Any]) -> dict[str, int]:
-        """Count space groups on construction and reassignment."""
-        return spacegroup_counts(proposal["value"])
+    _positional_traits = ("data",)

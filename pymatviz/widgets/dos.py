@@ -41,6 +41,8 @@ class DosWidget(StackedDosCheck, PlotControlsTraits, DosTraits, MatterVizWidget)
     Accepts kemio PhononDos and ElectronicDos, pymatgen Dos, CompleteDos and
     PhononDos, phonopy TotalDos and Phonopy objects, vasprun.xml paths, or a
     pre-computed dict. Pass a ``{label: dos}`` dict to overlay several DOS curves.
+    Phonopy objects need ``run_total_dos()`` first. ``stack=True`` raises
+    TraitError for DOS on different grids.
 
     Examples:
         From a kemio site-projected phonon DOS (NaCl demo data):
@@ -64,17 +66,4 @@ class DosWidget(StackedDosCheck, PlotControlsTraits, DosTraits, MatterVizWidget)
     sigma = optional_trait(tl.Float, min=0.0)
     doses = normalized_trait(lambda value: _to_dict(value, "DOS", vasprun="dos"))
 
-    def __init__(self, doses: Any | None = None, **kwargs: Any) -> None:
-        """Initialize the DosWidget.
-
-        Args:
-            doses: DOS data -- a kemio PhononDos or ElectronicDos, pymatgen Dos,
-                CompleteDos or PhononDos, phonopy TotalDos or Phonopy (after
-                run_total_dos), a vasprun.xml path (read by kemio), a dict, or a
-                ``{label: dos}`` dict of those to overlay.
-            **kwargs: Additional widget properties.
-
-        Raises:
-            TraitError: If ``stack=True`` and the DOS have different grids.
-        """
-        super().__init__(doses=doses, **kwargs)
+    _positional_traits = ("doses",)

@@ -67,12 +67,6 @@ def test_error_decay_reserved_keys(key: str) -> None:
         error_decay_with_uncert(y_true, y_pred, {key: np.ones(len(y_true))})
 
 
-def test_error_decay_empty_data() -> None:
-    """Reject empty data."""
-    with pytest.raises(ValueError, match="needs non-empty data"):
-        error_decay_with_uncert(np.zeros(0), np.ones(0), np.ones(0))
-
-
 @pytest.mark.parametrize("abs_err", [[3.0], [1.0, 4.0], [0.5, 2.0, 2.0, 7.0, 1.5]])
 def test_error_decay_random_band_exact(abs_err: list[float]) -> None:
     """Random band equals the std of the running MAE over all exclusion orders."""
@@ -208,6 +202,7 @@ def test_uncertainty_aligns_series_by_index(plot: Callable, std_kind: str) -> No
         ([0, 0], [1, 2], [[1], [1]], "must be 1D"),
         ([0, np.nan], [1, 2], [1, 1], "finite values"),
         ([0, 0], [1, 2], [1, np.inf], "finite values"),
+        ([], [], [], "need non-empty data"),
     ],
 )
 def test_uncertainty_invalid_arrays(
