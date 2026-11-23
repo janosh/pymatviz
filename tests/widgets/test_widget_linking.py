@@ -69,7 +69,7 @@ def test_interaction_traits_sync(
     """Interaction traits default correctly, seed via init, round-trip and sync."""
     # selected_point must address a point of the series
     data = {"series": [{"x": [0, 1, 2, 3], "y": [0, 1, 2, 3]}]}
-    init_kwargs = data if widget_cls is ScatterPlotWidget else {}
+    init_kwargs: dict[str, Any] = data if widget_cls is ScatterPlotWidget else {}
     widget = widget_cls(**init_kwargs)
     assert getattr(widget, trait_name) == default
     setattr(widget, trait_name, value)

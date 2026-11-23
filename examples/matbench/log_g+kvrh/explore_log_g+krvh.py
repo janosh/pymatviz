@@ -15,7 +15,6 @@ https://ml.materialsproject.org/projects/matbench_log_kvrh
 # ]
 # ///
 
-# %%
 import re
 from time import perf_counter
 from typing import get_args

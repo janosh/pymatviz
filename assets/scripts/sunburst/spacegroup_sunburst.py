@@ -6,7 +6,6 @@
 # ]
 # ///
 
-# %%
 import kemio
 from matminer.datasets import load_dataset
 

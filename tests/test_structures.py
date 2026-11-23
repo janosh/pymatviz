@@ -66,7 +66,7 @@ def test_to_structure_and_site_helpers() -> None:
     """
     assert to_structure(SI2_STRUCT) is SI2_STRUCT
     with pytest.raises(TypeError, match="expected a kemio or pymatgen"):
-        to_structure(42)
+        to_structure(42)  # ty: ignore[invalid-argument-type]
     with pytest.raises(FileNotFoundError, match="no structure file at 'Si'"):
         to_structure("Si")  # strings are file paths
 

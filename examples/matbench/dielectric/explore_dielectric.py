@@ -18,7 +18,6 @@ https://ml.materialsproject.org/projects/matbench_dielectric
 # ]
 # ///
 
-# %%
 import re
 from typing import get_args
 

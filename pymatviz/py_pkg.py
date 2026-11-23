@@ -335,7 +335,7 @@ def collect_source_modules_from_dir(
                 }
             )
 
-    return pd.DataFrame(all_modules, columns=list(ModuleStats._fields))
+    return pd.DataFrame(all_modules, columns=pd.Index(ModuleStats._fields))
 
 
 def py_pkg_treemap(

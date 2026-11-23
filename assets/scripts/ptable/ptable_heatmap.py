@@ -7,7 +7,6 @@
 # ]
 # ///
 
-# %%
 import os
 from urllib.error import HTTPError, URLError
 

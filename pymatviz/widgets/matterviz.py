@@ -131,10 +131,7 @@ def _cache_dir(version: str) -> str:
 def _in_marimo_runtime() -> bool:
     """Return whether execution is inside a live marimo runtime context."""
     try:
-        from marimo._runtime.context import (  # ty: ignore[import-not-found]
-            ContextNotInitializedError,
-            get_context,
-        )
+        from marimo._runtime.context import ContextNotInitializedError, get_context  # ty: ignore[import-not-found]
     except ImportError:
         return False
     try:

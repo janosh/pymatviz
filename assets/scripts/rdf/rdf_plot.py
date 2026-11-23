@@ -7,7 +7,6 @@
 # ]
 # ///
 
-# %%
 import numpy as np
 from matminer.datasets import load_dataset
 from pymatgen.core import Lattice, Structure

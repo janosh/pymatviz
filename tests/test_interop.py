@@ -222,6 +222,7 @@ def test_normalize_spacegroups_pymatgen_ase(
 ) -> None:
     """Space groups of pymatgen and ASE inputs (subclasses included) match moyopy."""
     pytest.importorskip("pymatgen")
+    pytest.importorskip("moyopy")  # the reference oracle, not a pymatviz dependency
     from ase import Atoms
     from moyopy import MoyoDataset
     from moyopy.interface import MoyoAdapter

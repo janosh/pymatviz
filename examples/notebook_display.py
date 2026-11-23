@@ -13,7 +13,6 @@ and other notebook environments. Simply import pymatviz and use pymatgen objects
 # ]
 # ///
 
-# %%
 # ruff: noqa: B018
 import json
 from glob import glob

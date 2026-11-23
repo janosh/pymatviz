@@ -14,7 +14,6 @@ https://ml.materialsproject.org/projects/matbench_mp_gap
 # ]
 # ///
 
-# %%
 from matminer.datasets import load_dataset
 
 import pymatviz as pmv

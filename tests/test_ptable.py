@@ -250,7 +250,7 @@ def test_ptable_heatmap_splits_dataframe_and_series() -> None:
         ({"Fe": [[1, 2]]}, "ptable_heatmap_splits: Fe must be a 1D numeric array"),
         # repeated keys were silently dropped by dict conversion
         (
-            pd.DataFrame([[1, 2], [3, 4]], index=["Fe", "Fe"]),
+            pd.DataFrame([[1, 2], [3, 4]], index=pd.Index(["Fe", "Fe"])),
             "element keys must be unique, got duplicates ['Fe']",
         ),
         (
@@ -327,7 +327,7 @@ def test_ptable_hists_invalid_bins(bins: Any) -> None:
         ({"Fe": 3}, ValueError, "ptable_hists: Fe must be a 1D numeric array"),
         ({"Xx": [1]}, tl.TraitError, "keys must be element symbols, got ['Xx']"),
         (
-            pd.DataFrame([[1, 2], [3, 4]], columns=["Fe", "Fe"]),
+            pd.DataFrame([[1, 2], [3, 4]], columns=pd.Index(["Fe", "Fe"])),
             ValueError,
             "element keys must be unique, got duplicates ['Fe']",
         ),

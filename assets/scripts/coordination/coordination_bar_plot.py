@@ -6,7 +6,6 @@
 # ]
 # ///
 
-# %%
 from glob import glob
 
 from pymatgen.core import Structure

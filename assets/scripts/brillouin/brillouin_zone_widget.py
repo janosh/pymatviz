@@ -9,7 +9,6 @@ and k-path labels follow the Setyawan-Curtarolo convention whatever cell is pass
 # ]
 # ///
 
-# %%
 from glob import glob
 
 from IPython.display import display

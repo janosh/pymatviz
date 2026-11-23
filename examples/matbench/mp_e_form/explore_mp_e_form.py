@@ -17,7 +17,6 @@ https://ml.materialsproject.org/projects/matbench_mp_e_form
 # ]
 # ///
 
-# %%
 from matminer.datasets import load_dataset
 
 import pymatviz as pmv

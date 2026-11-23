@@ -13,7 +13,6 @@ https://ml.materialsproject.org/projects/matbench_steels
 # ]
 # ///
 
-# %%
 from matminer.datasets import load_dataset
 
 import pymatviz as pmv

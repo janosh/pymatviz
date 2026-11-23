@@ -27,7 +27,6 @@ https://ml.materialsproject.org/projects/matbench_expt_gap
 # ]
 # ///
 
-# %%
 import kemio
 from matminer.datasets import load_dataset
 

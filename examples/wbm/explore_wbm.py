@@ -10,7 +10,6 @@ See also https://matbench-discovery.materialsproject.org/data.
 # ]
 # ///
 
-# %%
 from typing import get_args
 
 import kemio

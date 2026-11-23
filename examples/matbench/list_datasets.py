@@ -6,7 +6,6 @@
 # ]
 # ///
 
-# %%
 from matminer.datasets import get_available_datasets
 
 

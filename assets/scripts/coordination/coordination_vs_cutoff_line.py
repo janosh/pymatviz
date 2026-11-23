@@ -7,7 +7,6 @@
 # ]
 # ///
 
-# %%
 from glob import glob
 
 from matminer.datasets import load_dataset

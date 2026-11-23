@@ -10,7 +10,6 @@ structures of Python packages using the pmv.py_pkg_treemap function.
 # ]
 # ///
 
-# %%
 from __future__ import annotations
 
 import json
