@@ -173,6 +173,10 @@ def test_trait_types_match_js_schema(
     assert not mismatches, hint + "\n".join(mismatches)
 
 
+@pytest.mark.xfail(
+    strict=False,
+    reason="needs matterviz-anywidget > 0.10.0 (treemap label_align)",
+)
 def test_python_traits_match_js_contract(js_contract: dict[str, list[str]]) -> None:
     """Each widget's public synced traits exactly mirror the JS bridge's model keys,
     except base traits (widget_type, style, show_controls) a spec may ignore.

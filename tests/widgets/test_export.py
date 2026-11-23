@@ -64,7 +64,19 @@ def test_headless_bar_plot_png(bar_plot_widget: BarPlotWidget) -> None:
     assert img.height >= 200
 
 
-@pytest.mark.parametrize("chart", ["treemap", "sunburst"])
+@pytest.mark.parametrize(
+    "chart",
+    [
+        pytest.param(
+            "treemap",
+            marks=pytest.mark.xfail(
+                strict=False,
+                reason="needs matterviz-anywidget > 0.10.0 (treemap label_align)",
+            ),
+        ),
+        "sunburst",
+    ],
+)
 def test_hierarchy_vector_and_html_exports(
     chart: Literal["treemap", "sunburst"], tmp_path: Any
 ) -> None:

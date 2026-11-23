@@ -123,6 +123,10 @@ def test_widget_rejects_invalid_species(
 @pytest.mark.skipif(
     importlib.util.find_spec("playwright") is None, reason="needs playwright"
 )
+@pytest.mark.xfail(
+    strict=False,
+    reason="needs matterviz-anywidget > 0.10.0 (species-key composition charts)",
+)
 def test_widget_species_composition_renders() -> None:
     """A species composition renders headlessly (needs a matterviz-anywidget bundle
     whose composition charts accept species keys).
