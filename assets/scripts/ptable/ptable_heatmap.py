@@ -1,6 +1,12 @@
 """Periodic table heatmap examples."""
 
-# %%
+# /// script
+# dependencies = [
+#     "matminer>=0.10.1",
+#     "pyyaml>=6.0.3",
+# ]
+# ///
+
 import os
 from urllib.error import HTTPError, URLError
 
@@ -23,7 +29,7 @@ df_expt_gap = load_dataset("matbench_expt_gap")
 
 
 # %% Atomic masses (the Series name titles the color bar)
-widget = pmv.ptable_heatmap(pmv.utils.df_ptable["atomic_mass"])
+widget = pmv.ptable_heatmap(pmv.utils.df_ptable["mass"])
 widget.show()
 widget.to_img(
     f"{pmv.utils.ROOT}/assets/svg/ptable-heatmap-atomic-mass.svg",

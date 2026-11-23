@@ -2,28 +2,29 @@
 
 from __future__ import annotations
 
-from typing import Any
+import functools
 
-import traitlets as tl
-
+from pymatviz.widgets._normalize import normalize_plot_json, structure_to_dict
 from pymatviz.widgets._schema_traits import BrillouinZoneTraits
+from pymatviz.widgets._traits import JsonBool, normalized_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
 class BrillouinZoneWidget(BrillouinZoneTraits, MatterVizWidget):
     """MatterViz widget for visualizing Brillouin zones.
 
-    Accepts a pymatgen Structure (BZ is computed by the matterviz frontend) or
-    pre-computed BZ data with vertices, faces, and edges.
+    Accepts a kemio or pymatgen Structure, ASE Atoms or PhonopyAtoms (the BZ is
+    computed by the matterviz frontend), or pre-computed ``bz_data`` with vertices,
+    faces, and edges.
 
     Examples:
-        From a pymatgen Structure:
+        From a kemio Structure:
+        >>> import numpy as np
+        >>> import kemio
         >>> import pymatviz as pmv
+        >>> struct = kemio.Structure(np.eye(3) * 4, ["Fe"], [[0, 0, 0]])
         >>> widget = pmv.brillouin_zone(structure=struct)
         >>> widget
-
-        With pre-computed BZ data:
-        >>> widget = pmv.brillouin_zone(bz_data=bz_dict)
 
         With custom options:
         >>> widget = pmv.brillouin_zone(
@@ -34,27 +35,11 @@ class BrillouinZoneWidget(BrillouinZoneTraits, MatterVizWidget):
         ... )
     """
 
-    default_k_path = tl.Bool(default_value=True).tag(sync=True)
+    # normalized on every assignment: structure objects to dicts, numpy to lists
+    structure = normalized_trait(functools.partial(structure_to_dict, periodic=True))
+    bz_data = normalized_trait(
+        functools.partial(normalize_plot_json, label="BrillouinZone.bz_data")
+    )
+    default_k_path = JsonBool(default_value=True).tag(sync=True)
 
-    def __init__(
-        self,
-        structure: Any | None = None,
-        bz_data: dict[str, Any] | None = None,
-        **kwargs: Any,
-    ) -> None:
-        """Initialize the BrillouinZoneWidget.
-
-        Args:
-            structure: A pymatgen Structure, ASE Atoms, PhonopyAtoms or structure
-                dict (see ``structure_to_dict``). The BZ is computed by the matterviz
-                frontend from the lattice.
-            bz_data: Pre-computed BZ data with vertices, faces, and edges.
-            **kwargs: Additional widget properties.
-        """
-        from pymatviz.widgets._normalize import normalize_plot_json, structure_to_dict
-
-        super().__init__(
-            structure=structure_to_dict(structure, periodic=True),
-            bz_data=normalize_plot_json(bz_data, "bz_data"),
-            **kwargs,
-        )
+    _positional_traits = ("structure", "bz_data")

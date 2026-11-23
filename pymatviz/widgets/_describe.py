@@ -11,12 +11,12 @@ from __future__ import annotations
 import functools
 import math
 from collections import Counter, defaultdict
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
 from typing import Any
 
 import numpy as np
 
-from pymatviz.utils.data import element_symbols
+from pymatviz.utils import element_symbols
 from pymatviz.widgets._binary import is_binary_envelope, series_column
 
 
@@ -26,16 +26,15 @@ def _minmax(values: Any) -> list[float] | None:
     stack = [values]
     while stack:
         item = stack.pop()
-        if isinstance(item, bool):
+        if isinstance(item, (bool, np.bool_)):
             continue
-        if isinstance(item, (int, float)):
+        if isinstance(item, (int, float, np.integer, np.floating)):
             try:  # a huge int overflows float(); skip rather than raise
                 num = float(item)
             except OverflowError:
                 continue
             if math.isfinite(num):
-                minimum = min(minimum, num)
-                maximum = max(maximum, num)
+                minimum, maximum = min(minimum, num), max(maximum, num)
         elif isinstance(item, np.ndarray) and item.dtype.kind in "iuf":
             if (finite := item[np.isfinite(item)]).size:
                 minimum = min(minimum, float(finite.min()))
@@ -58,37 +57,29 @@ def _composition_facts(amounts: Mapping[str, float]) -> dict[str, Any]:
     elements = sorted(amounts)
     return {
         "elements": elements,
-        "formula": "".join(f"{el}{_fmt_amount(amounts[el])}" for el in elements),
+        "formula": "".join(f"{elem}{_fmt_amount(amounts[elem])}" for elem in elements),
     }
 
 
-def _species_facts(species: Iterable[Any], n_sites: int) -> dict[str, Any]:
-    """Sum occupancies across site species in structure and trajectory JSON."""
-    counts: defaultdict[str, float] = defaultdict(float)
-    for entry in species:
-        if isinstance(entry, str):
-            counts[entry] += 1
-        elif isinstance(entry, Mapping) and isinstance(
-            element := entry.get("element"), str
-        ):
-            occu = entry.get("occu")
-            counts[element] += 1 if occu is None else occu
-    return {"n_sites": n_sites, **(_composition_facts(counts) if counts else {})}
-
-
 def _structure_facts(struct: Any) -> dict[str, Any]:
-    """Element counts, formula, and site count from a serialized structure dict."""
+    """Element counts (occupancies summed), formula, and site count from a
+    serialized structure dict.
+    """
     if not isinstance(struct, Mapping):
         return {}
     sites = struct.get("sites") or []
-    species = (
-        entry
-        for site in sites
-        if isinstance(site, Mapping)
-        and isinstance(entries := site.get("species"), list)
-        for entry in entries
-    )
-    return _species_facts(species, len(sites))
+    counts: defaultdict[str, float] = defaultdict(float)
+    for site in sites:
+        entries = site.get("species") if isinstance(site, Mapping) else None
+        for entry in entries if isinstance(entries, list) else []:
+            if isinstance(entry, str):
+                counts[entry] += 1
+            elif isinstance(entry, Mapping) and isinstance(
+                element := entry.get("element"), str
+            ):
+                occu = entry.get("occu")
+                counts[element] += 1 if occu is None else occu
+    return {"n_sites": len(sites), **(_composition_facts(counts) if counts else {})}
 
 
 def _series_list(widget_data: Mapping[str, Any]) -> list[Mapping[str, Any]]:
@@ -100,18 +91,21 @@ def _series_list(widget_data: Mapping[str, Any]) -> list[Mapping[str, Any]]:
 def _xy_facts(
     widget_data: Mapping[str, Any], axes: tuple[str, ...], *, histogram: bool = False
 ) -> dict[str, Any]:
-    """Series count, point count, per-axis ranges, and labels for plot widgets.
+    """Series count, point count (of the first axis), per-axis ranges, and labels
+    for plot widgets.
 
     Histograms bin their samples along x, so those set ``n_points``/``x_range``; bin
-    counts are computed in the renderer, so no ``y_range`` is reported.
+    counts are computed in the renderer, so no ``y_range`` is reported. Box plots
+    summarize their raw ``y`` samples.
     """
     series = _series_list(widget_data)
     samples = {
-        axis: [series_column(s, "values" if histogram else axis) for s in series]
+        axis: [series_column(srs, "values" if histogram else axis) for srs in series]
         for axis in axes
     }
     facts: dict[str, Any] = {"n_series": len(series)}
-    facts["n_points"] = sum(0 if vals is None else len(vals) for vals in samples["x"])
+    point_samples = samples[axes[0]]
+    facts["n_points"] = sum(0 if vals is None else len(vals) for vals in point_samples)
     if labels := [s.get("label") for s in series if s.get("label")]:
         facts["series_labels"] = labels
     for axis, axis_samples in samples.items():
@@ -141,11 +135,6 @@ def _source_flags(
     return {f"has_{key}": widget_data.get(key) is not None for key in keys}
 
 
-def _describe_structure(data: Mapping[str, Any]) -> dict[str, Any]:
-    """Facts for a single structure."""
-    return _structure_facts(data.get("structure"))
-
-
 def _describe_trajectory(data: Mapping[str, Any]) -> dict[str, Any]:
     """Frame count plus first-frame structure facts."""
     traj = data.get("trajectory")
@@ -171,12 +160,6 @@ def _describe_trajectory(data: Mapping[str, Any]) -> dict[str, Any]:
             "n_sites": len(atomic_numbers),
             **_composition_facts(counts),
         }
-    if traj.get("@class") == "Trajectory":
-        species = traj.get("species") or []
-        coords = traj.get("coords", [])
-        if isinstance(coords, Mapping) and coords.get("@class") == "array":
-            coords = coords["data"]
-        return {"n_frames": len(coords), **_species_facts(species, len(species))}
     frames = traj.get("frames") or []
     facts: dict[str, Any] = {"n_frames": len(frames)}
     if frames and isinstance(frames[0], Mapping):
@@ -216,7 +199,9 @@ def _describe_composition(data: Mapping[str, Any]) -> dict[str, Any]:
     if not isinstance(comp, Mapping):
         return {}
     amounts = {
-        str(el): amt for el, amt in comp.items() if isinstance(amt, (int, float))
+        str(elem): amount
+        for elem, amount in comp.items()
+        if isinstance(amount, (int, float))
     }
     return _composition_facts(amounts) if amounts else {}
 
@@ -256,17 +241,6 @@ def _payload_sequences(
     return sequences or None
 
 
-def _describe_xrd(data: Mapping[str, Any]) -> dict[str, Any]:
-    """Peak count and 2-theta range for one XRD pattern or ``{label: pattern}``
-    overlays (peaks summed over patterns).
-    """
-    two_thetas = _payload_sequences(data.get("patterns"), "x") or []
-    facts: dict[str, Any] = {"n_peaks": sum(map(len, two_thetas))}
-    if (two_theta_range := _minmax(two_thetas)) is not None:
-        facts["two_theta_range"] = two_theta_range
-    return facts
-
-
 def _describe_spacegroup_bar(data: Mapping[str, Any]) -> dict[str, Any]:
     """Total and unique space-group entry counts."""
     counts = data.get("data") or {}
@@ -294,13 +268,23 @@ def _describe_spectral(
     return facts
 
 
-_describe_dos = functools.partial(
-    _describe_spectral,
-    data_key="doses",
-    value_key="energies",
-    count_key="n_energies",
-    range_key="energy_range",
-)
+def _describe_dos(data: Mapping[str, Any]) -> dict[str, Any]:
+    """Energy (electronic) or frequency (phonon) grid size and range of DOS."""
+    return _describe_spectral(
+        data,
+        data_key="doses",
+        value_key="energies",
+        count_key="n_energies",
+        range_key="energy_range",
+    ) or _describe_spectral(
+        data,
+        data_key="doses",
+        value_key="frequencies",
+        count_key="n_frequencies",
+        range_key="frequency_range",
+    )
+
+
 _describe_band_structure = functools.partial(
     _describe_spectral,
     data_key="band_structs",
@@ -310,9 +294,14 @@ _describe_band_structure = functools.partial(
 )
 
 
-def _describe_bands_and_dos(data: Mapping[str, Any]) -> dict[str, Any]:
-    """Combined band-structure and DOS facts."""
-    return {**_describe_band_structure(data), **_describe_dos(data)}
+# peaks summed over {label: pattern} overlays
+_describe_xrd = functools.partial(
+    _describe_spectral,
+    data_key="patterns",
+    value_key="x",
+    count_key="n_peaks",
+    range_key="two_theta_range",
+)
 
 
 def _describe_hierarchy(data: Mapping[str, Any]) -> dict[str, Any]:
@@ -342,18 +331,29 @@ def _describe_hierarchy(data: Mapping[str, Any]) -> dict[str, Any]:
     return facts
 
 
-def _describe_brillouin_zone(data: Mapping[str, Any]) -> dict[str, Any]:
-    """Data source flags plus structure facts for a Brillouin zone."""
-    return {
-        **_source_flags(data, ("structure", "bz_data")),
-        **_describe_structure(data),
-    }
+def _describe_sankey(data: Mapping[str, Any]) -> dict[str, Any]:
+    """Node and link counts of a Sankey diagram."""
+    flows = data.get("data") or {}
+    return {f"n_{key}": len(flows.get(key) or []) for key in ("nodes", "links")}
+
+
+def _describe_coordination_bar_plot(data: Mapping[str, Any]) -> dict[str, Any]:
+    """Structure count (a bare structure dict or ``{label: structure}``) plus the
+    facts of a single structure.
+    """
+    structures = data.get("structures")
+    if not isinstance(structures, Mapping):
+        return {"n_structures": 0}
+    if "sites" in structures:
+        return {"n_structures": 1, **_structure_facts(structures)}
+    return {"n_structures": len(structures)}
 
 
 # Facts for 2D scatter/bar plots (3D adds a z-axis range, histograms bin along x)
 _describe_xy = functools.partial(_xy_facts, axes=("x", "y"))
 _describe_xyz = functools.partial(_xy_facts, axes=("x", "y", "z"))
 _describe_histogram = functools.partial(_xy_facts, axes=("x",), histogram=True)
+_describe_box = functools.partial(_xy_facts, axes=("y",))
 
 # widget_type -> handler deriving structured facts from to_dict() output
 _HANDLERS: dict[str, Any] = {
@@ -361,7 +361,11 @@ _HANDLERS: dict[str, Any] = {
     "bar_plot": _describe_xy,
     "histogram": _describe_histogram,
     "scatter_plot_3d": _describe_xyz,
-    "structure": _describe_structure,
+    "binned_scatter_plot": _describe_xy,
+    "box_plot": _describe_box,
+    "sankey": _describe_sankey,
+    "coordination_bar_plot": _describe_coordination_bar_plot,
+    "structure": lambda data: _structure_facts(data.get("structure")),
     "trajectory": _describe_trajectory,
     "periodic_table": _describe_periodic_table,
     "heatmap_matrix": _describe_heatmap_matrix,
@@ -372,21 +376,33 @@ _HANDLERS: dict[str, Any] = {
     "spacegroup_bar": _describe_spacegroup_bar,
     "dos": _describe_dos,
     "band_structure": _describe_band_structure,
-    "bands_and_dos": _describe_bands_and_dos,
+    "bands_and_dos": lambda data: _describe_band_structure(data) | _describe_dos(data),
     "sunburst": _describe_hierarchy,
     "treemap": _describe_hierarchy,
     # which optional data source is populated (structures/patterns, fermi/band)
     "rdf_plot": functools.partial(_source_flags, keys=("structures", "patterns")),
     "fermi_surface": functools.partial(_source_flags, keys=("fermi_data", "band_data")),
-    "brillouin_zone": _describe_brillouin_zone,
+    "brillouin_zone": lambda data: (
+        _source_flags(data, ("structure", "bz_data"))
+        | _structure_facts(data.get("structure"))
+    ),
 }
 
+# plot widget_type -> the series key whose samples it draws
+_SAMPLE_KEYS = {
+    "scatter_plot": "x",
+    "bar_plot": "x",
+    "scatter_plot_3d": "x",
+    "binned_scatter_plot": "x",
+    "histogram": "values",
+    "box_plot": "y",
+}
 # widget_type -> the primary data traitlet whose emptiness implies a blank render
 _PRIMARY_DATA: dict[str, str | tuple[str, ...]] = {
-    "scatter_plot": "series",
-    "bar_plot": "series",
-    "histogram": "series",
-    "scatter_plot_3d": "series",
+    **dict.fromkeys(_SAMPLE_KEYS, "series"),
+    "sankey": "data",
+    "coordination_bar_plot": "structures",
+    "phase_diagram": "data",
     "structure": "structure",
     "trajectory": "trajectory",
     "periodic_table": ("heatmap_values", "tile_plots"),
@@ -439,6 +455,7 @@ def short_summary(report: Mapping[str, Any]) -> str:
         ("n_tile_plots", "tile plots"),
         ("n_elements", "elements"),
         ("n_nodes", "nodes"),
+        ("n_structures", "structures"),
     ):
         if key in report:
             return f"{widget_type}: {report[key]} {noun}"
@@ -458,31 +475,26 @@ def check_inputs(widget_data: Mapping[str, Any]) -> list[str]:
         keys = key if isinstance(key, tuple) else (key,)
 
         def is_empty(value: Any) -> bool:
+            """Whether value is None or has length 0."""
             return value is None or (hasattr(value, "__len__") and len(value) == 0)
 
-        if all(is_empty(widget_data.get(k)) for k in keys):
-            label = "/".join(f"'{k}'" for k in keys)
+        if all(is_empty(widget_data.get(name)) for name in keys):
+            label = "/".join(f"'{name}'" for name in keys)
             warnings.append(
                 f"{widget_type}: {label} is empty or None; widget may render blank"
             )
 
-    if widget_type in ("scatter_plot", "bar_plot", "histogram", "scatter_plot_3d"):
-        # Histograms bin `values`; the other plots need `x`.
-        hist = widget_type == "histogram"
+    # histograms bin `values` and box plots summarize `y`; the other plots need `x`
+    if (sample_key := _SAMPLE_KEYS.get(widget_type)) is not None:
         series = _series_list(widget_data)
-        if series and not any(
-            (col := series_column(s, "values" if hist else "x")) is not None
-            and len(col)
-            for s in series
-        ):
-            what = "samples ('values')" if hist else "'x'"
+        columns = (series_column(srs, sample_key) for srs in series)
+        if series and not any(col is not None and len(col) for col in columns):
             warnings.append(
-                f"{widget_type}: all series have empty {what}; nothing to plot"
+                f"{widget_type}: all series have empty '{sample_key}'; nothing to plot"
             )
 
-    if widget_type == "rdf_plot" and not (
-        widget_data.get("structures") or widget_data.get("patterns")
-    ):
+    has_rdf_input = widget_data.get("structures") or widget_data.get("patterns")
+    if widget_type == "rdf_plot" and not has_rdf_input:
         warnings.append("rdf_plot: neither 'structures' nor 'patterns' provided")
 
     return warnings

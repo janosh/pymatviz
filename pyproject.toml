@@ -23,11 +23,9 @@ urls = { Homepage = "https://github.com/janosh/pymatviz" }
 requires-python = ">=3.12"
 dependencies = [
   "anywidget>=0.11",
-  "moyopy>=0.21",
+  "kemio>=0.1.0",
   "numpy>=2.5",
   "pandas>=2.3",
-  "pymatgen>=2026.9.24",
-  "pyyaml>=6.0.3",
   "scikit-learn>=1.9",
   "scipy>=1.18",
 ]
@@ -35,11 +33,13 @@ dependencies = [
 [project.optional-dependencies]
 # moyopy[interface]: pymatgen's get_symmetry_dataset (used by the spacegroup scripts) needs
 # moyopy's ase-based structure interface
-make-assets = ["pymatviz[export]", "lxml>=6", "matminer>=0.10.1", "moyopy[interface]>=0.21"]
+make-assets = ["pymatviz[export]", "lxml>=6", "matminer>=0.10.1", "pymatgen>=2026.9.24", "moyopy[interface]>=0.21", "pyyaml>=6.0.3"]
 gh-pages = ["jupyter>=1.1.1", "nbconvert>=7.17"]
 phonons = ["phonopy>=4.8"] # only needed if user passes in phonopy objects
 test = [
   "ase>=3.29",
+  "matminer>=0.10.1", # reference values for the kemio Magpie features
+  "pymatgen>=2026.9.24", # inputs converted on the way in
   "pymatviz[clustering, phonons]",
   "pytest-cov>=7.1",
   "pytest-split>=0.11",
@@ -47,7 +47,6 @@ test = [
 ]
 export = ["playwright>=1.63"]
 clustering = [
-  "matminer>=0.10.1",
   "umap-learn>=0.5.12",
   "pynndescent>=0.6", # keeps numba/llvmlite on Python 3.12+ compatible releases
 ]
@@ -59,7 +58,6 @@ build-backend = "uv_build"
 [tool.uv.build-backend]
 module-name = "pymatviz"
 module-root = ""
-source-include = ["pymatviz/**/*.csv", "pymatviz/**/*.yml"]
 source-exclude = [".venv"]
 
 [tool.pytest.ini_options]

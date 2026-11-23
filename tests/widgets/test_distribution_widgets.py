@@ -7,18 +7,13 @@ from typing import Any
 import numpy as np
 import pytest
 import traitlets as tl
-from pymatgen.core import Lattice, Structure
+from kemio.interop import structure_to_pymatgen_dict
 
 from pymatviz.coordination import CnSplitMode
 from pymatviz.widgets.box_plot import BoxPlotWidget
 from pymatviz.widgets.coordination_bar_plot import CoordinationBarPlotWidget
 from pymatviz.widgets.sankey import SankeyWidget
-
-
-@pytest.fixture
-def si_struct() -> Structure:
-    """Single-site simple cubic Si."""
-    return Structure(Lattice.cubic(3), ["Si"], [[0, 0, 0]])
+from tests.conftest import cubic_structure
 
 
 @pytest.mark.parametrize(
@@ -83,7 +78,7 @@ def test_box_plot_enum_traits(trait: str, valid: Any, invalid: Any) -> None:
     """Enum traits accept MatterViz names and reject others."""
     widget = BoxPlotWidget(**{trait: valid})
     assert getattr(widget, trait) == valid
-    with pytest.raises(tl.TraitError):
+    with pytest.raises(tl.TraitError, match=f"The '{trait}' trait of a BoxPlotWidget"):
         setattr(widget, trait, invalid)
 
 
@@ -96,19 +91,22 @@ def test_sankey_data() -> None:
     widget = SankeyWidget(data, link_color_mode="gradient")
     assert widget.data["links"][0]["value"] == 3
     assert type(widget.data["links"][0]["value"]) is int
+    widget.data = {"nodes": ({"label": "a"},), "links": ()}  # tuples sync as lists
+    assert widget.data == {"nodes": [{"label": "a"}], "links": []}
     with pytest.raises(tl.TraitError, match="'nodes' and 'links'"):
         widget.data = {"nodes": []}
     with pytest.raises(tl.TraitError, match="finite"):
         widget.data = {"nodes": [], "links": [{"value": float("nan")}]}
-    with pytest.raises(tl.TraitError):
+    with pytest.raises(tl.TraitError, match=r"'link_color_mode' trait.*'rainbow'"):
         widget.link_color_mode = "rainbow"
 
 
-def test_coordination_structure_inputs(si_struct: Structure) -> None:
+def test_coordination_structure_inputs() -> None:
     """Single structures reach JS as a bare structure dict, sequences and mappings
     as {label: dict}, the entry forms MatterViz's to_structure_entries reads.
     """
-    as_dict = si_struct.as_dict()
+    si_struct = cubic_structure(3, ["Si"], [0, 0, 0])
+    as_dict = structure_to_pymatgen_dict(si_struct)
     assert CoordinationBarPlotWidget(si_struct).structures == as_dict
     assert CoordinationBarPlotWidget(as_dict).structures == as_dict
     assert CoordinationBarPlotWidget([si_struct, as_dict]).structures == {
@@ -121,7 +119,7 @@ def test_coordination_structure_inputs(si_struct: Structure) -> None:
     assert widget.mode == "grouped"
     for split_mode in CnSplitMode:  # pymatviz and MatterViz share split mode names
         widget.split_mode = split_mode.value
-    with pytest.raises(tl.TraitError):
+    with pytest.raises(tl.TraitError, match="'split_mode' trait"):
         widget.split_mode = "by_structure_and_element"
     widget.structures = si_struct  # assignment converts too, keeping JSON syncable
     assert widget.structures == as_dict

@@ -5,7 +5,14 @@ structure viewers backed by a frame sequence and periodic tables (which highligh
 the selected structure's elements and, when clicked, dim scatter points lacking them).
 
 Example:
+    >>> import numpy as np
+    >>> import kemio
     >>> import pymatviz as pmv
+    >>> frames = [
+    ...     kemio.Structure(np.eye(3) * a_len, ["Cu"], [[0, 0, 0]])
+    ...     for a_len in (2.5, 2.6)
+    ... ]
+    >>> steps, energies = [0, 1], [-3.2, -3.5]
     >>> scatter = pmv.scatter_plot(series=[{"x": steps, "y": energies}])
     >>> structure = pmv.structure(structure=frames[0])
     >>> link = pmv.widgets.link_selection(scatter, structure, structures=frames)
@@ -22,7 +29,7 @@ from pymatviz.widgets._normalize import structure_to_dict
 from pymatviz.widgets.periodic_table import PeriodicTableWidget
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 from pymatviz.widgets.structure import StructureWidget
-from pymatviz.widgets.trajectory import TrajectoryWidget
+from pymatviz.widgets.trajectory import TrajectoryWidget, n_frames
 
 
 if TYPE_CHECKING:
@@ -64,21 +71,27 @@ class WidgetLink:
         """Link the given widgets on a shared selection index.
 
         Args:
-            widgets: Widgets to keep in sync (need at least two).
+            widgets: Widgets to keep in sync (need at least two distinct ones,
+                repeats are linked once).
             structures: Ordered structures indexed by the shared selection index.
                 Required if any widget is a ``StructureWidget`` (its ``structure``
                 is set to ``structures[index]`` on every change) or a
                 ``PeriodicTableWidget``.
-            series_idx: Series index written into ``ScatterPlotWidget`` sinks
-                (``selected_point``). Defaults to 0 (the first series).
+            series_idx: Series whose point indices are selection indices: written
+                into ``ScatterPlotWidget`` sinks (``selected_point``), and the only
+                series whose clicks broadcast. Defaults to 0 (the first series).
 
         Raises:
-            ValueError: If fewer than two widgets are given, or a ``StructureWidget``
-                or ``PeriodicTableWidget`` is included without ``structures``.
+            ValueError: If fewer than two distinct widgets are given, or a
+                ``StructureWidget`` or ``PeriodicTableWidget`` is included without
+                ``structures``.
         """
-        if len(widgets) < 2:
+        # a repeated widget would register its observer once but be unobserved twice
+        unique_widgets = list({id(widget): widget for widget in widgets}.values())
+        if len(unique_widgets) < 2:
             raise ValueError(
-                f"link_selection needs at least 2 widgets, got {len(widgets)}"
+                f"link_selection needs at least 2 distinct widgets, got "
+                f"{len(unique_widgets)}"
             )
 
         unsupported = [
@@ -92,7 +105,7 @@ class WidgetLink:
                 f"Supported: {supported}."
             )
 
-        self.widgets = list(widgets)
+        self.widgets = unique_widgets
         self._structures = None if structures is None else list(structures)
         self._series_idx = series_idx
         self._syncing = False
@@ -113,7 +126,9 @@ class WidgetLink:
         # per periodic table (by id), the elements the last index broadcast showed
         self._shown_elements: dict[int, set[str]] = {}
         if any(isinstance(widget, PeriodicTableWidget) for widget in self.widgets):
-            self._elements = [_element_symbols(st) for st in self._structures or ()]
+            self._elements = [
+                _element_symbols(struct) for struct in self._structures or ()
+            ]
             # tile clicks dim scatter points by id, and points without one never dim
             for widget in self.widgets:
                 if isinstance(widget, ScatterPlotWidget) and not all(
@@ -125,13 +140,16 @@ class WidgetLink:
                         "scatter series to carry point_ids (structure indices)"
                     )
 
+        sources = {
+            TrajectoryWidget: (self._on_trajectory, "current_step_idx"),
+            ScatterPlotWidget: (self._on_scatter, "active_point"),
+            PeriodicTableWidget: (self._on_ptable, "active_elements"),
+        }
         for widget in self.widgets:
-            if isinstance(widget, TrajectoryWidget):
-                self._add_observer(widget, self._on_trajectory, "current_step_idx")
-            elif isinstance(widget, ScatterPlotWidget):
-                self._add_observer(widget, self._on_scatter, "active_point")
-            elif isinstance(widget, PeriodicTableWidget):
-                self._add_observer(widget, self._on_ptable, "active_elements")
+            for cls, (handler, trait_name) in sources.items():
+                if isinstance(widget, cls):
+                    widget.observe(handler, names=trait_name)
+                    self._observers.append((widget, handler, trait_name))
 
         # initial sync so all sinks reflect the starting index (a trajectory's
         # current step if present, else 0)
@@ -145,11 +163,6 @@ class WidgetLink:
         )
         self._broadcast(initial)
 
-    def _add_observer(self, widget: Any, handler: Any, trait_name: str) -> None:
-        """Register a traitlets observer and remember it for ``unlink``."""
-        widget.observe(handler, names=trait_name)
-        self._observers.append((widget, handler, trait_name))
-
     def _on_trajectory(self, change: dict[str, Any]) -> None:
         """Broadcast a trajectory step change to the other widgets."""
         self._broadcast(int(change["new"]))
@@ -159,9 +172,13 @@ class WidgetLink:
 
         Only ``point_idx`` drives selection; ``active_point``'s ``event_id`` (which
         makes repeated identical clicks distinct trait values) is ignored here.
+        Clicks on series other than ``series_idx`` are ignored: their point indices
+        don't index ``structures``.
         """
         point = change["new"]
         if not point or point.get("point_idx") is None:
+            return
+        if point.get("series_idx", self._series_idx) != self._series_idx:
             return
         self._broadcast(int(point["point_idx"]))
 
@@ -200,25 +217,37 @@ class WidgetLink:
             self._syncing = False
 
     def _apply(self, widget: Any, index: int) -> None:
-        """Reflect the shared ``index`` in a single widget (its sink)."""
+        """Reflect the shared ``index`` in a single widget (its sink). An index
+        beyond a trajectory's frames leaves its step unchanged (warning), one beyond
+        the scatter series' points clears its highlight.
+        """
+        in_table = 0 <= index < len(self._elements)
         if isinstance(widget, TrajectoryWidget):
-            widget.current_step_idx = index
+            n_steps = n_frames(widget.trajectory)
+            if n_steps is None or 0 <= index < n_steps:
+                widget.current_step_idx = index
+            else:
+                warnings.warn(
+                    f"link_selection: {index=} out of range for {n_steps} trajectory "
+                    "frames; TrajectoryWidget not updated.",
+                    stacklevel=2,
+                )
         elif isinstance(widget, ScatterPlotWidget):
-            widget.selected_point = {"series_idx": self._series_idx, "point_idx": index}
+            point = {"series_idx": self._series_idx, "point_idx": index}
+            widget.selected_point = None if widget._point_error(point) else point
             if self._elements:  # the table now shows this structure, not a filter
                 widget.highlighted_ids = None
         elif isinstance(widget, StructureWidget) and self._structures is not None:
             if 0 <= index < len(self._structures):
-                widget.structure = structure_to_dict(self._structures[index])
+                widget.structure = self._structures[index]
             else:
+                n_structs = len(self._structures)
                 warnings.warn(
-                    f"link_selection: {index=} out of range for {len(self._structures)}"
-                    " structures; StructureWidget not updated.",
+                    f"link_selection: {index=} out of range for {n_structs} structures;"
+                    " StructureWidget not updated.",
                     stacklevel=2,
                 )
-        elif isinstance(widget, PeriodicTableWidget) and 0 <= index < len(
-            self._elements
-        ):
+        elif isinstance(widget, PeriodicTableWidget) and in_table:
             self._shown_elements[id(widget)] = self._elements[index]
             widget.active_elements = sorted(self._elements[index])
 
@@ -230,10 +259,13 @@ class WidgetLink:
 
 
 def _element_symbols(structure: Any) -> set[str]:
-    """Element symbols of one structure (none for ``None``)."""
-    # pymatgen structures have them at hand, without serializing every site
-    if (composition := getattr(structure, "composition", None)) is not None:
-        return {elem.symbol for elem in composition.elements}
+    """Element symbols of one structure-like object or structure dict (none for
+    ``None``).
+    """
+    from kemio.interop import is_structure_like, to_structure
+
+    if is_structure_like(structure):  # without serializing every site
+        return set(to_structure(structure).composition.elements)
     struct = structure_to_dict(structure) or {"sites": []}
     return {spec["element"] for site in struct["sites"] for spec in site["species"]}
 
@@ -255,7 +287,8 @@ def link_selection(
             ``PeriodicTableWidget``.
         structures: Ordered structures indexed by the selection index. Required
             if a ``StructureWidget`` or ``PeriodicTableWidget`` is linked.
-        series_idx: Series index used when highlighting scatter points.
+        series_idx: Scatter series whose points index the selection (the only
+            series whose clicks broadcast, and the one highlighted).
 
     Returns:
         A :class:`WidgetLink` whose ``unlink()`` stops synchronization.

@@ -2,47 +2,40 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from pymatviz.widgets._normalize import _to_dict
 from pymatviz.widgets._schema_traits import BandStructureTraits
-from pymatviz.widgets._traits import PlotControlsTraits
+from pymatviz.widgets._traits import PlotControlsTraits, normalized_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
 class BandStructureWidget(PlotControlsTraits, BandStructureTraits, MatterVizWidget):
     """MatterViz widget for visualizing electronic and phonon band structures.
 
-    Accepts pymatgen BandStructure, BandStructureSymmLine, or
-    PhononBandStructureSymmLine objects, or a pre-computed dict. Pass a
-    ``{label: band_structure}`` dict to overlay several band structures.
+    Accepts kemio PhononBands and ElectronicBands, pymatgen BandStructure,
+    BandStructureSymmLine and PhononBandStructureSymmLine, phonopy BandStructure,
+    vasprun.xml paths, or a pre-computed dict. Pass a ``{label: band_structure}``
+    dict to overlay several band structures.
 
     Examples:
-        From a pymatgen BandStructureSymmLine:
+        From kemio phonon bands (NaCl demo data):
         >>> import pymatviz as pmv
-        >>> widget = pmv.band_structure(band_structs=bs)
+        >>> from pymatviz.data import load_nacl_phonons
+        >>> phonons = load_nacl_phonons()
+        >>> bands = phonons.bands()
+        >>> widget = pmv.band_structure(band_structs=bands)
         >>> widget
 
-        With custom options:
+        Several band structures overlaid, with custom options:
         >>> widget = pmv.band_structure(
-        ...     band_structs={"PBE": bs_pbe, "HSE": bs_hse},
+        ...     band_structs={"51 pts": bands, "11 pts": phonons.bands(n_points=11)},
         ...     show_legend=True,
         ...     fermi_level=0.0,
         ...     style="height: 500px;",
         ... )
     """
 
-    def __init__(self, band_structs: Any | None = None, **kwargs: Any) -> None:
-        """Initialize the BandStructureWidget.
+    band_structs = normalized_trait(
+        lambda value: _to_dict(value, "band structure", vasprun="bands")
+    )
 
-        Args:
-            band_structs: Band structure data -- a pymatgen BandStructure,
-                BandStructureSymmLine, PhononBandStructureSymmLine, phonopy
-                BandStructure, a dict, or a ``{label: band_structure}`` dict of those
-                to overlay.
-            **kwargs: Additional widget properties.
-        """
-        super().__init__(
-            band_structs=_to_dict(band_structs, "band structure"),
-            **kwargs,
-        )
+    _positional_traits = ("band_structs",)

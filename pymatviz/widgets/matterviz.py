@@ -1,21 +1,27 @@
-"""Load MatterViz widget assets from npm, cache, or a local build."""
+"""MatterVizWidget base class with image/HTML/JSON export, and loading of the
+MatterViz bundle from npm, the disk cache or a local build.
+"""
 
 from __future__ import annotations
 
 import base64
 import dataclasses
+import inspect
 import json
 import os
 import re
 import shutil
+import unicodedata
 import urllib.request
+from collections import defaultdict
 from typing import TYPE_CHECKING, Any, ClassVar
 from urllib.parse import urljoin
 
 import traitlets as tl
 from anywidget import AnyWidget
 
-from pymatviz.widgets._traits import CONTROLS_MODES, optional_trait
+from pymatviz.widgets._normalize import normalize_plot_series
+from pymatviz.widgets._traits import CONTROLS_MODES, optional_trait, validator
 
 
 if TYPE_CHECKING:
@@ -183,7 +189,7 @@ def configure_assets(
     Call with no arguments to reset to default (``MATTERVIZ_ANYWIDGET_VERSION``).
 
     Args:
-        version: ``matterviz-anywidget`` npm version to fetch (e.g. ``"0.4.0"``),
+        version: ``matterviz-anywidget`` npm version to fetch (e.g. ``"0.10.0"``),
             or ``"main"`` for the bundle built from matterviz main.
             Mutually exclusive with ``esm_src``/``css_src``.
         esm_src: URL or local file path for the ESM JavaScript bundle.
@@ -223,8 +229,7 @@ def fetch_widget_asset(filename: str, version_override: str | None = None) -> st
     source text.
 
     The bundle lives in the ``matterviz-anywidget`` npm package (built from
-    ``matterviz/extensions/anywidget``); this repo no longer builds it. Resolution
-    order:
+    ``matterviz/extensions/anywidget``). Resolution order:
 
     1. ``MATTERVIZ_ANYWIDGET_DIR`` env var -- a local ``build/`` dir, for
        developing against an unpublished bundle.
@@ -288,7 +293,6 @@ def clear_widget_cache(version_override: str | None = None) -> None:
         version_cache_dir = _cache_dir(version_override)
         if os.path.isdir(version_cache_dir):
             shutil.rmtree(version_cache_dir)
-    # Clear entire cache
     elif os.path.isdir(cache_root := os.path.expanduser(_CACHE_ROOT)):
         shutil.rmtree(cache_root)
 
@@ -344,6 +348,35 @@ class MatterVizWidget(AnyWidget):
     # The bundle's render() checks them against what its widget spec reads, so a
     # bundle older than this package names the traits it would silently drop.
     _synced_keys = tl.List(tl.Unicode(), read_only=True).tag(sync=True)
+    # Dict/List/Union traits whose @validator converts numpy values itself (e.g.
+    # series to binary buffers) instead of the JSON normalization others get first,
+    # unioned along the MRO
+    _raw_json_traits: ClassVar[frozenset[str]] = frozenset()
+    # Traits the constructor takes positionally, in order, e.g. ScatterPlotWidget's
+    # series. Those not passed are set to None, which runs their validators.
+    _positional_traits: ClassVar[tuple[str, ...]] = ()
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        """Check that ``_positional_traits`` are traits and, for classes using this
+        ``__init__``, expose them in ``inspect.signature``.
+        """
+        super().__init_subclass__(**kwargs)
+        names, param = cls._positional_traits, inspect.Parameter
+        # traits aren't set up yet (no class_trait_names()), but class access
+        # returns their TraitType descriptors
+        if not all(isinstance(getattr(cls, nm, None), tl.TraitType) for nm in names):
+            raise TypeError(f"{cls.__name__}._positional_traits {names} must be traits")
+        # None lets inspect read a custom __init__ instead of an inherited signature
+        cls.__signature__ = None
+        if cls.__init__ is MatterVizWidget.__init__:
+            kind = param.POSITIONAL_OR_KEYWORD
+            cls.__signature__ = inspect.Signature(
+                [
+                    *(param(name, kind, default=None) for name in names),
+                    param("version_override", param.KEYWORD_ONLY, default=None),
+                    param("kwargs", param.VAR_KEYWORD),
+                ]
+            )
 
     @tl.default("_synced_keys")
     def _default_synced_keys(self) -> list[str]:
@@ -368,21 +401,31 @@ class MatterVizWidget(AnyWidget):
             )
         )
 
-    def __init__(self, version_override: str | None = None, **kwargs: Any) -> None:
+    def __init__(
+        self, *args: Any, version_override: str | None = None, **kwargs: Any
+    ) -> None:
         """Initialize with lazy-loaded widget assets.
 
         Args:
+            *args: Values of the class's ``_positional_traits``, in order.
             version_override: Fetch assets for this ``matterviz-anywidget``
                 version (or ``"main"``) instead of ``MATTERVIZ_ANYWIDGET_VERSION``.
                 Prefer ``configure_assets()`` for global overrides.
             **kwargs: Widget traits, passed through to AnyWidget.
 
         Raises:
-            TypeError: For kwargs that aren't traits of this widget (typos or
-                unsupported options would otherwise be silently dropped).
+            TypeError: For more positional args than ``_positional_traits``, a trait
+                passed both ways, or kwargs that aren't traits of this widget (typos
+                or unsupported options would otherwise be silently dropped).
         """
+        names, cls_name = type(self)._positional_traits, type(self).__name__
+        if len(args) > len(names):
+            raise TypeError(f"{cls_name} takes positional {names}, got {len(args)}")
+        if twice := sorted(kwargs.keys() & set(names[: len(args)])):
+            raise TypeError(f"{cls_name} got {twice} positionally and as keywords")
+        kwargs = dict.fromkeys(names) | dict(zip(names, args, strict=False)) | kwargs
         if unknown := kwargs.keys() - self.trait_names() - {"model_id"}:
-            raise TypeError(f"Unknown {type(self).__name__} options: {sorted(unknown)}")
+            raise TypeError(f"Unknown {cls_name} options: {sorted(unknown)}")
         cls = MatterVizWidget
         self._bundle = (
             version_override or cls._configured or MATTERVIZ_ANYWIDGET_VERSION
@@ -436,23 +479,16 @@ class MatterVizWidget(AnyWidget):
         base64-encoded), which ``from_json`` turns back into an equal widget.
 
         Args:
-            filename: Optional path to also write the JSON to.
+            filename: Optional path to also write the JSON to (parent dirs created).
 
         Returns:
             The JSON text.
         """
-        import numpy as np
+        from pymatviz.widgets._binary import json_default
 
-        def default(obj: Any) -> Any:
-            """Encode binary buffers and numpy values, reject anything else."""
-            if isinstance(obj, (bytes, bytearray, memoryview)):
-                return base64.b64encode(obj).decode("ascii")
-            if isinstance(obj, np.generic | np.ndarray):
-                return obj.tolist()
-            raise TypeError(f"{type(obj).__name__} is not JSON serializable: {obj!r}")
-
-        text = json.dumps(self.to_dict(), default=default)
+        text = json.dumps(self.to_dict(), default=json_default)
         if filename:
+            os.makedirs(os.path.dirname(filename) or ".", exist_ok=True)
             with open(filename, mode="w", encoding="utf-8") as file:
                 file.write(text)
         return text
@@ -530,7 +566,7 @@ class MatterVizWidget(AnyWidget):
                 requested for a canvas-based widget.
             ImportError: If ``playwright`` is not installed.
         """
-        from pymatviz.widgets._headless import render_widget_headless
+        from pymatviz.widgets._headless import render_options, render_widgets_headless
 
         if fmt is None and filename:
             ext = os.path.splitext(filename)[1].lower().lstrip(".")
@@ -540,81 +576,35 @@ class MatterVizWidget(AnyWidget):
                     "(no extension). Pass fmt= explicitly."
                 )
             fmt = {"jpg": "jpeg"}.get(ext, ext)  # ty: ignore[invalid-assignment]
-        img_bytes = render_widget_headless(
-            **self._render_job(
-                fmt or "png", dpi, timeout, quality, width, height, transparent
-            )
+        options = render_options(
+            fmt or "png", dpi, timeout, width, height, quality, transparent
         )
+        (img_bytes,) = render_widgets_headless([self._render_job(**options)])
 
         if filename:
             os.makedirs(os.path.dirname(filename) or ".", exist_ok=True)
-            with open(filename, "wb") as fh:
-                fh.write(img_bytes)
+            with open(filename, "wb") as file:
+                file.write(img_bytes)
 
         return img_bytes
 
-    def _render_job(
-        self,
-        fmt: str,
-        dpi: int,
-        timeout: float,
-        quality: int,
-        width: int | None,
-        height: int | None,
-        transparent: bool,  # noqa: FBT001
-    ) -> dict[str, Any]:
-        """Checked render_widget_headless arguments for exporting this widget.
-
-        Raises:
-            ValueError: For a non-positive size, dpi or timeout, quality outside
-                [1, 100] or an unsupported format.
-        """
-        from pymatviz.widgets._headless import _CAPTURE_FORMATS
-
-        dims = dict(dpi=dpi, timeout=timeout, width=width, height=height)
-        for name, val in dims.items():
-            if val is not None and val <= 0:
-                raise ValueError(f"{name} must be positive, got {val}")
-        if not 1 <= quality <= 100:
-            raise ValueError(f"quality must be between 1 and 100, got {quality}")
-        if fmt not in _CAPTURE_FORMATS:
-            raise ValueError(f"Unsupported {fmt=}, expected one of {_CAPTURE_FORMATS}")
+    def _render_job(self, **options: Any) -> dict[str, Any]:
+        """Headless render job (``_RenderInputs`` fields) exporting this widget."""
         esm_content, css_content = self._resolve_assets()
         return dict(
             widget_data=self._frontend_state(), esm_content=esm_content,
-            css_content=css_content, fmt=fmt, transparent=transparent, **dims,
-            quality=quality,
+            css_content=css_content, **options,
         )  # fmt: skip
 
     def _resolve_assets(self) -> tuple[str, str]:
         """Return ``(esm_content, css_content)`` of the bundle selected at
         construction, loading it on first use.
         """
-        self._asset_sources = self._asset_sources or (
-            _load_bundle(self._bundle, "js"),
-            _load_bundle(self._bundle, "css"),
-        )
+        if not self._asset_sources:
+            esm_content = _load_bundle(self._bundle, "js")
+            css_content = _load_bundle(self._bundle, "css")
+            self._asset_sources = (esm_content, css_content)
         return self._asset_sources
-
-    def _binary_series(
-        self, value: Any, component_name: str, samples_key: str | None = None
-    ) -> list[dict[str, Any]] | None:
-        """Normalize plot series, sending large numeric ones as binary envelopes.
-
-        Raises:
-            tl.TraitError: For invalid series.
-        """
-        from pymatviz.widgets._normalize import normalize_plot_series
-
-        try:
-            return normalize_plot_series(
-                value,
-                component_name=component_name,
-                samples_key=samples_key,
-                binary=True,
-            )
-        except (TypeError, ValueError) as exc:
-            raise tl.TraitError(str(exc)) from exc
 
     def describe(self) -> dict[str, Any]:
         """Return structured, machine-parseable facts about this widget's data.
@@ -624,6 +614,7 @@ class MatterVizWidget(AnyWidget):
         Useful for agents to reason about output and as image alt-text.
 
         Examples:
+            >>> import pymatviz as pmv
             >>> pmv.periodic_table(heatmap_values={"Fe": 42}).describe()["n_elements"]
             1
         """
@@ -702,8 +693,8 @@ class MatterVizWidget(AnyWidget):
 
         if filename:
             os.makedirs(os.path.dirname(filename) or ".", exist_ok=True)
-            with open(filename, "w", encoding="utf-8") as fh:
-                fh.write(html)
+            with open(filename, "w", encoding="utf-8") as file:
+                file.write(html)
 
         return html
 
@@ -728,19 +719,12 @@ class MatterVizWidget(AnyWidget):
         from pymatviz.widgets._headless import RenderReport, render_diagnostics
 
         data = self.to_dict()
-        try:  # asset resolution (cache miss + offline fetch) can fail before the
-            esm_content, css_content = self._resolve_assets()  # never-raising render
-            diag = render_diagnostics(
-                self._frontend_state(),
-                esm_content,
-                css_content,
-                timeout=timeout,
-                dpi=dpi,
-            )
+        try:  # asset loading, browser launch or the render itself
+            report = render_diagnostics(self._render_job(timeout=timeout, dpi=dpi))
         except Exception as exc:  # noqa: BLE001 -- documented never-raises contract
-            diag = RenderReport(ok=False, error=f"render_report failed: {exc}")
+            report = RenderReport(ok=False, error=f"render failed: {exc}")
         return dataclasses.replace(
-            diag, summary=describe_widget(data), warnings=tuple(check_inputs(data))
+            report, summary=describe_widget(data), warnings=tuple(check_inputs(data))
         )
 
 
@@ -791,6 +775,32 @@ def from_json(source: str) -> MatterVizWidget:
     return widget_cls(**traits)
 
 
+class SeriesPlotMixin(tl.HasTraits):
+    """Validator of plot widgets' ``series``: entries with equal-length
+    ``_series_keys`` arrays, sent as binary envelopes when large unless
+    ``_binary_series`` is False.
+    """
+
+    _raw_json_traits: ClassVar[frozenset[str]] = frozenset({"series"})
+    _series_keys: ClassVar[tuple[str, ...]] = ("x", "y")
+    _binary_series: ClassVar[bool] = True
+
+    @validator("series")
+    def _validate_series(self, proposal: tl.Bunch) -> list[dict[str, Any]] | None:
+        """Normalized ``series``, with errors naming the widget class that mixes in
+        this validator (not a user subclass), without its ``Widget`` suffix.
+        """
+        owner = next(
+            cls for cls in type(self).__mro__ if SeriesPlotMixin in cls.__bases__
+        )
+        return normalize_plot_series(
+            proposal["value"],
+            component_name=owner.__name__.removesuffix("Widget"),
+            keys=self._series_keys,
+            binary=self._binary_series,
+        )
+
+
 def export_widgets(
     widgets: Mapping[str, MatterVizWidget],
     out_dir: str,
@@ -820,13 +830,36 @@ def export_widgets(
 
     Returns:
         Map of the widget names to the written file paths.
-    """
-    from pymatviz.widgets._headless import render_widgets_headless
 
-    jobs = [
-        widget._render_job(fmt, dpi, timeout, quality, width, height, transparent)
-        for widget in widgets.values()
-    ]
+    Raises:
+        ValueError: For a name that isn't a plain file name (empty, ``.``, ``..`` or
+            with a path separator), checked before rendering since such a name
+            would write outside ``out_dir`` or into a missing subdirectory, or for
+            names differing only in case or Unicode normalization form, which
+            overwrite each other on case-insensitive filesystems.
+    """
+    from pymatviz.widgets._headless import render_options, render_widgets_headless
+
+    options = render_options(fmt, dpi, timeout, width, height, quality, transparent)
+    if bad_names := [
+        name
+        for name in widgets
+        if name in ("", ".", "..") or os.path.basename(name) != name
+    ]:
+        raise ValueError(
+            f"export_widgets names must be plain file names, got {bad_names}"
+        )
+    # names differing only in case write the same file on case-insensitive
+    # filesystems (macOS, Windows default), so one would silently overwrite another.
+    # macOS also equates Unicode normalization forms (precomposed é and e + U+0301)
+    names_by_folded: defaultdict[str, list[str]] = defaultdict(list)
+    for name in widgets:
+        names_by_folded[unicodedata.normalize("NFD", name).casefold()].append(name)
+    if clashes := [names for names in names_by_folded.values() if len(names) > 1]:
+        raise ValueError(
+            f"export_widgets names must differ in more than case, got {clashes}"
+        )
+    jobs = [widget._render_job(**options) for widget in widgets.values()]
     os.makedirs(out_dir, exist_ok=True)
     paths = {}
     for name, img_bytes in zip(widgets, render_widgets_headless(jobs), strict=True):

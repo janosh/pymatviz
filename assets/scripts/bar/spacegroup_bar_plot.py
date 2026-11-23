@@ -1,21 +1,21 @@
 """Spacegroup bar examples."""
 
-# %%
-import pandas as pd
+# /// script
+# dependencies = [
+#     "matminer>=0.10.1",
+# ]
+# ///
+
+import kemio
 from matminer.datasets import load_dataset
 
 import pymatviz as pmv
 
 
-# %%
+# %% Space groups of all structures, searched by kemio in one parallel batch
 df_phonons = load_dataset("matbench_phonons")
-
-df_sym = pd.DataFrame(
-    struct.get_symmetry_dataset(backend="moyopy", return_raw_dataset=True).as_dict()
-    for struct in df_phonons["structure"]
-)
-df_phonons["spg_num"] = df_sym["number"]
-df_phonons["spg_symbol"] = df_sym["number"].map(pmv.utils.spg_num_to_from_symbol)
+df_phonons["spg_num"] = pmv.structures.normalize_spacegroups(df_phonons["structure"])
+df_phonons["spg_symbol"] = df_phonons["spg_num"].map(kemio.space_group_symbol)
 
 
 # %% Spacegroup histograms from numbers and symbols

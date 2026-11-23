@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import builtins
+import functools
 import io
 import os
 import urllib.request
@@ -25,7 +26,7 @@ from pymatviz.widgets.matterviz import (
 
 if TYPE_CHECKING:
     import types
-    from collections.abc import Generator
+    from collections.abc import Callable, Generator
     from pathlib import Path
 
 DOTTED_PATH = "pymatviz.widgets.matterviz"
@@ -40,23 +41,6 @@ def _block_marimo(name: str, *args: Any, **kwargs: Any) -> types.ModuleType:
     return _real_import(name, *args, **kwargs)
 
 
-def _mock_marimo_context(
-    *,
-    get_context_side_effect: Any = None,
-    get_context_return: Any = None,
-) -> MagicMock:
-    """Build a mock ``marimo._runtime.context`` module."""
-    mock_mod = MagicMock()
-    mock_mod.ContextNotInitializedError = type(
-        "ContextNotInitializedError", (Exception,), {}
-    )
-    if get_context_side_effect is not None:
-        mock_mod.get_context.side_effect = get_context_side_effect
-    elif get_context_return is not None:
-        mock_mod.get_context.return_value = get_context_return
-    return mock_mod
-
-
 def _fake_urlopen(url: str, *args: Any, **kwargs: Any) -> io.BytesIO:  # noqa: ARG001
     """Return a readable context-manager response simulating ``urlopen``."""
     return io.BytesIO(b"downloaded content")
@@ -68,11 +52,14 @@ def _clean_asset_cache(monkeypatch: pytest.MonkeyPatch) -> Generator[None]:
     starts from the default remote bundle (no MATTERVIZ_ANYWIDGET_DIR).
     """
     monkeypatch.delenv("MATTERVIZ_ANYWIDGET_DIR", raising=False)
-    cls = matterviz.MatterVizWidget
-    saved = cls._asset_cache.copy(), cls._marimo_urls.copy(), cls._configured
-    cls._asset_cache.clear()
+    saved_cache = MatterVizWidget._asset_cache.copy()
+    saved_urls = MatterVizWidget._marimo_urls.copy()
+    saved_configured = MatterVizWidget._configured
+    MatterVizWidget._asset_cache.clear()
     yield
-    cls._asset_cache, cls._marimo_urls, cls._configured = saved
+    MatterVizWidget._asset_cache = saved_cache
+    MatterVizWidget._marimo_urls = saved_urls
+    MatterVizWidget._configured = saved_configured
 
 
 # === clear_widget_cache ===
@@ -220,10 +207,10 @@ def test_fetch_widget_asset_cached_file(cache_at_tmp: Path) -> None:
         cache_file.write_text("cached content")
 
     with patch(f"{DOTTED_PATH}.urllib.request.urlopen") as mock_dl:
-        assert (
-            matterviz.fetch_widget_asset("matterviz.js", version_override="0.10.1")
-            == "cached content"
+        content = matterviz.fetch_widget_asset(
+            "matterviz.js", version_override="0.10.1"
         )
+        assert content == "cached content"
     mock_dl.assert_not_called()
 
     main_dir = cache_at_tmp / "matterviz-anywidget" / "main"
@@ -424,12 +411,9 @@ def test_configure_assets_reset() -> None:
 
     configure_assets()
 
-    cls = matterviz.MatterVizWidget
-    assert (cls._asset_cache, cls._configured) == ({}, None)
-    assert (
-        cls()._esm
-        == matterviz._bundle_sources(matterviz.MATTERVIZ_ANYWIDGET_VERSION)[0]
-    )
+    assert (MatterVizWidget._asset_cache, MatterVizWidget._configured) == ({}, None)
+    pinned_esm = matterviz._bundle_sources(matterviz.MATTERVIZ_ANYWIDGET_VERSION)[0]
+    assert MatterVizWidget()._esm == pinned_esm
 
 
 @pytest.mark.parametrize(
@@ -528,105 +512,65 @@ def test_static_png_repr(static_val: str) -> None:
     )
 
 
-# === _in_marimo_runtime ===
-
-
-def test_in_marimo_runtime_no_marimo() -> None:
-    """Returns False when marimo is not installed."""
-    with patch("builtins.__import__", side_effect=_block_marimo):
-        assert _in_marimo_runtime() is False
+# === _in_marimo_runtime / _marimo_esm_url ===
 
 
 @pytest.mark.parametrize(
-    ("ctx_kwargs", "expected"),
+    ("marimo_helper", "expected"),
     [
-        ({"get_context_return": MagicMock()}, True),
-        ({"get_context_side_effect": RuntimeError("no context")}, False),
+        (_in_marimo_runtime, False),
+        (functools.partial(_marimo_esm_url, "console.log('hi')"), None),
     ],
-    ids=["context_exists", "runtime_error"],
 )
-def test_in_marimo_runtime_with_context(
-    ctx_kwargs: dict[str, Any], expected: bool
+def test_marimo_helpers_without_marimo(
+    marimo_helper: Callable[[], Any], expected: Any
 ) -> None:
-    """Detects marimo runtime presence across context error scenarios."""
-    ctx_mod = _mock_marimo_context(**ctx_kwargs)
+    """No marimo installed: no runtime detected and no virtual-file ESM URL."""
+    with patch("builtins.__import__", side_effect=_block_marimo):
+        assert marimo_helper() is expected
+
+
+@pytest.mark.parametrize(
+    ("error", "expected"),
+    [(None, True), ("RuntimeError", False), ("ContextNotInitializedError", False)],
+)
+def test_in_marimo_runtime_with_context(error: str | None, expected: bool) -> None:
+    """Detects a live marimo runtime, False when getting its context fails."""
+    ctx_mod = MagicMock()
+    ctx_mod.ContextNotInitializedError = type(
+        "ContextNotInitializedError", (Exception,), {}
+    )
+    errors = {"RuntimeError": RuntimeError("no context")}
+    errors["ContextNotInitializedError"] = ctx_mod.ContextNotInitializedError()
+    ctx_mod.get_context.side_effect = errors.get(error)
     with patch.dict("sys.modules", {"marimo._runtime.context": ctx_mod}):
         assert _in_marimo_runtime() is expected
 
 
-def test_in_marimo_runtime_context_not_initialized() -> None:
-    """Returns False when marimo context is not initialized."""
-    ctx_mod = _mock_marimo_context()
-    ctx_mod.get_context.side_effect = ctx_mod.ContextNotInitializedError
-    with patch.dict("sys.modules", {"marimo._runtime.context": ctx_mod}):
-        assert _in_marimo_runtime() is False
-
-
-# === _marimo_esm_url ===
-
-
-_VALID_BASE_URL = {"scheme": "http", "netloc": "localhost:8080", "path": "/"}
-
-
-def _mock_marimo_modules(
-    *, vfile_url: str = "./@file/12345-abc.js", request: Any = "valid"
-) -> dict[str, MagicMock]:
-    """Build mock marimo modules for _marimo_esm_url tests."""
-    mock_vfile = MagicMock()
-    mock_vfile.url = vfile_url
-    mock_data = MagicMock()
-    mock_data.js = MagicMock(return_value=mock_vfile)
-
-    if request == "valid":
-        mock_req = MagicMock()
-        mock_req.base_url = _VALID_BASE_URL
-        mock_ctx = MagicMock()
-        mock_ctx.request = mock_req
-    else:
-        mock_ctx = MagicMock()
-        mock_ctx.request = request
-
-    mock_ctx_mod = MagicMock()
-    mock_ctx_mod.get_context.return_value = mock_ctx
-
-    return {
-        "marimo._output.data.data": mock_data,
-        "marimo._runtime.context": mock_ctx_mod,
-    }
-
-
-def test_marimo_esm_url_no_marimo() -> None:
-    """Returns None when marimo is not installed."""
-    with patch("builtins.__import__", side_effect=_block_marimo):
-        assert _marimo_esm_url("console.log('hi')") is None
-
-
-def test_marimo_esm_url_full_resolution() -> None:
-    """Resolves ./@file/ URL to absolute http:// using request base_url."""
-    mods = _mock_marimo_modules()
+@pytest.mark.parametrize(
+    ("has_request", "virtual_files", "expected"),
+    [
+        # ./@file/ URL resolved against the request's base_url
+        (True, True, "http://localhost:8080/@file/12345-abc.js"),
+        (False, True, "./@file/12345-abc.js"),  # no request context: relative URL
+        (True, False, None),  # no virtual files (VS Code extension)
+    ],
+)
+def test_marimo_esm_url(
+    has_request: bool, virtual_files: bool, expected: str | None
+) -> None:
+    """Serves the ESM as a marimo virtual file and returns its (absolute) URL."""
+    data_mod, ctx_mod = MagicMock(), MagicMock()
+    data_mod.js.return_value.url = "./@file/12345-abc.js"
+    context = ctx_mod.get_context.return_value
+    context.virtual_files_supported = virtual_files
+    request = MagicMock()
+    request.base_url = {"scheme": "http", "netloc": "localhost:8080", "path": "/"}
+    context.request = request if has_request else None
+    mods = {"marimo._output.data.data": data_mod, "marimo._runtime.context": ctx_mod}
     with patch.dict("sys.modules", mods):
-        result = _marimo_esm_url("const x = 1;")
-
-    assert result == "http://localhost:8080/@file/12345-abc.js"
-    mods["marimo._output.data.data"].js.assert_called_once_with("const x = 1;")
-
-
-def test_marimo_esm_url_returns_none_without_virtual_files() -> None:
-    """Returns None when virtual files are not supported (VS Code extension)."""
-    mods = _mock_marimo_modules()
-    mods[
-        "marimo._runtime.context"
-    ].get_context.return_value.virtual_files_supported = False
-    with patch.dict("sys.modules", mods):
-        assert _marimo_esm_url("code") is None
-    mods["marimo._output.data.data"].js.assert_not_called()
-
-
-def test_marimo_esm_url_relative_without_request() -> None:
-    """Returns the relative ./@file/ URL when marimo has no request context."""
-    mods = _mock_marimo_modules(request=None)
-    with patch.dict("sys.modules", mods):
-        assert _marimo_esm_url("code") == "./@file/12345-abc.js"
+        assert _marimo_esm_url("const x = 1;") == expected
+    assert data_mod.js.call_count == virtual_files
 
 
 # === _init_marimo_assets ===
@@ -692,6 +636,26 @@ def test_export_widgets(fmt: str, ext: str, tmp_path: Any) -> None:
         ) as render,
     ):
         paths = pmv.export_widgets(widgets, out_dir, fmt=fmt, dpi=300)  # ty: ignore[invalid-argument-type]
+        # names that would escape out_dir or need a missing subdirectory fail before
+        # rendering (writing used to fail after rendering all, or land elsewhere)
+        for bad_name in ("../escaped", "sub/name", "", "..", "."):
+            with pytest.raises(ValueError, match=r"must be plain file names, got \["):
+                pmv.export_widgets(
+                    {"ok": widgets["a"], bad_name: widgets["b"]}, out_dir
+                )
+        # names differing only in case overwrote each other on case-insensitive
+        # filesystems (macOS, Windows)
+        with pytest.raises(ValueError, match=r"more than case, got \[\['A', 'a'\]\]"):
+            pmv.export_widgets(
+                {"A": widgets["a"], "b": widgets["b"], "a": widgets["b"]}, out_dir
+            )
+        # macOS also folds full case mappings (ß as SS) and Unicode normalization
+        # forms (precomposed é as e + combining acute), which used to pass the check
+        for name_pair in (("straße", "STRASSE"), ("café", "café")):
+            with pytest.raises(ValueError, match="must differ in more than case"):
+                pmv.export_widgets(dict.fromkeys(name_pair, widgets["a"]), out_dir)
+    assert render.call_count == 1
+    assert not os.path.isfile(f"{tmp_path}/escaped.png")
     assert paths == {name: f"{out_dir}/{name}.{ext}" for name in widgets}
     for path, widget_type in zip(
         paths.values(), ("bar_plot", "structure"), strict=True

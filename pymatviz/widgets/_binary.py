@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
-from typing import Any, NamedTuple
+import base64
+from collections.abc import Collection, Mapping
+from typing import Any
 
 import numpy as np
 
@@ -11,8 +12,6 @@ from pymatviz.widgets._normalize import normalize_plot_json
 
 
 BINARY_FORMAT = "matterviz-binary-v1"
-TRAJECTORY_RESERVED = {"positions", "numbers", "lattice", "steps"}
-MAX_ATOMIC_NUMBER = 118
 
 
 def is_binary_envelope(value: Any, kind: str) -> bool:
@@ -44,10 +43,11 @@ def binary_array(
     arr = np.asarray(values)
     if arr.dtype.kind not in "iuf":
         raise ValueError(f"{name} must be a numeric array, got {arr.dtype}")
+    # strict=False is safe: a length mismatch already fails the ndim check
     if shape is not None and (
         arr.ndim != len(shape)
         or any(
-            want not in (None, got) for want, got in zip(shape, arr.shape, strict=True)
+            want not in (None, got) for want, got in zip(shape, arr.shape, strict=False)
         )
     ):
         expected = ", ".join("*" if size is None else str(size) for size in shape)
@@ -66,6 +66,18 @@ def binary_array(
         "shape": list(wire.shape),
         "data": memoryview(wire.ravel()).cast("B"),
     }
+
+
+def json_default(obj: Any) -> Any:
+    """``json.dumps`` default encoding binary buffers as base64 and numpy arrays and
+    scalars as Python values (as Jupyter's comm serializer does), rejecting anything
+    else instead of stringifying it.
+    """
+    if isinstance(obj, (bytes, bytearray, memoryview)):
+        return base64.b64encode(obj).decode("ascii")
+    if isinstance(obj, np.generic | np.ndarray):
+        return obj.tolist()
+    raise TypeError(f"{type(obj).__name__} is not JSON serializable: {obj!r}")
 
 
 # Series with at least this many points sync as binary plot-series envelopes: as JSON
@@ -134,23 +146,12 @@ def series_column(series_item: Mapping[str, Any], key: str) -> Any:
     """A plot series' ``key`` column: a read-only float array decoded from a binary
     plot-series envelope, else the JSON value (None if absent).
     """
-    if is_binary_envelope(series_item, "plot-series") and key in (
-        arrays := series_item.get("arrays") or {}
-    ):
+    arrays = series_item.get("arrays") or {}
+    if is_binary_envelope(series_item, "plot-series") and key in arrays:
         arr = arrays[key]
-        return np.frombuffer(
-            arr["data"], dtype=np.dtype(arr["dtype"]).newbyteorder("<")
-        )
+        dtype = np.dtype(arr["dtype"]).newbyteorder("<")
+        return np.frombuffer(arr["data"], dtype=dtype)
     return series_item.get(key)
-
-
-def _numbers_ok(numbers: np.ndarray) -> bool:
-    """Whether atomic numbers are integers in 1..118, what matterviz can render (a
-    DummySpecies' Z is a hash).
-    """
-    return numbers.dtype.kind in "iu" and bool(
-        np.all((numbers >= 1) & (numbers <= MAX_ATOMIC_NUMBER))
-    )
 
 
 def volume_envelope(values: Any, **fields: Any) -> dict[str, Any]:
@@ -175,186 +176,50 @@ def volume_envelope(values: Any, **fields: Any) -> dict[str, Any]:
     }
 
 
-def _is_number(value: Any) -> bool:
-    """Recognize real numeric scalars, including 0-d arrays and excluding booleans."""
-    if isinstance(value, int):
-        return not isinstance(value, bool)
-    return (
-        isinstance(value, (float, np.number, np.ndarray))
-        and np.ndim(value) == 0
-        and np.asarray(value).dtype.kind in "iuf"
-    )
-
-
 def object_metadata(structure: Any) -> dict[str, Any]:
-    """Metadata of a structure-like object: its properties/info, plus ASE calculator
-    results (energy, forces, stress, ...) which pymatgen's ``AseAtomsAdaptor`` drops.
+    """Metadata of a structure-like object: a kemio Structure's info (extxyz frame
+    keys, pymatgen properties) or ASE info, plus ASE calculator results
+    (energy, forces, stress, ...) which pymatgen's ``AseAtomsAdaptor`` drops.
     """
+    import kemio
+
+    if isinstance(structure, kemio.Structure):  # spin describes the structure
+        return {k: v for k, v in structure.info.items() if k != "spin_multiplicity"}
     metadata = getattr(structure, "properties", None) or getattr(structure, "info", {})
     calc = getattr(structure, "calc", None)
     return {**(metadata or {}), **(getattr(calc, "results", None) or {})}
 
 
-def _pmg_numbers(
-    species: Sequence[Any], charge: float | None, spin: float | None
-) -> np.ndarray | None:
-    """Atomic numbers of pymatgen species, or None if binary would drop information:
-    oxidation states, a net charge or a non-default spin multiplicity.
+def frame_item(frame: Any, drop: Collection[str] = ()) -> dict[str, Any]:
+    """``{"structure", **metadata, **results}`` of a kemio ``io.Frame``, its
+    structure's info (minus ``drop`` keys) moved to the item on a copy.
     """
-    if any(getattr(sp, "oxi_state", None) is not None for sp in species):
-        return None
-    numbers = np.array([getattr(sp, "Z", 0) for sp in species])
-    if charge or (spin is not None and spin != 1 + int(numbers.sum()) % 2):
-        return None
-    return numbers
-
-
-class _Frame(NamedTuple):
-    """Geometry and property sources for one structure or ASE frame."""
-
-    numbers: np.ndarray
-    positions: np.ndarray
-    cell: np.ndarray | None
-    pbc: tuple[bool, ...] | None
-    site_props: Mapping[str, Any]
-    props: Mapping[str, Any]
+    metadata = object_metadata(frame.structure)
+    info = frame.structure.info  # frame metadata goes to the item, spin stays
+    spin = {key: info[key] for key in ("spin_multiplicity",) if key in info}
+    structure = frame.structure.replace(info=spin)
+    results = {
+        key: val
+        for key in ("energy", "free_energy", "forces", "stress")
+        if (val := getattr(frame, key)) is not None
+    }
+    kept = {key: val for key, val in metadata.items() if key not in drop}
+    return {"structure": structure, **kept, **results}
 
 
 def frame_input(item: Any) -> tuple[Any, Mapping[str, Any]]:
-    """Unwrap a frame and select its explicit properties or the object's metadata."""
+    """Unwrap a frame into its structure and properties: the object's metadata
+    overridden by a ``{"structure", **props}`` dict's explicit ones.
+    """
+    from kemio.io import Frame
+
+    if isinstance(item, Frame):
+        item = frame_item(item)
     if isinstance(item, Mapping) and "structure" in item:
         structure = item["structure"]
         props = {key: val for key, val in item.items() if key != "structure"}
-        return structure, props or object_metadata(structure)
+        return structure, {**object_metadata(structure), **props}
     return item, object_metadata(item)
-
-
-def _frame(item: Any) -> _Frame | None:
-    """Extract geometry, or select JSON for richer structures."""
-    from pymatgen.core import IStructure, SiteCollection
-
-    from pymatviz.structures import MIN_ASE_CELL_VOLUME, is_ase_atoms
-
-    structure, props = frame_input(item)
-    if isinstance(item, Mapping) and len(item) > 1 and object_metadata(structure):
-        return None  # JSON keeps frame metadata separate from structure properties.
-    if isinstance(structure, SiteCollection):
-        if not structure.is_ordered or any(
-            site.label != site.species_string for site in structure
-        ):
-            return None
-        numbers = _pmg_numbers(
-            structure.species,
-            structure.charge,
-            getattr(structure, "spin_multiplicity", None),
-        )
-        if numbers is None:
-            return None
-        lattice = structure.lattice if isinstance(structure, IStructure) else None
-        return _Frame(
-            numbers,
-            structure.cart_coords,
-            lattice.matrix if lattice else None,
-            lattice.pbc if lattice else None,
-            structure.site_properties,
-            props,
-        )
-    if not is_ase_atoms(structure) or structure.constraints:
-        return None
-    cell, pbc = np.asarray(structure.cell), tuple(structure.pbc.tolist())
-    if not cell.any() and not any(pbc):
-        cell, pbc = None, None
-    elif structure.cell.volume < MIN_ASE_CELL_VOLUME:
-        return None  # The JSON path pads a degenerate cell with vacuum.
-    site_props = {
-        key: val
-        for key, val in structure.arrays.items()
-        if key not in ("numbers", "positions")
-    }
-    if "initial_magmoms" in site_props:  # The adaptor maps these to site magmom.
-        return None
-    return _Frame(structure.numbers, structure.positions, cell, pbc, site_props, props)
-
-
-def _channels(
-    frames: Iterable[tuple[Mapping[str, Any], Mapping[str, Any]]],
-    n_frames: int,
-    n_atoms: int,
-) -> dict[str, Any] | None:
-    """Encode site vectors, frame scalars (NaN if missing), and optional stress."""
-    vectors: dict[str, list[np.ndarray]] = {}
-    scalars: dict[str, np.ndarray] = {}
-    stress: list[np.ndarray] = []
-    for idx, (site_props, props) in enumerate(frames):
-        seen: set[str] = set()
-        for key, value in (*site_props.items(), *props.items()):
-            name = "force" if key == "forces" else key
-            if name in seen or name in TRAJECTORY_RESERVED:
-                return None
-            seen.add(name)
-            frame_property = name != "force" and key not in site_props
-            if frame_property and _is_number(value):
-                if name in vectors or (
-                    np.asarray(value).dtype.kind != "f" and abs(int(value)) > 2**53
-                ):
-                    return None
-                if name not in scalars:
-                    scalars[name] = np.full(n_frames, np.nan)
-                scalars[name][idx] = value
-                continue
-            if frame_property and name != "stress":
-                return None
-            try:
-                array = np.asarray(value)
-            except ValueError:  # Ragged properties can still travel as JSON.
-                return None
-            if array.dtype.kind not in "iuf" or name in scalars:
-                return None
-            if frame_property:
-                if (
-                    array.shape not in ((6,), (3, 3))
-                    or (stress and array.size != stress[0].size)
-                    or array.dtype.itemsize > 8
-                    or (
-                        array.dtype.kind in "iu"
-                        and (int(array.max()) > 2**53 or int(array.min()) < -(2**53))
-                    )
-                ):
-                    return None
-                stress.append(array.ravel())
-            elif array.shape == (n_atoms, 3):
-                vectors.setdefault(name, []).append(array)
-            else:
-                return None
-    if any(len(series) != n_frames for series in vectors.values()) or (
-        stress
-        and (
-            len(stress) != n_frames
-            or "frame_stress" in scalars
-            or "frame_stress" in vectors
-        )
-    ):
-        return None
-    stacked = {name: np.stack(series) for name, series in vectors.items()}
-    if (force := stacked.get("force")) is not None:
-        if vectors.keys() & {"force_max", "force_norm"}:
-            return None
-        for name, computed in force_stats(force).items():
-            given = scalars.get(name)
-            scalars[name] = (
-                computed
-                if given is None
-                else np.where(np.isnan(given), computed, given)
-            )
-    arrays = {
-        name: binary_array(values, "float32", name=name)
-        for name, values in stacked.items()
-    }
-    for name, values in scalars.items():
-        arrays[name] = binary_array(values, "float64", name=name, finite=False)
-    if stress:
-        arrays["frame_stress"] = binary_array(stress, "float64", name="stress")
-    return arrays
 
 
 def force_stats(forces: np.ndarray) -> dict[str, Any]:
@@ -366,100 +231,145 @@ def force_stats(forces: np.ndarray) -> dict[str, Any]:
     }
 
 
+# site data binary channels can't hold, which JSON structures keep
+_JSON_SITE_DATA = frozenset({"labels", "oxidation_states"})
+
+
+def _exact(values: np.ndarray) -> bool:
+    """Whether values are real numbers float64 holds exactly (no bools, strings,
+    objects or integers beyond 2^53).
+    """
+    if values.dtype.kind == "f":
+        return values.dtype.itemsize <= 8
+    if values.dtype.kind not in "iu":
+        return False
+    return not values.size or int(np.abs(values).max()) <= 2**53
+
+
+def _channels(traj: Any) -> dict[str, Any] | None:
+    """Per-atom vectors (site data, forces as ``force``), per-frame scalars (info,
+    energies; ``step`` as matterviz's ``steps`` x axis, NaN where a frame lacks one)
+    and ``frame_stress`` of kemio ``TrajectoryArrays``, or None if any needs JSON.
+    """
+    n_frames, n_sites = traj.positions.shape[:2]
+    vectors, scalars = dict(traj.site_data), dict(traj.info)
+    # per-atom forces: the results', a site data column's or a frame property's
+    force_sources = [
+        val
+        for source in (vectors, scalars)
+        for key in ("force", "forces")
+        if (val := source.pop(key, None)) is not None
+    ]
+    if traj.forces is not None:
+        force_sources.append(traj.forces)
+    if len(force_sources) > 1:
+        return None
+    if force_sources:
+        vectors["force"] = force_sources[0]
+    scalars |= {
+        key: val
+        for key in ("energy", "free_energy")
+        if (val := getattr(traj, key)) is not None
+    }
+    if "steps" in scalars or (vectors.keys() & scalars.keys()):
+        return None
+    scalars = {"steps" if key == "step" else key: val for key, val in scalars.items()}
+    stress = traj.stress
+    per_frame = [*vectors.values(), *([stress] if stress is not None else [])]
+    reserved = {"positions", "numbers", "lattice"}
+    reserved_clash = (vectors.keys() | scalars.keys()) & reserved
+    stress_clash = stress is not None and "frame_stress" in scalars
+    stats_clash = vectors.keys() & {"force_max", "force_norm"}
+    if reserved_clash or stress_clash or stats_clash:
+        return None
+
+    vectors_ok = {val.shape for val in vectors.values()} <= {(n_frames, n_sites, 3)}
+    scalars_ok = {val.shape for val in scalars.values()} <= {(n_frames,)}
+    exact_values = all(_exact(val) for val in [*vectors.values(), *scalars.values()])
+    if not (vectors_ok and scalars_ok and exact_values):
+        return None
+
+    # isfinite and the NaN-frame check below need the exact numeric dtypes checked above
+    steps_finite = "steps" not in scalars or np.isfinite(scalars["steps"]).all()
+    stress_ok = stress is None or _exact(stress)
+    if not (steps_finite and stress_ok):
+        return None
+
+    # a frame without a vector or stress (all NaN) needs JSON, while non-finite
+    # values within a frame raise in binary_array
+    if any(np.isnan(val.reshape(n_frames, -1)).all(axis=1).any() for val in per_frame):
+        return None
+    if (force := vectors.get("force")) is not None:
+        for name, computed in force_stats(force).items():
+            given = scalars.get(name)
+            scalars[name] = (
+                computed
+                if given is None
+                else np.where(np.isnan(given), computed, given)
+            )
+    arrays = {
+        name: binary_array(values, "float32", name=name)
+        for name, values in vectors.items()
+    }
+    for name, values in scalars.items():
+        arrays[name] = binary_array(values, "float64", name=name, finite=False)
+    if stress is not None:
+        arrays["frame_stress"] = binary_array(
+            stress.reshape(n_frames, -1), "float64", name="stress"
+        )
+    return arrays
+
+
 def trajectory_to_envelope(
     trajectory: Any,
     metadata: Mapping[str, Any] | None = None,
 ) -> dict[str, Any] | None:
-    """Encode supported trajectories, or return None for JSON-only data."""
-    from pymatgen.core.periodic_table import get_el_sp
-    from pymatgen.core.trajectory import Trajectory
+    """Binary envelope of a trajectory (anything kemio's ``to_trajectory`` takes)
+    from ``kemio.interop.trajectory_arrays``, or None for data only JSON holds:
+    frames that don't stack, net charges, labels, oxidation states, a non-default
+    spin, degenerate cells or quantities without a binary channel.
+    """
+    from kemio.errors import NotStackableError
+    from kemio.interop import trajectory_arrays
 
-    fields: dict[str, Any] = {}
-    if metadata:
-        fields["metadata"] = normalize_plot_json(dict(metadata), "trajectory metadata")
-
-    if isinstance(trajectory, Trajectory):
-        if (step := trajectory.time_step) is not None:
-            fields["time_step"] = {"value": float(step), "unit": "fs"}
-        site_props = trajectory.site_properties
-        if any(site_props or ()) or any(
-            isinstance(species, Mapping) for species in trajectory.species
-        ):
-            return None
-        numbers = _pmg_numbers(
-            [get_el_sp(species) for species in trajectory.species],
-            trajectory.charge,
-            trajectory.spin_multiplicity,
-        )
-        if numbers is None or not _numbers_ok(numbers) or not len(numbers):
-            return None
-        if not len(trajectory.coords):
-            return None
-        positions = np.asarray(trajectory.coords, dtype=float)
-        if trajectory.coords_are_displacement:
-            positions = trajectory.base_positions + np.cumsum(positions, axis=0)
-        cell = trajectory.lattice
-        if cell is not None:
-            positions = positions @ cell  # Preserve unwrapped fractional coordinates.
-        props = trajectory.frame_properties
-        if props is not None and len(props) != len(positions):
-            return None
-        channels = _channels(
-            (({}, frame or {}) for frame in props or []),
-            len(positions),
-            len(numbers),
-        )
-    else:
-        frames: list[_Frame] = []
-        for item in trajectory:
-            frame = _frame(item)
-            if frame is None:
-                return None
-            if frames:
-                first = frames[0]
-                if (
-                    not np.array_equal(frame.numbers, first.numbers)
-                    or frame.pbc != first.pbc
-                    or (frame.cell is None) != (first.cell is None)
-                ):
-                    return None
-            elif not len(frame.numbers) or not _numbers_ok(frame.numbers):
-                return None
-            frames.append(frame)
-        if not frames:
-            return None
-        numbers = frames[0].numbers
-        if frames[0].pbc is not None:
-            fields["pbc"] = list(frames[0].pbc)
-        channels = _channels(
-            ((frame.site_props, frame.props) for frame in frames),
-            len(frames),
-            len(numbers),
-        )
-        if channels is None:
-            return None
-        with np.errstate(over="ignore"):  # The wire check below rejects overflow.
-            positions = np.stack([frame.positions for frame in frames], dtype="<f4")
-        cell = (
-            np.array([frame.cell for frame in frames])
-            if frames[0].cell is not None
-            else None
-        )
-    if channels is None:
+    try:
+        traj = trajectory_arrays(trajectory)
+    except NotStackableError:
         return None
+    numbers = traj.numbers.astype(int)
+    traj = traj._replace(info=dict(traj.info))
+    traj.info.pop("time_step", None)  # the widget's time_step, not a frame series
+    spin = traj.info.pop("spin_multiplicity", None)
+    cells = traj.cells
+    # matterviz renders Z in 1..118 (a DummySpecies' Z is a hash)
+    bad_numbers = not len(numbers) or not 1 <= numbers.min() <= numbers.max() <= 118
+    json_only_sites = traj.charge.any() or traj.site_data.keys() & _JSON_SITE_DATA
+    wrong_spin = spin is not None and np.any(spin != 1 + numbers.sum() % 2)
+    if bad_numbers or json_only_sites or wrong_spin:
+        return None
+
+    # degenerate cells (volume < 1e-6 Å³) go to JSON
+    if cells is not None and (np.abs(np.linalg.det(cells)) < 1e-6).any():
+        return None
+    if (channels := _channels(traj)) is None:
+        return None
+    n_frames = len(traj.positions)
+    with np.errstate(over="ignore"):  # The wire check below rejects overflow.
+        positions = traj.positions.astype("<f4")
     arrays = {
         "positions": binary_array(
-            positions,
-            "float32",
-            name="positions",
-            shape=(len(positions), len(numbers), 3),
+            positions, "float32", name="positions", shape=(n_frames, len(numbers), 3)
         ),
         "numbers": binary_array(numbers, "uint8", name="numbers"),
     }
-    if cell is not None:
-        if cell.ndim == 3 and (cell == cell[0]).all():
-            cell = cell[0]
-        shape = (3, 3) if cell.ndim == 2 else (len(positions), 3, 3)
-        arrays["lattice"] = binary_array(cell, "float64", name="lattice", shape=shape)
+    fields: dict[str, Any] = {}
+    if cells is not None:
+        fields["pbc"] = list(traj.pbc)
+        if (cells == cells[0]).all():
+            cells = cells[0]
+        shape = (3, 3) if cells.ndim == 2 else (n_frames, 3, 3)
+        arrays["lattice"] = binary_array(cells, "float64", name="lattice", shape=shape)
     arrays.update(channels)
+    if metadata:
+        fields["metadata"] = normalize_plot_json(dict(metadata), "trajectory metadata")
     return {"format": BINARY_FORMAT, "kind": "trajectory", "arrays": arrays, **fields}

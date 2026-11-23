@@ -2,15 +2,14 @@
 
 # %%
 import numpy as np
-from pymatgen.core.periodic_table import Element
 
 import pymatviz as pmv
 
 
 np_rng = np.random.default_rng(seed=0)
 data_dict = {
-    elem.symbol: np_rng.standard_normal(100) + np_rng.standard_normal(100)
-    for elem in Element
+    symbol: np_rng.standard_normal(100) + np_rng.standard_normal(100)
+    for symbol in pmv.utils.df_ptable.index
 }
 
 

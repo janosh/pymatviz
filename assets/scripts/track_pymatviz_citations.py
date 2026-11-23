@@ -10,8 +10,8 @@ SERPAPI_KEY=ccd7f7ea8... python assets/scripts/track_pymatviz_citations.py
 # /// script
 # dependencies = [
 #     "google-search-results>=2.4.2",
-#     "pyyaml>=6.0.2",
 #     "python-dotenv>=1.1",
+#     "pyyaml>=6.0.3",
 # ]
 # ///
 
@@ -178,9 +178,8 @@ def fetch_scholar_papers(
             # Extract year from publication info if available
             year = None
             pub_info = result.get("publication_info", {})
-            if "summary" in pub_info and (
-                year_match := re.search(r"\b(19|20)\d{2}\b", pub_info["summary"])
-            ):
+            summary = pub_info.get("summary", "")
+            if year_match := re.search(r"\b(19|20)\d{2}\b", summary):
                 year = int(year_match.group())
 
             authors = []
@@ -191,21 +190,21 @@ def fetch_scholar_papers(
                     if isinstance(author, dict) and "name" in author
                 ]
 
+            cited_by = result.get("inline_links", {}).get("cited_by", {})
+
             # Store all metadata from the result, overwrite only processed fields
             paper: ScholarPaper = {
                 **result,  # Keep all original fields
                 "title": result["title"],
                 "link": result["link"],
-                "authors": authors
-                or result.get("authors", []),  # Use processed authors
+                # Use processed authors
+                "authors": authors or result.get("authors", []),
                 "year": year,  # Use extracted year
                 "fetch_date": today,  # Add fetch date
                 # Add pagination-unwrapped index in search result
                 "list_index": idx + page * 10,
-                "citations": result.get("inline_links", {})
-                .get("cited_by", {})
-                .get("total", 0),
-                "summary": pub_info.get("summary", ""),
+                "citations": cited_by.get("total", 0),
+                "summary": summary,
             }
             if paper.get("authors"):
                 papers.append(paper)
@@ -338,8 +337,20 @@ def convert_zotero_paper(zotero_paper: dict) -> ScholarPaper | None:
         return None
 
 
-def main(update_freq_days: int = 7) -> None:
-    """Fetch papers from Scholar and Zotero, merge, and update readme."""
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Fetch papers citing pymatviz and update readme."
+    )
+    parser.add_argument(
+        "--update-freq",
+        type=int,
+        default=7,
+        help="Number of days to wait between updates (default: 7)",
+    )
+    args, _unknown = parser.parse_known_args()
+
     data_dir = f"{ROOT}/tmp"
     os.makedirs(data_dir, exist_ok=True)
     data_file = f"{data_dir}/pmv-used-by-list-google-scholar.yaml.gz"
@@ -352,20 +363,20 @@ def main(update_freq_days: int = 7) -> None:
         scholar_papers = []
 
     # Check if we need to update
-    if should_update(data_file, update_freq_days):
+    if should_update(data_file, args.update_freq):
         new_papers = fetch_scholar_papers()  # Fetch new papers
 
         # Merge papers, keeping the most recent citation counts
-        paper_dict: dict[str, ScholarPaper] = {
-            paper["title"]: paper for paper in scholar_papers
-        } | {paper["title"]: paper for paper in new_papers}
+        old_by_title = {paper["title"]: paper for paper in scholar_papers}
+        new_by_title = {paper["title"]: paper for paper in new_papers}
+        paper_dict: dict[str, ScholarPaper] = old_by_title | new_by_title
 
         # Save updated papers
         scholar_papers = list(paper_dict.values())
         save_papers(scholar_papers, filename=data_file)
     else:
         print(
-            f"{data_file=} is less than {update_freq_days} days old, skipping update."
+            f"{data_file=} is less than {args.update_freq} days old, skipping update."
         )
 
     zotero_file = f"{data_dir}/pmv-used-by-list-zotero.yaml"
@@ -389,20 +400,3 @@ def main(update_freq_days: int = 7) -> None:
 
     all_papers = remove_duplicates(scholar_papers + converted_zotero_papers)
     update_readme(all_papers)
-
-
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(
-        description="Fetch papers citing pymatviz and update readme."
-    )
-    parser.add_argument(
-        "--update-freq",
-        type=int,
-        default=7,
-        help="Number of days to wait between updates (default: 7)",
-    )
-    args, _unknown = parser.parse_known_args()
-
-    main(args.update_freq)

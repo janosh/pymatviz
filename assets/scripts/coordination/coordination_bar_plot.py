@@ -1,14 +1,19 @@
 """Coordination histogram examples."""
 
-# %%
+# /// script
+# dependencies = [
+#     "pymatgen>=2026.9.24",
+# ]
+# ///
+
 from glob import glob
 
-from pymatgen.analysis.local_env import CrystalNN, VoronoiNN
 from pymatgen.core import Structure
 
 import pymatviz as pmv
 from pymatviz.coordination import CnSplitMode
-from pymatviz.utils.testing import TEST_FILES, formula_spg_str
+from pymatviz.data import TEST_FILES
+from pymatviz.structures import formula_spg_str
 
 
 # %%
@@ -32,8 +37,8 @@ widget.to_img(
 )
 
 
-# %% pymatgen NearNeighbors strategies
-for strategy in (CrystalNN(), VoronoiNN()):
+# %% CrystalNN and Voronoi neighbors (as pymatgen's CrystalNN and VoronoiNN)
+for strategy in ("crystal_nn", "voronoi"):
     pmv.coordination_bar_plot(structures[key1], strategy=strategy).show()
 
 
@@ -62,5 +67,5 @@ pmv.coordination_bar_plot(
 pmv.coordination_bar_plot(
     three_structs,
     strategy=3.0,
-    element_color_scheme={"Fe": "red", "O": "blue", "H": "green"},
+    element_colors={"Fe": "red", "O": "blue", "H": "green"},
 ).show()

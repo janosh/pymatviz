@@ -2,36 +2,23 @@
 
 from __future__ import annotations
 
-import subprocess
-import sys
 from typing import TYPE_CHECKING
 
+import kemio
 import numpy as np
 import pandas as pd
 import pytest
-from ase import Atoms
-from pymatgen.core import (
-    Composition,
-    DummySpecies,
-    Element,
-    IMolecule,
-    IStructure,
-    Lattice,
-    Molecule,
-    PeriodicSite,
-    Species,
-)
 
+from pymatviz.data import TEST_FILES, disordered_demo_structures
 from pymatviz.structures import (
-    get_site_elements,
-    get_site_species,
-    get_site_symbol,
-    is_ase_atoms,
-    is_phonopy_atoms,
     normalize_spacegroups,
     normalize_structures,
+    site_elements,
+    site_symbols,
+    structure_dict,
+    to_structure,
 )
-from tests.conftest import SI_ATOMS, SI_STRUCTS
+from tests.conftest import SI2_STRUCT, SI_STRUCTS
 
 
 if TYPE_CHECKING:
@@ -39,44 +26,87 @@ if TYPE_CHECKING:
     from typing import Any
 
 
-SI_ISTRUCT = IStructure.from_sites(SI_STRUCTS[0])
-H2O = Molecule(["H", "H", "O"], [[0, 0, 0], [0, 0, 1.5], [0, 0, 0.75]])
-H2O_IMOL = IMolecule.from_sites(H2O)
-
-
-class DerivedAtoms(Atoms):
-    """Exercise adapter-free conversion of caller-defined ASE subclasses."""
+H2O = kemio.Structure(
+    None, ["H", "H", "O"], [[0, 0, 0], [0, 0, 1.5], [0, 0, 0.75]], pbc=(False,) * 3
+)
 
 
 @pytest.mark.parametrize(
-    ("input_raw", "expected"),
+    ("input_raw", "expected_keys"),
     [
-        (SI_STRUCTS[0], {SI_STRUCTS[0].formula: SI_STRUCTS[0]}),
-        (SI_ISTRUCT, {SI_ISTRUCT.formula: SI_ISTRUCT}),
-        (SI_ATOMS[0], {SI_STRUCTS[0].formula: SI_STRUCTS[0]}),
-        (H2O_IMOL, {H2O.formula: H2O_IMOL}),
-        (  # sequences key by 1-based index and formula
-            [SI_ATOMS[0], H2O],
-            {f"1 {SI_STRUCTS[0].formula}": SI_STRUCTS[0], f"2 {H2O.formula}": H2O},
-        ),
-        ({"si": SI_ATOMS[1], "h2o": H2O}, {"si": SI_STRUCTS[1], "h2o": H2O}),
-        (pd.Series([SI_ISTRUCT], index=["s"]), {"s": SI_ISTRUCT}),
+        (SI_STRUCTS[0], ["Si2"]),
+        (H2O, ["H2 O1"]),
+        ([SI_STRUCTS[0], H2O], ["1 Si2", "2 H2 O1"]),  # 1-based index and formula
+        ({"si": SI_STRUCTS[1], "h2o": H2O}, ["si", "h2o"]),
+        (pd.Series([SI_STRUCTS[0]], index=["s"]), ["s"]),
+        ([f"{TEST_FILES}/structures/mp-12712.json"], ["1 Zr18 Pd24"]),  # file path
+        (f"{TEST_FILES}/structures/mp-12712.json", ["Zr18 Pd24"]),  # single path
+        (structure_dict(SI2_STRUCT), ["Si2"]),  # single pymatgen-format dict
+        # a structure labeled "sites" isn't a pymatgen dict's list of site dicts
+        ({"sites": SI_STRUCTS[0], "bulk": H2O}, ["sites", "bulk"]),
+        (np.array([SI_STRUCTS[0], H2O], dtype=object), ["1 Si2", "2 H2 O1"]),
+        ((struct for struct in [SI_STRUCTS[0], H2O]), ["1 Si2", "2 H2 O1"]),
     ],
-    ids=["structure", "istructure", "atoms", "imolecule", "list", "dict", "series"],
+    ids=[
+        *("structure", "molecule", "list", "dict", "series", "path", "single_path"),
+        *("structure_dict", "label_named_sites", "object_array", "generator"),
+    ],
 )
-def test_normalize_structures(input_raw: Any, expected: dict[Hashable, Any]) -> None:
-    """Single inputs key by formula, mappings keep keys, ASE Atoms become pymatgen."""
-    assert normalize_structures(input_raw) == expected
+def test_normalize_structures(input_raw: Any, expected_keys: list[Hashable]) -> None:
+    """Single inputs key by formula, mappings keep keys, all become kemio."""
+    struct_dict = normalize_structures(input_raw)
+    assert list(struct_dict) == expected_keys
+    assert all(isinstance(struct, kemio.Structure) for struct in struct_dict.values())
+
+
+def test_to_structure_and_site_helpers() -> None:
+    """Kemio Structures pass through, vacant sites keep their index, disordered
+    sites give element sets and majority symbols, molecules become pymatgen-style
+    dicts without lattice or fractional coordinates.
+    """
+    assert to_structure(SI2_STRUCT) is SI2_STRUCT
+    with pytest.raises(TypeError, match="expected a kemio or pymatgen"):
+        to_structure(42)  # ty: ignore[invalid-argument-type]
+    with pytest.raises(FileNotFoundError, match="no structure file at 'Si'"):
+        to_structure("Si")  # strings are file paths
+
+    vacant = kemio.Structure(
+        np.eye(3) * 3, [{}, "Fe"], [[0, 0, 0], [0.5] * 3], fractional=True
+    )
+    assert vacant.site_occupancies == [{}, {"Fe": 1.0}]
+    assert site_symbols(vacant) == ["X", "Fe"]
+    assert structure_dict(vacant)["sites"][0]["label"] == "X0+"
+    hea = disordered_demo_structures["Fe₀.₅Ni₀.₃Cr₀.₂Al"]
+    assert site_elements(hea) == [{"Fe", "Ni", "Cr"}, {"Al"}]
+    assert site_symbols(hea) == ["Fe", "Al"]
+
+    periodic = structure_dict(SI2_STRUCT)
+    assert periodic["lattice"]["pbc"] == [True, True, True]
+    site_species = [site["species"] for site in periodic["sites"]]
+    assert site_species == [[{"element": "Si", "occu": 1}]] * 2
+    mol = structure_dict(H2O)
+    assert mol["@class"] == "Molecule"
+    assert "lattice" not in mol
+    assert all("abc" not in site and "xyz" in site for site in mol["sites"])
 
 
 @pytest.mark.parametrize(
     ("invalid_input", "err_cls", "error_match"),
     [
-        ("not a structure", TypeError, "Input must be a pymatgen Structure"),
-        (12345, TypeError, "Input must be a pymatgen Structure"),
-        ([SI_STRUCTS[0], "invalid"], TypeError, "Item must be a pymatgen Structure"),
+        ("not a structure", FileNotFoundError, "no structure file at 'not a struct"),
+        (12345, TypeError, "Input must be a kemio or pymatgen"),
+        (
+            [SI_STRUCTS[0], "invalid"],
+            FileNotFoundError,
+            "no structure file at 'invalid'",
+        ),
         ([], ValueError, "Cannot plot empty set of structures"),
         ({}, ValueError, "Cannot plot empty set of structures"),
+        (
+            pd.Series(SI_STRUCTS, index=["a", "a"]),
+            ValueError,
+            r"labels must be unique, got duplicates \['a'\]",
+        ),
     ],
 )
 def test_normalize_structures_errors(
@@ -87,64 +117,6 @@ def test_normalize_structures_errors(
         normalize_structures(invalid_input)
 
 
-class MockAseAtoms:
-    """Mock object whose type identity matches ASE Atoms."""
-
-    __module__ = "ase.atoms"
-    __qualname__ = "Atoms"
-
-
-class MockMsonAtoms:
-    """Mock object whose type identity matches pymatgen MSONAtoms."""
-
-    __module__ = "pymatgen.io.ase"
-    __qualname__ = "MSONAtoms"
-
-
-class NotAse:
-    """Mock object whose type identity should not match ASE Atoms."""
-
-    __module__ = "some.other.module"
-    __qualname__ = "SomeClass"
-
-
-@pytest.mark.parametrize(
-    ("obj", "expected"),
-    [
-        (MockAseAtoms(), True),
-        (MockMsonAtoms(), True),
-        (SI_STRUCTS[0], False),
-        (NotAse(), False),
-        ("string", False),
-        (None, False),
-    ],
-)
-def test_is_ase_atoms(obj: object, expected: bool) -> None:
-    assert is_ase_atoms(obj) == expected
-
-
-@pytest.mark.parametrize(
-    ("obj", "expected"),
-    [
-        pytest.param("phonopy_atoms", True, id="phonopy_atoms"),
-        # Supercell/Primitive subclass PhonopyAtoms and must count as structures too
-        pytest.param("phonopy_supercell", True, id="phonopy_supercell"),
-        (SI_STRUCTS[0], False),
-        (None, False),
-    ],
-)
-def test_is_phonopy_atoms(obj: object, expected: bool) -> None:
-    if obj in ("phonopy_atoms", "phonopy_supercell"):
-        pytest.importorskip("phonopy")
-        from phonopy.structure.atoms import PhonopyAtoms
-        from phonopy.structure.cells import Supercell
-
-        unit_cell = PhonopyAtoms(symbols=["Si"], positions=[[0] * 3], cell=np.eye(3))
-        is_cell = obj == "phonopy_atoms"
-        obj = unit_cell if is_cell else Supercell(unit_cell, np.diag([2, 1, 1]))
-    assert is_phonopy_atoms(obj) is expected
-
-
 @pytest.mark.parametrize(
     ("data", "expected"),
     [
@@ -153,76 +125,28 @@ def test_is_phonopy_atoms(obj: object, expected: bool) -> None:
         (pd.Series([225, 1, 62], dtype="Float64"), [225, 1, 62]),
         (pd.Series([1, 225, 167]), [1, 225, 167]),
         (["Fm-3m", "P1", "Pnma"], [225, 1, 62]),  # Hermann-Mauguin symbols -> numbers
-        # full, spaced and spaceless symbols from the lookup table (pymatgen rejects
-        # "P4/m2_1/nc") plus looser spellings only pymatgen parses, repeated
+        # full, spaced and spaceless symbols from the lookup table, setting suffixes
+        # (R-3m:H), repeated
         (
             ["P 1 2_1/c 1", "P4/m2_1/nc", "P2_1/c", "R-3m:H", "P2_1/c", "F m -3 m"],
             [14, 128, 14, 166, 14, 225],
         ),
+        (SI_STRUCTS, [12, 129]),  # symmetry detected from structures
+        # disordered structures are told apart by species and occupancy
+        (list(disordered_demo_structures.values()), [221, 191, 221, 221]),
     ],
 )
 @pytest.mark.parametrize("as_series", [False, True])
 def test_normalize_spacegroups(
-    data: list | pd.Series, expected: list, as_series: bool
+    data: list | tuple | pd.Series, expected: list, as_series: bool
 ) -> None:
-    """Numbers and symbols map to ints, keeping a Series' index and name."""
+    """Numbers, symbols and structures map to ints, keeping a Series' index and name."""
     expected_series = pd.Series(expected)
     if as_series:
         index = pd.Index([f"sample-{idx}" for idx in range(len(data))], name="sample")
         data = pd.Series(list(data), index=index, name="spacegroup")
         expected_series = pd.Series(expected, index=index, name="spacegroup")
     pd.testing.assert_series_equal(normalize_spacegroups(data), expected_series)
-
-
-@pytest.mark.parametrize(
-    "structures",
-    [SI_STRUCTS, SI_ATOMS, tuple(DerivedAtoms(atoms) for atoms in SI_ATOMS)],
-    ids=["pymatgen", "ase", "ase_subclass"],
-)
-@pytest.mark.parametrize("as_series", [False, True])
-def test_normalize_spacegroups_with_structures(
-    structures: tuple, as_series: bool
-) -> None:
-    """Preserve identifiers when extracting symmetry from either structure format."""
-    from moyopy import MoyoDataset
-    from moyopy.interface import MoyoAdapter
-
-    expected = pd.Series(
-        [MoyoDataset(MoyoAdapter.from_py_obj(struct)).number for struct in structures]
-    )
-    data: tuple | pd.Series = structures
-    if as_series:
-        index = pd.Index(["sample-a", "sample-b"], name="sample")
-        data = pd.Series(list(structures), index=index, name="spacegroup")
-        expected.index, expected.name = index, "spacegroup"
-    pd.testing.assert_series_equal(normalize_spacegroups(data), expected)
-
-
-def test_symmetry_and_widgets_without_ase() -> None:
-    """Base imports, structure symmetry and notebook widgets need no ASE adapter."""
-    subprocess.run(
-        [
-            sys.executable,
-            "-c",
-            """
-import sys
-sys.modules["ase"] = None
-sys.modules["moyopy.interface"] = None
-import pymatviz as pmv
-from pymatgen.core import IStructure, Lattice, Structure
-from pymatviz.structures import normalize_spacegroups
-
-structure = Structure(Lattice.cubic(3), ["Si"], [[0, 0, 0]])
-immutable = IStructure.from_sites(structure)
-assert normalize_spacegroups([structure, immutable]).tolist() == [221, 221]
-assert pmv.spacegroup_sunburst([immutable]).data[0]["children"][0]["label"] == "221"
-pmv.structure(structure=structure.as_dict())
-""",
-        ],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
 
 
 @pytest.mark.parametrize("invalid_val", [0, -1, 231, 500, 2.5, float("nan"), pd.NA])
@@ -242,43 +166,22 @@ def test_normalize_spacegroups_invalid_number_raises(
 
 
 @pytest.mark.parametrize(
-    ("data", "match"),
+    ("data", "err_cls", "match"),
     [
-        ([], "Cannot normalize empty spacegroup data"),
-        (["Fm-3m", "InvalidSymbol", "P1"], "InvalidSymbol"),
-        (["P2_1/c", "Fm-3m", "P1_bad"], "P1_bad"),
+        ([], ValueError, "Cannot normalize empty spacegroup data"),
+        (["Fm-3m", "InvalidSymbol", "P1"], ValueError, r"symbols: \['InvalidSymbol'\]"),
+        (["P2_1/c", "Fm-3m", "P1_bad"], ValueError, r"symbols: \['P1_bad'\]"),
+        ([225, "Fm-3m"], TypeError, r"one kind\), got \['int', 'str'\]"),
+        (["Fm-3m", 225], TypeError, r"one kind\), got \['int', 'str'\]"),
+        ([[225]], TypeError, r"one kind\), got \['list'\]"),
+        ([SI2_STRUCT, 225], TypeError, r"one kind\), got \['Structure', 'int'\]"),
+        # bools are no space group numbers although True == 1
+        ([True, True], TypeError, r"one kind\), got \['bool'\]"),
     ],
 )
-def test_normalize_spacegroups_raises(data: list[str], match: str) -> None:
-    """Reject empty input and unknown Hermann-Mauguin symbols."""
-    with pytest.raises(ValueError, match=match):
-        normalize_spacegroups(data)
-
-
-@pytest.mark.parametrize(
-    ("species_input", "expected_type", "expected_elements", "expected_symbol"),
-    [
-        ("Si", Element, {"Si"}, "Si"),
-        (Element("O"), Element, {"O"}, "O"),
-        (Species("Fe", 2), Species, {"Fe"}, "Fe"),
-        (Composition({"Fe": 0.75, "Co": 0.25}), Composition, {"Fe", "Co"}, "Fe"),
-        (DummySpecies("X"), DummySpecies, {"X"}, "X"),
-        (
-            Composition({"Li": 0.75, DummySpecies("X"): 0.25}),
-            Composition,
-            {"Li", "X"},
-            "Li",
-        ),
-    ],
-)
-def test_get_site_species_elements_symbol(
-    species_input: Any,
-    expected_type: type,
-    expected_elements: set[str],
-    expected_symbol: str,
+def test_normalize_spacegroups_raises(
+    data: list[Any], err_cls: type[Exception], match: str
 ) -> None:
-    """Species, element set and majority symbol for ordered and disordered sites."""
-    site = PeriodicSite(species_input, [0, 0, 0], Lattice.cubic(3.0))
-    assert isinstance(get_site_species(site), expected_type)
-    assert get_site_elements(site) == expected_elements
-    assert get_site_symbol(site) == expected_symbol
+    """Reject empty input, unknown symbols and mixed or unsupported item types."""
+    with pytest.raises(err_cls, match=match):
+        normalize_spacegroups(data)

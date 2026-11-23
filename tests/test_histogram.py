@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import re
 from typing import Any
 
 import numpy as np
@@ -35,7 +36,7 @@ def test_histogram_bins_in_browser_unless_python_needed(
     kwargs: dict[str, Any], browser: bool
 ) -> None:
     """Raw values go to the browser unless an option needs NumPy binning."""
-    opts: dict[str, Any] = {"bins": 4} | kwargs
+    opts: dict[str, Any] = {"bins": np.int64(4)} | kwargs  # NumPy ints as bins
     widget = histogram({"a": [0.0, 1.0, 2.0], "b": [5.0, 6.0]}, **opts)
     assert isinstance(widget, HistogramWidget if browser else BarPlotWidget)
     if isinstance(widget, HistogramWidget):
@@ -45,6 +46,17 @@ def test_histogram_bins_in_browser_unless_python_needed(
             [5, 6],
         ]
         assert widget.y_axis == {"label": "Count", "scale_type": "linear"}
+    else:  # NumPy bins hold all 3 + 2 values (unit area with density)
+        totals = []
+        for srs in widget.series:
+            widths = np.asarray(srs["bar_width"]) / opts.get("bin_width", 1)
+            heights = np.asarray(srs["y"])
+            totals.append(
+                np.sum(heights * widths) if "density" in opts else sum(heights)
+            )
+        np.testing.assert_allclose(
+            totals, [1, 1] if "density" in opts else [3, 2], rtol=1e-12, atol=0
+        )
 
 
 def test_histogram_browser_x_range_and_dataframe() -> None:
@@ -120,10 +132,25 @@ def test_elements_hist(
     assert widget.show_legend is False
 
 
-def test_elements_hist_invalid_show_values() -> None:
-    """Unknown show_values raise instead of silently showing count labels."""
-    with pytest.raises(ValueError, match="Invalid show_values"):
-        elements_hist(["Fe2O3"], show_values="fraction")  # ty: ignore[invalid-argument-type]
+@pytest.mark.parametrize(
+    ("kwargs", "match"),
+    [
+        ({"show_values": "fraction"}, "Invalid show_values"),
+        # head(-1) would silently drop the least common element
+        ({"max_elements": -1}, "max_elements=-1 must be a positive integer"),
+        ({"max_elements": 0}, "max_elements=0 must be a positive integer"),
+        # negative precomputed counts were silently dropped with the zeros
+        (
+            {"values": {"Fe": 3, "O": -2}},
+            re.escape("element counts must be >= 0, got {'O': -2.0}"),
+        ),
+    ],
+)
+def test_elements_hist_invalid_args(kwargs: dict[str, Any], match: str) -> None:
+    """Unknown show_values, non-positive max_elements and negative counts raise."""
+    call_kwargs: dict[str, Any] = {"values": ["Fe2O3", "NaCl"]} | kwargs
+    with pytest.raises(ValueError, match=match):
+        elements_hist(**call_kwargs)
 
 
 @pytest.mark.usefixtures("python_bins")
@@ -182,12 +209,24 @@ def test_python_histogram_dict_shares_bin_edges() -> None:
         ([[1, 2], [3, 4]], "non-empty 1D"),
         ([1, np.nan, 3], r"'Value' contain 1 non-finite"),
         ({"ok": [1, 2], "bad": [np.inf, -np.inf]}, r"'bad' contain 2 non-finite"),
+        # 1 and "1" would show as two legend entries both labeled "1"
+        ({1: [1, 2], "1": [3, 4]}, "labels must be unique as strings"),
     ],
 )
 def test_python_histogram_rejects_invalid_values(values: Any, match: str) -> None:
     """Histogram rejects empty, non-1D and non-finite inputs, naming the series."""
     with pytest.raises(ValueError, match=match):
         histogram(values)
+
+
+@pytest.mark.parametrize("bins", [3, "auto"])  # binned in the browser or Python
+@pytest.mark.parametrize("x_range", [(3, 1), (5, None), (None, 0)])
+def test_histogram_rejects_inverted_x_range(
+    x_range: tuple[float | None, float | None], bins: int | str
+) -> None:
+    """An x_range resolving to lo > hi raises instead of binning no values."""
+    with pytest.raises(ValueError, match="need lo <= hi"):
+        histogram([1, 2, 3], x_range=x_range, bins=bins)
 
 
 @pytest.mark.usefixtures("python_bins")
@@ -281,17 +320,43 @@ def test_histogram_dataframe_groups(
 ) -> None:
     """A column may both supply values and groups; only observed groups plot."""
     widget = histogram(df_vals, x="v", color=color)
-    assert {
-        series_dict["label"]: list(series_dict["values"])
-        for series_dict in widget.series
-    } == expected
+    values_by_label = {srs["label"]: list(srs["values"]) for srs in widget.series}
+    assert values_by_label == expected
 
 
-def test_histogram_keeps_groups_equal_as_strings() -> None:
-    """Groups 1 and "1" stay two distributions instead of one overwriting the other."""
+def test_histogram_rejects_groups_equal_as_strings() -> None:
+    """Groups 1 and "1" raise instead of showing two legend entries labeled "1"."""
     df_vals = pd.DataFrame({"v": [0.0, 10.0], "g": pd.Series([1, "1"], dtype=object)})
-    widget = histogram(df_vals, x="v", color="g")
-    assert sorted(list(series_dict["values"]) for series_dict in widget.series) == [
-        [0.0],
-        [10.0],
-    ]
+    with pytest.raises(ValueError, match="labels must be unique as strings"):
+        histogram(df_vals, x="v", color="g")
+
+
+@pytest.mark.parametrize(
+    ("sort_groups", "expected"),
+    [
+        (None, ["b", "c", "a"]),  # order of first appearance
+        (sorted, ["a", "b", "c"]),
+        (lambda keys: sorted(keys, reverse=True), ["c", "b", "a"]),
+    ],
+)
+@pytest.mark.parametrize("python_binned", [False, True])
+def test_histogram_sort_groups(
+    sort_groups: Any, expected: list[str], python_binned: bool
+) -> None:
+    """Groups keep first-appearance order unless sort_groups reorders them."""
+    df_vals = pd.DataFrame({"v": [1.0, 2.0, 3.0, 4.0], "g": list("bcab")})
+    opts: dict[str, Any] = {"density": True} if python_binned else {}
+    widget = histogram(df_vals, x="v", color="g", sort_groups=sort_groups, **opts)
+    assert [srs["label"] for srs in widget.series] == expected
+    if not python_binned:  # values follow their group
+        values = {srs["label"]: list(srs["values"]) for srs in widget.series}
+        assert values == {"a": [3.0], "b": [1.0, 4.0], "c": [2.0]}
+
+
+@pytest.mark.parametrize(
+    "sort_groups", [lambda keys: keys[:1], lambda keys: [*keys, "z"], lambda _: ["a"]]
+)
+def test_histogram_sort_groups_rejects_non_permutation(sort_groups: Any) -> None:
+    """sort_groups must return exactly the group keys, reordered."""
+    with pytest.raises(ValueError, match="sort_groups must return a reordering"):
+        histogram({"p": [1.0], "q": [2.0]}, sort_groups=sort_groups)

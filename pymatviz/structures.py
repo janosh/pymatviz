@@ -1,202 +1,132 @@
-"""Structure input types: detection, conversion to pymatgen, site helpers and space
-group numbers for pymatgen, ASE and phonopy structures.
+"""Structure inputs: detection, conversion to kemio Structures, per-site elements
+and space group numbers for kemio, pymatgen, ASE and phonopy structures.
 """
 
 from __future__ import annotations
 
-from collections.abc import Hashable, Mapping, Sequence
+import os
+from collections.abc import Hashable, Iterator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
+import kemio
+import numpy as np
 import pandas as pd
-from pymatgen.core import IStructure, Structure
+from kemio.interop import (
+    is_pymatgen_structure,
+    is_structure_like,
+    structure_to_pymatgen_dict,
+    to_structure,
+)
+
+from pymatviz.utils import check_unique_labels
 
 
 if TYPE_CHECKING:
-    from ase.atoms import Atoms
-    from phonopy.structure.atoms import PhonopyAtoms
-    from pymatgen.core import Composition, IMolecule, Molecule, Site, Species
-    from pymatgen.core.periodic_table import DummySpecies, Element
-    from typing_extensions import TypeIs
-
-    from pymatviz.typing import AnyStructure
+    from pymatviz.typing import AnyStructure, PeriodicStructure, SpacegroupLike
 
 
-def is_structure_like(obj: Any) -> bool:
-    """Whether obj is a pymatgen Structure/Molecule, ASE Atoms or PhonopyAtoms."""
-    from pymatgen.core import IMolecule
-
-    return (
-        isinstance(obj, (IStructure, IMolecule))
-        or is_ase_atoms(obj)
-        or is_phonopy_atoms(obj)
-    )
-
-
-def _subclasses(obj: Any, *qualnames: str) -> bool:
-    """Whether obj's class or a base has one of these dotted names, without imports."""
-    return any(
-        f"{cls.__module__}.{cls.__qualname__}" in qualnames for cls in type(obj).__mro__
-    )
+def structure_dict(obj: AnyStructure) -> dict[str, Any]:
+    """Dict in pymatgen's format (MatterViz's JSON structure format) of a structure-like
+    object: pymatgen's own ``as_dict()`` for pymatgen objects, else kemio's
+    ``Structure.as_dict()``/``Molecule.as_dict()`` payload (molecules without lattice,
+    ``Structure.info``, e.g. ASE ``Atoms.info``, as ``properties``).
+    """
+    if is_pymatgen_structure(obj):
+        return obj.as_dict()
+    return structure_to_pymatgen_dict(to_structure(obj))
 
 
-def is_ase_atoms(struct: Any) -> TypeIs[Atoms]:
-    """Check if the input is an ASE Atoms object without importing ase."""
-    return _subclasses(struct, "ase.atoms.Atoms", "pymatgen.io.ase.MSONAtoms")
+def site_elements(struct: kemio.Structure) -> list[set[str]]:
+    """Element symbols on each site (several for disordered sites)."""
+    return [set(occupancies) for occupancies in struct.site_occupancies]
 
 
-MIN_ASE_CELL_VOLUME = 1e-6  # Å³
+def site_symbols(struct: kemio.Structure) -> list[str]:
+    """Element symbol of each site, the highest-occupancy one for disordered sites,
+    "X" for vacant sites (pymatgen's vacancy DummySpecies).
+    """
+    return [
+        max(occu, key=occu.__getitem__) if occu else "X"
+        for occu in struct.site_occupancies
+    ]
 
 
-def get_site_species(site: Site) -> Composition | Species | Element | DummySpecies:
-    """Species of an ordered site, composition of a disordered one."""
-    return site.specie if site.is_ordered else site.species
-
-
-def get_site_elements(site: Site) -> set[str]:
-    """Element symbols on a site (several for disordered sites)."""
-    return {species.symbol for species in site.species}
-
-
-def get_site_symbol(site: Site) -> str:
-    """Element symbol of a site, the highest-occupancy one for disordered sites."""
-    el_amt_dict = site.species.get_el_amt_dict()
-    return max(el_amt_dict, key=el_amt_dict.__getitem__)
-
-
-def add_vacuum_if_needed(struct: Any) -> Any:
-    """Center ASE Atoms without a proper cell (e.g. molecules) in 10 Å of vacuum."""
-    if is_ase_atoms(struct) and struct.cell.volume < MIN_ASE_CELL_VOLUME:
-        struct = struct.copy()
-        struct.center(vacuum=10.0)
-    return struct
-
-
-def is_phonopy_atoms(obj: Any) -> TypeIs[PhonopyAtoms]:
-    """Check if object is PhonopyAtoms or a subclass (Supercell, Primitive)."""
-    return _subclasses(obj, "phonopy.structure.atoms.PhonopyAtoms")
-
-
-type _StructureInput = AnyStructure | PhonopyAtoms
+# structure file paths count as structures, alone or as sequence/mapping items
+type _StructureItem = AnyStructure | str | os.PathLike[str]
 type _StructureInputs = (
-    _StructureInput
-    | Sequence[_StructureInput]
-    | pd.Series
-    | Mapping[Any, _StructureInput]
+    _StructureItem | Sequence[_StructureItem] | pd.Series | Mapping[Any, _StructureItem]
 )
 
 
-def normalize_structures(
-    systems: _StructureInputs,
-) -> dict[Hashable, Structure | IStructure | Molecule | IMolecule]:
-    """Map pymatgen structures/molecules, ASE Atoms or PhonopyAtoms (single, sequence
-    or mapping) to pymatgen objects, keyed by formula for a single input, by
-    "{index} {formula}" for sequences, and by the given keys for mappings/Series.
+def normalize_structures(systems: _StructureInputs) -> dict[Hashable, kemio.Structure]:
+    """Map structure-like inputs (single, sequence, iterator or mapping) to kemio
+    Structures, keyed by formula for a single input, by "{index} {formula}" for
+    sequences, and by the given keys for mappings/Series. A structure file path or
+    pymatgen-format structure dict (with a "sites" list) counts as a single input.
+
+    Raises:
+        ValueError: If systems is empty.
+        TypeError: For unsupported input or item types.
+        FileNotFoundError: For a path that isn't a file.
     """
-    from pymatgen.core import IMolecule
-    from pymatgen.io.ase import AseAtomsAdaptor
-
-    def to_pmg_struct(item: Any) -> Structure | IStructure | Molecule | IMolecule:
-        if is_ase_atoms(item):
-            return AseAtomsAdaptor().get_structure(item)
-        if isinstance(item, (IStructure, IMolecule)):
-            return item
-        if is_phonopy_atoms(item):
-            from pymatgen.io.phonopy import get_pmg_structure
-
-            return get_pmg_structure(item)
-        raise TypeError(
-            "Item must be a pymatgen Structure, IStructure, Molecule, IMolecule, "
-            f"ASE Atoms, or PhonopyAtoms object, got {type(item)}"
-        )
-
-    if is_ase_atoms(systems) or is_phonopy_atoms(systems):
-        systems = to_pmg_struct(systems)
-    # structures are sequences of sites, so check them before Sequence
-    if isinstance(systems, (IStructure, IMolecule)):
-        return {systems.formula: systems}
+    if isinstance(systems, Iterator):  # generators etc., consumed once
+        systems = list(systems)
+    # a structure dict holds a list of site dicts, a mapping of labeled structures
+    # may well name one "sites"
+    is_single_dict = isinstance(systems, Mapping) and isinstance(
+        systems.get("sites"), list | tuple
+    )
+    is_path = isinstance(systems, str | os.PathLike)
+    if is_structure_like(systems) or is_single_dict or is_path:
+        struct = to_structure(systems)
+        return {struct.composition.formula: struct}
 
     if hasattr(systems, "__len__") and len(systems) == 0:
         raise ValueError("Cannot plot empty set of structures")
 
     if isinstance(systems, (pd.Series, Mapping)):  # keep original keys/index
-        return {key: to_pmg_struct(val) for key, val in systems.items()}
+        check_unique_labels(systems, "structure labels")
+        return {key: to_structure(val) for key, val in systems.items()}
 
-    if isinstance(systems, Sequence) and not isinstance(systems, str):
+    if isinstance(systems, Sequence | np.ndarray):
         return {
-            f"{idx} {(struct := to_pmg_struct(item)).formula}": struct
+            f"{idx} {(struct := to_structure(item)).composition.formula}": struct
             for idx, item in enumerate(systems, start=1)
         }
 
     raise TypeError(
-        "Input must be a pymatgen Structure, IStructure, Molecule, IMolecule, "
-        "ASE Atoms, or PhonopyAtoms object, a sequence (list, tuple, pd.Series), "
-        f"or a mapping. Got {type(systems)=}"
+        "Input must be a kemio or pymatgen Structure/Molecule, ASE Atoms or "
+        "PhonopyAtoms, a sequence (list, tuple, 1D array, pd.Series) or a mapping "
+        f"of them. Got {type(systems)=}"
     )
-
-
-def str_labels[T](labeled: Mapping[Any, T]) -> dict[str, T]:
-    """Mapping with its keys as strings.
-
-    Raises:
-        ValueError: If distinct keys share a string form (e.g. 1 and "1").
-    """
-    as_str = {str(key): val for key, val in labeled.items()}
-    if len(as_str) < len(labeled):
-        raise ValueError(f"labels must be unique as strings, got {list(labeled)}")
-    return as_str
 
 
 def normalize_periodic_structures(
     systems: _StructureInputs,
-) -> dict[Hashable, IStructure]:
-    """normalize_structures, raising TypeError for (non-periodic) molecules."""
+) -> dict[Hashable, kemio.Structure]:
+    """normalize_structures, raising TypeError for structures not periodic along all
+    three axes (molecules, slabs, wires, ASE Atoms with the default pbc=False).
+    """
     struct_dict = normalize_structures(systems)
-    periodic = {
-        key: val for key, val in struct_dict.items() if isinstance(val, IStructure)
-    }
-    if molecules := {
-        key: type(val).__name__
-        for key, val in struct_dict.items()
-        if key not in periodic
+    if non_periodic := {
+        key: val.pbc for key, val in struct_dict.items() if not val.is_periodic
     }:
-        raise TypeError(f"Expected periodic structures, got {molecules}")
-    return periodic
-
-
-def get_spacegroup_number(structure: AnyStructure) -> int:
-    """Determine an ordered periodic structure's space group without adapter extras."""
-    from moyopy import Cell, MoyoDataset
-
-    if isinstance(structure, IStructure):
-        if not structure.is_ordered:
-            raise ValueError("Structure must be ordered")
-        cell = Cell(
-            basis=structure.lattice.matrix.tolist(),
-            positions=structure.frac_coords.tolist(),
-            numbers=list(structure.atomic_numbers),
-        )
-    elif is_ase_atoms(structure):
-        cell = Cell(
-            basis=structure.cell.tolist(),
-            positions=structure.get_scaled_positions().tolist(),
-            numbers=structure.get_atomic_numbers().tolist(),
-        )
-    else:
         raise TypeError(
-            f"Expected periodic Structure or ASE Atoms, got {type(structure)}"
+            f"Expected structures periodic along a, b and c, got pbc {non_periodic} "
+            "(set atoms.pbc = True for ASE Atoms of a crystal)"
         )
-    return MoyoDataset(cell).number
+    return struct_dict
 
 
-def normalize_spacegroups(
-    data: Sequence[int | str | Any] | pd.Series,
-) -> pd.Series:
-    """Space group numbers (1-230) from structures (pymatgen or ASE), numbers or
-    Hermann-Mauguin symbols, keeping a Series' index and name.
+def normalize_spacegroups(data: Sequence[SpacegroupLike] | pd.Series) -> pd.Series:
+    """Space group numbers (1-230) from structures, numbers or Hermann-Mauguin/Hall
+    symbols (one kind per input), keeping a Series' index and name.
 
     Raises:
         ValueError: If data is empty, contains missing values, invalid symbols,
             or nonintegral/out-of-range space group numbers.
+        TypeError: For mixed or unsupported item types, non-periodic structures or
+            failed symmetry searches.
     """
     if len(data) == 0:
         raise ValueError("Cannot normalize empty spacegroup data")
@@ -206,12 +136,19 @@ def normalize_spacegroups(
     result = pd.Series(data).infer_objects()
     if result.isna().any():
         raise ValueError("Space group data must not contain missing values")
-    first_item = result.iloc[0]
 
-    if is_structure_like(first_item):
-        return result.map(get_spacegroup_number)
+    # first item short-circuits number/symbol inputs, mixed ones fall to the TypeError
+    # (searched in parallel, disordered sites told apart by species and occupancy)
+    if is_structure_like(result.iloc[0]) and all(map(is_structure_like, result)):
+        structs = list(normalize_periodic_structures(result.tolist()).values())
+        numbers = kemio.symmetry_summary(structs).number
+        if failed := [idx for idx, num in enumerate(numbers) if num is None]:
+            raise TypeError(
+                f"Symmetry search failed for structures at indices {failed}"
+            )
+        return pd.Series(numbers, index=result.index, name=result.name, dtype=int)
 
-    if pd.api.types.is_numeric_dtype(result):
+    if pd.api.types.is_numeric_dtype(result) and not pd.api.types.is_bool_dtype(result):
         invalid = result[(result < 1) | (result > 230) | (result % 1 != 0)]
         if len(invalid) > 0:
             raise ValueError(
@@ -220,21 +157,33 @@ def normalize_spacegroups(
             )
         return result.astype(int)
 
-    if isinstance(first_item, str):
-        from pymatviz.utils.data import hm_symbol_to_spg_num_map
+    if all(isinstance(symbol, str) for symbol in result):
+        numbers_of: dict[str, int] = {}
+        invalid_symbols: list[str] = []
+        for symbol in result.unique():  # loose spellings, settings, Hall symbols
+            try:
+                numbers_of[symbol] = kemio.space_group_number(symbol)
+            except ValueError:
+                invalid_symbols.append(symbol)
+        if invalid_symbols:
+            raise ValueError(f"Invalid space group symbols: {invalid_symbols}")
+        return result.map(numbers_of).astype(int)
 
-        numbers = result.map(hm_symbol_to_spg_num_map)
-        if (missing := numbers.isna()).any():
-            # slow pymatgen parses looser spellings ("P2_1/c", "R-3m:H"), once each
-            from pymatgen.symmetry.groups import SpaceGroup
+    item_types = sorted({type(item).__name__ for item in result})
+    raise TypeError(
+        "Expected structures, space group numbers or symbols (one kind), got "
+        f"{item_types}"
+    )
 
-            parsed: dict[str, int] = {}
-            for symbol in result[missing].unique():
-                try:
-                    parsed[symbol] = SpaceGroup(symbol).int_number
-                except ValueError as exc:
-                    raise ValueError(f"Invalid Hermann-Mauguin symbol: {exc}") from exc
-            numbers = numbers.fillna(result.map(parsed))
-        return numbers.astype(int)
 
-    return result
+def formula_spg_str(struct: PeriodicStructure) -> str:
+    """Get a string with formula and space group number for a structure.
+
+    Args:
+        struct: A periodic structure (kemio, pymatgen, ASE, phonopy).
+
+    Returns:
+        String in format "Formula (spg_number)", e.g. "Na4 Cl4 (225)".
+    """
+    struct = to_structure(struct)
+    return f"{struct.composition.formula} ({kemio.symmetry_dataset(struct).number})"

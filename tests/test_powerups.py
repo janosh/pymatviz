@@ -4,6 +4,7 @@ import warnings
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from pymatviz import powerups
@@ -43,12 +44,14 @@ def make_widget(n_series: int = 1) -> ScatterPlotWidget:
             "Mean err = 0.1\nFixed = 1.5\nn=100",
         ),
         (["max_error", "R2_adj"], ".2f", "", "", "max_error = 0.47\nR²_adj = 0.78"),
+        # default ".3g" keeps 3-digit values out of scientific notation (".3": 1.23e+02)
+        ({"Count": 123, "Big": 1234.5}, None, "", "", "Count = 123\nBig = 1.23e+03"),
     ],
 )
 @pytest.mark.parametrize("widget_cls", [ScatterPlotWidget, BinnedScatterPlotWidget])
 def test_annotate_metrics(
     metrics: Mapping[str, float | str] | Sequence[str] | str,
-    fmt: str,
+    fmt: str | None,
     prefix: str,
     suffix: str,
     expected: str,
@@ -56,9 +59,9 @@ def test_annotate_metrics(
 ) -> None:
     """Metrics of the series data (or explicit xs/ys) go in the annotation badge."""
     widget = widget_cls(series=make_series(2))
-    kwargs: dict[str, Any] = dict(
-        metrics=metrics, fmt=fmt, prefix=prefix, suffix=suffix
-    )
+    kwargs: dict[str, Any] = dict(metrics=metrics, prefix=prefix, suffix=suffix)
+    if fmt is not None:
+        kwargs["fmt"] = fmt
     assert powerups.annotate_metrics(widget, **kwargs) is widget
     assert widget.annotation == expected
     explicit = powerups.annotate_metrics(make_widget(), y_true, y_pred, **kwargs)
@@ -68,16 +71,37 @@ def test_annotate_metrics(
     assert widget.annotation.startswith(f"{expected}\nMAE = ")
 
 
+def test_annotate_metrics_aligns_series_by_index() -> None:
+    """Explicit xs/ys Series pair by index label, not position."""
+    xs = pd.Series([1.0, 2.0, 3.0], index=list("abc"))
+    ys = pd.Series([3.0, 1.0, 2.0], index=list("cab"))  # same pairs, shuffled
+    widget = powerups.annotate_metrics(make_widget(), xs, ys, metrics=["MAE"])
+    assert widget.annotation == "MAE = 0"
+
+
+def test_annotate_metrics_drops_nonfinite_pairs() -> None:
+    """Metrics use only pairs where both x and y are finite."""
+    xs, ys = [1, 2, np.nan, 4, 5], [1, 4, 5, np.inf, 5]
+    widget = powerups.annotate_metrics(make_widget(), xs, ys, metrics=["MAE", "MSE"])
+    assert widget.annotation == "MAE = 0.667\nMSE = 1.33"  # pairs (1,1) (2,4) (5,5)
+
+
 @pytest.mark.parametrize(
     ("kwargs", "err_type", "match"),
     [
         ({"metrics": "foo"}, ValueError, "Unrecognized metric 'foo'"),
-        ({"metrics": 42}, TypeError, "metrics must be dict|list|tuple|set"),
-        ({"metrics": {"a": [1]}}, TypeError, "must be numbers or metric names"),
+        ({"metrics": 42}, TypeError, ""),  # CPython message
+        ({"metrics": {"a": [1]}}, TypeError, ""),  # CPython message
         ({"series": 5}, IndexError, r"series indices \[5\] out of range"),
         ({"series": [True]}, IndexError, r"series indices \[True\] out of range"),
         ({"series": True}, IndexError, r"series indices \[True\] out of range"),
         ({"xs": [1, 2], "ys": [1]}, ValueError, "equal length"),
+        # metrics of no points would show MAE = nan (with RuntimeWarnings)
+        (
+            {"xs": [np.nan, 1], "ys": [1, np.inf]},
+            ValueError,
+            r"need finite \(x, y\) pairs, got none of 2",
+        ),
     ],
 )
 def test_annotate_metrics_raises(
@@ -255,6 +279,7 @@ def test_add_best_fit_line_options_and_errors() -> None:
             ["diagonal", "segment"],
             True,
         ),
+        ({}, {}, {}, ["diagonal", "segment"], True),  # empty dicts enable defaults
     ],
 )
 def test_enhance_parity_plot(
@@ -273,11 +298,11 @@ def test_enhance_parity_plot(
     )
     assert [line["type"] for line in widget.ref_lines or []] == expected_lines
     assert bool(widget.annotation) == has_stats
-    if isinstance(stats, dict):
+    if isinstance(stats, dict) and stats:
         assert widget.annotation == "MAE = 0.1\nR² = 0.8"
-    if isinstance(identity_line, dict):
+    if isinstance(identity_line, dict) and identity_line:
         assert widget.ref_lines[0]["style"]["color"] == "red"
-    if isinstance(best_fit_line, dict):
+    if isinstance(best_fit_line, dict) and best_fit_line:
         assert "annotation" not in widget.ref_lines[1]
 
 
@@ -358,6 +383,16 @@ def test_add_ecdf_line(values: Sequence[float], n_series: int) -> None:
         assert [srs["line_style"]["color"] for srs in new_series] == ["c0", "c1"]
     assert widget.y2_axis == {"label": "Cumulative"}
     assert widget.y2_range == [0, 1]
+
+
+def test_add_ecdf_line_non_finite() -> None:
+    """ECDFs skip non-finite values and raise when none are finite."""
+    widget = make_widget(1)
+    powerups.add_ecdf_line(widget, [[2, np.nan], [np.inf, 1]])  # 2D raveled
+    np.testing.assert_array_equal(widget.series[-1]["x"], [1, 2, 2])
+    np.testing.assert_array_equal(widget.series[-1]["y"], [0.5, 0.5, 1])
+    with pytest.raises(ValueError, match="ECDF needs at least one finite value"):
+        powerups.add_ecdf_line(widget, [np.nan, -np.inf])
 
 
 def test_add_ecdf_line_ignores_own_ecdf_series() -> None:

@@ -30,16 +30,29 @@ def test_sankey(
 
 
 @pytest.mark.parametrize(
-    ("source", "target", "err"),
-    [("nonexistent", "b", KeyError), ("a", "c", ValueError)],
+    ("source", "target", "kwargs", "err", "match"),
+    [
+        ("nonexistent", "b", {}, KeyError, "nonexistent"),
+        ("a", "c", {}, ValueError, "No rows with values in both"),
+        ("a", "a", {}, ValueError, "source and target must be different columns"),
+        (
+            "a",
+            "b",
+            {"labels_with_counts": "pct"},
+            ValueError,
+            "labels_with_counts='pct' must be True, False or 'percent'",
+        ),
+    ],
 )
-def test_sankey_with_invalid_columns(
-    source: str, target: str, err: type[Exception]
+def test_sankey_invalid_inputs(
+    source: str, target: str, kwargs: dict[str, Any], err: type[Exception], match: str
 ) -> None:
-    """Missing columns and columns without shared rows raise."""
+    """Missing or identical columns, columns without shared rows and invalid label
+    modes raise.
+    """
     df_in = pd.DataFrame({"a": [1, 2], "b": [3, 4], "c": [None, None]})
-    with pytest.raises(err):
-        pmv.sankey(df_in, source, target)
+    with pytest.raises(err, match=match):
+        pmv.sankey(df_in, source, target, **kwargs)
 
 
 SHARED = {"src": ["A", "A", "A", "B"], "tgt": ["C", "C", "A", "C"]}
@@ -73,9 +86,8 @@ def test_sankey_flow_data(
         pd.DataFrame(data), "src", "tgt", labels_with_counts=labels_with_counts
     )
     assert [node["label"] for node in flow["nodes"]] == expected_labels
-    assert [node["metadata"]["column"] for node in flow["nodes"]] == ["src"] * 2 + [
-        "tgt"
-    ] * 2
+    node_columns = [node["metadata"]["column"] for node in flow["nodes"]]
+    assert node_columns == ["src"] * 2 + ["tgt"] * 2
     if expected_links:
         links = [(lnk["source"], lnk["target"], lnk["value"]) for lnk in flow["links"]]
         assert links == expected_links

@@ -12,42 +12,54 @@ those containing noble gases. Retrieved April 2, 2019.
 https://ml.materialsproject.org/projects/matbench_dielectric
 """
 
-# %%
+# /// script
+# dependencies = [
+#     "matminer>=0.10.1",
+# ]
+# ///
+
+import re
 from typing import get_args
 
-from matbench_discovery.structure import prototype
+import kemio
+from kemio.interop import to_structure
+from kemio.options import CrystalSystem
 from matminer.datasets import load_dataset
-from tqdm import tqdm
 
 import pymatviz as pmv
-from pymatviz.typing import CrystalSystem
 
 
 crystal_systems = get_args(CrystalSystem)  # ordered triclinic to cubic
 
 
+def count_wyckoff_positions(protostructure_label: str) -> int:
+    """Number of occupied Wyckoff positions in an AFLOW-style protostructure label
+    like ``A4B3_hP28_159_ab2c_2c:N-Si`` (a digit before a letter repeats that site).
+    """
+    wyckoff_part = protostructure_label.split(":", 1)[0].split("_", 3)[3]
+    site_repeats = re.findall(r"(\d*)[a-z]", wyckoff_part)
+    return sum(int(repeat or 1) for repeat in site_repeats)
+
+
 # %%
 df_diel = load_dataset("matbench_dielectric")
+kemio_structs = [to_structure(struct) for struct in df_diel["structure"]]
 
-df_diel[["spg_symbol", "spg_num"]] = [
-    struct.get_space_group_info()
-    for struct in tqdm(df_diel["structure"], desc="Getting spacegroups")
-]
+sym_summary = kemio.symmetry_summary(kemio_structs, symprec=0.01)
+df_diel["spg_symbol"] = sym_summary.hm_short
+df_diel["spg_num"] = sym_summary.number
 
 proto_label_key = "protostructure_moyo"
 n_wyckoff_pos_key = "n_wyckoff_pos_moyo"
-df_diel[proto_label_key] = [
-    prototype.get_protostructure_label(struct)
-    for struct in tqdm(df_diel["structure"], desc="Getting Wyckoff strings")
-]
+df_diel[proto_label_key] = kemio.protostructure_labels(kemio_structs)
 df_diel[n_wyckoff_pos_key] = df_diel[proto_label_key].map(
-    prototype.count_wyckoff_positions
+    count_wyckoff_positions, na_action="ignore"
 )
 
-df_diel["crystal_system"] = df_diel["spg_num"].map(pmv.utils.spg_to_crystal_sys)
+df_diel["crystal_system"] = df_diel["spg_num"].map(kemio.crystal_system)
 
-df_diel["volume"] = [x.volume for x in df_diel["structure"]]
-df_diel["formula"] = [x.formula for x in df_diel["structure"]]
+df_diel["volume"] = [struct.volume for struct in kemio_structs]
+df_diel["formula"] = [struct.composition.formula for struct in kemio_structs]
 
 
 # %%

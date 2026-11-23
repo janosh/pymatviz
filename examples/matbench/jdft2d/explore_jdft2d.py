@@ -11,7 +11,13 @@ Matbench v0.1 dataset for predicting exfoliation energies from crystal structure
 https://ml.materialsproject.org/projects/matbench_jdft2d
 """
 
-# %%
+# /// script
+# dependencies = [
+#     "matminer>=0.10.1",
+#     "tqdm>=4.67",
+# ]
+# ///
+
 from matminer.datasets import load_dataset
 from tqdm import tqdm
 

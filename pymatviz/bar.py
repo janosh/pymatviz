@@ -10,15 +10,16 @@ from pymatviz.widgets.spacegroup_bar import SpacegroupBarPlotWidget, spacegroup_
 
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Mapping, Sequence
     from typing import Any
 
     import pandas as pd
-    from pymatgen.core import Structure
+
+    from pymatviz.typing import SpacegroupLike
 
 
 def spacegroup_bar_plot(
-    data: Sequence[int | float | str | Structure] | pd.Series,
+    data: Sequence[SpacegroupLike] | Mapping[SpacegroupLike, int] | pd.Series,
     *,
     show_counts: bool = True,
     log_y: bool = False,
@@ -32,9 +33,9 @@ def spacegroup_bar_plot(
     order.
 
     Args:
-        data (Sequence[int | float | str | Structure] | pd.Series | Mapping): Space
-            group symbols, integral numbers (1-230), pymatgen structures/ASE Atoms,
-            or a ``{spacegroup: count}`` mapping.
+        data (Sequence[SpacegroupLike] | pd.Series | Mapping): Space group
+            symbols, integral numbers (1-230), structures (kemio, pymatgen, ASE,
+            phonopy), or a ``{spacegroup: count}`` mapping.
         show_counts (bool, optional): Whether to annotate each crystal system region
             with its total count. Defaults to True.
         log_y (bool): Whether to log scale the count axis. Defaults to False.

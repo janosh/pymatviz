@@ -6,10 +6,9 @@ from typing import Any
 
 import traitlets as tl
 
-from pymatviz.widgets._normalize import normalize_json_kwargs, normalize_plot_series
 from pymatviz.widgets._schema_traits import BarPlotTraits
-from pymatviz.widgets._traits import CartesianPlotTraits, color_scale_trait, df_series
-from pymatviz.widgets.matterviz import MatterVizWidget
+from pymatviz.widgets._traits import PlotControlsTraits, color_scale_trait, df_series
+from pymatviz.widgets.matterviz import MatterVizWidget, SeriesPlotMixin
 
 
 def bar_axis_defaults(
@@ -24,7 +23,9 @@ def bar_axis_defaults(
     return {cat_key: category, val_key: value}
 
 
-class BarPlotWidget(CartesianPlotTraits, BarPlotTraits, MatterVizWidget):
+class BarPlotWidget(
+    SeriesPlotMixin, PlotControlsTraits, BarPlotTraits, MatterVizWidget
+):
     """MatterViz widget wrapper for grouped/stacked/overlay bar plots."""
 
     orientation = tl.CaselessStrEnum(
@@ -35,15 +36,7 @@ class BarPlotWidget(CartesianPlotTraits, BarPlotTraits, MatterVizWidget):
     ).tag(sync=True)
     color_scale = color_scale_trait()
 
-    @tl.validate("series")
-    def _validate_series(self, proposal: dict[str, Any]) -> list[dict[str, Any]] | None:
-        """Normalize series on init and reassignment (arrays to lists, reject
-        non-finite values) before syncing.
-        """
-        try:
-            return normalize_plot_series(proposal["value"], component_name="BarPlot")
-        except (TypeError, ValueError) as exc:
-            raise tl.TraitError(str(exc)) from exc
+    _binary_series = False
 
     def __init__(
         self,
@@ -63,10 +56,9 @@ class BarPlotWidget(CartesianPlotTraits, BarPlotTraits, MatterVizWidget):
             y: DataFrame column of the bar heights.
             color: DataFrame column to split into one series per value.
             **kwargs: Widget traits, e.g. ``orientation``, ``mode`` (``overlay``,
-                ``stacked`` or ``grouped``), axis/range configs (see
-                ``CartesianPlotTraits``), ``bar``, ``line``, ``color_scale``.
+                ``stacked`` or ``grouped``), axis/range configs (``x_axis``
+                dicts, ``[min, max]`` ``x_range`` lists), ``bar``, ``line``,
+                ``color_scale``.
         """
         series = df_series(series, color, kwargs, x=x, y=y)
-        json_keys = (*self._JSON_KWARGS, "bar", "line", "color_scale", "size_scale")
-        normalize_json_kwargs(kwargs, json_keys, "BarPlot")
         super().__init__(series=series, **kwargs)

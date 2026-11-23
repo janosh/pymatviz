@@ -5,8 +5,8 @@ for matterviz Svelte components.
 from __future__ import annotations
 
 import math
-import re
-from typing import TYPE_CHECKING, Any
+from collections.abc import Iterator
+from typing import TYPE_CHECKING, Any, Literal
 
 
 if TYPE_CHECKING:
@@ -15,61 +15,36 @@ if TYPE_CHECKING:
     import pandas as pd
 
 
+def materialize_iterator(value: Any) -> Any:
+    """List of an iterator's items (generators, ``map``, ``zip``, ``iter(...)``),
+    consumed once, so every widget input taking a sequence of items also takes an
+    iterator. Other values (sequences, mappings, arrays, objects) pass through.
+    Widget traits call this on every assigned value before validating it (see
+    ``pymatviz.widgets._traits``), and ``normalize_plot_json`` on nested values.
+    """
+    return list(value) if isinstance(value, Iterator) else value
+
+
 def with_defaults(defaults: dict[str, Any], kwargs: dict[str, Any]) -> dict[str, Any]:
     """Return widget kwargs over a plot function's defaults, merging dict-valued
     options one level deep, so ``x_axis={"scale_type": "log"}`` keeps the default
     axis label instead of replacing the whole dict. Any other user value (including
     None) replaces its default.
     """
-    return (
-        defaults
-        | kwargs
-        | {
-            key: default | kwargs[key]
-            for key, default in defaults.items()
-            if isinstance(default, dict) and isinstance(kwargs.get(key), dict)
-        }
-    )
+    merged_dicts = {
+        key: default | kwargs[key]
+        for key, default in defaults.items()
+        if isinstance(default, dict) and isinstance(kwargs.get(key), dict)
+    }
+    return defaults | kwargs | merged_dicts
 
 
-def _normalize_ferrox_hkls(hkls_data: Any) -> Any:
-    """Normalize Ferrox HKL payload into widget-compatible shape.
-
-    Args:
-        hkls_data: HKL payload from Ferrox-style dict input.
-
-    Returns:
-        Normalized HKL payload where flat or grouped Miller indices are converted
-        to `[[{"hkl": [h, k, l]}], ...]`. Unrecognized structures are returned
-        unchanged.
-    """
-    if not isinstance(hkls_data, list) or not hkls_data:
-        return hkls_data
-
-    def is_miller(value: Any) -> bool:
-        """Whether value is a ``[h, k, l]`` list of ints."""
-        return (
-            isinstance(value, list)
-            and len(value) == 3
-            and all(isinstance(idx, int) for idx in value)
-        )
-
-    if all(is_miller(hkl_entry) for hkl_entry in hkls_data):
-        return [[{"hkl": hkl_entry}] for hkl_entry in hkls_data]
-    if all(
-        isinstance(hkl_group, list) and hkl_group and is_miller(hkl_group[0])
-        for hkl_group in hkls_data
-    ):
-        return [[{"hkl": hkl_group[0]}] for hkl_group in hkls_data]
-    return hkls_data
-
-
-# pymatgen as_dict() fields MatterViz never draws, up to ~100 MB on projected band
+# as_dict() fields MatterViz never draws, up to ~100 MB on projected band
 # structures: band projections, CompleteDos.pdos, phonon eigendisplacements
 _UNREAD_KEYS = frozenset({"projections", "pdos", "eigendisplacements"})
-
-
-# Empty stand-ins set on a shallow copy so as_dict() never builds those lists
+# Empty stand-ins set on a shallow copy of a pymatgen object so its as_dict() never
+# builds those lists. That also drops what pymatgen derives from them: atom_dos and
+# spd_dos of a CompleteDos and the structure of a projected band structure.
 _UNREAD_ATTRS = {
     "projections": {},
     "pdos": {},
@@ -78,35 +53,9 @@ _UNREAD_ATTRS = {
 }
 
 
-def _as_dict(obj: Any) -> dict[str, Any]:
-    """``obj.as_dict()`` without the fields MatterViz never reads, serialized from a
-    shallow copy with those fields emptied (the input is not mutated). Emptying them
-    also drops what pymatgen derives from them: ``atom_dos``/``spd_dos`` of a
-    CompleteDos and the ``structure`` of a projected band structure.
-    """
-    import copy
-
-    view = copy.copy(obj)
-    for attr, empty in _UNREAD_ATTRS.items():
-        if attr in vars(view):
-            setattr(view, attr, empty)
-    return {key: val for key, val in view.as_dict().items() if key not in _UNREAD_KEYS}
-
-
-def _from_phonopy(obj: Any) -> Any:
-    """Phonopy BandStructure and TotalDos as their pymatgen counterparts, other
-    objects unchanged.
-    """
-    cls_name = f"{type(obj).__module__}.{type(obj).__qualname__}"
-    if cls_name == "phonopy.phonon.band_structure.BandStructure":
-        from pymatviz.phonons.helpers import phonopy_to_pymatgen_bands
-
-        return phonopy_to_pymatgen_bands(obj)
-    if cls_name == "phonopy.phonon.dos.TotalDos":
-        from pymatgen.phonon.dos import PhononDos
-
-        return PhononDos(frequencies=obj.frequency_points, densities=obj.dos)
-    return obj
+# phonopy objects kemio.interop converts to PhononBands / PhononDos
+_PHONOPY_BANDS = ("phonopy.phonon.band_structure.BandStructure",)
+_PHONOPY_DOS = ("phonopy.phonon.dos.TotalDos", "phonopy.api_phonopy.Phonopy")
 
 
 def labeled_keys(data: dict[str, Any] | None) -> set[str]:
@@ -141,54 +90,101 @@ def check_stack_grids(doses: dict[str, Any] | None) -> None:
         )
 
 
-def _to_dict(obj: Any, label: str) -> dict[str, Any] | None:
+def _object_dict(obj: Any) -> dict[str, Any] | None:
+    """Dict of a structure-like, kemio/phonopy phonon, kemio electronic or
+    MSONable object (pymatgen's ``as_dict()`` layout), None for others.
+    """
+    import kemio
+    from kemio.electronic import ElectronicBands, ElectronicDos
+    from kemio.interop import (
+        has_class,
+        is_structure_like,
+        to_phonon_bands,
+        to_phonon_dos,
+    )
+
+    from pymatviz.structures import structure_dict
+
+    if is_structure_like(obj):
+        return structure_dict(obj)
+    if has_class(obj, *_PHONOPY_BANDS):
+        obj = to_phonon_bands(obj)
+    elif has_class(obj, *_PHONOPY_DOS):
+        obj = to_phonon_dos(obj)
+    if not callable(getattr(obj, "as_dict", None)):
+        return None
+    kemio_types = (kemio.PhononBands, kemio.PhononDos, ElectronicBands, ElectronicDos)
+    if not isinstance(obj, kemio_types):  # a shallow copy, the input isn't mutated
+        import copy
+
+        obj = copy.copy(obj)
+        for attr, empty in _UNREAD_ATTRS.items():
+            if attr in vars(obj):
+                setattr(obj, attr, empty)
+    return {key: val for key, val in obj.as_dict().items() if key not in _UNREAD_KEYS}
+
+
+_VASPRUN_SUFFIXES = (".xml", ".xml.gz", ".xml.xz", ".xml.bz2")
+
+
+def _vasprun_part(obj: Any, part: Literal["bands", "dos"] | None) -> Any:
+    """The bands or DOS (kemio ElectronicBands / ElectronicDos) of a vasprun.xml
+    path (str or PathLike, optionally compressed) when ``part`` is set, else obj.
+    """
+    import os
+
+    is_vasprun_str = isinstance(obj, str) and obj.endswith(_VASPRUN_SUFFIXES)
+    is_path = isinstance(obj, os.PathLike) or is_vasprun_str
+    if part is None or not is_path:
+        return obj
+    from kemio.io import read_vasprun
+
+    return getattr(read_vasprun(os.fspath(obj)), part)
+
+
+def _to_dict(
+    obj: Any, label: str, *, vasprun: Literal["bands", "dos"] | None = None
+) -> dict[str, Any] | None:
     """Convert None/dict/MSONable object to a JSON-serializable dict.
 
     Args:
         obj: None, a dict (MSONable values converted via ``as_dict``), or any
-            object with .as_dict(). phonopy BandStructure and TotalDos are converted
-            to pymatgen first. Converted dicts drop ``_UNREAD_KEYS``.
+            object with .as_dict(). Structure-like objects (kemio, pymatgen, ASE,
+            phonopy) become structure dicts, phonopy BandStructure, TotalDos and
+            Phonopy objects go through kemio's PhononBands / PhononDos. Converted
+            dicts drop ``_UNREAD_KEYS``.
         label: Human-readable name for error messages (e.g. "band structure").
+        vasprun: Read vasprun.xml paths (obj or dict values) for this part of the
+            run, "bands" or "dos". None leaves paths unconverted.
 
     Returns:
-        The dict, or None if obj is None.
+        The JSON-normalized dict, or None if obj is None.
 
     Raises:
-        TypeError: If obj has no .as_dict() method.
+        TypeError: If obj has no .as_dict() method or holds non-JSON values.
+        ValueError: For non-finite numbers.
     """
     if obj is None:
         return None
     if isinstance(obj, dict):
         converted = {
-            key: _as_dict(value)
-            for key, raw in obj.items()
-            if callable(getattr(value := _from_phonopy(raw), "as_dict", None))
-            and not isinstance(value, dict)
+            key: dct
+            for key, val in obj.items()
+            if not isinstance(val, dict)
+            and (dct := _object_dict(_vasprun_part(val, vasprun))) is not None
         }
-        return {**obj, **converted} if converted else obj
-    obj = _from_phonopy(obj)
-    if hasattr(obj, "as_dict"):
-        return _as_dict(obj)
-    raise TypeError(
-        f"Unsupported type for {label}: {type(obj)}. "
-        "Expected dict or object with .as_dict()."
-    )
+        dct = {**obj, **converted}
+    elif (dct := _object_dict(_vasprun_part(obj, vasprun))) is None:
+        raise TypeError(
+            f"Unsupported type for {label}: {type(obj)}. "
+            "Expected dict, vasprun.xml path or object with .as_dict()."
+        )
+    return normalize_plot_json(dct, label)  # e.g. numpy arrays in dict inputs
 
 
-def _normalize_numeric_sequence(
-    values: list[Any], field_label: str, *, series_index: int
-) -> list[float]:
-    """Convert JSON-normalized series values to floats, rejecting non-numeric items."""
-    normalized_values: list[float] = []
-    for value_index, value in enumerate(values):
-        if not isinstance(value, (int, float)):
-            raise TypeError(
-                "Plot series values must be numeric. "
-                f"Got {field_label}[{value_index}]={value!r} in series index "
-                f"{series_index}."
-            )
-        normalized_values.append(float(value))
-    return normalized_values
+# exact types normalize_plot_json returns unchanged (bool, str and int subclasses
+# such as enums take the slow path, which converts IntEnum to int)
+_JSON_SCALARS = frozenset({type(None), bool, str, int})
 
 
 def normalize_plot_json(value: Any, label: str) -> Any:
@@ -203,8 +199,34 @@ def normalize_plot_json(value: Any, label: str) -> Any:
 
     Raises:
         TypeError: If value cannot be serialized to JSON-safe primitives.
-        ValueError: If value contains non-finite numbers.
+        ValueError: If value contains non-finite numbers or dict keys that collide
+            as strings (e.g. 1 and "1").
     """
+    value_type = type(value)
+    # exact-type fast paths: plain lists/dicts of plain scalars (JSON trajectories,
+    # structure dicts) skip a recursive call per element
+    if value_type is list or value_type is tuple:
+        return [
+            entry
+            if type(entry) in _JSON_SCALARS
+            or (type(entry) is float and math.isfinite(entry))
+            else normalize_plot_json(entry, label)
+            for entry in value
+        ]
+    if value_type is dict:
+        normalized = {
+            str(key): entry
+            if type(entry) in _JSON_SCALARS
+            or (type(entry) is float and math.isfinite(entry))
+            else normalize_plot_json(entry, f"{label}.{key}")
+            for key, entry in value.items()
+        }
+        if len(normalized) < len(value):  # e.g. 1 and "1" would merge silently
+            str_keys = [str(key) for key in value]
+            clashes = [key for key in value if str_keys.count(str(key)) > 1]
+            raise ValueError(f"{label} has keys that collide as strings: {clashes}")
+        return normalized
+
     if value is None or isinstance(value, (bool, str)):
         return value
 
@@ -229,14 +251,11 @@ def normalize_plot_json(value: Any, label: str) -> Any:
             continue
         return normalize_plot_json(converted, label)
 
-    if isinstance(value, dict):
-        return {
-            str(key): normalize_plot_json(entry, f"{label}.{key}")
-            for key, entry in value.items()
-        }
+    if isinstance(value, dict):  # subclasses, e.g. OrderedDict
+        return normalize_plot_json(dict(value), label)
 
-    if isinstance(value, (list, tuple)):
-        return [normalize_plot_json(entry, label) for entry in value]
+    if isinstance(value, (list, tuple, Iterator)):  # e.g. namedtuples, generators
+        return normalize_plot_json(list(value), label)
 
     if hasattr(value, "as_dict") and callable(value.as_dict):
         return normalize_plot_json(value.as_dict(), label)
@@ -246,21 +265,6 @@ def normalize_plot_json(value: Any, label: str) -> Any:
         "Expected JSON-serializable primitives, lists, dicts, numpy arrays, or "
         "MSONable objects."
     )
-
-
-def normalize_json_kwargs(
-    kwargs: dict[str, Any], keys: Sequence[str], component: str
-) -> None:
-    """In place, run normalize_plot_json on each of ``keys`` present in ``kwargs``.
-
-    Args:
-        kwargs: Widget constructor keyword arguments, modified in place.
-        keys: Names of the config kwargs to normalize (e.g. numpy bounds in dicts).
-        component: MatterViz component name used to label error messages.
-    """
-    for key in keys:
-        if key in kwargs:
-            kwargs[key] = normalize_plot_json(kwargs[key], f"{component}.{key}")
 
 
 def check_metadata_frame(frame: pd.DataFrame, n_points: int, label: str) -> None:
@@ -310,18 +314,18 @@ def normalize_plot_series(
     series_data: Any,
     *,
     component_name: str,
-    samples_key: str | None = None,
+    keys: tuple[str, ...] = ("x", "y"),
     binary: bool = False,
 ) -> list[dict[str, Any]] | None:
     """Normalize and validate plot series payloads (``None`` passes through).
 
-    Entries are dicts with ``x`` and ``y`` lists of equal length (``x`` all strings
-    for categorical axes or all numeric, ``y`` numeric, both finite). Per-point
-    ``metadata`` may be a pandas DataFrame with one row per point (columnar, so
-    binary series send numeric columns as arrays). With
-    ``samples_key`` (histograms bin ``values``), entries must instead hold raw
-    samples under that key. Raises TypeError for wrong container/entry/sample types and
-    ValueError for missing keys, length mismatches and non-finite numbers.
+    Entries are dicts with finite, equal-length lists under ``keys``: ``x``/``y``
+    by default (``x`` all strings for categorical axes or all numeric), ``x``/``y``/
+    ``z`` for 3D scatter, or the raw samples of histograms (``values``) and box plots
+    (``y``). Per-point ``metadata`` may be a pandas DataFrame with one row per point
+    (columnar, so binary series send numeric columns as arrays). Raises TypeError for
+    wrong container/entry/sample types and ValueError for missing keys, length
+    mismatches and non-finite numbers.
     """
     if series_data is None:
         return None
@@ -336,7 +340,6 @@ def normalize_plot_series(
     from pymatviz.widgets._binary import is_binary_envelope, plot_series_envelope
 
     normalized_series: list[dict[str, Any]] = []
-    keys = (samples_key,) if samples_key else ("x", "y")
     for series_index, series_entry in enumerate(series_data):
         # with binary=True, large numeric series (and already encoded ones) skip the
         # per-value JSON conversion
@@ -363,7 +366,8 @@ def normalize_plot_series(
             raw_entry = {**series_entry, "metadata": records}
         entry = normalize_plot_json(raw_entry, f"{component_name}.series")
         if not all(key in entry for key in keys):
-            what = f"key '{samples_key}'" if samples_key else "keys 'x' and 'y'"
+            quoted = " and ".join(f"'{key}'" for key in keys)
+            what = f"key{'s' * (len(keys) > 1)} {quoted}"
             raise ValueError(
                 f"{component_name} series entry must include {what}. "
                 f"Got keys at index {series_index}: {sorted(entry)}."
@@ -374,11 +378,11 @@ def normalize_plot_series(
                     f"{component_name} series {key} must be list-like after "
                     f"normalization. Got {type(entry[key])} at index {series_index}."
                 )
-        if len(keys) == 2 and len(entry["x"]) != len(entry["y"]):
+        if len({len(entry[key]) for key in keys}) > 1:
+            lengths = {key: len(entry[key]) for key in keys}
             raise ValueError(
-                f"{component_name} series x/y lengths must match at index "
-                f"{series_index}, got len(x)={len(entry['x'])} and "
-                f"len(y)={len(entry['y'])}."
+                f"{component_name} series {'/'.join(keys)} lengths must match at "
+                f"index {series_index}, got {lengths}."
             )
         for key in keys:
             values = entry[key]
@@ -391,9 +395,13 @@ def normalize_plot_series(
                     f"(categorical) or all numeric, got mixed types at index "
                     f"{series_index}."
                 )
-            entry[key] = _normalize_numeric_sequence(
-                values, key, series_index=series_index
-            )
+            for value_idx, value in enumerate(values):
+                if not isinstance(value, (int, float)):
+                    raise TypeError(
+                        f"Plot series values must be numeric. Got {key}[{value_idx}]="
+                        f"{value!r} in series index {series_index}."
+                    )
+            entry[key] = [float(value) for value in values]
         normalized_series.append(entry)
     return normalized_series
 
@@ -405,17 +413,20 @@ def structure_to_dict(
 
     Args:
         structure: ``None`` (passed through), a structure dict with a ``sites`` list
-            (passed through unchanged, schema errors are reported by the renderer),
-            or a single pymatgen ``Structure``/``Molecule``, ASE ``Atoms`` or
-            ``PhonopyAtoms`` (converted via ``normalize_structures(...).as_dict()``).
+            (schema errors are reported by the renderer), or a single pymatgen
+            ``Structure``/``Molecule``, ASE ``Atoms`` or ``PhonopyAtoms`` (converted
+            via ``structure_dict``).
         periodic: Require a lattice, for widgets drawing the Brillouin zone.
 
     Returns:
-        The structure dict, or None if structure is None.
+        The JSON-normalized structure dict (numpy values in site or structure
+        properties, e.g. ASE ``Atoms.info``, become lists and floats), or None if
+        structure is None.
 
     Raises:
         TypeError: If a dict has no ``sites`` list, for any other type (including
             sequences of structures), or for a lattice-less one when ``periodic``.
+        ValueError: For non-finite numbers.
     """
     if structure is None:
         return None
@@ -427,61 +438,45 @@ def structure_to_dict(
             )
         struct = structure
     else:
-        from pymatviz.structures import is_structure_like, normalize_structures
+        from kemio.interop import is_structure_like
+
+        from pymatviz.structures import structure_dict
 
         if not is_structure_like(structure):
             raise TypeError(
-                "structure must be a dict, pymatgen Structure/Molecule, ASE Atoms or "
-                f"PhonopyAtoms, got {type(structure).__name__}"
+                "structure must be a dict, kemio or pymatgen Structure/Molecule, "
+                f"ASE Atoms or PhonopyAtoms, got {type(structure).__name__}"
             )
-        struct = next(iter(normalize_structures(structure).values())).as_dict()
+        struct = structure_dict(structure)
     if periodic and "lattice" not in struct:
         raise TypeError(
             f"a periodic structure (with a lattice) is needed, got {sorted(struct)=}"
         )
-    return struct
+    return normalize_plot_json(struct, "structure")
 
 
-def _parse_formula_to_dict(formula: str) -> dict[str, float]:
-    """Parse a chemical formula string into an element->amount dict.
+def _formula_dict(formula: str) -> dict[str, float]:
+    """``{element: amount}`` of a formula string (parsed by kemio's Composition,
+    groupings like ``Ca(OH)2`` included).
 
-    Handles simple formulas like "Li2O", "Fe2O3", "LiFePO4".
-    For formulas that are just an element symbol (e.g. "Li"), returns {"Li": 1}.
-
-    Args:
-        formula: Chemical formula string.
-
-    Returns:
-        Dict mapping element symbols to their counts.
+    Raises:
+        ValueError: For malformed or empty formulas.
     """
-    if not formula.strip():
-        raise ValueError("Formula must not be empty.")
-    if any(char in formula for char in "()[]{}"):
-        raise ValueError(f"Unsupported grouping in formula: {formula!r}.")
+    import kemio
 
-    composition: dict[str, float] = {}
-    matches = list(re.finditer(r"([A-Z][a-z]?)(\d*\.?\d*)", formula))
-    if "".join(match.group(0) for match in matches) != formula:
-        raise ValueError(f"Invalid formula syntax: {formula!r}.")
-    for match in matches:
-        element = match.group(1)
-        count_str = match.group(2)
-        count = float(count_str) if count_str else 1.0
-        composition[element] = composition.get(element, 0) + count
+    if not (composition := kemio.Composition(formula).as_dict()):
+        raise ValueError(f"Formula must not be empty, got {formula!r}")
     return composition
 
 
 def _normalize_entry_compositions(
     entries: Sequence[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    """Ensure entry compositions are dicts, parsing formula strings as needed.
-
-    The matterviz frontend expects compositions as ``{element: amount}`` dicts.
-    This converts any string compositions (e.g. ``"Li2O"``) to that format,
-    leaving dict compositions unchanged.
+    """Entries with formula-string compositions (e.g. ``"Li2O"``) parsed to the
+    ``{element: amount}`` dicts matterviz expects, dict compositions unchanged.
     """
     return [
-        {**entry, "composition": _parse_formula_to_dict(entry["composition"])}
+        {**entry, "composition": _formula_dict(entry["composition"])}
         if isinstance(entry.get("composition"), str)
         else entry
         for entry in entries
@@ -489,164 +484,104 @@ def _normalize_entry_compositions(
 
 
 def normalize_convex_hull_entries(obj: Any) -> list[dict[str, Any]] | None:
-    """Convert a pymatgen PhaseDiagram or list of entry dicts to convex hull entries.
+    """Convex hull entries (composition, energy, stability) of entry dicts, a kemio
+    or pymatgen PhaseDiagram or an iterable of entries (pymatgen ComputedEntry,
+    PDEntry, entry dicts); energies above hull and stability from kemio's
+    PhaseDiagram.
 
     Args:
-        obj: A pymatgen PhaseDiagram, a list of dicts, or None.
+        obj: Entry dicts (passed through, formula strings parsed), a PhaseDiagram,
+            an iterable of entries, or None.
 
     Returns:
         List of entry dicts with composition, energy, and stability info, or None.
+
+    Raises:
+        TypeError: For other objects or entries without composition and energy.
     """
     if obj is None:
         return None
-    if isinstance(obj, (list, tuple)):
+    if isinstance(obj, (list, tuple)) and all(isinstance(entry, dict) for entry in obj):
         return _normalize_entry_compositions(obj)
+    import kemio
+    from kemio.interop import to_phase_diagram
 
-    from pymatgen.analysis.phase_diagram import PhaseDiagram
-
-    if isinstance(obj, PhaseDiagram):
-        entries = []
-        for entry in obj.all_entries:
-            entry_dict: dict[str, Any] = {
-                "composition": entry.composition.as_dict(),
-                "energy": entry.energy,
-                "energy_per_atom": entry.energy_per_atom,
-            }
-            entry_dict["e_above_hull"] = obj.get_e_above_hull(entry)
-            entry_dict["is_stable"] = entry in obj.stable_entries
-            entries.append(entry_dict)
-        return entries
-
-    raise TypeError(
-        f"Unsupported type for convex hull entries: {type(obj)}. "
-        "Expected list of dicts or pymatgen PhaseDiagram."
+    try:  # materialize generators, keep phase diagrams (all_entries) as they are
+        is_diagram = isinstance(obj, kemio.PhaseDiagram) or hasattr(obj, "all_entries")
+        phase_diagram = to_phase_diagram(obj if is_diagram else list(obj))
+    except TypeError as exc:
+        raise TypeError(
+            f"Unsupported type for convex hull entries: {type(obj)}. Expected list of "
+            f"dicts, a PhaseDiagram (kemio, pymatgen) or entry objects ({exc})."
+        ) from exc
+    keys = ("composition", "energy", "energy_per_atom", "e_above_hull", "is_stable")
+    rows = zip(
+        [composition.as_dict() for composition in phase_diagram.compositions],
+        phase_diagram.energies.tolist(),
+        phase_diagram.energies_per_atom.tolist(),
+        phase_diagram.e_above_hull().tolist(),
+        phase_diagram.is_stable().tolist(),
+        strict=True,
     )
-
-
-XRD_PATTERN_KINDS = ("sticks", "profile")
-
-
-def _with_xrd_kind(pattern: dict[str, Any]) -> dict[str, Any]:
-    """Tag a pattern without Miller indices as a measured ``kind="profile"`` scan.
-
-    matterviz draws ``profile`` patterns as a line and never broadens them, while
-    ``sticks`` (its default) are discrete reflections drawn as bars. Computed patterns
-    (pymatgen, Ferrox) carry ``hkls`` and stay untagged; an explicit ``kind`` wins.
-
-    Raises:
-        ValueError: If ``pattern["kind"]`` is not one of ``XRD_PATTERN_KINDS``.
-    """
-    if "kind" in pattern:
-        if pattern["kind"] not in XRD_PATTERN_KINDS:
-            raise ValueError(
-                f"XRD pattern kind={pattern['kind']!r} must be one of "
-                f"{list(XRD_PATTERN_KINDS)}."
-            )
-        return pattern
-    if pattern.get("hkls"):
-        return pattern
-    return {**pattern, "kind": "profile"}
+    return [
+        dict(zip(keys, row, strict=True))
+        | ({} if entry_id is None else {"entry_id": entry_id})
+        for row, entry_id in zip(rows, phase_diagram.ids, strict=True)
+    ]
 
 
 def normalize_xrd_pattern(obj: Any) -> dict[str, Any] | None:
     """Convert an XRD pattern to a JSON-serializable dict for matterviz.
 
-    Patterns without ``hkls`` (measured scans) get ``kind="profile"`` so matterviz
-    draws them as a continuous line and skips peak broadening.
+    Patterns without ``hkls`` (measured scans) get ``kind="profile"``: matterviz draws
+    those as a line and never broadens them, while ``sticks`` (its default) are
+    discrete reflections drawn as bars. Computed patterns (kemio, pymatgen) carry
+    ``hkls`` and stay untagged; an explicit ``kind`` wins.
 
     Args:
-        obj: A pymatgen DiffractionPattern, a dict, or None.
+        obj: A kemio XrdPattern, pymatgen DiffractionPattern, a dict (numpy or
+            pandas values allowed), or None.
 
     Returns:
-        XRD pattern dict with x, y, and optional hkls, d_hkls, kind keys, or None.
+        JSON-safe XRD pattern dict with x, y, and optional hkls, d_hkls, kind keys,
+        or None.
+
+    Raises:
+        TypeError: For other types.
+        ValueError: For missing or mismatched x/y, non-finite values or an unknown
+            kind.
     """
     if obj is None:
         return None
-    return _with_xrd_kind(_xrd_pattern_to_dict(obj))
-
-
-def _xrd_pattern_to_dict(obj: Any) -> dict[str, Any]:
-    """Convert a canonical/Ferrox dict or pymatgen DiffractionPattern to a dict.
-
-    Args:
-        obj: A pymatgen DiffractionPattern or a dict.
-
-    Returns:
-        XRD pattern dict with x, y, and optional hkls, d_hkls keys.
-    """
     if isinstance(obj, dict):
-        if all(key in obj for key in ("x", "y")):
-            if len(obj["x"]) != len(obj["y"]):
-                raise ValueError(
-                    "XRD pattern dict has mismatched canonical lengths: "
-                    f"len(x)={len(obj['x'])}, len(y)={len(obj['y'])}."
-                )
-            return obj
-
-        if all(key in obj for key in ("two_theta", "intensities")):
-            if len(obj["two_theta"]) != len(obj["intensities"]):
-                raise ValueError(
-                    "XRD pattern dict has mismatched Ferrox lengths: "
-                    f"len(two_theta)={len(obj['two_theta'])}, "
-                    f"len(intensities)={len(obj['intensities'])}."
-                )
-
-            normalized: dict[str, Any] = {
-                "x": obj["two_theta"],
-                "y": obj["intensities"],
-            }
-            if "d_spacings" in obj:
-                normalized["d_hkls"] = obj["d_spacings"]
-
-            if "hkls" in obj:
-                normalized["hkls"] = _normalize_ferrox_hkls(obj["hkls"])
-            if "kind" in obj:
-                normalized["kind"] = obj["kind"]
-
-            return normalized
-
-        for schema, keys in (
-            ("canonical", ["x", "y"]),
-            ("Ferrox", ["two_theta", "intensities"]),
-        ):
-            if any(key in obj for key in keys):
-                missing_keys = [key for key in keys if key not in obj]
-                raise ValueError(
-                    f"XRD pattern dict missing required key(s) for {schema} schema: "
-                    f"{missing_keys}. Expected keys: {keys}."
-                )
-
-        available_keys = sorted(str(key) for key in obj)
-        raise ValueError(
-            "Unsupported XRD dict schema. Expected either canonical keys "
-            "['x', 'y'] or Ferrox keys ['two_theta', 'intensities'], but got "
-            f"keys: {available_keys}."
-        )
-
-    from pymatgen.analysis.diffraction.xrd import DiffractionPattern
-
-    if isinstance(obj, DiffractionPattern):
-        result: dict[str, Any] = {"x": obj.x.tolist(), "y": obj.y.tolist()}
-        if obj.hkls is not None:
-            result["hkls"] = [
-                [
-                    {
-                        key: list(val) if key == "hkl" else val
-                        for key, val in hkl_entry.items()
-                    }
-                    for hkl_entry in hkl_list
-                ]
-                for hkl_list in obj.hkls
-            ]
-        if obj.d_hkls is not None:
-            result["d_hkls"] = (
-                obj.d_hkls.tolist()
-                if hasattr(obj.d_hkls, "tolist")
-                else list(obj.d_hkls)
+        # normalized first, so x/y iterators (consumed once) have a length
+        pattern = normalize_plot_json(obj, "XRD pattern")
+        if missing := [key for key in ("x", "y") if key not in pattern]:
+            raise ValueError(
+                f"XRD pattern dicts need 'x' (2θ) and 'y' (intensity) keys, missing "
+                f"{missing} in keys {sorted(pattern)}"
             )
-        return result
+        if len(pattern["x"]) != len(pattern["y"]):
+            raise ValueError(
+                "XRD pattern dict has mismatched lengths: "
+                f"len(x)={len(pattern['x'])}, len(y)={len(pattern['y'])}."
+            )
+    else:
+        import kemio
+        from kemio.interop import has_class, to_xrd_pattern
 
-    raise TypeError(
-        f"Unsupported type for XRD pattern: {type(obj)}. "
-        "Expected dict or pymatgen DiffractionPattern."
-    )
+        if has_class(obj, "pymatgen.analysis.diffraction.core.DiffractionPattern"):
+            obj = to_xrd_pattern(obj)
+        if not isinstance(obj, kemio.XrdPattern):
+            raise TypeError(
+                f"Unsupported type for XRD pattern: {type(obj)}. "
+                "Expected dict, kemio XrdPattern or pymatgen DiffractionPattern."
+            )
+        pattern = normalize_plot_json(obj.as_dict(), "XRD pattern")
+    if "kind" not in pattern:
+        return pattern if pattern.get("hkls") else {**pattern, "kind": "profile"}
+    if pattern["kind"] not in (kinds := ["sticks", "profile"]):
+        raise ValueError(
+            f"XRD pattern kind={pattern['kind']!r} must be one of {kinds}."
+        )
+    return pattern

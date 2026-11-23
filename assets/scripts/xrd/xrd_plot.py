@@ -3,22 +3,25 @@
 # %%
 from glob import glob
 
-from pymatgen.analysis.diffraction.xrd import XRDCalculator
-from pymatgen.core import Structure
+import kemio
+import numpy as np
+from kemio.io import read_structure
 
 import pymatviz as pmv
-from pymatviz.utils.testing import TEST_FILES, formula_spg_str
+from pymatviz.data import TEST_FILES
+from pymatviz.structures import formula_spg_str
 
 
 # %%
+cif_files = glob(f"{TEST_FILES}/xrd/*.cif")
+json_files = glob(f"{TEST_FILES}/structures/*.json.gz")
 structures = {
-    formula_spg_str(struct := Structure.from_file(file)): struct
-    for file in glob(f"{TEST_FILES}/xrd/*.cif")
-    + glob(f"{TEST_FILES}/structures/*.json.gz")
+    formula_spg_str(struct := read_structure(file)): struct
+    for file in cif_files + json_files
 }
-xrd_patterns = {
-    key: XRDCalculator().get_pattern(struct) for key, struct in structures.items()
-}
+xrd_patterns = dict(
+    zip(structures, kemio.xrd_patterns(list(structures.values())), strict=True)
+)
 key1, key2, key3, *_ = xrd_patterns
 
 
@@ -40,7 +43,14 @@ widget.to_img(
 )
 
 
-# %% Compare a structure's pattern before and after perturbing its sites
+# %% Compare a structure's pattern before and after randomly displacing its sites
+rng = np.random.default_rng(seed=0)
+struct = structures[key1]
 pmv.xrd_plot(
-    {f"{key1} {idx=}": structures[key1].copy().perturb(idx * 0.5) for idx in range(3)}
+    {
+        f"{key1} {sigma=}": struct.replace(
+            positions=struct.positions + rng.normal(scale=sigma, size=(len(struct), 3))
+        )
+        for sigma in (0, 0.1, 0.2)
+    }
 ).show()

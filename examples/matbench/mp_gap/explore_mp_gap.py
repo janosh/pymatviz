@@ -8,7 +8,12 @@ Entries: 106113
 https://ml.materialsproject.org/projects/matbench_mp_gap
 """
 
-# %%
+# /// script
+# dependencies = [
+#     "matminer>=0.10.1",
+# ]
+# ///
+
 from matminer.datasets import load_dataset
 
 import pymatviz as pmv

@@ -3,15 +3,33 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Mapping
-from operator import index
+from collections.abc import Mapping, Sized
+from numbers import Integral
 from typing import Any
 
 import numpy as np
 import traitlets as tl
 
+from pymatviz.widgets._normalize import materialize_iterator
 from pymatviz.widgets._schema_traits import SpacegroupBarTraits
+from pymatviz.widgets._traits import JsonBool, normalized_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
+
+
+def _count_int(count: Any, data: Mapping[Any, Any]) -> int:
+    """Int of a space group count: ints and integral floats (e.g. ``3.0`` from a
+    float column) count, bools and fractional or non-finite floats don't.
+
+    Raises:
+        TypeError: For any other count, naming the whole mapping.
+    """
+    is_int = isinstance(count, Integral) and not isinstance(count, bool)
+    if is_int or (isinstance(count, float | np.floating) and float(count).is_integer()):
+        return int(count)
+    raise TypeError(
+        f"Space group counts must be integers (or integral floats), got {count!r} "
+        f"in {data}"
+    )
 
 
 def spacegroup_counts(data: Any) -> dict[str, int]:
@@ -19,22 +37,27 @@ def spacegroup_counts(data: Any) -> dict[str, int]:
     widget syncs at most 230 entries however many structures went in.
 
     Args:
-        data: Space group numbers, Hermann-Mauguin symbols or structures, or a
+        data: Space group numbers, Hermann-Mauguin symbols or structures (a
+            sequence, array, Series or iterator such as a generator), or a
             ``{spacegroup: count}`` mapping (number/symbol keys may repeat a group).
 
     Raises:
-        TypeError: If mapping counts aren't integers.
+        TypeError: For non-iterable data or mapping counts that aren't integers or
+            integral floats (bools are rejected).
         ValueError: For negative counts or invalid space groups.
     """
     from pymatviz.structures import normalize_spacegroups
 
-    if data is None or len(data) == 0:
+    data = materialize_iterator(data)  # e.g. generators, which have no len()
+    if not isinstance(data, Sized):
+        raise TypeError(
+            "Space group data must be a sequence, iterator or mapping, got "
+            f"{type(data).__name__}: {data!r}"
+        )
+    if len(data) == 0:
         return {}
     if isinstance(data, Mapping):
-        try:
-            counts = np.array([index(count) for count in data.values()], dtype=int)
-        except TypeError as exc:
-            raise TypeError(f"Space group counts must be integers, got {data}") from exc
+        counts = np.array([_count_int(count, data) for count in data.values()])
         if (counts < 0).any():
             raise ValueError(f"Space group counts must be non-negative, got {data}")
         # keys may mix numbers, symbols and (as synced) digit strings, so normalize
@@ -70,26 +93,11 @@ class SpacegroupBarPlotWidget(SpacegroupBarTraits, MatterVizWidget):
         {'62': 3, '166': 1, '225': 2}
     """
 
-    data = tl.Any(allow_none=True).tag(sync=True)  # validated into {"<number>": count}
-    show_counts = tl.Bool(default_value=True).tag(sync=True)
-    show_legend = tl.Bool(default_value=False).tag(sync=True)
+    data = normalized_trait(spacegroup_counts)  # into {"<number>": count}
+    show_counts = JsonBool(default_value=True).tag(sync=True)
+    show_legend = JsonBool(default_value=False).tag(sync=True)
     orientation = tl.CaselessStrEnum(
         values=["vertical", "horizontal"], default_value="vertical"
     ).tag(sync=True)
 
-    def __init__(self, data: Any = None, **kwargs: Any) -> None:
-        """Initialize a space group bar plot widget.
-
-        Args:
-            data: Space group numbers/symbols/structures or a count mapping.
-            **kwargs: Additional widget properties.
-        """
-        super().__init__(data=data, **kwargs)
-
-    @tl.validate("data")
-    def _validate_data(self, proposal: dict[str, Any]) -> dict[str, int]:
-        """Count space groups on construction and reassignment."""
-        try:
-            return spacegroup_counts(proposal["value"])
-        except (TypeError, ValueError) as exc:
-            raise tl.TraitError(str(exc)) from exc
+    _positional_traits = ("data",)

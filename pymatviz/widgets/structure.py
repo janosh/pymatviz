@@ -12,7 +12,16 @@ import traitlets as tl
 from pymatviz.widgets._binary import is_binary_envelope, volume_envelope
 from pymatviz.widgets._normalize import normalize_plot_json, structure_to_dict
 from pymatviz.widgets._schema_traits import StructureTraits
-from pymatviz.widgets._traits import StructureVizTraits
+from pymatviz.widgets._traits import (
+    JsonBool,
+    JsonDict,
+    JsonList,
+    StructureVizTraits,
+    from_frontend,
+    index_error,
+    normalized_trait,
+    validator,
+)
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -46,14 +55,11 @@ def volume_to_envelopes(volume: Any) -> list[dict[str, Any]]:
         else:
             values = np.asarray(volume.get("values", []))
             dims = np.asarray(volume.get("dims"))
-            if (
-                dims.shape != (3,)
-                or dims.dtype.kind not in "iuf"
-                or not all(
-                    0 <= size <= 2**53 - 1 and int(size) == size for size in dims
-                )
-                or values.size != math.prod(map(int, dims))
-            ):
+            max_int = 2**53 - 1
+            dims_ok = dims.shape == (3,) and dims.dtype.kind in "iuf"
+            if dims_ok:  # range checks need numeric dims
+                dims_ok = all(0 <= dim <= max_int and int(dim) == dim for dim in dims)
+            if not dims_ok or values.size != math.prod(map(int, dims)):
                 raise ValueError(
                     f"volumetric_data {vol_id!r} flat values ({values.size}) need dims "
                     f"with that many points, got {dims=}"
@@ -127,8 +133,9 @@ class StructureWidget(StructureVizTraits, StructureTraits, MatterVizWidget):
     """MatterViz widget for visualizing structures in Python notebooks.
 
     Structure data can be provided as:
-    - ``structure``: A parsed dict (from pymatgen/ASE ``.as_dict()``), or
-      a pymatgen ``Structure``/ASE ``Atoms`` object (auto-converted).
+    - ``structure``: A structure dict (e.g. pymatgen ``Structure.as_dict()``) or a
+      kemio/pymatgen ``Structure``, ASE ``Atoms`` or ``PhonopyAtoms`` object,
+      converted on construction and on later assignment.
     - ``structure_string``: A raw file string (CIF, POSCAR, XYZ, etc.)
       parsed on the frontend. Useful when you have the file content but
       not a parsed object. If both are provided, ``structure`` takes
@@ -140,13 +147,17 @@ class StructureWidget(StructureVizTraits, StructureTraits, MatterVizWidget):
 
     Examples:
         Basic usage:
+        >>> import numpy as np
+        >>> import kemio
+        >>> nacl = kemio.Structure(
+        ...     np.eye(3) * 5.64, ["Na", "Cl"], [[0] * 3, [0.5] * 3], fractional=True
+        ... )
         >>> import pymatviz as pmv
-        >>> structure_data = {...}  # Structure dictionary from pymatgen/ASE
-        >>> widget = pmv.structure(structure=structure_data)
+        >>> widget = pmv.structure(structure=nacl)
 
         With custom visualization options:
         >>> widget = pmv.structure(
-        ...     structure=structure_data,
+        ...     structure=nacl,
         ...     atom_radius=0.8,
         ...     show_bonds="always",
         ...     color_scheme="Jmol",
@@ -156,33 +167,52 @@ class StructureWidget(StructureVizTraits, StructureTraits, MatterVizWidget):
         Site vectors (force/magmom/spin) are auto-detected from site properties.
         Single vector keys use element-colored arrows; multiple keys get palette
         colors with per-key toggles, scale sliders, and origin gap control:
-        >>> pmv.structure(structure=struct_with_forces)  # auto-detected
-        >>> pmv.structure(structure=struct, vector_origin_gap=0.3)  # multi-method
-        >>> pmv.structure(structure=struct, vector_normalize=True)  # direction only
+        >>> forces = {
+        ...     "force_DFT": [[0.1, 0, 0], [-0.1, 0, 0]],
+        ...     "force_MLIP": [[0.12, 0.01, 0], [-0.12, -0.01, 0]],
+        ... }
+        >>> struct_with_forces = kemio.Structure(
+        ...     nacl.lattice,
+        ...     ["Na", "Cl"],
+        ...     nacl.frac_coords,
+        ...     fractional=True,
+        ...     site_data=forces,
+        ... )
+        >>> widget = pmv.structure(structure=struct_with_forces)  # auto-detected
+        >>> widget = pmv.structure(structure=struct_with_forces, vector_origin_gap=0.3)
+        >>> widget = pmv.structure(structure=struct_with_forces, vector_normalize=True)
 
-        Isosurfaces: pymatgen ``VolumetricData`` objects or dicts plus explicit layers
-        (``isovalue`` in the volume's units, e/Å³ for CHGCAR) that pick their volume by
-        ``volume_id`` (a pymatgen ``data`` key, or a dict's ``id``/``label``):
-        >>> layer = dict(isovalue=0.05, color="#3b82f6", opacity=0.6, visible=True)
+        Isosurfaces: pymatgen ``VolumetricData`` objects (e.g.
+        ``Chgcar.from_file("CHGCAR")``) or dicts plus explicit layers (``isovalue`` in
+        the volume's units, e/Å³ for CHGCAR) that pick their volume by ``volume_id``
+        (a pymatgen ``data`` key, or a dict's ``id``/``label``):
+        >>> grid = np.random.default_rng(seed=0).random((8, 8, 8))
+        >>> density = {"id": "total", "grid": grid, "lattice": np.eye(3) * 5.64}
+        >>> density |= {"origin": [0, 0, 0], "periodic": True}
+        >>> layer = dict(isovalue=0.5, color="#3b82f6", opacity=0.6, visible=True)
         >>> layer |= dict(volume_id="total")
-        >>> pmv.structure(
-        ...     volumetric_data=[Chgcar.from_file("CHGCAR")],
+        >>> widget = pmv.structure(
+        ...     structure=nacl,
+        ...     volumetric_data=[density],
         ...     isosurface_settings={"layers": [layer], "wireframe": False, "halo": 0},
         ... )
 
         Several pymatgen volumes share ``data`` keys (every ``Chgcar`` has ``"total"``),
         so pass a ``{prefix: volume}`` mapping to namespace ids (and labels) as
         ``"prefix/key"``:
-        >>> volumes = {"relaxed": chgcar_relaxed, "initial": chgcar_initial}
+        >>> volumes = {"relaxed": density, "initial": density}
         >>> layer |= dict(volume_id="relaxed/total")
-        >>> pmv.structure(
-        ...     volumetric_data=volumes, isosurface_settings={"layers": [layer]}
+        >>> widget = pmv.structure(
+        ...     structure=nacl,
+        ...     volumetric_data=volumes,
+        ...     isosurface_settings={"layers": [layer]},
         ... )
     """
 
     # display options shared with TrajectoryWidget live in StructureVizTraits
 
-    show_image_atoms = tl.Bool(default_value=True).tag(sync=True)
+    structure = normalized_trait(structure_to_dict)
+    show_image_atoms = JsonBool(default_value=True).tag(sync=True)
     # Cell shown: the input cell or MatterViz's (moyo) conventional/primitive standard
     # cell, which carries site properties over with vectors rotated into its frame
     cell_type = tl.CaselessStrEnum(
@@ -197,29 +227,67 @@ class StructureWidget(StructureVizTraits, StructureTraits, MatterVizWidget):
     # isovalue, color, opacity, visible, show_negative, negative_color}], wireframe,
     # halo, display_range?}
     volumetric_data = tl.Any().tag(sync=True)
+    # [] means no volumes. None skipped the validator (Any ignores allow_none=False),
+    # so plain assignment synced it and broke isosurface_settings checks
+    volumetric_data.allow_none = False
     # "structure", "slice" (2D volume slice) or "split" (both side by side)
     display_mode = tl.CaselessStrEnum(
         ["structure", "slice", "split"], default_value="structure"
     ).tag(sync=True)
-    slice_settings = tl.Dict(default_value={}).tag(sync=True)
+    slice_settings = JsonDict(default_value={}).tag(sync=True)
 
     # UI controls
-    enable_info_pane = tl.Bool(default_value=True).tag(sync=True)
+    enable_info_pane = JsonBool(default_value=True).tag(sync=True)
 
     # Interaction state (two-way synced with the frontend for ipywidgets linking).
     # selected_sites (clicked atoms) and hovered_site_idx (hovered atom) are
     # populated on user interaction (observe them to drive other widgets) and can
     # also be set from Python. highlighted_sites is a Python-driven highlight
-    # input (e.g. from a linked plot).
-    selected_sites = tl.List(tl.Int(), default_value=[]).tag(sync=True)
-    highlighted_sites = tl.List(tl.Int(), default_value=[]).tag(sync=True)
+    # input (e.g. from a linked plot). Frontend values index the rendered sites,
+    # which append image atoms after the structure's own and follow cell_type, so
+    # only Python assignments are checked against the structure's sites (with
+    # cell_type="original"). A new structure drops indices beyond its sites.
+    selected_sites = JsonList(tl.Int(), default_value=[]).tag(sync=True)
+    highlighted_sites = JsonList(tl.Int(), default_value=[]).tag(sync=True)
+
+    def _n_own_sites(self, structure: Any) -> int | None:
+        """Site count site indices set from Python address: the structure dict's,
+        None while unknown (structure_string, data_url, a standardized cell_type, a
+        structure object mid-batch before its validator ran).
+        """
+        if self.cell_type != "original" or not isinstance(structure, dict):
+            return None
+        return len(structure["sites"])
+
+    @validator("selected_sites", "highlighted_sites")
+    def _check_site_indices(self, proposal: dict[str, Any]) -> list[int]:
+        """Reject Python-set indices that are negative or beyond the sites."""
+        name, indices = proposal["trait"].name, proposal["value"]
+        if from_frontend(self, name):
+            return indices
+        n_sites = self._n_own_sites(self.structure)
+        for pos, idx in enumerate(indices):
+            if idx < 0 or (n_sites is not None and idx >= n_sites):
+                raise index_error(self, f"{name}[{pos}]", idx, n_sites, "sites")
+        return indices
+
+    @tl.observe("structure")
+    def _drop_stale_site_indices(self, change: dict[str, Any]) -> None:
+        """Drop selected/highlighted indices beyond a new structure's sites."""
+        if (n_sites := self._n_own_sites(change["new"])) is None:
+            return
+        with self.hold_trait_notifications():
+            for name in ("selected_sites", "highlighted_sites"):
+                indices = getattr(self, name)
+                if any(idx >= n_sites for idx in indices):
+                    setattr(self, name, [idx for idx in indices if idx < n_sites])
 
     @tl.default("volumetric_data")
     def _default_volumetric_data(self) -> list[dict[str, Any]]:
         """Fresh empty volume list per instance."""
         return []
 
-    @tl.validate("volumetric_data")
+    @validator("volumetric_data")
     def _normalize_volumetric_data(self, proposal: dict) -> list[dict[str, Any]]:
         """Flatten every volume (dict or pymatgen VolumetricData) on assignment.
 
@@ -246,7 +314,9 @@ class StructureWidget(StructureVizTraits, StructureTraits, MatterVizWidget):
                         payload["label"] = f"{prefix}/{payload['label']}"
                     payloads.append(payload)
         elif isinstance(value, (list, tuple)):
-            payloads = [pl for vol in value for pl in volume_to_envelopes(vol)]
+            payloads = [
+                payload for vol in value for payload in volume_to_envelopes(vol)
+            ]
         else:
             raise TypeError(
                 "volumetric_data must be a list of volumes or a {prefix: volume} "
@@ -263,27 +333,19 @@ class StructureWidget(StructureVizTraits, StructureTraits, MatterVizWidget):
         check_layer_volume_ids(self.isosurface_settings, payloads)
         return payloads
 
-    @tl.validate("isosurface_settings")
+    @validator("isosurface_settings")
     def _validate_isosurface_settings(
         self, proposal: dict[str, Any]
     ) -> dict[str, Any] | None:
         """Check that layers reference loaded volumes (cross-validated at the end of
         __init__/hold_trait_notifications, so trait order doesn't matter).
         """
-        check_layer_volume_ids(proposal["value"], self.volumetric_data)
+        volumes = self.volumetric_data
+        # while volumetric_data still holds the raw input (a {prefix: volume} mapping,
+        # pymatgen volumes, label-only dicts), its own validator checks the layers
+        # once it has normalized the volumes and their ids
+        if all(is_binary_envelope(volume, "volume") for volume in volumes):
+            check_layer_volume_ids(proposal["value"], volumes)
         return proposal["value"]
 
-    def __init__(
-        self, structure: dict[str, Any] | Any | None = None, **kwargs: Any
-    ) -> None:
-        """Initialize the StructureWidget.
-
-        Args:
-            structure: Structure data -- a pymatgen ``Structure``, ASE
-                ``Atoms``, or a pre-serialized dict. Converted to dict
-                internally. Alternatively, pass ``structure_string`` as
-                a keyword argument with a raw CIF/POSCAR/XYZ string.
-            **kwargs: Additional widget properties (e.g.
-                ``structure_string``, ``atom_radius``, ``show_bonds``).
-        """
-        super().__init__(structure=structure_to_dict(structure), **kwargs)
+    _positional_traits = ("structure",)

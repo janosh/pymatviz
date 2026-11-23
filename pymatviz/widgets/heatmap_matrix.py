@@ -7,9 +7,14 @@ from typing import TYPE_CHECKING, Any
 import pandas as pd
 import traitlets as tl
 
-from pymatviz.widgets._normalize import normalize_json_kwargs, normalize_plot_json
+from pymatviz.widgets._normalize import normalize_plot_json
 from pymatviz.widgets._schema_traits import HeatmapMatrixTraits
-from pymatviz.widgets._traits import color_bar_trait, color_scale_trait
+from pymatviz.widgets._traits import (
+    JsonUnion,
+    color_bar_trait,
+    color_scale_trait,
+    normalized_trait,
+)
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -18,32 +23,27 @@ if TYPE_CHECKING:
 
 
 def _normalize_axis_items(
-    items: Sequence[str | dict[str, Any]],
+    items: str | Sequence[str | dict[str, Any]],
 ) -> list[dict[str, Any]]:
     """Convert axis items to the ``{key, label}`` dicts expected by the JS component.
 
     Plain strings (and other non-dict scalars) are wrapped as
-    ``{"key": s, "label": s}``. Dicts are passed through after JSON normalization.
+    ``{"key": s, "label": s}``, a single string is one item. Dicts are passed through
+    after JSON normalization.
     """
     result: list[dict[str, Any]] = []
-    for item in items:
-        if isinstance(item, dict):
-            normalized = normalize_plot_json(item, "HeatmapMatrix.axis_item")
-            key = normalized.get("key")
-            label = normalized.get("label")
-            if key is None and label is None:
-                raise ValueError(
-                    "HeatmapMatrix axis-item dicts must include "
-                    "at least 'key' or 'label'."
-                )
-            if key is None:
-                normalized["key"] = str(label)
-            if label is None:
-                normalized["label"] = str(normalized["key"])
-            result.append(normalized)
-        else:
-            label = str(item)
-            result.append({"key": label, "label": label})
+    for item in [items] if isinstance(items, str) else items:
+        if not isinstance(item, dict):
+            result.append({"key": str(item), "label": str(item)})
+            continue
+        normalized = normalize_plot_json(item, "HeatmapMatrix.axis_item")
+        key, label = normalized.get("key"), normalized.get("label")
+        if key is None and label is None:
+            raise ValueError("HeatmapMatrix axis-item dicts need a 'key' or 'label'")
+        key = str(label) if key is None else key
+        result.append(
+            normalized | {"key": key, "label": str(key) if label is None else label}
+        )
     return result
 
 
@@ -62,14 +62,15 @@ class HeatmapMatrixWidget(HeatmapMatrixTraits, MatterVizWidget):
         ... )
     """
 
-    x_items = tl.List().tag(sync=True)
-    y_items = tl.List().tag(sync=True)
-    values = tl.Any(allow_none=True).tag(sync=True)
+    x_items = normalized_trait(_normalize_axis_items, tl.List())
+    y_items = normalized_trait(_normalize_axis_items, tl.List())
     color_scale = color_scale_trait()
     color_bar = color_bar_trait()
     tile_size = tl.Unicode(default_value="50px").tag(sync=True)
     gap = tl.Unicode(default_value="0px").tag(sync=True)
-    show_values = tl.Any(default_value=True).tag(sync=True)
+    show_values = JsonUnion([tl.Bool(), tl.Unicode()], default_value=True).tag(
+        sync=True
+    )
     label_style = tl.Unicode(default_value="font-size: 14px;").tag(sync=True)
 
     def __init__(
@@ -100,13 +101,9 @@ class HeatmapMatrixWidget(HeatmapMatrixTraits, MatterVizWidget):
             )
             # missing cells as None (NaN is rejected as a non-finite value)
             values = df_matrix.to_numpy(dtype=object, na_value=None).tolist()
-        x_axis_items = [x_items] if isinstance(x_items, str) else x_items or []
-        y_axis_items = [y_items] if isinstance(y_items, str) else y_items or []
-        normalize_json_kwargs(kwargs, ("color_scale", "color_bar"), "HeatmapMatrix")
-
         super().__init__(
-            x_items=_normalize_axis_items(x_axis_items),
-            y_items=_normalize_axis_items(y_axis_items),
-            values=normalize_plot_json(values, "HeatmapMatrix.values"),
+            x_items=[] if x_items is None else x_items,
+            y_items=[] if y_items is None else y_items,
+            values=values,
             **kwargs,
         )

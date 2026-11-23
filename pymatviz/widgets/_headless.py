@@ -125,15 +125,13 @@ def _call_budget(timeout: float) -> float:
     return 3 * timeout + 2 * _PLAYWRIGHT_DEFAULT_TIMEOUT + 2 * _STEP_GRACE
 
 
-def _run_in_browser_thread[T](
-    coro: Coroutine[Any, Any, T], timeout: float = 30.0, *, budget: float | None = None
-) -> T:
+def _run_in_browser_thread[T](coro: Coroutine[Any, Any, T], budget: float) -> T:
     """Run ``coro`` on the browser thread and block until it finishes.
 
     Safe from any thread but the browser thread, including one whose event loop is
     running (Jupyter): that loop is merely blocked, never re-entered. Waits at most
-    ``_call_budget(timeout)`` seconds; on timeout or interrupt the coroutine is
-    cancelled, which unmounts and retires its page.
+    ``budget`` seconds; on timeout or interrupt the coroutine is cancelled, which
+    unmounts and retires its page.
     """
     state = _get_browser_thread()
     if threading.current_thread() is state.thread:
@@ -143,7 +141,6 @@ def _run_in_browser_thread[T](
             "await the coroutine instead"
         )
     future = asyncio.run_coroutine_threadsafe(coro, state.loop)
-    budget = budget or _call_budget(timeout)
     try:
         return future.result(timeout=budget)
     except TimeoutError as exc:
@@ -151,7 +148,7 @@ def _run_in_browser_thread[T](
             raise  # the coroutine itself raised TimeoutError
         future.cancel()
         raise TimeoutError(
-            f"Headless export did not finish within {budget}s (render {timeout=}s); "
+            f"Headless export did not finish within {budget}s; "
             f"browser thread alive: {state.thread.is_alive()}"
         ) from exc
     except BaseException:
@@ -209,9 +206,59 @@ def _shutdown_browser() -> None:
         state.loop.close()
 
 
+def render_options(
+    fmt: str,
+    dpi: float,
+    timeout: float,
+    width: int | None,
+    height: int | None,
+    quality: int,
+    transparent: bool,  # noqa: FBT001
+) -> dict[str, Any]:
+    """Headless render options as ``_RenderInputs`` keyword arguments, validated
+    before any asset loading.
+
+    Raises:
+        ValueError: For an unsupported format, a non-positive size, dpi or timeout,
+            quality outside [1, 100], or a transparent format other than PNG/SVG.
+    """
+    options = dict(
+        fmt=fmt, dpi=dpi, timeout=timeout, width=width, height=height,
+        quality=quality, transparent=transparent,
+    )  # fmt: skip
+    for name, val in dict(dpi=dpi, timeout=timeout, width=width, height=height).items():
+        if val is not None and val <= 0:
+            raise ValueError(f"{name} must be positive, got {val}")
+    if not 1 <= quality <= 100:
+        raise ValueError(f"quality must be between 1 and 100, got {quality}")
+    if fmt not in _CAPTURE_FORMATS:
+        raise ValueError(f"Unsupported {fmt=}, expected one of {_CAPTURE_FORMATS}")
+    if transparent and fmt not in ("png", "svg"):
+        raise ValueError(f"transparent export supports png and svg, got {fmt=}")
+    return options
+
+
 @dataclasses.dataclass(frozen=True)
 class _RenderInputs:
-    """Inputs of one headless render."""
+    """One headless render job, with the widget's controls hidden.
+
+    Attributes:
+        widget_data: Traitlet values (from ``widget._frontend_state()``).
+        esm_content: ESM bundle text (``matterviz.js``).
+        css_content: CSS text (``matterviz.css``).
+        fmt: ``"png"``, ``"jpeg"``, ``"svg"`` or ``"pdf"``.
+        dpi: Browser ``device_scale_factor`` (72 DPI = 1x, 144 = 2x). Applies to
+            PNG/JPEG and canvas pixels in SVG/PDF, not to vector content.
+        timeout: Max seconds to wait for the widget to render.
+        width/height: Override container size in pixels.
+        quality: JPEG quality (1-100), ignored for other formats.
+        transparent: Transparent background, gray theme text, trimmed to the
+            painted content (PNG and SVG only).
+
+    Raises:
+        ValueError: For an unsupported format, a non-positive size, dpi or timeout,
+            quality outside [1, 100], or a transparent format other than PNG/SVG.
+    """
 
     widget_data: dict[str, Any]
     esm_content: str
@@ -223,6 +270,13 @@ class _RenderInputs:
     height: int | None = None
     quality: int = 90
     transparent: bool = False
+
+    def __post_init__(self) -> None:
+        """Validate the options and hide the widget's controls."""
+        names = [field.name for field in dataclasses.fields(self)[3:]]
+        render_options(**{name: getattr(self, name) for name in names})
+        hidden_controls = {**self.widget_data, "show_controls": False}
+        object.__setattr__(self, "widget_data", hidden_controls)
 
     @property
     def scale_factor(self) -> float:
@@ -320,7 +374,8 @@ async def _mounted_widget(
     is retired; errors raised by the caller's capture leave it in service.
     """
     key = (inputs.esm_content, inputs.css_content, inputs.scale_factor)
-    async with _get_browser_thread().pages_lock:
+    pages_lock = _get_browser_thread().pages_lock
+    async with pages_lock:
         warm = next(
             (
                 old
@@ -338,11 +393,9 @@ async def _mounted_widget(
         warm.users += 1  # no await until the try below releases it in any case
     healthy = False
     try:
-        async with _get_browser_thread().pages_lock:
-            await _evict_idle()
-        mount_args = [_widget_data_json(inputs.widget_data), _mount_options(inputs)]
         render_error = await asyncio.wait_for(
-            warm.page.evaluate(_MOUNT_JS, mount_args), inputs.timeout + _STEP_GRACE
+            warm.page.evaluate(_MOUNT_JS, _mount_args(inputs)),
+            inputs.timeout + _STEP_GRACE,
         )
         try:
             yield warm.page, render_error
@@ -352,22 +405,17 @@ async def _mounted_widget(
             )
             healthy = render_error is None
     finally:
-        # release and retire together, so no checkout picks up a page being retired
-        async with _get_browser_thread().pages_lock:
-            warm.users -= 1
-            if not healthy:
-                await _retire(warm)
-            # overlapping exports may each have opened a page: trim them once idle
-            await _evict_idle()
-
-
-async def _evict_idle() -> None:
-    """Close the least recently used idle pages beyond _MAX_WARM_PAGES (call with
-    pages_lock held).
-    """
-    idle = [old for old in _warm_pages if old.users == 0]
-    for old in idle[: max(0, len(_warm_pages) - _MAX_WARM_PAGES)]:
-        await _retire(old)
+        # release and uncache before any await, so a cancellation can't leave the
+        # page checked out and no checkout picks up a page being retired
+        warm.users -= 1
+        if not healthy and warm in _warm_pages:
+            _warm_pages.remove(warm)
+        # close the least recently used idle pages beyond _MAX_WARM_PAGES
+        idle = [old for old in _warm_pages if old.users == 0]
+        evicted = idle[: max(0, len(_warm_pages) - _MAX_WARM_PAGES)]
+        _warm_pages[:] = [old for old in _warm_pages if old not in evicted]
+        for old in evicted if healthy else [warm, *evicted]:
+            await _retire(old)
 
 
 async def _render_widget(inputs: _RenderInputs) -> bytes:
@@ -384,24 +432,17 @@ async def _render_widget(inputs: _RenderInputs) -> bytes:
 
 
 def _widget_data_json(widget_data: Mapping[str, Any]) -> str:
-    """Widget data as JSON safe to embed in a ``<script>`` (``</`` escaped), with
-    binary arrays base64-encoded for ``_REVIVE_BUFFERS_JS`` and numpy scalars as
-    their Python values (as Jupyter's comm serializer does).
+    """Widget data as JSON safe to embed in a ``<script>``, with binary arrays
+    base64-encoded for ``_REVIVE_BUFFERS_JS`` (see ``json_default``). Every ``<`` is
+    unicode-escaped: besides ``</script>``, a ``<!--<script>`` in a label puts the
+    HTML parser in a state where the real closing tag doesn't end the script.
 
     Raises:
         TypeError: For any other non-JSON value, instead of stringifying it.
     """
-    import numpy as np
+    from pymatviz.widgets._binary import json_default
 
-    def default(obj: Any) -> Any:
-        """Encode buffers and numpy scalars, reject anything else."""
-        if isinstance(obj, (bytes, bytearray, memoryview)):
-            return base64.b64encode(obj).decode("ascii")
-        if isinstance(obj, np.generic):
-            return obj.item()
-        raise TypeError(f"{type(obj).__name__} is not JSON serializable: {obj!r}")
-
-    return json.dumps(widget_data, default=default).replace("</", r"<\/")
+    return json.dumps(widget_data, default=json_default).replace("<", r"\u003c")
 
 
 @functools.lru_cache(maxsize=_MAX_WARM_PAGES)  # base64 of a multi-MB bundle is slow
@@ -616,41 +657,29 @@ async ([dpi, pad]) => {
 """
 
 
-def _container_style(
-    widget_data: Mapping[str, Any],
-    width: int | None,
-    height: int | None,
-    *,
-    transparent: bool = False,
-) -> str:
-    """Inline style of the widget root (later declarations win): the transparent
-    theme if requested, the widget's style, explicit overrides, then 800x600 defaults
-    for any missing dimension.
+def _mount_args(inputs: _RenderInputs) -> tuple[str, dict[str, Any]]:
+    """Arguments of ``window.__matterviz_mount``: the widget data JSON and options.
+
+    The root's inline ``style`` (later declarations win) is the transparent theme if
+    requested, the widget's style, explicit sizes, then 800x600 defaults for missing
+    dimensions. The widget's own ``style`` (which MatterViz applies to its wrapper)
+    fills that root: a wrapper without a size shrinks charts to their 300 px minimum.
+    Only HTML-only widgets (tile grids, no <svg>/<canvas> to wait for) accept HTML
+    content as painted, so charts aren't captured half laid out via stray labels.
     """
-    user_style = widget_data.get("style") or ""
-    parts = [_TRANSPARENT_STYLE] if transparent else []
+    data, width, height = inputs.widget_data, inputs.width, inputs.height
+    user_style = data.get("style") or ""
+    parts = [_TRANSPARENT_STYLE] if inputs.transparent else []
     parts += [user_style] if user_style else []
     for name, value, default in (("width", width, 800), ("height", height, 600)):
         if value is not None:
             parts.append(f"{name}: {value}px")
-        elif not re.search(rf"(?:^|;\s*){name}\s*:", user_style):
+        elif not re.search(rf"(?:^|;)\s*{name}\s*:", user_style, re.IGNORECASE):
             parts.append(f"{name}: {default}px")
-    return "; ".join(parts)
-
-
-def _mount_options(inputs: _RenderInputs) -> dict[str, Any]:
-    """Options of ``window.__matterviz_mount``. Only HTML-only widgets (tile grids, no
-    <svg>/<canvas> to wait for) accept HTML content as painted, so chart widgets
-    aren't captured half laid out via stray labels or legends.
-    """
-    widget_type = inputs.widget_data.get("widget_type")
-    return {
-        "style": _container_style(
-            inputs.widget_data,
-            inputs.width,
-            inputs.height,
-            transparent=inputs.transparent,
-        ),
+    filling = {**data, "style": f"{user_style}; width: 100%; height: 100%"}
+    widget_type = data.get("widget_type")
+    return _widget_data_json(filling), {
+        "style": "; ".join(parts),
         "allow_html": widget_type in ("periodic_table", "heatmap_matrix"),
         "no_worker": widget_type == "chem_pot_diagram",
         "max_wait": int(inputs.timeout * 1000),
@@ -675,11 +704,10 @@ def _build_html(esm_content: str, css_content: str) -> str:
     """Warm-page HTML loading the bundle and defining the capture hooks.
     ``window.__matterviz_ready`` is true once loaded, else the load error.
     """
-    script = (
-        f"{_esm_blob_loader_js(esm_content)}\ntry {{\n{_MOUNT_FN_JS}"
-        f"{_CAPTURE_HOOKS_JS}window.__matterviz_ready = true;\n"
-        "} catch (err) {\n  window.__matterviz_ready = String(err);\n}"
-    )
+    esm_loader = _esm_blob_loader_js(esm_content)
+    on_error = "} catch (err) {\n  window.__matterviz_ready = String(err);\n}"
+    ready = f"{_CAPTURE_HOOKS_JS}window.__matterviz_ready = true;\n"
+    script = f"{esm_loader}\ntry {{\n{_MOUNT_FN_JS}{ready}{on_error}"
     # the bundle caps a mounted widget at its parent's width (inline max-width: 100%),
     # here the 1024px page: exports keep their requested width
     head = "<style>#widget-root { max-width: none !important }</style>"
@@ -722,10 +750,9 @@ def build_interactive_html(
     )
     if css_url is not None:
         head += f'\n<link rel="stylesheet" href="{html_mod.escape(css_url)}">'
-    script = (
-        f"{esm_loader}\n{_MOUNT_FN_JS}const el = document.getElementById("
-        f'"widget-root");\nmount({_widget_data_json(widget_data)}, el, {no_worker});'
-    )
+    get_root = 'const el = document.getElementById("widget-root");'
+    mount_call = f"mount({_widget_data_json(widget_data)}, el, {no_worker});"
+    script = f"{esm_loader}\n{_MOUNT_FN_JS}{get_root}\n{mount_call}"
     style = html_mod.escape(widget_data.get("style") or "width: 100%; height: 600px;")
     return _html_page(css_content or "", script, head, style)
 
@@ -764,19 +791,25 @@ def _png_to_pdf(png_bytes: bytes, scale: float = 1.0) -> bytes:
     page_w, page_h = f"{px_w / scale:.2f}", f"{px_h / scale:.2f}"
     pixels = zlib.compress(img.convert("RGB").tobytes(), 6)
     draw = zlib.compress(f"q {page_w} 0 0 {page_h} 0 0 cm /Im0 Do Q".encode())
+    page = (
+        f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {page_w} {page_h}] /Contents "
+        "5 0 R /Resources << /XObject << /Im0 4 0 R >> >> >>"
+    )
+    image_header = (
+        f"<< /Type /XObject /Subtype /Image /Width {px_w} /Height {px_h} /ColorSpace "
+        "/DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode /Length "
+        f"{len(pixels)} >>\nstream\n"
+    )
+    draw_header = f"<< /Length {len(draw)} /Filter /FlateDecode >>\nstream\n"
+
+    image = image_header.encode() + pixels + b"\nendstream"
+    contents = draw_header.encode() + draw + b"\nendstream"
     objects = [
         b"<< /Type /Catalog /Pages 2 0 R >>",
         b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-        f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {page_w} {page_h}] /Contents "
-        "5 0 R /Resources << /XObject << /Im0 4 0 R >> >> >>".encode(),
-        f"<< /Type /XObject /Subtype /Image /Width {px_w} /Height {px_h} /ColorSpace "
-        "/DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode /Length "
-        f"{len(pixels)} >>\nstream\n".encode()
-        + pixels
-        + b"\nendstream",
-        f"<< /Length {len(draw)} /Filter /FlateDecode >>\nstream\n".encode()
-        + draw
-        + b"\nendstream",
+        page.encode(),
+        image,
+        contents,
     ]
     pdf, offsets = bytearray(b"%PDF-1.4\n"), []
     for obj_num, obj in enumerate(objects, start=1):
@@ -791,89 +824,23 @@ def _png_to_pdf(png_bytes: bytes, scale: float = 1.0) -> bytes:
     return bytes(pdf)
 
 
-def render_widget_headless(
-    widget_data: dict[str, Any],
-    esm_content: str,
-    css_content: str,
-    fmt: str = "png",
-    dpi: int = 150,
-    timeout: float = 30.0,
-    quality: int = 90,
-    width: int | None = None,
-    height: int | None = None,
-    *,
-    transparent: bool = False,
-) -> bytes:
-    """Render a widget in headless Chromium and capture it.
-
-    Mounts the widget through a mock anywidget model on a warm page with the bundle
-    loaded, waits for it to paint and captures it. Blocks the calling thread, which
-    may run an event loop (Jupyter): the browser lives on its own thread.
-
-    Args:
-        widget_data: Traitlet values (from ``widget.to_dict()``).
-        esm_content: ESM bundle text (``matterviz.js``).
-        css_content: CSS text (``matterviz.css``).
-        fmt: ``"png"``, ``"jpeg"``, ``"svg"`` or ``"pdf"``.
-        dpi: Resolution as browser ``device_scale_factor`` (72 DPI = 1x, 144 = 2x).
-            Applies to PNG/JPEG and canvas pixels in SVG/PDF, not to vector content.
-        timeout: Max seconds to wait for the widget to render.
-        quality: JPEG quality (1-100), ignored for other formats.
-        width: Override container width in pixels.
-        height: Override container height in pixels.
-        transparent: Transparent background, gray theme text, trimmed to the
-            painted content (PNG and SVG only).
-
-    Returns:
-        PNG, JPEG, SVG or PDF bytes.
-
-    Raises:
-        RuntimeError: If the widget fails to render or has no vector form for SVG.
-        TimeoutError: If the widget does not finish rendering in time.
-    """
-    inputs = _render_inputs(
-        widget_data, esm_content, css_content, fmt, dpi, timeout, quality, width,
-        height, transparent=transparent,
-    )  # fmt: skip
-    return _run_in_browser_thread(_render_widget(inputs), timeout)
-
-
-def _render_inputs(
-    widget_data: dict[str, Any],
-    esm_content: str,
-    css_content: str,
-    fmt: str = "png",
-    dpi: int = 150,
-    timeout: float = 30.0,
-    quality: int = 90,
-    width: int | None = None,
-    height: int | None = None,
-    *,
-    transparent: bool = False,
-) -> _RenderInputs:
-    """Validated render inputs (see render_widget_headless), controls hidden.
-
-    Raises:
-        ValueError: For transparent formats other than PNG and SVG.
-    """
-    if transparent and fmt not in ("png", "svg"):
-        raise ValueError(f"transparent export supports png and svg, got {fmt=}")
-    widget_data = {**widget_data, "show_controls": False}
-    return _RenderInputs(
-        widget_data, esm_content, css_content, fmt, dpi, timeout, width, height,
-        quality, transparent,
-    )  # fmt: skip
-
-
 def render_widgets_headless(jobs: Sequence[Mapping[str, Any]]) -> list[bytes]:
-    """render_widget_headless for several widgets at once, each job a dict of its
-    arguments. Up to ``_MAX_WARM_PAGES`` render concurrently on separate pages.
+    """Render widgets in headless Chromium and capture them as PNG, JPEG, SVG or PDF.
+
+    Each job is a dict of ``_RenderInputs`` fields. Each widget mounts through a mock
+    anywidget model on a warm page with the bundle loaded, up to ``_MAX_WARM_PAGES``
+    concurrently. Blocks the calling thread, which may run an event loop (Jupyter):
+    the browser lives on its own thread.
 
     Returns:
         The image bytes in job order.
+
+    Raises:
+        ValueError: For invalid job options (see ``_RenderInputs``).
+        RuntimeError: If a widget fails to render or has no vector form for SVG.
+        TimeoutError: If a widget does not finish rendering in time.
     """
-    inputs = [_render_inputs(**job) for job in jobs]
-    slots = math.ceil(len(inputs) / _MAX_WARM_PAGES)
+    inputs = [_RenderInputs(**job) for job in jobs]
 
     async def render_all() -> list[bytes]:
         """Render every job, at most _MAX_WARM_PAGES at a time."""
@@ -894,9 +861,9 @@ def render_widgets_headless(jobs: Sequence[Mapping[str, Any]]) -> list[bytes]:
             raise
 
     # each wave of up to _MAX_WARM_PAGES renders gets a full single-export budget
+    waves = max(1, math.ceil(len(inputs) / _MAX_WARM_PAGES))
     timeout = max((one.timeout for one in inputs), default=30.0)
-    budget = _call_budget(timeout) * max(slots, 1)
-    return _run_in_browser_thread(render_all(), timeout, budget=budget)
+    return _run_in_browser_thread(render_all(), _call_budget(timeout) * waves)
 
 
 # === Render diagnostics (render_report) ===
@@ -951,42 +918,29 @@ def png_blank_fraction(png_bytes: bytes) -> float | None:
 
 
 async def _diagnose(inputs: _RenderInputs) -> RenderReport:
-    """Render once and return visual + DOM diagnostics; never raises."""
-    try:
-        async with _mounted_widget(inputs) as (page, render_error):
-            probe = await page.evaluate(_PROBE_JS)
-            png_bytes = await page.locator("#widget-root").screenshot(type="png")
-        blank_fraction = png_blank_fraction(png_bytes)
-        return RenderReport(
-            ok=render_error is None,
-            error=render_error,
-            content_type=probe["content_type"],
-            width=probe["root_w"],
-            height=probe["root_h"],
-            blank_fraction=blank_fraction,
-            is_blank=blank_fraction is not None and blank_fraction > 0.99,
-            clipped=probe["clipped"],
-        )
-    except Exception as exc:  # noqa: BLE001
-        return RenderReport(ok=False, error=f"render failed: {exc}")
+    """Render once and return visual + DOM diagnostics."""
+    async with _mounted_widget(inputs) as (page, render_error):
+        probe = await page.evaluate(_PROBE_JS)
+        png_bytes = await page.locator("#widget-root").screenshot(type="png")
+    blank_fraction = png_blank_fraction(png_bytes)
+    return RenderReport(
+        ok=render_error is None,
+        error=render_error,
+        content_type=probe["content_type"],
+        width=probe["root_w"],
+        height=probe["root_h"],
+        blank_fraction=blank_fraction,
+        is_blank=blank_fraction is not None and blank_fraction > 0.99,
+        clipped=probe["clipped"],
+    )
 
 
-def render_diagnostics(
-    widget_data: dict[str, Any],
-    esm_content: str,
-    css_content: str,
-    *,
-    timeout: float = 30.0,
-    dpi: int = 72,
-) -> RenderReport:
+def render_diagnostics(job: Mapping[str, Any]) -> RenderReport:
     """Render a widget headlessly once and return visual + DOM diagnostics.
 
-    Render failures return ``ok=False`` with ``error`` set (``summary``/``warnings``
-    are left for the caller), but the browser-thread call itself can raise
-    ``TimeoutError`` past its budget or ``RuntimeError`` from the browser thread.
+    ``job`` holds ``_RenderInputs`` fields. A widget's render error returns
+    ``ok=False`` with ``error`` set (``summary``/``warnings`` are left for the
+    caller); browser failures and timeouts raise.
     """
-    widget_data = {**widget_data, "show_controls": False}
-    inputs = _RenderInputs(
-        widget_data, esm_content, css_content, dpi=dpi, timeout=timeout
-    )
-    return _run_in_browser_thread(_diagnose(inputs), timeout)
+    inputs = _RenderInputs(**job)
+    return _run_in_browser_thread(_diagnose(inputs), _call_budget(inputs.timeout))

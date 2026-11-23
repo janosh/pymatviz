@@ -4,19 +4,31 @@ from __future__ import annotations
 
 import json
 from typing import TYPE_CHECKING
+from unittest.mock import Mock
 
+import kemio
 import numpy as np
 import pytest
 import traitlets as tl
+from kemio.interop import structure_to_pymatgen_dict
+from kemio.io import Frame
 
+from pymatviz.notebook import create_widget
 from pymatviz.widgets import TrajectoryWidget
+from tests.conftest import cubic_structure
 from tests.widgets.conftest import decode_envelope
 
 
 if TYPE_CHECKING:
     from typing import Any
 
-    from pymatgen.core import Structure
+
+def _fe2_frames(n_frames: int) -> list[kemio.Structure]:
+    """Cubic Fe2 structures whose lattice grows by 0.1 A per frame."""
+    return [
+        cubic_structure(3.0 + idx * 0.1, ["Fe"] * 2, [[0, 0, 0], [0.5] * 3])
+        for idx in range(n_frames)
+    ]
 
 
 # Defined here, not in tests/widgets/conftest.py: pytest 9.1 binds conftest fixtures
@@ -24,11 +36,11 @@ if TYPE_CHECKING:
 # args revisit tests/widgets after another directory, e.g.
 # `pytest tests/widgets/a.py tests/b.py tests/widgets/c.py`.
 @pytest.fixture
-def multi_frame_trajectory(fe3co4_disordered: Structure) -> dict[str, Any]:
+def multi_frame_trajectory(fe3co4_disordered: kemio.Structure) -> dict[str, Any]:
     """Five-frame trajectory dict of the same disordered structure."""
     frames = [
         {
-            "structure": fe3co4_disordered.as_dict(),
+            "structure": structure_to_pymatgen_dict(fe3co4_disordered),
             "step": idx,
             "metadata": {"step": idx},
         }
@@ -37,40 +49,51 @@ def multi_frame_trajectory(fe3co4_disordered: Structure) -> dict[str, Any]:
     return {"frames": frames}
 
 
-def test_widget_creates_view_model(multi_frame_trajectory: dict[str, Any]) -> None:
-    """Widget must create proper view model for frontend."""
-    widget = TrajectoryWidget(trajectory=multi_frame_trajectory)
-    assert widget.widget_type == "trajectory"
+@pytest.mark.parametrize("binary", [True, False])
+def test_current_step_idx_in_range_of_frames(
+    multi_frame_trajectory: dict[str, Any], binary: bool
+) -> None:
+    """Python steps beyond the frames raise naming the range (rolling back batches),
+    frontend ones clamp and echo back, a shorter trajectory clamps the step.
+    """
+    traj = _fe2_frames(5) if binary else multi_frame_trajectory  # envelope or JSON
+    widget = TrajectoryWidget(trajectory=traj, current_step_idx=4)
+    assert widget.current_step_idx == 4
+    for bad in (5, -1):
+        with pytest.raises(tl.TraitError, match=rf"current_step_idx={bad} .*0 to 4"):
+            widget.current_step_idx = bad
+    with pytest.raises(tl.TraitError, match="current_step_idx=5"):
+        TrajectoryWidget(trajectory=traj, current_step_idx=5)
 
-    # Synced traits expose the widget state contract used by the frontend.
-    class_traits = widget.class_traits()
-    for trait_name in (
-        "trajectory",
-        "current_step_idx",
-        "layout",
-        "display_mode",
-        "plot_type",
-        "distribution_property",
-        "show_controls",
-    ):
-        trait = class_traits[trait_name]
-        assert trait.metadata.get("sync") is True
+    widget.comm = Mock(kernel=Mock())  # frontend updates race data updates
+    widget.set_state({"current_step_idx": 9})
+    assert widget.current_step_idx == 4
+    echoed = widget.comm.send.call_args.kwargs["data"]
+    assert echoed["state"] == {"current_step_idx": 4}
+    widget.comm = None
 
-    assert widget.trajectory == json.loads(json.dumps(multi_frame_trajectory))
-    assert widget.current_step_idx == 0
-    assert widget.layout == "auto"
-    assert widget.display_mode == "auto"
-    assert widget.plot_type == "time-series"
-    assert widget.distribution_property is None
-    # None keeps the component default (controls pinned for trajectories)
-    assert widget.show_controls is None
-    assert widget.data_inspector_open is True
+    def assign_batch() -> None:
+        """A shorter trajectory and a step beyond it, in one batch."""
+        with widget.hold_trait_notifications():
+            widget.trajectory = _fe2_frames(2)
+            widget.current_step_idx = 3
+
+    with pytest.raises(tl.TraitError, match="current_step_idx=3"):
+        assign_batch()
+    assert widget.current_step_idx == 4
+    assert widget.trajectory == TrajectoryWidget(trajectory=traj).trajectory
+
+    widget.trajectory = _fe2_frames(2)
+    assert widget.current_step_idx == 1
+    widget.trajectory = None  # frames unknown (e.g. loaded from data_url)
+    widget.current_step_idx = 7
+    assert widget.current_step_idx == 7
 
 
 @pytest.mark.parametrize("input_format", ["dict", "list", "tuple", "structure"])
 def test_widget_trajectory_updates(
     multi_frame_trajectory: dict[str, Any],
-    fe3co4_disordered: Structure,
+    fe3co4_disordered: kemio.Structure,
     input_format: str,
 ) -> None:
     """Widget must handle trajectory updates correctly."""
@@ -82,10 +105,9 @@ def test_widget_trajectory_updates(
     assert widget.trajectory == json.loads(json.dumps(multi_frame_trajectory))
 
     widget.current_step_idx = 2
-    assert widget.current_step_idx == 2
-
-    # Test trajectory update (step doesn't reset automatically)
-    updated_structure = fe3co4_disordered.copy(properties={"energy": -1.5})
+    # a shorter trajectory clamps the step to its last frame
+    updated_structure = fe3co4_disordered.copy()
+    updated_structure.info = {"energy": -1.5}
     new_trajectory = {
         "frames": [updated_structure, updated_structure],
         "metadata": {"temperature": np.int64(300)},
@@ -96,7 +118,9 @@ def test_widget_trajectory_updates(
         "tuple": tuple(new_trajectory["frames"]),
         "structure": updated_structure,
     }[input_format]
-    expected_structure = json.loads(json.dumps(updated_structure.as_dict()))
+    expected_structure = json.loads(
+        json.dumps(structure_to_pymatgen_dict(updated_structure))
+    )
     assert widget.trajectory == {
         "frames": [
             {
@@ -111,19 +135,46 @@ def test_widget_trajectory_updates(
     json.dumps(widget.get_state()["trajectory"])
     assert new_trajectory["frames"][0] is updated_structure
     assert isinstance(new_trajectory["metadata"]["temperature"], np.int64)
-    assert widget.current_step_idx == 2  # Remains unchanged
-    widget.trajectory = None
+    last_step = 0 if input_format == "structure" else 1
+    assert widget.current_step_idx == last_step
+    widget.trajectory = None  # frame count unknown: the step stays
     assert widget.trajectory is None
-    assert widget.current_step_idx == 2
-    with pytest.raises(TypeError, match="Unsupported trajectory type"):
+    assert widget.current_step_idx == last_step
+    with pytest.raises(tl.TraitError, match="Unsupported trajectory type"):
         widget.trajectory = "invalid trajectory"
     assert widget.trajectory is None
 
 
 def test_widget_complete_lifecycle(
-    multi_frame_trajectory: dict[str, Any], fe3co4_disordered: Structure
+    multi_frame_trajectory: dict[str, Any], fe3co4_disordered: kemio.Structure
 ) -> None:
-    """Test complete widget lifecycle including state persistence."""
+    """Synced trait defaults, non-default construction and state restoration."""
+    widget = TrajectoryWidget(trajectory=multi_frame_trajectory)
+    assert widget.widget_type == "trajectory"
+    synced = (
+        "trajectory",
+        "current_step_idx",
+        "layout",
+        "display_mode",
+        "plot_type",
+        "distribution_property",
+        "show_controls",
+    )
+    traits = widget.class_traits()
+    assert all(traits[name].metadata.get("sync") is True for name in synced)
+    # show_controls=None keeps the component default (controls pinned for trajectories)
+    defaults = dict(
+        current_step_idx=0,
+        layout="auto",
+        display_mode="auto",
+        plot_type="time-series",
+        distribution_property=None,
+        show_controls=None,
+        data_inspector_open=True,
+        atom_type_mapping=None,
+    )
+    assert {key: getattr(widget, key) for key in defaults} == defaults
+
     widget = TrajectoryWidget(
         trajectory=multi_frame_trajectory,
         style="width: 800px; height: 600px",
@@ -144,14 +195,12 @@ def test_widget_complete_lifecycle(
     assert widget.distribution_property == "energy"
 
     widget.current_step_idx = 2
-    assert widget.current_step_idx == 2
-
-    new_trajectory = {"frames": [fe3co4_disordered] * 10}
-    widget.trajectory = new_trajectory
-    expected_structure = json.loads(json.dumps(fe3co4_disordered.as_dict()))
-    assert [frame["structure"] for frame in widget.trajectory["frames"]] == [
-        expected_structure
-    ] * 10
+    widget.set_trait("trajectory", {"frames": [fe3co4_disordered] * 10})
+    expected_structure = json.loads(
+        json.dumps(structure_to_pymatgen_dict(fe3co4_disordered))
+    )
+    frame_structs = [frame["structure"] for frame in widget.trajectory["frames"]]
+    assert frame_structs == [expected_structure] * 10
 
     state = {
         "trajectory": widget.trajectory,
@@ -169,6 +218,14 @@ def test_widget_complete_lifecycle(
     for key, value in state.items():
         assert getattr(restored_widget, key) == value
 
+    # atom_type_mapping (LAMMPS type -> element) syncs with JSON string keys,
+    # rejects non-dicts
+    widget = TrajectoryWidget(data_url="https://example.com/dump.lammpstrj")
+    widget.atom_type_mapping = {1: "Si", np.int64(2): "O"}
+    assert widget.to_dict()["atom_type_mapping"] == {"1": "Si", "2": "O"}
+    with pytest.raises(tl.TraitError, match="'atom_type_mapping' trait"):
+        TrajectoryWidget(atom_type_mapping=["Si", "O"])
+
 
 @pytest.mark.parametrize(
     ("trajectory_input", "expected_properties", "is_binary"),
@@ -181,17 +238,22 @@ def test_widget_complete_lifecycle(
                     "structure": "struct1",
                     "other_tensor": [[0.1, 0, 0], [0, 0.1, 0], [0, 0, 0.1]],
                     "temp": 300,
+                    "step": 5,
                 }
             ],
-            {"other_tensor": [[0.1, 0, 0], [0, 0.1, 0], [0, 0, 0.1]], "temp": 300},
+            {
+                "other_tensor": [[0.1, 0, 0], [0, 0.1, 0], [0, 0, 0.1]],
+                "temp": 300,
+                "step": 5,
+            },
             False,
         ),
         (
             [
-                {"structure": "struct1", "step": 0, "density": 3.0},
-                {"structure": "struct2", "step": 1, "density": 3.1},
+                {"structure": "struct1", "step": 10, "density": 3.0},
+                {"structure": "struct2", "step": 20, "density": 3.1},
             ],
-            {"step": 0, "density": 3.0},
+            {"steps": 10, "density": 3.0},  # user steps: matterviz's x axis
             True,
         ),
         # a scalar named like a reserved array ('lattice') stays JSON
@@ -207,17 +269,10 @@ def test_trajectory_widget_property_extraction(
     expected_properties: dict[str, Any],
     is_binary: bool,
 ) -> None:
-    """Numeric frame properties become binary per-frame scalars, others JSON frames."""
-    from pymatgen.core import Lattice, Structure
-
-    structures = [
-        Structure(
-            lattice=Lattice.cubic(3.0 + idx * 0.1),
-            species=("Fe", "Fe"),
-            coords=((0, 0, 0), (0.5, 0.5, 0.5)),
-        )
-        for idx in range(len(trajectory_input))
-    ]
+    """Numeric frame properties become binary per-frame scalars, others JSON frames,
+    user steps (else frame indices) the x axis either way.
+    """
+    structures = _fe2_frames(len(trajectory_input))
     trajectory_with_structures = [
         {**item, "structure": structures[idx]}
         for idx, item in enumerate(trajectory_input)
@@ -227,48 +282,49 @@ def test_trajectory_widget_property_extraction(
     if is_binary:
         arrays = decode_envelope(traj)
         assert arrays["positions"].shape == (n_frames, 2, 3)
-        assert {key: arrays[key][0] for key in expected_properties} == (
-            expected_properties
-        )
+        first_frame = {key: arrays[key][0] for key in expected_properties}
+        assert first_frame == expected_properties
         assert set(arrays) == {"positions", "numbers", "lattice", *expected_properties}
         return
     assert set(traj) == {"frames", "metadata"}
-    assert [frame["step"] for frame in traj["frames"]] == list(range(n_frames))
+    steps = [item.get("step", idx) for idx, item in enumerate(trajectory_input)]
+    assert [frame["step"] for frame in traj["frames"]] == steps
     assert traj["frames"][0]["metadata"] == expected_properties
 
 
-@pytest.mark.parametrize("shape", [(6,), (3, 3)])
-def test_ase_stress_transfer(shape: tuple[int, ...]) -> None:
-    """Transfer raw ASE stress losslessly as binary frame_stress."""
-    from ase import Atoms
-    from ase.calculators.singlepoint import SinglePointCalculator
-
-    frames = [Atoms("H", positions=[[idx, 0, 0]]) for idx in range(2)]
-    tensors = np.random.default_rng(seed=0).normal(size=(len(frames), *shape))
-    for atoms, stress in zip(frames, tensors, strict=True):
-        atoms.calc = SinglePointCalculator(atoms, stress=stress)
-
-    widget = TrajectoryWidget()
-    widget.trajectory = frames
-    encoded = widget.trajectory
-    wire = decode_envelope(encoded)["frame_stress"]
-    assert wire.dtype == np.dtype("<f8")
-    np.testing.assert_array_equal(wire, tensors.reshape(2, -1))
-
-
-@pytest.mark.parametrize(
-    "extra", [{}, {"stress": np.eye(3)}, {"stress": np.ones(6), "frame_stress": 42}]
-)
-def test_partial_or_conflicting_stress_stays_json(extra: dict[str, Any]) -> None:
-    """Keep missing stresses, mixed shapes, and user-defined channels intact."""
-    from ase import Atoms
-
-    atoms = Atoms("H")
-    widget = TrajectoryWidget()
-    widget.trajectory = [
-        {"structure": atoms, "stress": [1] * 6},
-        {"structure": atoms, **extra},
+def test_trajectory_widget_kemio_frames_and_info() -> None:
+    """Kemio io.Frames (also via create_widget) and Structure info keys (extxyz
+    frame metadata) become per-frame scalars, site data vectors per-atom arrays,
+    leaving the frames unchanged.
+    """
+    velocities = np.arange(6.0).reshape(2, 3)
+    structures = [
+        struct.replace(site_data={"velocities": velocities})
+        for struct in _fe2_frames(2)
     ]
+    for idx, struct in enumerate(structures):
+        struct.info = {"temperature": 300.0 + idx, "density": 3.0}
+    frames = [Frame(struct, energy=-1.0 - idx) for idx, struct in enumerate(structures)]
+    for traj, energies in ((frames, [-1, -2]), (structures, None)):
+        widget = create_widget(traj)
+        assert isinstance(widget, TrajectoryWidget)
+        arrays = decode_envelope(widget.trajectory)
+        assert arrays["temperature"].tolist() == [300, 301]
+        assert arrays["density"].tolist() == [3, 3]
+        np.testing.assert_array_equal(arrays["velocities"], [velocities] * 2)
+        assert (arrays["energy"].tolist() if "energy" in arrays else None) == energies
+    assert structures[0].info["temperature"] == 300
+
+
+@pytest.mark.parametrize("extra", [{}, {"stress": np.ones(6), "frame_stress": 42}])
+def test_partial_or_conflicting_stress_stays_json(extra: dict[str, Any]) -> None:
+    """Keep missing stresses and user-defined channels intact."""
+    atoms = kemio.Structure(None, ["H"], [[0, 0, 0]], pbc=(False,) * 3)
+    widget = TrajectoryWidget()
+    widget.set_trait(
+        "trajectory",
+        [{"structure": atoms, "stress": [1] * 6}, {"structure": atoms, **extra}],
+    )
     frames = widget.trajectory["frames"]
     assert frames[0]["metadata"]["stress"] == [1] * 6
     metadata = frames[1].get("metadata", {})
@@ -277,57 +333,28 @@ def test_partial_or_conflicting_stress_stays_json(extra: dict[str, Any]) -> None
         np.testing.assert_array_equal(metadata[key], value)
 
 
-@pytest.mark.parametrize(
-    "n_frames",
-    [0, 1, 3],
-)
+@pytest.mark.parametrize("n_frames", [0, 1, 3])
 def test_trajectory_widget_structure_sequence(n_frames: int) -> None:
-    """Test TrajectoryWidget handles lists of structures and pymatgen Trajectory."""
-    from pymatgen.core import Lattice, Structure
-
-    structures = [
-        Structure(
-            lattice=Lattice.cubic(3.0 + idx * 0.1),
-            species=("Fe", "Fe"),
-            coords=((0, 0, 0), (0.5, 0.5, 0.5)),
-        )
-        for idx in range(n_frames)
-    ]
-
+    """Lists of structures sync as binary frames."""
+    structures = _fe2_frames(n_frames)
     widget = TrajectoryWidget(trajectory=structures)
     if not n_frames:  # nothing to encode: empty JSON trajectory
         assert widget.trajectory == {"frames": [], "metadata": {}}
         return
 
     arrays = decode_envelope(widget.trajectory)
-    expected_pos = np.array([struct.cart_coords for struct in structures])
+    expected_pos = np.array([struct.positions for struct in structures])
     np.testing.assert_allclose(arrays["positions"], expected_pos, rtol=0, atol=1e-6)
     assert arrays["numbers"].tolist() == [26, 26]
-    expected_cells = [struct.lattice.matrix for struct in structures]
+    expected_cells = [struct.lattice for struct in structures]
     # one shared [3, 3] cell when all frames agree, else [n_frames, 3, 3]
     expected_cells = expected_cells[0] if n_frames == 1 else expected_cells
     np.testing.assert_array_equal(arrays["lattice"], expected_cells)
     assert widget.trajectory["pbc"] == [True] * 3
 
-    from pymatgen.core.trajectory import Trajectory
-
-    traj = Trajectory.from_structures(structures, constant_lattice=False)
-    traj_arrays = decode_envelope(TrajectoryWidget(trajectory=traj).trajectory)
-    np.testing.assert_array_equal(
-        traj_arrays["positions"], expected_pos.astype("float32")
-    )
-    np.testing.assert_array_equal(traj_arrays["lattice"], expected_cells)
-    # The frontend also accepts molecular JSON without the Python constructor's charge.
-    serialized = {
-        "@class": "Trajectory",
-        "coords": [[[0, 0, 0]]],
-        "species": ["H"],
-        "lattice": None,
-    }
-    assert TrajectoryWidget(trajectory=serialized).trajectory == serialized
-
 
 _CUBIC = {"matrix": [[4, 0, 0], [0, 4, 0], [0, 0, 4]]}
+_ANGLES = ("alpha", "beta", "gamma")
 _SI = {"element": "Si", "occu": 1.0}
 
 
@@ -336,7 +363,7 @@ _SI = {"element": "Si", "occu": 1.0}
     [
         (_CUBIC, ["Si"], [_SI], "abc"),  # bare symbols become {element, occu}
         (
-            dict(a=4.0, b=5.0, c=6.0, alpha=90.0, beta=90.0, gamma=90.0),
+            dict(a=4.0, b=5.0, c=6.0, alpha=80.0, beta=85.0, gamma=95.0),
             [{"element": "Si"}],
             [_SI],
             "xyz",
@@ -371,10 +398,22 @@ def test_trajectory_widget_completes_only_non_derivable_fields(
     frame = widget.trajectory["frames"][0]
     lattice = frame["structure"]["lattice"]
     assert set(lattice) == {"matrix", *lattice_input}  # no a/b/c/.../volume/pbc added
-    if "matrix" not in lattice_input:
-        np.testing.assert_allclose(
-            lattice["matrix"], np.diag([4.0, 5.0, 6.0]), atol=1e-12
+    if "matrix" not in lattice_input:  # pymatgen's from_parameters: c along z
+        alpha, beta, gamma = np.radians([lattice_input[key] for key in _ANGLES])
+        cos_gamma_star = (np.cos(alpha) * np.cos(beta) - np.cos(gamma)) / (
+            np.sin(alpha) * np.sin(beta)
         )
+        gamma_star = np.arccos(cos_gamma_star)
+        expected_matrix = [
+            [4.0 * np.sin(beta), 0.0, 4.0 * np.cos(beta)],
+            [
+                -5.0 * np.sin(alpha) * np.cos(gamma_star),
+                5.0 * np.sin(alpha) * np.sin(gamma_star),
+                5.0 * np.cos(alpha),
+            ],
+            [0.0, 0.0, 6.0],
+        ]
+        np.testing.assert_allclose(lattice["matrix"], expected_matrix, atol=1e-12)
     assert frame["structure"]["sites"] == [
         {
             "species": expected_species or species,
@@ -387,35 +426,22 @@ def test_trajectory_widget_completes_only_non_derivable_fields(
 
 
 @pytest.mark.parametrize(
-    ("metadata_field", "metadata_value"),
+    "properties",
     [
-        pytest.param(None, {}, id="no-metadata"),
-        ("properties", {"energy": -1.23, "forces": [[0.0, 0.3, 0.4], [0.0, 0.0, 0.0]]}),
-        ("info", {"temperature": 300, "pressure": 1.0}),
+        pytest.param({}, id="no-metadata"),
+        {"energy": -1.23, "forces": [[0.0, 0.3, 0.4], [0.0, 0.0, 0.0]]},
+        {"temperature": 300, "pressure": 1.0},
     ],
 )
-def test_trajectory_widget_with_structure_metadata(
-    metadata_field: str | None, metadata_value: dict[str, Any]
-) -> None:
-    """TrajectoryWidget forwards structure properties/info to frame metadata, per-atom
-    forces to the sites.
-    """
-    from pymatgen.core import Lattice, Structure
-
-    structure = Structure(
-        lattice=Lattice.cubic(3.0),
-        species=("Fe", "Fe"),
-        coords=((0, 0, 0), (0.5, 0.5, 0.5)),
-    )
-    if metadata_field == "properties":
-        structure.properties = metadata_value
-    elif metadata_field == "info":
-        object.__setattr__(structure, "info", metadata_value)
+def test_trajectory_widget_with_structure_metadata(properties: dict[str, Any]) -> None:
+    """Structure properties become frame metadata, per-atom forces site vectors."""
+    (structure,) = _fe2_frames(1)
+    structure.info = properties
 
     arrays = decode_envelope(TrajectoryWidget(trajectory=structure).trajectory)
     scalars = {key: arr.tolist() for key, arr in arrays.items() if arr.ndim == 1}
     scalars.pop("numbers")
-    if "forces" in metadata_value:
+    if "forces" in properties:
         assert scalars == {
             "energy": [-1.23],
             "force_max": [pytest.approx(0.5, rel=1e-15)],
@@ -423,77 +449,14 @@ def test_trajectory_widget_with_structure_metadata(
         }
         # float32 vectors: within 1 float32 ulp of the float64 input
         np.testing.assert_allclose(
-            arrays["force"][0], metadata_value["forces"], rtol=1.2e-7, atol=0
+            arrays["force"][0], properties["forces"], rtol=1.2e-7, atol=0
         )
     else:
-        assert scalars == {key: [val] for key, val in metadata_value.items()}
-
-
-@pytest.mark.parametrize(
-    ("symbols", "positions", "cell", "energy"),
-    [
-        pytest.param(
-            "H2O", [[0, 0, 0], [0, 0, 1], [0, 1, 0]], None, -1.5, id="molecule"
-        ),
-        pytest.param(
-            "Fe2", [[0, 0, 0], [0.5, 0.5, 0.5]], [3, 3, 3], -2.0, id="periodic"
-        ),
-    ],
-)
-@pytest.mark.parametrize("mson_atoms", [False, True], ids=["Atoms", "MSONAtoms"])
-def test_trajectory_widget_with_ase_atoms(
-    symbols: str,
-    positions: list[list[float]],
-    cell: list[int] | None,
-    energy: float,
-    mson_atoms: bool,
-) -> None:
-    """ASE frames (incl. pymatgen MSONAtoms, whose as_dict() is not a structure dict)
-    keep info and calculator results (which AseAtomsAdaptor drops) with and without a
-    simulation cell; calculator forces become site vectors.
-    """
-    ase_atoms = pytest.importorskip("ase").Atoms
-    from ase.calculators.singlepoint import SinglePointCalculator
-    from pymatgen.io.ase import MSONAtoms
-
-    atoms_cls = MSONAtoms if mson_atoms else ase_atoms
-
-    atoms = atoms_cls(symbols, positions=positions, cell=cell)
-    atoms.info = {"temperature": 300}
-    forces = np.zeros((len(atoms), 3))
-    forces[0] = [0.0, 0.0, 2.0]
-    atoms.calc = SinglePointCalculator(atoms, energy=energy, forces=forces)
-    payload = TrajectoryWidget(trajectory=atoms).trajectory
-    arrays = decode_envelope(payload)
-    np.testing.assert_allclose(arrays["positions"][0], positions, rtol=0, atol=1e-7)
-    assert arrays["numbers"].tolist() == atoms.numbers.tolist()
-    # a molecule has no cell (and so no pbc); a periodic frame keeps its cell
-    assert ("lattice" in arrays) == (cell is not None)
-    assert payload.get("pbc") == (atoms.pbc.tolist() if cell else None)
-    assert {key: arrays[key].tolist() for key in ("temperature", "energy")} == {
-        "temperature": [300],
-        "energy": [energy],
-    }
-    assert arrays["force_max"].tolist() == [2.0]
-    np.testing.assert_allclose(arrays["force_norm"], [2 / np.sqrt(len(atoms))])
-    assert arrays["force"][0].tolist() == forces.tolist()
-
-
-def test_trajectory_widget_atom_type_mapping_trait() -> None:
-    """atom_type_mapping (LAMMPS type -> element) is None by default, syncs as given
-    and rejects non-dicts.
-    """
-    assert TrajectoryWidget().atom_type_mapping is None
-    mapping = {1: "Si", "2": "O"}
-    widget = TrajectoryWidget(data_url="https://example.com/dump.lammpstrj")
-    widget.atom_type_mapping = mapping
-    assert widget.to_dict()["atom_type_mapping"] == mapping
-    with pytest.raises(tl.TraitError):
-        TrajectoryWidget(atom_type_mapping=["Si", "O"])
+        assert scalars == {key: [val] for key, val in properties.items()}
 
 
 def test_trajectory_widget_normalization_regressions(
-    fe3co4_disordered: Structure,
+    fe3co4_disordered: kemio.Structure,
 ) -> None:
     """Numpy forces become per-site numeric lists (matterviz 0.8 ignores vectors in
     frame metadata) plus force_max/force_norm, malformed forces raise, the layout trait
@@ -515,8 +478,16 @@ def test_trajectory_widget_normalization_regressions(
         ({"force": [0.1, 0.2, 0.3]}, r"frame 0 'force' must be per-atom.*\(3,\)"),
         ({"forces": forces, "force": forces}, "both 'force' and 'forces'"),
     ):
-        with pytest.raises(ValueError, match=match):
+        with pytest.raises(tl.TraitError, match=match):
             TrajectoryWidget(trajectory=[{"structure": fe3co4_disordered, **bad_frame}])
+    # a frames dict takes structure objects too, and frames lacking one raise
+    obj_frames = {"frames": [{"structure": fe3co4_disordered, "energy": -1.5}]}
+    (obj_frame,) = TrajectoryWidget(trajectory=obj_frames).trajectory["frames"]
+    assert len(obj_frame["structure"]["sites"]) == len(fe3co4_disordered)
+    with pytest.raises(
+        tl.TraitError, match=r"frame 0 must be .* 'structure' key, got \['sites'"
+    ):
+        TrajectoryWidget(trajectory={"frames": [{"sites": [], "lattice": {}}]})
     json.dumps(widget.trajectory)  # round-trips as standard JSON
     # layout used to be filtered from to_dict() by _EXCLUDED_TRAITS, so headless
     # to_img/to_html exports silently ignored it
@@ -524,7 +495,7 @@ def test_trajectory_widget_normalization_regressions(
 
     # normalization must not mutate the caller's structure dicts (a shallow
     # lattice copy used to leak setdefault/assignments into the input)
-    struct_dict = fe3co4_disordered.as_dict()
+    struct_dict = structure_to_pymatgen_dict(fe3co4_disordered)
     struct_dict["lattice"].pop("pbc", None)
     lattice_before = {**struct_dict["lattice"]}
     TrajectoryWidget(trajectory={"frames": [{"structure": struct_dict}]})

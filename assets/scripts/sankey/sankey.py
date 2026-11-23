@@ -1,6 +1,12 @@
 """Sankey diagram of crystal systems and space groups."""
 
-# %%
+# /// script
+# dependencies = [
+#     "matminer>=0.10.1",
+# ]
+# ///
+
+import kemio
 import pandas as pd
 from matminer.datasets import load_dataset
 
@@ -14,7 +20,7 @@ df_sym = pd.DataFrame(
     struct.get_symmetry_dataset(backend="moyopy", return_raw_dataset=True).as_dict()
     for struct in df_phonons["structure"]
 ).rename(columns={"number": "spg_num"})
-df_sym["crystal_system"] = df_sym["spg_num"].map(pmv.utils.spg_to_crystal_sys)
+df_sym["crystal_system"] = df_sym["spg_num"].map(kemio.crystal_system)
 
 
 # %%

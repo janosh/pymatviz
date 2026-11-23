@@ -6,29 +6,63 @@ from collections.abc import Mapping
 from typing import Any
 
 from pymatviz.widgets._schema_traits import XrdTraits
-from pymatviz.widgets._traits import PlotControlsTraits
+from pymatviz.widgets._traits import PlotControlsTraits, normalized_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
+
+
+def _normalize_patterns(patterns: Any) -> dict[str, Any] | None:
+    """Pattern dict of one pattern, or ``{label: pattern dict}`` of a mapping of
+    pattern objects or dicts (a dict of arrays is one pattern).
+
+    Raises:
+        ValueError: If a labeled mapping is empty.
+    """
+    import kemio
+    from kemio.interop import has_class
+
+    from pymatviz.widgets._normalize import normalize_xrd_pattern
+
+    is_labeled = isinstance(patterns, Mapping) and all(
+        isinstance(val, kemio.XrdPattern | Mapping)
+        or has_class(val, "pymatgen.analysis.diffraction.core.DiffractionPattern")
+        for val in patterns.values()
+    )
+    if is_labeled and not patterns:
+        raise ValueError("XrdWidget patterns mapping must not be empty")
+    if is_labeled:
+        return {
+            str(label): normalize_xrd_pattern(pattern)
+            for label, pattern in patterns.items()
+        }
+    return normalize_xrd_pattern(patterns)
 
 
 class XrdWidget(PlotControlsTraits, XrdTraits, MatterVizWidget):
     """MatterViz widget for visualizing X-ray diffraction patterns.
 
-    Accepts a pymatgen DiffractionPattern or a dict with either:
-    - canonical keys: x (2-theta), y (intensity), optional hkls/d_hkls/kind
-    - Ferrox keys: two_theta, intensities, optional hkls/d_spacings/kind
+    Accepts a kemio XrdPattern, pymatgen DiffractionPattern or a dict with keys
+    x (2-theta), y (intensity) and optional hkls/d_hkls/kind.
 
     Patterns without hkls are treated as measured scans (``kind="profile"``): drawn
     as a line and never broadened. Pass ``kind="sticks"`` to force bar rendering.
     Pass a ``{label: pattern}`` mapping to overlay several patterns with a legend.
 
     Examples:
-        From a pymatgen DiffractionPattern:
+        From a kemio XrdPattern (pymatgen DiffractionPattern works the same way):
+        >>> import numpy as np
+        >>> import kemio
+        >>> nacl = kemio.Structure(
+        ...     np.eye(3) * 5.64, ["Na", "Cl"], [[0] * 3, [0.5] * 3], fractional=True
+        ... )
         >>> from pymatviz.widgets import XrdWidget
-        >>> widget = XrdWidget(patterns=diffraction_pattern)
+        >>> pattern = kemio.xrd_patterns([nacl])[0]
+        >>> widget = XrdWidget(patterns=pattern)
         >>> widget
 
-        From a dict:
-        >>> data = {"x": two_theta, "y": intensities, "hkls": hkl_list}
+        From a dict of a measured scan (no hkls, so drawn as a line):
+        >>> two_theta = np.linspace(20, 80, 601)
+        >>> intensities = 100 * np.exp(-(((two_theta - 31.7) / 0.2) ** 2))
+        >>> data = {"x": two_theta, "y": intensities}
         >>> widget = XrdWidget(patterns=data)
 
         Several overlaid patterns:
@@ -36,38 +70,11 @@ class XrdWidget(PlotControlsTraits, XrdTraits, MatterVizWidget):
 
         With custom options:
         >>> widget = XrdWidget(
-        ...     patterns=diffraction_pattern,
+        ...     patterns=pattern,
         ...     style="height: 400px;",
         ... )
     """
 
-    def __init__(self, patterns: Any | None = None, **kwargs: Any) -> None:
-        """Initialize the XrdWidget.
+    patterns = normalized_trait(_normalize_patterns)
 
-        Args:
-            patterns: XRD pattern data -- a pymatgen DiffractionPattern, a dict with
-                x (2-theta angles) and y (intensities) keys, or a ``{label: pattern}``
-                mapping of those.
-            **kwargs: Additional widget properties (e.g. ``controls_open`` to
-                start with the control pane expanded).
-        """
-        from pymatgen.analysis.diffraction.xrd import DiffractionPattern
-
-        from pymatviz.widgets._normalize import normalize_xrd_pattern
-
-        # a mapping of patterns (DiffractionPatterns or dicts) is labeled, a dict of
-        # arrays is one pattern
-        is_labeled = isinstance(patterns, Mapping) and all(
-            isinstance(val, DiffractionPattern | Mapping) for val in patterns.values()
-        )
-        if is_labeled and not patterns:
-            raise ValueError("XrdWidget patterns mapping must not be empty")
-        normalized = (
-            {
-                str(label): normalize_xrd_pattern(pattern)
-                for label, pattern in patterns.items()
-            }
-            if is_labeled
-            else normalize_xrd_pattern(patterns)
-        )
-        super().__init__(patterns=normalized, **kwargs)
+    _positional_traits = ("patterns",)

@@ -3,22 +3,24 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from numbers import Integral
 from typing import TYPE_CHECKING
 
 import numpy as np
+import pandas as pd
 
-from pymatviz.composition import count_elements
+from pymatviz.compositions import count_elements
 from pymatviz.enums import ElemCountMode
+from pymatviz.utils import str_labels
 from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.bar_plot import BarPlotWidget, bar_axis_defaults
 from pymatviz.widgets.histogram import HistogramWidget
 
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
     from typing import Any, Literal
 
-    import pandas as pd
     from numpy.typing import ArrayLike
 
     from pymatviz.typing import ElemCountModeLike, ElemValues
@@ -44,7 +46,8 @@ def elements_hist(
             Reduce or normalize compositions before counting. See `count_elements` for
             details. Only used when values is a list of composition strings/objects.
         log_y (bool, optional): Whether y-axis is log or linear. Default = False.
-        max_elements (int | None): Display only the top n elements by prevalence.
+        max_elements (int | None): Display only the top n >= 1 elements by
+            prevalence.
         show_values ("percent"|"count"|None): "percent" (default) labels bars with
             their share of the total count (incl. elements dropped by max_elements),
             "count" with the count, None hides labels.
@@ -55,8 +58,16 @@ def elements_hist(
 
     Returns:
         BarPlotWidget: one bar per element.
+
+    Raises:
+        ValueError: For max_elements < 1, negative element counts or an invalid
+            show_values.
     """
+    if max_elements is not None and max_elements < 1:  # head(-n) drops the last n
+        raise ValueError(f"{max_elements=} must be a positive integer or None")
     elem_counts = count_elements(values, count_mode)
+    if len(negative := elem_counts[elem_counts < 0]):
+        raise ValueError(f"element counts must be >= 0, got {negative.to_dict()}")
     non_zero = elem_counts[elem_counts > 0].sort_values(ascending=False)
     total_count = non_zero.sum()  # percent labels are shares of all elements
     if max_elements is not None:
@@ -80,17 +91,9 @@ def elements_hist(
 
     count_axis = {"label": "Element Count", "scale_type": "log" if log_y else "linear"}
     axes = bar_axis_defaults(kwargs, category={"label": "Element"}, value=count_axis)
-    return BarPlotWidget(
-        [series],
-        **with_defaults(
-            axes
-            | {
-                "bar": {"opacity": opacity, "stroke_width": 1, "stroke_color": "black"},
-                "show_legend": False,
-            },
-            kwargs,
-        ),
-    )
+    bar_style = {"opacity": opacity, "stroke_width": 1, "stroke_color": "black"}
+    defaults = axes | {"bar": bar_style, "show_legend": False}
+    return BarPlotWidget([series], **with_defaults(defaults, kwargs))
 
 
 # Above this many values in all distributions, histograms bin in Python and send only
@@ -103,6 +106,7 @@ def histogram(
     *,
     x: str | None = None,
     color: str | None = None,
+    sort_groups: Callable[[list[Any]], list[Any]] | None = None,
     bins: int | Sequence[float] | str = 200,
     x_range: tuple[float | None, float | None] | None = None,
     density: bool = False,
@@ -124,7 +128,11 @@ def histogram(
             silently dropped (DataFrame rows with NaN are dropped).
         x (str, optional): DataFrame column to bin.
         color (str, optional): DataFrame column to split into one distribution per
-            value.
+            value, in order of first appearance.
+        sort_groups (Callable[[list], list], optional): Reorders the distributions
+            (legend and draw order): takes the list of group keys (``color`` column
+            values or dict keys, in given order) and returns them reordered, e.g.
+            ``sorted`` or ``lambda keys: keys[::-1]``. Defaults to None (keep order).
         bins (int | sequence | str, optional): Number of bins, or (in Python) bin
             edges or a NumPy binning rule like "auto". Defaults to 200.
         x_range (tuple, optional): The range of values to include in the histogram.
@@ -142,12 +150,12 @@ def histogram(
             Python (one overlaid bar series per distribution).
 
     Raises:
-        ValueError: For empty or non-finite values, a DataFrame without ``x``, or
-            density in an x_range holding no values of a distribution.
+        ValueError: For empty or non-finite values, labels sharing a string form
+            (1 and "1"), a DataFrame without ``x``, an x_range resolving to
+            lo > hi, density in an x_range holding no values of a distribution, or
+            sort_groups not returning a reordering of the group keys.
         TypeError: If x or color name columns but values is no DataFrame.
     """
-    import pandas as pd
-
     if isinstance(values, pd.DataFrame):
         if x is None:
             raise ValueError("name the DataFrame column to bin with x=")
@@ -159,7 +167,7 @@ def histogram(
             if color is not None
             else [(x, df_used)]
         )
-        # keys stay as grouped (1 and "1" are two groups), labels become str later
+        # grouped keys 1 and "1" would share a legend label: str_labels raises
         x_axis_title, data = x, {key: grp[x] for key, grp in groups}
     elif x is not None or color is not None:
         raise TypeError(f"x={x!r} and color={color!r} need a DataFrame")
@@ -167,7 +175,18 @@ def histogram(
         name = getattr(values, "name", None)
         x_axis_title = "Value" if name is None else name
         data = values if isinstance(values, Mapping) else {x_axis_title: values}
-    data_arrays = {label: np.asarray(vals, dtype=float) for label, vals in data.items()}
+    if sort_groups is not None:
+        keys = list(data)
+        sorted_keys = list(sort_groups(keys))
+        # dict keys are unique, so equal length and key set means a permutation
+        if len(sorted_keys) != len(keys) or set(sorted_keys) != set(keys):
+            raise ValueError(
+                f"sort_groups must return a reordering of {keys}, got {sorted_keys}"
+            )
+        data = {key: data[key] for key in sorted_keys}
+    data_arrays = {
+        label: np.asarray(vals, dtype=float) for label, vals in str_labels(data).items()
+    }
     if not data_arrays:
         raise ValueError("histogram values must not be empty.")
     for label, vals in data_arrays.items():
@@ -189,6 +208,11 @@ def histogram(
         np.min(all_values) if x_min is None else x_min,
         np.max(all_values) if x_max is None else x_max,
     )
+    if x_range[0] > x_range[1]:  # would bin no values in the browser
+        raise ValueError(
+            f"x_range={(x_min, x_max)} resolves to {x_range} with None ends taken "
+            "from the data, need lo <= hi"
+        )
 
     count_axis = {
         "label": "Density" if density else "Count",
@@ -196,7 +220,8 @@ def histogram(
     }
     in_browser = (
         not density
-        and isinstance(bins, int)
+        and isinstance(bins, Integral)
+        and not isinstance(bins, bool)
         and bin_width == 1
         and "orientation" not in kwargs
         and len(all_values) <= MAX_BROWSER_HISTOGRAM_VALUES
@@ -208,13 +233,17 @@ def histogram(
             "y_axis": count_axis,
             "mode": "overlay" if len(data_arrays) > 1 else "single",
             "show_legend": len(data_arrays) > 1,
-        } | ({"x_range": [lo, hi]} if user_range else {})
+        }
+        if user_range:
+            defaults["x_range"] = [lo, hi]
         # like np.histogram, values outside x_range count toward no bin
         series = [
-            {"values": vals[(vals >= lo) & (vals <= hi)], "label": str(label)}
+            {"values": vals[(vals >= lo) & (vals <= hi)], "label": label}
             for label, vals in data_arrays.items()
         ]
-        return HistogramWidget(series, bins=bins, **with_defaults(defaults, kwargs))
+        return HistogramWidget(
+            series, bins=int(bins), **with_defaults(defaults, kwargs)
+        )
 
     bin_edges = np.histogram_bin_edges(all_values, bins=bins, range=x_range)
     widths = np.diff(bin_edges)
@@ -232,7 +261,7 @@ def histogram(
         {
             "x": centers,
             "y": cnt / (cnt.sum() * widths) if density else cnt,
-            "label": str(label),
+            "label": label,
             "bar_width": bin_width * widths,
         }
         for label, cnt in counts.items()
@@ -241,15 +270,9 @@ def histogram(
     axes = bar_axis_defaults(
         kwargs, category={"label": str(x_axis_title)}, value=count_axis
     )
-    return BarPlotWidget(
-        series,
-        **with_defaults(
-            axes
-            | {
-                "bar": {"border_radius": 0},
-                "mode": "overlay",
-                "show_legend": len(series) > 1,
-            },
-            kwargs,
-        ),
-    )
+    defaults = axes | {
+        "bar": {"border_radius": 0},
+        "mode": "overlay",
+        "show_legend": len(series) > 1,
+    }
+    return BarPlotWidget(series, **with_defaults(defaults, kwargs))

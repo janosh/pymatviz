@@ -9,45 +9,55 @@ https://ml.materialsproject.org/projects/matbench_log_gvrh
 https://ml.materialsproject.org/projects/matbench_log_kvrh
 """
 
-# %%
+# /// script
+# dependencies = [
+#     "matminer>=0.10.1",
+# ]
+# ///
+
+import re
 from time import perf_counter
 from typing import get_args
 
+import kemio
 import numpy as np
-import pandas as pd
-from matbench_discovery.structure import prototype
+from kemio.interop import to_structure
+from kemio.options import CrystalSystem
 from matminer.datasets import load_dataset
-from pymatgen.core import Structure
-from tqdm import tqdm
 
 import pymatviz as pmv
-from pymatviz.typing import CrystalSystem
 
 
 crystal_systems = get_args(CrystalSystem)  # ordered triclinic to cubic
 
 
-# %%
+def count_wyckoff_positions(protostructure_label: str) -> int:
+    """Number of occupied Wyckoff positions in an AFLOW-style protostructure label
+    like ``A4B3_hP28_159_ab2c_2c:N-Si`` (a digit before a letter repeats that site).
+    """
+    wyckoff_part = protostructure_label.split(":", 1)[0].split("_", 3)[3]
+    site_repeats = re.findall(r"(\d*)[a-z]", wyckoff_part)
+    return sum(int(repeat or 1) for repeat in site_repeats)
+
+
+# %% both datasets share the same structures, only their targets differ
 df_grvh = load_dataset("matbench_log_gvrh")
 df_kvrh = load_dataset("matbench_log_kvrh")
+kemio_structs = [to_structure(struct) for struct in df_grvh["structure"]]
 
-df_sym = pd.DataFrame(
-    struct.get_symmetry_dataset(backend="moyopy", return_raw_dataset=True).as_dict()
-    for struct in df_grvh["structure"]
-)
-df_sym["crystal_system"] = df_sym["number"].map(pmv.utils.spg_to_crystal_sys)
-df_grvh["protostructure"] = [
-    prototype.get_protostructure_label(struct)
-    for struct in tqdm(df_grvh["structure"], desc="matbench_log_gvrh Wyckoff strings")
-]
-df_kvrh["protostructure"] = df_grvh["protostructure"]
+sym_summary = kemio.symmetry_summary(kemio_structs, symprec=0.01)
+protostructures = kemio.protostructure_labels(kemio_structs)
 
 for df in (df_grvh, df_kvrh):
-    df[["spg_num", "wyckoff_symbols"]] = df_sym[["number", "wyckoffs"]]
-    df["crystal_system"] = df_sym["crystal_system"]
-
-    df["n_wyckoff_pos"] = df["protostructure"].map(prototype.count_wyckoff_positions)
-    df["formula"] = [x.formula for x in df["structure"]]
+    df["spg_num"] = sym_summary.number
+    df["wyckoff_symbols"] = sym_summary.wyckoffs
+    df["crystal_system"] = df["spg_num"].map(kemio.crystal_system)
+    df["protostructure"] = protostructures
+    df["n_wyckoff_pos"] = df["protostructure"].map(
+        count_wyckoff_positions, na_action="ignore"
+    )
+    df["formula"] = [struct.composition.formula for struct in kemio_structs]
+    df["volume"] = [struct.volume for struct in kemio_structs]
 
 
 # %%
@@ -67,11 +77,7 @@ df_grvh.hist(column="log10(G_VRH)", bins=50, ax=ax, alpha=0.8)
 # ax.flat[0].figure.savefig("log_g+kvrh-target-hist.pdf")
 
 
-# %%
-df_grvh["volume"] = [x.volume for x in df_grvh["structure"]]
-df_grvh["formula"] = [x.formula for x in df_grvh["structure"]]
-
-# Volume histogram of the Matbench bulk/shear modulus datasets
+# %% Volume histogram of the Matbench bulk/shear modulus datasets
 widget = pmv.histogram(
     df_grvh["volume"], bins=100, log_y=True, x_axis={"label": "Volume (Å³)"}
 )
@@ -82,28 +88,25 @@ widget.show()
 # %%
 start = perf_counter()
 radius = 5
-df_grvh[f"neighbor_list_r{radius}"] = [
-    x.get_neighbor_list(r=radius) for x in df_grvh["structure"]
-]
+neighbor_lists = [struct.neighbor_list(radius) for struct in kemio_structs]
 print(f"took {perf_counter() - start:.3f} sec")
 
-df_kvrh[f"neighbor_list_r{radius}"] = [
-    x.get_neighbor_list(r=radius) for x in df_kvrh["structure"]
-]
+for df in (df_grvh, df_kvrh):
+    df[f"neighbor_list_r{radius}"] = neighbor_lists
 
 
 # %%
 start = perf_counter()
 
 
-def has_isolated_atom(crystal: Structure, radius: float = 5) -> bool:
+def has_isolated_atom(crystal: kemio.Structure, radius: float = 5) -> bool:
     """Check if crystal has isolated atoms within specified neighborhood radius."""
     dists = crystal.distance_matrix
     np.fill_diagonal(dists, np.inf)
     return bool((dists.min(1) > radius).any())
 
 
-df_grvh["isolated_r5"] = df_grvh["structure"].map(has_isolated_atom)
+df_grvh["isolated_r5"] = [has_isolated_atom(struct) for struct in kemio_structs]
 print(f"took {perf_counter() - start:.3f} sec")
 
 
@@ -119,16 +122,6 @@ for idx, structure, target, *_ in df_grvh.query("graph_size == 0").itertuples():
 
 
 # %%
-df_grvh["volume"] = df_grvh["structure"].map(lambda struct: struct.volume)
-
-pmv.histogram(
-    df_grvh["volume"], bins=100, log_y=True, x_axis={"label": "Volume (Å³)"}
-).show()
-
-
-# %%
-df_grvh["formula"] = df_grvh["structure"].map(lambda struct: struct.formula)
-
 title = "Element counts in the Matbench bulk/shear modulus datasets"
 pmv.ptable_heatmap(df_grvh["formula"], log=True, color_bar={"title": title}).show()
 

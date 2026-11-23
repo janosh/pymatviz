@@ -30,13 +30,13 @@ widget.to_img(
 )
 
 
-# %% ML model predictions: 20k points binned into 200x200 bins
+# %% ML model predictions: 5k points colored by their kernel density estimate
 np_rng = np.random.default_rng(seed=123)
-true_values = np.linspace(0, 10, 20_000) + np_rng.normal(0, 0.5, 20_000)
+true_values = np.linspace(0, 10, 5_000) + np_rng.normal(0, 0.5, 5_000)
 df_ml = pd.DataFrame(
     {
         "True Values": true_values,
-        "Predictions": true_values + np_rng.normal(0, 1, 20_000),
+        "Predictions": true_values + np_rng.normal(0, 1, 5_000),
     }
 )
 widget = pmv.density_scatter(
@@ -45,15 +45,15 @@ widget = pmv.density_scatter(
     df=df_ml,
     identity_line={"style": {"color": "black"}},
     best_fit_line={"style": {"color": "red"}},
-    stats={"metrics": ["MAE", "RMSE", "R2"], "prefix": "20k points\n"},
+    stats={"metrics": ["MAE", "RMSE", "R2"], "prefix": "5k points\n"},
 )
 widget.show()
 
 
 # %% Structure-property relationship with log-scaled density colors
 np_rng = np.random.default_rng(seed=456)
-bond_length = np_rng.uniform(3.5, 6.0, 30_000) * 0.4 + np_rng.normal(0, 0.1, 30_000)
-conductivity = np.exp(-bond_length) * 1000 + np_rng.normal(0, 50, 30_000)
+bond_length = np_rng.uniform(3.5, 6.0, 5_000) * 0.4 + np_rng.normal(0, 0.1, 5_000)
+conductivity = np.exp(-bond_length) * 1000 + np_rng.normal(0, 50, 5_000)
 widget = pmv.density_scatter(
     bond_length,
     conductivity,

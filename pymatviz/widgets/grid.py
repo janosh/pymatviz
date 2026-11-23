@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import html
+import numbers
 import os
 from typing import TYPE_CHECKING, Any
 
@@ -23,8 +24,17 @@ class WidgetGrid(ipw.GridBox):
         """Live grid, or a static HTML grid of PNGs under ``PYMATVIZ_STATIC``."""
         if not os.environ.get("PYMATVIZ_STATIC"):
             return super()._repr_mimebundle_(**kwargs)
-        from pymatviz.widgets.matterviz import static_png_bundle
+        from pymatviz.widgets.matterviz import MatterVizWidget, static_png_bundle
 
+        if non_matterviz := {
+            title.value: type(widget).__name__
+            for title, widget in (cell.children for cell in self.children)
+            if not isinstance(widget, MatterVizWidget)
+        }:
+            raise TypeError(
+                "PYMATVIZ_STATIC renders only MatterViz widgets as PNGs, got "
+                f"{non_matterviz} (cell title: widget type)"
+            )
         # cells share the notebook width, so smaller renders keep the output light
         img_kwargs = {"width": 360, "dpi": 96}
 
@@ -58,15 +68,21 @@ def widget_grid(widgets: Mapping[Any, ipw.DOMWidget], n_cols: int = 3) -> Widget
         WidgetGrid: An ipywidgets GridBox of titled cells.
 
     Raises:
-        ValueError: If n_cols is not positive.
+        TypeError: If n_cols is not an int (bools and floats like 2.5 aren't).
+        ValueError: If n_cols is not positive or widgets is empty.
     """
+    # n_cols goes into CSS repeat(), which needs a positive integer
+    if isinstance(n_cols, bool) or not isinstance(n_cols, numbers.Integral):
+        raise TypeError(f"{n_cols=} must be an int")
     if n_cols < 1:
         raise ValueError(f"{n_cols=} must be positive")
+    if not widgets:  # repeat(0, ...) is invalid CSS
+        raise ValueError("widget_grid needs at least one widget")
     cells = [
         ipw.VBox([ipw.HTML(f"<b>{html.escape(str(label))}</b>"), widget])
         for label, widget in widgets.items()
     ]
-    n_cols = min(n_cols, len(cells))
+    n_cols = min(int(n_cols), len(cells))
     return WidgetGrid(
         cells,
         layout=ipw.Layout(grid_template_columns=f"repeat({n_cols}, minmax(0, 1fr))"),

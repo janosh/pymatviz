@@ -1,31 +1,34 @@
-"""Tests for widget construction, traitlet defaults, to_dict, and validation."""
+"""Cross-widget tests: construction, widget_type, traitlet defaults, shared trait
+validation, unknown kwargs and JSON round trips.
+"""
 
 from __future__ import annotations
 
-import importlib.util
+import inspect
 import json
-from contextlib import nullcontext
-from typing import TYPE_CHECKING, Any, Literal
-from unittest.mock import Mock, patch
+from typing import Any
+from unittest.mock import Mock
 
+import kemio
 import numpy as np
 import pandas as pd
 import pytest
 import traitlets as tl
-from pymatgen.core import Lattice, Molecule, Structure
 
 import pymatviz as pmv
-from pymatviz.widgets import matterviz
+from pymatviz.structures import structure_dict
+from pymatviz.widgets import _traits, matterviz
+from pymatviz.widgets._normalize import normalize_plot_json, structure_to_dict
 from pymatviz.widgets._schema_traits import StructureTraits
 from pymatviz.widgets._traits import ELEMENT_COLOR_SCHEMES
 from pymatviz.widgets.band_structure import BandStructureWidget
 from pymatviz.widgets.bands_and_dos import BandsAndDosWidget
 from pymatviz.widgets.bar_plot import BarPlotWidget
-from pymatviz.widgets.box_plot import BoxPlotWidget
 from pymatviz.widgets.brillouin_zone import BrillouinZoneWidget
 from pymatviz.widgets.chem_pot_diagram import ChemPotDiagramWidget
 from pymatviz.widgets.composition import CompositionWidget
 from pymatviz.widgets.convex_hull import ConvexHullWidget
+from pymatviz.widgets.coordination_bar_plot import CoordinationBarPlotWidget
 from pymatviz.widgets.dos import DosWidget
 from pymatviz.widgets.fermi_surface import FermiSurfaceWidget
 from pymatviz.widgets.heatmap_matrix import HeatmapMatrixWidget
@@ -46,203 +49,118 @@ from pymatviz.widgets.sunburst import SunburstWidget
 from pymatviz.widgets.trajectory import TrajectoryWidget
 from pymatviz.widgets.treemap import TreemapWidget
 from pymatviz.widgets.xrd import XrdWidget
+from tests.widgets.conftest import SI_STRUCT
 from tests.widgets.test_browser_render import WIDGET_CASES
 
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
-
-FE_STRUCT = Structure(Lattice.cubic(2.87), ["Fe", "Fe"], [[0, 0, 0], [0.5, 0.5, 0.5]])
-
-
-# === Construction and widget_type ===
-
-
 @pytest.mark.parametrize(
-    ("widget_cls", "kwargs", "expected_type", "state_key"),
+    ("widget_cls", "expected_type", "kwargs"),
     [
         (
             ConvexHullWidget,
-            {"entries": [{"composition": {"Li": 1}, "energy": -1.5}]},
             "convex_hull",
-            "entries",
+            {"entries": [{"composition": {"Li": 1}, "energy": -1.5}]},
         ),
-        (
-            BandStructureWidget,
-            {"band_structs": {"bands": []}},
-            "band_structure",
-            "band_structs",
-        ),
-        (DosWidget, {"doses": {"energies": [0]}}, "dos", "doses"),
+        (BandStructureWidget, "band_structure", {"band_structs": {"bands": []}}),
+        (DosWidget, "dos", {"doses": {"energies": [0]}}),
         (
             BandsAndDosWidget,
-            {"band_structs": {"bands": []}, "doses": {"energies": []}},
             "bands_and_dos",
-            "doses",
+            {"band_structs": {"bands": []}, "doses": {"energies": []}},
         ),
-        (
-            FermiSurfaceWidget,
-            {"fermi_data": {"isosurfaces": []}},
-            "fermi_surface",
-            "fermi_data",
-        ),
-        (
-            FermiSurfaceWidget,
-            {"band_data": {"energies": []}},
-            "fermi_surface",
-            "band_data",
-        ),
+        (FermiSurfaceWidget, "fermi_surface", {"fermi_data": {"isosurfaces": []}}),
+        (FermiSurfaceWidget, "fermi_surface", {"band_data": {"energies": []}}),
         (
             BrillouinZoneWidget,
-            {"structure": {"lattice": {}, "sites": []}},
             "brillouin_zone",
-            "structure",
+            {"structure": {"lattice": {}, "sites": []}},
         ),
-        (
-            PhaseDiagramWidget,
-            {"data": {"components": ["A", "B"]}},
-            "phase_diagram",
-            "data",
-        ),
-        (
-            XrdWidget,
-            {"patterns": {"x": [10], "y": [100], "kind": "profile"}},
-            "xrd",
-            "patterns",
-        ),
+        (PhaseDiagramWidget, "phase_diagram", {"data": {"components": ["A", "B"]}}),
+        (XrdWidget, "xrd", {"patterns": {"x": [10], "y": [100], "kind": "profile"}}),
         (
             ScatterPlotWidget,
-            {"series": [{"x": [0, 1], "y": [1, 2], "label": "curve"}]},
             "scatter_plot",
-            "series",
+            {"series": [{"x": [0, 1], "y": [1, 2], "label": "curve"}]},
         ),
         (
             BarPlotWidget,
-            {"series": [{"x": [0, 1], "y": [2, 3], "label": "bars"}]},
             "bar_plot",
-            "series",
+            {"series": [{"x": [0, 1], "y": [2, 3], "label": "bars"}]},
         ),
         (
             HistogramWidget,
-            {"series": [{"values": [2, 2.5], "label": "hist"}]},
             "histogram",
-            "series",
+            {"series": [{"values": [2, 2.5], "label": "hist"}]},
         ),
         (
             PeriodicTableWidget,
-            {"heatmap_values": {"Fe": 42, "O": 100}},
             "periodic_table",
-            "heatmap_values",
+            {"heatmap_values": {"Fe": 42, "O": 100}},
         ),
+        (PeriodicTableWidget, "periodic_table", {"heatmap_values": [1.0, 4.0, 6.9]}),
         (
-            RdfPlotWidget,
-            {"structures": {"lattice": {}, "sites": []}},
-            "rdf_plot",
-            "structures",
+            PeriodicTableWidget,
+            "periodic_table",
+            {"color_scale": {"type": "log", "value_range": [1, None]}},
         ),
+        (PeriodicTableWidget, "periodic_table", {"color_bar": None}),
+        (RdfPlotWidget, "rdf_plot", {"structures": {"lattice": {}, "sites": []}}),
         (
             ScatterPlot3DWidget,
-            {"series": [{"x": [1], "y": [2], "z": [3], "label": "pt"}]},
             "scatter_plot_3d",
-            "series",
+            {"series": [{"x": [1], "y": [2], "z": [3], "label": "pt"}]},
         ),
         (
             HeatmapMatrixWidget,
+            "heatmap_matrix",
             {"x_items": ["A", "B"], "y_items": ["C", "D"], "values": [[1, 2], [3, 4]]},
-            "heatmap_matrix",
-            "values",
-        ),
-        (
-            PeriodicTableWidget,
-            {"heatmap_values": [1.0, 4.0, 6.9]},
-            "periodic_table",
-            "heatmap_values",
         ),
         (
             HeatmapMatrixWidget,
+            "heatmap_matrix",
             {"values": {"Fe": {"Fe": 1.0, "O": 0.5}, "O": {"Fe": 0.5, "O": 1.0}}},
-            "heatmap_matrix",
-            "values",
         ),
-        (
-            PeriodicTableWidget,
-            {"color_scale": {"type": "log", "value_range": [1, None]}},
-            "periodic_table",
-            "color_scale",
-        ),
-        (PeriodicTableWidget, {"color_bar": None}, "periodic_table", "color_bar"),
         (
             HeatmapMatrixWidget,
+            "heatmap_matrix",
             {"x_items": ["A"], "y_items": ["B"], "color_scale": {"type": "log"}},
-            "heatmap_matrix",
-            "color_scale",
         ),
         (
             HeatmapMatrixWidget,
-            {"color_bar": {"title": "count", "orientation": "vertical"}},
             "heatmap_matrix",
-            "color_bar",
+            {"color_bar": {"title": "count", "orientation": "vertical"}},
         ),
         (
             FermiSurfaceWidget,
+            "fermi_surface",
             {"fermi_data": {"isosurfaces": []}, "color_bar": {"title": "v_F"}},
-            "fermi_surface",
-            "color_bar",
         ),
         (
             FermiSurfaceWidget,
-            {"band_data": {"energies": []}, "color_bar": None},
             "fermi_surface",
-            "color_bar",
+            {"band_data": {"energies": []}, "color_bar": None},
         ),
         (
             ChemPotDiagramWidget,
-            {"entries": [{"name": "Li2O", "energy": -14.3}]},
             "chem_pot_diagram",
-            "entries",
+            {"entries": [{"name": "Li2O", "energy": -14.3}]},
         ),
-        (SunburstWidget, {"data": [{"label": "leaf", "value": 3}]}, "sunburst", "data"),
+        (SunburstWidget, "sunburst", {"data": [{"label": "leaf", "value": 3}]}),
         (
             TreemapWidget,
-            {"data": {"label": "root", "children": [{"label": "leaf", "value": 3}]}},
             "treemap",
-            "data",
+            {"data": {"label": "root", "children": [{"label": "leaf", "value": 3}]}},
         ),
     ],
 )
 def test_widget_construction_and_type(
-    widget_cls: type,
-    kwargs: dict[str, Any],
-    expected_type: str,
-    state_key: str,
+    widget_cls: type, expected_type: str, kwargs: dict[str, Any]
 ) -> None:
-    """Widget constructors preserve expected normalized state."""
+    """Constructors set widget_type and keep the last kwarg's state unchanged."""
     widget = widget_cls(**kwargs)
     assert widget.widget_type == expected_type
+    state_key = list(kwargs)[-1]
     assert getattr(widget, state_key) == kwargs[state_key]
-
-
-_ROOT_WITH_KIDS = {"label": "root", "children": [{"label": "leaf", "value": 3}]}
-
-
-@pytest.mark.parametrize("widget_cls", [SunburstWidget, TreemapWidget])
-@pytest.mark.parametrize(
-    ("data", "expected"),
-    [
-        ({"label": "Fe-O", "value": 4}, [{"label": "Fe-O", "value": 4}]),
-        ({"label": "Fe-O", "children": []}, [{"label": "Fe-O", "children": []}]),
-        (_ROOT_WITH_KIDS, _ROOT_WITH_KIDS),
-        ([{"label": "Fe-O", "value": 4}], [{"label": "Fe-O", "value": 4}]),
-    ],
-)
-def test_hierarchy_standalone_leaf_wrapped(
-    widget_cls: type, data: Any, expected: Any
-) -> None:
-    """A standalone leaf node is wrapped in a list so it gets a visible cell."""
-    widget = widget_cls(data=data)
-    assert widget.data == expected
-    widget.data = data  # assignment after construction normalizes too
-    assert widget.data == expected
 
 
 @pytest.mark.parametrize(
@@ -256,66 +174,28 @@ def test_widget_notebook_integration(widget_cls: type[MatterVizWidget]) -> None:
     assert mime is not None
     # accept dict or (data, metadata)
     mime_data, metadata = mime if isinstance(mime, tuple) else (mime, {})
-    assert isinstance(metadata, dict)
+    assert metadata == {}
     view = mime_data["application/vnd.jupyter.widget-view+json"]
-    assert isinstance(view["model_id"], str)
-    assert view["model_id"]
-    assert isinstance(view["version_major"], int)
+    assert view == {"version_major": 2, "version_minor": 1, "model_id": widget.model_id}
     assert widget_cls.__name__ in str(mime_data["text/plain"])
-
-    for attr_name in ("_model_name", "_view_name", "_model_module", "_view_module"):
-        assert hasattr(widget, attr_name)
+    model_view = ("AnyModel", "AnyView", "anywidget", "anywidget")
+    names = ("_model_name", "_view_name", "_model_module", "_view_module")
+    assert tuple(getattr(widget, name) for name in names) == model_view
     # the frontend loads remote bundles by URL, local builds as text
     esm, css = widget._resolve_assets()
-    assert widget._esm in (
-        esm,
-        matterviz._bundle_sources(MATTERVIZ_ANYWIDGET_VERSION)[0],
-    )
+    pinned_esm = matterviz._bundle_sources(MATTERVIZ_ANYWIDGET_VERSION)[0]
+    assert widget._esm in (esm, pinned_esm)
     assert len(esm) > 1000
     assert len(css) > 100
     assert "export default" in esm or " as default" in esm
     assert "render" in esm
 
 
-# === to_dict ===
-
-
-def test_to_dict_reflects_constructor_values() -> None:
-    """to_dict values match what was passed to the constructor."""
-    widget = HistogramWidget(
-        series=[{"values": [2, 3], "label": "h"}],
-        bins=25,
-        mode="overlay",
-        selected_series_idx=1,
-        x_axis={"label": "Value"},
-    )
-    state = widget.to_dict()
-    assert state["bins"] == 25
-    assert state["mode"] == "overlay"
-    assert state["selected_series_idx"] == 1
-    assert state["series"] == [{"values": [2.0, 3.0], "label": "h"}]
-    assert state["x_axis"] == {"label": "Value"}
-
-
-def test_to_dict_reflects_runtime_mutations() -> None:
-    """to_dict picks up traitlet mutations after construction."""
-    widget = ScatterPlotWidget(series=[{"x": [0], "y": [1]}])
-    assert widget.to_dict()["x_axis"] is None
-
-    widget.x_axis = {"label": "updated"}
-    assert widget.to_dict()["x_axis"] == {"label": "updated"}
-
-    widget.style = "height: 999px;"
-    assert widget.to_dict()["style"] == "height: 999px;"
-
-
-# === Traitlet defaults ===
-
-
 @pytest.mark.parametrize(
     ("widget_cls", "attr", "expected"),
     [
         (BarPlotWidget, "series", None),
+        (ScatterPlotWidget, "x_axis", None),
         (BarPlotWidget, "orientation", "vertical"),
         (BarPlotWidget, "mode", "overlay"),
         (HistogramWidget, "bins", 100),
@@ -333,7 +213,7 @@ def test_to_dict_reflects_runtime_mutations() -> None:
         (HeatmapMatrixWidget, "color_scale", None),
         (HeatmapMatrixWidget, "tile_size", "50px"),
         (HeatmapMatrixWidget, "gap", "0px"),
-        (SpacegroupBarPlotWidget, "data", {}),
+        (SpacegroupBarPlotWidget, "data", None),
         (SpacegroupBarPlotWidget, "show_counts", True),
         (SpacegroupBarPlotWidget, "show_legend", False),
         (SpacegroupBarPlotWidget, "orientation", "vertical"),
@@ -345,159 +225,6 @@ def test_to_dict_reflects_runtime_mutations() -> None:
 def test_widget_traitlet_defaults(widget_cls: type, attr: str, expected: Any) -> None:
     """Widgets construct without data and expose correct default traitlet values."""
     assert widget_cls().to_dict()[attr] == expected
-
-
-@pytest.mark.parametrize("widget_cls", [TreemapWidget, SunburstWidget])
-def test_hierarchy_config_defaults(widget_cls: type) -> None:
-    """Hierarchy config defaults to None so each renderer controls its own defaults."""
-    base_traits = {"widget_type", "style", "show_controls", "controls_open"}
-    state = widget_cls().to_dict()
-    non_none = {key for key, val in state.items() if val is not None} - base_traits
-    assert not non_none, f"expected None defaults, got non-None for {sorted(non_none)}"
-
-
-# === Input normalization at widget level ===
-
-
-def test_histogram_widget_delegates_series_validation() -> None:
-    """HistogramWidget requires sample arrays in `values`."""
-    widget = HistogramWidget(series=[{"values": np.array([2, 1]), "label": "a"}])
-    assert widget.to_dict()["series"] == [{"values": [2.0, 1.0], "label": "a"}]
-    with pytest.raises(tl.TraitError, match="must include key 'values'"):
-        HistogramWidget(series=[{"x": [0, 1], "y": [2, 3]}])
-
-
-@pytest.mark.parametrize(
-    "samples", [[2, 1], (2, 1), np.array([2, 1]), pd.Series([2, 1])]
-)
-@pytest.mark.parametrize("hold_notifications", [False, True])
-def test_histogram_series_updates_normalize(
-    samples: Any, hold_notifications: bool
-) -> None:
-    """Updated samples match constructor normalization and produce JSON-safe state."""
-    series: Any = ({"values": samples, "label": "updated", "opacity": np.float32(0.5)},)
-    widget = HistogramWidget(series=[{"values": [0]}])
-    with widget.hold_trait_notifications() if hold_notifications else nullcontext():
-        widget.series = series
-
-    expected = [{"values": [2.0, 1.0], "label": "updated", "opacity": 0.5}]
-    assert widget.series == HistogramWidget(series=series).series == expected
-    assert (
-        json.loads(json.dumps(widget.to_dict(), allow_nan=False))["series"] == expected
-    )
-    assert (
-        json.loads(json.dumps(widget.get_state(), allow_nan=False))["series"]
-        == expected
-    )
-
-
-@pytest.mark.parametrize(
-    ("series", "match"),
-    [
-        ([{"x": [0, 1], "y": [2, 3]}], "must include key 'values'"),
-        ([{"values": [float("nan")]}], "non-finite"),
-        ([{"values": [float("inf")]}], "non-finite"),
-        ([{"values": ["bad"]}], "must be numeric"),
-        ([{"values": 1}], "must be list-like"),
-        ([1], "entries must be dicts"),
-    ],
-)
-@pytest.mark.parametrize("hold_notifications", [False, True])
-def test_histogram_series_updates_reject_invalid(
-    series: Any, match: str, hold_notifications: bool
-) -> None:
-    """Invalid updates leave valid state intact and never notify the frontend."""
-    widget = HistogramWidget(series=[{"values": [1, 2]}])
-    old_state = widget.to_dict()
-    observer = Mock()
-    widget.observe(observer, names="series")
-    with (
-        pytest.raises(tl.TraitError, match=match),
-        widget.hold_trait_notifications() if hold_notifications else nullcontext(),
-    ):
-        widget.series = series
-    assert widget.to_dict() == old_state
-    observer.assert_not_called()
-
-
-@pytest.mark.parametrize(
-    ("series", "expected"),
-    [
-        (
-            ({"x": np.array([1, 2]), "y": pd.Series([3.0, 4.0]), "label": "b"},),
-            [{"x": [1, 2], "y": [3.0, 4.0], "label": "b"}],
-        ),
-        ([{"x": [1, 2], "y": np.array([np.nan, 2.0])}], "non-finite"),
-        ([{"x": [1, 2]}], "must include keys 'x' and 'y'"),
-    ],
-)
-def test_bar_plot_series_updates_normalize(series: Any, expected: Any) -> None:
-    """Reassigned BarPlotWidget series normalize like the constructor or raise."""
-    widget = BarPlotWidget(series=[{"x": [0], "y": [1]}])
-    if isinstance(expected, str):
-        old_state = widget.to_dict()
-        with pytest.raises(tl.TraitError, match=expected):
-            widget.series = series
-        assert widget.to_dict() == old_state
-        return
-    widget.series = series
-    assert widget.series == BarPlotWidget(series=series).series == expected
-    assert json.loads(json.dumps(widget.get_state(), allow_nan=False))["series"] == (
-        expected
-    )
-
-
-@pytest.mark.parametrize("series", [None, [], [{"values": []}]])
-def test_histogram_series_updates_clear(series: Any) -> None:
-    """Clearing or providing an empty sample array stays valid after construction."""
-    widget = HistogramWidget(series=[{"values": [1, 2]}])
-    widget.series = series
-    assert widget.series == HistogramWidget(series=series).series == series
-
-
-# === New widget specific behaviors ===
-
-
-def test_structure_widget_isosurface_settings() -> None:
-    """StructureWidget passes layers-only isosurface_settings through to_dict."""
-    layer = dict(isovalue=0.05, color="#3b82f6", opacity=0.6, visible=True)
-    layer |= dict(show_negative=False, negative_color="#ef4444", volume_id="total")
-    iso_settings = {"layers": [layer], "wireframe": False, "halo": 0}
-    state = StructureWidget(
-        isosurface_settings=iso_settings, active_volume_id="total"
-    ).to_dict()
-    assert state["isosurface_settings"] == iso_settings
-    assert state["active_volume_id"] == "total"
-    assert StructureWidget().active_volume_id is None
-    assert state["widget_type"] == "structure"
-
-
-@pytest.mark.parametrize("widget_cls", [StructureWidget, TrajectoryWidget])
-def test_structure_viz_vector_props(
-    widget_cls: type[StructureWidget | TrajectoryWidget],
-) -> None:
-    """Structure widgets sync vector_configs and all vector props; configs default to
-    None (frontend auto-detects from site properties) and update after construction.
-    """
-    configs = {
-        "force_DFT": {"visible": True, "color": "#e74c3c", "scale": None},
-        "force_MLFF": {"visible": True, "color": "#3498db", "scale": 1.5},
-    }
-    vector_props: dict[str, Any] = dict(
-        vector_configs=configs,
-        vector_scale=3.0,
-        vector_color="#00ff00",
-        vector_normalize=True,
-        vector_uniform_thickness=True,
-        vector_origin_gap=0.25,
-    )
-    widget = widget_cls(**vector_props)
-    assert {key: widget.to_dict()[key] for key in vector_props} == vector_props
-
-    widget.vector_configs = {**configs, "force_MLFF": {"visible": False}}
-    assert widget.to_dict()["vector_configs"]["force_MLFF"] == {"visible": False}
-    assert widget_cls().vector_configs is None
-    assert widget_cls(vector_configs={}).vector_configs == {}
 
 
 @pytest.mark.parametrize(
@@ -513,11 +240,87 @@ def test_structure_viz_vector_props(
             "values",
             [[1.0, 0.5], [0.5, 1.0]],
         ),
+        # scalar string axis items are one label
+        (
+            HeatmapMatrixWidget,
+            {"x_items": "Fe"},
+            "x_items",
+            [{"key": "Fe", "label": "Fe"}],
+        ),
+        (
+            HeatmapMatrixWidget,
+            {"y_items": "O"},
+            "y_items",
+            [{"key": "O", "label": "O"}],
+        ),
+        # dict items fill a missing key or label from the other (as a string)
+        (
+            HeatmapMatrixWidget,
+            {"x_items": [{"label": "a"}, {"key": 5}, {"key": "k", "label": "L"}]},
+            "x_items",
+            [
+                {"key": "a", "label": "a"},
+                {"key": 5, "label": "5"},
+                {"key": "k", "label": "L"},
+            ],
+        ),
         (
             PeriodicTableWidget,
             {"heatmap_values": np.array([1.0, 4.0, 6.9])},
             "heatmap_values",
             [1.0, 4.0, 6.9],
+        ),
+        (  # an element-indexed Series keeps its labels (tolist() would map by Z)
+            PeriodicTableWidget,
+            {"heatmap_values": pd.Series({"Fe": 1.5, "O": np.int64(2)})},
+            "heatmap_values",
+            {"Fe": 1.5, "O": 2},
+        ),
+        # NaN, ±inf and NA heat values become None (missing tiles), like tile_plots
+        (
+            PeriodicTableWidget,
+            {"heatmap_values": pd.Series({"Fe": 1.5, "O": np.nan, "Na": -np.inf})},
+            "heatmap_values",
+            {"Fe": 1.5, "O": None, "Na": None},
+        ),
+        (
+            PeriodicTableWidget,
+            {"heatmap_values": np.array([1.0, np.nan, 3.0])},
+            "heatmap_values",
+            [1.0, None, 3.0],
+        ),
+        (  # split tiles keep their other segments
+            PeriodicTableWidget,
+            {"heatmap_values": {"Fe": [1.0, np.float32("nan")], "O": pd.NA}},
+            "heatmap_values",
+            {"Fe": [1.0, None], "O": None},
+        ),
+        (
+            RdfPlotWidget,
+            {"patterns": [{"r": np.array([1.0, 2.0]), "g_r": np.ones(2)}]},
+            "patterns",
+            [{"r": [1.0, 2.0], "g_r": [1.0, 1.0]}],
+        ),
+        (
+            ChemPotDiagramWidget,
+            {"entries": [{"composition": "Li2O", "energy": np.float64(-14.3)}]},
+            "entries",
+            [{"composition": {"Li": 2.0, "O": 1.0}, "energy": -14.3}],
+        ),
+        *[  # numpy DOS dicts sync as JSON lists (to_img's encoder rejects arrays)
+            (
+                widget_cls,
+                {"doses": {"energies": np.array([0.0, 1.0]), "densities": np.ones(2)}},
+                "doses",
+                {"energies": [0.0, 1.0], "densities": [1.0, 1.0]},
+            )
+            for widget_cls in (DosWidget, BandsAndDosWidget)
+        ],
+        (  # numpy and pandas pattern dicts sync as JSON lists
+            XrdWidget,
+            {"patterns": {"x": pd.Series([10.0, 20.0]), "y": np.array([1, 2])}},
+            "patterns",
+            {"x": [10.0, 20.0], "y": [1, 2], "kind": "profile"},
         ),
         (
             SpacegroupBarPlotWidget,
@@ -545,120 +348,80 @@ def test_structure_viz_vector_props(
         ),
     ],
 )
-def test_widget_normalizes_numpy_values(
+def test_widget_normalizes_inputs(
     widget_cls: type,
     kwargs: dict[str, Any],
     attr: str,
     expected: list[Any] | dict[str, Any],
 ) -> None:
-    """Widgets normalize numpy arrays to plain Python lists."""
+    """Widgets normalize numpy arrays and scalar axis items to plain Python lists, on
+    construction and on later assignment.
+    """
     widget = widget_cls(**kwargs)
     result = getattr(widget, attr)
     assert result == expected
     assert type(result) is type(expected)
+    setattr(widget, attr, kwargs[attr])
+    assert getattr(widget, attr) == expected
 
 
-def test_spacegroup_bar_data_inputs(monkeypatch: pytest.MonkeyPatch) -> None:
-    """SpacegroupBarPlotWidget counts every input form per space group number."""
-    import pymatviz.structures as pmv_structures
+_TREE = [{"label": "a", "value": 1}, {"label": "b", "value": 2}]
 
-    widget = SpacegroupBarPlotWidget(data=pd.Series([225, 166, 62, 225]))
-    assert widget.data == {"62": 1, "166": 1, "225": 2}
-    # number, symbol and synced digit-string keys of one group merge; zeros drop
-    widget.data = {225: np.int64(2), "Fm-3m": 1, "225": 1, 166: 0, "P2_1/c": 1}
-    assert widget.data == {"14": 1, "225": 4}
-    widget.data = widget.data  # re-validating the synced form is a no-op
-    assert widget.data == {"14": 1, "225": 4}
-    # mapping keys normalize in one batch per key type (numbers, symbols), not one
-    # call per key
-    n_calls = 0
-    normalize = pmv_structures.normalize_spacegroups
 
-    def counting_normalize(*args: Any) -> Any:
-        """Count normalize_spacegroups calls."""
-        nonlocal n_calls
-        n_calls += 1
-        return normalize(*args)
+def _seq(items: list[Any]) -> Any:
+    """Factory of items as a list, or as a generator if lazy."""
+    return lambda lazy: (item for item in items) if lazy else list(items)
 
-    monkeypatch.setattr(pmv_structures, "normalize_spacegroups", counting_normalize)
-    widget.data = {"Fm-3m": 1, "P2_1/c": 2, "Pnma": 3}
-    assert (widget.data, n_calls) == ({"14": 2, "62": 3, "225": 1}, 1)
-    widget.data = {225: 1, np.int64(62): 2, "225": 3, "Fm-3m": 4, "P 1 21/c 1": 5}
-    assert (widget.data, n_calls) == ({"14": 5, "62": 2, "225": 8}, 3)
-    assert SpacegroupBarPlotWidget().data == {}
-    for bad_data, match in [
-        ({225: -1}, "non-negative"),
-        ({225: 1.5}, "integers"),
-        ({"not-a-spg": 1}, "Invalid"),
-    ]:
-        with pytest.raises(tl.TraitError, match=match):
-            SpacegroupBarPlotWidget(data=bad_data)
+
+_ITERATOR_CASES = [
+    (TrajectoryWidget, "trajectory", _seq([SI_STRUCT, SI_STRUCT])),
+    (CoordinationBarPlotWidget, "structures", _seq([SI_STRUCT, SI_STRUCT])),
+    (RdfPlotWidget, "structures", _seq([SI_STRUCT])),
+    (TreemapWidget, "data", _seq(_TREE)),
+    (SunburstWidget, "data", _seq(_TREE)),
+    (SpacegroupBarPlotWidget, "data", _seq([225, 225, 62])),
+    (ScatterPlotWidget, "series", _seq([{"x": [1, 2], "y": [3, 4]}])),
+    (HistogramWidget, "series", _seq([{"values": [1, 2]}, {"values": [3]}])),
+    (BarPlotWidget, "series", _seq([{"x": [1, 2], "y": [3, 4]}])),
+    (ConvexHullWidget, "entries", _seq([{"composition": {"Li": 1}, "energy": -1}])),
+    (StructureWidget, "selected_sites", _seq([0, 1])),
+    (PeriodicTableWidget, "active_elements", _seq(["Fe", "O"])),
+    (PeriodicTableWidget, "heatmap_values", _seq([1.0, np.nan, 3.0])),
+    # nested iterators: x/y of an XRD dict, a tree node's children, a tile's series
+    (
+        XrdWidget,
+        "patterns",
+        lambda lazy: {"x": _seq([10.0, 20.0])(lazy), "y": _seq([1.0, 2.0])(lazy)},
+    ),
+    (TreemapWidget, "data", lambda lazy: {"label": "r", "children": _seq(_TREE)(lazy)}),
+    (
+        PeriodicTableWidget,
+        "tile_plots",
+        lambda lazy: {"Fe": _seq([{"values": _seq([1.0, 2.0])(lazy)}])(lazy)},
+    ),
+]
 
 
 @pytest.mark.parametrize(
-    ("widget_cls", "geometry", "enum_key"),
-    [
-        (
-            TreemapWidget,
-            {
-                "label_fit": "shrink",
-                "label_min_font_size": 7,
-                "label_max_font_size": 14,
-                "parent_label_font_size": 16,
-            },
-            "label_fit",
-        ),
-        (
-            SunburstWidget,
-            {
-                "shape": "icicle",
-                "inner_radius": 0.2,
-                "pad_angle": 0.1,
-                "label_rotation": "radial",
-            },
-            "shape",
-        ),
-    ],
+    ("widget_cls", "attr", "make_value"),
+    _ITERATOR_CASES,
+    ids=[f"{cls.__name__}.{attr}" for cls, attr, _ in _ITERATOR_CASES],
 )
-def test_hierarchy_widget_traits(
-    widget_cls: type, geometry: dict[str, Any], enum_key: str
+def test_widgets_take_iterators(
+    widget_cls: type[MatterVizWidget], attr: str, make_value: Any
 ) -> None:
-    """Both charts normalize hierarchy updates, validate chart options and sync zoom."""
-    data = {"label": "root", "children": [{"label": "a", "value": np.float64(2.5)}]}
-    config = {
-        **geometry,
-        "value_mode": "total",
-        "label_text": "label+value",
-        "max_children": 3,
-        "export_formats": ["svg", "png"],
-        "zoom_root_id": "root/a",
-    }
-    widget = widget_cls(data=data, **config)
-    leaf_value = widget.data["children"][0]["value"]
-    assert leaf_value == 2.5
-    assert type(leaf_value) is float  # numpy scalar normalized
-    state = widget.to_dict()
-    for key, expected in config.items():
-        assert state[key] == expected
-
-    # zoom_root_id is two-way synced: assignment after construction must work
-    widget.zoom_root_id = None
-    assert widget.zoom_root_id is None
-
-    for bad_key in ("value_mode", "label_text", enum_key):
-        with pytest.raises(tl.TraitError):
-            widget_cls(data=data, **{bad_key: "not-an-option"})
-    with pytest.raises(tl.TraitError):
-        widget_cls(data=data, max_children=-1)
-    with pytest.raises(tl.TraitError):  # not a matterviz ExportFormat
-        widget_cls(data=data, export_formats=["pdf"])
-    with pytest.raises(TypeError, match="show_counts"):
-        widget_cls(data=data, show_counts="value")
-    assert widget_cls(data=data, export_formats=[]).export_formats == []
-
-    widget.data = [{"label": "x", "value": np.int64(1)}, {"label": "y", "value": 2}]
-    assert type(widget.to_dict()["data"][0]["value"]) is int
-    assert widget.describe()["n_leaves"] == 2
+    """Generators sync like the list of their items, on construction, assignment
+    and in batches.
+    """
+    expected = getattr(widget_cls(**{attr: make_value(lazy=False)}), attr)
+    assert getattr(widget_cls(**{attr: make_value(lazy=True)}), attr) == expected
+    widget = widget_cls()
+    setattr(widget, attr, make_value(lazy=True))
+    assert getattr(widget, attr) == expected
+    widget = widget_cls()
+    with widget.hold_trait_notifications():
+        setattr(widget, attr, make_value(lazy=True))
+    assert getattr(widget, attr) == expected
 
 
 _COLOR_SCHEME_CASES = [
@@ -732,35 +495,11 @@ def test_matterviz_name_enums(
     """Scheme/strategy/pane/controls traits accept exactly matterviz's values."""
     widget = widget_cls()
     if isinstance(expected, type):
-        with pytest.raises(expected):
+        with pytest.raises(expected, match=f"'{trait_name}' trait"):
             setattr(widget, trait_name, value)
     else:
         setattr(widget, trait_name, value)
         assert widget.to_dict()[trait_name] == expected
-
-
-@pytest.mark.parametrize("widget_cls", [DosWidget, BandsAndDosWidget])
-@pytest.mark.parametrize(
-    ("sigma", "expected"), [(None, None), (0.0, 0.0), (0.2, 0.2), (-0.1, tl.TraitError)]
-)
-def test_dos_sigma_in_data_unit(
-    widget_cls: type[MatterVizWidget],
-    sigma: float | None,
-    expected: float | type[Exception] | None,
-) -> None:
-    """DOS sigma syncs unconverted (THz/eV data unit) and rejects negatives."""
-    if isinstance(expected, type):
-        with pytest.raises(expected):
-            widget_cls(sigma=sigma)
-    else:
-        assert widget_cls(sigma=sigma).to_dict()["sigma"] == expected
-
-
-def test_heatmap_matrix_scalar_string_axis_items() -> None:
-    """HeatmapMatrixWidget treats scalar string axis items as one label."""
-    widget = HeatmapMatrixWidget(x_items="Fe", y_items="O")
-    assert widget.x_items == [{"key": "Fe", "label": "Fe"}]
-    assert widget.y_items == [{"key": "O", "label": "O"}]
 
 
 @pytest.mark.parametrize(
@@ -788,768 +527,8 @@ def test_color_scale_config_normalized_and_validated(widget_cls: type) -> None:
         "palette_range": [0.25, 1],
     }
     assert type(synced["value_range"][0]) is float
-    with pytest.raises(tl.TraitError):
+    with pytest.raises(tl.TraitError, match="'color_scale' trait"):
         widget_cls(color_scale=1)
-
-
-@pytest.mark.parametrize(
-    ("widget_cls", "trait"),
-    [
-        (RdfPlotWidget, "structures"),
-        (BandsAndDosWidget, "structure"),
-        (BrillouinZoneWidget, "structure"),
-    ],
-)
-def test_widgets_accept_pymatgen_structure(widget_cls: type, trait: str) -> None:
-    """Structure traits sync a pymatgen Structure as a dict."""
-    struct = Structure(Lattice.cubic(3), ["Si"], [[0, 0, 0]])
-    synced = getattr(widget_cls(**{trait: struct}), trait)
-    assert isinstance(synced, dict)
-    assert "lattice" in synced
-
-
-@pytest.mark.parametrize("widget_cls", [BandsAndDosWidget, BrillouinZoneWidget])
-def test_brillouin_zone_widgets_reject_molecules(widget_cls: type) -> None:
-    """A Brillouin zone needs a lattice, so a Molecule fails at construction."""
-    with pytest.raises(TypeError, match="periodic structure"):
-        widget_cls(structure=Molecule(["H", "H"], [[0, 0, 0], [0, 0, 0.74]]))
-
-
-def test_rdf_plot_rejects_both_structures_and_patterns() -> None:
-    """RdfPlotWidget rejects simultaneous structures and patterns."""
-    with pytest.raises(ValueError, match="not both"):
-        RdfPlotWidget(
-            structures={"lattice": {}, "sites": []},
-            patterns=[{"r": [1], "g_r": [1]}],
-        )
-
-
-def test_xrd_widget_labeled_patterns() -> None:
-    """A {label: pattern} mapping normalizes each pattern, keeping label order."""
-    from pymatgen.analysis.diffraction.xrd import DiffractionPattern
-
-    computed = DiffractionPattern(
-        [10, 20], [100, 50], [[{"hkl": (1, 0, 0)}]] * 2, [2, 1]
-    )
-    widget = XrdWidget(
-        patterns={"computed": computed, "scan": {"two_theta": [5], "intensities": [1]}}
-    )
-    assert list(widget.patterns) == ["computed", "scan"]
-    assert widget.patterns["computed"]["hkls"][0] == [{"hkl": [1, 0, 0]}]
-    assert widget.patterns["scan"] == {"x": [5], "y": [1], "kind": "profile"}
-    with pytest.raises(ValueError, match="patterns mapping must not be empty"):
-        XrdWidget(patterns={})
-
-
-@pytest.mark.parametrize(
-    ("series", "match"),
-    [
-        ([{"x": [1], "y": [2], "label": "no-z"}], "missing required key"),
-        (["not-a-dict"], "must be a dict"),
-        ([{1: [0], "y": [1], "z": [2]}], "non-string keys"),
-        ([{"x": [1, 2], "y": [2], "z": [3]}], "mismatched x/y/z lengths"),
-        ([{"x": np.array([1, np.nan]), "y": [2, 3], "z": [3, 4]}], "non-finite"),
-    ],
-)
-def test_scatter_plot_3d_rejects_invalid_series(series: list[Any], match: str) -> None:
-    """ScatterPlot3DWidget rejects malformed series on init and reassignment, keeping
-    prior data, and normalizes valid reassignments to JSON.
-    """
-    with pytest.raises(tl.TraitError, match=match):
-        ScatterPlot3DWidget(series=series)
-    widget = ScatterPlot3DWidget(series=[{"x": [1], "y": [2], "z": [3]}])
-    with pytest.raises(tl.TraitError, match=match):
-        widget.series = series
-    assert widget.series == [{"x": [1], "y": [2], "z": [3]}]
-    widget.series = [
-        {"x": np.array([1.5]), "y": (2,), "z": np.array([3], dtype=np.float32)}
-    ]
-    assert widget.series == [{"x": [1.5], "y": [2], "z": [3.0]}]
-
-
-# === FermiSurfaceWidget input validation ===
-
-
-@pytest.mark.parametrize(
-    ("fermi_data", "band_data"),
-    [
-        (None, None),
-        ({"isosurfaces": []}, {"energies": []}),
-    ],
-)
-def test_fermi_surface_widget_invalid_input_combo(
-    fermi_data: dict[str, Any] | None, band_data: dict[str, Any] | None
-) -> None:
-    """FermiSurfaceWidget rejects ambiguous or missing input sources."""
-    with pytest.raises(ValueError, match="exactly one of fermi_data or band_data"):
-        FermiSurfaceWidget(fermi_data=fermi_data, band_data=band_data)
-
-
-@pytest.mark.parametrize(
-    "widget_cls",
-    [ScatterPlotWidget, BarPlotWidget, HistogramWidget],
-)
-def test_show_not_shadowed_by_display_traitlet(widget_cls: type) -> None:
-    """show() remains callable on widgets that define a 'display' traitlet."""
-    widget = widget_cls(display={"x_grid": True})
-    with patch("IPython.display.display") as mock_display:
-        assert widget.show() is None
-    mock_display.assert_called_once_with(widget)
-
-
-# === to_img ===
-
-_HEADLESS = "pymatviz.widgets._headless"
-_FAKE_PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 50
-
-
-def _make_widget() -> MatterVizWidget:
-    """Create a bare scatter-plot MatterVizWidget for to_img tests."""
-    return MatterVizWidget(widget_type="scatter_plot")
-
-
-@pytest.mark.parametrize(
-    ("filename", "explicit_fmt", "expected_capture_fmt"),
-    [
-        ("plot.png", None, "png"),
-        ("plot.svg", None, "svg"),
-        ("plot.pdf", None, "pdf"),
-        ("plot.jpg", None, "jpeg"),
-        ("plot.jpeg", None, "jpeg"),
-        (None, "png", "png"),
-        (None, "svg", "svg"),
-        (None, "jpeg", "jpeg"),
-        (None, "pdf", "pdf"),
-        (None, None, "png"),
-    ],
-)
-def test_to_img_format_inference(
-    filename: str | None,
-    explicit_fmt: str | None,
-    expected_capture_fmt: str,
-    tmp_path: Any,
-) -> None:
-    """to_img infers capture format from filename or explicit fmt argument."""
-    widget = _make_widget()
-    resolved = f"{tmp_path}/{filename}" if filename else None
-
-    with patch(
-        f"{_HEADLESS}.render_widget_headless", return_value=_FAKE_PNG
-    ) as mock_render:
-        widget.to_img(filename=resolved, fmt=explicit_fmt)  # ty: ignore[invalid-argument-type]
-
-    assert mock_render.call_args.kwargs["fmt"] == expected_capture_fmt
-
-
-@pytest.mark.parametrize(
-    ("img_kwargs", "match"),
-    [
-        ({"filename": "plot.tiff"}, "Unsupported fmt='tiff'"),
-        ({"fmt": "tiff"}, "Unsupported fmt='tiff'"),
-        ({"filename": "plot"}, "Cannot infer format"),
-        ({"dpi": 0}, "dpi must be positive"),
-        ({"width": -1}, "width must be positive"),
-        ({"quality": 101}, "quality must be between 1 and 100"),
-    ],
-)
-def test_to_img_rejects_invalid_args(
-    tmp_path: Any, img_kwargs: dict[str, Any], match: str
-) -> None:
-    """to_img raises ValueError for bad formats and render settings."""
-    if filename := img_kwargs.get("filename"):
-        img_kwargs = {**img_kwargs, "filename": f"{tmp_path}/{filename}"}
-    with pytest.raises(ValueError, match=match):
-        _make_widget().to_img(**img_kwargs)
-
-
-@pytest.mark.parametrize("path_suffix", ["output.png", "sub/dir/output.png"])
-def test_to_img_writes_file(tmp_path: Any, path_suffix: str) -> None:
-    """to_img writes bytes to disk, creating parent directories as needed."""
-    widget = _make_widget()
-
-    with patch(f"{_HEADLESS}.render_widget_headless", return_value=_FAKE_PNG):
-        out_path = f"{tmp_path}/{path_suffix}"
-        result = widget.to_img(filename=out_path)
-
-    assert result == _FAKE_PNG
-    with open(out_path, "rb") as fh:
-        assert fh.read() == _FAKE_PNG
-
-
-@pytest.mark.parametrize(
-    "img_kwargs",
-    [
-        {"fmt": "pdf", "dpi": 200},
-        {"fmt": "jpeg", "quality": 75},
-        {"fmt": "png", "width": 1200, "height": None},
-        {"fmt": "png", "width": None, "height": 900},
-        {"fmt": "png", "width": 1200, "height": 900},
-    ],
-    ids=["pdf-dpi", "jpeg-quality", "width", "height", "width-height"],
-)
-def test_to_img_forwards_render_kwargs(img_kwargs: dict[str, Any]) -> None:
-    """to_img forwards fmt/dpi/quality/width/height to the headless renderer and
-    returns its bytes unchanged.
-    """
-    widget = _make_widget()
-    with patch(
-        f"{_HEADLESS}.render_widget_headless", return_value=b"%PDF-fake"
-    ) as mock_render:
-        assert widget.to_img(**img_kwargs) == b"%PDF-fake"
-    for key, value in img_kwargs.items():
-        assert mock_render.call_args.kwargs[key] == value
-
-
-def test_to_img_falls_back_from_marimo_url() -> None:
-    """to_img uses class assets when instance _esm is a marimo virtual-file URL."""
-    widget = _make_widget()
-    widget._esm = "./@file/virtual-esm-url.js"
-
-    with patch(
-        f"{_HEADLESS}.render_widget_headless", return_value=_FAKE_PNG
-    ) as mock_render:
-        widget.to_img(fmt="png")
-
-    esm_passed = mock_render.call_args.kwargs["esm_content"]
-    assert esm_passed != "./@file/virtual-esm-url.js"
-    assert isinstance(esm_passed, str)
-
-
-# === headless mount option unit tests ===
-
-
-_W8 = "width: 800px"
-_H6 = "height: 600px"
-
-
-@pytest.mark.parametrize(
-    ("style", "expect_in", "expect_not_in"),
-    [
-        (None, [_W8, _H6], []),
-        ("", [_W8, _H6], []),
-        (
-            "width: 500px; height: 300px;",
-            ["width: 500px", "height: 300px"],
-            ["800px", "600px"],
-        ),
-        ("height: 400px;", [_W8, "height: 400px"], ["600px"]),
-        ("width: 400px;", ["width: 400px", _H6], ["800px"]),
-    ],
-)
-def test_build_html_dimensions(
-    style: str | None,
-    expect_in: list[str],
-    expect_not_in: list[str],
-) -> None:
-    """_container_style applies dimension defaults only for missing width/height."""
-    from pymatviz.widgets._headless import _container_style
-
-    data: dict[str, Any] = {"widget_type": "bar_plot"}
-    if style is not None:
-        data["style"] = style
-    html = _container_style(data, None, None)
-    for substr in expect_in:
-        assert substr in html, f"expected {substr!r} in HTML"
-    for substr in expect_not_in:
-        assert substr not in html, f"unexpected {substr!r} in HTML"
-
-
-@pytest.mark.parametrize(
-    ("width", "height", "expect_in"),
-    [
-        (1200, None, ["width: 1200px", _H6]),
-        (None, 900, ["width: 500px", "height: 900px"]),
-        (1200, 900, ["width: 1200px", "height: 900px"]),
-    ],
-)
-def test_build_html_width_height_override(
-    width: int | None,
-    height: int | None,
-    expect_in: list[str],
-) -> None:
-    """_container_style explicit width/height override user style and defaults."""
-    from pymatviz.widgets._headless import _container_style
-
-    data: dict[str, Any] = {"widget_type": "bar_plot", "style": "width: 500px;"}
-    html = _container_style(data, width, height)
-    for substr in expect_in:
-        assert substr in html, f"expected {substr!r} in HTML"
-
-
-def test_shutdown_browser_tolerates_none() -> None:
-    """_shutdown_browser is a no-op when no browser thread was started."""
-    import pymatviz.widgets._headless as headless_mod
-    from pymatviz.widgets._headless import _shutdown_browser
-
-    with patch.object(headless_mod, "_browser_thread", None):
-        _shutdown_browser()
-
-
-def test_get_browser_import_error() -> None:
-    """_get_browser raises ImportError with install instructions."""
-    import pymatviz.widgets._headless as headless_mod
-
-    state = headless_mod._get_browser_thread()
-    blocked = {"playwright": None, "playwright.async_api": None}
-    with (
-        patch.object(state, "browser", None),
-        patch.dict("sys.modules", blocked),
-        pytest.raises(ImportError, match="playwright is required"),
-    ):
-        headless_mod._run_in_browser_thread(headless_mod._get_browser())
-
-
-@pytest.mark.parametrize(
-    ("widget_type", "expect_html_fallback", "expect_worker_shim"),
-    [
-        ("periodic_table", True, False),
-        ("heatmap_matrix", True, False),
-        ("scatter_plot", False, False),
-        ("structure", False, False),
-        ("chem_pot_diagram", False, True),
-    ],
-)
-def test_build_html_render_gates(
-    widget_type: str, expect_html_fallback: bool, expect_worker_shim: bool
-) -> None:
-    """_mount_options toggles HTML fallback and Worker shim per widget type."""
-    from pymatviz.widgets._headless import _build_html, _mount_options, _RenderInputs
-
-    inputs = _RenderInputs({"widget_type": widget_type}, "// esm", "/* css */")
-    options = _mount_options(inputs)
-    assert options["allow_html"] is expect_html_fallback
-    assert options["no_worker"] is expect_worker_shim
-    # Spinner guard is always present so loading states are never captured
-    assert '.spinner[role="status"]' in _build_html("// esm", "/* css */")
-
-
-# === Headless integration tests (require playwright + chromium) ===
-
-_has_playwright = importlib.util.find_spec("playwright") is not None
-_has_pillow = importlib.util.find_spec("PIL") is not None
-_skip_no_playwright = pytest.mark.skipif(
-    not _has_playwright, reason="playwright not installed"
-)
-_skip_no_pillow = pytest.mark.skipif(not _has_pillow, reason="Pillow not installed")
-
-
-@pytest.fixture
-def bar_plot_widget() -> BarPlotWidget:
-    """A minimal BarPlotWidget for integration tests."""
-    return BarPlotWidget(
-        series=[{"x": [0, 1], "y": [3.0, 5.0], "label": "test"}],
-        style="height: 400px;",
-    )
-
-
-@_skip_no_playwright
-@_skip_no_pillow
-def test_headless_bar_plot_png(bar_plot_widget: BarPlotWidget) -> None:
-    """BarPlotWidget.to_img(fmt='png') produces a valid, non-trivial PNG."""
-    import io
-
-    from PIL import Image
-
-    png_bytes = bar_plot_widget.to_img(fmt="png", dpi=72)
-    assert png_bytes[:4] == b"\x89PNG"
-    img = Image.open(io.BytesIO(png_bytes))
-    assert img.width >= 400
-    assert img.height >= 200
-
-
-@_skip_no_playwright
-@pytest.mark.parametrize("chart", ["treemap", "sunburst"])
-def test_hierarchy_vector_and_html_exports(
-    chart: Literal["treemap", "sunburst"], tmp_path: Any
-) -> None:
-    """Chemical-system charts export vector SVG/PDF and interactive standalone HTML."""
-    from playwright.sync_api import expect, sync_playwright
-
-    import pymatviz as pmv
-
-    widget = pmv.chem_sys_hierarchy(
-        ["Fe2O3", "Li2O", "Si"],
-        kind=chart,
-        label_text="label+value",
-        show_controls=False,
-        style="width: 700px; height: 480px;",
-    )
-    svg = widget.to_img(fmt="svg").decode()
-    assert all(label in svg for label in ("Fe-O", "Li-O", "Si"))
-    pdf = widget.to_img(fmt="pdf")
-    assert pdf.startswith(b"%PDF-")
-    assert b"/Font" in pdf
-
-    html_path = tmp_path / f"{chart}.html"
-    widget.to_html(str(html_path), inline=True)
-    with sync_playwright() as pw, pw.chromium.launch().new_page() as page:
-        page.goto(html_path.as_uri())
-        chart_nodes = page.locator(f"[data-{chart}-node-idx][aria-label]")
-        chart_nodes.first.wait_for()
-        assert chart_nodes.count() == widget.describe()["n_nodes"]
-        shapes = page.locator(
-            'svg[role="application"] :is(path, rect, circle, text, tspan)'
-        )
-        # invisible hit targets and measuring text don't reach the file
-        paint = """nodes => nodes.map(node => getComputedStyle(node))
-            .filter(style =>
-                style.fill !== 'rgba(0, 0, 0, 0)' || style.stroke !== 'none')
-            .map(style => {
-            return [style.fill, style.stroke, style.strokeWidth, style.fontFamily,
-                    style.fontSize, style.fontWeight, style.textAnchor,
-                    style.dominantBaseline];
-        })"""
-        live_styles = shapes.evaluate_all(paint)
-        page.get_by_role("button", name="binary: 2", exact=True).press("Enter")
-        page.locator(".breadcrumbs").get_by_text("binary", exact=True).wait_for()
-        expect(chart_nodes).to_have_count(2)  # retries until zoom-out cells leave
-        svg_path = tmp_path / f"{chart}.svg"
-        svg_path.write_text(svg)
-        page.goto(svg_path.as_uri())
-        # the exported file drops the live chart's role, so match its shapes directly
-        file_shapes = page.locator("svg :is(path, rect, circle, text, tspan)")
-        assert file_shapes.evaluate_all(paint) == live_styles
-
-
-@_skip_no_playwright
-def test_headless_bar_plot_svg(bar_plot_widget: BarPlotWidget) -> None:
-    """BarPlotWidget.to_img(fmt='svg') returns a standalone-sized chart SVG."""
-    import re
-
-    svg_text = bar_plot_widget.to_img(fmt="svg", width=600).decode("utf-8")
-    assert svg_text.startswith("<?xml")
-    assert len(svg_text) > 2000, f"SVG too small ({len(svg_text)} chars)"
-    assert "<g" in svg_text, "No <g> groups -- likely an icon"
-    # CSS-sized charts get their rendered px size, else <img> shows them at 300x150
-    root = re.search(r"<svg[^>]*>", svg_text)
-    assert root is not None
-    size = dict(re.findall(r' (width|height|viewBox)="([^"]+)"', root.group()))
-    # the viewBox is padded by half the widest stroke so edge strokes aren't clipped
-    assert 600 <= float(size["width"]) <= 602
-    assert size["viewBox"].split()[2:] == [size["width"], size["height"]]
-    assert "<title>" in svg_text  # the chart's aria-label as the file's name
-
-
-@_skip_no_playwright
-@_skip_no_pillow
-@pytest.mark.parametrize("marker_renderer", ["svg", "canvas"])
-def test_headless_scatter_vector_export(marker_renderer: str) -> None:
-    """SVG keeps SVG markers as elements, canvas markers as <image>; PDF is vector."""
-    import base64
-    import io
-    import re
-
-    from PIL import Image
-
-    widget = ScatterPlotWidget(
-        series=[{"x": [0, 1, 2], "y": [0, 1, 4], "label": "points"}],
-        marker_renderer=marker_renderer,
-        styles={"point": {"color": "#ff0000", "size": 8}},
-        style="width: 500px; height: 350px;",
-    )
-    assert b"/Font" in widget.to_img(fmt="pdf"), "PDF rasterized, expected vector"
-    svg_text = widget.to_img(fmt="svg", dpi=144).decode("utf-8")
-    assert "<foreignObject" not in svg_text
-    if marker_renderer == "svg":
-        assert len(re.findall(r'<path [^>]*class="marker\b', svg_text)) == 3
-        return
-    data_uris = re.findall(
-        r'<image [^>]*href="data:image/png;base64,([^"]+)"', svg_text
-    )
-    assert len(data_uris) == 1, "canvas markers not inlined as <image>"
-    img = Image.open(io.BytesIO(base64.b64decode(data_uris[0]))).convert("RGB")
-    assert img.size == (1000, 700), "embedded canvas should follow dpi"
-    pixels = np.asarray(img)
-    red_pixels = (pixels[..., 0] > 200) & (pixels[..., 1:] < 50).all(axis=-1)
-    assert red_pixels.sum() > 50, "embedded canvas is missing the red markers"
-
-
-@_skip_no_playwright
-@pytest.mark.parametrize(
-    ("fmt", "magic"), [("jpeg", b"\xff\xd8"), ("pdf", b"%PDF-")]
-)  # JPEG SOI marker, PDF header
-def test_headless_bar_plot_binary_formats(
-    bar_plot_widget: BarPlotWidget, fmt: str, magic: bytes
-) -> None:
-    """BarPlotWidget.to_img produces a valid, non-trivial JPEG/PDF."""
-    img_bytes = bar_plot_widget.to_img(fmt=fmt, dpi=72)  # ty: ignore[invalid-argument-type]
-    assert img_bytes.startswith(magic)
-    assert len(img_bytes) > 1000
-
-
-@_skip_no_playwright
-@pytest.mark.parametrize(
-    ("filename", "fmt", "magic"),
-    [("bar.jpg", None, b"\xff\xd8"), ("bar.png", "png", b"\x89PNG")],
-    ids=["jpeg-from-jpg-extension", "explicit-png"],
-)
-def test_headless_bar_plot_writes_file(
-    bar_plot_widget: BarPlotWidget,
-    tmp_path: Any,
-    filename: str,
-    fmt: str | None,
-    magic: bytes,
-) -> None:
-    """to_img writes the headless capture to disk, inferring JPEG from .jpg."""
-    out_path = f"{tmp_path}/{filename}"
-    result = bar_plot_widget.to_img(filename=out_path, fmt=fmt, dpi=72)  # ty: ignore[invalid-argument-type]
-    assert result.startswith(magic)
-    with open(out_path, "rb") as fh:
-        assert fh.read() == result
-
-
-@_skip_no_playwright
-def test_headless_structure_png() -> None:
-    """StructureWidget (canvas/WebGL) produces a valid PNG."""
-    struct = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5]])
-    widget = StructureWidget(structure=struct, style="height: 400px;")
-    png_bytes = widget.to_img(fmt="png", dpi=72)
-    assert png_bytes[:4] == b"\x89PNG"
-    assert len(png_bytes) > 5000
-
-
-@_skip_no_playwright
-@pytest.mark.parametrize("with_plot", [False, True])
-def test_headless_webgl_structure_exports(with_plot: bool) -> None:
-    """WebGL structures rasterize PDFs and raise for SVG, also beside an SVG plot."""
-    if with_plot:
-        frames = [
-            {
-                "structure": Structure(
-                    Lattice.cubic(3 + 0.1 * idx), ["Si"], [[0, 0, 0]]
-                ).as_dict(),
-                "step": idx,
-                "metadata": {"energy": -float(idx)},
-            }
-            for idx in range(4)
-        ]
-        widget = TrajectoryWidget(
-            trajectory={"frames": frames},
-            display_mode="structure+plot",
-            style="height: 400px;",
-        )
-    else:
-        struct = Structure(Lattice.cubic(3.0), ["Si"], [[0, 0, 0]])
-        widget = StructureWidget(structure=struct, style="height: 300px;")
-    assert b"/Font" not in widget.to_img(fmt="pdf", dpi=72), "expected raster PDF"
-    with pytest.raises(RuntimeError, match="no vector form"):
-        widget.to_img(fmt="svg")
-
-
-@_skip_no_playwright
-@_skip_no_pillow
-def test_headless_dpi_affects_png_dimensions() -> None:
-    """Higher DPI produces larger pixel dimensions for the same widget."""
-    import io
-
-    from PIL import Image
-
-    from pymatviz.widgets.scatter_plot import ScatterPlotWidget
-
-    widget = ScatterPlotWidget(
-        series=[{"x": [0, 1], "y": [0, 1], "label": "pt"}],
-        style="width: 200px; height: 200px;",
-    )
-    img_lo = Image.open(io.BytesIO(widget.to_img(fmt="png", dpi=72)))
-    img_hi = Image.open(io.BytesIO(widget.to_img(fmt="png", dpi=216)))
-    assert img_hi.width > img_lo.width * 2
-    assert img_hi.height > img_lo.height * 2
-
-
-_CHEM_POT_ENTRIES = [
-    {"name": "Li", "energy": -1.9, "composition": {"Li": 1}},
-    {"name": "Fe", "energy": -8.3, "composition": {"Fe": 1}},
-    {"name": "O2", "energy": -4.9, "composition": {"O": 1}},
-    {"name": "Li2O", "energy": -14.3, "composition": {"Li": 2, "O": 1}},
-    {"name": "Fe2O3", "energy": -25.0, "composition": {"Fe": 2, "O": 3}},
-]
-
-
-@_skip_no_playwright
-@_skip_no_pillow
-@pytest.mark.parametrize(
-    ("widget_cls", "kwargs", "max_blank"),
-    [
-        # HTML-grid widgets (no canvas/svg) -- captured via the HTML fallback
-        (PeriodicTableWidget, {"heatmap_values": {"Fe": 42, "O": 100, "Li": 15}}, 0.95),
-        (
-            HeatmapMatrixWidget,
-            {
-                "x_items": ["A", "B"],
-                "y_items": ["A", "B"],
-                "values": [[1.0, 0.5], [0.5, 1.0]],
-            },
-            0.95,
-        ),
-        # ChemPotDiagram computes in a Worker; its sync fallback must finish so we
-        # capture the plot, not a stuck "Computing..." spinner (~0.99 blank).
-        (ChemPotDiagramWidget, {"entries": _CHEM_POT_ENTRIES}, 0.9),
-    ],
-    ids=["periodic_table", "heatmap_matrix", "chem_pot_diagram"],
-)
-def test_headless_widget_renders_nonblank_png(
-    widget_cls: type, kwargs: dict[str, Any], max_blank: float
-) -> None:
-    """Widgets without a simple SVG chart still export a non-blank PNG."""
-    from pymatviz.widgets._headless import png_blank_fraction
-
-    widget = widget_cls(style="height: 400px;", **kwargs)
-    png_bytes = widget.to_img(fmt="png", dpi=72)
-    assert png_bytes[:4] == b"\x89PNG"
-    blank_frac = png_blank_fraction(png_bytes)
-    assert blank_frac is not None
-    assert blank_frac < max_blank
-
-
-@_skip_no_playwright
-def test_headless_convex_hull_ternary_canvas_export() -> None:
-    """Ternary ConvexHull renders WebGL: PNG works, SVG raises, PDF is valid."""
-    widget = ConvexHullWidget(
-        entries=[
-            {"composition": {"Li": 1}, "energy": -1.9},
-            {"composition": {"Fe": 1}, "energy": -4.2},
-            {"composition": {"O": 1}, "energy": -3.0},
-            {"composition": {"Li": 2, "O": 1}, "energy": -15.8},
-        ],
-        style="height: 500px;",
-    )
-    assert widget.to_img(fmt="png", dpi=72)[:4] == b"\x89PNG"
-    assert widget.to_img(fmt="pdf", dpi=72)[:5] == b"%PDF-"
-    with pytest.raises(RuntimeError, match="no vector form"):
-        widget.to_img(fmt="svg")
-
-
-@_skip_no_playwright
-def test_headless_convex_hull_binary_svg() -> None:
-    """Binary ConvexHull renders SVG: vector export returns the chart, not an icon."""
-    widget = ConvexHullWidget(
-        entries=[
-            {"composition": {"Li": 1}, "energy": -1.9},
-            {"composition": {"O": 1}, "energy": -3.0},
-            {"composition": {"Li": 2, "O": 1}, "energy": -15.8},
-        ],
-        style="height: 400px;",
-    )
-    svg_text = widget.to_img(fmt="svg").decode("utf-8")
-    assert svg_text.startswith("<?xml")
-    # A real chart SVG is far larger than the ~400-byte toolbar icons
-    assert len(svg_text) > 2000, f"SVG too small ({len(svg_text)} chars)"
-
-
-@_skip_no_playwright
-def test_headless_repeated_exports_in_one_process() -> None:
-    """Repeated to_img() calls succeed (1st sync render flips later ones to async)."""
-    from pymatviz.widgets.scatter_plot import ScatterPlotWidget
-
-    bar = BarPlotWidget(series=[{"x": [0, 1], "y": [1.0, 2.0]}], style="height: 300px;")
-    scatter = ScatterPlotWidget(
-        series=[{"x": [0, 1], "y": [1.0, 2.0]}], style="height: 300px;"
-    )
-    for widget in (bar, scatter, bar):
-        assert widget.to_img(fmt="png", dpi=72)[:4] == b"\x89PNG"
-
-
-@_skip_no_playwright
-@pytest.mark.parametrize(
-    ("widget", "expect_warning", "expect_type"),
-    [
-        (
-            ScatterPlotWidget(
-                series=[{"x": [0, 1, 2], "y": [0, 1, 4], "label": "s"}],
-                style="height: 300px;",
-            ),
-            False,
-            "svg",
-        ),
-        (ScatterPlotWidget(), True, "svg"),  # empty: renders axes but warns on data
-        (
-            StructureWidget(
-                structure=Structure(Lattice.cubic(3.0), ["Si"], [[0, 0, 0]]),
-                style="height: 300px;",
-            ),
-            False,
-            "canvas",
-        ),
-    ],
-    ids=["scatter", "empty_scatter", "structure"],
-)
-def test_render_report(widget: Any, expect_warning: bool, expect_type: str) -> None:
-    """render_report classifies content, flags empty data, and never raises."""
-    report = widget.render_report(timeout=25, dpi=72)
-    assert report.ok is True
-    assert report.is_blank is False
-    assert report.content_type == expect_type
-    assert bool(report.warnings) is expect_warning
-    assert report.summary["widget_type"] == widget.widget_type
-
-
-def test_render_report_never_raises_on_asset_failure(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """render_report honors its never-raises contract if asset resolution fails."""
-    widget = ScatterPlotWidget(series=[{"x": [0, 1], "y": [1, 2]}])
-
-    def _boom() -> tuple[str, str]:
-        raise FileNotFoundError("bundle unavailable offline")
-
-    monkeypatch.setattr(widget, "_resolve_assets", _boom)
-    report = widget.render_report(timeout=5, dpi=72)  # must not raise
-    assert report.ok is False
-    assert report.error is not None
-    assert "bundle unavailable offline" in report.error
-    # data-derived summary/warnings survive a render failure
-    assert report.summary["widget_type"] == "scatter_plot"
-
-
-@_skip_no_playwright
-@_skip_no_pillow
-@pytest.mark.parametrize(
-    ("make_widget", "selector"),
-    [
-        (
-            lambda: ScatterPlotWidget(
-                series=[{"x": [0, 1, 2], "y": [0, 1, 4], "label": "s"}],
-                style="width: 500px; height: 350px;",
-            ),
-            "svg",
-        ),
-        # default traits (no volumes, no isosurface settings) must not crash the scene
-        (lambda: StructureWidget(structure=FE_STRUCT), "canvas"),
-    ],
-    ids=["scatter", "structure"],
-)
-def test_to_html_inline_renders_offline(
-    tmp_path: Any, make_widget: Callable[[], MatterVizWidget], selector: str
-) -> None:
-    """to_html(inline=True) produces a self-contained page that actually renders.
-
-    build_interactive_html has its own render path (controls on, no capture
-    machinery) that to_img/render_report don't exercise, so load the file and
-    confirm it paints without page errors.
-    """
-    from playwright.sync_api import sync_playwright
-
-    from pymatviz.widgets._headless import png_blank_fraction
-
-    out_path = tmp_path / "widget.html"
-    make_widget().to_html(str(out_path), inline=True)
-
-    with (
-        sync_playwright() as pw,
-        pw.chromium.launch().new_page(viewport={"width": 600, "height": 420}) as page,
-    ):
-        page_errors: list[str] = []
-        page.on("pageerror", lambda err: page_errors.append(str(err)))
-        page.goto(out_path.as_uri(), wait_until="domcontentloaded")
-        page.wait_for_selector(f"#widget-root {selector}", timeout=20000)
-        page.wait_for_timeout(1000)
-        png_bytes = page.locator("#widget-root").screenshot(type="png")
-
-    assert page_errors == []
-    assert png_bytes[:4] == b"\x89PNG"
-    blank_frac = png_blank_fraction(png_bytes)
-    assert blank_frac is not None
-    assert blank_frac < 0.99  # real chart, not a blank frame
 
 
 def _widget_subclasses(cls: type = MatterVizWidget) -> list[type]:
@@ -1567,8 +546,6 @@ def _widget_subclasses(cls: type = MatterVizWidget) -> list[type]:
         *(
             pytest.param(cls, id=cls.__name__)
             for cls in sorted(set(_widget_subclasses()), key=lambda cls: cls.__name__)
-            # validates its exactly-one-of data args before reaching the base init
-            if cls.__name__ != "FermiSurfaceWidget"
         ),
         pytest.param(
             lambda **kw: pmv.ptable_hists({"Fe": [1.0]}, **kw), id="ptable_hists"
@@ -1585,63 +562,21 @@ def test_unknown_kwargs_raise(make_widget: Any) -> None:
         make_widget(bogus=1)
 
 
-DF_XY = pd.DataFrame(
-    {"a": [1.0, 2.0, 3.0, np.nan], "b": [4.0, 5.0, 6.0, 7.0], "g": list("ppqq")}
-)
-
-
-@pytest.mark.parametrize(
-    ("widget_cls", "columns", "series_key", "x_label"),
-    [
-        (ScatterPlotWidget, {"x": "a", "y": "b"}, "x", "a"),
-        (BarPlotWidget, {"x": "a", "y": "b"}, "x", "a"),
-        (BoxPlotWidget, {"y": "a"}, "y", None),
-        (HistogramWidget, {"x": "a"}, "values", "a"),
-    ],
-)
-def test_cartesian_widgets_take_dataframe_columns(
-    widget_cls: type, columns: dict[str, str], series_key: str, x_label: str | None
-) -> None:
-    """DataFrame columns become series (one per color group, NaN rows dropped) and
-    default axis labels that user axis options extend.
-    """
-    widget = widget_cls(DF_XY, color="g", y_axis={"scale_type": "log"}, **columns)
-    assert [series_dict["label"] for series_dict in widget.series] == ["p", "q"]
-    assert [list(series_dict[series_key]) for series_dict in widget.series] == [
-        [1.0, 2.0],
-        [3.0],
-    ]
-    y_label = {"label": columns["y"]} if "y" in columns else {}
-    assert widget.y_axis == {"scale_type": "log"} | y_label
-    assert (widget.x_axis or {}).get("label") == x_label
-    assert len(widget_cls(DF_XY, **columns).series) == 1  # no color: one series
-
-
-@pytest.mark.parametrize(
-    ("data", "kwargs", "err", "match"),
-    [
-        ([{"x": [1], "y": [2]}], {"x": "a"}, TypeError, r"columns \['a', None\] need"),
-        (DF_XY, {"x": "a"}, ValueError, r"column\(s\) for \['y'\]"),
-        (DF_XY, {"x": "a", "y": "nope"}, KeyError, "nope"),
-    ],
-)
-def test_cartesian_dataframe_errors(
-    data: Any, kwargs: dict[str, str], err: type[Exception], match: str
-) -> None:
-    """Column names need a DataFrame that has them all."""
-    with pytest.raises(err, match=match):
-        ScatterPlotWidget(data, **kwargs)
-
-
-def test_heatmap_matrix_takes_dataframe() -> None:
-    """A DataFrame's columns, index and cells become x_items, y_items and values."""
-    df_matrix = pd.DataFrame({"c1": [1, 3], "c2": [2, 4]}, index=pd.Index(["r1", "r2"]))
-    widget = HeatmapMatrixWidget(df_matrix)
-    assert [item["key"] for item in widget.x_items] == ["c1", "c2"]
-    assert [item["key"] for item in widget.y_items] == ["r1", "r2"]
-    assert widget.values == [[1, 2], [3, 4]]  # noqa: PD011
-    with pytest.raises(ValueError, match="in the DataFrame, not both"):
-        HeatmapMatrixWidget(df_matrix, values=[[0]])
+def test_positional_traits() -> None:
+    """Constructors take their _positional_traits in order, each once."""
+    assert BrillouinZoneWidget(None, {"vertices": []}).bz_data == {"vertices": []}
+    with pytest.raises(
+        TypeError, match=r"Xrd\w+ takes positional \('patterns',\), got 2"
+    ):
+        XrdWidget(None, None)
+    with pytest.raises(TypeError, match=r"got \['doses'\] positionally and as keyword"):
+        DosWidget(None, doses=None)
+    assert str(inspect.signature(BandsAndDosWidget)) == (
+        "(band_structs=None, doses=None, structure=None, *, version_override=None, "
+        "**kwargs)"
+    )
+    with pytest.raises(TypeError, match=r"_positional_traits \('nope',\) must be"):
+        type("Bad", (MatterVizWidget,), {"_positional_traits": ("nope",)})
 
 
 @pytest.mark.parametrize("widget_cls", WIDGET_CASES, ids=lambda cls: cls.__name__)
@@ -1649,11 +584,12 @@ def test_widget_json_round_trip(
     widget_cls: type[MatterVizWidget], request: pytest.FixtureRequest, tmp_path: Any
 ) -> None:
     """to_json/from_json restore every widget type with identical traits, binary
-    array buffers included, from JSON text or a file.
+    array buffers included, from JSON text or a file (in a new dir, like to_img).
     """
     widget = WIDGET_CASES[widget_cls][0](request)
-    text = widget.to_json(f"{tmp_path}/widget.json")
-    for source in (text, f"{tmp_path}/widget.json"):
+    json_path = f"{tmp_path}/new_dir/widget.json"
+    text = widget.to_json(json_path)
+    for source in (text, json_path):
         restored = from_json(source)
         # by name: other tests reload widget modules, which swaps the class objects
         assert type(restored).__name__ == widget_cls.__name__
@@ -1666,20 +602,372 @@ def test_from_json_rejects_unknown_widget_type() -> None:
         from_json('{"widget_type": "nope"}')
 
 
-@pytest.mark.parametrize("orientation", ["horizontal", "HORIZONTAL"])
-def test_bar_plot_dataframe_column_roles_and_orientation(orientation: str) -> None:
-    """One column may be x and color, "" is a column name too, and horizontal bars
-    (in any case) label y with the x column.
+@pytest.mark.parametrize(
+    ("widget_cls", "trait", "make_value"),
+    [
+        (
+            StructureWidget,
+            "structure",
+            lambda: kemio.Structure(np.eye(3) * 3, ["Fe"], [[0, 0, 0]]),
+        ),
+        (DosWidget, "doses", lambda: kemio.PhononDos([0, 1, 2], [0, 1, 0])),
+        (
+            BandStructureWidget,
+            "band_structs",
+            lambda: kemio.PhononBands(
+                [[0, 0, 0], [0.5, 0, 0]], [[0, 0, 0], [1, 1, 2]], np.eye(3)
+            ),
+        ),
+        (XrdWidget, "patterns", lambda: {"a": kemio.XrdPattern([10], [100])}),
+        (
+            ConvexHullWidget,
+            "entries",
+            lambda: kemio.PhaseDiagram(["Li", "O", "Li2O"], [-1.9, -4.2, -14.3 / 3]),
+        ),
+    ],
+)
+def test_widgets_normalize_assigned_objects(
+    widget_cls: type[MatterVizWidget], trait: str, make_value: Any
+) -> None:
+    """Objects assigned after construction convert like constructor input."""
+    widget = widget_cls()
+    setattr(widget, trait, make_value())
+    as_json = lambda val: json.dumps(val, default=np.ndarray.tolist, sort_keys=True)
+    expected = getattr(widget_cls(**{trait: make_value()}), trait)
+    assert as_json(getattr(widget, trait)) == as_json(expected)
+
+
+def test_constructor_converts_once_to_plain_json(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Constructor kwargs convert once (HasTraits.__init__ re-sets each validated
+    kwarg, which reran every conversion), and structure dicts become plain JSON
+    (numpy site properties used to sync as is).
     """
-    df_bars = pd.DataFrame({"c": ["a", "b"], "v": [1, 2], "": ["p", "q"]})
-    for color, labels in (("c", ["a", "b"]), ("", ["p", "q"])):
-        widget = BarPlotWidget(df_bars, x="c", y="v", color=color)
-        assert [series_dict["label"] for series_dict in widget.series] == labels
-    flipped = BarPlotWidget(df_bars, x="c", y="v", orientation=orientation)
-    assert (flipped.y_axis, flipped.x_axis) == ({"label": "c"}, {"label": "v"})
+    struct_trait = StructureWidget.class_traits()["structure"]
+    struct_calls: list[Any] = []
+    monkeypatch.setattr(
+        struct_trait,
+        "normalize",
+        lambda value: struct_calls.append(value) or structure_to_dict(value),
+    )
+    json_labels: list[str] = []
+
+    def counting_normalize(value: Any, label: str) -> Any:
+        """normalize_plot_json recording its label."""
+        json_labels.append(label)
+        return normalize_plot_json(value, label)
+
+    monkeypatch.setattr(_traits, "normalize_plot_json", counting_normalize)
+    struct = structure_dict(SI_STRUCT)
+    struct["sites"][0]["properties"] = {"magmom": np.float32(1.5)}
+    widget = StructureWidget(struct, slice_settings={"thickness": np.float32(0.5)})
+    assert len(struct_calls) == 1
+    assert json_labels.count("StructureWidget.slice_settings") == 1
+    assert _is_plain_json(widget.get_state(["structure", "slice_settings"]))
+    assert widget.structure["sites"][0]["properties"] == {"magmom": 1.5}
+    # the skip holds only while constructing: reassigning the stored value after
+    # editing it in place converts it again
+    widget.structure["sites"][0]["properties"]["magmom"] = np.float32(2.5)
+    widget.slice_settings["thickness"] = np.float32(0.25)
+    widget.structure, widget.slice_settings = widget.structure, widget.slice_settings
+    assert len(struct_calls) == 2
+    assert json_labels.count("StructureWidget.slice_settings") == 2
+    assert _is_plain_json(widget.get_state(["structure", "slice_settings"]))
 
 
-def test_heatmap_matrix_dataframe_missing_cells() -> None:
-    """NaN cells become None (empty cells) instead of failing as non-finite."""
-    widget = HeatmapMatrixWidget(pd.DataFrame({"a": [1.0, float("nan")]}))
-    assert widget.values == [[1.0], [None]]  # noqa: PD011
+@pytest.mark.parametrize(
+    ("error", "expected_msg"),
+    [
+        (tl.TraitError("bad value"), "bad value"),
+        (KeyError("key"), "KeyError: 'key'"),
+        (FileNotFoundError("missing.xyz"), "FileNotFoundError: missing.xyz"),
+    ],
+)
+def test_validator_raises_trait_errors(error: Exception, expected_msg: str) -> None:
+    """validator() re-raises a TraitError as is and any other error as a TraitError
+    naming its type, chained to the original.
+    """
+
+    class Checked(tl.HasTraits):
+        """HasTraits with an always failing validator."""
+
+        value = tl.Int()
+
+        @_traits.validator("value")
+        def _check_value(self, _proposal: tl.Bunch) -> Any:
+            """Raise the parametrized error."""
+            raise error
+
+    with pytest.raises(tl.TraitError) as exc_info:
+        Checked().value = 1
+    assert str(exc_info.value) == expected_msg
+    if isinstance(error, tl.TraitError):
+        assert exc_info.value is error
+    else:
+        assert exc_info.value.__cause__ is error
+
+
+def _is_plain_json(value: Any) -> bool:
+    """Whether value holds only exact JSON types (no numpy scalars or arrays)."""
+    if isinstance(value, dict):
+        keys_ok = all(type(key) is str for key in value)
+        return keys_ok and all(map(_is_plain_json, value.values()))
+    if type(value) is list:
+        return all(map(_is_plain_json, value))
+    return type(value) in (type(None), bool, int, float, str)
+
+
+@pytest.mark.parametrize("widget_cls", WIDGET_CASES, ids=lambda cls: cls.__name__)
+def test_config_traits_normalize_on_assignment(
+    widget_cls: type[MatterVizWidget], request: pytest.FixtureRequest
+) -> None:
+    """Every dict/list config trait, those with validators included, converts numpy
+    values assigned after construction to plain JSON before syncing, unless listed
+    in ``_raw_json_traits``. A validator returning its raw input used to skip the
+    conversion (e.g. ``StructureWidget.isosurface_settings``).
+    """
+    widget = WIDGET_CASES[widget_cls][0](request)
+    # values the validators of these traits accept
+    valid_values: dict[str, tuple[Any, Any]] = {
+        "tile_props": ({"data-count": np.int64(2)}, {"data-count": 2}),
+        "tile_plot_config": (
+            {"x_range": np.array([0.0, 1.5]), "bins": np.int64(2)},
+            {"x_range": [0.0, 1.5], "bins": 2},
+        ),
+        "data": (
+            {"nodes": [{"label": "a"}], "links": [{"value": np.float32(3)}]},
+            {"nodes": [{"label": "a"}], "links": [{"value": 3.0}]},
+        ),
+        "selected_point": (
+            {"series_idx": np.int64(0), "point_idx": np.int64(1)},
+            {"series_idx": 0, "point_idx": 1},
+        ),
+    }
+    assigned: dict[str, Any] = {}
+    for name in widget.public_trait_names():
+        trait = widget.traits()[name]
+        sub_traits = getattr(trait, "trait_types", [trait])
+        if name in widget._raw_json_traits or trait.read_only:
+            continue  # their validators convert them (e.g. series to binary)
+        if name in valid_values and any(isinstance(sub, tl.Dict) for sub in sub_traits):
+            value, expected = valid_values[name]
+        elif any(isinstance(sub, tl.Dict) for sub in sub_traits):
+            value = {"range": np.array([0.0, 1.5]), "count": np.int64(2)}
+            expected: Any = {"range": [0.0, 1.5], "count": 2}
+        elif any(isinstance(sub, tl.List) and sub._trait is None for sub in sub_traits):
+            value, expected = np.array([0.5, 1.0]), [0.5, 1.0]
+        else:
+            continue
+        setattr(widget, name, value)
+        assigned[name] = expected
+    assert assigned  # every widget has config dicts
+    state = widget.get_state(list(assigned))
+    assert state == assigned
+    assert _is_plain_json(state), {
+        key: val for key, val in state.items() if not _is_plain_json(val)
+    }
+
+
+@pytest.mark.parametrize("widget_cls", WIDGET_CASES, ids=lambda cls: cls.__name__)
+def test_scalar_traits_take_numpy_reject_non_finite(
+    widget_cls: type[MatterVizWidget], request: pytest.FixtureRequest
+) -> None:
+    """Float, Int and Bool traits take numpy scalars as Python ones; Float traits
+    reject NaN and infinities (synced, they'd be invalid JSON).
+    """
+    widget = WIDGET_CASES[widget_cls][0](request)
+    traits = {
+        name: widget.traits()[name]
+        for name in widget.public_trait_names()
+        if name not in widget._raw_json_traits
+    }
+    floats = [name for name, trait in traits.items() if isinstance(trait, tl.Float)]
+    ints = [name for name, trait in traits.items() if isinstance(trait, tl.Int)]
+    bools = [name for name, trait in traits.items() if isinstance(trait, tl.Bool)]
+    for name in floats:
+        setattr(widget, name, np.float32(0.5))
+        assert type(getattr(widget, name)) is float
+        assert getattr(widget, name) == 0.5
+        for bad in (np.nan, -np.inf, np.float32("nan")):
+            with pytest.raises(
+                tl.TraitError, match=f"'{name}' trait .* must be finite"
+            ):
+                setattr(widget, name, bad)
+            assert getattr(widget, name) == 0.5
+    for name in ints:  # 1 is in range of index traits (2 frames, 2 series)
+        setattr(widget, name, np.int64(1))
+        assert type(getattr(widget, name)) is int
+        assert getattr(widget, name) == 1
+    for name in bools:  # False passes validators like DosWidget's stack check
+        setattr(widget, name, np.bool_(0))
+        assert getattr(widget, name) is False
+
+
+@pytest.mark.parametrize(
+    ("make_widget", "trait", "bad_value", "match"),
+    [
+        (TrajectoryWidget, "trajectory", "bad", "Unsupported trajectory type"),
+        (TreemapWidget, "data", {"label": "a", "value": np.nan}, "non-finite"),
+        (HeatmapMatrixWidget, "values", [[np.inf]], "non-finite"),
+        (lambda: CompositionWidget("Fe2O3"), "composition", "Xx9", "unknown element"),
+        (ScatterPlotWidget, "y_axis", {"label": np.nan}, "non-finite"),
+        (lambda: XrdWidget({"x": [1], "y": [1]}), "patterns", {"x": [1], "y": []}, "x"),
+        (StructureWidget, "structure", 5, "structure must be a dict"),
+        (BandStructureWidget, "fermi_level", np.nan, "must be finite"),
+        (lambda: SpacegroupBarPlotWidget([225]), "data", [0], r"in \[1, 230\]"),
+        # counts and cutoffs need positive values (0 bins or radii used to sync)
+        (HistogramWidget, "bins", 0, "'bins' trait .* not be less than 1"),
+        (RdfPlotWidget, "n_bins", -5, "'n_bins' trait .* not be less than 1"),
+        (RdfPlotWidget, "cutoff", 0, "cutoff must be > 0, got 0"),
+        (RdfPlotWidget, "cutoff", np.float32(-1), "cutoff must be > 0, got -1"),
+        # a second data source made the state (and its saved JSON) unloadable
+        (
+            lambda: RdfPlotWidget(patterns=[{"r": [1], "g_r": [1]}]),
+            "structures",
+            {"lattice": {}, "sites": []},
+            "not both",
+        ),
+        (
+            lambda: FermiSurfaceWidget(fermi_data={"isosurfaces": []}),
+            "band_data",
+            {"energies": []},
+            "exactly one of fermi_data or band_data",
+        ),
+        (
+            lambda: FermiSurfaceWidget(fermi_data={"isosurfaces": []}),
+            "fermi_data",
+            None,
+            "exactly one of fermi_data or band_data",
+        ),
+        # errors other than TypeError/ValueError (KeyError, FileNotFoundError) in
+        # converters skipped the rollback and left the raw value synced
+        (TrajectoryWidget, "trajectory", {"foo": 1}, "need a 'frames' list"),
+        (
+            TrajectoryWidget,
+            "trajectory",
+            [kemio.Structure(np.eye(3) * 3, ["Fe"], [[0, 0, 0]]), "missing.xyz"],
+            "FileNotFoundError: .*missing.xyz",
+        ),
+        (DosWidget, "doses", "missing/vasprun.xml", "FileNotFoundError: .*missing"),
+        # band and DOS labels were checked in the constructor only
+        (
+            lambda: BandsAndDosWidget(
+                doses={"a": {"frequencies": [0], "densities": [1]}}
+            ),
+            "band_structs",
+            {"b": {"qpoints": [], "frequencies": []}},
+            r"band_keys=\{'b'\} and dos_keys=\{'a'\} must be identical",
+        ),
+        (
+            lambda: BandsAndDosWidget(
+                band_structs={"a": {"qpoints": [], "frequencies": []}}
+            ),
+            "doses",
+            {"b": {"frequencies": [0], "densities": [1]}},
+            r"band_keys=\{'a'\} and dos_keys=\{'b'\} must be identical",
+        ),
+        # labels equal as strings merged two structures into one
+        *(
+            (widget_cls, "structures", {1: SI_STRUCT, "1": SI_STRUCT}, "unique as str")
+            for widget_cls in (CoordinationBarPlotWidget, RdfPlotWidget)
+        ),
+        # None skipped the validator outside batches, then broke isosurface checks
+        (StructureWidget, "volumetric_data", None, "list of volumes or a {prefix"),
+        (TreemapWidget, "zoom_root_id", True, "string or number, got True"),
+        # index traits must address an item of the data
+        (
+            lambda: TrajectoryWidget([SI_STRUCT] * 2),
+            "current_step_idx",
+            2,
+            r"current_step_idx=2 is out of range for 2 frames \(valid: 0 to 1\)",
+        ),
+        (
+            lambda: HistogramWidget([{"values": [1]}]),
+            "selected_series_idx",
+            1,
+            r"selected_series_idx=1 is out of range for 1 series \(valid: 0 to 0\)",
+        ),
+        (
+            lambda: StructureWidget(SI_STRUCT),
+            "selected_sites",
+            [0, 1],
+            r"selected_sites\[1\]=1 is out of range for 1 sites",
+        ),
+        (
+            lambda: ScatterPlotWidget([{"x": [1, 2], "y": [3, 4]}]),
+            "selected_point",
+            {"series_idx": 0, "point_idx": 2},
+            r"selected_point.point_idx=2 is out of range for 2 points",
+        ),
+        (
+            lambda: ScatterPlotWidget([{"x": [1, 2], "y": [3, 4]}]),
+            "selected_point",
+            {"series_idx": 1, "point_idx": 0},
+            r"selected_point.series_idx=1 is out of range for 1 series",
+        ),
+        (
+            ScatterPlotWidget,
+            "selected_point",
+            {"point_idx": 0},
+            "selected_point needs int series_idx and point_idx",
+        ),
+    ],
+)
+def test_invalid_batched_assignment_rolls_back(
+    make_widget: Any, trait: str, bad_value: Any, match: str
+) -> None:
+    """An invalid value in a hold_trait_notifications() batch raises TraitError and
+    rolls the whole batch back without notifying. Other errors used to leave earlier
+    (or, for cross-validated traits, the invalid raw) values set and synced.
+    """
+    widget = make_widget()
+    old_state = widget.to_dict()
+    observer = Mock()
+    widget.observe(observer, names=["style", trait])
+
+    def assign_batch() -> None:
+        """Set a valid style, then the bad value, in one batch."""
+        with widget.hold_trait_notifications():
+            widget.style = "height: 123px;"
+            setattr(widget, trait, bad_value)
+
+    with pytest.raises(tl.TraitError, match=match):
+        assign_batch()
+    assert widget.to_dict() == old_state
+    observer.assert_not_called()
+    with pytest.raises(tl.TraitError, match=match):  # same outside a batch
+        setattr(widget, trait, bad_value)
+    assert widget.to_dict() == old_state
+
+
+@pytest.mark.parametrize(
+    ("make_widget", "old_source", "new_source", "new_value"),
+    [
+        (
+            lambda: RdfPlotWidget(patterns=[{"r": [1], "g_r": [1]}]),
+            "patterns",
+            "structures",
+            {"lattice": {}, "sites": []},
+        ),
+        (
+            lambda: FermiSurfaceWidget(fermi_data={"isosurfaces": []}),
+            "fermi_data",
+            "band_data",
+            {"energies": []},
+        ),
+    ],
+)
+def test_data_source_swap_in_batch(
+    make_widget: Any, old_source: str, new_source: str, new_value: Any
+) -> None:
+    """Swapping a widget's one data source inside hold_trait_notifications() passes
+    the cross-trait check, and the result round-trips through to_json/from_json.
+    """
+    widget = make_widget()
+    with widget.hold_trait_notifications():
+        setattr(widget, old_source, None)
+        setattr(widget, new_source, new_value)
+    assert getattr(widget, old_source) is None
+    assert getattr(widget, new_source) == new_value
+    assert from_json(widget.to_json()).to_dict() == widget.to_dict()

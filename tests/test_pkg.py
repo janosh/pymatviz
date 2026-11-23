@@ -19,10 +19,13 @@ def test_all_modules_reexported() -> None:
         for file in glob(f"{pmv.utils.PKG_DIR}/[!_]*.py"):
             module_name = os.path.basename(file).removesuffix(".py")
             attr = getattr(pymatviz, module_name, None)
-            if callable(attr):  # name taken by a plot function of that module
+            # a module's name may only be taken by that module's own plot function
+            # (pmv.histogram), never by another object hiding it (e.g. a widget class)
+            if callable(attr) and attr.__module__ == f"pymatviz.{module_name}":
                 continue
             assert isinstance(attr, ModuleType), (
-                f"{module_name} is not a module exported in pymatviz/__init__.py"
+                f"{module_name} is not a module exported in pymatviz/__init__.py, "
+                f"got {attr!r}"
             )
     finally:
         sys.modules["pymatviz"] = original_module

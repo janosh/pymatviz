@@ -2,7 +2,13 @@
 and k-path labels follow the Setyawan-Curtarolo convention whatever cell is passed.
 """
 
-# %%
+# /// script
+# dependencies = [
+#     "pillow>=11",
+#     "pymatgen>=2026.9.24",
+# ]
+# ///
+
 from glob import glob
 
 from IPython.display import display
@@ -11,7 +17,7 @@ from pymatgen.core import Structure
 from pymatgen.io.ase import AseAtomsAdaptor
 
 import pymatviz as pmv
-from pymatviz.utils.testing import TEST_FILES
+from pymatviz.data import TEST_FILES
 
 
 # keys are (material ID, formula, crystal system) from the file names

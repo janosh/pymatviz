@@ -5,7 +5,6 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import pytest
-import traitlets as tl
 
 import pymatviz as pmv
 from pymatviz.widgets.box_plot import BoxPlotWidget
@@ -116,8 +115,10 @@ def test_rainclouds_with_dataframe() -> None:
             "show_violin",
         ),
         ({}, {}, ValueError, "at least one dataset"),
-        ({"a": []}, {}, ValueError, "non-empty"),
-        ({"a": [1, float("nan")]}, {}, tl.TraitError, "finite"),  # widget validation
+        ({"a": []}, {}, ValueError, r"non-empty 1D array, got shape \(0,\)"),
+        ({"a": [[1, 2]]}, {}, ValueError, r"non-empty 1D array, got shape \(1, 2\)"),
+        ({"a": [1, float("nan")]}, {}, ValueError, "'a' holds non-finite"),
+        ({1: [1, 2], "1": [3, 4]}, {}, ValueError, "labels must be unique as strings"),
     ],
 )
 def test_rainclouds_invalid(

@@ -9,7 +9,17 @@ This script demonstrates how to:
 3. Create density scatter plots comparing MACE vs MP predictions
 """
 
-# %%
+# /// script
+# dependencies = [
+#     "ase>=3.29",
+#     "emmet-core",
+#     "mace-torch>=0.3.11",
+#     "matcalc",
+#     "mp-api",
+#     "tqdm>=4.67",
+# ]
+# ///
+
 from typing import Any
 
 import numpy as np

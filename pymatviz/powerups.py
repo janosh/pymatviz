@@ -5,11 +5,11 @@ annotations and ECDF lines.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from numbers import Real
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from pymatviz.utils import align_series
 from pymatviz.widgets._binary import series_column
 from pymatviz.widgets.binned_scatter_plot import BinnedScatterPlotWidget
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
@@ -93,7 +93,10 @@ def _resolve_xy(
     ys: ArrayLike,
     series: SeriesSelector,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Explicit xs/ys as float arrays, else the concatenated selected series data."""
+    """Explicit xs/ys as float arrays (pandas Series aligned by index), else the
+    concatenated selected series data.
+    """
+    xs, ys = align_series(xs, ys)
     xs_arr, ys_arr = np.asarray(xs, dtype=float), np.asarray(ys, dtype=float)
     if xs_arr.size or ys_arr.size:
         if xs_arr.ndim != 1 or xs_arr.shape != ys_arr.shape:
@@ -103,14 +106,11 @@ def _resolve_xy(
             )
         return xs_arr, ys_arr
     picked = _selected_series(widget, series)
-    return (
-        np.concatenate(
-            [np.asarray(series_column(srs, "x"), dtype=float) for srs in picked]
-        ),
-        np.concatenate(
-            [np.asarray(series_column(srs, "y"), dtype=float) for srs in picked]
-        ),
+    xs_arr, ys_arr = (
+        np.concatenate([series_column(srs, axis) for srs in picked]).astype(float)
+        for axis in "xy"
     )
+    return xs_arr, ys_arr
 
 
 def _append_annotation(
@@ -147,7 +147,7 @@ def annotate_metrics[Widget: ScatterPlotWidget | BinnedScatterPlotWidget](
     metrics: Mapping[str, float | str] | Sequence[str] = ("MAE", "R2"),
     prefix: str = "",
     suffix: str = "",
-    fmt: str = ".3",
+    fmt: str = ".3g",
 ) -> Widget:
     """Show regression metrics of ys vs xs in the widget's annotation badge.
 
@@ -160,12 +160,13 @@ def annotate_metrics[Widget: ScatterPlotWidget | BinnedScatterPlotWidget](
         metrics (Mapping[str, float | str] | Sequence[str]): Metrics to show. A
             sequence of metric names (built-in MAE, RMSE, MSE, MAPE, R2, R2_adj or
             any sklearn.metrics function name) computed from xs and ys and labeled
-            by name. A mapping of labels to either precomputed numbers (shown as is)
-            or metric names (computed), e.g. {"Mean abs. error": "MAE", "Custom":
+            by name. A mapping of labels to either precomputed numbers or metric
+            names (computed), e.g. {"Mean abs. error": "MAE", "Custom":
             1.23}. Defaults to ("MAE", "R2").
         prefix (str): Text before the metrics, e.g. a title line ending in a newline.
         suffix (str): Text after the metrics.
-        fmt (str): Format spec for metric values. Defaults to ".3".
+        fmt (str): Format spec for metric values, precomputed ones included.
+            Defaults to ".3g" (".3" would show e.g. 123 as 1.23e+02).
 
     Returns:
         ScatterPlotWidget | BinnedScatterPlotWidget: The annotated widget.
@@ -173,24 +174,12 @@ def annotate_metrics[Widget: ScatterPlotWidget | BinnedScatterPlotWidget](
     _check_widget(widget)
     if isinstance(metrics, str):
         metrics = [metrics]
-    if not isinstance(metrics, (Mapping, list, tuple, set)):
-        raise TypeError(
-            f"metrics must be dict|list|tuple|set, not {type(metrics).__name__}"
-        )
     # label -> precomputed number or name of the metric to compute
     label_to_metric: dict[str, float | str] = (
         {str(label): val for label, val in metrics.items()}
         if isinstance(metrics, Mapping)
         else {str(name): str(name) for name in metrics}
     )
-    if bad_vals := {
-        label: val
-        for label, val in label_to_metric.items()
-        if not isinstance(val, (Real, str))
-    }:
-        raise TypeError(
-            f"metrics values must be numbers or metric names, got {bad_vals}"
-        )
     funcs = dict(BUILTIN_METRICS)
     for name in {val for val in label_to_metric.values() if isinstance(val, str)}:
         if name not in funcs:
@@ -203,11 +192,13 @@ def annotate_metrics[Widget: ScatterPlotWidget | BinnedScatterPlotWidget](
     xs_arr, ys_arr = _resolve_xy(widget, xs, ys, series)
     finite = np.isfinite(xs_arr) & np.isfinite(ys_arr)
     xs_arr, ys_arr = xs_arr[finite], ys_arr[finite]
-    lines = [
-        f"{PRETTY_METRIC_LABELS.get(label, label)} = "
-        f"{float(funcs[metric](xs_arr, ys_arr) if isinstance(metric, str) else metric):{fmt}}"  # noqa: E501
-        for label, metric in label_to_metric.items()
-    ]
+    computes_metrics = any(isinstance(val, str) for val in label_to_metric.values())
+    if computes_metrics and not finite.any():
+        raise ValueError(f"Metrics need finite (x, y) pairs, got none of {finite.size}")
+    lines = []
+    for label, metric in label_to_metric.items():
+        value = funcs[metric](xs_arr, ys_arr) if isinstance(metric, str) else metric
+        lines.append(f"{PRETTY_METRIC_LABELS.get(label, label)} = {float(value):{fmt}}")
     _append_annotation(widget, prefix + "\n".join(lines) + suffix)
     return widget
 
@@ -409,41 +400,34 @@ def enhance_parity_plot[Widget: ScatterPlotWidget | BinnedScatterPlotWidget](
     ):
         if not isinstance(opt, (bool, dict, type(None))):
             raise TypeError(f"{name} must be bool or dict, got {type(opt).__name__}")
-    if identity_line:
-        add_identity_line(
-            widget, **identity_line if isinstance(identity_line, dict) else {}
-        )
-    if not best_fit_line and not stats and best_fit_line is not None:
+    # True enables a powerup with default kwargs, any dict (even {}) with its kwargs
+    identity_kwargs, fit_kwargs, stats_kwargs = (
+        {} if opt is True else opt if isinstance(opt, dict) else None
+        for opt in (identity_line, best_fit_line, stats)
+    )
+    if identity_kwargs is not None:
+        add_identity_line(widget, **identity_kwargs)
+    if fit_kwargs is None and stats_kwargs is None and best_fit_line is not None:
         return widget
 
     data_kwargs: dict[str, Any] = {"xs": xs, "ys": ys, "series": series}
     if best_fit_line is None:
         xs_arr, ys_arr = _resolve_xy(widget, xs, ys, series)
         finite = np.isfinite(xs_arr) & np.isfinite(ys_arr)
-        best_fit_line = bool(
+        auto_fit = bool(
             finite.sum() > 1
             and BUILTIN_METRICS["R2"](xs_arr[finite], ys_arr[finite]) > 0.3
         )
-        if best_fit_line:  # skip, rather than fail, fits the axes leave ill-posed
+        if auto_fit:  # skip, rather than fail, fits the axes leave ill-posed
             log_x, log_y = _log_axes(widget)
             fit_xs = xs_arr[_fit_mask(xs_arr, ys_arr, log_x=log_x, log_y=log_y)]
-            best_fit_line = fit_xs.size > 1 and bool(np.ptp(fit_xs) > 0)
-    if best_fit_line:
-        fit_kwargs = best_fit_line if isinstance(best_fit_line, dict) else {}
+            auto_fit = fit_xs.size > 1 and bool(np.ptp(fit_xs) > 0)
+        fit_kwargs = {} if auto_fit else None
+    if fit_kwargs is not None:
         add_best_fit_line(widget, **data_kwargs | fit_kwargs)
-    if stats:
-        stats_kwargs = stats if isinstance(stats, dict) else {}
+    if stats_kwargs is not None:
         annotate_metrics(widget, **data_kwargs | stats_kwargs)
     return widget
-
-
-def _ecdf_xy(values: ArrayLike) -> tuple[np.ndarray, np.ndarray]:
-    """Empirical CDF vertices: sorted finite values and fractions <= each value."""
-    sorted_vals = np.sort(np.asarray(values, dtype=float).ravel())
-    sorted_vals = sorted_vals[np.isfinite(sorted_vals)]
-    if not sorted_vals.size:
-        raise ValueError("ECDF needs at least one finite value")
-    return sorted_vals, np.arange(1, sorted_vals.size + 1) / sorted_vals.size
 
 
 def add_ecdf_line(
@@ -503,7 +487,11 @@ def add_ecdf_line(
         ]
     new_series = []
     for source, series_label, color in sources:
-        xs, fractions = _ecdf_xy(source)
+        xs = np.sort(np.asarray(source, dtype=float).ravel())
+        xs = xs[np.isfinite(xs)]
+        if not xs.size:
+            raise ValueError("ECDF needs at least one finite value")
+        fractions = np.arange(1, xs.size + 1) / xs.size  # share of values <= each x
         # explicit post-step (hv) vertices since matterviz' step curve steps midway
         style = {"width": 2} | ({"color": color} if color else {}) | (line_style or {})
         new_series.append(

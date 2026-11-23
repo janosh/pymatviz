@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from pymatviz.powerups import add_identity_line
-from pymatviz.utils.data import df_to_arrays
+from pymatviz.utils import align_series, df_to_arrays
 from pymatviz.widgets._normalize import with_defaults
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 
@@ -26,22 +26,37 @@ def _load_regression_data(
     y_std: ArrayLike | Mapping[str, ArrayLike] | str | Sequence[str],
     df: pd.DataFrame | None,
 ) -> tuple[np.ndarray, np.ndarray, dict[str, np.ndarray]]:
-    """Resolve y_true/y_pred/y_std into arrays, pulling columns from df when given."""
+    """Resolve y_true/y_pred/y_std into finite 1D arrays of equal length (y_std as
+    a dict of labeled arrays), pulling columns from df when given.
+
+    Raises:
+        ValueError: For empty arrays, wrong shapes or non-finite values.
+    """
     row_mask = None
+    if df is None:  # pair Series by index label, not position
+        y_true, y_pred, y_std = align_series(y_true, y_pred, y_std)
+    # one df column label (str, or int as df_to_arrays takes; an int can't be an
+    # uncertainty array), or a list of str labels (an int list is uncertainty data)
+    is_column = isinstance(y_std, str) or (
+        df is not None and isinstance(y_std, int) and not isinstance(y_std, bool)
+    )
+    is_sequence = df is not None and isinstance(y_std, Sequence | pd.Index)
+    is_column_list = (
+        is_sequence and not is_column and all(isinstance(col, str) for col in y_std)
+    )
     # a single df column is labeled by its name, a lone array as "std"
-    std_name = y_std if isinstance(y_std, str) else "std"
-    if isinstance(y_std, str) or (
-        df is not None
-        and isinstance(y_std, Sequence | pd.Index)
-        and all(isinstance(column, str) for column in y_std)
-    ):
-        true_vals, pred_vals, y_std = df_to_arrays(df, y_true, y_pred, y_std)  # ty: ignore
+    std_name = str(y_std) if is_column else "std"
+    if is_column or is_column_list:
+        std_cols = list(y_std) if is_column_list else y_std  # ty: ignore[invalid-argument-type]
+        true_vals, pred_vals, y_std = df_to_arrays(df, y_true, y_pred, std_cols)
     else:
         true_vals, pred_vals = df_to_arrays(df, y_true, y_pred)
         if df is not None:
             row_mask = df[[y_true, y_pred]].notna().all(axis=1).to_numpy()
 
     true_vals, pred_vals = np.asarray(true_vals), np.asarray(pred_vals)
+    if not true_vals.size:
+        raise ValueError("Uncertainty plots need non-empty data")
     std_arrays = {
         str(key): np.asarray(std)
         for key, std in (
@@ -99,9 +114,7 @@ def qq_gaussian(
         ScatterPlotWidget: Q-Q calibration plot.
     """
     y_true, y_pred, y_std = _load_regression_data(y_true, y_pred, y_std, df)
-    res = y_pred - y_true
-    if len(res) == 0:
-        raise ValueError("Q-Q calibration requires non-empty data")
+    residuals = y_pred - y_true
     eps = 1e-10
     exp_proportions = np.linspace(eps, 1 - eps, 100)
     from scipy.stats import norm
@@ -112,8 +125,9 @@ def qq_gaussian(
     for series_idx, (key, std) in enumerate(y_std.items()):
         if np.any(std <= 0):
             raise ValueError(f"Uncertainties for {key!r} must be positive")
-        z_scored = np.sort(res / std)
-        obs_proportions = np.searchsorted(z_scored, quantiles, side="right") / res.size
+        z_scored = np.sort(residuals / std)
+        n_below = np.searchsorted(z_scored, quantiles, side="right")
+        obs_proportions = n_below / residuals.size
         miscal_area = np.trapezoid(
             np.abs(obs_proportions - exp_proportions), x=exp_proportions
         )
@@ -137,20 +151,15 @@ def qq_gaussian(
             }
         )
 
-    widget = ScatterPlotWidget(
-        series=series,
-        **with_defaults(
-            {
-                "fill_regions": fill_regions,
-                "x_axis": {"label": "Theoretical Quantile"},
-                "y_axis": {"label": "Observed Quantile"},
-                "x_range": [0, 1],
-                "y_range": [0, 1],
-            },
-            kwargs,
-        ),
-    )
-    if identity_line:
+    defaults = {
+        "fill_regions": fill_regions,
+        "x_axis": {"label": "Theoretical Quantile"},
+        "y_axis": {"label": "Observed Quantile"},
+        "x_range": [0, 1],
+        "y_range": [0, 1],
+    }
+    widget = ScatterPlotWidget(series=series, **with_defaults(defaults, kwargs))
+    if identity_line is not False:  # True or a dict (even {}) of kwargs
         line_kwargs = identity_line if isinstance(identity_line, dict) else {}
         style = {"color": "red"} | line_kwargs.get("style", {})
         add_identity_line(widget, **line_kwargs | {"style": style})
@@ -189,8 +198,6 @@ def error_decay_with_uncert(
     y_true, y_pred, y_std = _load_regression_data(y_true, y_pred, y_std, df)
     abs_err = np.abs(y_true - y_pred)
     n_samples = len(abs_err)
-    if n_samples == 0:
-        raise ValueError("error_decay_with_uncert needs non-empty data")
     retained = np.arange(1, n_samples + 1)
     sample_indices = (
         np.linspace(0, n_samples - 1, min(100, n_samples), dtype=int)
@@ -232,19 +239,11 @@ def error_decay_with_uncert(
         "fill": "gray",
         "fill_opacity": 0.2,
     }
-    return ScatterPlotWidget(
-        series=series,
-        **with_defaults(
-            {
-                "error_bands": [error_band],
-                "x_axis": {
-                    "label": "Excluded samples (%)"
-                    if percentiles
-                    else "Excluded samples"
-                },
-                "y_axis": {"label": "MAE"},
-                "y_range": [0, None],
-            },
-            kwargs,
-        ),
-    )
+    x_label = "Excluded samples (%)" if percentiles else "Excluded samples"
+    defaults = {
+        "error_bands": [error_band],
+        "x_axis": {"label": x_label},
+        "y_axis": {"label": "MAE"},
+        "y_range": [0, None],
+    }
+    return ScatterPlotWidget(series=series, **with_defaults(defaults, kwargs))

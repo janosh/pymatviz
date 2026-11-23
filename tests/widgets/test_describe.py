@@ -5,9 +5,9 @@ from __future__ import annotations
 import math
 from typing import Any
 
+import kemio
 import numpy as np
 import pytest
-from pymatgen.core import Lattice, Structure
 
 import pymatviz as pmv
 from pymatviz.widgets._describe import (
@@ -16,9 +16,7 @@ from pymatviz.widgets._describe import (
     describe_widget,
     short_summary,
 )
-
-
-_STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+from tests.conftest import SI2_STRUCT, cubic_structure
 
 
 @pytest.mark.parametrize(
@@ -37,10 +35,7 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
         # Histogram samples use `values` (binned on x); counts are not a y_range.
         (
             pmv.widgets.HistogramWidget(
-                series=[
-                    {"values": [1, 5, 3], "label": "a"},
-                    {"values": [7, 2]},
-                ]
+                series=[{"values": [1, 5, 3], "label": "a"}, {"values": [7, 2]}]
             ),
             {"n_series": 2, "n_points": 5, "series_labels": ["a"]}
             | {"x_range": [1.0, 7.0], "y_range": None},
@@ -50,14 +45,12 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
             {"n_series": 1, "z_range": [3.0, 4.0]},
         ),
         (
-            pmv.structure(structure=_STRUCT),
+            pmv.structure(structure=SI2_STRUCT),
             {"n_sites": 2, "formula": "Si2", "elements": ["Si"]},
         ),
         (
             pmv.structure(
-                structure=Structure(
-                    Lattice.cubic(3), [{"Fe": 0.1}] * 10, [[0, 0, 0]] * 10
-                )
+                structure=cubic_structure(3, [{"Fe": 0.1}] * 10, [[0, 0, 0]] * 10)
             ),
             {"n_sites": 10, "formula": "Fe", "elements": ["Fe"]},
         ),
@@ -101,18 +94,14 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
             {"n_peaks": 5, "two_theta_range": [10.0, 60.0]},
         ),
         (
-            pmv.dos(
-                doses={
-                    "energies": [-1, 0, 1],
-                    "extra": {"energies": [-2, 2]},
-                }
-            ),
+            pmv.dos(doses={"energies": [-1, 0, 1], "extra": {"energies": [-2, 2]}}),
             {"n_energies": 3, "energy_range": [-1.0, 1.0]},
         ),
-        (
-            pmv.band_structure(band_structs={"bands": [[-1, 0, 1]]}),
-            {"n_bands": 1},
+        (  # phonon DOS: frequency grid
+            pmv.dos(doses=kemio.PhononDos([0, 1, 2], [0, 1, 0])),
+            {"n_frequencies": 3, "frequency_range": [0.0, 2.0]},
         ),
+        (pmv.band_structure(band_structs={"bands": [[-1, 0, 1]]}), {"n_bands": 1}),
         (
             pmv.bands_and_dos(
                 band_structs={
@@ -148,14 +137,8 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
             ),
             {"n_bands": 4},
         ),
-        (
-            pmv.band_structure(band_structs={"bands": {"1": "bad"}}),
-            {"n_bands": None},
-        ),
-        (
-            pmv.dos(doses={"energies": {"up": [-1], "down": [0]}}),
-            {"n_energies": None},
-        ),
+        (pmv.band_structure(band_structs={"bands": {"1": "bad"}}), {"n_bands": None}),
+        (pmv.dos(doses={"energies": {"up": [-1], "down": [0]}}), {"n_energies": None}),
         # binary series (>= 10k points) are decoded
         (
             pmv.scatter_plot(
@@ -171,6 +154,30 @@ _STRUCT = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5
             {"n_elements": 0, "n_tile_plots": 1, "value_range": None},
         ),
         (pmv.heatmap_matrix(), {"shape": [0, 0], "value_range": None}),
+        (pmv.widgets.XrdWidget(), {"n_peaks": None, "two_theta_range": None}),
+        # types that used to report only their widget_type
+        (
+            pmv.widgets.BoxPlotWidget(series=[{"y": [3, 1, 2]}, {"y": [5]}]),
+            {"n_series": 2, "n_points": 4, "y_range": [1.0, 5.0], "x_range": None},
+        ),
+        (
+            pmv.widgets.BinnedScatterPlotWidget(series=[{"x": [0, 2], "y": [1, 3]}]),
+            {"n_series": 1, "n_points": 2, "x_range": [0.0, 2.0]},
+        ),
+        (
+            pmv.widgets.SankeyWidget(
+                {"nodes": [{"label": "a"}, {"label": "b"}], "links": [{}]}
+            ),
+            {"n_nodes": 2, "n_links": 1},
+        ),
+        (
+            pmv.widgets.CoordinationBarPlotWidget([SI2_STRUCT, SI2_STRUCT]),
+            {"n_structures": 2},
+        ),
+        (
+            pmv.widgets.CoordinationBarPlotWidget(SI2_STRUCT),
+            {"n_structures": 1, "formula": "Si2"},
+        ),
     ],
 )
 def test_describe_widget(widget: Any, expected: dict[str, Any]) -> None:
@@ -182,45 +189,6 @@ def test_describe_widget(widget: Any, expected: dict[str, Any]) -> None:
             assert key not in report
         else:
             assert report[key] == value, f"{key}: {report.get(key)!r} != {value!r}"
-
-
-@pytest.mark.parametrize("monty_coords", [False, True])
-def test_serialized_trajectory_facts(monty_coords: bool) -> None:
-    """Serialized trajectories count frames, symbols, and decorated site occupancies."""
-    coords = [[[0, 0, 0]] * 4] * 3
-    widget = pmv.trajectory(
-        trajectory={
-            "@class": "Trajectory",
-            "coords": (
-                {
-                    "@module": "numpy",
-                    "@class": "array",
-                    "dtype": "float64",
-                    "data": coords,
-                }
-                if monty_coords
-                else coords
-            ),
-            "lattice": _STRUCT.lattice.matrix,
-            "species": [
-                "O",
-                26,
-                "Fe2+",
-                {"element": "Fe", "oxidation_state": 3, "occu": 0.5},
-            ],
-        }
-    )
-    oxygen, iron, ferrous, _ = widget.trajectory["species"]
-    assert oxygen == "O"
-    assert iron["element"] == ferrous["element"] == "Fe"
-    assert ferrous["oxidation_state"] == 2
-    assert widget.describe() == {
-        "widget_type": "trajectory",
-        "n_frames": 3,
-        "n_sites": 4,
-        "elements": ["Fe", "O"],
-        "formula": "Fe2.5O",
-    }
 
 
 @pytest.mark.parametrize(
@@ -241,15 +209,13 @@ def test_describe_treemap_malformed_data(
     assert (report["n_nodes"], report["n_leaves"]) == (n_nodes, n_leaves)
 
 
-def test_describe_treemap_cyclic_data_terminates() -> None:
-    """_describe_treemap does not hang on cyclic node dicts (post-init mutation)."""
+def test_describe_treemap_cyclic_data_and_unknown_widget_type() -> None:
+    """Cyclic node dicts (post-init mutation) don't hang; unknown widget types fall
+    back to just the type.
+    """
     node: dict[str, Any] = {"label": "root"}
     node["children"] = [node]
     assert describe_widget({"widget_type": "treemap", "data": node})["n_nodes"] == 1
-
-
-def test_describe_unknown_widget_type() -> None:
-    """Unknown widget types fall back to just the type."""
     assert describe_widget({"widget_type": "mystery"}) == {"widget_type": "mystery"}
 
 
@@ -268,6 +234,10 @@ def test_describe_unknown_widget_type() -> None:
             "periodic_table: 3 tile plots",
         ),
         ({"widget_type": "xrd"}, "xrd"),
+        (
+            {"widget_type": "coordination_bar_plot", "n_structures": 2},
+            "coordination_bar_plot: 2 structures",
+        ),
     ],
 )
 def test_short_summary(report: dict[str, Any], expected: str) -> None:
@@ -280,10 +250,7 @@ def test_short_summary(report: dict[str, Any], expected: str) -> None:
     [
         (pmv.scatter_plot(), True),
         (pmv.scatter_plot(series=[{"x": [0, 1], "y": [1, 2]}]), False),
-        (
-            pmv.scatter_plot(series=[{"x": np.ones(10**4), "y": np.ones(10**4)}]),
-            False,
-        ),
+        (pmv.scatter_plot(series=[{"x": np.ones(10**4), "y": np.ones(10**4)}]), False),
         # Histogram blank-state detection uses sample arrays.
         (pmv.widgets.HistogramWidget(), True),
         (pmv.widgets.HistogramWidget(series=[{"values": [1, 2, 3]}]), False),
@@ -310,6 +277,14 @@ def test_short_summary(report: dict[str, Any], expected: str) -> None:
         (pmv.sunburst(), True),
         (pmv.treemap(), True),
         (pmv.treemap(data={"label": "root", "value": 1}), False),
+        # box plots summarize y samples
+        (pmv.widgets.BoxPlotWidget(), True),
+        (pmv.widgets.BoxPlotWidget(series=[{"y": []}]), True),
+        (pmv.widgets.BoxPlotWidget(series=[{"y": [1]}]), False),
+        (pmv.widgets.BinnedScatterPlotWidget(series=[{"x": [], "y": []}]), True),
+        (pmv.widgets.SankeyWidget(), True),
+        (pmv.widgets.CoordinationBarPlotWidget(), True),
+        (pmv.widgets.PhaseDiagramWidget(), True),
     ],
 )
 def test_check_inputs(widget: Any, expect_warning: bool) -> None:
@@ -325,6 +300,8 @@ def test_check_inputs(widget: Any, expect_warning: bool) -> None:
         ([float("nan"), float("inf"), float("-inf")], None),  # all non-finite
         ([[1, 2], {"a": 3}], [1.0, 3.0]),  # nested flattened
         ([True, False, 5], [5.0, 5.0]),  # bools ignored
+        # numpy scalars count (np.int64 and np.float32 aren't int/float subclasses)
+        ([np.int64(-3), np.float32(1.5), np.True_], [-3.0, 1.5]),
         ([10**1000, -(10**1000), 2], [2.0, 2.0]),
         ([0.0, -0.0], [-0.0, -0.0]),
         ([-0.0, 0.0], [0.0, 0.0]),
@@ -336,6 +313,6 @@ def test_minmax_filters_non_finite(values: Any, expected: list[float] | None) ->
     result = _minmax(values)
     assert result == expected
     if result is not None and expected is not None:
-        assert [math.copysign(1, val) for val in result] == [
-            math.copysign(1, val) for val in expected
-        ]
+        result_signs = [math.copysign(1, val) for val in result]
+        expected_signs = [math.copysign(1, val) for val in expected]
+        assert result_signs == expected_signs

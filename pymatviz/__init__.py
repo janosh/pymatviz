@@ -12,10 +12,9 @@ from importlib.metadata import PackageNotFoundError, version
 
 from pymatviz import (
     bar,
-    chem_env,
     classify,
     cluster,
-    colors,
+    compositions,
     coordination,
     data,
     enums,
@@ -24,6 +23,7 @@ from pymatviz import (
     phonons,
     powerups,
     ptable,
+    py_pkg,
     rdf,
     scatter,
     structures,
@@ -34,13 +34,15 @@ from pymatviz import (
     xrd,
 )
 from pymatviz.bar import spacegroup_bar_plot
-from pymatviz.chem_env import chem_env_hierarchy
-from pymatviz.classify import precision_recall_curve, roc_curve
-from pymatviz.classify.confusion_matrix import confusion_matrix
-from pymatviz.cluster.composition import cluster_compositions
-from pymatviz.composition import count_elements
+from pymatviz.classify import confusion_matrix, precision_recall_curve, roc_curve
+from pymatviz.cluster import cluster_compositions
+from pymatviz.compositions import count_elements
 from pymatviz.coordination import coordination_bar_plot, coordination_vs_cutoff_line
-from pymatviz.hierarchy import chem_sys_hierarchy
+from pymatviz.hierarchy import (
+    chem_env_hierarchy,
+    chem_sys_hierarchy,
+    spacegroup_sunburst,
+)
 from pymatviz.histogram import elements_hist, histogram
 from pymatviz.notebook import notebook_mode
 from pymatviz.phonons import phonon_dos
@@ -50,12 +52,11 @@ from pymatviz.ptable import (
     ptable_hists,
     ptable_scatter,
 )
+from pymatviz.py_pkg import py_pkg_treemap
 from pymatviz.rainclouds import rainclouds
-from pymatviz.rdf.figures import rdf_plot
+from pymatviz.rdf import rdf_plot
 from pymatviz.sankey import sankey
 from pymatviz.scatter import density_hexbin, density_scatter
-from pymatviz.sunburst import spacegroup_sunburst
-from pymatviz.treemap import py_pkg_treemap
 from pymatviz.uncertainty import error_decay_with_uncert, qq_gaussian
 from pymatviz.widgets import (
     configure_assets,

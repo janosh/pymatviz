@@ -1,26 +1,21 @@
 from __future__ import annotations
 
-import copy
 import json
+import lzma
 from glob import glob
-from typing import TYPE_CHECKING, TypedDict, cast
+from typing import TYPE_CHECKING, Any, TypedDict
 
+import kemio
 import numpy as np
 import pandas as pd
 import pytest
-from monty.io import zopen
-from monty.json import MontyDecoder
-from pymatgen.core import IStructure, Lattice, Structure
-from pymatgen.io.ase import AseAtomsAdaptor
 
-from pymatviz.utils.testing import TEST_FILES, load_phonopy_nacl
+from pymatviz.data import TEST_FILES
+from pymatviz.phonons import PhononDBDoc
 
 
 if TYPE_CHECKING:
-    import ase
-    from phonopy import Phonopy
-    from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
-    from pymatgen.phonon.dos import CompletePhononDos, PhononDos
+    from collections.abc import Sequence
 
 
 # random regression data
@@ -45,16 +40,34 @@ def spg_symbols() -> list[str]:
     return symbols
 
 
-SI2_STRUCT = Structure(
-    lattice=[[3.8, 0, 0], [1.9, 3.3, 0], [0, -2.2, 3.1]],
-    species=["Si4+", "Si4+"],
-    coords=[[0, 0, 0], [0.75, 0.5, 0.75]],
-)
+FCC_SITES = np.array([[0, 0, 0], [0.5, 0.5, 0], [0.5, 0, 0.5], [0, 0.5, 0.5]])
 
-si2_ru2_pr2_struct = Structure(
-    lattice=Lattice.tetragonal(4.192, 6.88),
-    species=["Si", "Si", "Ru", "Ru", "Pr", "Pr"],
-    coords=[
+
+def cubic_structure(
+    a_len: float, species: Sequence[Any], frac_coords: Any
+) -> kemio.Structure:
+    """Cubic kemio Structure from fractional coordinates."""
+    coords = np.reshape(np.asarray(frac_coords, dtype=float), (-1, 3))
+    return kemio.Structure(np.eye(3) * a_len, list(species), coords, fractional=True)
+
+
+def rocksalt(a_len: float = 5.64) -> kemio.Structure:
+    """Conventional 8-site rocksalt NaCl cell (every site octahedral)."""
+    return cubic_structure(
+        a_len, ["Na"] * 4 + ["Cl"] * 4, [*FCC_SITES, *(FCC_SITES + 0.5) % 1]
+    )
+
+
+SI2_STRUCT = kemio.Structure(
+    [[3.8, 0, 0], [1.9, 3.3, 0], [0, -2.2, 3.1]],
+    ["Si", "Si"],
+    [[0, 0, 0], [0.75, 0.5, 0.75]],
+    fractional=True,
+)
+si2_ru2_pr2_struct = kemio.Structure(
+    np.diag([4.192, 4.192, 6.88]),
+    ["Si", "Si", "Ru", "Ru", "Pr", "Pr"],
+    [
         [0.25, 0.25, 0.173],
         [0.75, 0.75, 0.827],
         [0.75, 0.25, 0],
@@ -62,24 +75,24 @@ si2_ru2_pr2_struct = Structure(
         [0.25, 0.25, 0.676],
         [0.75, 0.75, 0.324],
     ],
+    fractional=True,
 )
 SI_STRUCTS = (SI2_STRUCT, si2_ru2_pr2_struct)
-# cast since AseAtomsAdaptor.get_atoms returns MSONAtoms | pymatgen.io.ase.Atoms
-SI_ATOMS = cast(
-    "tuple[ase.Atoms, ase.Atoms]", tuple(map(AseAtomsAdaptor.get_atoms, SI_STRUCTS))
-)
 
 
 @pytest.fixture
-def structures() -> tuple[Structure, Structure]:
-    """Return copies of SI_STRUCTS to avoid mutation between tests."""
-    return SI_STRUCTS[0].copy(), SI_STRUCTS[1].copy()
+def structures() -> tuple[kemio.Structure, kemio.Structure]:
+    """Two silicon-containing kemio structures (Si2, Pr2Ru2Si2)."""
+    return SI_STRUCTS
 
 
 @pytest.fixture
-def ase_atoms() -> tuple[ase.Atoms, ase.Atoms]:
-    atoms1, atoms2 = SI_ATOMS
-    return copy.copy(atoms1), copy.copy(atoms2)
+def ase_atoms() -> tuple[Any, Any]:
+    """SI_STRUCTS as ASE Atoms, for tests of ASE inputs."""
+    pytest.importorskip("ase")
+    from kemio.interop import structure_to_ase
+
+    return structure_to_ase(SI_STRUCTS[0]), structure_to_ase(SI_STRUCTS[1])
 
 
 @pytest.fixture
@@ -107,77 +120,74 @@ def df_float() -> pd.DataFrame:
 
 
 @pytest.fixture(scope="session")
-def phonopy_nacl() -> Phonopy:
-    """Return Phonopy class instance of NaCl 2x2x2 without symmetrizing fc2."""
-    return load_phonopy_nacl()
-
-
-@pytest.fixture
-def fe3co4_disordered() -> IStructure:
-    """Disordered Fe3C-O2 structure without site properties. This structure has
-    disordered sites with Fe:C ratio of 3:1.
+def phonopy_nacl() -> Any:
+    """Phonopy object of NaCl 2x2x2 without symmetrizing fc2, for tests of phonopy
+    inputs (everything else uses load_nacl_phonons).
     """
-    from pymatviz.utils.testing import fe3co4_disordered
+    phonopy = pytest.importorskip("phonopy")
 
-    return copy.deepcopy(fe3co4_disordered)
+    return phonopy.load(
+        f"{TEST_FILES}/phonons/NaCl/phonopy_disp.yaml.xz",
+        force_sets_filename=f"{TEST_FILES}/phonons/NaCl/force_sets.dat",
+        symmetrize_fc=False,
+        produce_fc=True,
+    )
 
 
 @pytest.fixture
-def fe3co4_disordered_with_props(fe3co4_disordered: IStructure) -> IStructure:
-    """Disordered Fe3C-O2 structure with magnetic moment and force site properties."""
-    site_props = {
-        "magmom": [[0, 0, 1], [0, 0, -1]],
-        "force": [[1.0, 1.0, 1.0], [-1.0, -1.0, -1.0]],
-    }
-    return fe3co4_disordered.copy(site_properties=site_props)
+def fe3co4_disordered() -> kemio.Structure:
+    """Disordered Fe3C-O2 structure (Fe:C 3:1 on the first site)."""
+    from pymatviz.data import fe3co4_disordered
+
+    return fe3co4_disordered
 
 
 class BandsDoses(TypedDict):
-    """Type for phonon bands and DOS data."""
+    """Phonon band structures and DOS by label."""
 
-    bands: dict[str, PhononBands]
-    doses: dict[str, PhononDos]
+    bands: dict[str, kemio.PhononBands]
+    doses: dict[str, kemio.PhononDos]
 
 
-bs_key, dos_key = "phonon_bandstructure", "phonon_dos"
+def load_phonon_doc(path: str) -> PhononDBDoc:
+    """Phonon DB doc (xz-compressed pymatgen/monty JSON) with kemio objects."""
+    with lzma.open(path, mode="rt") as file:
+        return PhononDBDoc.from_dict(json.load(file))
 
 
 @pytest.fixture
 def phonon_bands_doses_mp_2758() -> BandsDoses:
-    with zopen(f"{TEST_FILES}/phonons/mp-2758-Sr4Se4-pbe.json.xz", "rt") as file:
-        dft_doc = json.loads(file.read(), cls=MontyDecoder)
-
-    with zopen(
-        f"{TEST_FILES}/phonons/mp-2758-Sr4Se4-mace-y7uhwpje.json.xz", "rt"
-    ) as file:
-        ml_doc = json.loads(file.read(), cls=MontyDecoder)
-
-    bands = {"DFT": getattr(dft_doc, bs_key), "MACE": getattr(ml_doc, bs_key)}
-    doses = {"DFT": getattr(dft_doc, dos_key), "MACE": getattr(ml_doc, dos_key)}
-    return {"bands": bands, "doses": doses}
+    docs = {
+        label: load_phonon_doc(f"{TEST_FILES}/phonons/mp-2758-Sr4Se4-{model}.json.xz")
+        for label, model in (("DFT", "pbe"), ("MACE", "mace-y7uhwpje"))
+    }
+    return {
+        "bands": {label: doc.phonon_bandstructure for label, doc in docs.items()},
+        "doses": {label: doc.phonon_dos for label, doc in docs.items()},
+    }
 
 
 @pytest.fixture
-def phonon_doses() -> dict[str, PhononDos]:
+def phonon_doses() -> dict[str, kemio.PhononDos]:
     paths = glob(f"{TEST_FILES}/phonons/mp-*-pbe.json.xz")
     assert len(paths) >= 2
     return {
-        path.split("/")[-1].split("-pbe")[0]: getattr(
-            json.loads(zopen(path, mode="rt").read(), cls=MontyDecoder), dos_key
-        )
+        path.split("/")[-1].split("-pbe")[0]: load_phonon_doc(path).phonon_dos
         for path in paths
     }
 
 
 @pytest.fixture
-def complete_phonon_dos() -> CompletePhononDos:
-    """Synthetic CompletePhononDos for NaCl with per-site partial DOS."""
-    from pymatgen.phonon.dos import CompletePhononDos, PhononDos
-
-    struct = Structure(Lattice.cubic(5.64), ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+def complete_phonon_dos() -> kemio.PhononDos:
+    """Synthetic site-projected phonon DOS of NaCl."""
+    struct = kemio.Structure(
+        np.eye(3) * 5.64, ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]], fractional=True
+    )
     rng = np.random.default_rng(seed=0)
-    freqs = np.linspace(0, 10, 100)
-    site_densities = [rng.random(100) for _site in struct]
-    pdos = dict(zip(struct, site_densities, strict=True))
-    total_densities = np.sum(site_densities, axis=0)
-    return CompletePhononDos(struct, PhononDos(freqs, total_densities), pdos)
+    site_densities = rng.random((2, 100))
+    return kemio.PhononDos(
+        np.linspace(0, 10, 100),
+        site_densities.sum(axis=0),
+        projected_dos=site_densities,
+        structure=struct,
+    )

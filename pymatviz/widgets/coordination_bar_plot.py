@@ -2,18 +2,31 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import traitlets as tl
 
-from pymatviz.widgets._normalize import normalize_json_kwargs, structure_to_dict
+from pymatviz.utils import str_labels
+from pymatviz.widgets._normalize import structure_to_dict
 from pymatviz.widgets._schema_traits import CoordinationBarPlotTraits
-from pymatviz.widgets._traits import PlotControlsTraits
+from pymatviz.widgets._traits import PlotControlsTraits, normalized_trait
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
-if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
+def _labeled_structures(structures: Any) -> dict[str, Any] | None:
+    """The bare structure dict or ``{label: dict}`` form MatterViz takes (sequences
+    labeled ``Structure 1``, ...). Keys that stringify alike (e.g. 1 and "1") raise.
+    """
+    is_struct_dict = isinstance(structures, dict) and "sites" in structures
+    if hasattr(structures, "items") and not is_struct_dict:  # dict, Series
+        labeled = str_labels(dict(structures.items()))
+        return {key: structure_to_dict(val) for key, val in labeled.items()}
+    if isinstance(structures, (list, tuple)):
+        return {
+            f"Structure {idx}": structure_to_dict(struct)
+            for idx, struct in enumerate(structures, start=1)
+        }
+    return structure_to_dict(structures)
 
 
 class CoordinationBarPlotWidget(
@@ -26,61 +39,25 @@ class CoordinationBarPlotWidget(
     site's neighbors. ``split_mode`` makes one series per element (summed over
     structures), per structure, or one for all sites (``"none"``).
 
+    ``structures`` is one structure, a sequence of them or a ``{label:
+    structure}`` mapping of pymatgen, ASE or phonopy structures or structure
+    dicts.
+
     Examples:
-        >>> from pymatgen.core import Lattice, Structure
+        >>> import numpy as np
+        >>> import kemio
+        >>> nacl = kemio.Structure(
+        ...     np.eye(3) * 5.6, ["Na", "Cl"], [[0] * 3, [0.5] * 3], fractional=True
+        ... )
         >>> import pymatviz as pmv
-        >>> nacl = Structure(Lattice.cubic(5.6), ["Na", "Cl"], [[0] * 3, [0.5] * 3])
         >>> pmv.coordination_bar_plot({"NaCl": nacl}, split_mode="by_element")
     """
 
-    # a structure dict or {label: structure dict}
-    structures = tl.Any(allow_none=True).tag(sync=True)
+    # a structure dict or {label: structure dict}, converted on every assignment
+    structures = normalized_trait(_labeled_structures)
     # two-way: bar arrangement, also switchable from the controls pane
     mode = tl.CaselessStrEnum(
         values=["overlay", "stacked", "grouped"], default_value="grouped"
     ).tag(sync=True)
 
-    @tl.validate("structures")
-    def _validate_structures(self, proposal: dict[str, Any]) -> dict[str, Any] | None:
-        """Convert structures to the bare structure dict or ``{label: dict}`` form
-        MatterViz takes (sequences labeled ``Structure 1``, ...), on construction and
-        on later assignment.
-        """
-        structures = proposal["value"]
-        if structures is None:
-            return None
-        try:
-            is_struct_dict = isinstance(structures, dict) and "sites" in structures
-            if hasattr(structures, "items") and not is_struct_dict:  # dict, Series
-                return {
-                    str(key): structure_to_dict(val) for key, val in structures.items()
-                }
-            if isinstance(structures, (list, tuple)):
-                return {
-                    f"Structure {idx}": structure_to_dict(struct)
-                    for idx, struct in enumerate(structures, start=1)
-                }
-            return structure_to_dict(structures)
-        except TypeError as exc:
-            raise tl.TraitError(str(exc)) from exc
-
-    def __init__(
-        self,
-        structures: Any | Mapping[str, Any] | Sequence[Any] | None = None,
-        **kwargs: Any,
-    ) -> None:
-        """Initialize a coordination bar plot widget.
-
-        Args:
-            structures: One structure, a sequence of them or a ``{label: structure}``
-                mapping. pymatgen, ASE and phonopy structures and structure dicts
-                (``Structure.as_dict()``) are accepted.
-            **kwargs: Widget traits, e.g. ``strategy``, ``split_mode``, ``mode``,
-                ``orientation``, ``x_axis``, ``y_axis``.
-        """
-        json_keys = ("display", "legend", "padding", "x_axis", "y_axis")
-        normalize_json_kwargs(kwargs, json_keys, "CoordinationBarPlot")
-        super().__init__(
-            structures=structures,
-            **kwargs,
-        )
+    _positional_traits = ("structures",)

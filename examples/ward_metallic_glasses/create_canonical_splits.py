@@ -13,8 +13,8 @@ import os
 from collections import Counter
 from typing import Any, Literal, get_args
 
+import kemio
 import pandas as pd
-from pymatgen.core import Composition
 from sklearn.model_selection import train_test_split
 
 import pymatviz as pmv
@@ -81,7 +81,7 @@ def get_most_common_elements(df_in: pd.DataFrame, n_elements: int = 3) -> list[s
     """Get the n most common elements in the dataset."""
     element_counts: Counter[str] = Counter()
     for comp in df_in["composition"]:
-        element_counts.update(Composition(comp).chemical_system_set)
+        element_counts.update(kemio.Composition(comp).elements)
     return [el for el, _ in element_counts.most_common(n_elements)]
 
 
@@ -89,7 +89,7 @@ def get_most_common_systems(df_in: pd.DataFrame, n_systems: int = 3) -> list[str
     """Get the N most common chemical systems in the dataset."""
     system_counts: Counter[str] = Counter()
     for comp in df_in["composition"]:
-        system_counts[Composition(comp).chemical_system] += 1
+        system_counts[kemio.Composition(comp).chemical_system] += 1
     return [sys for sys, _ in system_counts.most_common(n_systems)]
 
 
@@ -139,7 +139,7 @@ def create_element_split(
 
     # Find compositions containing any of the held-out elements
     holdout_mask = df_in["composition"].map(
-        lambda comp: any(el in Composition(comp).chemical_system_set for el in elements)
+        lambda comp: any(el in kemio.Composition(comp) for el in elements)
     )
     holdout_idx = df_in.index[holdout_mask]
 
@@ -172,7 +172,7 @@ def create_system_split(
 
     # Find compositions matching any of the held-out systems
     holdout_mask = df_in["composition"].map(
-        lambda x: "-".join(sorted(Composition(x).chemical_system_set)) in systems
+        lambda comp: kemio.Composition(comp).chemical_system in systems
     )
     holdout_idx = df_in.index[holdout_mask]
 
@@ -201,7 +201,7 @@ def print_split_stats(df_in: pd.DataFrame, split: pd.Series, split_name: str) ->
 
     for idx, comp in df_in["composition"].items():
         split_comps[split[idx]].append(comp)
-        split_elements[split[idx]].update(Composition(comp).chemical_system_set)
+        split_elements[split[idx]].update(kemio.Composition(comp).elements)
 
     # Count element occurrences using pmv.count_elements
     split_counts = {
@@ -216,8 +216,7 @@ def print_split_stats(df_in: pd.DataFrame, split: pd.Series, split_name: str) ->
     # Count unique systems in each split
     split_systems: dict[DataSplit, set[str]] = {name: set() for name in data_splits}
     for idx, comp in df_in["composition"].items():
-        system = "-".join(sorted(Composition(comp).chemical_system_set))
-        split_systems[split[idx]].add(system)
+        split_systems[split[idx]].add(kemio.Composition(comp).chemical_system)
 
     print("\nUnique systems in each split:")
     for name, systems in split_systems.items():
